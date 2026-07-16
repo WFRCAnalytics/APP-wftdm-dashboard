@@ -1,0 +1,37 @@
+{
+  // Positron recommended extensions for APP-wftdm-dashboard
+  // Positron bundles its own Python support — do NOT install ms-python.python
+  // Positron has tested and supports: basedpyright, ty, Pyrefly, ZubanLS
+  "recommendations": [
+    // Python type checking (pick one — Pyrefly recommended for speed)
+    "meta.pyrefly",               // Pyrefly: fast Rust-based type checker from Meta
+    // "detachhead.basedpyright", // Alternative: stricter Pyright fork
+
+    // Linting + formatting
+    "charliermarsh.ruff",         // Ruff: linter + formatter (replaces Black, isort, flake8)
+
+    // JavaScript / Vite
+    "esbenp.prettier-vscode",     // JS/CSS/YAML formatter
+    "dbaeumer.vscode-eslint",     // ESLint
+    "antfu.vite",                 // Vite integration
+
+    // YAML
+    "redhat.vscode-yaml",         // YAML validation + schema support
+
+    // TOML (pyproject.toml)
+    "tamasfe.even-better-toml",   // TOML syntax + validation
+
+    // Git
+    "eamodio.gitlens",            // Enhanced Git history/blame
+
+    // Markdown
+    "yzhang.markdown-all-in-one"  // Markdown preview + editing
+  ],
+
+  // These conflict with Positron's built-in Python support — block them
+  "unwantedRecommendations": [
+    "ms-python.python",           // Conflicts with Positron's built-in Python runtime
+    "ms-python.vscode-pylance",   // Conflicts with Positron's built-in language server
+    "ms-python.vscode-python-envs" // Positron explicitly blocks this (release 2025.12)
+  ]
+}

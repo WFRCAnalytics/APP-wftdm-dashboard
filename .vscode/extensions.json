@@ -1,0 +1,30 @@
+{
+  // VS Code recommended extensions for APP-wftdm-dashboard
+  // For Positron users: see .positron/extensions.json instead
+  "recommendations": [
+    // Python
+    "ms-python.python",           // Python language support + IntelliSense
+    "ms-python.debugpy",          // Python debugger
+    "charliermarsh.ruff",         // Ruff linter + formatter (replaces Black, isort, flake8)
+    "meta.pyrefly",               // Pyrefly type checker (fast, Rust-based, from Meta)
+
+    // JavaScript / Vite
+    "esbenp.prettier-vscode",     // JS/CSS/YAML formatter
+    "dbaeumer.vscode-eslint",     // ESLint (for future JS linting)
+    "antfu.vite",                 // Vite integration
+
+    // YAML
+    "redhat.vscode-yaml",         // YAML validation + schema support
+
+    // TOML (pyproject.toml)
+    "tamasfe.even-better-toml",   // TOML syntax + validation
+
+    // Git
+    "eamodio.gitlens",            // Enhanced Git history/blame
+
+    // Markdown
+    "yzhang.markdown-all-in-one"  // Markdown preview + editing
+  ],
+
+  "unwantedRecommendations": []
+}
