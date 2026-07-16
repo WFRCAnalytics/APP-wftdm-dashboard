@@ -1,0 +1,95 @@
+[project]
+name = "wftdm-dashboard"
+version = "0.1.0"
+description = "WFRC Travel Demand Model Calibration Dashboard"
+readme = "README.md"
+authors = [{ name = "Pukar Bhandari", email = "pukar.bhandari@wfrc.utah.gov" }]
+license = { text = "MIT" }
+requires-python = ">=3.10"
+dependencies = [
+  "click>=8.0",
+  "duckdb>=1.0",
+  "flask>=3.0",
+  "openmatrix>=0.3",  # fallback OMX reader if h5db extension unavailable
+]
+
+[project.urls]
+Repository = "https://github.com/WFRCAnalytics/APP-wftdm-dashboard"
+
+[project.scripts]
+wftdm-dashboard = "wftdm_dashboard.cli:main"
+
+[dependency-groups]
+dev = [
+  "ruff>=0.4",
+]
+
+[build-system]
+requires = ["uv_build>=0.10.8,<0.11.0"]
+build-backend = "uv_build"
+
+# ── Ruff ─────────────────────────────────────────────────────────────────────
+# Consistent with the TDM repo ruff config but tuned for a web-serving package
+# rather than model scripts. Key differences:
+#   - target-version py310 (matches requires-python)
+#   - line-length 100 (slightly tighter than model scripts' 115)
+#   - PTH123 not ignored (Path.open() is appropriate in a package)
+#   - N803/N806 not ignored (argument/variable naming enforced in package code)
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+indent-width = 4
+extend-exclude = [
+  ".ipynb_checkpoints",
+  "__pycache__",
+  "src/wftdm_dashboard/static",  # built JS files — never lint these
+]
+
+[tool.ruff.lint]
+select = [
+  "E",
+  "F",
+  "W",  # pycodestyle + pyflakes correctness
+  "I",  # import ordering (isort)
+  "UP",  # pyupgrade modernization
+  "B",  # bugbear common mistakes
+  "C4",  # flake8-comprehensions
+  "C90",  # mccabe complexity
+  "T10",  # debugger checks
+  "PTH",  # pathlib nudges
+  "RUF",  # Ruff-specific rules
+  "PERF",  # performance rules
+  "SIM102",  # simplify nested ifs
+  "SIM117",  # simplify nested withs
+  "N801",  # class naming
+  "N802",  # function naming
+  "N803",  # argument naming (enforced in package code, unlike model scripts)
+  "N806",  # variable naming (enforced in package code, unlike model scripts)
+]
+ignore = [
+  "E402",  # module-level import not at top (sometimes needed for Flask)
+  "E501",  # line too long (line-length above handles this)
+]
+fixable = ["ALL"]
+unfixable = []
+dummy-variable-rgx = "^(_+|unused_.*)$"
+
+[tool.ruff.lint.isort]
+known-first-party = ["wftdm_dashboard"]
+lines-after-imports = 2
+
+[tool.ruff.lint.mccabe]
+max-complexity = 12
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto"
+skip-magic-trailing-comma = false
+docstring-code-format = true
+docstring-code-line-length = 100
+
+# ── uv ───────────────────────────────────────────────────────────────────────
+[tool.uv]
+package = true
