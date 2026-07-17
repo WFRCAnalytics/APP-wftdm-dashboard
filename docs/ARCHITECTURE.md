@@ -28,11 +28,17 @@ All format conversion (CSV→Parquet, OMX→Parquet, shapefile→GeoParquet) hap
 
 ## Key decisions
 
-### Plain JavaScript, no framework
+### Plain JavaScript first, React/TypeScript later on separate branches
 
-**Why:** 10-year maintainability by a small R/Python-primary team. JS frameworks break on 2–4 year cycles (React 18→19, Vue 2→3). ES2022 code runs unchanged in a 2035 browser. The panel registry (~30 lines) and pub/sub filter state (~20 lines) don't need a framework.
+**Three-phase migration plan — each phase on a separate branch, merged when confirmed working:**
 
-**TypeScript:** omitted initially to lower the barrier; migrate incrementally via Vite (rename `.js`→`.ts`) if complexity grows.
+**Phase 1 — Vanilla JS (`main`):** Build and verify the full working dashboard in plain JavaScript. The panel registry pattern and pub/sub filter state don't need a framework. Complete and proven before moving on.
+
+**Phase 2 — TypeScript (`feat/typescript`):** Add types incrementally on top of working vanilla JS. Vite supports TypeScript natively — rename `.js` → `.ts` file by file, no config change. Highest value: `services/duckdb.ts` (query result types), panel config interfaces, filter state types. Catches YAML config errors and DuckDB column mismatches at write-time. Near-zero migration cost — no architectural change.
+
+**Phase 3 — React (`feat/react`):** Migrate UI layer to React after TypeScript is stable. Data layer (`services/`, `state/`) is completely untouched. Commute Explorer is the working reference — same stack already in React. Justified if state management complexity grows; not required if configured panels remain the primary use pattern.
+
+**Why this order:** TypeScript adds the most value soonest (type safety on DuckDB queries and YAML config parsing) with the least disruption. React adds UI ergonomics and unlocks Graphic Walker's full DuckDB computation adapter, but those gains only matter after the core dashboard is working well. AI (including local LLMs) handles framework migrations — the "no framework forever" constraint is not permanent.
 
 ### DuckDB throughout
 
@@ -83,13 +89,15 @@ DuckDB `h5db` community extension reads OMX/HDF5 in the Python post-processor. F
 
 The JS app (`APP-wftdm-dashboard`) is deployed in three modes from the same codebase:
 
-**Hosted web app** — static files at `wfrcanalytics.github.io/APP-wftdm-dashboard` or `wfrc.utah.gov/wftdm-dashboard`. Analysts load scenario folders via `showDirectoryPicker()` (Chrome/Edge). Data never leaves their machine. DuckDB-WASM does all querying.
+**Hosted web app** — static files at `wfrcanalytics.github.io/APP-wftdm-dashboard` or `wfrc.utah.gov/wftdm-dashboard`. At startup the app registers `public/observed/` (always pre-loaded, deselectable) and all entries in `public/scenarios/index.json` (published model runs). Analysts can additionally load local scenario folders via `showDirectoryPicker()` (Chrome/Edge). URL params (`?s=observed&s=2027-rtp-baseyear`) enable shareable deep links into any scenario combination.
 
-**`wftdm-dashboard serve`** — thin Python file server on `localhost:8050`. Analyst runs from model output folder; visits the hosted web app which detects `localhost` and switches from folder picker to HTTP loading. Firefox/Safari compatible. Analogous to `simwrapper serve`.
+**`wftdm-dashboard serve`** — thin Python file server on `localhost:8050`. Analyst runs from any folder containing model output; visits the hosted web app which detects `localhost` and switches from folder picker to HTTP loading. Firefox/Safari compatible. Analogous to `simwrapper serve`.
 
 **`wftdm-dashboard here`** — serves both the file server and a local copy of the embedded app. No internet required; works behind a firewall. Analogous to `simwrapper here`.
 
-The Python package (`wftdm-dashboard`) bundles the built `dist/` as `static/` at publish time via a Makefile. Added to the model repo as a `uv` dependency — analysts install once and use from any model output folder.
+The Python package (`wftdm-dashboard`) bundles the built `dist/` as `static/` at publish time via a Makefile. Added to the TDM repo as a `uv` dependency — analysts install once and use from any scenario folder.
+
+**TDM repo structure:** the post-processor writes `summary/` into each existing scenario folder (`Scenarios/{run-name}/summary/`). No new top-level folders; the existing TDM repo structure is unchanged. When ready to publish, the analyst uses any file manager (FileZilla, Windows Explorer, etc.) to copy `Scenarios/{run-name}/summary/` and `manifest.yaml` from the TDM repo into `public/scenarios/{run-name}/` in the dashboard repo — the two repos are separate project folders on disk. The analyst then adds the scenario name to `public/scenarios/index.json`, commits, and pushes the dashboard repo.
 
 **Threading note:** `wfrc.utah.gov/wftdm-dashboard` (own domain) can set COOP/COEP headers → DuckDB-WASM gets full SharedArrayBuffer threading. GitHub Pages cannot set headers → single-threaded WASM. For summary Parquet under 100MB either is fast enough; own domain is preferred for future-proofing.
 

@@ -21,7 +21,18 @@ Read `docs/ARCHITECTURE.md` and `docs/SPEC.md` before writing any code.
 | File format | Parquet / GeoParquet only — no CSV/GeoJSON/OMX in browser |
 | Geometry | DuckDB spatial extension (`ST_Read`, `ST_AsGeoJSON`) |
 
-**TypeScript:** start plain JS; migrate incrementally if complexity warrants it.
+**Three-phase migration plan — each phase on its own branch, merged when confirmed working:**
+
+**Phase 1 — Vanilla JS (`main`):**
+Build and verify the full working dashboard in plain JavaScript. No framework, no TypeScript. Complete and working before moving to Phase 2.
+
+**Phase 2 — TypeScript (`feat/typescript`):**
+Add types incrementally on top of working vanilla JS. Rename `.js` → `.ts` file by file. Vite supports TypeScript natively — no config change needed. Highest value files first: `services/duckdb.ts` (query result types), `state/filterState.ts`, panel config interfaces (`PlotlyPanelConfig`, `FlowMapPanelConfig`). This phase catches YAML config errors and DuckDB column mismatches at write-time. Merge into `main` when confirmed working.
+
+**Phase 3 — React (`feat/react`, branches from post-Phase-2 `main`):**
+Migrate UI layer to React if/when state management complexity justifies it. Data layer (`services/`, `state/`) is completely untouched — React only changes how panels and layout are structured. Use Commute Explorer as the working reference — it is already the same stack (React + DuckDB-WASM + MapLibre + flowmap.gl). Merge into `main` when confirmed working.
+
+Do not introduce TypeScript or React in Phase 1. Do not introduce React in Phase 2.
 
 ---
 
@@ -48,8 +59,9 @@ manifest.yaml         per-scenario metadata
 - No `topsheet.yaml` — the first `dashboard-*.yaml` serves as the landing page
 - No `dashboard-config.yaml` — app settings live in code and CLI args
 - No `summarize-preprocessor.yaml` — join logic lives in `sql_fragments` inside `summarize.yaml`
-- Config files live in `.wfrc/` parent folder shared across scenario runs
-- Parquet outputs live in each scenario folder's `summary/` subfolder
+- Dashboard YAML configs (`dashboard-*.yaml`, `summarize.yaml`) live alongside the model scripts — not in the dashboard repo
+- Parquet outputs live in `{scenario-dir}/summary/` — written by the post-processor
+- Published scenarios are manually copied into `public/scenarios/` in the dashboard repo
 
 ---
 
@@ -86,12 +98,25 @@ APP-wftdm-dashboard/
 ├── vite.config.js
 ├── public/
 │   ├── coi-serviceworker.js
-│   └── observed/               # permanent observed data (always registered)
-│       ├── observed_mode_share.parquet
-│       ├── observed_counts.parquet
-│       └── observed_tlfd.parquet
-├── python/
-│   └── wftdm_dashboard/
+│   ├── observed/               # observed data — deselectable, always pre-loaded
+│   │   ├── manifest.yaml       # name: "Observed Data", pinned: true
+│   │   └── summary/
+│   │       ├── summary_kpis.parquet
+│   │       ├── observed_mode_share.parquet
+│   │       ├── observed_counts.parquet
+│   │       └── observed_tlfd.parquet
+│   └── scenarios/              # published model runs for sharing/web access
+│       ├── index.json          # ["2027-rtp-baseyear", "2027-rtp-horizonyear"]
+│       ├── 2027-rtp-baseyear/
+│       │   ├── manifest.yaml
+│       │   └── summary/
+│       │       ├── summary_kpis.parquet
+│       │       └── ...
+│       └── 2027-rtp-horizonyear/
+│           ├── manifest.yaml
+│           └── summary/
+├── src/
+│   └── wftdm_dashboard/        # Python package
 │       ├── __init__.py
 │       ├── cli.py              # wftdm-dashboard serve / here
 │       ├── server.py           # Flask/uvicorn file server with CORS headers
@@ -107,8 +132,8 @@ APP-wftdm-dashboard/
     │   ├── duckdb.js           # DuckDB-WASM API
     │   ├── duckdb.worker.js    # Web Worker (separate file for Vite)
     │   ├── yamlLoader.js       # fetch + parse dashboard-*.yaml files
-    │   ├── sqlExpander.js      # expand $mappings/$bins/$sql/$filters/$scenario
-    │   └── observedRegistry.js # register observed/ Parquet at startup
+    │   ├── sqlExpander.js       # expand $mappings/$bins/$sql/$filters/$scenario
+    │   └── scenarioDiscovery.js # register observed/ + public/scenarios/ at startup
     ├── layout/
     │   ├── shell.js
     │   ├── navBar.js
@@ -164,11 +189,12 @@ const LOCAL = window.location.hostname === 'localhost'
 ## Boot sequence (`main.js`)
 
 ```js
-await initDuckDB()                         // Web Worker init
-await registerObservedData()               // observed/*.parquet → permanent views
-const dashboards = await loadDashboards()  // fetch + parse dashboard-*.yaml
-renderShell(dashboards)                    // nav tabs, sidebar
-renderDashboard(dashboards[0])             // render first tab (Summary) as landing page
+await initDuckDB()                          // Web Worker init
+await discoverScenarios()                   // register observed/ + public/scenarios/*
+applyURLParams()                            // pre-select ?s= scenarios from URL
+const dashboards = await loadDashboards()   // fetch + parse dashboard-*.yaml
+renderShell(dashboards)                     // nav tabs, sidebar, scenario manager
+renderDashboard(dashboards[0])              // first tab (Summary) as landing page
 ```
 
 ---
@@ -349,8 +375,8 @@ export default defineConfig({
 ## Implementation order
 
 1. `vite.config.js`, `index.html`, `package.json` + postinstall for coi-serviceworker
-2. `services/duckdb.js` + worker — init, query, registerScenario
-3. `services/observedRegistry.js` — register observed Parquet at startup
+2. `services/duckdb.js` + worker — init, query, registerScenario, registerFileURL
+3. `services/scenarioDiscovery.js` — register `public/observed/` + `public/scenarios/*` + apply `?s=` URL params
 4. `services/yamlLoader.js` + `services/sqlExpander.js`
 5. `state/appState.js` + `state/filterState.js`
 6. `layout/shell.js`, `navBar.js`, `panelCard.js`, `dashboardRenderer.js`
@@ -385,3 +411,6 @@ export default defineConfig({
 - Create `topsheet.yaml` — the first dashboard-*.yaml is the landing page
 - Create `summarize-preprocessor.yaml` — join logic lives in sql_fragments
 - Create `dashboard-config.yaml` — does not exist
+- Create `services/observedRegistry.js` — replaced by `services/scenarioDiscovery.js`
+- Use TypeScript in Phase 1 — vanilla JS only until dashboard is verified working
+- Use React in Phase 1 or 2 — React comes after TypeScript is stable (Phase 3)

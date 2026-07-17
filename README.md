@@ -1,7 +1,7 @@
 # WFRC Travel Demand Model Dashboard
 
-Interactive calibration and validation dashboard for the Wasatch Front
-Regional Activity-Based Travel Demand Model (ActivitySim).
+Interactive calibration and validation dashboard for the Wasatch Front Regional Council
+(WFRC) Activity-Based Travel Demand Model (ActivitySim).
 
 **Hosted app:** `wfrc.utah.gov/wftdm-dashboard` · `wfrcanalytics.github.io/APP-wftdm-dashboard`
 
@@ -25,26 +25,33 @@ The dashboard covers:
 - **Trip** — trip purpose, destination distributions, scheduling
 - **Network** — screenline volumes vs observed AADT, VMT by facility type, O-D desire lines
 - **Explore** — free-form visual analytics sandbox (Graphic Walker)
+
 ---
 
 ## How it works
 
 ```
-ActivitySim model run
+ActivitySim model run (TDM repo)
         │
         ▼  Python post-processor (uv run summarize.py)
         │  Reads CSVs + OMX skims → writes Parquet summary files
         ▼
-scenario_folder/
+Scenarios/{run-name}/
   manifest.yaml
   summary/
     summary_kpis.parquet
     trip_mode_share.parquet
-    tlfd.parquet
     ...
         │
+        ├──► Local use: wftdm-dashboard serve/here
+        │    Analyst loads folder via folder picker or local server
+        │
+        └──► Publish to web app: copy to public/scenarios/{name}/
+             Add name to public/scenarios/index.json → push → deploy
+        │
         ▼  Browser (DuckDB-WASM)
-        │  Analyst loads folder → panels query Parquet → charts render
+        │  observed/ always pre-loaded · public/scenarios/* auto-discovered
+        │  ?s=observed&s=2027-rtp-baseyear for shareable deep links
         ▼
 Dashboard panels (Plotly / Observable Plot / MapLibre / flowmap.gl)
 ```
@@ -56,9 +63,11 @@ All computation happens locally. The hosted web app is static HTML/JS/CSS.
 ## Deployment modes
 
 ### Web app (primary)
-Visit the hosted URL in Chrome or Edge. Click **Load Scenario** to select a local or
-network-mounted scenario folder. Uses the browser's File System Access API
-(`showDirectoryPicker`) — files never leave the machine.
+Visit the hosted URL in Chrome or Edge. Published scenarios from `public/scenarios/` load
+automatically — no folder picker needed. Share any scenario combination as a URL:
+`?s=observed&s=2027-rtp-baseyear`. Analysts can also load local folders via
+**Load Local Scenario** using the browser's File System Access API (`showDirectoryPicker`) —
+local files never leave the machine.
 
 ### Local server (Firefox / Safari / offline)
 ```bash
@@ -82,11 +91,20 @@ wftdm-dashboard = { git = "https://github.com/WFRCAnalytics/APP-wftdm-dashboard"
 ## Post-processor
 
 The post-processor converts raw ActivitySim output to Parquet summary files. It is
-configured by `summarize.yaml` in the model repo — not in this repository.
+configured by `summarize.yaml` alongside the model scripts in the TDM repo — not in
+this repository. Output is written to `Scenarios/{run-name}/summary/`.
 
 ```bash
-uv run summarize.py --config .wfrc/summarize.yaml --scenario-dir /path/to/run
+uv run summarize.py --config summarize.yaml --scenario-dir Scenarios/2027-RTP-BaseYear
+# writes to Scenarios/2027-RTP-BaseYear/summary/
 ```
+
+**To publish a scenario to the web app:**
+1. Using any file manager (FileZilla, Windows Explorer, etc.), copy from the TDM repo:
+   - `Scenarios/2027-RTP-BaseYear/summary/` → `APP-wftdm-dashboard/public/scenarios/2027-rtp-baseyear/summary/`
+   - `Scenarios/2027-RTP-BaseYear/manifest.yaml` → `APP-wftdm-dashboard/public/scenarios/2027-rtp-baseyear/manifest.yaml`
+2. Add `"2027-rtp-baseyear"` to `public/scenarios/index.json` in the dashboard repo
+3. Commit and push → GitHub Actions deploys automatically
 
 OMX skim matrices are converted using the DuckDB `h5db` community extension
 (fallback: Python `openmatrix` library). Zone geometry is converted to GeoParquet
@@ -113,7 +131,7 @@ See `docs/grammar.md` for the full YAML grammar reference.
 
 | Layer | Technology | Why |
 |---|---|---|
-| Build | Vite + plain JavaScript | No framework — 10-year maintainability |
+| Build | Vite + plain JavaScript | Phase 1: vanilla JS → Phase 2: TypeScript → Phase 3: React (each on its own branch, merged when confirmed) |
 | In-browser query | DuckDB-WASM | Columnar SQL, same dialect as Python pipeline |
 | Offline pipeline | Python DuckDB | Same SQL, reads CSV/OMX/shapefiles |
 | Charts (default) | Plotly.js | Interactive legend, fullscreen, modebar |
@@ -158,10 +176,16 @@ APP-wftdm-dashboard/
 │   └── CALIBRATION-SUMMARIES.md ← Metric inventory by submodel
 ├── public/
 │   ├── coi-serviceworker.js    ← Enables SharedArrayBuffer on GitHub Pages
-│   └── observed/               ← Permanent observed validation data
-│       ├── observed_mode_share.parquet
-│       ├── observed_counts.parquet
-│       └── observed_tlfd.parquet
+│   ├── observed/               ← Observed validation data (always pre-loaded, deselectable)
+│   │   ├── manifest.yaml
+│   │   └── summary/
+│   │       ├── observed_mode_share.parquet
+│   │       └── observed_counts.parquet
+│   └── scenarios/              ← Published model runs (auto-discovered on load)
+│       ├── index.json          ← ["2027-rtp-baseyear", ...]
+│       └── 2027-rtp-baseyear/
+│           ├── manifest.yaml
+│           └── summary/
 ├── src/                        ← Dashboard application source
 ├── python/
 │   └── wftdm_dashboard/        ← Python package (CLI + embedded app)

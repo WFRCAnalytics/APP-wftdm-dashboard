@@ -15,8 +15,9 @@ manifest.yaml         per-scenario metadata — read by browser at folder load
 - No `topsheet.yaml` — `dashboard-1-summary.yaml` serves as the landing page
 - No `summarize-preprocessor.yaml` — join logic lives in `sql_fragments`
 - No `dashboard-config.yaml` — does not exist
-- Config files live in `.wfrc/` parent folder shared across scenario runs
-- Parquet outputs live in each scenario folder's `summary/` subfolder
+- Dashboard YAML configs live alongside model scripts in the TDM repo (not in the dashboard repo)
+- Post-processor writes Parquet to `Scenarios/{run-name}/summary/` in the TDM repo
+- Published scenarios are copied into `public/scenarios/{name}/` in the dashboard repo
 
 ---
 
@@ -36,6 +37,9 @@ Scenario loaded → dashboard-1-summary.yaml (landing page, always active on loa
 The Summary tab renders immediately on scenario load. Value boxes read from
 `summary_kpis.parquet` (smallest file, loads first). Charts below load
 progressively as other Parquet files are registered.
+
+On first load (no `?s=` params), observed data is pre-selected by default.
+URL params pre-select specific scenarios: `?s=observed&s=2027-rtp-baseyear`.
 
 ---
 
@@ -60,8 +64,12 @@ const LOCAL = window.location.hostname === 'localhost'
 //         (wfrcanalytics.github.io/APP-wftdm-dashboard or wfrc.utah.gov/wftdm-dashboard)
 ```
 
-**Observed views** — registered at startup, always available (no scenario prefix):
-`observed_mode_share`, `observed_counts`, `observed_tlfd`, `observed_trip_rates`
+**Scenario discovery** — `services/scenarioDiscovery.js` runs at startup:
+1. Registers `public/observed/summary/*.parquet` as `observed__*` views (pinned, pre-selected)
+2. Fetches `public/scenarios/index.json`, registers each entry's `summary/*.parquet` as `{name}__*` views
+3. Reads `?s=` URL params and sets active scenarios in `appState`
+
+All scenarios — observed, published, and locally loaded — use the same `name__metric` view naming convention and the same `registerScenario()` function.
 
 ---
 
