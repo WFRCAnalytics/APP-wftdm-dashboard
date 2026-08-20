@@ -69,6 +69,6 @@
     "**/dist": true,
     "**/.venv": true,
     "**/uv.lock": true,
-    "src/wftdm_dashboard/static": true
+    "python/wftdm_dashboard/static": true
   }
 }

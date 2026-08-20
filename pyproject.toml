@@ -28,6 +28,9 @@ dev = [
 requires = ["uv_build>=0.10.8,<0.11.0"]
 build-backend = "uv_build"
 
+[tool.uv.build-backend]
+module-root = "python"  # package lives in python/wftdm_dashboard, not the uv_build default src/
+
 # ── Ruff ─────────────────────────────────────────────────────────────────────
 # Consistent with the TDM repo ruff config but tuned for a web-serving package
 # rather than model scripts. Key differences:
@@ -43,7 +46,7 @@ indent-width = 4
 extend-exclude = [
   ".ipynb_checkpoints",
   "__pycache__",
-  "src/wftdm_dashboard/static",  # built JS files — never lint these
+  "python/wftdm_dashboard/static",  # built JS files — never lint these
 ]
 
 [tool.ruff.lint]

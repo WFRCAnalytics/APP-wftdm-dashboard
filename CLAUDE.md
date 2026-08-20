@@ -115,15 +115,15 @@ APP-wftdm-dashboard/
 │       └── 2027-rtp-horizonyear/
 │           ├── manifest.yaml
 │           └── summary/
-├── src/
+├── pyproject.toml
+├── Makefile                    # npm run build → copy dist/ → uv build
+├── python/
 │   └── wftdm_dashboard/        # Python package
 │       ├── __init__.py
 │       ├── cli.py              # wftdm-dashboard serve / here
 │       ├── server.py           # Flask/uvicorn file server with CORS headers
 │       └── static/             # built dist/ embedded at package build time
-├── pyproject.toml
-├── Makefile                    # npm run build → copy dist/ → uv build
-└── src/
+└── src/                        # Dashboard application source (JS app only)
     ├── main.js                 # boot sequence
     ├── state/
     │   ├── appState.js         # loaded scenarios registry
