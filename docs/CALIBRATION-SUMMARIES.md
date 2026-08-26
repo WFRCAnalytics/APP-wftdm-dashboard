@@ -266,6 +266,22 @@ Covers trip-level submodels.
 - **Segmented by:** trip purpose
 - **Parquet:** `trip_scheduling.parquet`
 
+### Zone Trip Ends by Mode (spatial)
+
+Zone-level choropleth of trip productions/attractions split by major mode.
+Not a submodel in its own right — a spatial rollup of Trip Mode Choice output
+to TAZ/district geography. Complements the Mode Choice tab's segment-level
+tables/charts with a map view of where mode splits differ geographically
+(e.g. transit-heavy corridors, walk/bike-heavy districts).
+
+- **Chooser:** N/A (aggregation of `trip_mode_share.parquet`, not a discrete
+  choice)
+- **Alternatives:** major mode (all, motorized, auto, transit, non-motorized,
+  walk, bike)
+- **Segmented by:** geography (TAZ, small/medium/large district, super
+  district), production/attraction end
+- **Parquet:** `trip_ends_by_zone_mode.parquet`
+
 ---
 
 ## Network Tab
@@ -280,6 +296,38 @@ Highway assignment validation. Observed data joined at query time from
 | VMT by home TAZ (zone map) | `vmt_by_home_taz.parquet` | — |
 | O-D desire lines | `od_flows.parquet` | — |
 | Home-workplace flows (county-to-county) | `workplace_od_flows.parquet` | — |
+
+### Land Use / Socioeconomics
+
+Not a submodel — this is zone-level input data (`land_use.csv`), displayed for
+context alongside modeled output. Useful for sanity-checking a scenario's
+socioeconomic assumptions (e.g. a horizon-year land use forecast) and for
+explaining spatial patterns seen in other tabs (e.g. why a district's auto
+ownership or mode share looks the way it does).
+
+- **Chooser:** N/A (input, not modeled)
+- **Attributes:** population, households, owned vehicles, total workers,
+  employment (3-category and 12-category), average income, K-12 school
+  enrollment
+- **Segmented by:** geography (TAZ, small/medium/large district, super
+  district)
+- **Parquet:** `land_use_summary.parquet`
+
+### Accessibility ("Access to Opportunities")
+
+Zone-level output of ActivitySim's `accessibility` component (auto/transit
+logsum-based accessibility to jobs and households). Not a calibration target
+in the usual sense (no observed counterpart) but useful for explaining
+destination-choice and mode-choice patterns spatially — e.g. why a zone's
+non-mandatory tour destinations skew short, or why transit mode share is
+higher in one district than another.
+
+- **Chooser:** N/A (zone-level model output, not a discrete choice)
+- **Attributes:** access to jobs, access to households, combined access to
+  jobs + households
+- **Segmented by:** geography (TAZ, small/medium/large district, super
+  district), mode (auto, transit)
+- **Parquet:** `accessibility.parquet`
 
 ---
 
@@ -319,12 +367,15 @@ Complete inventory of files produced by the post-processor, one row per file.
 | `trip_purpose.parquet` ★ | Trip Purpose | Trip |
 | `trip_destination_dist.parquet` ★ | Trip Destination | Trip |
 | `trip_scheduling.parquet` ★ | Trip Scheduling | Trip |
+| `trip_ends_by_zone_mode.parquet` | Zone Trip Ends by Mode (spatial) | Trip |
 | `screenlines.parquet` | Network Assignment | Network |
 | `vmt_by_facility.parquet` | Network Assignment | Network |
 | `vmt_by_home_taz.parquet` | Network Assignment | Network |
 | `od_flows.parquet` | O-D Flows | Network |
+| `land_use_summary.parquet` | Land Use (input, not modeled) | Network |
+| `accessibility.parquet` | Accessibility | Network |
 
-**Total: 33 Parquet files**
+**Total: 36 Parquet files**
 
 ---
 
