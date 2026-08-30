@@ -1,0 +1,23 @@
+# Synthetic summarize.yaml-shaped config exercising every placeholder kind
+# sqlExpander.js supports, per research.md §2. Used by tests/unit/sqlExpander.test.js
+# and the User Story 4 integration block in tests/integration/boot.spec.js.
+# The query text that references these (via $mappings./$bins./$sql./
+# $filters./$scenario.) lives in the test code, not here — this file only
+# defines what a real summarize.yaml would define.
+
+mappings:
+  major_mode:
+    SOV: Drive
+    HOV: Drive
+    Transit: Transit
+    Non-Motorized: Active
+
+bins:
+  share_bucket:
+    column: share
+    type: manual_breaks
+    breaks: [0, 0.1, 0.3, 1]
+    labels: [Low, Medium, High]
+
+sql_fragments:
+  base_table: good_scenario__trip_mode_share

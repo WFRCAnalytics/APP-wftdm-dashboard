@@ -71,6 +71,12 @@ yarn-error.log*
 .yarn/
 .pnp.*
 
+# ── Vitest / Playwright ────────────────────────────────────────────────────────
+coverage/
+playwright-report/
+test-results/
+blob-report/
+
 # ── Vite build output ─────────────────────────────────────────────────────────
 # dist/ is the Vite JS build — NOT committed to main branch
 # Deployed to gh-pages branch via GitHub Actions
