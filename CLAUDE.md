@@ -57,9 +57,10 @@ manifest.yaml         per-scenario metadata
 ```
 
 - No `topsheet.yaml` — the first `dashboard-*.yaml` serves as the landing page
-- No `dashboard-config.yaml` — app settings live in code and CLI args
+- No `dashboard-config.yaml` — app settings live in code and CLI args (not to be confused with the `public/dashboard-config/` *directory* below, which holds published copies of the existing `dashboard-*.yaml` tab-layout files, not a new config file type)
 - No `summarize-preprocessor.yaml` — join logic lives in `sql_fragments` inside `summarize.yaml`
-- Dashboard YAML configs (`dashboard-*.yaml`, `summarize.yaml`) live alongside the model scripts — not in the dashboard repo
+- Dashboard YAML configs (`dashboard-*.yaml`, `summarize.yaml`) are authored alongside the model scripts in the TDM repo (not in the dashboard repo) — same authored-vs-published split as `manifest.yaml`. A published copy of the `dashboard-*.yaml` files (WFRC's default templates ship seven) is expected in `public/dashboard-config/` in the dashboard repo, discovered at runtime via `public/dashboard-config/index.json` — the same discovery pattern as `public/scenarios/index.json` — and fetched by the browser at startup; `summarize.yaml` is post-processor-only and is never published or read by the browser.
+- `public/dashboard-config/index.json` and `public/scenarios/index.json` are discovery metadata (a list of filenames/names to fetch), not one of the three config file types above — same category as each other, not a new type (constitution Principle VII still holds: exactly three *config* file types, no more)
 - Parquet outputs live in `{scenario-dir}/summary/` — written by the post-processor
 - Published scenarios are manually copied into `public/scenarios/` in the dashboard repo
 
@@ -67,6 +68,18 @@ manifest.yaml         per-scenario metadata
 
 ## Navigation model
 
+The set of tabs is **discovered at runtime**, not a fixed app-level constant:
+`main.js` fetches `public/dashboard-config/index.json` — an array of
+`dashboard-*.yaml` filenames, in display order — the same discovery pattern
+`public/scenarios/index.json` already uses for scenarios. The first filename
+in that list is always the landing page, rendered on scenario load. Whatever
+WFRC's default templates (`python/wftdm_dashboard/templates/`, see
+`docs/ARCHITECTURE.md`) happen to ship is what a freshly-`init`'d project
+gets — today that's seven tabs, but the app itself imposes no count or name
+on the set; adding, removing, or renaming a tab is purely an `index.json` +
+file edit, no code change.
+
+The default seven-tab set WFRC ships:
 ```
 Scenario loaded → dashboard-1-summary.yaml (landing page, always active on load)
   ├── Tab: Summary ★    dashboard-1-summary.yaml   ← value boxes + overview charts
@@ -105,32 +118,45 @@ APP-wftdm-dashboard/
 │   │       ├── observed_mode_share.parquet
 │   │       ├── observed_counts.parquet
 │   │       └── observed_tlfd.parquet
-│   └── scenarios/              # published model runs for sharing/web access
-│       ├── index.json          # ["2027-rtp-baseyear", "2027-rtp-horizonyear"]
-│       ├── 2027-rtp-baseyear/
-│       │   ├── manifest.yaml
-│       │   └── summary/
-│       │       ├── summary_kpis.parquet
-│       │       └── ...
-│       └── 2027-rtp-horizonyear/
-│           ├── manifest.yaml
-│           └── summary/
+│   ├── scenarios/              # published model runs for sharing/web access
+│   │   ├── index.json          # ["2027-rtp-baseyear", "2027-rtp-horizonyear"]
+│   │   ├── 2027-rtp-baseyear/
+│   │   │   ├── manifest.yaml
+│   │   │   └── summary/
+│   │   │       ├── summary_kpis.parquet
+│   │   │       └── ...
+│   │   └── 2027-rtp-horizonyear/
+│   │       ├── manifest.yaml
+│   │       └── summary/
+│   └── dashboard-config/       # published tab layout, discovered + fetched at startup
+│       ├── index.json          # ["dashboard-1-summary.yaml", "dashboard-2-person.yaml", ...]
+│       ├── dashboard-1-summary.yaml
+│       └── ...                 # whatever else index.json lists (seven, by default)
 ├── pyproject.toml
 ├── Makefile                    # npm run build → copy dist/ → uv build
 ├── python/
 │   └── wftdm_dashboard/        # Python package
 │       ├── __init__.py
-│       ├── cli.py              # wftdm-dashboard serve / here
+│       ├── cli.py              # wftdm-dashboard serve / here / init
 │       ├── server.py           # Flask/uvicorn file server with CORS headers
-│       └── static/             # built dist/ embedded at package build time
+│       ├── static/             # built dist/ embedded at package build time
+│       └── templates/          # default configs copied by `init` (never overwrites existing files)
+│           ├── summarize.yaml          # pre-filled with standard WFRC segmentations
+│           ├── dashboard-1-summary.yaml
+│           └── ...                     # dashboard-2-person.yaml through dashboard-7-explore.yaml
 └── src/                        # Dashboard application source (JS app only)
     ├── main.js                 # boot sequence
     ├── state/
     │   ├── appState.js         # loaded scenarios registry
     │   └── filterState.js      # global filters + pub/sub
     ├── services/
-    │   ├── duckdb.js           # DuckDB-WASM API
-    │   ├── duckdb.worker.js    # Web Worker (separate file for Vite)
+    │   ├── duckdb.js           # DuckDB-WASM API — owns the sole AsyncDuckDB
+    │   │                       # instance + DuckDB-WASM's own bundled worker
+    │   │                       # script (self-hosted via Vite `?url` imports,
+    │   │                       # not a CDN). No separate duckdb.worker.js —
+    │   │                       # the library provides its own worker; there's
+    │   │                       # nothing for the app to author into one
+    │   │                       # (constitution Principle II, amended 1.2.0)
     │   ├── yamlLoader.js       # fetch + parse dashboard-*.yaml files
     │   ├── sqlExpander.js       # expand $mappings/$bins/$sql/$filters/$scenario
     │   └── scenarioDiscovery.js # register observed/ + public/scenarios/ at startup
@@ -169,6 +195,7 @@ uv tool install git+https://github.com/WFRCAnalytics/APP-wftdm-dashboard
 
 wftdm-dashboard serve   # file server only — use with hosted web app
 wftdm-dashboard here    # self-contained: file server + embedded app (no internet)
+wftdm-dashboard init --scenario-dir <path>   # scaffold default summarize.yaml + dashboard-*.yaml if missing; never overwrites
 ```
 
 ```toml
@@ -192,7 +219,7 @@ const LOCAL = window.location.hostname === 'localhost'
 await initDuckDB()                          // Web Worker init
 await discoverScenarios()                   // register observed/ + public/scenarios/*
 applyURLParams()                            // pre-select ?s= scenarios from URL
-const dashboards = await loadDashboards()   // fetch + parse dashboard-*.yaml
+const dashboards = await loadDashboards()   // fetch public/dashboard-config/index.json, then each listed dashboard-*.yaml
 renderShell(dashboards)                     // nav tabs, sidebar, scenario manager
 renderDashboard(dashboards[0])              // first tab (Summary) as landing page
 ```
@@ -375,7 +402,7 @@ export default defineConfig({
 ## Implementation order
 
 1. `vite.config.js`, `index.html`, `package.json` + postinstall for coi-serviceworker
-2. `services/duckdb.js` + worker — init, query, registerScenario, registerFileURL
+2. `services/duckdb.js` — init, query, registerScenario, registerFileURL (owns DuckDB-WASM's own bundled worker; no separate duckdb.worker.js)
 3. `services/scenarioDiscovery.js` — register `public/observed/` + `public/scenarios/*` + apply `?s=` URL params
 4. `services/yamlLoader.js` + `services/sqlExpander.js`
 5. `state/appState.js` + `state/filterState.js`
@@ -410,7 +437,7 @@ export default defineConfig({
 - Use localStorage/sessionStorage
 - Create `topsheet.yaml` — the first dashboard-*.yaml is the landing page
 - Create `summarize-preprocessor.yaml` — join logic lives in sql_fragments
-- Create `dashboard-config.yaml` — does not exist
+- Create `dashboard-config.yaml` — does not exist (the `public/dashboard-config/` directory is unrelated — see Config file set above)
 - Create `services/observedRegistry.js` — replaced by `services/scenarioDiscovery.js`
 - Use TypeScript in Phase 1 — vanilla JS only until dashboard is verified working
 - Use React in Phase 1 or 2 — React comes after TypeScript is stable (Phase 3)

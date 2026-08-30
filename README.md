@@ -77,6 +77,7 @@ uv tool install git+https://github.com/WFRCAnalytics/APP-wftdm-dashboard
 # Run from any scenario output folder
 wftdm-dashboard serve    # starts file server, use with hosted web app
 wftdm-dashboard here     # starts file server + local copy of app (no internet needed)
+wftdm-dashboard init --scenario-dir <path>   # scaffold default configs for a new scenario
 ```
 
 ### Add to model repo
@@ -94,6 +95,21 @@ The post-processor converts raw ActivitySim output to Parquet summary files. It 
 configured by `summarize.yaml` alongside the model scripts in the TDM repo — not in
 this repository. Output is written to `Scenarios/{run-name}/summary/`.
 
+**Setting up a new scenario directory for the first time?** Scaffold default configs
+before hand-writing anything:
+```bash
+wftdm-dashboard init --scenario-dir Scenarios/2027-RTP-BaseYear
+# creates summarize.yaml + dashboard-1-summary.yaml ... dashboard-7-explore.yaml,
+# only for files that don't already exist — never overwrites your edits
+```
+`init` copies from the package's bundled `templates/`: a default `summarize.yaml`
+pre-filled with the standard WFRC segmentations (income group, auto sufficiency, the
+four geography levels, person type, etc. — see `docs/CALIBRATION-SUMMARIES.md`) and
+the seven default `dashboard-*.yaml` files matching the Navigation model in
+`docs/SPEC.md`. It's a one-time scaffold, not a synced resource — once these files
+exist, editing them is a plain YAML edit with zero package involvement (see
+`docs/ARCHITECTURE.md`).
+
 ```bash
 uv run summarize.py --config summarize.yaml --scenario-dir Scenarios/2027-RTP-BaseYear
 # writes to Scenarios/2027-RTP-BaseYear/summary/
@@ -106,6 +122,20 @@ uv run summarize.py --config summarize.yaml --scenario-dir Scenarios/2027-RTP-Ba
 2. Add `"2027-rtp-baseyear"` to `public/scenarios/index.json` in the dashboard repo
 3. Commit and push → GitHub Actions deploys automatically
 
+**To publish dashboard layout changes to the web app:** `dashboard-*.yaml` files are
+authored alongside the model scripts in the TDM repo, not per-scenario — publish them
+once, not per scenario run:
+1. Copy the `dashboard-*.yaml` files from wherever they're authored in the TDM repo →
+   `APP-wftdm-dashboard/public/dashboard-config/` in the dashboard repo (overwriting
+   the existing copies)
+2. Update `public/dashboard-config/index.json` in the dashboard repo to list exactly
+   the filenames now present, in display order — same step as
+   `public/scenarios/index.json`, just for tabs instead of scenarios
+3. Commit and push → GitHub Actions deploys automatically
+
+The tab set is discovered from `index.json` at runtime, not hardcoded in the app —
+adding, removing, or reordering a tab is purely an `index.json` + file edit.
+
 OMX skim matrices are converted using the DuckDB `h5db` community extension
 (fallback: Python `openmatrix` library). Zone geometry is converted to GeoParquet
 via DuckDB spatial or GeoPandas.
@@ -114,14 +144,14 @@ via DuckDB spatial or GeoPandas.
 
 ## Dashboard configuration
 
-Dashboard layout and panels are configured in YAML files stored in a `.wfrc/` folder
-alongside model runs — not in this repository. Three file types:
+Dashboard layout and panels are authored in YAML files kept alongside the model
+scripts in the TDM repo — not authored in this repository. Three file types:
 
-| File | Purpose |
-|---|---|
-| `dashboard-*.yaml` | Tab layout, panels, filters. First file = landing page. |
-| `manifest.yaml` | Scenario name, engine, run date, display color |
-| `summarize.yaml` | Post-processor config (lives in model repo, not here) |
+| File | Purpose | Published to this repo at |
+|---|---|---|
+| `dashboard-*.yaml` | Tab layout, panels, filters. First file = landing page. | `public/dashboard-config/` |
+| `manifest.yaml` | Scenario name, engine, run date, display color | `public/scenarios/{name}/` (per scenario) |
+| `summarize.yaml` | Post-processor config | never published — post-processor-only, not read by the browser |
 
 See `docs/grammar.md` for the full YAML grammar reference.
 
@@ -181,11 +211,15 @@ APP-wftdm-dashboard/
 │   │   └── summary/
 │   │       ├── observed_mode_share.parquet
 │   │       └── observed_counts.parquet
-│   └── scenarios/              ← Published model runs (auto-discovered on load)
-│       ├── index.json          ← ["2027-rtp-baseyear", ...]
-│       └── 2027-rtp-baseyear/
-│           ├── manifest.yaml
-│           └── summary/
+│   ├── scenarios/              ← Published model runs (auto-discovered on load)
+│   │   ├── index.json          ← ["2027-rtp-baseyear", ...]
+│   │   └── 2027-rtp-baseyear/
+│   │       ├── manifest.yaml
+│   │       └── summary/
+│   └── dashboard-config/       ← Published tab layout (discovered + fetched at startup)
+│       ├── index.json          ← ["dashboard-1-summary.yaml", "dashboard-2-person.yaml", ...]
+│       ├── dashboard-1-summary.yaml
+│       └── ...                 ← whatever else index.json lists (seven, by default)
 ├── src/                        ← Dashboard application source
 ├── python/
 │   └── wftdm_dashboard/        ← Python package (CLI + embedded app)

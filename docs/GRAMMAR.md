@@ -7,14 +7,16 @@
 
 ## Overview
 
-The dashboard is driven entirely by three YAML file types. All live in a shared
-`.wfrc/` folder alongside (not inside) scenario run folders.
+The dashboard is driven entirely by three YAML file types, all **authored**
+alongside the model scripts in the TDM repo — not in this repository. Each has
+its own authored-vs-published split; see "File layout" below for exactly
+where each one's published copy is fetched from.
 
-| File | Who writes it | What it does |
-|---|---|---|
-| `summarize.yaml` | Modeler (once per model version) | Post-processor config: sources, mappings, bins, SQL fragments, metrics → Parquet |
-| `dashboard-*.yaml` | Analyst | Tab layout and panel definitions. First file = landing page. |
-| `manifest.yaml` | Post-processor (auto-generated) | Per-scenario metadata: name, date, color |
+| File | Who writes it | What it does | Published to this repo at |
+|---|---|---|---|
+| `summarize.yaml` | Modeler (once per model version) | Post-processor config: sources, mappings, bins, SQL fragments, metrics → Parquet | never — post-processor-only, not read by the browser |
+| `dashboard-*.yaml` | Analyst | Tab layout and panel definitions. First file = landing page. | `public/dashboard-config/` |
+| `manifest.yaml` | Post-processor (auto-generated) | Per-scenario metadata: name, date, color | `public/scenarios/{name}/` (per scenario) |
 
 **What does not exist:**
 - No `topsheet.yaml` — `dashboard-1-summary.yaml` is the landing page
@@ -77,6 +79,16 @@ public/
       manifest.yaml
       summary/
         ...
+
+  dashboard-config/           ← published tab layout, discovered + fetched at startup
+    index.json                ← ["dashboard-1-summary.yaml", "dashboard-2-person.yaml", ...]
+    dashboard-1-summary.yaml
+    dashboard-2-person.yaml
+    dashboard-3-tour.yaml
+    dashboard-4-mode.yaml
+    dashboard-5-trip.yaml
+    dashboard-6-network.yaml
+    dashboard-7-explore.yaml   ← WFRC's default set; index.json can list any set
 ```
 
 **Publish workflow:** the TDM repo and dashboard repo are separate project folders.
@@ -86,8 +98,19 @@ To publish a scenario, use any file manager (FileZilla, Windows Explorer, etc.):
 3. Add `"{name}"` to `public/scenarios/index.json` in the dashboard repo
 4. Commit and push the dashboard repo → GitHub Actions deploys automatically
 
-Dashboard YAML configs (`summarize.yaml`, `dashboard-*.yaml`) live alongside model
-scripts in the TDM repo — not in the dashboard repo and not inside scenario folders.
+To publish dashboard layout changes (not per-scenario — published once, shared by
+every scenario): copy the `dashboard-*.yaml` files from wherever they're authored in
+the TDM repo → `APP-wftdm-dashboard/public/dashboard-config/`, update
+`public/dashboard-config/index.json` to list exactly the filenames now present (same
+step as `public/scenarios/index.json`, just for tabs), commit, push.
+
+**Fetch mechanism:** `summarize.yaml` is authored alongside model scripts in the TDM
+repo and is post-processor-only — it is never published and the browser never reads
+it. `dashboard-*.yaml` is also authored there, but its published copy **is** fetched
+by the browser at startup: `main.js` fetches `public/dashboard-config/index.json`
+first, then each filename it lists, from `public/dashboard-config/{filename}` in the
+dashboard repo — the same discovery pattern as `public/scenarios/index.json`, not a
+fixed filename list, and not via the old shared-`.wfrc/`-folder model this replaced.
 
 **URL deep links:** `?s=observed&s=2027-rtp-baseyear` pre-selects scenarios on load.
 Share any combination: one, two, or three scenarios. On first load with no params,
@@ -103,7 +126,7 @@ The same SQL dialect runs unchanged in DuckDB-WASM in the browser.
 ### Top-level structure
 
 ```yaml
-# .wfrc/summarize.yaml
+# summarize.yaml (authored alongside model scripts in the TDM repo; never published)
 version: 2
 
 # ── Sources ──────────────────────────────────────────────────────────────────
@@ -189,6 +212,17 @@ bins:
     type:     spaced_intervals
     interval: 0.5
     lower:    0
+
+  # equal_intervals: N equal-WIDTH buckets computed from the column's actual
+  # min/max at query time (data-driven) — unlike spaced_intervals above,
+  # whose `interval` is a fixed, known-ahead-of-time absolute width. Useful
+  # when the column's range varies by scenario/geography and a fixed
+  # interval would produce a different bucket count each time.
+  trip_length_quartile:
+    column: distance
+    type:   equal_intervals
+    n:      4
+    labels: [Shortest, Short, Long, Longest]
 
   time_of_day_period:
     column: depart_hour
@@ -745,7 +779,7 @@ page when a scenario folder is loaded.
 ### Top-level structure
 
 ```yaml
-# .wfrc/dashboard-1-summary.yaml
+# dashboard-1-summary.yaml (authored in TDM repo; published to public/dashboard-config/)
 
 header:
   tab:         Summary           # nav bar label
@@ -1218,8 +1252,25 @@ Default for calibration summaries: `z.super_district`. TAZ reserved for
 | `$sql.x` | metric SQL in summarize.yaml | Inline SQL fragment |
 | `$filters.x` | dashboard panel `filter:` | Current sidebar filter value |
 | `$inputs.x` | dashboard panel `filter:` | Current panel-level input value |
-| `$scenario` | dashboard panel traces | Auto-generates UNION ALL per scenario |
+| `$scenario.x` | dashboard panel traces | Auto-generates UNION ALL per scenario |
 | `$metric.col` | dashboard panel trace axes | Column reference in result set |
+
+**`$filters.x` and the `all` sentinel:** when a filter's current value is the
+`all` sentinel (see `all_option: true` above), the entire condition
+referencing `$filters.x` is omitted rather than expanding into a condition
+that matches nothing. This works by dropping the whole *line* the
+placeholder appears on — so **`$filters.x` must sit alone on its own line**
+in the metric SQL for omission to work correctly:
+
+```sql
+WHERE 1=1
+  AND purpose = '$filters.purpose'   -- OK: this whole line is dropped when purpose = 'all'
+```
+
+Putting two conditions on one line with a `$filters.x` reference (e.g.
+`AND purpose = '$filters.purpose' AND mode = 'SOV'`) drops **both**
+conditions when the filter is `all`, not just the one referencing the
+placeholder — write each filter-gated condition on its own line.
 
 ---
 

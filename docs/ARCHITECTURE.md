@@ -44,7 +44,7 @@ All format conversion (CSV→Parquet, OMX→Parquet, shapefile→GeoParquet) hap
 
 **Why:** Same SQL dialect in Python (post-processor) and WASM (browser). One query language across the entire system. DuckDB reads Parquet with predicate pushdown — only touched columns are read off disk. Joins model output to observed data at query time; no pre-joining in the pipeline.
 
-**WASM threading:** DuckDB-WASM runs single-threaded on GitHub Pages (no COOP/COEP headers). Acceptable because summary Parquet files are under 100MB — queries complete in milliseconds. `wfrc.utah.gov/wftdm-dashboard` (own domain) can set COOP/COEP headers for full threading.
+**WASM threading:** DuckDB-WASM runs single-threaded on GitHub Pages (no COOP/COEP headers), the current deploy target. Acceptable because summary Parquet files are under 100MB — queries complete in milliseconds. See "Deployment model and Python package" below for the full threading note, including the unconfirmed status of COOP/COEP on `wfrc.utah.gov`'s hosting.
 
 **Future upgrade path:** `services/duckdb.js` exposes a clean `query(sql)` interface. A native Python DuckDB server (`serve.py` with `/query` endpoint) can replace the WASM backend transparently for local use — zero panel code changes. Design the interface now, implement when needed.
 
@@ -63,7 +63,20 @@ No `topsheet.yaml` — `dashboard-1-summary.yaml` serves as the landing page, re
 
 `sql_fragments` in `summarize.yaml` defines reusable join bases (e.g. `trips_merged` joining trips + persons + households + zones) referenced as `$sql.x` in metric queries. This replaces any separate preprocessor file — the join and the aggregation are one SQL statement in DuckDB, no intermediate step or file needed.
 
-Config files live in a shared `.wfrc/` parent folder; Parquet files live per scenario folder.
+`summarize.yaml` and `dashboard-*.yaml` are authored alongside the model scripts in
+the TDM repo, not in this repository. `summarize.yaml` is post-processor-only and
+never published. A published copy of the `dashboard-*.yaml` files is discovered at
+runtime via `public/dashboard-config/index.json` and fetched by the browser at
+startup — the same discovery pattern `public/scenarios/index.json` already uses for
+scenarios, not a fixed filename list; Parquet and `manifest.yaml` are published per
+scenario folder under `public/scenarios/{name}/`.
+
+Once authored, `summarize.yaml` and `dashboard-*.yaml` are plain YAML — editing
+them requires no package build, no code, and no re-sync step; the post-processor
+and the browser simply re-read (or re-fetch) whatever's on disk the next time
+they run. Neither this repo's Python package nor its JS app validates or
+transforms these files ahead of time; runtime parsing (constitution Principle IV)
+is the only thing that ever touches them.
 
 ### Plotly + Observable Plot (not one or the other)
 
@@ -99,7 +112,34 @@ The Python package (`wftdm-dashboard`) bundles the built `dist/` as `static/` at
 
 **TDM repo structure:** the post-processor writes `summary/` into each existing scenario folder (`Scenarios/{run-name}/summary/`). No new top-level folders; the existing TDM repo structure is unchanged. When ready to publish, the analyst uses any file manager (FileZilla, Windows Explorer, etc.) to copy `Scenarios/{run-name}/summary/` and `manifest.yaml` from the TDM repo into `public/scenarios/{run-name}/` in the dashboard repo — the two repos are separate project folders on disk. The analyst then adds the scenario name to `public/scenarios/index.json`, commits, and pushes the dashboard repo.
 
-**Threading note:** `wfrc.utah.gov/wftdm-dashboard` (own domain) can set COOP/COEP headers → DuckDB-WASM gets full SharedArrayBuffer threading. GitHub Pages cannot set headers → single-threaded WASM. For summary Parquet under 100MB either is fast enough; own domain is preferred for future-proofing.
+**`wftdm-dashboard init --scenario-dir <path>`** — scaffolds a new scenario directory in the TDM repo with a starting `summarize.yaml` and WFRC's default `dashboard-*.yaml` set (seven files today), so a modeler setting up a new model run doesn't start from a blank file. Creates a file only if it doesn't already exist at `<path>` — never overwrites an existing `summarize.yaml` or `dashboard-*.yaml`, so re-running `init` against a directory that's already been customized is always safe (a no-op for every file that already exists). `init` scaffolds the TDM-repo authoring side only — it never touches the dashboard repo's `public/dashboard-config/`, so it has no `index.json` to produce; that file is maintained as part of the separate publish step below.
+
+**Threading note:** GitHub Pages cannot set custom response headers at all, so COOP/COEP (and therefore SharedArrayBuffer / full threaded DuckDB-WASM) are unavailable there — the app runs single-threaded WASM on GitHub Pages, which is the current deploy target while the dashboard is under active development. `wfrc.utah.gov` is hosted on Bluehost (Apache/cPanel), which can typically set custom response headers via `.htaccess` — unlike GitHub Pages, this makes COOP/COEP support *possible* there, but it is not confirmed: whether this specific Bluehost account/plan actually allows the needed headers must be verified empirically against that account when the team is ready to deploy there, not assumed from what Bluehost/Apache can do in general. For summary Parquet under 100MB, single-threaded WASM is fast enough regardless, so this isn't blocking anything now. A second deploy path to `wfrc.utah.gov` (with its own `.htaccess` and a second GitHub Actions job) is deferred until GitHub Pages testing is complete — not something to build yet.
+
+### Config templates are a scaffold, not a managed file
+
+`python/wftdm_dashboard/templates/` bundles the files `init` copies: a default
+`summarize.yaml` pre-filled with the standard WFRC segmentations already
+documented in `docs/CALIBRATION-SUMMARIES.md` — income group, auto sufficiency,
+the four geography levels (TAZ / small / medium / large / super district),
+person type, and the rest of that document's Standard Segmentation Definitions
+— and the default `dashboard-*.yaml` files (seven today) matching the tab
+structure in `docs/SPEC.md`'s Navigation model. This count is not pinned
+anywhere in code — it's simply how many files ship in `templates/` today;
+`public/dashboard-config/index.json` (the dashboard repo's separate, published
+side) is what the running app actually reads to know its tab set.
+
+**These are a one-time starting point, not a synced or managed resource.**
+`init` performs a single copy-if-missing operation and is never invoked again
+automatically. Once a `summarize.yaml` or `dashboard-*.yaml` exists in a
+scenario directory, it has exactly the same editability guarantee as any other
+config file in this system (see "YAML-driven configuration" above): editing it
+is a plain YAML edit, with zero involvement from the `wftdm-dashboard` package
+— no re-copy, no validation, no drift-detection against the bundled template.
+If a later version of the package changes its bundled templates, directories
+already scaffolded by an earlier `init` are **not** retroactively updated;
+`init`'s never-overwrite rule means picking up a template change requires
+either a fresh scenario directory or a manual edit, by design.
 
 ---
 
