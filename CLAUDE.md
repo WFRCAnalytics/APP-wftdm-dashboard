@@ -33,8 +33,9 @@ of JSDoc — catches YAML config errors and DuckDB column mismatches at
 write-time.
 
 React is **not yet adopted** — nothing renders anything yet, so there's
-nothing for a framework to help with. It arrives with the layout/panel
-layer, when there's an actual component tree to justify it; data layer
+nothing for a framework to help with. It arrives with whichever feature
+first genuinely needs it, when there's an actual component tree to justify
+it; data layer
 (`services/`, `state/`) stays plain TypeScript regardless of when that
 happens. Commute Explorer is the working reference (React + DuckDB-WASM +
 MapLibre + flowmap.gl) for when that work starts.
@@ -439,7 +440,8 @@ export default defineConfig({
 
 - Use Vue, Svelte, or any component framework other than React — React is
   the only framework this project may ever adopt, and only starting with
-  the layout/panel layer (not yet — nothing renders anything yet)
+  whichever feature first genuinely needs it (not yet — nothing renders
+  anything yet)
 - Add new plain `.js` files to `src/` — TypeScript (`.ts`) is the standard
 - Use Mapbox GL — MapLibre only
 - Use Webpack — Vite only

@@ -161,7 +161,7 @@ See `docs/grammar.md` for the full YAML grammar reference.
 
 | Layer | Technology | Why |
 |---|---|---|
-| Build | Vite + TypeScript | TypeScript throughout `src/`; React arrives with the layout/panel layer, not before (constitution v2.0.0 — no phase gate, no dedicated branch for either) |
+| Build | Vite + TypeScript | TypeScript throughout `src/`; React arrives with whichever feature first needs it, not before (constitution v2.1.1 — no phase gate, no dedicated branch for either) |
 | In-browser query | DuckDB-WASM | Columnar SQL, same dialect as Python pipeline |
 | Offline pipeline | Python DuckDB | Same SQL, reads CSV/OMX/shapefiles |
 | Charts (default) | Plotly.js | Interactive legend, fullscreen, modebar |

@@ -45,8 +45,8 @@ column mismatches at write-time rather than at runtime.
 
 **React is not adopted yet** — nothing in the data/state layer renders
 anything, so there's no UI to benefit from a framework. React arrives with
-the layout/panel layer, when there's an actual component tree to justify it.
-Commute Explorer remains the working reference for that stack (React +
+whichever feature first genuinely needs it, when there's an actual component
+tree to justify it. Commute Explorer remains the working reference for that stack (React +
 DuckDB-WASM + MapLibre + flowmap.gl) when that work starts. Data layer
 (`services/`, `state/`) is unaffected by whether or when React is adopted —
 it's plain TypeScript modules either way, no framework dependency.
