@@ -1,5 +1,27 @@
 <!--
 Sync Impact Report
+- Version change: 1.1.0 → 1.2.0
+- Modified principles:
+  - II. DuckDB-WASM Runs in a Web Worker, One Shared Instance → II. DuckDB-WASM
+    Query Execution Off the Main Thread, One Shared Instance — dropped the
+    literal `services/duckdb.worker.js` filename requirement. Verified against
+    the installed `@duckdb/duckdb-wasm` package's own README/type
+    definitions: its real API instantiates `AsyncDuckDB` on the main thread,
+    handed a `Worker` built from the library's own bundled worker script
+    (loaded by URL) — there is no app-authored worker file to write; writing
+    one would not match how the library operates. The substantive guarantee
+    — query execution never blocks the main thread, exactly one shared
+    instance, owned solely by `services/duckdb.js` — is unchanged. Discovered
+    while implementing 001-data-state-layer's User Story 1 against the real
+    library, not a policy change.
+- Added principles: none
+- Added sections: none
+- Removed sections: none
+- Deferred TODOs: none
+-->
+
+<!--
+Sync Impact Report (1.1.0, superseded above)
 - Version change: 1.0.0 → 1.1.0
 - Modified principles: none
 - Added principles:
@@ -48,14 +70,27 @@ working. Phases MUST NOT be skipped, reordered, or partially blended (e.g., no
 blending phases makes it impossible to isolate whether a bug comes from the
 migration or from application logic.
 
-### II. DuckDB-WASM Runs in a Web Worker, One Shared Instance
-DuckDB-WASM MUST run inside a Web Worker (`services/duckdb.worker.js`) and MUST
-NEVER be initialized or queried on the main thread. Exactly one DuckDB instance
-MUST be shared across all panels through `services/duckdb.js`; individual panels
-MUST NOT create their own DuckDB connections or worker instances.
+### II. DuckDB-WASM Query Execution Off the Main Thread, One Shared Instance
+DuckDB-WASM query execution MUST NEVER run on the main thread, and exactly one
+shared `AsyncDuckDB` instance MUST serve the whole app. That instance —
+together with the `Worker` DuckDB-WASM itself provides via `bundle.mainWorker`
+— MUST be owned entirely by `services/duckdb.js`; no other module may
+construct its own `AsyncDuckDB` or `Worker` instance, or its own connection.
+There is no separate app-authored `services/duckdb.worker.js` file: DuckDB-WASM
+ships its own worker script, loaded by URL from the library's own package
+bundle (never a CDN — see `services/duckdb.js`'s contract and `research.md`
+for why), and `services/duckdb.js` alone is responsible for selecting a
+bundle, instantiating that worker, and exposing `initDuckDB()` / `query()` /
+`registerScenario()` / `registerFileURL()` / etc. to the rest of the app.
 **Rationale**: keeps the UI and map rendering responsive while Parquet/Arrow-scale
 queries run off the main thread, and a single shared instance avoids duplicated
-memory and inconsistent registered views across panels.
+memory and inconsistent registered views across panels. *(Amended 1.2.0: the
+original wording named an app-authored `services/duckdb.worker.js` file: the
+installed `@duckdb/duckdb-wasm` package's real API instantiates `AsyncDuckDB`
+on the main thread and hands it a `Worker` built from the library's own
+bundled script — there was never anything for the app to author into that
+file. The behavioral guarantee itself — main thread never blocks on query
+execution, exactly one shared instance — is unchanged.)*
 
 ### III. No eval() — SQL Fragments via String Replacement Only
 Application code MUST NOT call `eval()` or any equivalent dynamic code execution.
@@ -189,4 +224,4 @@ phase/branch, no `eval()`, no main-thread DuckDB-WASM use, no forbidden config
 files, no Mapbox/Webpack/Web Storage usage. Any exception requires a prior
 amendment to this document, not a one-off waiver in review.
 
-**Version**: 1.1.0 | **Ratified**: 2026-08-19 | **Last Amended**: 2026-08-19
+**Version**: 1.2.0 | **Ratified**: 2026-08-19 | **Last Amended**: 2026-08-30
