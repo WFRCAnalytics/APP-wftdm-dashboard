@@ -1,5 +1,25 @@
 <!--
 Sync Impact Report
+- Version change: 2.0.0 → 2.1.0
+- Modified principles:
+  - VI. Fixed Technology Choices — additive (MINOR), not a redefinition:
+    adds Tailwind CSS, shadcn/ui (Radix UI primitives), and `lucide-react`
+    as the fixed UI-layer stack, joining the existing MapLibre/Vite/
+    no-Web-Storage choices. Decided ahead of the layout/panel layer's
+    actual build (Principle I — React itself isn't adopted yet), so that
+    work starts on a settled foundation rather than a separate
+    framework-choice debate once React lands.
+- Modified sections:
+  - Technology Stack Reference: Build row updated to name the UI-layer
+    stack alongside the existing Vite/TypeScript/React-not-yet-adopted note.
+- Added principles: none
+- Added sections: none
+- Removed sections: none
+- Deferred TODOs: none
+-->
+
+<!--
+Sync Impact Report (2.0.0, superseded above)
 - Version change: 1.2.0 → 2.0.0
 - Modified principles:
   - I. Phased Migration Discipline → I. TypeScript Throughout, React
@@ -104,12 +124,12 @@ without the branch-and-gate ceremony.
 DuckDB-WASM query execution MUST NEVER run on the main thread, and exactly one
 shared `AsyncDuckDB` instance MUST serve the whole app. That instance —
 together with the `Worker` DuckDB-WASM itself provides via `bundle.mainWorker`
-— MUST be owned entirely by `services/duckdb.js`; no other module may
+— MUST be owned entirely by `services/duckdb.ts`; no other module may
 construct its own `AsyncDuckDB` or `Worker` instance, or its own connection.
-There is no separate app-authored `services/duckdb.worker.js` file: DuckDB-WASM
+There is no separate app-authored `services/duckdb.worker.ts` file: DuckDB-WASM
 ships its own worker script, loaded by URL from the library's own package
-bundle (never a CDN — see `services/duckdb.js`'s contract and `research.md`
-for why), and `services/duckdb.js` alone is responsible for selecting a
+bundle (never a CDN — see `services/duckdb.ts`'s contract and `research.md`
+for why), and `services/duckdb.ts` alone is responsible for selecting a
 bundle, instantiating that worker, and exposing `initDuckDB()` / `query()` /
 `registerScenario()` / `registerFileURL()` / etc. to the rest of the app.
 **Rationale**: keeps the UI and map rendering responsive while Parquet/Arrow-scale
@@ -125,7 +145,7 @@ execution, exactly one shared instance — is unchanged.)*
 ### III. No eval() — SQL Fragments via String Replacement Only
 Application code MUST NOT call `eval()` or any equivalent dynamic code execution.
 SQL assembled from dashboard YAML (`$mappings`, `$bins`, `$sql`, `$filters`,
-`$scenario` expansion in `services/sqlExpander.js`) MUST be built through plain
+`$scenario` expansion in `services/sqlExpander.ts`) MUST be built through plain
 string replacement/templating only.
 **Rationale**: `eval()` over YAML- and filter-influenced content is an injection
 risk and defeats static review of how SQL is constructed.
@@ -149,23 +169,30 @@ correctness.
 ### VI. Fixed Technology Choices
 Maps MUST use MapLibre GL; Mapbox GL MUST NOT be used. The build tool is Vite;
 Webpack MUST NOT be used. The app MUST NOT use `localStorage` or `sessionStorage`
-for any state.
+for any state. The UI layer — once React is adopted per Principle I, not
+before — MUST use Tailwind CSS for styling, shadcn/ui (built on Radix UI
+primitives) for component primitives, and `lucide-react` for icons; no other
+CSS framework, component library, or icon set MUST be introduced instead.
 **Rationale**: MapLibre stays compatible with `@deck.gl/mapbox`'s
 `MapboxOverlay` without Mapbox's licensing/token requirements; Vite is required
 for the Web Worker (`format: 'es'`) and DuckDB-WASM wiring already validated in
 this project; avoiding Web Storage keeps state explicit and inspectable in
-`state/appState.js` and `state/filterState.js`.
+`state/appState.ts` and `state/filterState.ts`; Tailwind + shadcn/ui + Radix +
+`lucide-react` is decided now, ahead of the layout/panel layer's actual build,
+so that work starts on a settled foundation instead of a separate
+framework-choice debate once React lands — `lucide-react` also already has
+precedent in a sibling WFRCAnalytics-org repo (`APP-Project-Scoresheet`).
 
 ### VII. Minimal, Fixed Config File Set
 Exactly three config file types exist: `summarize.yaml` (post-processor sources,
 mappings, bins, `sql_fragments`, metrics → Parquet), `dashboard-*.yaml` (tab
 layout and panels, with the first file serving as the landing page), and
 `manifest.yaml` (per-scenario metadata). `topsheet.yaml`, `dashboard-config.yaml`,
-`summarize-preprocessor.yaml`, and `services/observedRegistry.js` MUST NOT be
+`summarize-preprocessor.yaml`, and `services/observedRegistry.ts` MUST NOT be
 created — the landing page is simply the first `dashboard-*.yaml`, app settings
 live in code and CLI args, join logic lives in `summarize.yaml`'s
 `sql_fragments`, and observed-data plus scenario registration lives in
-`services/scenarioDiscovery.js`.
+`services/scenarioDiscovery.ts`.
 **Rationale**: prevents config sprawl and duplicated responsibility across files
 that would otherwise do the same job.
 
@@ -203,7 +230,7 @@ requires amending this constitution first:
 
 | Layer | Technology |
 |---|---|
-| Build | Vite, TypeScript (ES2022 target); React not yet adopted — arrives with the layout/panel layer |
+| Build | Vite, TypeScript (ES2022 target); React not yet adopted — arrives with the layout/panel layer, styled with Tailwind CSS + shadcn/ui (Radix UI primitives), icons via `lucide-react` |
 | Query — browser | DuckDB-WASM in a Web Worker |
 | Query — offline | Python DuckDB (`uv run`) |
 | Charts — default | Plotly.js |
@@ -255,4 +282,4 @@ to once adopted, no `eval()`, no main-thread DuckDB-WASM use, no forbidden
 config files, no Mapbox/Webpack/Web Storage usage. Any exception requires a
 prior amendment to this document, not a one-off waiver in review.
 
-**Version**: 2.0.0 | **Ratified**: 2026-08-19 | **Last Amended**: 2026-08-30
+**Version**: 2.1.0 | **Ratified**: 2026-08-19 | **Last Amended**: 2026-08-30
