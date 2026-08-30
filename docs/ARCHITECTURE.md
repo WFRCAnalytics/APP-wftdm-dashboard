@@ -57,7 +57,7 @@ it's plain TypeScript modules either way, no framework dependency.
 
 **WASM threading:** DuckDB-WASM runs single-threaded on GitHub Pages (no COOP/COEP headers), the current deploy target. Acceptable because summary Parquet files are under 100MB — queries complete in milliseconds. See "Deployment model and Python package" below for the full threading note, including the unconfirmed status of COOP/COEP on `wfrc.utah.gov`'s hosting.
 
-**Future upgrade path:** `services/duckdb.js` exposes a clean `query(sql)` interface. A native Python DuckDB server (`serve.py` with `/query` endpoint) can replace the WASM backend transparently for local use — zero panel code changes. Design the interface now, implement when needed.
+**Future upgrade path:** `services/duckdb.ts` exposes a clean `query(sql)` interface. A native Python DuckDB server (`serve.py` with `/query` endpoint) can replace the WASM backend transparently for local use — zero panel code changes. Design the interface now, implement when needed.
 
 ### Parquet / GeoParquet as the universal format
 
@@ -95,7 +95,7 @@ is the only thing that ever touches them.
 
 **Observable Plot:** grammar-of-graphics, reactive filter inputs. Use for: mode share filtered by purpose, TLFD by mode, time-of-day by purpose.
 
-**Extensibility:** adding a charting library = one new `XxxPanel.js` + one registry line. Nothing else changes.
+**Extensibility:** adding a charting library = one new `XxxPanel.tsx` + one registry line. Nothing else changes.
 
 ### MapLibre + flowmap.gl
 

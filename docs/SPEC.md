@@ -50,7 +50,7 @@ URL params pre-select specific scenarios: `?s=observed&s=2027-rtp-baseyear`.
 
 ---
 
-## DuckDB service (`services/duckdb.js`)
+## DuckDB service (`services/duckdb.ts`)
 
 ```js
 initDuckDB()
@@ -71,7 +71,7 @@ const LOCAL = window.location.hostname === 'localhost'
 //         (wfrcanalytics.github.io/APP-wftdm-dashboard or wfrc.utah.gov/wftdm-dashboard)
 ```
 
-**Scenario discovery** — `services/scenarioDiscovery.js` runs at startup:
+**Scenario discovery** — `services/scenarioDiscovery.ts` runs at startup:
 1. Registers `public/observed/summary/*.parquet` as `observed__*` views (pinned, pre-selected)
 2. Fetches `public/scenarios/index.json`, registers each entry's `summary/*.parquet` as `{name}__*` views
 3. Reads `?s=` URL params and sets active scenarios in `appState`
@@ -80,7 +80,7 @@ All scenarios — observed, published, and locally loaded — use the same `name
 
 ---
 
-## SQL expander (`services/sqlExpander.js`)
+## SQL expander (`services/sqlExpander.ts`)
 
 | Placeholder | Expands to |
 |---|---|
@@ -92,7 +92,7 @@ All scenarios — observed, published, and locally loaded — use the same `name
 
 ---
 
-## Filter state (`state/filterState.js`)
+## Filter state (`state/filterState.ts`)
 
 ```js
 get(id)
@@ -105,17 +105,53 @@ getAll() → Object
 
 ## Panel contract
 
-Every panel: `create(config, conn, filterState) → { element, destroy }`
+Every panel is a React function component: `function Panel({ config }: PanelProps)`.
 
-```js
-export function create(config, conn, filterState) {
-  const el = document.createElement('div')
-  async function render() { /* query + draw */ }
-  const unsub = filterState.subscribe(config.filter_ids ?? ['*'], render)
-  render()
-  return { element: el, destroy: () => { unsub(); /* lib cleanup */ } }
+```tsx
+const ALL_FILTERS: ['*'] = ['*'] // stable reference — see note below
+
+export function Panel({ config }: PanelProps) {
+  const filters = useFilterState(config.filter_ids ?? ALL_FILTERS)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  // Data fetch + draw — re-runs when config or filters change. For Plotly
+  // panels this calls Plotly.react(), never newPlot() (see Panel types
+  // below) and never purges — react() diffs against the existing plot.
+  useEffect(() => {
+    let cancelled = false
+    query(buildSQL(config, filters)).then((rows) => {
+      if (!cancelled) /* draw rows into containerRef.current */
+    })
+    return () => { cancelled = true }
+  }, [config, filters])
+
+  // Teardown on actual unmount only — a separate effect with an empty
+  // dependency array, not folded into the effect above.
+  useEffect(() => {
+    return () => { /* lib cleanup, e.g. Plotly.purge(containerRef.current) */ }
+  }, [])
+
+  return <div ref={containerRef} />
 }
 ```
+
+`useFilterState` wraps `state/filterState.ts`'s pub/sub store with
+`useSyncExternalStore` — re-renders the panel whenever a subscribed filter
+id changes. `query`/`queryArrow` are imported directly from
+`services/duckdb.ts` (the single shared instance, constitution Principle
+II) — not injected as a prop, matching how every other module already
+consumes that service. There is no `destroy()` — unmount plus the second
+effect's cleanup replace it entirely.
+
+`config.filter_ids` needs no defensive `useMemo`: `yamlLoader.ts` parses
+each `dashboard-*.yaml` exactly once at boot (`main.ts`'s `loadDashboards()`)
+and returns the parsed object graph verbatim — the same `filter_ids` array
+reference is threaded through every re-render for the page's lifetime when
+the field is present in the YAML. The only reference instability is
+self-inflicted: an inline `config.filter_ids ?? ['*']` allocates a fresh
+array literal on every render when the field is absent, which is why
+`ALL_FILTERS` above is hoisted to a module-level constant instead of an
+inline literal.
 
 ---
 

@@ -224,7 +224,7 @@ APP-wftdm-dashboard/
 ├── python/
 │   └── wftdm_dashboard/        ← Python package (CLI + embedded app)
 ├── package.json
-├── vite.config.js
+├── vite.config.ts
 └── pyproject.toml
 ```
 

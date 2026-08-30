@@ -21,7 +21,7 @@ Read `docs/ARCHITECTURE.md` and `docs/SPEC.md` before writing any code.
 | File format | Parquet / GeoParquet only — no CSV/GeoJSON/OMX in browser |
 | Geometry | DuckDB spatial extension (`ST_Read`, `ST_AsGeoJSON`) |
 
-**TypeScript throughout; React when the UI layer needs it** (constitution
+**TypeScript throughout; React once a UI feature needs it** (constitution
 v2.0.0 — the earlier three-phase, branch-per-phase migration plan is
 retired):
 
@@ -32,21 +32,26 @@ interfaces (`PlotlyPanelConfig`, `FlowMapPanelConfig`) get real types instead
 of JSDoc — catches YAML config errors and DuckDB column mismatches at
 write-time.
 
-React is **not yet adopted** — nothing renders anything yet, so there's
-nothing for a framework to help with. It arrives with whichever feature
-first genuinely needs it, when there's an actual component tree to justify
-it; data layer
-(`services/`, `state/`) stays plain TypeScript regardless of when that
-happens. Commute Explorer is the working reference (React + DuckDB-WASM +
-MapLibre + flowmap.gl) for when that work starts.
+React **is adopted** — `002-design-tokens` brought it in for the design
+token/component foundation (Tailwind CSS + shadcn/ui + Radix +
+`lucide-react`, constitution v2.1.0/Principle VI), with a working demo page
+(`demo.html`) rendering real components. The panel/layout layer is next to
+consume it, following the panel pattern (constitution v2.2.0 — function
+components + the `useFilterState` hook + `panels/registry.tsx`). The data
+layer (`services/`, `state/`) stays plain TypeScript regardless — no JSX
+there, no reason to add it. Commute Explorer remains the working reference
+(React + DuckDB-WASM + MapLibre + flowmap.gl) for the map panels
+specifically.
 
 ---
 
 ## Non-negotiables
 
 - DuckDB-WASM runs in a **Web Worker** — never the main thread
-- One DuckDB instance shared across all panels via `services/duckdb.js`
-- No framework (React/Vue/Svelte) — panel registry is plain JS classes
+- One DuckDB instance shared across all panels via `services/duckdb.ts`
+- React only — no Vue/Svelte/other frameworks; panel registry is a
+  type-to-component map (`panels/registry.tsx`), not factory functions or
+  classes
 - No eval() — SQL fragments use string replacement only
 - YAML parsed at **runtime** — dashboard content is not known at build time
 - Browser only reads Parquet — all format conversion is offline
@@ -75,7 +80,7 @@ manifest.yaml         per-scenario metadata
 ## Navigation model
 
 The set of tabs is **discovered at runtime**, not a fixed app-level constant:
-`main.js` fetches `public/dashboard-config/index.json` — an array of
+`main.ts` fetches `public/dashboard-config/index.json` — an array of
 `dashboard-*.yaml` filenames, in display order — the same discovery pattern
 `public/scenarios/index.json` already uses for scenarios. The first filename
 in that list is always the landing page, rendered on scenario load. Whatever
@@ -112,9 +117,9 @@ APP-wftdm-dashboard/
 │   ├── SPEC.md
 │   ├── grammar.md
 │   └── CALIBRATION-SUMMARIES.md
-├── index.html                  # coi-serviceworker FIRST, then main.js
+├── index.html                  # coi-serviceworker FIRST, then main.ts
 ├── package.json
-├── vite.config.js
+├── vite.config.ts
 ├── public/
 │   ├── coi-serviceworker.js
 │   ├── observed/               # observed data — deselectable, always pre-loaded
@@ -166,30 +171,36 @@ APP-wftdm-dashboard/
     │   ├── yamlLoader.ts       # fetch + parse dashboard-*.yaml files
     │   ├── sqlExpander.ts       # expand $mappings/$bins/$sql/$filters/$scenario
     │   └── scenarioDiscovery.ts # register observed/ + public/scenarios/ at startup
-    │   # layout/, panels/, scenario/scenarioManager.js, styles/ below: not built
-    │   # yet (001-data-state-layer explicitly excludes them) — left as originally
-    │   # sketched; their eventual extension (.ts vs .tsx) depends on whether
-    │   # React has landed by the time each is built (constitution v2.0.0, Principle I)
+    ├── hooks/
+    │   └── useFilterState.ts   # wraps state/filterState.ts with
+    │                           # useSyncExternalStore (constitution v2.2.0)
+    │   # layout/, panels/, scenario/scenarioManager.ts, styles/ below: not
+    │   # built yet (001-data-state-layer explicitly excludes them) — left as
+    │   # originally sketched. React has now landed (002-design-tokens,
+    │   # before any of these), so anything below that actually renders JSX
+    │   # is .tsx; pure-logic modules with no JSX (scenarioManager.ts,
+    │   # manifestReader.ts) stay .ts, same as services/ and state/
+    │   # (constitution v2.2.0, Development Workflow)
     ├── layout/
-    │   ├── shell.js
-    │   ├── navBar.js
-    │   ├── sidebar.js
-    │   ├── dashboardRenderer.js
-    │   └── panelCard.js
+    │   ├── shell.tsx
+    │   ├── navBar.tsx
+    │   ├── sidebar.tsx
+    │   ├── dashboardRenderer.tsx
+    │   └── panelCard.tsx
     ├── panels/
-    │   ├── registry.js
-    │   ├── PlotlyPanel.js
-    │   ├── PlotPanel.js
-    │   ├── TablePanel.js
-    │   ├── ValueBoxPanel.js
-    │   ├── FlowMapPanel.js     # MapLibre + MapboxOverlay + FlowmapLayer
-    │   ├── ZoneMapPanel.js     # MapLibre choropleth + GeoParquet
-    │   ├── SankeyPanel.js
-    │   ├── GraphicWalkerPanel.js
-    │   └── MarkdownPanel.js
+    │   ├── registry.tsx
+    │   ├── PlotlyPanel.tsx
+    │   ├── PlotPanel.tsx
+    │   ├── TablePanel.tsx
+    │   ├── ValueBoxPanel.tsx
+    │   ├── FlowMapPanel.tsx    # MapLibre + MapboxOverlay + FlowmapLayer
+    │   ├── ZoneMapPanel.tsx    # MapLibre choropleth + GeoParquet
+    │   ├── SankeyPanel.tsx
+    │   ├── GraphicWalkerPanel.tsx
+    │   └── MarkdownPanel.tsx
     ├── scenario/
-    │   ├── scenarioManager.js  # showDirectoryPicker + view registration
-    │   └── manifestReader.js
+    │   ├── scenarioManager.ts  # showDirectoryPicker + view registration
+    │   └── manifestReader.ts
     └── styles/
         ├── global.css
         ├── layout.css
@@ -223,7 +234,7 @@ const LOCAL = window.location.hostname === 'localhost'
 
 ---
 
-## Boot sequence (`main.js`)
+## Boot sequence (`main.ts`)
 
 ```js
 await initDuckDB()                          // Web Worker init
@@ -236,7 +247,7 @@ renderDashboard(dashboards[0])              // first tab (Summary) as landing pa
 
 ---
 
-## DuckDB service API (`services/duckdb.js`)
+## DuckDB service API (`services/duckdb.ts`)
 
 ```js
 initDuckDB()
@@ -256,42 +267,108 @@ Scenario namespacing: `registerScenario('abm_2026', handle)` creates views
 
 ## Panel pattern
 
-```js
-export function create(config, conn, filterState) {
-  const el = document.createElement('div')
+A React function component receiving a single `config` prop — not a
+factory function returning `{ element, destroy }` (constitution v2.2.0;
+that shape predates React's adoption in `002-design-tokens`).
 
-  async function render() {
-    const rows = await conn.query(buildSQL(config, filterState))
-    // render into el
-  }
+```tsx
+const ALL_FILTERS: ['*'] = ['*'] // module-level constant — stable identity,
+                                  // never an inline `?? ['*']` literal (that
+                                  // allocates a new array every render)
 
-  const unsub = filterState.subscribe(config.filter_ids ?? ['*'], render)
-  render()
-  return { element: el, destroy: () => { unsub(); /* cleanup */ } }
+export function Panel({ config }: PanelProps) {
+  const filters = useFilterState(config.filter_ids ?? ALL_FILTERS)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  // Data fetch + draw. Re-runs on config/filters change. Plotly panels call
+  // Plotly.react() here — never newPlot(), never purge() — react() diffs
+  // against the existing plot itself.
+  useEffect(() => {
+    let cancelled = false
+    query(buildSQL(config, filters)).then((rows) => {
+      if (!cancelled) /* draw rows into containerRef.current */
+    })
+    return () => { cancelled = true }
+  }, [config, filters])
+
+  // Unmount-only teardown — deliberately a second effect with an empty
+  // dependency array, not folded into the effect above.
+  useEffect(() => {
+    return () => { /* e.g. Plotly.purge(containerRef.current) */ }
+  }, [])
+
+  return <div ref={containerRef} />
 }
 ```
+
+`query`/`queryArrow` come from a direct `import { query } from
+'services/duckdb.ts'` — not an injected `conn`, matching how `main.ts` and
+`scenarioDiscovery.ts` already consume that singleton.
+
+`config.filter_ids` needs no defensive `useMemo`: `yamlLoader.ts` parses
+each `dashboard-*.yaml` exactly once at boot and returns the parsed object
+graph verbatim, so the array reference is stable across re-renders whenever
+the field is present. `ALL_FILTERS` exists only to keep the *absent*-field
+fallback equally stable.
+
+---
+
+## `useFilterState` hook (`hooks/useFilterState.ts`)
+
+Wraps `state/filterState.ts`'s existing pub/sub store with
+`useSyncExternalStore` — the React 18 hook built for exactly this: a
+tearing-free subscription to an external mutable store, not React state
+itself.
+
+```ts
+export function useFilterState(ids: FilterId[] | ['*']): Record<FilterId, FilterValue> {
+  const cache = useRef<Record<FilterId, FilterValue>>({})
+
+  const getSnapshot = useCallback(() => {
+    const next = ids[0] === '*' ? getAll() : Object.fromEntries(ids.map((id) => [id, get(id)]))
+    const prev = cache.current
+    const changed =
+      Object.keys(next).length !== Object.keys(prev).length ||
+      Object.entries(next).some(([k, v]) => prev[k] !== v)
+    if (changed) cache.current = next
+    return cache.current
+  }, [ids])
+
+  return useSyncExternalStore((onChange) => subscribe(ids, onChange), getSnapshot)
+}
+```
+
+The memoized snapshot is deliberate, not incidental: `filterState.getAll()`
+builds a new object every call, and `useSyncExternalStore` compares
+snapshots by `Object.is` — an unmemoized snapshot re-renders on every call
+(or loops). The cache is only replaced when a subscribed id's value
+actually differs.
 
 ---
 
 ## Panel registry
 
-```js
-export const registry = {
-  'plotly':         createPlotly,
-  'plot':           createPlot,
-  'table':          createTable,
-  'valuebox':       createValueBox,
-  'flowmap':        createFlowMap,
-  'zonemap':        createZoneMap,
-  'sankey':         createSankey,
-  'graphic-walker': createGraphicWalker,
-  'markdown':       createMarkdown,
+```tsx
+export const registry: Record<string, ComponentType<PanelProps>> = {
+  'plotly':         PlotlyPanel,
+  'plot':           PlotPanel,
+  'table':          TablePanel,
+  'valuebox':       ValueBoxPanel,
+  'flowmap':        FlowMapPanel,
+  'zonemap':        ZoneMapPanel,
+  'sankey':         SankeyPanel,
+  'graphic-walker': GraphicWalkerPanel,
+  'markdown':       MarkdownPanel,
 }
 ```
 
+`dashboardRenderer.tsx` looks up `registry[config.type]` and renders
+`<PanelComponent config={config} />` directly — no wrapper call, no manual
+`.element` DOM append, no manual `.destroy()` on teardown.
+
 ---
 
-## SQL expander (`services/sqlExpander.js`)
+## SQL expander (`services/sqlExpander.ts`)
 
 - `$mappings.major_trip_mode` → WHEN clauses inside a CASE block
 - `$bins.income_category` → CASE expression from manual_breaks / quantiles
@@ -301,7 +378,7 @@ export const registry = {
 
 ---
 
-## Filter state (`state/filterState.js`)
+## Filter state (`state/filterState.ts`)
 
 ```js
 get(id), set(id, value)
@@ -313,8 +390,12 @@ getAll() → Object
 
 ## Map panels
 
-**FlowMapPanel** — copy `FlowLayer.jsx` from Commute Explorer, remove React hooks.
-Lifecycle: create overlay once → `overlay.setProps()` on update → `map.remove()` on destroy.
+**FlowMapPanel** — copy `FlowLayer.jsx` from Commute Explorer and adapt its
+hooks to this app's `useFilterState`/`services/duckdb.ts` — do NOT strip
+React out; React is adopted (constitution v2.2.0), unlike when this note
+was first written. Lifecycle: create the overlay once, in a mount-only
+effect → `overlay.setProps()` on data update → `map.remove()` in that
+effect's cleanup, mirroring the Panel pattern's two-effect split above.
 Never recreate the MapLibre instance on data change.
 
 **ZoneMapPanel** — load zone GeoParquet once via DuckDB spatial, cache as module variable.
@@ -329,23 +410,26 @@ Join metric rows to features in JS → `map.getSource('zones').setData(geojson)`
 
 ## Graphic Walker panel
 
-```js
+```tsx
 import { embedGraphicWalker } from '@kanaries/graphic-walker'
 
-export function create(config, conn, filterState) {
-  const el = document.createElement('div')
-  el.style.height = `${config.height ?? 700}px`
+export function GraphicWalkerPanel({ config }: PanelProps) {
+  const containerRef = useRef<HTMLDivElement>(null)
 
-  async function render() {
-    const rows = await conn.query(
+  useEffect(() => {
+    let cancelled = false
+    query(
       `SELECT * FROM ${config.scenario}__${config.dataset} LIMIT ${config.limit ?? 100000}`
-    )
-    el.innerHTML = ''
-    embedGraphicWalker(el, { data: rows, fields: config.fields ?? [] })
-  }
+    ).then((rows) => {
+      if (!cancelled && containerRef.current) {
+        containerRef.current.innerHTML = ''
+        embedGraphicWalker(containerRef.current, { data: rows, fields: config.fields ?? [] })
+      }
+    })
+    return () => { cancelled = true }
+  }, [config])
 
-  render()
-  return { element: el, destroy: () => { el.innerHTML = '' } }
+  return <div ref={containerRef} style={{ height: config.height ?? 700 }} />
 }
 ```
 
@@ -354,7 +438,7 @@ global filters. Intentional — Explore tab is an open-ended sandbox.
 
 ---
 
-## vite.config.js
+## vite.config.ts
 
 ```js
 export default defineConfig({
@@ -385,7 +469,7 @@ export default defineConfig({
 ```html
 <script src="/APP-wftdm-dashboard/coi-serviceworker.js"></script>  <!-- MUST BE FIRST -->
 <div id="app"></div>
-<script type="module" src="/src/main.js"></script>
+<script type="module" src="/src/main.ts"></script>
 ```
 
 ---
@@ -411,13 +495,13 @@ export default defineConfig({
 
 ## Implementation order
 
-1. `vite.config.js`, `index.html`, `package.json` + postinstall for coi-serviceworker
-2. `services/duckdb.js` — init, query, registerScenario, registerFileURL (owns DuckDB-WASM's own bundled worker; no separate duckdb.worker.js)
-3. `services/scenarioDiscovery.js` — register `public/observed/` + `public/scenarios/*` + apply `?s=` URL params
-4. `services/yamlLoader.js` + `services/sqlExpander.js`
-5. `state/appState.js` + `state/filterState.js`
-6. `layout/shell.js`, `navBar.js`, `panelCard.js`, `dashboardRenderer.js`
-7. `scenario/scenarioManager.js` — folder picker + view registration
+1. `vite.config.ts`, `index.html`, `package.json` + postinstall for coi-serviceworker
+2. `services/duckdb.ts` — init, query, registerScenario, registerFileURL (owns DuckDB-WASM's own bundled worker; no separate duckdb.worker.ts)
+3. `services/scenarioDiscovery.ts` — register `public/observed/` + `public/scenarios/*` + apply `?s=` URL params
+4. `services/yamlLoader.ts` + `services/sqlExpander.ts`
+5. `state/appState.ts` + `state/filterState.ts`
+6. `layout/shell.tsx`, `navBar.tsx`, `panelCard.tsx`, `dashboardRenderer.tsx`
+7. `scenario/scenarioManager.ts` — folder picker + view registration
 8. Panels: `ValueBoxPanel` → `TablePanel` → `PlotlyPanel` → `PlotPanel` → `MarkdownPanel` → `SankeyPanel`
 9. `FlowMapPanel` + `ZoneMapPanel` (map panels — most complex)
 10. `GraphicWalkerPanel` (Explore tab)
@@ -439,9 +523,9 @@ export default defineConfig({
 ## Do not
 
 - Use Vue, Svelte, or any component framework other than React — React is
-  the only framework this project may ever adopt, and only starting with
-  whichever feature first genuinely needs it (not yet — nothing renders
-  anything yet)
+  the only framework this project may ever adopt, and it is adopted:
+  `002-design-tokens` brought it in for the component foundation; panels
+  are the next consumer (constitution v2.2.0)
 - Add new plain `.js` files to `src/` — TypeScript (`.ts`) is the standard
 - Use Mapbox GL — MapLibre only
 - Use Webpack — Vite only
@@ -451,4 +535,4 @@ export default defineConfig({
 - Create `topsheet.yaml` — the first dashboard-*.yaml is the landing page
 - Create `summarize-preprocessor.yaml` — join logic lives in sql_fragments
 - Create `dashboard-config.yaml` — does not exist (the `public/dashboard-config/` directory is unrelated — see Config file set above)
-- Create `services/observedRegistry.js` — replaced by `services/scenarioDiscovery.ts`
+- Create `services/observedRegistry.ts` — replaced by `services/scenarioDiscovery.ts`

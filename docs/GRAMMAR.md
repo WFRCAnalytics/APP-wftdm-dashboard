@@ -107,7 +107,7 @@ step as `public/scenarios/index.json`, just for tabs), commit, push.
 **Fetch mechanism:** `summarize.yaml` is authored alongside model scripts in the TDM
 repo and is post-processor-only — it is never published and the browser never reads
 it. `dashboard-*.yaml` is also authored there, but its published copy **is** fetched
-by the browser at startup: `main.js` fetches `public/dashboard-config/index.json`
+by the browser at startup: `main.ts` fetches `public/dashboard-config/index.json`
 first, then each filename it lists, from `public/dashboard-config/{filename}` in the
 dashboard repo — the same discovery pattern as `public/scenarios/index.json`, not a
 fixed filename list, and not via the old shared-`.wfrc/`-folder model this replaced.
