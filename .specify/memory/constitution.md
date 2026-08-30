@@ -1,5 +1,40 @@
 <!--
 Sync Impact Report
+- Version change: 2.1.1 → 2.2.0
+- Modified principles: none
+- Modified sections:
+  - Development Workflow: panel pattern rewritten for React. It was written
+    before React was adopted (`create(config, conn, filterState)` returning
+    `{ element, destroy }` — a vanilla-JS factory-function contract);
+    `002-design-tokens` has since adopted React, and panels are next to be
+    built, so the pattern needed to match reality before any panel code is
+    written against it. New shape: a React function component receiving a
+    single `config` prop, reading filter values through a `useFilterState`
+    hook (`src/hooks/useFilterState.ts`, wrapping `state/filterState.ts`'s
+    existing pub/sub store with `useSyncExternalStore`) and querying
+    `services/duckdb.ts` by direct import rather than an injected
+    connection; registered in `panels/registry.tsx` as a panel-type-to-
+    component map rather than a type-to-factory-function map.
+  - MINOR, not MAJOR: no Core Principle (I-IX) is redefined — Principle I
+    already permits React "when a UI feature genuinely needs it," and this
+    is that permission being exercised for the panel layer, the same way
+    `002-design-tokens` exercised it for the UI-primitives layer.
+    Development Workflow sits outside the nine enumerated principles.
+    Directly analogous to the 1.1.0→1.2.0 amendment (the
+    `services/duckdb.worker.js` correction), which made a comparable
+    technical-shape correction — to an actual Core Principle's text, a more
+    structurally significant location than this change touches — and was
+    itself categorized MINOR: the underlying policy intent is unchanged;
+    only a concrete mechanism, written speculatively before the real
+    technology was settled, is corrected to match it.
+- Added principles: none
+- Added sections: none
+- Removed sections: none
+- Deferred TODOs: none
+-->
+
+<!--
+Sync Impact Report (2.1.1, superseded above)
 - Version change: 2.1.0 → 2.1.1
 - Modified principles:
   - I. TypeScript Throughout, React Permitted When Needed — PATCH wording
@@ -289,9 +324,17 @@ against this repository. The navigation model is fixed: the Summary tab
 (`dashboard-1-summary.yaml`) renders on scenario load, reading first from
 `summary_kpis.parquet`, with other tabs and charts loading progressively as
 their Parquet files register. New panels MUST follow the established panel
-pattern (`create(config, conn, filterState)` returning `{ element, destroy }`,
-subscribing through `filterState.subscribe`) and MUST be registered in
-`panels/registry.js` rather than wired ad hoc into layout code.
+pattern — a React function component receiving a single `config` prop,
+reading filter values via the `useFilterState` hook (`src/hooks/
+useFilterState.ts`, wrapping `state/filterState.ts`'s pub/sub store with
+`useSyncExternalStore`), and querying `services/duckdb.ts` by direct import
+rather than an injected connection — and MUST be registered in
+`panels/registry.tsx` (a panel-type-to-component map) rather than wired ad
+hoc into layout code. *(Amended 2.2.0: the pattern was originally a
+vanilla-JS factory function — `create(config, conn, filterState)` returning
+`{ element, destroy }` — written before React was adopted; corrected now
+that panels are next to be built, per `002-design-tokens`'s adoption of
+React.)*
 
 ## Governance
 
@@ -319,4 +362,4 @@ forbidden config files, no Mapbox/Webpack/Web Storage usage. Any exception
 requires a
 prior amendment to this document, not a one-off waiver in review.
 
-**Version**: 2.1.1 | **Ratified**: 2026-08-19 | **Last Amended**: 2026-08-30
+**Version**: 2.2.0 | **Ratified**: 2026-08-19 | **Last Amended**: 2026-08-30
