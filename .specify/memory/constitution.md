@@ -1,5 +1,41 @@
 <!--
 Sync Impact Report
+- Version change: 2.1.0 → 2.1.1
+- Modified principles:
+  - I. TypeScript Throughout, React Permitted When Needed — PATCH wording
+    fix, not a policy change: the rationale/body previously said React
+    "MAY be introduced when a UI feature genuinely needs it — starting
+    with the layout/panel layer." `002-design-tokens` (a design-token and
+    shadcn/ui component foundation feature, planned before any layout/panel
+    work) turned out to be the feature that actually needed React first,
+    since shadcn/ui has no non-React form. Corrected to name no specific
+    feature — "whichever UI feature first needs it" — so the wording
+    doesn't go stale again the next time the actual trigger feature differs
+    from whatever was guessed when this was written. The underlying policy
+    (React adopted only when genuinely needed, no phase gate, no dedicated
+    branch) is unchanged.
+  - VI. Fixed Technology Choices — same wording fix, found while checking for
+    the same mistake elsewhere in this file: its rationale also said the
+    UI-layer stack was decided "ahead of the layout/panel layer's actual
+    build." Generalized to "ahead of whichever feature first adopts React
+    (Principle I)."
+- Modified sections:
+  - Technology Stack Reference: Build row's "arrives with the layout/panel
+    layer" corrected to "arrives with whichever feature first needs it,"
+    same reason.
+  - Governance / Compliance review: "no React usage outside the layout/panel
+    layer it's scoped to once adopted" — same stale assumption — replaced
+    with "no React usage introduced speculatively ahead of an actual UI need
+    (Principle I)," preserving the actual governance intent (React usage
+    should be need-driven, not spread ad hoc) without naming a layer.
+- Added principles: none
+- Added sections: none
+- Removed sections: none
+- Deferred TODOs: none
+-->
+
+<!--
+Sync Impact Report (2.1.0, superseded above)
 - Version change: 2.0.0 → 2.1.0
 - Modified principles:
   - VI. Fixed Technology Choices — additive (MINOR), not a redefinition:
@@ -109,10 +145,10 @@ The JS app is TypeScript (`.ts`), not plain JavaScript — new work MUST NOT
 add plain `.js` files to `src/` where a `.ts` file is expected. There is no
 phase gate to clear first and no separate branch to merge from: TypeScript
 work lands directly on `main`. React MAY be introduced when a UI feature
-genuinely needs it — starting with the layout/panel layer, since nothing
-before that renders anything — but is not required before then, and (like
-TypeScript) has no separate branch of its own once adopted; it lands
-directly on `main` too.
+genuinely needs it — whichever feature that turns out to be, not a
+predetermined one — but is not required before then, and (like TypeScript)
+has no separate branch of its own once adopted; it lands directly on `main`
+too.
 **Rationale**: the original three-phase, branch-per-phase plan (vanilla JS →
 TypeScript → React, each fully verified before the next began) isolated
 migration risk at the cost of real process overhead; with working test
@@ -178,9 +214,9 @@ CSS framework, component library, or icon set MUST be introduced instead.
 for the Web Worker (`format: 'es'`) and DuckDB-WASM wiring already validated in
 this project; avoiding Web Storage keeps state explicit and inspectable in
 `state/appState.ts` and `state/filterState.ts`; Tailwind + shadcn/ui + Radix +
-`lucide-react` is decided now, ahead of the layout/panel layer's actual build,
-so that work starts on a settled foundation instead of a separate
-framework-choice debate once React lands — `lucide-react` also already has
+`lucide-react` is decided now, ahead of whichever feature first adopts React
+(Principle I), so that work starts on a settled foundation instead of a
+separate framework-choice debate once React lands — `lucide-react` also already has
 precedent in a sibling WFRCAnalytics-org repo (`APP-Project-Scoresheet`).
 
 ### VII. Minimal, Fixed Config File Set
@@ -230,7 +266,7 @@ requires amending this constitution first:
 
 | Layer | Technology |
 |---|---|
-| Build | Vite, TypeScript (ES2022 target); React not yet adopted — arrives with the layout/panel layer, styled with Tailwind CSS + shadcn/ui (Radix UI primitives), icons via `lucide-react` |
+| Build | Vite, TypeScript (ES2022 target); React not yet adopted — arrives with whichever feature first needs it, styled with Tailwind CSS + shadcn/ui (Radix UI primitives), icons via `lucide-react` |
 | Query — browser | DuckDB-WASM in a Web Worker |
 | Query — offline | Python DuckDB (`uv run`) |
 | Charts — default | Plotly.js |
@@ -277,9 +313,10 @@ non-semantic refinements.
 
 **Compliance review**: pull requests and code reviews MUST verify there is no
 violation of these principles — no new plain `.js` files in `src/` (TypeScript
-is the standard), no React usage outside the layout/panel layer it's scoped
-to once adopted, no `eval()`, no main-thread DuckDB-WASM use, no forbidden
-config files, no Mapbox/Webpack/Web Storage usage. Any exception requires a
+is the standard), no React usage introduced speculatively ahead of an actual
+UI need (Principle I), no `eval()`, no main-thread DuckDB-WASM use, no
+forbidden config files, no Mapbox/Webpack/Web Storage usage. Any exception
+requires a
 prior amendment to this document, not a one-off waiver in review.
 
-**Version**: 2.1.0 | **Ratified**: 2026-08-19 | **Last Amended**: 2026-08-30
+**Version**: 2.1.1 | **Ratified**: 2026-08-19 | **Last Amended**: 2026-08-30

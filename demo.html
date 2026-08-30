@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WFRC Design Token Demo</title>
+    <!--
+      Separate Vite entry point (NOT index.html) — 002-design-tokens.
+      Deliberately does NOT load coi-serviceworker.js: this page never
+      touches DuckDB-WASM or any scenario data, so cross-origin isolation
+      is irrelevant here (FR-009/SC-005).
+    -->
+  </head>
+  <body>
+    <div id="demo-root"></div>
+    <script type="module" src="/src/demo/main.tsx"></script>
+  </body>
+</html>

@@ -1,0 +1,96 @@
+/* Design tokens — 002-design-tokens. See contracts/token-contract.md for the
+   Given/When/Then this file satisfies and data-model.md/research.md for the
+   provenance and WCAG verification behind every value below. */
+
+/* Required Tailwind v3 boilerplate — not shown in token-contract.md's
+   literal block (that block is the token declarations only), but Tailwind
+   cannot generate any utility class (bg-primary, font-heading, shadow-md,
+   ...) without these three directives present somewhere in the pipeline. */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Tier 1 — raw brand tokens, from wfrc-brand, unmodified */
+  --brand-wfrc-blue: #023c5b;
+  --brand-wfrc-secondary-blue: #52b6d5;
+  --brand-wfrc-yellow: #f8b93e;
+  --brand-wfrc-gray: #7f7a76;
+  --brand-white: #ffffff;
+  --brand-black: #151515;
+  --brand-background-dark: #081b26;
+
+  /* Tier 2 — shadcn semantic roles (light values) */
+  --background: var(--brand-white);
+  --foreground: var(--brand-black);
+  --card: var(--background);
+  --card-foreground: var(--foreground);
+  --primary: var(--brand-wfrc-blue);
+  --primary-foreground: #ffffff;
+  --secondary: #ece9e6;
+  --secondary-foreground: var(--foreground);
+  --muted: #f5f4f2;
+  --muted-foreground: #6c6764;
+  --accent: var(--brand-wfrc-yellow);
+  --accent-foreground: var(--brand-black);
+  --destructive: #c23c33;
+  --destructive-foreground: #ffffff;
+  --border: #d8d5d2;
+  --input: var(--border);
+  --ring: var(--primary);
+  --radius: 0.5rem;
+
+  /* Tier 3 — typography (research.md §8) — not theme-dependent, declared
+     once, reused verbatim from Scoresheet's tokens.css */
+  --font-body:
+    "Poppins", -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial,
+    sans-serif;
+  --font-heading: "Inter", var(--font-body);
+  --font-mono:
+    "Fira Code", SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New",
+    monospace;
+
+  /* Tier 4 — elevation (research.md §9) — reused mechanism from
+     Scoresheet's tokens.css; --shadow-color's light-mode value is our
+     --brand-background-dark's own RGB triplet (8 27 38), not a new
+     computation */
+  --shadow-color: 8 27 38;
+  --shadow-ring: 0 0 0 0 transparent; /* no-op in light mode */
+  --shadow-sm: var(--shadow-ring), 0 1px 3px rgb(var(--shadow-color) / 0.12);
+  --shadow-md: var(--shadow-ring), 0 4px 12px rgb(var(--shadow-color) / 0.14);
+  --shadow-lg: var(--shadow-ring), 0 12px 32px rgb(var(--shadow-color) / 0.22);
+}
+
+body {
+  font-family: var(--font-body);
+}
+
+.dark {
+  --background: var(--brand-background-dark);
+  --foreground: var(--brand-white);
+  --card: var(--background);
+  --card-foreground: var(--foreground);
+  --primary: var(--brand-wfrc-secondary-blue);
+  --primary-foreground: var(--brand-background-dark);
+  --secondary: #123240;
+  --secondary-foreground: var(--foreground);
+  --muted: #0c232d;
+  --muted-foreground: #94908c;
+  --accent: var(--brand-wfrc-yellow);
+  --accent-foreground: var(--brand-black);
+  --destructive: #c23c33;
+  --destructive-foreground: #ffffff;
+  --border: #23394a;
+  --input: var(--border);
+  --ring: var(--primary);
+  /* --radius, --font-* not redeclared — not theme-dependent */
+
+  /* Elevation: dark mode — different mechanism, not just different colors
+     (edge-highlight ring, since a drop shadow alone reads too weakly
+     against an already-dark page — research.md §9) */
+  --shadow-color: 0 0 0;
+  --shadow-ring: 0 0 0 1px color-mix(in srgb, var(--foreground) 12%, transparent);
+  --shadow-sm: var(--shadow-ring), 0 1px 3px rgb(var(--shadow-color) / 0.12);
+  --shadow-md: var(--shadow-ring), 0 4px 12px rgb(var(--shadow-color) / 0.14);
+  --shadow-lg: var(--shadow-ring), 0 12px 32px rgb(var(--shadow-color) / 0.22);
+}
