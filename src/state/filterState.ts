@@ -2,20 +2,17 @@
 // (constitution Principle VI). See
 // specs/001-data-state-layer/contracts/filter-state.md.
 
-/** @type {Map<string, any>} */
-const values = new Map()
+export type FilterId = string
+export type FilterValue = unknown
+export type FilterSubscriber = (id: FilterId, value: FilterValue) => void
+export type Unsubscribe = () => void
 
-/** @type {Map<string, Set<(id: string, value: any) => void>>} */
-const subscribersById = new Map()
+const values = new Map<FilterId, FilterValue>()
+const subscribersById = new Map<FilterId, Set<FilterSubscriber>>()
+const wildcardSubscribers = new Set<FilterSubscriber>()
 
-/** @type {Set<(id: string, value: any) => void>} */
-const wildcardSubscribers = new Set()
-
-/**
- * @param {string} id
- * @returns {any} the current value, or undefined if never set
- */
-export function get(id) {
+/** @returns the current value, or undefined if never set */
+export function get(id: FilterId): FilterValue {
   return values.get(id)
 }
 
@@ -23,10 +20,8 @@ export function get(id) {
  * Stores `value` under `id` and synchronously notifies every subscriber
  * registered for exactly `id`, plus every '*' wildcard subscriber — each
  * exactly once per call.
- * @param {string} id
- * @param {any} value
  */
-export function set(id, value) {
+export function set(id: FilterId, value: FilterValue): void {
   values.set(id, value)
   const idSubs = subscribersById.get(id)
   if (idSubs) {
@@ -35,14 +30,14 @@ export function set(id, value) {
   for (const fn of wildcardSubscribers) fn(id, value)
 }
 
+type SubscriptionTarget = { wildcard: true } | { wildcard: false; id: FilterId }
+
 /**
  * Registers `fn` against every id in `ids` (or the '*' wildcard).
- * @param {string[] | ['*']} ids
- * @param {(id: string, value: any) => void} fn
- * @returns {() => void} unsubscribe function
+ * @returns unsubscribe function
  */
-export function subscribe(ids, fn) {
-  const targets = []
+export function subscribe(ids: FilterId[] | ['*'], fn: FilterSubscriber): Unsubscribe {
+  const targets: SubscriptionTarget[] = []
 
   for (const id of ids) {
     if (id === '*') {
@@ -50,12 +45,12 @@ export function subscribe(ids, fn) {
       targets.push({ wildcard: true })
       continue
     }
-    let set_ = subscribersById.get(id)
-    if (!set_) {
-      set_ = new Set()
-      subscribersById.set(id, set_)
+    let idSet = subscribersById.get(id)
+    if (!idSet) {
+      idSet = new Set()
+      subscribersById.set(id, idSet)
     }
-    set_.add(fn)
+    idSet.add(fn)
     targets.push({ wildcard: false, id })
   }
 
@@ -70,7 +65,7 @@ export function subscribe(ids, fn) {
   }
 }
 
-/** @returns {Object} a plain-object snapshot of every {id: value} pair */
-export function getAll() {
+/** @returns a plain-object snapshot of every {id: value} pair */
+export function getAll(): Record<FilterId, FilterValue> {
   return Object.fromEntries(values)
 }

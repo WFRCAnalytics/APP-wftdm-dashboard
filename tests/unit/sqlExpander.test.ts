@@ -2,11 +2,13 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
-import { expand } from '../../src/services/sqlExpander.js'
+import { expand, type FilterStateLike } from '../../src/services/sqlExpander.ts'
+import type { DashboardConfig } from '../../src/services/yamlLoader.ts'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
-const config = {
+const config: DashboardConfig = {
+  sourcePath: 'test-fixture',
   raw: {
     mappings: {
       major_mode: { SOV: 'Drive', HOV: 'Drive', Transit: 'Transit' },
@@ -36,8 +38,8 @@ const config = {
   },
 }
 
-function fakeFilterState(values) {
-  return { get: (id) => values[id] }
+function fakeFilterState(values: Record<string, unknown>): FilterStateLike {
+  return { get: (id: string) => values[id] }
 }
 
 describe('sqlExpander.expand', () => {
@@ -78,9 +80,9 @@ WHERE 1=1
     expect(result).toContain('UNION ALL')
   })
 
-  it('omits the entire line when a $filters value is the \'all\' sentinel (FR-016)', () => {
+  it("omits the entire line when a \$filters value is the 'all' sentinel (FR-016)", () => {
     const filterState = fakeFilterState({ purpose: 'all' })
-    const template = 'SELECT * FROM t\nWHERE 1=1\n  AND purpose = \'$filters.purpose\'\n'
+    const template = "SELECT * FROM t\nWHERE 1=1\n  AND purpose = '\$filters.purpose'\n"
 
     const result = expand(template, config, filterState, [])
 
@@ -122,7 +124,7 @@ WHERE 1=1
   })
 
   it('never calls eval() or Function() — string substitution only (Principle III)', () => {
-    const source = readFileSync(join(__dirname, '../../src/services/sqlExpander.js'), 'utf-8')
+    const source = readFileSync(join(__dirname, '../../src/services/sqlExpander.ts'), 'utf-8')
     // Strip line comments first so descriptive mentions of "eval()" in
     // comments (like this module's own header) don't false-positive.
     const code = source.replace(/\/\/.*$/gm, '')

@@ -6,7 +6,7 @@ import { defineConfig } from 'vite'
 // research.md §1.
 export default defineConfig({
   test: {
-    include: ['tests/unit/**/*.test.js'],
+    include: ['tests/unit/**/*.test.ts'],
     environment: 'node',
   },
 })

@@ -1,9 +1,17 @@
-import { test, expect } from '@playwright/test'
+import { test, expect, type Page } from '@playwright/test'
+import type { WftdmDebugHook } from '../../src/main.ts'
+
+declare global {
+  interface Window {
+    __wftdm?: WftdmDebugHook
+    __frameCount?: number
+  }
+}
 
 // Real-browser boot-sequence tests — Web Worker + DuckDB-WASM + Parquet
 // fetch + URL params, per research.md §1 (jsdom can't faithfully exercise
 // these). Each user story appends its own describe block here, per
-// plan.md's Project Structure (a single tests/integration/boot.spec.js).
+// plan.md's Project Structure (a single tests/integration/boot.spec.ts).
 
 test.describe('User Story 1 - App boots to a ready, queryable state', () => {
   test('query engine is reachable and the page stays responsive during init', async ({
@@ -15,7 +23,7 @@ test.describe('User Story 1 - App boots to a ready, queryable state', () => {
     await page.addInitScript(() => {
       window.__frameCount = 0
       function tick() {
-        window.__frameCount++
+        window.__frameCount!++
         requestAnimationFrame(tick)
       }
       requestAnimationFrame(tick)
@@ -23,7 +31,7 @@ test.describe('User Story 1 - App boots to a ready, queryable state', () => {
 
     await page.goto('/')
 
-    // Boot sequence completion is signaled by main.js's debug hook existing.
+    // Boot sequence completion is signaled by main.ts's debug hook existing.
     await page.waitForFunction(() => window.__wftdm !== undefined, null, {
       timeout: 30_000,
     })
@@ -31,7 +39,7 @@ test.describe('User Story 1 - App boots to a ready, queryable state', () => {
     const frameCount = await page.evaluate(() => window.__frameCount)
     expect(frameCount).toBeGreaterThan(0)
 
-    const rows = await page.evaluate(() => window.__wftdm.query('SELECT 1 AS one'))
+    const rows = await page.evaluate(() => window.__wftdm!.query('SELECT 1 AS one'))
     expect(rows).toEqual([{ one: 1 }])
   })
 })
@@ -45,39 +53,39 @@ test.describe('User Story 2 - Observed data and published scenarios are ready to
       timeout: 30_000,
     })
     await page.waitForFunction(
-      () => window.__wftdm.appState.get('good_scenario')?.status !== 'registering',
+      () => window.__wftdm!.appState.get('good_scenario')?.status !== 'registering',
       null,
       { timeout: 30_000 },
     )
 
     // Observed: queryable and active by default (FR-009).
     const observedRows = await page.evaluate(() =>
-      window.__wftdm.query('SELECT * FROM observed__summary_kpis'),
+      window.__wftdm!.query('SELECT * FROM observed__summary_kpis'),
     )
     expect(observedRows.length).toBeGreaterThan(0)
-    const observed = await page.evaluate(() => window.__wftdm.appState.get('observed'))
-    expect(observed.active).toBe(true)
-    expect(observed.status).toBe('ready')
+    const observed = await page.evaluate(() => window.__wftdm!.appState.get('observed'))
+    expect(observed?.active).toBe(true)
+    expect(observed?.status).toBe('ready')
 
     // good_scenario: independently queryable, status 'ready'.
     const goodRows = await page.evaluate(() =>
-      window.__wftdm.query('SELECT * FROM good_scenario__summary_kpis'),
+      window.__wftdm!.query('SELECT * FROM good_scenario__summary_kpis'),
     )
     expect(goodRows.length).toBeGreaterThan(0)
-    const good = await page.evaluate(() => window.__wftdm.appState.get('good_scenario'))
-    expect(good.status).toBe('ready')
+    const good = await page.evaluate(() => window.__wftdm!.appState.get('good_scenario'))
+    expect(good?.status).toBe('ready')
 
     // broken_scenario: registered but status 'failed' — SC-007, does not
     // reduce the count of other scenarios successfully made queryable.
-    const broken = await page.evaluate(() => window.__wftdm.appState.get('broken_scenario'))
-    expect(broken.status).toBe('failed')
+    const broken = await page.evaluate(() => window.__wftdm!.appState.get('broken_scenario'))
+    expect(broken?.status).toBe('failed')
   })
 })
 
 test.describe('User Story 3 - A shared link pre-selects specific scenarios', () => {
-  async function activeNames(page) {
+  async function activeNames(page: Page): Promise<string[]> {
     return page.evaluate(() =>
-      window.__wftdm.appState.list().filter((s) => s.active).map((s) => s.name),
+      window.__wftdm!.appState.list().filter((s) => s.active).map((s) => s.name),
     )
   }
 
@@ -108,7 +116,7 @@ test.describe('User Story 4 - Dashboard config placeholders expand into runnable
     await page.waitForFunction(() => window.__wftdm !== undefined, null, { timeout: 30_000 })
 
     const rows = await page.evaluate(async () => {
-      const w = window.__wftdm
+      const w = window.__wftdm!
       const cfg = await w.yamlLoader.loadConfig('/APP-wftdm-dashboard/all-placeholders-config.yaml')
       w.filterState.set('purpose', 'HBW')
       const template = `

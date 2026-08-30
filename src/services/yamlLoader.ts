@@ -3,26 +3,26 @@
 // specs/001-data-state-layer/contracts/yaml-loader.md.
 import { load as parseYAML } from 'js-yaml'
 
-/**
- * @typedef {{ raw: any, sourcePath: string }} DashboardConfig
- */
+export interface DashboardConfig {
+  raw: unknown
+  sourcePath: string
+}
 
 /**
  * Fetches `url` at call time and parses it with js-yaml.
- * @param {string} url
- * @returns {Promise<DashboardConfig>}
  */
-export async function loadConfig(url) {
+export async function loadConfig(url: string): Promise<DashboardConfig> {
   const res = await fetch(url)
   if (!res.ok) {
     throw new Error(`loadConfig: ${url} -> ${res.status}`)
   }
   const text = await res.text()
-  let raw
+  let raw: unknown
   try {
     raw = parseYAML(text)
   } catch (err) {
-    throw new Error(`loadConfig: malformed YAML at ${url}: ${err.message}`)
+    const message = err instanceof Error ? err.message : String(err)
+    throw new Error(`loadConfig: malformed YAML at ${url}: ${message}`)
   }
   return { raw, sourcePath: url }
 }
@@ -30,32 +30,31 @@ export async function loadConfig(url) {
 /**
  * Same mechanics as loadConfig — distinct export only for call-site clarity
  * (manifest.yaml vs. dashboard-*.yaml/summarize.yaml).
- * @param {string} url
- * @returns {Promise<DashboardConfig>}
  */
-export async function loadManifest(url) {
+export async function loadManifest(url: string): Promise<DashboardConfig> {
   return loadConfig(url)
 }
 
 /**
  * Discovers the dashboard set at runtime via public/dashboard-config/
- * index.json — the same pattern scenarioDiscovery.js uses for
+ * index.json — the same pattern scenarioDiscovery.ts uses for
  * public/scenarios/index.json. No hardcoded filename list or count.
- * @param {string} [baseUrl] defaults to the app's own served base path
- * @returns {Promise<DashboardConfig[]>}
+ * @param baseUrl defaults to the app's own served base path
  */
-export async function loadDashboards(baseUrl = import.meta.env.BASE_URL) {
+export async function loadDashboards(
+  baseUrl: string = import.meta.env.BASE_URL,
+): Promise<DashboardConfig[]> {
   const indexUrl = `${baseUrl}dashboard-config/index.json`
-  let filenames
+  let filenames: string[]
   try {
     const res = await fetch(indexUrl)
     if (!res.ok) return []
-    filenames = await res.json()
+    filenames = (await res.json()) as string[]
   } catch {
     return []
   }
 
-  const configs = []
+  const configs: DashboardConfig[] = []
   for (const filename of filenames) {
     try {
       configs.push(await loadConfig(`${baseUrl}dashboard-config/${filename}`))

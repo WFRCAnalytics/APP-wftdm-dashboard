@@ -9,7 +9,7 @@ Read `docs/ARCHITECTURE.md` and `docs/SPEC.md` before writing any code.
 
 | Layer | Technology |
 |---|---|
-| Build | Vite, plain JavaScript (ES2022), no framework |
+| Build | Vite, TypeScript (ES2022 target) |
 | Query — browser | DuckDB-WASM in a Web Worker |
 | Query — offline | Python DuckDB (`uv run`) |
 | Charts — default | Plotly.js |
@@ -21,18 +21,23 @@ Read `docs/ARCHITECTURE.md` and `docs/SPEC.md` before writing any code.
 | File format | Parquet / GeoParquet only — no CSV/GeoJSON/OMX in browser |
 | Geometry | DuckDB spatial extension (`ST_Read`, `ST_AsGeoJSON`) |
 
-**Three-phase migration plan — each phase on its own branch, merged when confirmed working:**
+**TypeScript throughout; React when the UI layer needs it** (constitution
+v2.0.0 — the earlier three-phase, branch-per-phase migration plan is
+retired):
 
-**Phase 1 — Vanilla JS (`main`):**
-Build and verify the full working dashboard in plain JavaScript. No framework, no TypeScript. Complete and working before moving to Phase 2.
+The app is TypeScript (`.ts`), not plain JavaScript — no branch to merge
+from, no gate to clear first, work lands directly on `main`. `services/
+duckdb.ts`, `state/appState.ts`, `state/filterState.ts`, panel config
+interfaces (`PlotlyPanelConfig`, `FlowMapPanelConfig`) get real types instead
+of JSDoc — catches YAML config errors and DuckDB column mismatches at
+write-time.
 
-**Phase 2 — TypeScript (`feat/typescript`):**
-Add types incrementally on top of working vanilla JS. Rename `.js` → `.ts` file by file. Vite supports TypeScript natively — no config change needed. Highest value files first: `services/duckdb.ts` (query result types), `state/filterState.ts`, panel config interfaces (`PlotlyPanelConfig`, `FlowMapPanelConfig`). This phase catches YAML config errors and DuckDB column mismatches at write-time. Merge into `main` when confirmed working.
-
-**Phase 3 — React (`feat/react`, branches from post-Phase-2 `main`):**
-Migrate UI layer to React if/when state management complexity justifies it. Data layer (`services/`, `state/`) is completely untouched — React only changes how panels and layout are structured. Use Commute Explorer as the working reference — it is already the same stack (React + DuckDB-WASM + MapLibre + flowmap.gl). Merge into `main` when confirmed working.
-
-Do not introduce TypeScript or React in Phase 1. Do not introduce React in Phase 2.
+React is **not yet adopted** — nothing renders anything yet, so there's
+nothing for a framework to help with. It arrives with the layout/panel
+layer, when there's an actual component tree to justify it; data layer
+(`services/`, `state/`) stays plain TypeScript regardless of when that
+happens. Commute Explorer is the working reference (React + DuckDB-WASM +
+MapLibre + flowmap.gl) for when that work starts.
 
 ---
 
@@ -144,22 +149,26 @@ APP-wftdm-dashboard/
 │           ├── summarize.yaml          # pre-filled with standard WFRC segmentations
 │           ├── dashboard-1-summary.yaml
 │           └── ...                     # dashboard-2-person.yaml through dashboard-7-explore.yaml
-└── src/                        # Dashboard application source (JS app only)
-    ├── main.js                 # boot sequence
+└── src/                        # Dashboard application source (JS app only) — TypeScript (constitution v2.0.0)
+    ├── main.ts                 # boot sequence
     ├── state/
-    │   ├── appState.js         # loaded scenarios registry
-    │   └── filterState.js      # global filters + pub/sub
+    │   ├── appState.ts         # loaded scenarios registry
+    │   └── filterState.ts      # global filters + pub/sub
     ├── services/
-    │   ├── duckdb.js           # DuckDB-WASM API — owns the sole AsyncDuckDB
+    │   ├── duckdb.ts           # DuckDB-WASM API — owns the sole AsyncDuckDB
     │   │                       # instance + DuckDB-WASM's own bundled worker
     │   │                       # script (self-hosted via Vite `?url` imports,
-    │   │                       # not a CDN). No separate duckdb.worker.js —
+    │   │                       # not a CDN). No separate duckdb.worker.ts —
     │   │                       # the library provides its own worker; there's
     │   │                       # nothing for the app to author into one
     │   │                       # (constitution Principle II, amended 1.2.0)
-    │   ├── yamlLoader.js       # fetch + parse dashboard-*.yaml files
-    │   ├── sqlExpander.js       # expand $mappings/$bins/$sql/$filters/$scenario
-    │   └── scenarioDiscovery.js # register observed/ + public/scenarios/ at startup
+    │   ├── yamlLoader.ts       # fetch + parse dashboard-*.yaml files
+    │   ├── sqlExpander.ts       # expand $mappings/$bins/$sql/$filters/$scenario
+    │   └── scenarioDiscovery.ts # register observed/ + public/scenarios/ at startup
+    │   # layout/, panels/, scenario/scenarioManager.js, styles/ below: not built
+    │   # yet (001-data-state-layer explicitly excludes them) — left as originally
+    │   # sketched; their eventual extension (.ts vs .tsx) depends on whether
+    │   # React has landed by the time each is built (constitution v2.0.0, Principle I)
     ├── layout/
     │   ├── shell.js
     │   ├── navBar.js
@@ -428,8 +437,10 @@ export default defineConfig({
 
 ## Do not
 
-- Use React, Vue, Svelte, or any component framework
-- Use TypeScript initially (migrate later if needed)
+- Use Vue, Svelte, or any component framework other than React — React is
+  the only framework this project may ever adopt, and only starting with
+  the layout/panel layer (not yet — nothing renders anything yet)
+- Add new plain `.js` files to `src/` — TypeScript (`.ts`) is the standard
 - Use Mapbox GL — MapLibre only
 - Use Webpack — Vite only
 - Read OMX/CSV/GeoJSON in the browser — Parquet only
@@ -438,6 +449,4 @@ export default defineConfig({
 - Create `topsheet.yaml` — the first dashboard-*.yaml is the landing page
 - Create `summarize-preprocessor.yaml` — join logic lives in sql_fragments
 - Create `dashboard-config.yaml` — does not exist (the `public/dashboard-config/` directory is unrelated — see Config file set above)
-- Create `services/observedRegistry.js` — replaced by `services/scenarioDiscovery.js`
-- Use TypeScript in Phase 1 — vanilla JS only until dashboard is verified working
-- Use React in Phase 1 or 2 — React comes after TypeScript is stable (Phase 3)
+- Create `services/observedRegistry.js` — replaced by `services/scenarioDiscovery.ts`

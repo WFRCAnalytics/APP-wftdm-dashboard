@@ -1,5 +1,32 @@
 <!--
 Sync Impact Report
+- Version change: 1.2.0 → 2.0.0
+- Modified principles:
+  - I. Phased Migration Discipline → I. TypeScript Throughout, React
+    Permitted When Needed — MAJOR change: drops the sequential phase-gating
+    requirement entirely. No more "Phase 1 (vanilla JS) fully verified
+    before Phase 2 (TypeScript) begins," no more separate `feat/typescript`
+    / `feat/react` branches merged only once confirmed working. TypeScript
+    and React are now permitted directly on `main`; existing vanilla JS in
+    001-data-state-layer was converted to TypeScript as part of this same
+    amendment (see the accompanying `refactor:` commit). This is the
+    MAJOR-version example the Governance section's own versioning policy
+    already names ("dropping phase gating").
+- Modified sections:
+  - Technology Stack Reference: Build row updated from "Vite, plain
+    JavaScript (ES2022) in Phase 1" to reflect TypeScript; React noted as
+    not yet adopted (arrives with the panel/layout layer, not before).
+  - Governance / Compliance review: "no TypeScript or React outside their
+    designated phase/branch" removed — that constraint no longer exists —
+    replaced with a standard reflecting the new policy.
+- Added principles: none
+- Added sections: none
+- Removed sections: none
+- Deferred TODOs: none
+-->
+
+<!--
+Sync Impact Report (1.2.0, superseded above)
 - Version change: 1.1.0 → 1.2.0
 - Modified principles:
   - II. DuckDB-WASM Runs in a Web Worker, One Shared Instance → II. DuckDB-WASM
@@ -57,18 +84,21 @@ Sync Impact Report (1.0.0, superseded above)
 
 ## Core Principles
 
-### I. Phased Migration Discipline
-Phase 1 (`main`) MUST be built and fully verified working entirely in plain
-JavaScript (ES2022), with no framework and no TypeScript. TypeScript MUST NOT be
-introduced anywhere in Phase 1. Phase 2 (`feat/typescript`) adds types
-incrementally on top of the working Phase 1 codebase and MUST NOT introduce React;
-it is merged into `main` only once confirmed working. Phase 3 (`feat/react`)
-branches from post-Phase-2 `main` and MUST NOT begin until Phase 2 is confirmed
-working. Phases MUST NOT be skipped, reordered, or partially blended (e.g., no
-`.tsx` files or React imports while Phase 1 is still active on `main`).
-**Rationale**: each phase is a complete, independently verifiable milestone;
-blending phases makes it impossible to isolate whether a bug comes from the
-migration or from application logic.
+### I. TypeScript Throughout, React Permitted When Needed
+The JS app is TypeScript (`.ts`), not plain JavaScript — new work MUST NOT
+add plain `.js` files to `src/` where a `.ts` file is expected. There is no
+phase gate to clear first and no separate branch to merge from: TypeScript
+work lands directly on `main`. React MAY be introduced when a UI feature
+genuinely needs it — starting with the layout/panel layer, since nothing
+before that renders anything — but is not required before then, and (like
+TypeScript) has no separate branch of its own once adopted; it lands
+directly on `main` too.
+**Rationale**: the original three-phase, branch-per-phase plan (vanilla JS →
+TypeScript → React, each fully verified before the next began) isolated
+migration risk at the cost of real process overhead; with working test
+coverage already in place before any conversion, adopting types and a UI
+framework incrementally and directly on `main` carries the same safety
+without the branch-and-gate ceremony.
 
 ### II. DuckDB-WASM Query Execution Off the Main Thread, One Shared Instance
 DuckDB-WASM query execution MUST NEVER run on the main thread, and exactly one
@@ -173,7 +203,7 @@ requires amending this constitution first:
 
 | Layer | Technology |
 |---|---|
-| Build | Vite, plain JavaScript (ES2022) in Phase 1 |
+| Build | Vite, TypeScript (ES2022 target); React not yet adopted — arrives with the layout/panel layer |
 | Query — browser | DuckDB-WASM in a Web Worker |
 | Query — offline | Python DuckDB (`uv run`) |
 | Charts — default | Plotly.js |
@@ -219,9 +249,10 @@ materially expanded; PATCH — wording clarifications, typo fixes, or other
 non-semantic refinements.
 
 **Compliance review**: pull requests and code reviews MUST verify there is no
-violation of these principles — no TypeScript or React outside their designated
-phase/branch, no `eval()`, no main-thread DuckDB-WASM use, no forbidden config
-files, no Mapbox/Webpack/Web Storage usage. Any exception requires a prior
-amendment to this document, not a one-off waiver in review.
+violation of these principles — no new plain `.js` files in `src/` (TypeScript
+is the standard), no React usage outside the layout/panel layer it's scoped
+to once adopted, no `eval()`, no main-thread DuckDB-WASM use, no forbidden
+config files, no Mapbox/Webpack/Web Storage usage. Any exception requires a
+prior amendment to this document, not a one-off waiver in review.
 
-**Version**: 1.2.0 | **Ratified**: 2026-08-19 | **Last Amended**: 2026-08-30
+**Version**: 2.0.0 | **Ratified**: 2026-08-19 | **Last Amended**: 2026-08-30

@@ -1,32 +1,32 @@
 // Registers public/observed/ and public/scenarios/* at startup, and (step 3,
 // added by User Story 3) applies ?s= URL params. See
 // specs/001-data-state-layer/contracts/scenario-discovery.md.
-import { registerFileURL } from './duckdb.js'
-import * as appState from '../state/appState.js'
+import { registerFileURL } from './duckdb.ts'
+import * as appState from '../state/appState.ts'
 
 const base = import.meta.env.BASE_URL
 
-async function fetchJSON(url) {
+async function fetchJSON<T>(url: string): Promise<T> {
   const res = await fetch(url)
   if (!res.ok) throw new Error(`fetchJSON: ${url} -> ${res.status}`)
-  return res.json()
+  return res.json() as Promise<T>
 }
 
 /**
  * Registers every filename listed in `{folderUrl}/index.json` as a view
  * named `{namePrefix}__{fileStem}`.
- * @param {string} folderUrl e.g. `${base}observed/summary`
- * @param {string} namePrefix e.g. 'observed'
+ * @param folderUrl e.g. `${base}observed/summary`
+ * @param namePrefix e.g. 'observed'
  */
-async function registerSummaryFolder(folderUrl, namePrefix) {
-  const filenames = await fetchJSON(`${folderUrl}/index.json`)
+async function registerSummaryFolder(folderUrl: string, namePrefix: string): Promise<void> {
+  const filenames = await fetchJSON<string[]>(`${folderUrl}/index.json`)
   for (const fileName of filenames) {
     const stem = fileName.replace(/\.parquet$/, '')
     await registerFileURL(`${namePrefix}__${stem}`, `${folderUrl}/${fileName}`)
   }
 }
 
-async function registerObserved() {
+async function registerObserved(): Promise<void> {
   // Register in appState first (source-of-truth entry exists regardless of
   // what happens next), then attempt the actual data registration.
   appState.register('observed', { pinned: true, source: 'url' })
@@ -43,14 +43,14 @@ async function registerObserved() {
   appState.setActive('observed', true)
 }
 
-async function registerPublishedScenarios() {
-  let names = []
+async function registerPublishedScenarios(): Promise<void> {
+  let names: string[]
   try {
-    names = await fetchJSON(`${base}scenarios/index.json`)
+    names = await fetchJSON<string[]>(`${base}scenarios/index.json`)
   } catch {
     // No public/scenarios/index.json at all — nothing published yet. Not a
     // failure of discoverScenarios() as a whole (mirrors loadDashboards()'s
-    // empty-index handling in yamlLoader.js).
+    // empty-index handling in yamlLoader.ts).
     return
   }
 
@@ -72,7 +72,7 @@ async function registerPublishedScenarios() {
  * matching nothing is ignored, never thrown. Duplicate values collapse to a
  * single activation (Set semantics).
  */
-function applyURLParams() {
+function applyURLParams(): void {
   const params = new URLSearchParams(location.search)
   const requested = new Set(params.getAll('s'))
   for (const name of requested) {
@@ -86,9 +86,8 @@ function applyURLParams() {
  * Run once during boot, after initDuckDB() resolves. Registers observed/
  * and every published scenario (fail-soft per scenario, FR-012), then
  * applies ?s= URL params (FR-011).
- * @returns {Promise<void>}
  */
-export async function discoverScenarios() {
+export async function discoverScenarios(): Promise<void> {
   await registerObserved()
   await registerPublishedScenarios()
   applyURLParams()

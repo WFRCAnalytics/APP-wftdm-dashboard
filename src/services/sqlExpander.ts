@@ -1,18 +1,69 @@
 // Expands summarize.yaml-shaped placeholders into literal SQL text via
 // string substitution only — never eval()/Function() (constitution
 // Principle III). See specs/001-data-state-layer/contracts/sql-expander.md.
+import type { DashboardConfig } from './yamlLoader.ts'
+
+/** Duck-typed on purpose — decoupled from the concrete filterState module
+ * (see contracts/boot-sequence.md); any object with a matching get() works. */
+export interface FilterStateLike {
+  get(id: string): unknown
+}
+
+interface ManualBreaksBin {
+  type: 'manual_breaks'
+  column: string
+  breaks: number[]
+  labels: string[]
+}
+
+interface QuantilesBin {
+  type: 'quantiles'
+  column: string
+  bins?: number
+}
+
+interface SpacedIntervalsBin {
+  type: 'spaced_intervals'
+  column: string
+  interval: number
+  lower?: number
+}
+
+interface EqualIntervalsBin {
+  type: 'equal_intervals'
+  column: string
+  n?: number
+  labels?: string[]
+}
+
+type BinConfig = ManualBreaksBin | QuantilesBin | SpacedIntervalsBin | EqualIntervalsBin
+
+interface SummarizeConfigShape {
+  mappings?: Record<string, Record<string, string>>
+  bins?: Record<string, BinConfig>
+  sql_fragments?: Record<string, string>
+}
+
+function raw(config: DashboardConfig): SummarizeConfigShape {
+  return (config.raw ?? {}) as SummarizeConfigShape
+}
 
 const PLACEHOLDER_RE = /\$(mappings|bins|sql|filters|scenario)\.([A-Za-z0-9_]+)/g
 
 /**
- * @param {string} sqlTemplate
- * @param {{ raw: any }} config a loaded DashboardConfig (see data-model.md)
- * @param {{ get(id: string): any }} filterState
- * @param {string[]} activeScenarios resolved active scenario names (caller
- *   is responsible for including 'observed' if it's active)
- * @returns {string} literal SQL text with every placeholder resolved
+ * @param sqlTemplate literal SQL text containing zero or more placeholders
+ * @param config a loaded DashboardConfig (see data-model.md)
+ * @param filterState anything with a get(id) method
+ * @param activeScenarios resolved active scenario names (caller is
+ *   responsible for including 'observed' if it's active)
+ * @returns literal SQL text with every placeholder resolved
  */
-export function expand(sqlTemplate, config, filterState, activeScenarios) {
+export function expand(
+  sqlTemplate: string,
+  config: DashboardConfig,
+  filterState: FilterStateLike,
+  activeScenarios: string[],
+): string {
   // $filters.<id> with an 'all' value: drop the entire line it appears on
   // (per contract — the template is written so this is syntactically valid,
   // e.g. a standalone "AND column = '$filters.x'" line).
@@ -26,16 +77,16 @@ export function expand(sqlTemplate, config, filterState, activeScenarios) {
     })
     .join('\n')
 
-  text = text.replace(PLACEHOLDER_RE, (fullMatch, kind, name) => {
+  text = text.replace(PLACEHOLDER_RE, (fullMatch, kind: string, name: string) => {
     switch (kind) {
       case 'mappings':
-        return expandMappings(config, name, fullMatch)
+        return expandMappings(config, name)
       case 'bins':
-        return expandBins(config, name, fullMatch)
+        return expandBins(config, name)
       case 'sql':
-        return expandSqlFragment(config, name, fullMatch)
+        return expandSqlFragment(config, name)
       case 'filters':
-        return expandFilter(filterState, name, fullMatch)
+        return expandFilter(filterState, name)
       case 'scenario':
         return expandScenario(activeScenarios, name)
       default:
@@ -46,26 +97,26 @@ export function expand(sqlTemplate, config, filterState, activeScenarios) {
   return text
 }
 
-function missing(reference) {
+function missing(reference: string): never {
   throw new Error(`sqlExpander.expand: unresolved placeholder "${reference}"`)
 }
 
-function expandMappings(config, name, fullMatch) {
-  const mapping = config.raw?.mappings?.[name]
+function expandMappings(config: DashboardConfig, name: string): string {
+  const mapping = raw(config).mappings?.[name]
   if (!mapping) missing(`mappings.${name}`)
   return Object.entries(mapping)
     .map(([source, target]) => `WHEN '${source}' THEN '${target}'`)
     .join('\n    ')
 }
 
-function expandBins(config, name, fullMatch) {
-  const bin = config.raw?.bins?.[name]
+function expandBins(config: DashboardConfig, name: string): string {
+  const bin = raw(config).bins?.[name]
   if (!bin) missing(`bins.${name}`)
 
   switch (bin.type) {
     case 'manual_breaks': {
       const { column, breaks, labels } = bin
-      const clauses = []
+      const clauses: string[] = []
       for (let i = 0; i < labels.length - 1; i++) {
         clauses.push(`WHEN "${column}" < ${breaks[i + 1]} THEN '${labels[i]}'`)
       }
@@ -101,17 +152,17 @@ function expandBins(config, name, fullMatch) {
       return `CASE ${bucketExpr}\n    ${clauses}\n  END`
     }
     default:
-      missing(`bins.${name} (unknown type "${bin.type}")`)
+      return missing(`bins.${name} (unknown type "${(bin as BinConfig).type}")`)
   }
 }
 
-function expandSqlFragment(config, name) {
-  const fragment = config.raw?.sql_fragments?.[name]
+function expandSqlFragment(config: DashboardConfig, name: string): string {
+  const fragment = raw(config).sql_fragments?.[name]
   if (fragment === undefined) missing(`sql.${name}`)
   return fragment
 }
 
-function expandFilter(filterState, id) {
+function expandFilter(filterState: FilterStateLike, id: string): string {
   const value = filterState.get(id)
   if (value === undefined) missing(`filters.${id}`)
   // 'all' is handled at the line-removal pass above; a real (non-'all')
@@ -119,9 +170,9 @@ function expandFilter(filterState, id) {
   return String(value)
 }
 
-function expandScenario(activeScenarios, metric) {
+function expandScenario(activeScenarios: string[], metric: string): string {
   // Intentional, not a defensive placeholder: per contracts/app-state.md,
-  // 'observed' is pinned and this slice has no scenarioManager.js yet to
+  // 'observed' is pinned and this slice has no scenarioManager.ts yet to
   // let a user deactivate it, so activeScenarios should never legitimately
   // be empty when this runs — hitting this branch means something upstream
   // (most likely discoverScenarios() not having completed yet) is broken,

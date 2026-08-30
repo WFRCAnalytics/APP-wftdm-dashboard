@@ -1,8 +1,14 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { loadConfig, loadManifest } from '../../src/services/yamlLoader.js'
+import { loadConfig, loadManifest } from '../../src/services/yamlLoader.ts'
 
-function mockFetch(response) {
-  globalThis.fetch = vi.fn().mockResolvedValue(response)
+interface FakeResponse {
+  ok: boolean
+  status: number
+  text: () => Promise<string>
+}
+
+function mockFetch(response: FakeResponse): void {
+  globalThis.fetch = vi.fn().mockResolvedValue(response) as unknown as typeof fetch
 }
 
 afterEach(() => {

@@ -1,15 +1,18 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-// filterState.js is a module-level singleton (Map instances live at module
+type FilterStateModule = typeof import('../../src/state/filterState.ts')
+
+// filterState.ts is a module-level singleton (Map instances live at module
 // scope) — re-import fresh per test via vi.resetModules() so tests don't
 // leak state into each other.
-async function freshFilterState() {
+async function freshFilterState(): Promise<FilterStateModule> {
   vi.resetModules()
-  return import('../../src/state/filterState.js')
+  return import('../../src/state/filterState.ts')
 }
 
 describe('filterState', () => {
-  let filterState
+  // Definite-assignment assertion: always set in beforeEach before any it().
+  let filterState!: FilterStateModule
   beforeEach(async () => {
     filterState = await freshFilterState()
   })

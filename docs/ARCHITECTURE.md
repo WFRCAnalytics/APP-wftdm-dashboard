@@ -28,17 +28,28 @@ All format conversion (CSV→Parquet, OMX→Parquet, shapefile→GeoParquet) hap
 
 ## Key decisions
 
-### Plain JavaScript first, React/TypeScript later on separate branches
+### TypeScript throughout; React when the UI layer needs it
 
-**Three-phase migration plan — each phase on a separate branch, merged when confirmed working:**
+The earlier three-phase, branch-per-phase migration plan (vanilla JS on
+`main` → TypeScript on `feat/typescript` → React on `feat/react`, each fully
+verified before the next began) no longer applies — dropped in constitution
+v2.0.0. TypeScript and React are both permitted directly on `main`; there's
+no gate to clear and no dedicated branch to merge from for either.
 
-**Phase 1 — Vanilla JS (`main`):** Build and verify the full working dashboard in plain JavaScript. The panel registry pattern and pub/sub filter state don't need a framework. Complete and proven before moving on.
+**Current stack:** the app is TypeScript (`.ts`), not plain JavaScript.
+Vite supports TypeScript natively — no build config beyond a `tsconfig.json`
+is required. `services/duckdb.ts` (query result types), `state/appState.ts` /
+`state/filterState.ts`, and the eventual panel config interfaces get real
+types instead of JSDoc annotations, catching YAML config errors and DuckDB
+column mismatches at write-time rather than at runtime.
 
-**Phase 2 — TypeScript (`feat/typescript`):** Add types incrementally on top of working vanilla JS. Vite supports TypeScript natively — rename `.js` → `.ts` file by file, no config change. Highest value: `services/duckdb.ts` (query result types), panel config interfaces, filter state types. Catches YAML config errors and DuckDB column mismatches at write-time. Near-zero migration cost — no architectural change.
-
-**Phase 3 — React (`feat/react`):** Migrate UI layer to React after TypeScript is stable. Data layer (`services/`, `state/`) is completely untouched. Commute Explorer is the working reference — same stack already in React. Justified if state management complexity grows; not required if configured panels remain the primary use pattern.
-
-**Why this order:** TypeScript adds the most value soonest (type safety on DuckDB queries and YAML config parsing) with the least disruption. React adds UI ergonomics and unlocks Graphic Walker's full DuckDB computation adapter, but those gains only matter after the core dashboard is working well. AI (including local LLMs) handles framework migrations — the "no framework forever" constraint is not permanent.
+**React is not adopted yet** — nothing in the data/state layer renders
+anything, so there's no UI to benefit from a framework. React arrives with
+the layout/panel layer, when there's an actual component tree to justify it.
+Commute Explorer remains the working reference for that stack (React +
+DuckDB-WASM + MapLibre + flowmap.gl) when that work starts. Data layer
+(`services/`, `state/`) is unaffected by whether or when React is adopted —
+it's plain TypeScript modules either way, no framework dependency.
 
 ### DuckDB throughout
 

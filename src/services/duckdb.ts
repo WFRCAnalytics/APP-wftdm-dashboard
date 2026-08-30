@@ -1,6 +1,6 @@
 // DuckDB-WASM service — the sole owner of the shared AsyncDuckDB instance.
 //
-// No separate duckdb.worker.js exists (constitution Principle II, amended
+// No separate duckdb.worker.ts exists (constitution Principle II, amended
 // 1.2.0): DuckDB-WASM ships its own worker script. This module selects a
 // bundle, instantiates that worker, and constructs AsyncDuckDB on the main
 // thread to coordinate it — the actual SQL execution happens inside
@@ -16,20 +16,16 @@ import mvp_worker from '@duckdb/duckdb-wasm/dist/duckdb-browser-mvp.worker.js?ur
 import duckdb_wasm_eh from '@duckdb/duckdb-wasm/dist/duckdb-eh.wasm?url'
 import eh_worker from '@duckdb/duckdb-wasm/dist/duckdb-browser-eh.worker.js?url'
 
-/** @type {duckdb.DuckDBBundles} */
-const MANUAL_BUNDLES = {
+const MANUAL_BUNDLES: duckdb.DuckDBBundles = {
   mvp: { mainModule: duckdb_wasm_mvp, mainWorker: mvp_worker },
   eh: { mainModule: duckdb_wasm_eh, mainWorker: eh_worker },
 }
 
-/** @type {Promise<duckdb.AsyncDuckDB> | null} */
-let dbPromise = null
+let dbPromise: Promise<duckdb.AsyncDuckDB> | null = null
+let connectionPromise: Promise<duckdb.AsyncDuckDBConnection> | null = null
 
-/** @type {Promise<duckdb.AsyncDuckDBConnection> | null} */
-let connectionPromise = null
-
-/** @type {Set<string>} every currently registered view name, however registered */
-const allViews = new Set()
+/** Every currently registered view name, however registered. */
+const allViews = new Set<string>()
 
 /**
  * Selects a bundle, instantiates DuckDB-WASM's own worker, and constructs
@@ -43,15 +39,14 @@ const allViews = new Set()
  * and creating two connections. Assigning the pending promise itself first
  * means every caller — however many, however concurrent — awaits the exact
  * same promise, so only one `connect()` ever runs. Not reachable today
- * (main.js is the only caller), but the contract requires idempotency
+ * (main.ts is the only caller), but the contract requires idempotency
  * unconditionally, not just for the caller pattern that happens to exist.
- * @returns {Promise<void>}
  */
-export async function initDuckDB() {
+export async function initDuckDB(): Promise<void> {
   if (!dbPromise) {
     dbPromise = (async () => {
       const bundle = await duckdb.selectBundle(MANUAL_BUNDLES)
-      const worker = new Worker(bundle.mainWorker)
+      const worker = new Worker(bundle.mainWorker!)
       const logger = new duckdb.ConsoleLogger(duckdb.LogLevel.WARNING)
       const db = new duckdb.AsyncDuckDB(logger, worker)
       await db.instantiate(bundle.mainModule, bundle.pthreadWorker)
@@ -64,15 +59,15 @@ export async function initDuckDB() {
   await connectionPromise
 }
 
-async function getDB() {
+async function getDB(): Promise<duckdb.AsyncDuckDB> {
   const db = await dbPromise
-  if (!db) throw new Error('duckdb.js: initDuckDB() must resolve before use')
+  if (!db) throw new Error('duckdb.ts: initDuckDB() must resolve before use')
   return db
 }
 
-async function getConnection() {
+async function getConnection(): Promise<duckdb.AsyncDuckDBConnection> {
   if (!connectionPromise) {
-    throw new Error('duckdb.js: initDuckDB() must resolve before querying')
+    throw new Error('duckdb.ts: initDuckDB() must resolve before querying')
   }
   return connectionPromise
 }
@@ -91,7 +86,7 @@ async function getConnection() {
 // read_parquet() call, deferring schema resolution) could silently break
 // that eager failure detection with no test catching it until something
 // downstream queries the view.
-async function createViewOverParquet(viewName) {
+async function createViewOverParquet(viewName: string): Promise<void> {
   const conn = await getConnection()
   await conn.query(
     `CREATE OR REPLACE VIEW "${viewName}" AS SELECT * FROM read_parquet('${viewName}')`,
@@ -99,21 +94,14 @@ async function createViewOverParquet(viewName) {
   allViews.add(viewName)
 }
 
-/**
- * @param {string} sql
- * @returns {Promise<Array<Object>>}
- */
-export async function query(sql) {
+export async function query(sql: string): Promise<Record<string, unknown>[]> {
   const conn = await getConnection()
   const table = await conn.query(sql)
-  return table.toArray().map((row) => row.toJSON())
+  return table.toArray().map((row) => row.toJSON() as Record<string, unknown>)
 }
 
-/**
- * @param {string} sql
- * @returns {Promise<import('apache-arrow').Table>}
- */
-export async function queryArrow(sql) {
+/** Returns the raw Arrow table (for callers doing columnar/large-result work). */
+export async function queryArrow(sql: string) {
   const conn = await getConnection()
   return conn.query(sql)
 }
@@ -123,16 +111,18 @@ export async function queryArrow(sql) {
  * handle (showDirectoryPicker() mode) as a view named `{name}__{fileStem}`.
  * Re-registering the same `name` replaces its prior views cleanly — no
  * leftover view from the earlier registration remains queryable.
- * @param {string} name
- * @param {FileSystemDirectoryHandle} dirHandle
  */
-export async function registerScenario(name, dirHandle) {
+export async function registerScenario(
+  name: string,
+  dirHandle: FileSystemDirectoryHandle,
+): Promise<void> {
   await unregisterScenario(name)
   const db = await getDB()
   const summaryDir = await dirHandle.getDirectoryHandle('summary')
   for await (const [fileName, handle] of summaryDir.entries()) {
     if (handle.kind !== 'file' || !fileName.endsWith('.parquet')) continue
-    const file = await handle.getFile()
+    const fileHandle = handle as FileSystemFileHandle
+    const file = await fileHandle.getFile()
     const buffer = new Uint8Array(await file.arrayBuffer())
     const stem = fileName.replace(/\.parquet$/, '')
     const viewName = `${name}__${stem}`
@@ -141,12 +131,8 @@ export async function registerScenario(name, dirHandle) {
   }
 }
 
-/**
- * Registers a single Parquet/GeoParquet file reachable by URL as a view.
- * @param {string} viewName
- * @param {string} url
- */
-export async function registerFileURL(viewName, url) {
+/** Registers a single Parquet/GeoParquet file reachable by URL as a view. */
+export async function registerFileURL(viewName: string, url: string): Promise<void> {
   const db = await getDB()
   await db.registerFileURL(viewName, url, duckdb.DuckDBDataProtocol.HTTP, false)
   await createViewOverParquet(viewName)
@@ -155,9 +141,8 @@ export async function registerFileURL(viewName, url) {
 /**
  * Drops every `{name}__*` view. After this resolves, querying any of that
  * scenario's former views fails (view no longer exists).
- * @param {string} name
  */
-export async function unregisterScenario(name) {
+export async function unregisterScenario(name: string): Promise<void> {
   const prefix = `${name}__`
   const toDrop = Array.from(allViews).filter((v) => v.startsWith(prefix))
   if (toDrop.length === 0) return
@@ -168,19 +153,14 @@ export async function unregisterScenario(name) {
   }
 }
 
-/**
- * @param {string} view
- * @param {string} column
- * @returns {Promise<Array>}
- */
-export async function distinctValues(view, column) {
+export async function distinctValues(view: string, column: string): Promise<unknown[]> {
   const rows = await query(
     `SELECT DISTINCT "${column}" AS value FROM "${view}" ORDER BY "${column}"`,
   )
   return rows.map((r) => r.value)
 }
 
-/** @returns {Array<string>} every currently registered view name */
-export function listViews() {
+/** Every currently registered view name. */
+export function listViews(): string[] {
   return Array.from(allViews)
 }

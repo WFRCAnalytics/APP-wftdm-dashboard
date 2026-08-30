@@ -7,7 +7,7 @@ import { defineConfig, devices } from '@playwright/test'
 // production public/ tree (see tests/global-setup.js).
 export default defineConfig({
   testDir: 'tests/integration',
-  testMatch: '**/*.spec.js',
+  testMatch: '**/*.spec.ts',
   fullyParallel: false,
   reporter: 'list',
   globalSetup: './tests/global-setup.js',

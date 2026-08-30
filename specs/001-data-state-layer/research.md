@@ -173,8 +173,8 @@ affect the module's public contract.
 
 | Technical Context field | Resolution |
 |---|---|
-| Language/Version | JavaScript ES2022, Vite (Phase 1 — no TypeScript) |
-| Primary Dependencies | `@duckdb/duckdb-wasm`, `apache-arrow`, `js-yaml`, `vite`, `coi-serviceworker` |
+| Language/Version | TypeScript (ES2022 target), Vite — constitution v2.0.0, no phase gate. *(Originally vanilla JS under v1.x's phase gating; converted when v2.0.0 dropped it.)* |
+| Primary Dependencies | `@duckdb/duckdb-wasm`, `apache-arrow`, `js-yaml`, `vite`, `typescript`, `coi-serviceworker` |
 | Storage | N/A — no server DB; static Parquet/GeoParquet under `public/`, queried in-browser |
 | Testing | Vitest (unit: sqlExpander/filterState/yamlLoader) + Playwright (integration: boot sequence) |
 | Target Platform | Browser (Chromium/Firefox/WebKit via Playwright coverage; Chrome/Edge for folder-picker mode, deferred slice) |
