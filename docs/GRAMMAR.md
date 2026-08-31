@@ -877,7 +877,7 @@ layout:
       width: 0.4
 
   row_tlfd:
-    - type:   plot
+    - type:   observable-plot
       title:  Trip Length Frequency Distribution
       metric: trip_destination_dist
       height: 350
@@ -967,13 +967,13 @@ fullscreen, PNG export, and formatted hover tooltips. Use `Plotly.react()` inter
     showlegend: true
 ```
 
-### `type: plot`
+### `type: observable-plot`
 
 Observable Plot — use when the panel has user-controlled filter inputs that update
 the chart reactively. Inputs render as controls inside the panel card.
 
 ```yaml
-- type:    plot
+- type:    observable-plot
   title:   Mode Share by Income Group
   metric:  trip_mode_share
   height:  350

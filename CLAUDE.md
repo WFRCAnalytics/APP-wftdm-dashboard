@@ -210,7 +210,7 @@ APP-wftdm-dashboard/
     │   │                         # breaks Vitest's Node environment)
     │   ├── PanelEmptyState.tsx   # shared empty-result state
     │   ├── PanelErrorState.tsx   # shared error state
-    │   ├── PlotPanel.tsx         # not built yet — Observable Plot
+    │   ├── ObservablePlotPanel.tsx # not built yet — Observable Plot
     │   ├── TablePanel.tsx        # not built yet
     │   ├── FlowMapPanel.tsx      # not built yet — MapLibre + MapboxOverlay + FlowmapLayer
     │   ├── ZoneMapPanel.tsx      # not built yet — MapLibre choropleth + GeoParquet
@@ -373,15 +373,15 @@ actually differs.
 
 ```tsx
 export const registry: Record<string, ComponentType<PanelProps>> = {
-  'plotly':         PlotlyPanel,
-  'plot':           PlotPanel,
-  'table':          TablePanel,
-  'valuebox':       ValueBoxPanel,
-  'flowmap':        FlowMapPanel,
-  'zonemap':        ZoneMapPanel,
-  'sankey':         SankeyPanel,
-  'graphic-walker': GraphicWalkerPanel,
-  'markdown':       MarkdownPanel,
+  'plotly':           PlotlyPanel,
+  'observable-plot':  ObservablePlotPanel,
+  'table':            TablePanel,
+  'valuebox':         ValueBoxPanel,
+  'flowmap':          FlowMapPanel,
+  'zonemap':          ZoneMapPanel,
+  'sankey':           SankeyPanel,
+  'graphic-walker':   GraphicWalkerPanel,
+  'markdown':         MarkdownPanel,
 }
 ```
 
@@ -518,17 +518,72 @@ export default defineConfig({
 
 ## Implementation order
 
-1. `vite.config.ts`, `index.html`, `package.json` + postinstall for coi-serviceworker
-2. `services/duckdb.ts` — init, query, registerScenario, registerFileURL (owns DuckDB-WASM's own bundled worker; no separate duckdb.worker.ts)
-3. `services/scenarioDiscovery.ts` — register `public/observed/` + `public/scenarios/*` + apply `?s=` URL params
-4. `services/yamlLoader.ts` + `services/sqlExpander.ts`
-5. `state/appState.ts` + `state/filterState.ts`
-6. `layout/shell.tsx`, `navBar.tsx`, `panelCard.tsx`, `dashboardRenderer.tsx`
-7. `scenario/scenarioManager.ts` — folder picker + view registration
-8. Panels: `ValueBoxPanel` → `TablePanel` → `PlotlyPanel` → `PlotPanel` → `MarkdownPanel` → `SankeyPanel`
-9. `FlowMapPanel` + `ZoneMapPanel` (map panels — most complex)
-10. `GraphicWalkerPanel` (Explore tab)
-11. `styles/wfrc-theme.css`, Python package (`python/`), error/loading states
+Status as of `004-panel-expand-dialog` (audited against real files/git
+history, not assumed from this list — see that feature's session for the
+full cross-reference). ✅ done, 🟡 partial/started, ❌ not started,
+⏸️ explicitly deferred.
+
+1. ✅ `vite.config.ts`, `index.html`, `package.json` + postinstall for
+   coi-serviceworker — done (`001-data-state-layer`)
+2. ✅ `services/duckdb.ts` — init, query, registerScenario, registerFileURL
+   (owns DuckDB-WASM's own bundled worker; no separate duckdb.worker.ts)
+   — done (`001-data-state-layer`)
+3. ✅ `services/scenarioDiscovery.ts` — register `public/observed/` +
+   `public/scenarios/*` + apply `?s=` URL params — done
+   (`001-data-state-layer`)
+4. ✅ `services/yamlLoader.ts` + `services/sqlExpander.ts` — done
+   (`001-data-state-layer`)
+5. ✅ `state/appState.ts` + `state/filterState.ts` — done
+   (`001-data-state-layer`)
+6. ✅ `layout/shell.tsx`, `navBar.tsx`, `panelCard.tsx`,
+   `dashboardRenderer.tsx` — done (`003-dashboard-shell-navigation`);
+   `panelCard.tsx` later extended, not rebuilt, by `004` (expand trigger)
+7. ⏸️ `scenario/scenarioManager.ts` — folder picker + view registration —
+   **explicitly deferred, not an oversight**. `services/duckdb.ts`'s
+   `registerScenario()` (item 2) has existed since `001` as a receiving
+   API with **zero callers** — no feature so far (`001`/`002`/`003`/`004`)
+   has built the picker UI that would call it. The app's actual
+   scenario-loading path today is entirely `scenarioDiscovery.ts`'s
+   auto-registration of `public/observed/`/`public/scenarios/*` (item 3),
+   which is real and working. Manual/interactive scenario loading via a
+   folder picker remains a known, standing gap, carried forward
+   undecided by every feature to date — not forgotten, just never yet
+   in scope.
+8. Panels — per-type status, list kept at its original six, not shrunk:
+   - ✅ `ValueBoxPanel` — done (`003-dashboard-shell-navigation`)
+   - ✅ `PlotlyPanel` — done (`003-dashboard-shell-navigation`)
+   - ❌ `TablePanel` — not started
+   - ❌ `ObservablePlotPanel` — not started
+   - ❌ `MarkdownPanel` — not started
+   - ❌ `SankeyPanel` — not started
+9. ❌ `FlowMapPanel` + `ZoneMapPanel` (map panels — most complex) — not
+   started; `@deck.gl/*`/`@flowmap.gl/layers`/`maplibre-gl` aren't in
+   `package.json` yet either
+10. ❌ `GraphicWalkerPanel` (Explore tab) — not started;
+    `@kanaries/graphic-walker` isn't in `package.json` yet either
+11. ✅ `src/styles/tokens.css` (Tailwind CSS variables) — done
+    (`002-design-tokens`). This **supersedes** the `styles/wfrc-theme.css`
+    filename/approach this line originally named — that plan was replaced
+    by `002`'s actual Tailwind + shadcn/ui token approach, not merely
+    not-yet-built under the old name
+12. 🟡 Python package (`python/`) — started but essentially empty:
+    `python/wftdm_dashboard/` currently holds only `__init__.py` — no
+    `cli.py`, `server.py`, `static/`, or `templates/` yet
+13. ✅ Panel error/empty/loading states — done
+    (`003-dashboard-shell-navigation`). `PanelErrorState.tsx`/
+    `PanelEmptyState.tsx` are shared components; loading states are
+    **deliberately** inline per panel (`animate-pulse` skeletons directly
+    in `ValueBoxPanel.tsx`/`PlotlyPanel.tsx`) rather than a third shared
+    component — `003`'s own research.md documents this as a considered
+    choice (no reusable loading pattern existed to port, unlike
+    error/empty), not an inconsistency to fix later
+14. ✅ Generic panel expand-to-dialog mechanism
+    (`layout/panelExpandHost.tsx`, `components/ui/dialog.tsx`) — done
+    (`004-panel-expand-dialog`). Not part of this list when originally
+    written — a cross-cutting capability at the `panelCard.tsx` level
+    (every registry panel type inherits it automatically, current and
+    future, no per-type wiring), added here so the list has a record of
+    it at all
 
 ---
 

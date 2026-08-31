@@ -160,7 +160,7 @@ inline literal.
 | type | Library | Notes |
 |---|---|---|
 | `plotly` | Plotly.js | Default. Use `Plotly.react()` not `newPlot()` for updates |
-| `plot` | Observable Plot | For panels with reactive filter inputs |
+| `observable-plot` | Observable Plot | For panels with reactive filter inputs |
 | `table` | plain DOM | Sortable, paginated |
 | `valuebox` | plain DOM | Single scalar KPI with threshold coloring |
 | `flowmap` | flowmap.gl + MapLibre | `MapboxOverlay` + `FlowmapLayer`; `setProps()` on update |
@@ -305,7 +305,7 @@ layout:
       width: 0.75
 
   row2:
-    - type: plot
+    - type: observable-plot
       metric: trip_mode_share
       filter: $filters.purpose
       inputs:
