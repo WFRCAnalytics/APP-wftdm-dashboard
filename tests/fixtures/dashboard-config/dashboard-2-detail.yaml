@@ -1,0 +1,31 @@
+# Second fixture tab — minimal on purpose. Exists so the Playwright suite
+# can exercise real multi-tab navigation (SC-001's "at least two different
+# configured tab counts") without duplicating dashboard-1-summary.yaml's
+# panel content. Also hosts a deliberately-broken panel (SC-006/FR-010)
+# so the same fixture set exercises panel-scoped error isolation without
+# a third file.
+
+header:
+  tab: Detail
+  title: Detail View
+
+layout:
+  row_kpis:
+    - type: valuebox
+      title: Average Trip Distance
+      metric: summary_kpis
+      column: avg_trip_distance
+      format: "{:.1f}"
+      unit: miles
+      icon: map-pin
+      width: 0.5
+
+    # Deliberately broken — points at a metric no scenario publishes.
+    # SC-006: this panel's failure MUST NOT prevent "Average Trip
+    # Distance" (above) from rendering correctly.
+    - type: valuebox
+      title: Broken Panel (intentional)
+      metric: nonexistent_metric
+      column: whatever
+      format: "{:.0f}"
+      width: 0.5

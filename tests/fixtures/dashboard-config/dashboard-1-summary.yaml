@@ -1,0 +1,62 @@
+# Fixture dashboard-*.yaml for 003-dashboard-shell-navigation's Playwright
+# suite (research.md §1) — real docs/GRAMMAR.md-shaped grammar, bound to
+# tests/fixtures/generate.py's existing Parquet columns (summary_kpis:
+# total_households/total_persons/total_trips/purpose_count/
+# avg_trip_distance; trip_mode_share: purpose/mode/share). Copied to
+# public/dashboard-config/ by tests/global-setup.js, same convention as
+# the observed/scenarios fixtures.
+
+header:
+  tab: Summary
+  title: Model Run Summary
+  description: Fixture dashboard exercising valuebox and plotly panels end to end
+
+filters:
+  - id: purpose
+    label: Trip Purpose
+    type: select
+    source: trip_mode_share
+    column: purpose
+    default: all
+    all_option: true
+
+layout:
+  row_kpis:
+    - type: valuebox
+      title: Total Households
+      metric: summary_kpis
+      column: total_households
+      format: "{:,.0f}"
+      icon: house
+      width: 0.5
+
+    - type: valuebox
+      title: Total Trips
+      metric: summary_kpis
+      column: total_trips
+      format: "{:,.0f}"
+      icon: route
+      width: 0.5
+
+  row_chart:
+    - type: plotly
+      title: Mode Share by Purpose
+      metric: trip_mode_share
+      filter: $filters.purpose
+      # observed only publishes summary_kpis in this fixture set (real
+      # convention too, per CLAUDE.md — observed's comparison data lives
+      # in separately-named files like observed_mode_share.parquet,
+      # joined via a panel's own `observed:` key, not unioned into
+      # $scenario.trip_mode_share). Scoped to good_scenario explicitly
+      # so this panel's $scenario.x union only spans scenarios that
+      # actually publish trip_mode_share — exercises the `scenarios:`
+      # (plural) override for real, not just in the unit tests.
+      scenarios: [good_scenario]
+      height: 400
+      traces:
+        - type: bar
+          x: $metric.purpose
+          y: $metric.share
+          color: $metric.mode
+          barmode: group
+      width: 1.0

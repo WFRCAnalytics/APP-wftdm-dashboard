@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
-import type { WftdmDebugHook } from '../../src/main.ts'
+import type { WftdmDebugHook } from '../../src/main.tsx'
 
 declare global {
   interface Window {

@@ -23,6 +23,11 @@ export default defineConfig({
       output: {
         manualChunks(id) {
           if (id.includes('@duckdb/duckdb-wasm')) return 'duckdb'
+          // 003-dashboard-shell-navigation: first feature to depend on
+          // Plotly (a large library) — split per CLAUDE.md's own
+          // documented vite.config.js convention, unimplemented until now
+          // since nothing depended on it before this feature.
+          if (id.includes('plotly')) return 'plotly'
         },
       },
     },

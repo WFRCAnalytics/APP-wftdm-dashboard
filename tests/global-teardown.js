@@ -7,7 +7,12 @@ import { dirname, join } from 'node:path'
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const repoRoot = join(__dirname, '..')
 
-const dirs = ['public/observed', 'public/scenarios', 'public/all-placeholders-config.yaml']
+const dirs = [
+  'public/observed',
+  'public/scenarios',
+  'public/all-placeholders-config.yaml',
+  'public/dashboard-config',
+]
 
 export default async function globalTeardown() {
   for (const dir of dirs) {

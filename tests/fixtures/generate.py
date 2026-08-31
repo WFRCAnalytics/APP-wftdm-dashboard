@@ -58,6 +58,16 @@ def write_parquet(con, dest: Path, columns: list[str], rows: list[tuple]) -> Non
 def _sql_literal(v):
     if isinstance(v, str):
         return "'" + v.replace("'", "''") + "'"
+    if isinstance(v, float):
+        # Explicit DOUBLE cast — a bare literal like 0.62 infers as
+        # DuckDB's DECIMAL(3,2) by default, which apache-arrow's JS
+        # decimal-to-number conversion doesn't scale correctly (reads
+        # back as 62, not 0.62) when duckdb.ts's query() calls
+        # row.toJSON(). A real post-processor's floating-point aggregate
+        # output would never hit this — it's purely an artifact of this
+        # generator's literal-value SQL construction. See
+        # 003-dashboard-shell-navigation's implementation notes.
+        return f"CAST({v} AS DOUBLE)"
     return str(v)
 
 

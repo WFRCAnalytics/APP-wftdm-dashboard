@@ -14,6 +14,10 @@ const copies = [
   ['tests/fixtures/observed', 'public/observed'],
   ['tests/fixtures/scenarios', 'public/scenarios'],
   ['tests/fixtures/all-placeholders-config.yaml', 'public/all-placeholders-config.yaml'],
+  // 003-dashboard-shell-navigation: real dashboard-*.yaml fixtures +
+  // index.json, discovered by loadDashboards() the same way
+  // public/scenarios/index.json is discovered for scenarios.
+  ['tests/fixtures/dashboard-config', 'public/dashboard-config'],
 ]
 
 export default async function globalSetup() {
