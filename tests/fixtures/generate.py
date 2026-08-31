@@ -42,6 +42,33 @@ TRIP_MODE_SHARE_ROWS = [
 ]
 TRIP_MODE_SHARE_COLUMNS = ["purpose", "mode", "share"]
 
+# 005-table-panel: docs/GRAMMAR.md's own `type: table` example is a
+# screenline validation table (link_id/facility_type/observed/modeled/
+# pct_error) — reused here rather than inventing a different shape.
+# 30 rows: enough to exceed the default page size (20) so pagination and
+# cross-page search are meaningfully exercised, not just plausible in
+# theory. Row 25 (facility_type "Ramp") is the *only* row with that
+# facility_type — deliberately placed on page 2 (index 24, 0-based) so a
+# search for "Ramp" only succeeds if search genuinely evaluates the full
+# fetched result set, not just whatever page happens to be showing
+# (spec.md User Story 4's central claim).
+def _screenline_rows():
+    rows = []
+    for i in range(1, 31):
+        link_id = f"L{i:03d}"
+        facility_type = "Ramp" if i == 25 else ["Freeway", "Arterial", "Collector"][i % 3]
+        observed = 500 + i * 37
+        # pct_error spans both signs, including values near a [-0.5, 0.5]
+        # domain's extremes, without needing every row hand-tuned.
+        pct_error = round(((i * 7) % 13 - 6) / 12, 3)
+        modeled = round(observed * (1 + pct_error))
+        rows.append((link_id, facility_type, observed, modeled, pct_error))
+    return rows
+
+
+SCREENLINES_ROWS = _screenline_rows()
+SCREENLINES_COLUMNS = ["link_id", "facility_type", "observed", "modeled", "pct_error"]
+
 
 def write_parquet(con, dest: Path, columns: list[str], rows: list[tuple]) -> None:
     dest.parent.mkdir(parents=True, exist_ok=True)
@@ -136,7 +163,16 @@ def main():
         TRIP_MODE_SHARE_COLUMNS,
         TRIP_MODE_SHARE_ROWS,
     )
-    write_summary_index(good_summary, ["summary_kpis.parquet", "trip_mode_share.parquet"])
+    write_parquet(
+        con,
+        good_summary / "screenlines.parquet",
+        SCREENLINES_COLUMNS,
+        SCREENLINES_ROWS,
+    )
+    write_summary_index(
+        good_summary,
+        ["summary_kpis.parquet", "trip_mode_share.parquet", "screenlines.parquet"],
+    )
     write_manifest(
         scenarios_dir / "good_scenario" / "manifest.yaml",
         scenario_name="good_scenario",

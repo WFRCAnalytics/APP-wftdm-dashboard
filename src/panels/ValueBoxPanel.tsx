@@ -8,6 +8,7 @@ import * as filterState from '@/state/filterState'
 import * as appState from '@/state/appState'
 import { useFilterState } from '@/hooks/useFilterState'
 import { buildPanelQuery, resolveActiveScenarios, EMPTY_SUMMARIZE_CONFIG } from '@/panels/panelQuery'
+import { formatValue } from '@/panels/formatValue'
 import { PanelEmptyState } from '@/panels/PanelEmptyState'
 import { PanelErrorState } from '@/panels/PanelErrorState'
 import type { ValueBoxPanelConfig } from '@/layout/types'
@@ -23,22 +24,6 @@ function iconComponentFor(name: string): LucideIcon | undefined {
     .join('')
   const icon = (icons as unknown as Record<string, LucideIcon>)[pascal]
   return icon
-}
-
-function formatValue(value: unknown, format: string): string {
-  if (typeof value !== 'number') return String(value)
-  // Minimal Python-style format string support: {:,.0f} / {:.1f} / {:.1%}
-  const match = format.match(/\{:(,)?\.(\d+)(f|%)\}/)
-  if (!match) return String(value)
-  const [, comma, digitsStr, kind] = match
-  const digits = Number(digitsStr)
-  const num = kind === '%' ? value * 100 : value
-  let out = num.toFixed(digits)
-  if (comma) {
-    const [intPart, decPart] = out.split('.')
-    out = Number(intPart).toLocaleString('en-US') + (decPart ? `.${decPart}` : '')
-  }
-  return kind === '%' ? `${out}%` : out
 }
 
 // Proves config -> query -> rendered scalar (spec.md User Story 2).

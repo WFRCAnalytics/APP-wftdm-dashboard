@@ -1,6 +1,7 @@
 import type { ComponentType } from 'react'
 
 import { PlotlyPanel } from '@/panels/PlotlyPanel'
+import { TablePanel } from '@/panels/TablePanel'
 import { ValueBoxPanel } from '@/panels/ValueBoxPanel'
 import type { PanelConfig } from '@/layout/types'
 
@@ -21,4 +22,5 @@ export interface PanelProps<TConfig extends PanelConfig = PanelConfig> {
 export const registry: Record<string, ComponentType<PanelProps<any>>> = {
   valuebox: ValueBoxPanel,
   plotly: PlotlyPanel,
+  table: TablePanel,
 }

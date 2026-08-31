@@ -60,3 +60,52 @@ layout:
           color: $metric.mode
           barmode: group
       width: 1.0
+
+  # 005-table-panel: docs/GRAMMAR.md's own type: table example
+  # (screenline validation) reused directly, bound to generate.py's
+  # SCREENLINES_ROWS (30 rows — exceeds the default page size of 20, so
+  # pagination and cross-page search are meaningfully exercised, not just
+  # plausible in theory). Two panels, deliberately non-overlapping in
+  # what each exercises rather than one panel trying to cover everything:
+  row_table:
+    # Full columns: config — labels, per-column format, a diverging
+    # color_scale (domain matches this fixture's actual pct_error range,
+    # [-0.5, 0.5]), a declared initial sort, and an explicit pagination
+    # override. Deliberately NOT searchable — the negative case for "a
+    # panel without searchable renders no search input".
+    - type: table
+      title: Screenline Validation
+      metric: screenlines
+      scenarios: [good_scenario]
+      sort: { column: pct_error, order: desc }
+      pagination: 10
+      columns:
+        - { field: link_id, label: Link ID }
+        - { field: facility_type, label: Facility }
+        - { field: observed, label: Observed, format: "{:,.0f}" }
+        - { field: modeled, label: Modeled, format: "{:,.0f}" }
+        - { field: pct_error, label: "% Error", format: "{:.1%}",
+            color_scale: diverging, domain: [-0.5, 0.5] }
+      width: 1.0
+
+    # No columns: config (derived from the query result's own shape) and
+    # searchable — the vehicle for the cross-page search test: row L025
+    # (facility_type "Ramp", the only row with that value) sits at fetch
+    # index 24, on page 2 of 2 at this panel's default page size (20),
+    # since no sort: config here means natural fetch order.
+    - type: table
+      title: Screenline Validation (Raw)
+      metric: screenlines
+      scenarios: [good_scenario]
+      searchable: true
+      width: 1.0
+
+    # Deliberately broken — points at a metric no scenario publishes.
+    # Exercises TablePanel.tsx's own error branch (a rejected query),
+    # distinct from the empty-result branch above — same convention as
+    # dashboard-2-detail.yaml's "Broken Panel (intentional)" valuebox.
+    - type: table
+      title: Broken Table Panel (intentional)
+      metric: nonexistent_screenline_metric
+      scenarios: [good_scenario]
+      width: 1.0
