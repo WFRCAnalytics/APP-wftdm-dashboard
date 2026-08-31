@@ -75,6 +75,17 @@ playwright-report/
 test-results/
 blob-report/
 
+# ── Fixture copies into public/ ───────────────────────────────────────────────
+# Made by tests/global-setup.js (removed by tests/global-teardown.js after a
+# Playwright run) and by scripts/copy-fixtures.js (npm run dev:fixtures, for a
+# manual `npm run dev` check) — never meant to land in the production public/
+# tree. *.parquet is already covered by the blanket rule below, but the
+# manifest.yaml/index.json/dashboard-*.yaml files copied alongside them
+# weren't, so a stray `git add -A` could otherwise commit them.
+/public/observed/
+/public/scenarios/
+/public/dashboard-config/
+
 # ── Vite build output ─────────────────────────────────────────────────────────
 # dist/ is the Vite JS build — NOT committed to main branch
 # Deployed to gh-pages branch via GitHub Actions

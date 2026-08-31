@@ -57,10 +57,11 @@ export function PlotlyPanel({ config }: { config: PlotlyPanelConfig }) {
           | Plotly.Layout['barmode']
           | undefined
         const layout: Partial<Plotly.Layout> = {
+          autosize: true,
           ...(config.layout ?? {}),
           ...(barmode ? { barmode } : {}),
         }
-        Plotly.react(containerRef.current, traces, layout)
+        Plotly.react(containerRef.current, traces, layout, { responsive: true })
         setStatus('ready')
       })
       .catch(() => {
@@ -71,6 +72,25 @@ export function PlotlyPanel({ config }: { config: PlotlyPanelConfig }) {
       cancelled = true
     }
   }, [config, filters])
+
+  // ResizeObserver, not just Plotly's own `responsive: true` (which only
+  // reacts to window resize events): Plotly.react() above runs while this
+  // effect's sibling still has the plot container at display: none (the
+  // loading skeleton is shown until `status` flips to 'ready', one render
+  // later) — Plotly measures a 0×0 container and never re-checks on its
+  // own once the container becomes visible, since no window resize event
+  // fires just because a CSS display property changed. ResizeObserver
+  // does fire on exactly that transition, and on every real container
+  // resize afterward (e.g. the grid row's columns re-flowing).
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    const observer = new ResizeObserver(() => {
+      if (containerRef.current) Plotly.Plots.resize(containerRef.current)
+    })
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
 
   // Unmount-only teardown — a second effect, empty deps, deliberately
   // not folded into the effect above.
@@ -97,7 +117,11 @@ export function PlotlyPanel({ config }: { config: PlotlyPanelConfig }) {
       )}
       <div
         ref={containerRef}
-        style={{ height: config.height ?? 350, display: status === 'loading' ? 'none' : undefined }}
+        style={{
+          width: '100%',
+          height: config.height ?? 350,
+          display: status === 'loading' ? 'none' : undefined,
+        }}
       />
     </>
   )

@@ -12,7 +12,8 @@
     "typecheck": "tsc --noEmit",
     "test:unit": "vitest run",
     "pretest:integration": "uv run python tests/fixtures/generate.py",
-    "test:integration": "playwright test"
+    "test:integration": "playwright test",
+    "dev:fixtures": "node scripts/copy-fixtures.js"
   },
   "dependencies": {
     "@duckdb/duckdb-wasm": "^1.29.0",
