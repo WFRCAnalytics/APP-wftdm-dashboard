@@ -94,7 +94,24 @@ async function createViewOverParquet(viewName: string): Promise<void> {
   allViews.add(viewName)
 }
 
+// 004-panel-expand-dialog test instrumentation: records every SQL string
+// passed to query(), so Playwright tests can assert a panel's query was
+// not re-run (e.g. across an expand/collapse round trip) without racing a
+// network delay against an already-cached fixture — DuckDB-WASM's httpfs
+// tends to fully cache a small fixture Parquet file's bytes the first
+// time any query touches it (schema resolution at view-creation time is
+// often enough), so a subsequent SELECT against the same view can resolve
+// with no new network request at all, making network-level delay
+// unreliable for this specific assertion. Purely additive — every
+// existing export's behavior/signature is unchanged (plan.md's Technical
+// Context: services/duckdb.ts "consumed, none altered in contract").
+const debugQueryLog: string[] = []
+export function __debugQueryLog(): readonly string[] {
+  return debugQueryLog
+}
+
 export async function query(sql: string): Promise<Record<string, unknown>[]> {
+  debugQueryLog.push(sql)
   const conn = await getConnection()
   const table = await conn.query(sql)
   return table.toArray().map((row) => row.toJSON() as Record<string, unknown>)

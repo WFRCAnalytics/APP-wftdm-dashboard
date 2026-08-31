@@ -119,7 +119,19 @@ export function PlotlyPanel({ config }: { config: PlotlyPanelConfig }) {
         ref={containerRef}
         style={{
           width: '100%',
-          height: config.height ?? 350,
+          // 100%, not a fixed config.height ?? 350 pixel value — found
+          // necessary by 004-panel-expand-dialog: this container is the
+          // same DOM node whether inline (in a card sized to config.height
+          // by panelExpandHost.tsx's inline anchor) or inside the large
+          // expand dialog (sized by the dialog's own flex layout,
+          // layout/panelExpandHost.tsx) — a hardcoded pixel height here
+          // would keep the chart pinned at its small card size even once
+          // relocated into the much larger dialog container. Filling
+          // whichever real container it's currently placed in via 100%,
+          // and letting that ancestor decide the actual pixel height, is
+          // what lets 003's ResizeObserver-driven Plotly.Plots.resize()
+          // (below) correctly grow the chart on expand.
+          height: '100%',
           display: status === 'loading' ? 'none' : undefined,
         }}
       />

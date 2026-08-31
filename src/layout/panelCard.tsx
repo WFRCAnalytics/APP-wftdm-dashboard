@@ -3,6 +3,7 @@ import { Component, type ReactNode } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { PanelErrorState } from '@/panels/PanelErrorState'
 import { registry } from '@/panels/registry'
+import { usePanelExpandHost } from '@/layout/panelExpandHost'
 import type { PanelConfig } from '@/layout/types'
 
 // React error boundaries require a class component — no hook equivalent
@@ -42,19 +43,35 @@ class PanelErrorBoundary extends Component<PanelErrorBoundaryProps, PanelErrorBo
 export function PanelCard({ config }: { config: PanelConfig }) {
   const PanelComponent = registry[config.type]
 
+  // Called unconditionally regardless of whether PanelComponent resolved
+  // (React's rules of hooks) — passing `null` as children when it didn't
+  // is harmless: the hook's own state/refs still exist, they just never
+  // have anything to portal (004-panel-expand-dialog, panelExpandHost.tsx).
+  const { trigger, body } = usePanelExpandHost(
+    config.title,
+    PanelComponent ? (
+      <PanelErrorBoundary panelTitle={config.title}>
+        <PanelComponent config={config} />
+      </PanelErrorBoundary>
+    ) : null,
+    // height is a common PanelConfig field (layout/types.ts), not
+    // plotly-specific — passed through so the inline (collapsed)
+    // presentation keeps its configured height exactly as before this
+    // feature existed; a panel with no height opinion (undefined) stays
+    // naturally auto-sized.
+    { height: config.height },
+  )
+
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0">
         <CardTitle>{config.title}</CardTitle>
+        {/* No expand trigger for an "unknown panel type" card — nothing
+            valid to expand at any size (004's FR-002/FR-010). */}
+        {PanelComponent && trigger}
       </CardHeader>
       <CardContent>
-        <PanelErrorBoundary panelTitle={config.title}>
-          {PanelComponent ? (
-            <PanelComponent config={config} />
-          ) : (
-            <PanelErrorState message={`Unknown panel type: "${config.type}"`} />
-          )}
-        </PanelErrorBoundary>
+        {PanelComponent ? body : <PanelErrorState message={`Unknown panel type: "${config.type}"`} />}
       </CardContent>
     </Card>
   )

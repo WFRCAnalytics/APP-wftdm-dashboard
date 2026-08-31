@@ -174,30 +174,53 @@ APP-wftdm-dashboard/
     ├── hooks/
     │   └── useFilterState.ts   # wraps state/filterState.ts with
     │                           # useSyncExternalStore (constitution v2.2.0)
-    │   # layout/, panels/, scenario/scenarioManager.ts, styles/ below: not
-    │   # built yet (001-data-state-layer explicitly excludes them) — left as
-    │   # originally sketched. React has now landed (002-design-tokens,
-    │   # before any of these), so anything below that actually renders JSX
-    │   # is .tsx; pure-logic modules with no JSX (scenarioManager.ts,
-    │   # manifestReader.ts) stay .ts, same as services/ and state/
-    │   # (constitution v2.2.0, Development Workflow)
+    │   # layout/ and panels/ below are now real (003-dashboard-shell-
+    │   # navigation built the shell/nav/panel-card layer and the first two
+    │   # panel types; 004-panel-expand-dialog added the generic expand
+    │   # mechanism on top). scenario/scenarioManager.ts and styles/ are
+    │   # still not built yet (out of scope for both features so far) —
+    │   # left as originally sketched. Anything that renders JSX is .tsx;
+    │   # pure-logic modules with no JSX (scenarioManager.ts,
+    │   # manifestReader.ts, panelQuery.ts, plotlyTraces.ts) stay .ts, same
+    │   # as services/ and state/ (constitution v2.2.0, Development Workflow)
     ├── layout/
-    │   ├── shell.tsx
-    │   ├── navBar.tsx
-    │   ├── sidebar.tsx
-    │   ├── dashboardRenderer.tsx
-    │   └── panelCard.tsx
+    │   ├── shell.tsx             # top-level app shell: NavBar + active tab
+    │   ├── navBar.tsx            # shadcn Tabs-based tab navigation
+    │   ├── dashboardRenderer.tsx # renders one tab's layout as rows of PanelCards
+    │   ├── panelCard.tsx         # shadcn Card wrapper: title, expand trigger
+    │   │                         # (usePanelExpandHost), hosts one registry-
+    │   │                         # resolved panel + its error boundary
+    │   ├── panelExpandHost.tsx   # 004: the generic expand-to-dialog hook —
+    │   │                         # a persistent portal host node, imperatively
+    │   │                         # relocated between an inline card anchor
+    │   │                         # and a Dialog anchor, not a createPortal
+    │   │                         # target swap (found not to preserve
+    │   │                         # mounted state — research.md §1b)
+    │   ├── types.ts              # typed DashboardTabConfig/PanelConfig,
+    │   │                         # parsed from yamlLoader's DashboardConfig.raw
+    │   └── sidebar.tsx           # not built yet — no feature has needed it
     ├── panels/
-    │   ├── registry.tsx
-    │   ├── PlotlyPanel.tsx
-    │   ├── PlotPanel.tsx
-    │   ├── TablePanel.tsx
+    │   ├── registry.tsx          # type -> component map: valuebox, plotly
+    │   ├── panelQuery.ts         # PanelConfig + filters -> SQL template
     │   ├── ValueBoxPanel.tsx
-    │   ├── FlowMapPanel.tsx    # MapLibre + MapboxOverlay + FlowmapLayer
-    │   ├── ZoneMapPanel.tsx    # MapLibre choropleth + GeoParquet
-    │   ├── SankeyPanel.tsx
-    │   ├── GraphicWalkerPanel.tsx
-    │   └── MarkdownPanel.tsx
+    │   ├── PlotlyPanel.tsx
+    │   ├── plotlyTraces.ts       # pure trace-resolution logic (split out of
+    │   │                         # PlotlyPanel.tsx — plotly.js-dist-min
+    │   │                         # references `self` at module load, which
+    │   │                         # breaks Vitest's Node environment)
+    │   ├── PanelEmptyState.tsx   # shared empty-result state
+    │   ├── PanelErrorState.tsx   # shared error state
+    │   ├── PlotPanel.tsx         # not built yet — Observable Plot
+    │   ├── TablePanel.tsx        # not built yet
+    │   ├── FlowMapPanel.tsx      # not built yet — MapLibre + MapboxOverlay + FlowmapLayer
+    │   ├── ZoneMapPanel.tsx      # not built yet — MapLibre choropleth + GeoParquet
+    │   ├── SankeyPanel.tsx       # not built yet
+    │   ├── GraphicWalkerPanel.tsx # not built yet
+    │   └── MarkdownPanel.tsx     # not built yet
+    ├── components/
+    │   └── ui/                   # shadcn-pattern primitives (002-design-
+    │                              # tokens onward): button.tsx, card.tsx,
+    │                              # tabs.tsx, tooltip.tsx, dialog.tsx (004)
     ├── scenario/
     │   ├── scenarioManager.ts  # showDirectoryPicker + view registration
     │   └── manifestReader.ts
