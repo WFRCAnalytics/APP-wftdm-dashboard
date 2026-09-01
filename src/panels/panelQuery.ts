@@ -8,18 +8,66 @@ import type { DashboardConfig } from '@/services/yamlLoader'
 import type { FilterId, FilterValue } from '@/state/filterState'
 import type { DataBoundPanelConfigBase } from '@/layout/types'
 
+const FILTERS_REF_RE = /^\$filters\.([A-Za-z0-9_]+)$/
+const INPUTS_REF_RE = /^\$inputs\.([A-Za-z0-9_]+)$/
+
+/**
+ * True when `placeholder` is an `$inputs.<id>` reference AND that id is
+ * declared `type: multiselect` on `config.inputs` (007-observable-plot-panel).
+ * A `select`/`range` input, or any `$filters.<id>` reference, always
+ * returns false here — their WHERE-clause shape is unchanged (see
+ * buildPanelQuery below). `config.inputs` only exists on
+ * ObservablePlotPanelConfig, not the shared DataBoundPanelConfigBase — the
+ * same `'inputs' in config` narrowing idiom this file already uses for
+ * `'column' in config`.
+ */
+function isMultiselectInputPlaceholder(
+  placeholder: string,
+  config: DataBoundPanelConfigBase,
+): boolean {
+  const match = placeholder.match(INPUTS_REF_RE)
+  if (!match) return false
+  if (!('inputs' in config)) return false
+  const inputs = (config as { inputs?: Array<{ id: string; type: string }> }).inputs
+  return inputs?.some((input) => input.id === match[1] && input.type === 'multiselect') ?? false
+}
+
+/**
+ * Normalizes config.filter (either documented shape — docs/GRAMMAR.md's
+ * common-keys table: "filter: <inline | $ref>") into a list of
+ * [column, placeholderString] pairs, ready to become one
+ * `AND "<column>" = '<placeholder>'` line each.
+ *
+ * - undefined -> [] (no WHERE clause)
+ * - a string matching ^\$filters\.<id>$ -> [[id, filter]] (today's exact
+ *   behavior for valuebox/plotly/table — column assumed equal to id, per
+ *   the SQL placeholder reference table's own literal example)
+ * - any other string (a literal, non-placeholder value) -> [] (unchanged —
+ *   never produces a WHERE clause)
+ * - a Record<string, string> -> Object.entries(...) verbatim — the map's
+ *   own key is the bound column, independent of whatever id the value's
+ *   placeholder references (007-observable-plot-panel, research.md §1;
+ *   e.g. `income_category: $inputs.income_filter` binds column
+ *   "income_category" against input id "income_filter" — deliberately
+ *   different strings)
+ *
+ * Never inspects *which* placeholder kind (`$filters.`/`$inputs.`) a
+ * value is — that dispatch belongs to sqlExpander.ts, not here. This
+ * function only decides which columns get bound at all.
+ */
+function normalizeFilterEntries(
+  filter: DataBoundPanelConfigBase['filter'],
+): Array<[string, string]> {
+  if (!filter) return []
+  if (typeof filter === 'string') {
+    const match = filter.match(FILTERS_REF_RE)
+    return match ? [[match[1], filter]] : []
+  }
+  return Object.entries(filter)
+}
+
 /**
  * Builds a bare SQL template for a panel.
- *
- * config.filter is expected in the form "$filters.<name>" (per
- * docs/GRAMMAR.md's own dashboard-*.yaml example, e.g.
- * `filter: $filters.purpose`). The grammar doesn't separately name which
- * column that binds against — this implementation takes the same
- * <name> as both the filter id and the column name, matching the SQL
- * placeholder reference table's own literal example
- * (`AND purpose = '$filters.purpose'`). A future feature that needs a
- * filter id distinct from its bound column can extend this without
- * changing this function's signature.
  *
  * config is typed as DataBoundPanelConfigBase, not the full PanelConfig
  * union — this function reads config.metric/scenario/scenarios/filter
@@ -42,19 +90,62 @@ export function buildPanelQuery(
   // DataBoundPanelConfigBase the same way it did against PanelConfig.
   const selectClause = 'column' in config ? `SELECT "${config.column}"` : 'SELECT *'
 
-  const filterMatch = config.filter?.match(/^\$filters\.([A-Za-z0-9_]+)$/)
-  if (!filterMatch) {
+  const entries = normalizeFilterEntries(config.filter)
+  if (entries.length === 0) {
     return `${selectClause} FROM ${source}`
   }
 
-  const name = filterMatch[1]
-  // $filters.x must sit alone on its own line (docs/GRAMMAR.md) for
+  // Each placeholder must sit alone on its own line (docs/GRAMMAR.md) for
   // sqlExpander.ts's `all`-sentinel line-omission to work correctly.
+  //
+  // A multiselect-type $inputs.<id> reference gets an IN (...) shape
+  // instead of the usual = '...' equality — "any of the selected values"
+  // (spec.md US2) cannot be expressed as a single-value equality
+  // comparison. sqlExpander.ts's expandInputs formats a multiselect's
+  // array value as a comma-joined, individually-quoted list to fill that
+  // unquoted IN (...) slot; every other case (a plain string $inputs.<id>,
+  // or any $filters.<id>) keeps today's exact = '<placeholder>' shape —
+  // this branch only ever fires for the one new case that needs it.
   return [
     `${selectClause} FROM ${source} t`,
     'WHERE 1=1',
-    `  AND "${name}" = '$filters.${name}'`,
+    ...entries.map(([column, placeholder]) =>
+      isMultiselectInputPlaceholder(placeholder, config)
+        ? `  AND "${column}" IN (${placeholder})`
+        : `  AND "${column}" = '${placeholder}'`,
+    ),
   ].join('\n')
+}
+
+/**
+ * Extracts every $filters.<id> referenced by config.filter, in either
+ * documented shape. $inputs.<id> entries are deliberately excluded — those
+ * are panel-local (007-observable-plot-panel, research.md §3) and must
+ * never be subscribed to via useFilterState, which would make them
+ * globally visible/reactive in exactly the way that feature's FR-005
+ * forbids.
+ *
+ * Originally sketched as an observable-plot-only helper (only that panel
+ * type's grammar ever produces a Record<string,string> filter with more
+ * than one entry) — but widening DataBoundPanelConfigBase.filter's type
+ * (research.md §1) means every existing data-bound panel's own
+ * single-id extraction (previously an inline
+ * `config.filter.replace(/^\$filters\./, '')`) no longer typechecks
+ * against the widened union either, since `.replace` isn't callable on a
+ * Record. Reused here by ValueBoxPanel.tsx/PlotlyPanel.tsx/TablePanel.tsx
+ * too, replacing three near-identical inline snippets with one — not
+ * scope creep, a direct, necessary consequence of the filter: type
+ * widening every data-bound panel type shares.
+ */
+export function extractGlobalFilterIds(filter: DataBoundPanelConfigBase['filter']): FilterId[] {
+  if (!filter) return []
+  if (typeof filter === 'string') {
+    const match = filter.match(FILTERS_REF_RE)
+    return match ? [match[1]] : []
+  }
+  return Object.values(filter)
+    .map((value) => value.match(FILTERS_REF_RE)?.[1])
+    .filter((id): id is string => id !== undefined)
 }
 
 /**

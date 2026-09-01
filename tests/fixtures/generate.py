@@ -69,6 +69,30 @@ def _screenline_rows():
 SCREENLINES_ROWS = _screenline_rows()
 SCREENLINES_COLUMNS = ["link_id", "facility_type", "observed", "modeled", "pct_error"]
 
+# 007-observable-plot-panel: mirrors docs/GRAMMAR.md's own Trip Length
+# Frequency Distribution worked example (distance_bin/trips/purpose/mode) —
+# reused directly rather than inventing a different shape, same convention
+# as SCREENLINES_ROWS above. distance_bin is a small integer bin index
+# (1-5), not miles directly — plain enough for both a lineY x-axis and a
+# range-type panel-local input's min/max bounds.
+def _trip_destination_dist_rows():
+    rows = []
+    for purpose in ("HBW", "NHB"):
+        for mode in ("SOV", "Transit"):
+            for distance_bin in range(1, 6):
+                # Trip counts decay with distance, offset per purpose/mode
+                # so no two series are identical — enough to distinguish
+                # lines/facets visually and in assertions, not modeled output.
+                base = 200 if purpose == "HBW" else 120
+                mode_factor = 1.0 if mode == "SOV" else 0.4
+                trips = round(base * mode_factor / distance_bin)
+                rows.append((distance_bin, trips, purpose, mode))
+    return rows
+
+
+TRIP_DESTINATION_DIST_ROWS = _trip_destination_dist_rows()
+TRIP_DESTINATION_DIST_COLUMNS = ["distance_bin", "trips", "purpose", "mode"]
+
 
 def write_parquet(con, dest: Path, columns: list[str], rows: list[tuple]) -> None:
     dest.parent.mkdir(parents=True, exist_ok=True)
@@ -169,9 +193,20 @@ def main():
         SCREENLINES_COLUMNS,
         SCREENLINES_ROWS,
     )
+    write_parquet(
+        con,
+        good_summary / "trip_destination_dist.parquet",
+        TRIP_DESTINATION_DIST_COLUMNS,
+        TRIP_DESTINATION_DIST_ROWS,
+    )
     write_summary_index(
         good_summary,
-        ["summary_kpis.parquet", "trip_mode_share.parquet", "screenlines.parquet"],
+        [
+            "summary_kpis.parquet",
+            "trip_mode_share.parquet",
+            "screenlines.parquet",
+            "trip_destination_dist.parquet",
+        ],
     )
     write_manifest(
         scenarios_dir / "good_scenario" / "manifest.yaml",

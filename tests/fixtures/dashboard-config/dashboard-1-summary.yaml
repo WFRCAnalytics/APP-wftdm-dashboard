@@ -180,3 +180,147 @@ layout:
       title: Markdown Whitespace-Only (intentional)
       content: "   "
       width: 1.0
+
+  # 007-observable-plot-panel: docs/GRAMMAR.md's own type: observable-plot
+  # grammar, including panel-local `inputs:` (real, documented grammar —
+  # spec.md's Grammar findings, research.md §2/§3/§9). Six panels, each
+  # exercising a distinct, non-overlapping property — same convention as
+  # row_table/row_markdown above. Landing in this same file puts these
+  # panels on the same tab as valuebox/plotly/table/markdown, so US3's
+  # "mixed panel types on one tab render without error" coverage comes for
+  # free from this file already being exercised by every prior feature's
+  # own suite.
+  row_observable_plot:
+    # US1's primary vehicle: mark: barY bound to trip_mode_share, reactive
+    # to the existing global purpose filter — no inputs: at all, proving
+    # the static query-render pipeline works before any panel-local input
+    # exists (spec.md's own reasoning for scoping US1 independently of US2).
+    # tip: true — real, documented grammar (docs/GRAMMAR.md's common
+    # encoding channels), not mark-restricted; exercises the barY-specific
+    # tip-mode handling in observablePlotEncoding.ts (a real hover bug
+    # found post-implementation: barY's dead-spot caveat, resolved
+    # internally, not by inventing new author-facing grammar).
+    - type: observable-plot
+      title: Observable Plot Mode Share (Bar)
+      metric: trip_mode_share
+      scenario: good_scenario
+      mark: barY
+      x: purpose
+      y: share
+      fill: mode
+      tip: true
+      filter:
+        purpose: $filters.purpose
+      height: 350
+      width: 1.0
+
+    # Reuses docs/GRAMMAR.md's own Trip Length Frequency Distribution
+    # example verbatim, including tip: true and grid: true — an earlier
+    # version of this fixture silently dropped both, which is why hover
+    # tooltips never actually worked on any observable-plot panel despite
+    # this feature's own contract/tests describing tip support (a real,
+    # confirmed post-implementation bug: the fixture never enabled it).
+    - type: observable-plot
+      title: Trip Length Frequency Distribution
+      metric: trip_destination_dist
+      scenario: good_scenario
+      mark: lineY
+      x: distance_bin
+      y: trips
+      stroke: purpose
+      tip: true
+      grid: true
+      inputs:
+        - id: mode_select
+          label: Mode
+          type: select
+          column: mode
+          default: SOV
+      filter:
+        purpose: $filters.purpose
+        mode: $inputs.mode_select
+      height: 350
+      width: 1.0
+
+    # Deliberately reuses the SAME input id (mode_select) as the panel
+    # above, as a multiselect this time — the vehicle for the cross-panel
+    # isolation-under-collision test (spec.md's own named edge case) and
+    # multiselect "any of" coverage.
+    - type: observable-plot
+      title: Observable Plot Mode Share (Multiselect Filter)
+      metric: trip_mode_share
+      scenario: good_scenario
+      mark: barY
+      x: purpose
+      y: share
+      inputs:
+        - id: mode_select
+          label: Mode
+          type: multiselect
+          column: mode
+          default: SOV
+      filter:
+        purpose: $filters.purpose
+        mode: $inputs.mode_select
+      height: 350
+      width: 1.0
+
+    # range-type input coverage. default: 99 is deliberately outside this
+    # column's real [1, 5] domain — this panel's own initial render
+    # directly exercises the browser's native <input type="range">
+    # clamping behavior (research.md §9) rather than needing a second,
+    # otherwise-redundant range fixture.
+    - type: observable-plot
+      title: Trip Length by Distance Bin (Range Filter)
+      metric: trip_destination_dist
+      scenario: good_scenario
+      mark: barY
+      x: mode
+      y: trips
+      inputs:
+        - id: distance_picker
+          label: Distance Bin
+          type: range
+          column: distance_bin
+          default: "99"
+      filter:
+        distance_bin: $inputs.distance_picker
+      height: 350
+      width: 1.0
+
+    # Deliberately mismatched select default (research.md §9, spec.md's
+    # Edge Cases) — "Bike" matches no row in trip_mode_share.mode, so this
+    # legitimately produces a zero-row result on load. Doubles as the
+    # empty-state fixture (US1) and the mismatched-select-default fixture
+    # (US2).
+    - type: observable-plot
+      title: Mode Share (Mismatched Default, intentional)
+      metric: trip_mode_share
+      scenario: good_scenario
+      mark: barY
+      x: purpose
+      y: share
+      inputs:
+        - id: mode_filter_bad
+          label: Mode
+          type: select
+          column: mode
+          default: Bike
+      filter:
+        mode: $inputs.mode_filter_bad
+      height: 350
+      width: 1.0
+
+    # Deliberately broken — points at a metric no scenario publishes.
+    # Exercises ObservablePlotPanel.tsx's own error branch, same
+    # convention as row_table's/row_markdown's own "Broken Panel
+    # (intentional)" entries.
+    - type: observable-plot
+      title: Observable Plot Broken Panel (intentional)
+      metric: nonexistent_observable_metric
+      scenario: good_scenario
+      mark: barY
+      x: a
+      y: b
+      height: 350
+      width: 1.0

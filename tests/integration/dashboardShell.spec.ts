@@ -80,7 +80,15 @@ test.describe('User Story 3 - An analyst sees a real, filter-reactive chart', ()
       navigated = true
     })
     await page.evaluate(() => window.__wftdm!.filterState.set('purpose', 'NONEXISTENT'))
-    await expect(page.getByText('No data for this selection')).toBeVisible()
+    // Scoped to this specific plotly panel's card, not the whole page —
+    // other panels bound to the same global purpose filter (e.g.
+    // 007-observable-plot-panel's fixture panels) legitimately also show
+    // this same empty-state text when purpose matches nothing, which
+    // would make an unscoped page-wide locator ambiguous (and flaky,
+    // since how many have finished their own async fetch by the time
+    // this assertion polls varies run to run).
+    const plotlyCard = page.getByText('Mode Share by Purpose', { exact: true }).locator('..').locator('..')
+    await expect(plotlyCard.getByText('No data for this selection')).toBeVisible()
     expect(navigated).toBe(false)
 
     await page.evaluate(() => window.__wftdm!.filterState.set('purpose', 'HBW'))

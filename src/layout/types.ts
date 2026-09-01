@@ -32,7 +32,17 @@ export interface PanelConfigBase {
 // (006-markdown-panel, research.md §1).
 export interface DataBoundPanelConfigBase extends PanelConfigBase {
   metric: string
-  filter?: string
+  // Two documented forms (docs/GRAMMAR.md's common-keys table: "filter:
+  // <inline | $ref>"), not a bolt-on for this feature — valuebox/plotly/
+  // table only ever exercised the bare $ref string form until
+  // 007-observable-plot-panel, whose own filter: examples are the first to
+  // use the inline map form (a column name -> $filters.<id>/$inputs.<id>
+  // placeholder string, letting one panel bind more than one column, and
+  // letting a column's bound placeholder differ from its own name).
+  // buildPanelQuery (panelQuery.ts) normalizes both shapes; it never
+  // inspects which placeholder kind a given value is — sqlExpander.ts does
+  // that (007-observable-plot-panel, research.md §1).
+  filter?: string | Record<string, string>
   // scenario (singular): restrict to exactly one named scenario view,
   // bypassing the $scenario.x union entirely. scenarios (plural):
   // override which subset of the globally-active scenarios this panel
@@ -104,6 +114,49 @@ export interface MarkdownPanelConfig extends PanelConfigBase {
 }
 
 /**
+ * One entry in an `observable-plot` panel's `inputs:` list — a panel-local
+ * reactive input widget (007-observable-plot-panel, data-model.md).
+ * Referenced via `$inputs.<id>` in that same panel's own `filter:` map,
+ * never any other panel's. Same three-value `type` vocabulary
+ * `FilterDefinition` already uses for global filters — no `all_option`
+ * field, unlike `FilterDefinition`: no documented `inputs:` example
+ * declares one (research.md §2/§9).
+ */
+export interface ObservablePlotInputConfig {
+  id: string
+  label: string
+  type: 'select' | 'multiselect' | 'range'
+  column: string
+  default: string
+}
+
+/**
+ * The fifth panel type — extends DataBoundPanelConfigBase (unlike
+ * MarkdownPanelConfig): docs/GRAMMAR.md's type: observable-plot grammar
+ * always queries a metric (007-observable-plot-panel, research.md §7).
+ * x/y/fill/stroke/facet_x/facet_y are literal column names from the
+ * queried result set — NOT $metric.<column>-prefixed like
+ * PlotlyTraceConfig's own fields (research.md §4, a confirmed grammar
+ * difference from type: plotly).
+ */
+export interface ObservablePlotPanelConfig extends DataBoundPanelConfigBase {
+  type: 'observable-plot'
+  /** Names an @observablehq/plot mark-constructor export (e.g. 'barY',
+   * 'lineY') — looked up dynamically, not an exhaustive hardcoded enum,
+   * matching how PlotlyTraceConfig.type is a plain string. */
+  mark: string
+  x?: string
+  y?: string
+  fill?: string
+  stroke?: string
+  facet_x?: string
+  facet_y?: string
+  tip?: boolean
+  grid?: boolean
+  inputs?: ObservablePlotInputConfig[]
+}
+
+/**
  * Any other panel type (flowmap, zonemap, sankey, graphic-walker — all
  * out of scope for this feature, still deferred) still parses as this
  * base shape rather than being dropped or erroring at parse time — the
@@ -124,6 +177,7 @@ export type PanelConfig =
   | PlotlyPanelConfig
   | TablePanelConfig
   | MarkdownPanelConfig
+  | ObservablePlotPanelConfig
   | UnknownPanelConfig
 
 export interface DashboardTabConfig {

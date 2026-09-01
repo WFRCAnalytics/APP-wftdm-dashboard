@@ -21,6 +21,10 @@ function expandTrigger(page: Page, title: string) {
   return page.getByRole('button', { name: `Expand ${title}` })
 }
 
+function panelCard(page: Page, title: string) {
+  return page.getByText(title, { exact: true }).locator('..').locator('..')
+}
+
 test.describe('User Story 1 - Expand a panel to a large view', () => {
   test('expand trigger opens a dialog showing the same content, for a valuebox and a plotly panel', async ({
     page,
@@ -294,7 +298,14 @@ test.describe('User Story 2 - Return to the dashboard without losing panel state
   test('a panel in its empty state shows the same empty state when expanded', async ({ page }) => {
     await boot(page)
     await page.evaluate(() => window.__wftdm!.filterState.set('purpose', 'NONEXISTENT'))
-    await expect(page.getByText('No data for this selection')).toBeVisible()
+    // Scoped to this specific panel's card, not the whole page — other
+    // panels bound to the same global purpose filter (e.g.
+    // 007-observable-plot-panel's fixture panels) legitimately also show
+    // this same empty-state text when purpose is set to a value nothing
+    // matches, which would make an unscoped page-wide locator ambiguous.
+    await expect(
+      panelCard(page, 'Mode Share by Purpose').getByText('No data for this selection'),
+    ).toBeVisible()
 
     await expandTrigger(page, 'Mode Share by Purpose').click()
     const dialog = page.getByRole('dialog')

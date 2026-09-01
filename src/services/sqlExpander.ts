@@ -48,7 +48,7 @@ function raw(config: DashboardConfig): SummarizeConfigShape {
   return (config.raw ?? {}) as SummarizeConfigShape
 }
 
-const PLACEHOLDER_RE = /\$(mappings|bins|sql|filters|scenario)\.([A-Za-z0-9_]+)/g
+const PLACEHOLDER_RE = /\$(mappings|bins|sql|filters|scenario|inputs)\.([A-Za-z0-9_]+)/g
 
 /**
  * @param sqlTemplate literal SQL text containing zero or more placeholders
@@ -56,6 +56,15 @@ const PLACEHOLDER_RE = /\$(mappings|bins|sql|filters|scenario)\.([A-Za-z0-9_]+)/
  * @param filterState anything with a get(id) method
  * @param activeScenarios resolved active scenario names (caller is
  *   responsible for including 'observed' if it's active)
+ * @param inputState anything with a get(id) method, resolving $inputs.<id>
+ *   — panel-local reactive input values (007-observable-plot-panel,
+ *   research.md §2). Reuses the same FilterStateLike duck type as
+ *   filterState — deliberately a *separate* object, never merged into
+ *   filterState itself, so an $inputs.<id> reference can never
+ *   accidentally resolve against the global filter store (research.md §2's
+ *   rejected alternative). Optional — every existing caller
+ *   (ValueBoxPanel/PlotlyPanel/TablePanel) never emits an $inputs.
+ *   placeholder and passes nothing here.
  * @returns literal SQL text with every placeholder resolved
  */
 export function expand(
@@ -63,16 +72,21 @@ export function expand(
   config: DashboardConfig,
   filterState: FilterStateLike,
   activeScenarios: string[],
+  inputState?: FilterStateLike,
 ): string {
-  // $filters.<id> with an 'all' value: drop the entire line it appears on
-  // (per contract — the template is written so this is syntactically valid,
-  // e.g. a standalone "AND column = '$filters.x'" line).
+  // $filters.<id> or $inputs.<id> with an 'all' value: drop the entire line
+  // it appears on (per contract — the template is written so this is
+  // syntactically valid, e.g. a standalone "AND column = '$filters.x'"
+  // line). Extended to $inputs. lines for consistency with $filters.'s own
+  // treatment (research.md §2) — no current inputs: grammar declares an
+  // all_option, but nothing about the mechanism requires one to.
   let text = sqlTemplate
     .split('\n')
     .filter((line) => {
-      const match = line.match(/\$filters\.([A-Za-z0-9_]+)/)
+      const match = line.match(/\$(filters|inputs)\.([A-Za-z0-9_]+)/)
       if (!match) return true
-      const value = filterState.get(match[1])
+      const [, kind, name] = match
+      const value = kind === 'inputs' ? inputState?.get(name) : filterState.get(name)
       return value !== 'all'
     })
     .join('\n')
@@ -89,6 +103,8 @@ export function expand(
         return expandFilter(filterState, name)
       case 'scenario':
         return expandScenario(activeScenarios, name)
+      case 'inputs':
+        return expandInputs(inputState, name)
       default:
         return fullMatch
     }
@@ -99,6 +115,18 @@ export function expand(
 
 function missing(reference: string): never {
   throw new Error(`sqlExpander.expand: unresolved placeholder "${reference}"`)
+}
+
+/** SQL's standard single-quote escape — doubling each embedded `'` — so a
+ * value containing one (e.g. "Driver's Ed") can't break out of the string
+ * literal it's substituted into. A real, if latent, gap in both
+ * expandFilter and expandInputs (pre-dates 007-observable-plot-panel;
+ * fixed alongside it here since that feature's own tests exercise this
+ * exact code path, the natural moment to close both rather than leaving
+ * one fixed and one not). Still plain string manipulation, not SQL
+ * parsing — Principle III's "string replacement only" holds. */
+function escapeSqlString(value: string): string {
+  return value.replace(/'/g, "''")
 }
 
 function expandMappings(config: DashboardConfig, name: string): string {
@@ -166,8 +194,27 @@ function expandFilter(filterState: FilterStateLike, id: string): string {
   const value = filterState.get(id)
   if (value === undefined) missing(`filters.${id}`)
   // 'all' is handled at the line-removal pass above; a real (non-'all')
-  // value substitutes literally — the template supplies any needed quoting.
-  return String(value)
+  // value substitutes literally — the template supplies the surrounding
+  // quotes (`= '$filters.x'`), but the value itself still needs its own
+  // internal quotes escaped first, or a value like "Driver's Ed" would
+  // break out of that literal.
+  return escapeSqlString(String(value))
+}
+
+function expandInputs(inputState: FilterStateLike | undefined, id: string): string {
+  const value = inputState?.get(id)
+  if (value === undefined) missing(`inputs.${id}`)
+  // 'all' is handled at the line-removal pass above; a real (non-'all')
+  // value substitutes literally. Mirrors expandFilter, with one addition:
+  // a multiselect input's value is an array (007-observable-plot-panel) —
+  // panelQuery.ts's buildPanelQuery emits an unquoted `IN (...)` shape
+  // specifically for those, so expandInputs supplies each element's own
+  // quotes here (comma-joined, 'SOV','HOV'), not the bare single value the
+  // scalar case returns for the template's own `= '...'` quoting.
+  if (Array.isArray(value)) {
+    return value.map((v) => `'${escapeSqlString(String(v))}'`).join(',')
+  }
+  return escapeSqlString(String(value))
 }
 
 function expandScenario(activeScenarios: string[], metric: string): string {

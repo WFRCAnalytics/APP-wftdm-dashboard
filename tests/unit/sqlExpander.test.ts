@@ -123,6 +123,92 @@ WHERE 1=1
     ).toThrowError(/mappings\.does_not_exist/)
   })
 
+  // A real, if latent, gap (pre-dates 007-observable-plot-panel, fixed
+  // alongside it): an embedded single quote in a $filters.<id> value must
+  // be escaped (SQL's standard doubling escape) before being substituted
+  // into the template's own surrounding '...' quotes, or the value breaks
+  // out of the string literal it's meant to sit inside.
+  it("escapes an embedded single quote in a \$filters.<id> value (SQL doubling escape)", () => {
+    const filterState = fakeFilterState({ mode: "Driver's Ed" })
+    const result = expand("SELECT * FROM t WHERE mode = '\$filters.mode'", config, filterState, [])
+    expect(result).toContain(`mode = 'Driver''s Ed'`)
+  })
+
+  // 007-observable-plot-panel, research.md §2: $inputs.<id> mirrors
+  // $filters.<id>'s treatment exactly, resolved via a separate inputState
+  // param rather than merged into filterState.
+  it('expands $inputs.<id> via the new inputState param', () => {
+    const filterState = fakeFilterState({})
+    const inputState = fakeFilterState({ mode_select: 'SOV' })
+    const result = expand(
+      "SELECT * FROM t WHERE mode = '\$inputs.mode_select'",
+      config,
+      filterState,
+      [],
+      inputState,
+    )
+    expect(result).toContain("mode = 'SOV'")
+    expect(result).not.toMatch(/\$inputs\./)
+  })
+
+  it('throws naming the specific unresolved $inputs reference when no inputState is passed (mirrors $filters behavior)', () => {
+    const filterState = fakeFilterState({})
+    expect(() =>
+      expand('$inputs.mode_select', config, filterState, []),
+    ).toThrowError(/inputs\.mode_select/)
+  })
+
+  it('expands a multiselect $inputs.<id> array value into a comma-joined, quoted list for an IN (...) slot', () => {
+    const filterState = fakeFilterState({})
+    const inputState = fakeFilterState({ mode_select: ['SOV', 'HOV'] })
+    const result = expand(
+      "SELECT * FROM t WHERE mode IN (\$inputs.mode_select)",
+      config,
+      filterState,
+      [],
+      inputState,
+    )
+    expect(result).toContain("mode IN ('SOV','HOV')")
+  })
+
+  it("escapes an embedded single quote in a scalar \$inputs.<id> value (SQL doubling escape)", () => {
+    const filterState = fakeFilterState({})
+    const inputState = fakeFilterState({ mode_select: "Driver's Ed" })
+    const result = expand(
+      "SELECT * FROM t WHERE mode = '\$inputs.mode_select'",
+      config,
+      filterState,
+      [],
+      inputState,
+    )
+    expect(result).toContain(`mode = 'Driver''s Ed'`)
+  })
+
+  it('escapes embedded single quotes in each element of a multiselect $inputs.<id> array value', () => {
+    const filterState = fakeFilterState({})
+    const inputState = fakeFilterState({ mode_select: ["Driver's Ed", 'SOV'] })
+    const result = expand(
+      "SELECT * FROM t WHERE mode IN (\$inputs.mode_select)",
+      config,
+      filterState,
+      [],
+      inputState,
+    )
+    expect(result).toContain(`mode IN ('Driver''s Ed','SOV')`)
+  })
+
+  it("omits the entire line when an \$inputs value is the 'all' sentinel, mirroring \$filters", () => {
+    const filterState = fakeFilterState({})
+    const inputState = fakeFilterState({ mode_select: 'all' })
+    const template = "SELECT * FROM t\nWHERE 1=1\n  AND mode = '\$inputs.mode_select'\n"
+
+    const result = expand(template, config, filterState, [], inputState)
+
+    expect(result).not.toContain('$inputs.mode_select')
+    expect(result).not.toContain('AND mode =')
+    expect(result).toContain('SELECT * FROM t')
+  })
+
   it('never calls eval() or Function() — string substitution only (Principle III)', () => {
     const source = readFileSync(join(__dirname, '../../src/services/sqlExpander.ts'), 'utf-8')
     // Strip line comments first so descriptive mentions of "eval()" in

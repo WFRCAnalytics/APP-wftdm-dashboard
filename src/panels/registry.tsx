@@ -1,6 +1,7 @@
 import type { ComponentType } from 'react'
 
 import { MarkdownPanel } from '@/panels/MarkdownPanel'
+import { ObservablePlotPanel } from '@/panels/ObservablePlotPanel'
 import { PlotlyPanel } from '@/panels/PlotlyPanel'
 import { TablePanel } from '@/panels/TablePanel'
 import { ValueBoxPanel } from '@/panels/ValueBoxPanel'
@@ -25,4 +26,5 @@ export const registry: Record<string, ComponentType<PanelProps<any>>> = {
   plotly: PlotlyPanel,
   table: TablePanel,
   markdown: MarkdownPanel,
+  'observable-plot': ObservablePlotPanel,
 }

@@ -6,7 +6,12 @@ import * as sqlExpander from '@/services/sqlExpander'
 import * as filterState from '@/state/filterState'
 import * as appState from '@/state/appState'
 import { useFilterState } from '@/hooks/useFilterState'
-import { buildPanelQuery, resolveActiveScenarios, EMPTY_SUMMARIZE_CONFIG } from '@/panels/panelQuery'
+import {
+  buildPanelQuery,
+  resolveActiveScenarios,
+  extractGlobalFilterIds,
+  EMPTY_SUMMARIZE_CONFIG,
+} from '@/panels/panelQuery'
 import { formatValue } from '@/panels/formatValue'
 import { cellColor, filterRows, resolveColumns, sortRows } from '@/panels/tableLogic'
 import { PanelEmptyState } from '@/panels/PanelEmptyState'
@@ -31,9 +36,10 @@ function initialSort(config: TablePanelConfig): SortState {
 // (FR-012) — no table library, per docs/SPEC.md's own "plain DOM"
 // description (research.md §1).
 export function TablePanel({ config }: { config: TablePanelConfig }) {
-  const filters = useFilterState(
-    config.filter ? [config.filter.replace(/^\$filters\./, '')] : ALL_FILTERS,
-  )
+  // extractGlobalFilterIds (panelQuery.ts) — see ValueBoxPanel.tsx's own
+  // comment on why this replaced an inline config.filter.replace(...) call.
+  const filterIds = extractGlobalFilterIds(config.filter)
+  const filters = useFilterState(filterIds.length ? filterIds : ALL_FILTERS)
   const [rows, setRows] = useState<Record<string, unknown>[]>([])
   const [status, setStatus] = useState<'loading' | 'ready' | 'empty' | 'error'>('loading')
   const [sortState, setSortState] = useState<SortState>(() => initialSort(config))

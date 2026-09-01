@@ -7,7 +7,12 @@ import * as sqlExpander from '@/services/sqlExpander'
 import * as filterState from '@/state/filterState'
 import * as appState from '@/state/appState'
 import { useFilterState } from '@/hooks/useFilterState'
-import { buildPanelQuery, resolveActiveScenarios, EMPTY_SUMMARIZE_CONFIG } from '@/panels/panelQuery'
+import {
+  buildPanelQuery,
+  resolveActiveScenarios,
+  extractGlobalFilterIds,
+  EMPTY_SUMMARIZE_CONFIG,
+} from '@/panels/panelQuery'
 import { resolveTraces } from '@/panels/plotlyTraces'
 import { PanelEmptyState } from '@/panels/PanelEmptyState'
 import { PanelErrorState } from '@/panels/PanelErrorState'
@@ -19,9 +24,10 @@ const ALL_FILTERS: ['*'] = ['*']
 // expansion -> query -> Plotly.react() render, filter-reactive, using
 // docs/SPEC.md's corrected two-effect pattern. See contracts/plotly-panel.md.
 export function PlotlyPanel({ config }: { config: PlotlyPanelConfig }) {
-  const filters = useFilterState(
-    config.filter ? [config.filter.replace(/^\$filters\./, '')] : ALL_FILTERS,
-  )
+  // extractGlobalFilterIds (panelQuery.ts) — see ValueBoxPanel.tsx's own
+  // comment on why this replaced an inline config.filter.replace(...) call.
+  const filterIds = extractGlobalFilterIds(config.filter)
+  const filters = useFilterState(filterIds.length ? filterIds : ALL_FILTERS)
   const containerRef = useRef<HTMLDivElement>(null)
   const [status, setStatus] = useState<'loading' | 'ready' | 'empty' | 'error'>('loading')
 
