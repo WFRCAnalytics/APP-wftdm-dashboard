@@ -1,5 +1,41 @@
 <!--
 Sync Impact Report
+- Version change: 2.2.0 → 2.3.0
+- Modified principles: none
+- Modified sections:
+  - Technology Stack Reference: Pinned peer dependency versions gained
+    `@deck.gl/layers` `^9.0.0` — a real, confirmed gap, not previously
+    covered even implicitly. Found while verifying Principle VIII's
+    `WFRCAnalytics/APP-Commute-Explorer` reference against the real repo
+    (not assumed): both `APP-Commute-Explorer` (`github.com/WFRCAnalytics/
+    APP-Commute-Explorer`, confirmed public/active/non-archived via the
+    GitHub API, `pushed_at` 2026-06-30) and a related repo,
+    `APP-WFRC-Commute-Patterns` (also confirmed real/active, `pushed_at`
+    2026-08-29), independently pin `@deck.gl/layers` `^9.0.0` in their real
+    `package.json` files, fetched directly (`raw.githubusercontent.com`),
+    not summarized secondhand. `APP-Commute-Explorer`'s own pins otherwise
+    match this constitution's existing ones exactly (`maplibre-gl`
+    `^4.7.1`, `@deck.gl/core`/`@deck.gl/mapbox` `^9.0.0`, `@flowmap.gl/
+    layers` `^9.3.0`) — the reference itself was already accurate; only
+    the missing `@deck.gl/layers` entry needed adding. Principle VIII's
+    reference table itself is unchanged — `APP-Commute-Explorer` is a
+    real, current, non-stale repo, not a rename/404 case, so no reference
+    swap was warranted despite that being the trigger condition this
+    verification was checking for.
+  - MINOR, not PATCH: unlike the 1.1.0→1.2.0 `services/duckdb.worker.js`
+    correction (fixing a reference to match reality, no new binding
+    constraint added), this adds a genuinely new pinned dependency version
+    to the "must stay mutually compatible" list — existing guidance
+    materially expanded, per this file's own versioning policy, not a
+    non-semantic wording fix.
+- Added principles: none
+- Added sections: none
+- Removed sections: none
+- Deferred TODOs: none
+-->
+
+<!--
+Sync Impact Report (2.2.0, superseded above)
 - Version change: 2.1.1 → 2.2.0
 - Modified principles: none
 - Modified sections:
@@ -314,8 +350,8 @@ requires amending this constitution first:
 | Geometry | DuckDB spatial extension (`ST_Read`, `ST_AsGeoJSON`) |
 
 Pinned peer dependency versions (must stay mutually compatible):
-`@deck.gl/core` and `@deck.gl/mapbox` `^9.0.0`, `@flowmap.gl/layers` `^9.3.0`,
-`maplibre-gl` `^4.7.1`.
+`@deck.gl/core`, `@deck.gl/layers`, and `@deck.gl/mapbox` `^9.0.0`,
+`@flowmap.gl/layers` `^9.3.0`, `maplibre-gl` `^4.7.1`.
 
 ## Development Workflow
 
@@ -362,4 +398,4 @@ forbidden config files, no Mapbox/Webpack/Web Storage usage. Any exception
 requires a
 prior amendment to this document, not a one-off waiver in review.
 
-**Version**: 2.2.0 | **Ratified**: 2026-08-19 | **Last Amended**: 2026-08-30
+**Version**: 2.3.0 | **Ratified**: 2026-08-19 | **Last Amended**: 2026-08-31
