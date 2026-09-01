@@ -194,15 +194,18 @@ APP-wftdm-dashboard/
     │   # 007-observable-plot-panel, and 008-sankey-panel each added one
     │   # more panel type — table/markdown/observable-plot/sankey are all
     │   # real now, completing the originally-listed six-panel-type set;
-    │   # flowmap/zonemap/graphic-walker remain the only panel types not
-    │   # yet built. scenario/scenarioManager.ts + manifestReader.ts are
+    │   # 010-flowmap-panel added the seventh and final one (this
+    │   # codebase's first real map — MapLibre + deck.gl + flowmap.gl).
+    │   # zonemap/graphic-walker remain the only panel types not yet
+    │   # built. scenario/scenarioManager.ts + manifestReader.ts are
     │   # also now real (009-scenario-manager, closing services/duckdb.ts's
     │   # registerScenario() zero-callers gap open since 001) — styles/ is
     │   # the only entry in this tree still not built (out of scope for
     │   # every feature to date). Anything that renders JSX is .tsx;
     │   # pure-logic modules with no JSX (scenarioManager.ts,
     │   # manifestReader.ts, panelQuery.ts, plotlyTraces.ts, tableLogic.ts,
-    │   # formatValue.ts, observablePlotEncoding.ts) stay .ts, same as
+    │   # formatValue.ts, observablePlotEncoding.ts, flowmapData.ts) stay
+    │   # .ts, same as
     │   # services/ and state/ (constitution v2.2.0, Development Workflow)
     ├── layout/
     │   ├── shell.tsx             # top-level app shell: NavBar + active tab
@@ -249,14 +252,25 @@ APP-wftdm-dashboard/
     │   │                         # resolution, split out of
     │   │                         # ObservablePlotPanel.tsx same reason as
     │   │                         # plotlyTraces.ts (007)
-    │   ├── SankeyPanel.tsx       # done (008-sankey-panel) — the sixth and
-    │   │                         # final originally-listed panel type
+    │   ├── SankeyPanel.tsx       # done (008-sankey-panel) — the sixth
+    │   │                         # panel type (flowmap below is the
+    │   │                         # seventh and final one, not this)
     │   ├── sankeyGraph.ts        # pure, DOM-free rows-to-graph transform +
     │   │                         # d3-sankey layout wrapper, split out of
     │   │                         # SankeyPanel.tsx same reason as
     │   │                         # plotlyTraces.ts (008)
     │   ├── sankeyColor.ts        # pure color_scheme name resolution (008)
-    │   ├── FlowMapPanel.tsx      # not built yet — MapLibre + MapboxOverlay + FlowmapLayer
+    │   ├── FlowMapPanel.tsx      # done (010-flowmap-panel) — the seventh
+    │   │                         # and final originally-listed panel
+    │   │                         # type, and this codebase's first real
+    │   │                         # map (MapLibre + MapboxOverlay +
+    │   │                         # FlowmapLayer, imperative mount-
+    │   │                         # lifetime instance — genuinely
+    │   │                         # different rendering model from every
+    │   │                         # prior chart panel type)
+    │   ├── flowmapData.ts        # pure, DOM-free rows-to-locations/flows
+    │   │                         # transform, split out of FlowMapPanel.tsx
+    │   │                         # same reason as sankeyGraph.ts (010)
     │   ├── ZoneMapPanel.tsx      # not built yet — MapLibre choropleth + GeoParquet
     │   └── GraphicWalkerPanel.tsx # not built yet
     ├── components/
@@ -293,7 +307,9 @@ APP-wftdm-dashboard/
 uv tool install git+https://github.com/WFRCAnalytics/APP-wftdm-dashboard
 
 wftdm-dashboard serve   # file server only — use with hosted web app
-wftdm-dashboard here    # self-contained: file server + embedded app (no internet)
+wftdm-dashboard here    # self-contained: file server + embedded app (intended no-internet;
+                        # one known, confirmed exception — see ARCHITECTURE.md's own caveat
+                        # on DuckDB-WASM's parquet-extension fetch)
 wftdm-dashboard init --scenario-dir <path>   # scaffold default summarize.yaml + dashboard-*.yaml if missing; never overwrites
 ```
 
@@ -468,19 +484,29 @@ getAll() → Object
 
 ## Map panels
 
-**FlowMapPanel** — copy `FlowLayer.jsx` from Commute Explorer and adapt its
-hooks to this app's `useFilterState`/`services/duckdb.ts` — do NOT strip
-React out; React is adopted (constitution v2.2.0), unlike when this note
-was first written. Lifecycle: create the overlay once, in a mount-only
-effect → `overlay.setProps()` on data update → `map.remove()` in that
-effect's cleanup, mirroring the Panel pattern's two-effect split above.
-Never recreate the MapLibre instance on data change.
+**FlowMapPanel** — done (`010-flowmap-panel`). Built following this
+note's own original plan: the `useFilterState`/`services/duckdb.ts`
+query/fetch chain reused directly, React fully in place (no stripping).
+Lifecycle as planned: `maplibregl.Map` + `MapboxOverlay` created once, in
+a mount-only effect → `overlay.setProps()` on data update → `map.remove()`
+in that effect's cleanup, mirroring the Panel pattern's two-effect split
+above — never recreated on data change. One real addition this note
+didn't anticipate: a `mapReady` React-state gate on the data-update
+effect (a bare `overlayRef.current` ref check has no mechanism to
+re-trigger a React effect once it becomes non-null late — found during
+that feature's own contract review, `specs/010-flowmap-panel/
+research.md` §11) — and a base map style that's a minimal, self-contained
+`background`-only `StyleSpecification` (no external tile/CDN dependency,
+`docs/GRAMMAR.md`'s `type: flowmap` grammar has no `style:`/`basemap:`
+key yet — real basemap tiles remain unresolved, deliberately out of that
+feature's scope).
 
-**ZoneMapPanel** — load zone GeoParquet once via DuckDB spatial, cache as module variable.
-Join metric rows to features in JS → `map.getSource('zones').setData(geojson)` on update.
+**ZoneMapPanel** — not yet built. Load zone GeoParquet once via DuckDB
+spatial, cache as module variable. Join metric rows to features in JS →
+`map.getSource('zones').setData(geojson)` on update.
 
 **Pinned versions (peer deps must match):**
-- `@deck.gl/core` + `@deck.gl/mapbox`: ^9.0.0
+- `@deck.gl/core` + `@deck.gl/layers` + `@deck.gl/mapbox`: ^9.0.0
 - `@flowmap.gl/layers`: ^9.3.0
 - `maplibre-gl`: ^4.7.1
 
@@ -573,7 +599,7 @@ export default defineConfig({
 
 ## Implementation order
 
-Status as of `009-scenario-manager` (re-audited against real
+Status as of `010-flowmap-panel` (re-audited against real
 files/git history — `git log --oneline`, `src/scenario/`, `src/panels/`
 and `src/panels/registry.tsx` on disk, `package.json` — not assumed from
 the prior list; see also the `004-panel-expand-dialog` session for the
@@ -641,9 +667,30 @@ first cross-reference this list was built from). ✅ done,
      (`color_scheme` name resolution). **This completes the
      originally-listed six-panel-type set** — no panel type in this list
      remains not-started
-9. ❌ `FlowMapPanel` + `ZoneMapPanel` (map panels — most complex) — not
-   started; `@deck.gl/*`/`@flowmap.gl/layers`/`maplibre-gl` aren't in
-   `package.json` yet either
+9. `FlowMapPanel` + `ZoneMapPanel` (map panels — most complex):
+   - ✅ `FlowMapPanel` — done (`010-flowmap-panel`); `maplibre-gl` +
+     `@deck.gl/core`/`@deck.gl/layers`/`@deck.gl/mapbox` +
+     `@flowmap.gl/layers` added to `package.json` (no new
+     devDependencies — every package ships its own types, unlike
+     `d3-sankey`); split out `panels/flowmapData.ts` (pure, DOM-free
+     rows-to-locations/flows transform, same reason `sankeyGraph.ts` was
+     split out of `SankeyPanel.tsx`). This codebase's first real map —
+     genuinely different rendering model from every prior panel type: the
+     `maplibregl.Map`/`MapboxOverlay` instances are imperative,
+     mount-lifetime objects (created once, `overlay.setProps()` on data
+     change, `map.remove()` on unmount — `docs/SPEC.md`'s own documented
+     wiring), not rebuilt per-render the way every chart panel type
+     before it works. Also required a `vite.config.ts` `manualChunks`
+     addition (a `maps` chunk) — the first panel-type feature since
+     `003`'s own Plotly chunk to need a build-config change. **This
+     completes the originally-listed seven-panel-type set** — `sankey`
+     was mistakenly described as "sixth and final" in `008`'s own
+     completion note; flowmap is the actual final one.
+   - ❌ `ZoneMapPanel` — not started; needs GeoParquet/DuckDB-spatial
+     support `010-flowmap-panel` deliberately did not touch (its own
+     `docs/GRAMMAR.md` grammar correction replaced a live spatial-join
+     design with plain lat/lon field-mapping columns specifically to
+     avoid needing this — see that file's own inline correction note)
 10. ❌ `GraphicWalkerPanel` (Explore tab) — not started;
     `@kanaries/graphic-walker` isn't in `package.json` yet either
 11. ✅ `src/styles/tokens.css` (Tailwind CSS variables) — done

@@ -297,6 +297,24 @@ Highway assignment validation. Observed data joined at query time from
 | O-D desire lines | `od_flows.parquet` | — |
 | Home-workplace flows (county-to-county) | `workplace_od_flows.parquet` | — |
 
+**`od_flows.parquet`/`workplace_od_flows.parquet` need zone-centroid
+lat/lon joined in at post-processor build time, not left for the
+browser to resolve.** `docs/GRAMMAR.md`'s `type: flowmap` grammar reads
+origin/destination coordinates as plain columns already present on each
+row (`origin_lat`/`origin_lon`/`dest_lat`/`dest_lon`, author-configurable
+field names) — corrected there after finding neither real WFRC reference
+app (`APP-Commute-Explorer`, `APP-WFRC-Commute-Patterns`) does a live
+GeoParquet/DuckDB-spatial zone join in the browser; both simply carry
+resolved lat/lon on the flow data itself. Whenever the actual Python
+post-processor (`summarize.py`, still not built — `python/
+wftdm_dashboard/` currently holds only `__init__.py`) is implemented,
+its `sql_fragments` for these two metrics will need to join each
+origin/destination TAZ (or district) to a zone-centroid lookup as part
+of that offline build, the same "all geometry conversion happens
+offline" split every other geometry-bearing Parquet file in this system
+already follows — flagged here now so the expectation isn't lost between
+this correction and whenever that post-processor work actually happens.
+
 ### Land Use / Socioeconomics
 
 Not a submodel — this is zone-level input data (`land_use.csv`), displayed for

@@ -130,6 +130,54 @@ TOUR_MODE_TO_TRIP_MODE_ROWS = [
 ]
 TOUR_MODE_TO_TRIP_MODE_COLUMNS = ["tour_mode", "trip_mode", "trips", "purpose"]
 
+# 010-flowmap-panel: mirrors docs/GRAMMAR.md's own corrected flowmap
+# worked example (orig_taz/orig_lat/orig_lon/dest_taz/dest_lat/dest_lon/
+# trips — the boundaries/boundaries_id keys this grammar originally had
+# were removed this session; see that file's own inline correction note)
+# — same fixture-design discipline as TOUR_MODE_TO_TRIP_MODE_ROWS above
+# (research.md §4/§5, tasks.md T003). Six distinct TAZ locations spread
+# around a rough Wasatch Front layout (matches the grammar's own
+# [-111.89, 40.76] center example), deliberately covering:
+#   - a duplicate (orig_taz, dest_taz) pair — (100, 300) appears twice
+#     (120 + 80 trips) — the flowmapData.ts summing-coverage vehicle
+#   - one non-positive trips row (400 -> 100, HBW) — the
+#     excludedCount/console.warn fixture vehicle, same role as
+#     TOUR_MODE_TO_TRIP_MODE_ROWS's own Non-Motorized -> SOV row
+#   - one row with a missing origin coordinate (orig_lat: None,
+#     TAZ 600 -> 100) — excluded for a different reason than the
+#     non-positive row, exercising flowmapData.ts's coordinate-validity
+#     check specifically, not just the value<=0 check
+#   - a purpose column (HBW/NHB) varied enough that switching the global
+#     Trip Purpose filter visibly changes which rows are included —
+#     purpose is NOT part of buildFlowmapData's own flow-aggregation key,
+#     so an 'all'-purpose query legitimately merges an HBW and an NHB row
+#     sharing the same (origin, destination) pair; only the upstream SQL
+#     filter narrows this, mirroring 008-sankey-panel's own precedent
+OD_FLOWS_ROWS = [
+    # purpose: HBW
+    (100, 40.76, -111.89, 200, 40.70, -111.85, 500, "HBW"),  # largest flow
+    (100, 40.76, -111.89, 300, 40.85, -111.90, 120, "HBW"),  # duplicate pair (1/2)
+    (100, 40.76, -111.89, 300, 40.85, -111.90, 80, "HBW"),  # duplicate pair (2/2) -> sums to 200
+    (200, 40.70, -111.85, 400, 40.60, -111.75, 60, "HBW"),
+    (300, 40.85, -111.90, 500, 40.75, -112.00, 40, "HBW"),
+    (400, 40.60, -111.75, 100, 40.76, -111.89, -10, "HBW"),  # non-positive -> excluded
+    (500, 40.75, -112.00, 200, 40.70, -111.85, 30, "HBW"),
+    (600, None, -111.80, 100, 40.76, -111.89, 25, "HBW"),  # missing orig_lat -> excluded
+    # purpose: NHB
+    (100, 40.76, -111.89, 200, 40.70, -111.85, 90, "NHB"),
+    (300, 40.85, -111.90, 400, 40.60, -111.75, 50, "NHB"),
+]
+OD_FLOWS_COLUMNS = [
+    "orig_taz",
+    "orig_lat",
+    "orig_lon",
+    "dest_taz",
+    "dest_lat",
+    "dest_lon",
+    "trips",
+    "purpose",
+]
+
 
 def write_parquet(con, dest: Path, columns: list[str], rows: list[tuple]) -> None:
     dest.parent.mkdir(parents=True, exist_ok=True)
@@ -144,6 +192,13 @@ def write_parquet(con, dest: Path, columns: list[str], rows: list[tuple]) -> Non
 
 
 def _sql_literal(v):
+    # 010-flowmap-panel: OD_FLOWS_ROWS' missing-coordinate row (TAZ 600's
+    # orig_lat) is the first fixture row in this generator to need a real
+    # NULL literal — every prior fixture table's rows were fully populated.
+    # Without this, str(None) renders the Python literal text "None" into
+    # the SQL VALUES clause, which is not valid SQL.
+    if v is None:
+        return "NULL"
     if isinstance(v, str):
         return "'" + v.replace("'", "''") + "'"
     if isinstance(v, float):
@@ -242,6 +297,12 @@ def main():
         TOUR_MODE_TO_TRIP_MODE_COLUMNS,
         TOUR_MODE_TO_TRIP_MODE_ROWS,
     )
+    write_parquet(
+        con,
+        good_summary / "od_flows.parquet",
+        OD_FLOWS_COLUMNS,
+        OD_FLOWS_ROWS,
+    )
     write_summary_index(
         good_summary,
         [
@@ -250,6 +311,7 @@ def main():
             "screenlines.parquet",
             "trip_destination_dist.parquet",
             "tour_mode_to_trip_mode.parquet",
+            "od_flows.parquet",
         ],
     )
     write_manifest(

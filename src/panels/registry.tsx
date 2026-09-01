@@ -1,5 +1,6 @@
 import type { ComponentType } from 'react'
 
+import { FlowMapPanel } from '@/panels/FlowMapPanel'
 import { MarkdownPanel } from '@/panels/MarkdownPanel'
 import { ObservablePlotPanel } from '@/panels/ObservablePlotPanel'
 import { PlotlyPanel } from '@/panels/PlotlyPanel'
@@ -29,4 +30,5 @@ export const registry: Record<string, ComponentType<PanelProps<any>>> = {
   markdown: MarkdownPanel,
   'observable-plot': ObservablePlotPanel,
   sankey: SankeyPanel,
+  flowmap: FlowMapPanel,
 }

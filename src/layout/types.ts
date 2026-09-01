@@ -179,9 +179,42 @@ export interface SankeyPanelConfig extends DataBoundPanelConfigBase {
 }
 
 /**
- * Any other panel type (flowmap, zonemap, graphic-walker — still out of
- * scope, still deferred; sankey is no longer one of these as of
- * 008-sankey-panel) still parses as this base shape rather than being
+ * The seventh panel type, and the first to render a real map —
+ * 010-flowmap-panel. Extends DataBoundPanelConfigBase like every other
+ * data-bound panel type; docs/GRAMMAR.md's type: flowmap grammar always
+ * queries a metric. origin/origin_lat/origin_lon/destination/dest_lat/
+ * dest_lon/value are author-configurable field-mapping keys naming
+ * literal columns already present in the queried result set — the same
+ * author-names-the-field approach SankeyPanelConfig's source/target/value
+ * already uses. This grammar was corrected during this feature's own
+ * spec/plan phase: an earlier boundaries/boundaries_id key pair implying
+ * a live GeoParquet/DuckDB-spatial zone join in the browser was removed
+ * after neither real WFRC reference app (APP-Commute-Explorer,
+ * APP-WFRC-Commute-Patterns) turned out to do that — both simply carry
+ * resolved lat/lon on the flow data itself (spec.md's own Grammar
+ * findings #2).
+ */
+export interface FlowMapPanelConfig extends DataBoundPanelConfigBase {
+  type: 'flowmap'
+  origin: string
+  origin_lat: string
+  origin_lon: string
+  destination: string
+  dest_lat: string
+  dest_lon: string
+  value: string
+  clustering?: boolean
+  clustering_auto?: boolean
+  animation?: boolean
+  max_flows?: number
+  center?: [number, number]
+  zoom?: number
+}
+
+/**
+ * Any other panel type (zonemap, graphic-walker — still out of scope,
+ * still deferred; flowmap is no longer one of these as of
+ * 010-flowmap-panel) still parses as this base shape rather than being
  * dropped or erroring at parse time — the registry lookup
  * (panels/registry.tsx), not the parser, is what surfaces an
  * unrecognized-type error, keeping "parse" and "renderable-by-this-app" as
@@ -202,6 +235,7 @@ export type PanelConfig =
   | MarkdownPanelConfig
   | ObservablePlotPanelConfig
   | SankeyPanelConfig
+  | FlowMapPanelConfig
   | UnknownPanelConfig
 
 export interface DashboardTabConfig {

@@ -28,6 +28,21 @@ export default defineConfig({
           // documented vite.config.js convention, unimplemented until now
           // since nothing depended on it before this feature.
           if (id.includes('plotly')) return 'plotly'
+          // 010-flowmap-panel: this codebase's first real map — maplibre-gl
+          // + the whole deck.gl/flowmap.gl/luma.gl family are all large,
+          // previously-absent libraries, split into their own chunk for the
+          // same reason plotly got one above.
+          if (
+            id.includes('maplibre-gl') ||
+            id.includes('@deck.gl') ||
+            id.includes('@flowmap.gl') ||
+            id.includes('@luma.gl') ||
+            id.includes('@math.gl') ||
+            id.includes('@loaders.gl') ||
+            id.includes('@probe.gl')
+          ) {
+            return 'maps'
+          }
         },
       },
     },

@@ -1017,18 +1017,47 @@ Sortable, paginated data table. Supports inline column expressions and color sca
 ### `type: flowmap`
 
 flowmap.gl on MapLibre — O-D desire lines with zoom-adaptive clustering.
-O-D data must be pre-aggregated in the Parquet file — no raw trip-level data.
+O-D data must be pre-aggregated in the Parquet file, with origin/
+destination coordinates already resolved to lat/lon columns on each row
+— no raw trip-level data, and no live GeoParquet/DuckDB-spatial
+zone-boundary join in the browser. Zone-centroid resolution is an
+offline concern, done once when the metric Parquet is built (see
+`docs/ARCHITECTURE.md`'s "all format conversion... happens offline —
+the browser only ever reads Parquet" principle) — the same offline/
+online split every other geometry conversion in this system already
+follows, not a new exception carved out for flowmap.
+
+**Correction (verified against two real production WFRC reference
+apps — `APP-Commute-Explorer`'s `FlowLayer.jsx` and
+`APP-WFRC-Commute-Patterns`' `map.js`, both fetched and read directly,
+not assumed): neither resolves zone geometry via a live GeoParquet join
+in the browser.** Both construct `FlowmapLayer`'s `locations` from
+lat/lon values already present as plain columns on each flow row
+(`f.home_lat`/`f.home_lon`/`f.work_lat`/`f.work_lon` in
+`APP-WFRC-Commute-Patterns`; the equivalent `loc.lat`/`loc.lon` shape in
+`APP-Commute-Explorer`). An earlier version of this grammar had
+`boundaries`/`boundaries_id` keys describing a live GeoParquet zone
+join instead — that design was never actually built this way in either
+real reference implementation, so it's corrected here to match the
+proven pattern rather than left describing an unbuilt, untested
+alternative. Field names below are author-configurable, matching the
+established field-mapping convention every other panel type already
+uses (`TableColumnConfig.field`, `SankeyPanelConfig`'s
+`source`/`target`/`value`, `ObservablePlotPanelConfig`'s
+`x`/`y`/`fill`/`stroke`) — not a new binding shape.
 
 ```yaml
-- type:    flowmap
-  title:   Trip Distribution Desire Lines
-  metric:  od_flows
-  height:  500
-  origin:      orig_taz        # column in metric for origin zone ID
-  destination: dest_taz        # column for destination zone ID
+- type:        flowmap
+  title:       Trip Distribution Desire Lines
+  metric:      od_flows
+  height:      500
+  origin:      orig_taz        # column: origin zone id/name (location id)
+  origin_lat:  orig_lat        # column: origin latitude
+  origin_lon:  orig_lon        # column: origin longitude
+  destination: dest_taz        # column: destination zone id/name
+  dest_lat:    dest_lat        # column: destination latitude
+  dest_lon:    dest_lon        # column: destination longitude
   value:       trips           # column for flow magnitude
-  boundaries:     taz.geoparquet   # GeoParquet zone geometry
-  boundaries_id:  TAZ_ID           # join column in GeoParquet
   clustering:      true
   clustering_auto: true
   animation:       false

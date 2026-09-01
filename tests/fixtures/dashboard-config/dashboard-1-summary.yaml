@@ -378,3 +378,57 @@ layout:
       value: c
       height: 400
       width: 1.0
+
+  # 010-flowmap-panel — the seventh and final originally-listed panel
+  # type, and this codebase's first real map. od_flows is the corrected
+  # docs/GRAMMAR.md type: flowmap worked example's metric name;
+  # origin/origin_lat/origin_lon/destination/dest_lat/dest_lon/value map
+  # to its orig_taz/orig_lat/orig_lon/dest_taz/dest_lat/dest_lon/trips
+  # columns verbatim (spec.md's own Grammar findings #2). No title here
+  # shares a prefix with any pre-existing panel title in this file
+  # (checked against the full list before choosing these — same
+  # collision-avoidance discipline every prior panel-type feature's own
+  # fixture additions have required since 007).
+  row_flowmap:
+    # Primary US1/US2 vehicle: direct-aggregation-match assertion
+    # (including the duplicate (100, 300) pair summing to 200 — the
+    # single largest post-aggregation flow, so real-world stakes are
+    # visible in the rendered diagram, not just a unit test), global
+    # filter reactivity (purpose HBW/NHB), the excludedCount/console.warn
+    # signal (one non-positive-trips row, one missing-coordinate row),
+    # and 004 expand/resize correctness including the relocation-survival
+    # and mapReady-race tests.
+    - type: flowmap
+      title: Flow Map Trip Distribution Desire Lines
+      metric: od_flows
+      scenario: good_scenario
+      origin: orig_taz
+      origin_lat: orig_lat
+      origin_lon: orig_lon
+      destination: dest_taz
+      dest_lat: dest_lat
+      dest_lon: dest_lon
+      value: trips
+      clustering: true
+      clustering_auto: true
+      filter:
+        purpose: $filters.purpose
+      height: 500
+      width: 1.0
+
+    # Deliberately broken — points at a metric no scenario publishes.
+    # Same convention as every other panel type's own "Broken Panel
+    # (intentional)" entries.
+    - type: flowmap
+      title: Flow Map Broken Panel (intentional)
+      metric: nonexistent_flowmap_metric
+      scenario: good_scenario
+      origin: a
+      origin_lat: b
+      origin_lon: c
+      destination: d
+      dest_lat: e
+      dest_lon: f
+      value: g
+      height: 500
+      width: 1.0
