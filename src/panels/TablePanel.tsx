@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Search, SearchX, Table as TableIcon } from 'lucide-react'
 
 import { query } from '@/services/duckdb'
 import * as sqlExpander from '@/services/sqlExpander'
 import * as filterState from '@/state/filterState'
-import * as appState from '@/state/appState'
 import { useFilterState } from '@/hooks/useFilterState'
+import { useActiveScenarios } from '@/hooks/useActiveScenarios'
 import {
   buildPanelQuery,
   resolveActiveScenarios,
@@ -40,23 +40,47 @@ export function TablePanel({ config }: { config: TablePanelConfig }) {
   // comment on why this replaced an inline config.filter.replace(...) call.
   const filterIds = extractGlobalFilterIds(config.filter)
   const filters = useFilterState(filterIds.length ? filterIds : ALL_FILTERS)
+  // 009-scenario-manager (FR-008): reactive active-scenario set — see
+  // ValueBoxPanel.tsx's own comment. Deliberately does NOT reset
+  // sortState/searchTerm/currentPage itself (unlike a genuine new result
+  // set below) — FR-008 requires exactly this: local UI state MUST survive
+  // a scenario-activation-triggered refetch.
+  const activeScenarioNames = useActiveScenarios()
   const [rows, setRows] = useState<Record<string, unknown>[]>([])
   const [status, setStatus] = useState<'loading' | 'ready' | 'empty' | 'error'>('loading')
   const [sortState, setSortState] = useState<SortState>(() => initialSort(config))
   const [searchTerm, setSearchTerm] = useState('')
   const [currentPage, setCurrentPage] = useState(0)
+  // 009-scenario-manager (FR-008): tracks the (config, filters) pair the
+  // three-way reset below was last computed against, so the reset only
+  // fires for a genuine content change (a real filter/config-driven
+  // refetch, where the underlying row set legitimately changed shape) —
+  // never for a scenario-activation-triggered refetch alone, where
+  // activeScenarioNames changed but config/filters didn't. Without this
+  // guard, adding activeScenarioNames to the effect's dependency array
+  // below (required for FR-008's "data shows up" half) would silently
+  // reintroduce the very state-loss FR-008 exists to prevent — this
+  // panel's own sort/search/page state is FR-008's own named example.
+  const lastContentKeyRef = useRef<{ config: TablePanelConfig; filters: typeof filters } | null>(
+    null,
+  )
 
-  // Data fetch — re-runs on config/filters change, identical chain to
-  // ValueBoxPanel.tsx/PlotlyPanel.tsx (contracts/panel-query.md).
+  // Data fetch — re-runs on config/filters/activeScenarioNames change,
+  // identical chain to ValueBoxPanel.tsx/PlotlyPanel.tsx
+  // (contracts/panel-query.md), but see lastContentKeyRef above for why
+  // the reset below is conditional here and not in those simpler panels.
   useEffect(() => {
     let cancelled = false
     setStatus('loading')
 
+    const isContentChange =
+      lastContentKeyRef.current === null ||
+      lastContentKeyRef.current.config !== config ||
+      lastContentKeyRef.current.filters !== filters
+    lastContentKeyRef.current = { config, filters }
+
     const template = buildPanelQuery(config, filters)
-    const activeScenarios = resolveActiveScenarios(
-      config,
-      appState.getActive().map((s) => s.name),
-    )
+    const activeScenarios = resolveActiveScenarios(config, activeScenarioNames)
     const sql = sqlExpander.expand(template, EMPTY_SUMMARIZE_CONFIG, filterState, activeScenarios)
 
     query(sql)
@@ -72,10 +96,14 @@ export function TablePanel({ config }: { config: TablePanelConfig }) {
         // all reset together, not a subset of the three
         // (contracts/table-panel.md's three-way reset — every client-only
         // view state resets across a real refetch; sortState reverts to
-        // config.sort, not whatever the user last clicked).
-        setSortState(initialSort(config))
-        setSearchTerm('')
-        setCurrentPage(0)
+        // config.sort, not whatever the user last clicked). Gated on
+        // isContentChange (FR-008) — a scenario-activation-only refetch
+        // must not reset these even though it does re-fetch.
+        if (isContentChange) {
+          setSortState(initialSort(config))
+          setSearchTerm('')
+          setCurrentPage(0)
+        }
       })
       .catch(() => {
         if (!cancelled) setStatus('error')
@@ -84,7 +112,7 @@ export function TablePanel({ config }: { config: TablePanelConfig }) {
     return () => {
       cancelled = true
     }
-  }, [config, filters])
+  }, [config, filters, activeScenarioNames])
 
   if (status === 'loading') {
     return <div className="h-40 animate-pulse rounded-md bg-muted" />

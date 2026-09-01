@@ -5,8 +5,8 @@ import * as Plotly from 'plotly.js-dist-min'
 import { query } from '@/services/duckdb'
 import * as sqlExpander from '@/services/sqlExpander'
 import * as filterState from '@/state/filterState'
-import * as appState from '@/state/appState'
 import { useFilterState } from '@/hooks/useFilterState'
+import { useActiveScenarios } from '@/hooks/useActiveScenarios'
 import {
   buildPanelQuery,
   resolveActiveScenarios,
@@ -28,6 +28,10 @@ export function PlotlyPanel({ config }: { config: PlotlyPanelConfig }) {
   // comment on why this replaced an inline config.filter.replace(...) call.
   const filterIds = extractGlobalFilterIds(config.filter)
   const filters = useFilterState(filterIds.length ? filterIds : ALL_FILTERS)
+  // 009-scenario-manager (FR-008): reactive active-scenario set — see
+  // ValueBoxPanel.tsx's own comment on why this replaced a direct
+  // appState.getActive() read inside the effect below.
+  const activeScenarioNames = useActiveScenarios()
   const containerRef = useRef<HTMLDivElement>(null)
   const [status, setStatus] = useState<'loading' | 'ready' | 'empty' | 'error'>('loading')
 
@@ -39,10 +43,7 @@ export function PlotlyPanel({ config }: { config: PlotlyPanelConfig }) {
     setStatus('loading')
 
     const template = buildPanelQuery(config, filters)
-    const activeScenarios = resolveActiveScenarios(
-      config,
-      appState.getActive().map((s) => s.name),
-    )
+    const activeScenarios = resolveActiveScenarios(config, activeScenarioNames)
     // Intentionally empty, not a stub — panel queries only ever use
     // $scenario/$filters, never $mappings/$bins/$sql (research.md §2).
     const sql = sqlExpander.expand(template, EMPTY_SUMMARIZE_CONFIG, filterState, activeScenarios)
@@ -77,7 +78,7 @@ export function PlotlyPanel({ config }: { config: PlotlyPanelConfig }) {
     return () => {
       cancelled = true
     }
-  }, [config, filters])
+  }, [config, filters, activeScenarioNames])
 
   // ResizeObserver, not just Plotly's own `responsive: true` (which only
   // reacts to window resize events): Plotly.react() above runs while this

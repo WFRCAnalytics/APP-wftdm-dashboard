@@ -9,6 +9,21 @@ export interface DashboardConfig {
 }
 
 /**
+ * Parses `text` as YAML, throwing an error naming `sourceLabel` on
+ * failure. Factored out of loadConfig (009-scenario-manager research.md
+ * §4) so scenario/manifestReader.ts's handle-based reading path can share
+ * the same parse-with-context behavior instead of duplicating it.
+ */
+export function parseYAMLText(text: string, sourceLabel: string): unknown {
+  try {
+    return parseYAML(text)
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    throw new Error(`parseYAMLText: malformed YAML at ${sourceLabel}: ${message}`)
+  }
+}
+
+/**
  * Fetches `url` at call time and parses it with js-yaml.
  */
 export async function loadConfig(url: string): Promise<DashboardConfig> {
@@ -19,7 +34,7 @@ export async function loadConfig(url: string): Promise<DashboardConfig> {
   const text = await res.text()
   let raw: unknown
   try {
-    raw = parseYAML(text)
+    raw = parseYAMLText(text, url)
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     throw new Error(`loadConfig: malformed YAML at ${url}: ${message}`)

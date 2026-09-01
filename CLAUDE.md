@@ -158,7 +158,14 @@ APP-wftdm-dashboard/
 └── src/                        # Dashboard application source (JS app only) — TypeScript (constitution v2.0.0)
     ├── main.ts                 # boot sequence
     ├── state/
-    │   ├── appState.ts         # loaded scenarios registry
+    │   ├── appState.ts         # loaded scenarios registry — gained a
+    │   │                       # subscribe()/notify() pub/sub (009,
+    │   │                       # mirroring filterState.ts's own shape):
+    │   │                       # FR-008 needed panels to react to a
+    │   │                       # newly-activated local scenario without
+    │   │                       # losing their own local UI state, which
+    │   │                       # a naive remount-based fix would have
+    │   │                       # broken (research.md §1)
     │   └── filterState.ts      # global filters + pub/sub
     ├── services/
     │   ├── duckdb.ts           # DuckDB-WASM API — owns the sole AsyncDuckDB
@@ -172,18 +179,27 @@ APP-wftdm-dashboard/
     │   ├── sqlExpander.ts       # expand $mappings/$bins/$sql/$filters/$scenario
     │   └── scenarioDiscovery.ts # register observed/ + public/scenarios/ at startup
     ├── hooks/
-    │   └── useFilterState.ts   # wraps state/filterState.ts with
-    │                           # useSyncExternalStore (constitution v2.2.0)
+    │   ├── useFilterState.ts   # wraps state/filterState.ts with
+    │   │                       # useSyncExternalStore (constitution v2.2.0)
+    │   └── useActiveScenarios.ts # done (009-scenario-manager) — same
+    │                           # useSyncExternalStore shape, wrapping
+    │                           # appState.ts's new subscribe() instead;
+    │                           # every data-bound panel type consumes
+    │                           # this now, not appState.getActive()
+    │                           # directly (research.md §1)
     │   # layout/ and panels/ below are now real (003-dashboard-shell-
     │   # navigation built the shell/nav/panel-card layer and the first two
     │   # panel types; 004-panel-expand-dialog added the generic expand
-    │   # mechanism on top; 005-table-panel, 006-markdown-panel, and
-    │   # 007-observable-plot-panel each added one more panel type —
-    │   # table/markdown/observable-plot are now real, sankey/flowmap/
-    │   # zonemap/graphic-walker remain the only panel types not yet
-    │   # built). scenario/scenarioManager.ts and styles/ are still not
-    │   # built yet (out of scope for every feature so far) — left as
-    │   # originally sketched. Anything that renders JSX is .tsx;
+    │   # mechanism on top; 005-table-panel, 006-markdown-panel,
+    │   # 007-observable-plot-panel, and 008-sankey-panel each added one
+    │   # more panel type — table/markdown/observable-plot/sankey are all
+    │   # real now, completing the originally-listed six-panel-type set;
+    │   # flowmap/zonemap/graphic-walker remain the only panel types not
+    │   # yet built. scenario/scenarioManager.ts + manifestReader.ts are
+    │   # also now real (009-scenario-manager, closing services/duckdb.ts's
+    │   # registerScenario() zero-callers gap open since 001) — styles/ is
+    │   # the only entry in this tree still not built (out of scope for
+    │   # every feature to date). Anything that renders JSX is .tsx;
     │   # pure-logic modules with no JSX (scenarioManager.ts,
     │   # manifestReader.ts, panelQuery.ts, plotlyTraces.ts, tableLogic.ts,
     │   # formatValue.ts, observablePlotEncoding.ts) stay .ts, same as
@@ -203,6 +219,12 @@ APP-wftdm-dashboard/
     │   │                         # mounted state — research.md §1b)
     │   ├── types.ts              # typed DashboardTabConfig/PanelConfig,
     │   │                         # parsed from yamlLoader's DashboardConfig.raw
+    │   ├── scenarioLoader.tsx    # done (009-scenario-manager) — the
+    │   │                         # "Load Local Scenario" trigger +
+    │   │                         # loaded-scenario list, mounted in
+    │   │                         # shell.tsx's header alongside NavBar;
+    │   │                         # hidden entirely in LOCAL deployment
+    │   │                         # mode (hostname === 'localhost')
     │   └── sidebar.tsx           # not built yet — no feature has needed it
     ├── panels/
     │   ├── registry.tsx          # type -> component map: valuebox, plotly
@@ -241,9 +263,22 @@ APP-wftdm-dashboard/
     │   └── ui/                   # shadcn-pattern primitives (002-design-
     │                              # tokens onward): button.tsx, card.tsx,
     │                              # tabs.tsx, tooltip.tsx, dialog.tsx (004)
-    ├── scenario/
-    │   ├── scenarioManager.ts  # showDirectoryPicker + view registration
-    │   └── manifestReader.ts
+    ├── scenario/                # done (009-scenario-manager) — closes
+    │   │                        # services/duckdb.ts's registerScenario()
+    │   │                        # zero-callers gap, open since 001
+    │   ├── scenarioManager.ts  # showDirectoryPicker flow, collision
+    │   │                       # handling (FR-006), isLocalDeployment()/
+    │   │                       # supportsLocalFolderLoading()
+    │   ├── manifestReader.ts   # reads manifest.yaml from a
+    │   │                       # FileSystemDirectoryHandle directly (not
+    │   │                       # a URL fetch) — yamlLoader.ts's
+    │   │                       # loadConfig/loadManifest are fetch-only
+    │   └── fileSystemAccess.d.ts # ambient Window.showDirectoryPicker()
+    │                           # declaration — TypeScript's bundled DOM
+    │                           # lib declares FileSystemDirectoryHandle
+    │                           # itself (for OPFS) but not this entry
+    │                           # point (confirmed against the installed
+    │                           # TS version directly, not assumed)
     └── styles/
         ├── global.css
         ├── layout.css
@@ -538,12 +573,12 @@ export default defineConfig({
 
 ## Implementation order
 
-Status as of `008-sankey-panel` (re-audited against real
-files/git history — `git log --oneline`, `src/panels/` and
-`src/panels/registry.tsx` on disk, `package.json` — not assumed from the
-prior list; see also the `004-panel-expand-dialog` session for the first
-cross-reference this list was built from). ✅ done, 🟡 partial/started,
-❌ not started, ⏸️ explicitly deferred.
+Status as of `009-scenario-manager` (re-audited against real
+files/git history — `git log --oneline`, `src/scenario/`, `src/panels/`
+and `src/panels/registry.tsx` on disk, `package.json` — not assumed from
+the prior list; see also the `004-panel-expand-dialog` session for the
+first cross-reference this list was built from). ✅ done,
+🟡 partial/started, ❌ not started, ⏸️ explicitly deferred.
 
 1. ✅ `vite.config.ts`, `index.html`, `package.json` + postinstall for
    coi-serviceworker — done (`001-data-state-layer`)
@@ -560,17 +595,27 @@ cross-reference this list was built from). ✅ done, 🟡 partial/started,
 6. ✅ `layout/shell.tsx`, `navBar.tsx`, `panelCard.tsx`,
    `dashboardRenderer.tsx` — done (`003-dashboard-shell-navigation`);
    `panelCard.tsx` later extended, not rebuilt, by `004` (expand trigger)
-7. ⏸️ `scenario/scenarioManager.ts` — folder picker + view registration —
-   **explicitly deferred, not an oversight**. `services/duckdb.ts`'s
-   `registerScenario()` (item 2) has existed since `001` as a receiving
-   API with **zero callers** — no feature so far (`001` through `008`)
-   has built the picker UI that would call it. The app's actual
-   scenario-loading path today is entirely `scenarioDiscovery.ts`'s
-   auto-registration of `public/observed/`/`public/scenarios/*` (item 3),
-   which is real and working. Manual/interactive scenario loading via a
-   folder picker remains a known, standing gap, carried forward
-   undecided by every feature to date — not forgotten, just never yet
-   in scope.
+7. ✅ `scenario/scenarioManager.ts` + `manifestReader.ts` — folder picker
+   + view registration — done (`009-scenario-manager`), closing a gap
+   carried forward undecided since `001`: `services/duckdb.ts`'s
+   `registerScenario()` (item 2) had existed since `001` as a receiving
+   API with **zero callers** until this feature built the picker UI that
+   calls it (`layout/scenarioLoader.tsx`, mounted in `shell.tsx`'s
+   header). Hidden entirely in `LOCAL` deployment mode
+   (`hostname === 'localhost'`) — that mode has its own file-serving path
+   via `scenarioDiscovery.ts` already (item 3), which remains unchanged
+   and continues to handle `public/observed/`/`public/scenarios/*`
+   auto-registration. The one real cross-cutting piece this feature
+   needed beyond the picker itself: `appState.ts` gained a `subscribe()`
+   mechanism (item 5's file, mirroring `filterState.ts`'s own shape) so a
+   newly-activated local scenario refreshes already-rendered panels'
+   data without discarding any panel's own local UI state — chosen over
+   a cheaper remount specifically because remount would have regressed
+   `004`'s and `007`'s own state-preservation guarantees (spec.md
+   FR-008, research.md §1). Every data-bound panel type (item 8) now
+   consumes the active-scenario set via the new `hooks/
+   useActiveScenarios.ts` hook instead of reading `appState.getActive()`
+   directly.
 8. Panels — per-type status, list kept at its original six, not shrunk:
    - ✅ `ValueBoxPanel` — done (`003-dashboard-shell-navigation`)
    - ✅ `PlotlyPanel` — done (`003-dashboard-shell-navigation`)

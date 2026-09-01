@@ -5,8 +5,8 @@ import { ChartNoAxesColumn } from 'lucide-react'
 import { query, distinctValues } from '@/services/duckdb'
 import * as sqlExpander from '@/services/sqlExpander'
 import * as filterState from '@/state/filterState'
-import * as appState from '@/state/appState'
 import { useFilterState } from '@/hooks/useFilterState'
+import { useActiveScenarios } from '@/hooks/useActiveScenarios'
 import {
   buildPanelQuery,
   resolveActiveScenarios,
@@ -58,11 +58,13 @@ export function ObservablePlotPanel({ config }: { config: ObservablePlotPanelCon
   )
   const inputState = { get: (id: string) => inputValues[id] }
 
-  // Read once per render, same as PlotlyPanel.tsx's own inline reads of
-  // appState — a synchronous store read, not an async fetch. Computed here
-  // (not only inside the fetch effect below) because PanelLocalInput also
-  // needs `view` for its own options/bounds query (research.md §9).
-  const activeScenarios = appState.getActive().map((s) => s.name)
+  // 009-scenario-manager (FR-008): reactive active-scenario set, read via
+  // the useActiveScenarios() hook rather than a direct appState.getActive()
+  // call — see ValueBoxPanel.tsx's own comment. Computed here (not only
+  // inside the fetch effect below) because PanelLocalInput also needs
+  // `view` for its own options/bounds query (research.md §9 of
+  // 007-observable-plot-panel).
+  const activeScenarios = useActiveScenarios()
   const view = resolveInputOptionsView(config, activeScenarios)
 
   const containerRef = useRef<HTMLDivElement>(null)
@@ -104,8 +106,14 @@ export function ObservablePlotPanel({ config }: { config: ObservablePlotPanelCon
     return () => {
       cancelled = true
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [config, filters, inputValues])
+    // 009-scenario-manager: activeScenarios is now genuinely in this
+    // effect's dependency array (previously excluded via an
+    // eslint-disable-next-line — appState.getActive() was read
+    // synchronously above but not tracked as a dependency at all; the
+    // useActiveScenarios() hook above provides a real, stable-until-
+    // changed reference, so exhaustive-deps is satisfied honestly now,
+    // not suppressed).
+  }, [config, filters, inputValues, activeScenarios])
 
   // Render-and-swap — runs when `rows`/`status` changes AND on every
   // ResizeObserver-observed container resize (research.md §5: Plot.plot()

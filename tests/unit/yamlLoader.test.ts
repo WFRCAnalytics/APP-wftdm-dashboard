@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { loadConfig, loadManifest } from '../../src/services/yamlLoader.ts'
+import { loadConfig, loadManifest, parseYAMLText } from '../../src/services/yamlLoader.ts'
 
 interface FakeResponse {
   ok: boolean
@@ -47,5 +47,20 @@ describe('yamlLoader.loadManifest', () => {
     const result = await loadManifest('https://example.test/manifest.yaml')
 
     expect(result.raw).toEqual({ scenario_name: 'observed' })
+  })
+})
+
+// T006 (009-scenario-manager): parseYAMLText factored out of loadConfig
+// (research.md §4) — reused directly by scenario/manifestReader.ts's
+// handle-based reading path.
+describe('yamlLoader.parseYAMLText', () => {
+  it('parses valid YAML text', () => {
+    expect(parseYAMLText('foo:\n  bar: 1\n', 'test-source')).toEqual({ foo: { bar: 1 } })
+  })
+
+  it('throws an error naming the given sourceLabel on malformed YAML', () => {
+    expect(() => parseYAMLText('foo: [unterminated', 'my-folder/manifest.yaml')).toThrow(
+      /my-folder\/manifest\.yaml/,
+    )
   })
 })

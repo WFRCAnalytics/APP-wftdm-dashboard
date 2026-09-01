@@ -4,8 +4,8 @@ import { Waypoints } from 'lucide-react'
 import { query } from '@/services/duckdb'
 import * as sqlExpander from '@/services/sqlExpander'
 import * as filterState from '@/state/filterState'
-import * as appState from '@/state/appState'
 import { useFilterState } from '@/hooks/useFilterState'
+import { useActiveScenarios } from '@/hooks/useActiveScenarios'
 import {
   buildPanelQuery,
   resolveActiveScenarios,
@@ -123,6 +123,9 @@ function renderSvg(layout: SankeyLayout, width: number, height: number, colors: 
 export function SankeyPanel({ config }: { config: SankeyPanelConfig }) {
   const filterIds = extractGlobalFilterIds(config.filter)
   const filters = useFilterState(filterIds.length ? filterIds : ALL_FILTERS)
+  // 009-scenario-manager (FR-008): reactive active-scenario set — see
+  // ValueBoxPanel.tsx's own comment.
+  const activeScenarioNames = useActiveScenarios()
   const containerRef = useRef<HTMLDivElement>(null)
   const [status, setStatus] = useState<'loading' | 'ready' | 'empty' | 'error'>('loading')
   const [rows, setRows] = useState<Record<string, unknown>[]>([])
@@ -137,10 +140,7 @@ export function SankeyPanel({ config }: { config: SankeyPanelConfig }) {
     setStatus('loading')
 
     const template = buildPanelQuery(config, filters)
-    const activeScenarios = resolveActiveScenarios(
-      config,
-      appState.getActive().map((s) => s.name),
-    )
+    const activeScenarios = resolveActiveScenarios(config, activeScenarioNames)
     const sql = sqlExpander.expand(template, EMPTY_SUMMARIZE_CONFIG, filterState, activeScenarios)
 
     query(sql)
@@ -160,7 +160,7 @@ export function SankeyPanel({ config }: { config: SankeyPanelConfig }) {
     return () => {
       cancelled = true
     }
-  }, [config, filters])
+  }, [config, filters, activeScenarioNames])
 
   // Render-and-swap effect: builds the FlowGraph once per data change,
   // then (re)runs layoutFlowGraph + rebuilds the <svg> on both a data

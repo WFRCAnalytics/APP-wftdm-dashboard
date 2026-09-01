@@ -5,8 +5,8 @@ import * as icons from 'lucide-react'
 import { query } from '@/services/duckdb'
 import * as sqlExpander from '@/services/sqlExpander'
 import * as filterState from '@/state/filterState'
-import * as appState from '@/state/appState'
 import { useFilterState } from '@/hooks/useFilterState'
+import { useActiveScenarios } from '@/hooks/useActiveScenarios'
 import {
   buildPanelQuery,
   resolveActiveScenarios,
@@ -42,6 +42,11 @@ export function ValueBoxPanel({ config }: { config: ValueBoxPanelConfig }) {
   // bare-string form in practice.
   const filterIds = extractGlobalFilterIds(config.filter)
   const filters = useFilterState(filterIds.length ? filterIds : ALL_FILTERS)
+  // 009-scenario-manager (FR-008): reactive active-scenario set — a
+  // locally loaded scenario activating re-runs this panel's data-fetch
+  // effect (below) without discarding this component's own local state,
+  // unlike a remount (research.md §1 of that feature).
+  const activeScenarioNames = useActiveScenarios()
   const [value, setValue] = useState<unknown>(undefined)
   const [state, setState] = useState<'loading' | 'ready' | 'empty' | 'error'>('loading')
 
@@ -50,10 +55,7 @@ export function ValueBoxPanel({ config }: { config: ValueBoxPanelConfig }) {
     setState('loading')
 
     const template = buildPanelQuery(config, filters)
-    const activeScenarios = resolveActiveScenarios(
-      config,
-      appState.getActive().map((s) => s.name),
-    )
+    const activeScenarios = resolveActiveScenarios(config, activeScenarioNames)
     // Intentionally empty, not a stub — panel queries only ever use
     // $scenario/$filters, never $mappings/$bins/$sql (research.md §2).
     const sql = sqlExpander.expand(template, EMPTY_SUMMARIZE_CONFIG, filterState, activeScenarios)
@@ -75,7 +77,7 @@ export function ValueBoxPanel({ config }: { config: ValueBoxPanelConfig }) {
     return () => {
       cancelled = true
     }
-  }, [config, filters])
+  }, [config, filters, activeScenarioNames])
 
   if (state === 'loading') {
     return <div className="h-16 animate-pulse rounded-md bg-muted" />

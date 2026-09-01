@@ -3,6 +3,7 @@ import { LayoutDashboard } from 'lucide-react'
 
 import { DashboardRenderer } from '@/layout/dashboardRenderer'
 import { NavBar } from '@/layout/navBar'
+import { ScenarioLoader } from '@/layout/scenarioLoader'
 import { PanelEmptyState } from '@/panels/PanelEmptyState'
 import type { DashboardTabConfig } from '@/layout/types'
 
@@ -38,12 +39,13 @@ export function Shell({ dashboards }: { dashboards: DashboardTabConfig[] }) {
     // column dashboardRenderer.tsx's grid gives it.
     <div className="min-h-screen bg-background text-foreground">
       <div className="mx-auto max-w-7xl">
-        <header className="border-b border-border px-6 py-4">
+        <header className="flex items-center justify-between border-b border-border px-6 py-4">
           <NavBar
             tabs={dashboards}
             activeTab={active.header.tab}
             onTabChange={setActiveTab}
           />
+          <ScenarioLoader />
         </header>
         <main>
           <DashboardRenderer tab={active} />
