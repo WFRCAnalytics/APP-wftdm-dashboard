@@ -324,3 +324,57 @@ layout:
       y: b
       height: 350
       width: 1.0
+
+  # 008-sankey-panel — the sixth and final originally-listed panel type.
+  # tour_mode_to_trip_mode is docs/GRAMMAR.md's own worked sankey example's
+  # metric name; source/target/value map to its tour_mode/trip_mode/trips
+  # columns verbatim (Grammar findings #1/#2). No title here shares a
+  # prefix with any pre-existing panel title in this file (checked against
+  # the full list before choosing these — see tasks.md T004) — avoids the
+  # exact non-exact-getByText/getByRole collision class 007's own fixture
+  # additions ran into.
+  row_sankey:
+    # Primary US1/US2 vehicle: direct-aggregation-match assertion, the
+    # corrected same-value-row behavior (SOV -> SOV is this fixture's
+    # single largest row — research.md §4), a named color_scheme, global
+    # filter reactivity, the excludedCount/console.warn signal (the
+    # Non-Motorized -> SOV row has a negative trips value), and 004
+    # expand/resize correctness.
+    - type: sankey
+      title: Sankey Tour-to-Trip Mode Consistency
+      metric: tour_mode_to_trip_mode
+      scenario: good_scenario
+      source: tour_mode
+      target: trip_mode
+      value: trips
+      color_scheme: Tableau10
+      filter:
+        purpose: $filters.purpose
+      height: 400
+      width: 1.0
+
+    # Same metric/source/target/value as above, color_scheme omitted — the
+    # token-derived-fallback-palette vehicle (research.md §6, spec.md US1
+    # Acceptance Scenario 3).
+    - type: sankey
+      title: Sankey Mode Consistency (No Color Scheme)
+      metric: tour_mode_to_trip_mode
+      scenario: good_scenario
+      source: tour_mode
+      target: trip_mode
+      value: trips
+      height: 400
+      width: 1.0
+
+    # Deliberately broken — points at a metric no scenario publishes.
+    # Same convention as row_table's/row_markdown's/row_observable_plot's
+    # own "Broken Panel (intentional)" entries.
+    - type: sankey
+      title: Sankey Broken Panel (intentional)
+      metric: nonexistent_sankey_metric
+      scenario: good_scenario
+      source: a
+      target: b
+      value: c
+      height: 400
+      width: 1.0

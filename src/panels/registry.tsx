@@ -3,6 +3,7 @@ import type { ComponentType } from 'react'
 import { MarkdownPanel } from '@/panels/MarkdownPanel'
 import { ObservablePlotPanel } from '@/panels/ObservablePlotPanel'
 import { PlotlyPanel } from '@/panels/PlotlyPanel'
+import { SankeyPanel } from '@/panels/SankeyPanel'
 import { TablePanel } from '@/panels/TablePanel'
 import { ValueBoxPanel } from '@/panels/ValueBoxPanel'
 import type { PanelConfig } from '@/layout/types'
@@ -27,4 +28,5 @@ export const registry: Record<string, ComponentType<PanelProps<any>>> = {
   table: TablePanel,
   markdown: MarkdownPanel,
   'observable-plot': ObservablePlotPanel,
+  sankey: SankeyPanel,
 }

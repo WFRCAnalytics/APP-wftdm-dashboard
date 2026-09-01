@@ -157,16 +157,39 @@ export interface ObservablePlotPanelConfig extends DataBoundPanelConfigBase {
 }
 
 /**
- * Any other panel type (flowmap, zonemap, sankey, graphic-walker — all
- * out of scope for this feature, still deferred) still parses as this
- * base shape rather than being dropped or erroring at parse time — the
- * registry lookup (panels/registry.tsx), not the parser, is what
- * surfaces an unrecognized-type error, keeping "parse" and
- * "renderable-by-this-app" as separate concerns. Extends the plain
- * PanelConfigBase, not DataBoundPanelConfigBase — an unrecognized future
- * type shouldn't be assumed data-bound by the parser (006-markdown-panel,
- * research.md §1); markdown itself is proof a panel type can genuinely
- * have no metric at all.
+ * The sixth and final originally-listed panel type — extends
+ * DataBoundPanelConfigBase (like ObservablePlotPanelConfig): docs/GRAMMAR.md's
+ * type: sankey grammar always queries a metric (008-sankey-panel,
+ * data-model.md). source/target/value are author-configurable field-mapping
+ * keys naming literal columns in the queried result set — NOT
+ * $metric.<column>-prefixed (Grammar findings #2, research.md's
+ * confirmation) — the same author-names-the-field approach
+ * TableColumnConfig.field already uses, applied here to source/target/value
+ * instead of x/y/columns. color_scheme is a distinct concept from
+ * TableColumnConfig's color_scale/domain (a continuous sequential/diverging
+ * ramp) — a named categorical scheme for discrete node/link coloring
+ * (Grammar findings #3).
+ */
+export interface SankeyPanelConfig extends DataBoundPanelConfigBase {
+  type: 'sankey'
+  source: string
+  target: string
+  value: string
+  color_scheme?: string
+}
+
+/**
+ * Any other panel type (flowmap, zonemap, graphic-walker — still out of
+ * scope, still deferred; sankey is no longer one of these as of
+ * 008-sankey-panel) still parses as this base shape rather than being
+ * dropped or erroring at parse time — the registry lookup
+ * (panels/registry.tsx), not the parser, is what surfaces an
+ * unrecognized-type error, keeping "parse" and "renderable-by-this-app" as
+ * separate concerns. Extends the plain PanelConfigBase, not
+ * DataBoundPanelConfigBase — an unrecognized future type shouldn't be
+ * assumed data-bound by the parser (006-markdown-panel, research.md §1);
+ * markdown itself is proof a panel type can genuinely have no metric at
+ * all.
  */
 export interface UnknownPanelConfig extends PanelConfigBase {
   type: string
@@ -178,6 +201,7 @@ export type PanelConfig =
   | TablePanelConfig
   | MarkdownPanelConfig
   | ObservablePlotPanelConfig
+  | SankeyPanelConfig
   | UnknownPanelConfig
 
 export interface DashboardTabConfig {

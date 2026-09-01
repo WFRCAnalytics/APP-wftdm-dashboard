@@ -227,9 +227,15 @@ APP-wftdm-dashboard/
     │   │                         # resolution, split out of
     │   │                         # ObservablePlotPanel.tsx same reason as
     │   │                         # plotlyTraces.ts (007)
+    │   ├── SankeyPanel.tsx       # done (008-sankey-panel) — the sixth and
+    │   │                         # final originally-listed panel type
+    │   ├── sankeyGraph.ts        # pure, DOM-free rows-to-graph transform +
+    │   │                         # d3-sankey layout wrapper, split out of
+    │   │                         # SankeyPanel.tsx same reason as
+    │   │                         # plotlyTraces.ts (008)
+    │   ├── sankeyColor.ts        # pure color_scheme name resolution (008)
     │   ├── FlowMapPanel.tsx      # not built yet — MapLibre + MapboxOverlay + FlowmapLayer
     │   ├── ZoneMapPanel.tsx      # not built yet — MapLibre choropleth + GeoParquet
-    │   ├── SankeyPanel.tsx       # not built yet
     │   └── GraphicWalkerPanel.tsx # not built yet
     ├── components/
     │   └── ui/                   # shadcn-pattern primitives (002-design-
@@ -532,7 +538,7 @@ export default defineConfig({
 
 ## Implementation order
 
-Status as of `007-observable-plot-panel` (re-audited against real
+Status as of `008-sankey-panel` (re-audited against real
 files/git history — `git log --oneline`, `src/panels/` and
 `src/panels/registry.tsx` on disk, `package.json` — not assumed from the
 prior list; see also the `004-panel-expand-dialog` session for the first
@@ -557,7 +563,7 @@ cross-reference this list was built from). ✅ done, 🟡 partial/started,
 7. ⏸️ `scenario/scenarioManager.ts` — folder picker + view registration —
    **explicitly deferred, not an oversight**. `services/duckdb.ts`'s
    `registerScenario()` (item 2) has existed since `001` as a receiving
-   API with **zero callers** — no feature so far (`001` through `007`)
+   API with **zero callers** — no feature so far (`001` through `008`)
    has built the picker UI that would call it. The app's actual
    scenario-loading path today is entirely `scenarioDiscovery.ts`'s
    auto-registration of `public/observed/`/`public/scenarios/*` (item 3),
@@ -580,8 +586,16 @@ cross-reference this list was built from). ✅ done, 🟡 partial/started,
      `@observablehq/plot` added to `package.json`; split out
      `panels/observablePlotEncoding.ts` (pure, DOM-free mark/options
      resolution), same reason as `plotlyTraces.ts`
-   - ❌ `SankeyPanel` — not started; now the **only** remaining panel type
-     in this six-item list
+   - ✅ `SankeyPanel` — done (`008-sankey-panel`); `d3-sankey` +
+     `d3-scale-chromatic` added to `package.json` (plus `@types/d3-sankey`/
+     `@types/d3-scale-chromatic` devDependencies — neither ships its own
+     types); split out `panels/sankeyGraph.ts` (pure, DOM-free
+     rows-to-graph transform + `d3-sankey` layout wrapper — a genuinely
+     new data-transform problem, not just a split-for-Vitest-testability
+     reason like `plotlyTraces.ts`) and `panels/sankeyColor.ts`
+     (`color_scheme` name resolution). **This completes the
+     originally-listed six-panel-type set** — no panel type in this list
+     remains not-started
 9. ❌ `FlowMapPanel` + `ZoneMapPanel` (map panels — most complex) — not
    started; `@deck.gl/*`/`@flowmap.gl/layers`/`maplibre-gl` aren't in
    `package.json` yet either

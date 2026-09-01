@@ -93,6 +93,43 @@ def _trip_destination_dist_rows():
 TRIP_DESTINATION_DIST_ROWS = _trip_destination_dist_rows()
 TRIP_DESTINATION_DIST_COLUMNS = ["distance_bin", "trips", "purpose", "mode"]
 
+# 008-sankey-panel: mirrors docs/GRAMMAR.md's own sankey worked example
+# (tour_mode/trip_mode/trips, metric name tour_mode_to_trip_mode matching
+# its sql_fragments example) — reused directly, same convention as
+# SCREENLINES_ROWS/TRIP_DESTINATION_DIST_ROWS above. Deliberately covers,
+# in one small hard-coded table (research.md §4/§5, tasks.md T003):
+#   - several tour_mode == trip_mode rows ("no mode shift" — the corrected
+#     self-loop case; SOV->SOV is the single largest row, so the
+#     namespacing correction's real-world stakes are visible in the
+#     rendered diagram, not just a unit test)
+#   - "Drive to Transit" (a raw mode value containing a space) on both the
+#     tour_mode and trip_mode sides across different rows — real-fixture
+#     regression coverage for the link-key aggregation bug found and fixed
+#     in contracts/sankey-panel.md
+#   - one non-positive trips row (Non-Motorized -> SOV, HBW) — the
+#     excludedCount/console.warn fixture vehicle
+#   - a purpose column (HBW/NHB) varied enough that switching the global
+#     Trip Purpose filter visibly changes which rows are included
+#   - 5 distinct raw values on each of the tour_mode/trip_mode sides
+TOUR_MODE_TO_TRIP_MODE_ROWS = [
+    # purpose: HBW
+    ("SOV", "SOV", 500, "HBW"),  # largest row — majority "no shift" case
+    ("SOV", "HOV", 40, "HBW"),
+    ("SOV", "Transit", 15, "HBW"),
+    ("HOV", "HOV", 200, "HBW"),
+    ("HOV", "SOV", 25, "HBW"),
+    ("Transit", "Transit", 150, "HBW"),
+    ("Transit", "Drive to Transit", 30, "HBW"),
+    ("Drive to Transit", "Drive to Transit", 60, "HBW"),
+    ("Non-Motorized", "Non-Motorized", 90, "HBW"),
+    ("Non-Motorized", "SOV", -5, "HBW"),  # data-quality anomaly — excluded
+    # purpose: NHB
+    ("SOV", "SOV", 80, "NHB"),
+    ("HOV", "Transit", 10, "NHB"),
+    ("Transit", "Transit", 45, "NHB"),
+]
+TOUR_MODE_TO_TRIP_MODE_COLUMNS = ["tour_mode", "trip_mode", "trips", "purpose"]
+
 
 def write_parquet(con, dest: Path, columns: list[str], rows: list[tuple]) -> None:
     dest.parent.mkdir(parents=True, exist_ok=True)
@@ -199,6 +236,12 @@ def main():
         TRIP_DESTINATION_DIST_COLUMNS,
         TRIP_DESTINATION_DIST_ROWS,
     )
+    write_parquet(
+        con,
+        good_summary / "tour_mode_to_trip_mode.parquet",
+        TOUR_MODE_TO_TRIP_MODE_COLUMNS,
+        TOUR_MODE_TO_TRIP_MODE_ROWS,
+    )
     write_summary_index(
         good_summary,
         [
@@ -206,6 +249,7 @@ def main():
             "trip_mode_share.parquet",
             "screenlines.parquet",
             "trip_destination_dist.parquet",
+            "tour_mode_to_trip_mode.parquet",
         ],
     )
     write_manifest(
