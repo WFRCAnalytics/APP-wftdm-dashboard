@@ -6,7 +6,7 @@
 // to services/sqlExpander.ts's expand(). See contracts/panel-query.md.
 import type { DashboardConfig } from '@/services/yamlLoader'
 import type { FilterId, FilterValue } from '@/state/filterState'
-import type { PanelConfig } from '@/layout/types'
+import type { DataBoundPanelConfigBase } from '@/layout/types'
 
 /**
  * Builds a bare SQL template for a panel.
@@ -20,9 +20,17 @@ import type { PanelConfig } from '@/layout/types'
  * (`AND purpose = '$filters.purpose'`). A future feature that needs a
  * filter id distinct from its bound column can extend this without
  * changing this function's signature.
+ *
+ * config is typed as DataBoundPanelConfigBase, not the full PanelConfig
+ * union — this function reads config.metric/scenario/scenarios/filter
+ * unconditionally, which only a *data-bound* panel type has
+ * (006-markdown-panel, research.md §1). MarkdownPanel.tsx never calls
+ * this at all (FR-001/FR-007); the compiler now catches, rather than
+ * runtime-`undefined`s, a hypothetical future misuse routing a
+ * non-data-bound config through here.
  */
 export function buildPanelQuery(
-  config: PanelConfig,
+  config: DataBoundPanelConfigBase,
   _filters: Record<FilterId, FilterValue>,
 ): string {
   const source = config.scenario
@@ -30,8 +38,8 @@ export function buildPanelQuery(
     : `($scenario.${config.metric})`
 
   // 'column' in config (not config.type === 'valuebox') narrows correctly
-  // against the union — UnknownPanelConfig's `type: string` is wide enough
-  // that a literal-equality check alone doesn't exclude it.
+  // against the union — a plain-object 'in' check still works against
+  // DataBoundPanelConfigBase the same way it did against PanelConfig.
   const selectClause = 'column' in config ? `SELECT "${config.column}"` : 'SELECT *'
 
   const filterMatch = config.filter?.match(/^\$filters\.([A-Za-z0-9_]+)$/)
@@ -57,7 +65,10 @@ export function buildPanelQuery(
  * bypasses the $scenario.x placeholder entirely for that panel — this
  * function's output is simply never consulted in that case.
  */
-export function resolveActiveScenarios(config: PanelConfig, globallyActive: string[]): string[] {
+export function resolveActiveScenarios(
+  config: DataBoundPanelConfigBase,
+  globallyActive: string[],
+): string[] {
   return config.scenarios ?? globallyActive
 }
 

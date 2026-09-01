@@ -1,5 +1,6 @@
 import type { ComponentType } from 'react'
 
+import { MarkdownPanel } from '@/panels/MarkdownPanel'
 import { PlotlyPanel } from '@/panels/PlotlyPanel'
 import { TablePanel } from '@/panels/TablePanel'
 import { ValueBoxPanel } from '@/panels/ValueBoxPanel'
@@ -23,4 +24,5 @@ export const registry: Record<string, ComponentType<PanelProps<any>>> = {
   valuebox: ValueBoxPanel,
   plotly: PlotlyPanel,
   table: TablePanel,
+  markdown: MarkdownPanel,
 }

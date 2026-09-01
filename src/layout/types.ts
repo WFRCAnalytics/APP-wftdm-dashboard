@@ -14,12 +14,25 @@ export interface FilterDefinition {
   all_option?: boolean
 }
 
+// Fields every panel type needs, regardless of whether it queries
+// anything. 006-markdown-panel, research.md §1: split out of what used to
+// be a single PanelConfigBase requiring `metric` on every panel type —
+// markdown is the first panel type with no query at all, and forcing a
+// required-in-spirit `metric` field on a type that structurally can't use
+// it was judged a modeling smell independent of how many query-less types
+// exist (data-model.md).
 export interface PanelConfigBase {
   title: string
-  metric: string
-  filter?: string
   height?: number
   width?: number
+}
+
+// Fields only a *querying* panel type needs. Everything that reads
+// services/duckdb.ts extends this, not PanelConfigBase directly
+// (006-markdown-panel, research.md §1).
+export interface DataBoundPanelConfigBase extends PanelConfigBase {
+  metric: string
+  filter?: string
   // scenario (singular): restrict to exactly one named scenario view,
   // bypassing the $scenario.x union entirely. scenarios (plural):
   // override which subset of the globally-active scenarios this panel
@@ -30,7 +43,7 @@ export interface PanelConfigBase {
   scenarios?: string[]
 }
 
-export interface ValueBoxPanelConfig extends PanelConfigBase {
+export interface ValueBoxPanelConfig extends DataBoundPanelConfigBase {
   type: 'valuebox'
   column: string
   format: string
@@ -52,7 +65,7 @@ export interface PlotlyTraceConfig {
   barmode?: string
 }
 
-export interface PlotlyPanelConfig extends PanelConfigBase {
+export interface PlotlyPanelConfig extends DataBoundPanelConfigBase {
   type: 'plotly'
   traces: PlotlyTraceConfig[]
   layout?: Record<string, unknown>
@@ -70,7 +83,7 @@ export interface TableColumnConfig {
   domain?: [number, number]
 }
 
-export interface TablePanelConfig extends PanelConfigBase {
+export interface TablePanelConfig extends DataBoundPanelConfigBase {
   type: 'table'
   columns?: TableColumnConfig[]
   sort?: { column: string; order: 'asc' | 'desc' }
@@ -79,13 +92,28 @@ export interface TablePanelConfig extends PanelConfigBase {
 }
 
 /**
- * Any other panel type (flowmap, zonemap, sankey, graphic-walker,
- * markdown — all out of scope for this feature, still deferred per
- * 005-table-panel's own stated boundary) still parses as this base shape
- * rather than being dropped or erroring at parse time — the registry
- * lookup (panels/registry.tsx), not the parser, is what surfaces an
- * unrecognized-type error, keeping "parse" and "renderable-by-this-app"
- * as separate concerns.
+ * The fourth panel type — no metric/filter/scenario/scenarios at all
+ * (docs/GRAMMAR.md's type: markdown grammar has no data binding;
+ * 006-markdown-panel, data-model.md). `content` is optional at the type
+ * level because a missing/empty/whitespace-only value is a defined,
+ * non-crashing empty state (FR-006), not a parse error.
+ */
+export interface MarkdownPanelConfig extends PanelConfigBase {
+  type: 'markdown'
+  content?: string
+}
+
+/**
+ * Any other panel type (flowmap, zonemap, sankey, graphic-walker — all
+ * out of scope for this feature, still deferred) still parses as this
+ * base shape rather than being dropped or erroring at parse time — the
+ * registry lookup (panels/registry.tsx), not the parser, is what
+ * surfaces an unrecognized-type error, keeping "parse" and
+ * "renderable-by-this-app" as separate concerns. Extends the plain
+ * PanelConfigBase, not DataBoundPanelConfigBase — an unrecognized future
+ * type shouldn't be assumed data-bound by the parser (006-markdown-panel,
+ * research.md §1); markdown itself is proof a panel type can genuinely
+ * have no metric at all.
  */
 export interface UnknownPanelConfig extends PanelConfigBase {
   type: string
@@ -95,6 +123,7 @@ export type PanelConfig =
   | ValueBoxPanelConfig
   | PlotlyPanelConfig
   | TablePanelConfig
+  | MarkdownPanelConfig
   | UnknownPanelConfig
 
 export interface DashboardTabConfig {
