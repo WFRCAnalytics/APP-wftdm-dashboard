@@ -76,7 +76,8 @@ uv tool install git+https://github.com/WFRCAnalytics/APP-wftdm-dashboard
 
 # Run from any scenario output folder
 wftdm-dashboard serve    # starts file server, use with hosted web app
-wftdm-dashboard here     # starts file server + local copy of app (no internet needed)
+wftdm-dashboard here     # starts file server + local copy of app (intended for no internet;
+                         # see docs/ARCHITECTURE.md for one known, confirmed exception)
 wftdm-dashboard init --scenario-dir <path>   # scaffold default configs for a new scenario
 ```
 
