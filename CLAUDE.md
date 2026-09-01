@@ -177,12 +177,17 @@ APP-wftdm-dashboard/
     │   # layout/ and panels/ below are now real (003-dashboard-shell-
     │   # navigation built the shell/nav/panel-card layer and the first two
     │   # panel types; 004-panel-expand-dialog added the generic expand
-    │   # mechanism on top). scenario/scenarioManager.ts and styles/ are
-    │   # still not built yet (out of scope for both features so far) —
-    │   # left as originally sketched. Anything that renders JSX is .tsx;
+    │   # mechanism on top; 005-table-panel, 006-markdown-panel, and
+    │   # 007-observable-plot-panel each added one more panel type —
+    │   # table/markdown/observable-plot are now real, sankey/flowmap/
+    │   # zonemap/graphic-walker remain the only panel types not yet
+    │   # built). scenario/scenarioManager.ts and styles/ are still not
+    │   # built yet (out of scope for every feature so far) — left as
+    │   # originally sketched. Anything that renders JSX is .tsx;
     │   # pure-logic modules with no JSX (scenarioManager.ts,
-    │   # manifestReader.ts, panelQuery.ts, plotlyTraces.ts) stay .ts, same
-    │   # as services/ and state/ (constitution v2.2.0, Development Workflow)
+    │   # manifestReader.ts, panelQuery.ts, plotlyTraces.ts, tableLogic.ts,
+    │   # formatValue.ts, observablePlotEncoding.ts) stay .ts, same as
+    │   # services/ and state/ (constitution v2.2.0, Development Workflow)
     ├── layout/
     │   ├── shell.tsx             # top-level app shell: NavBar + active tab
     │   ├── navBar.tsx            # shadcn Tabs-based tab navigation
@@ -210,13 +215,22 @@ APP-wftdm-dashboard/
     │   │                         # breaks Vitest's Node environment)
     │   ├── PanelEmptyState.tsx   # shared empty-result state
     │   ├── PanelErrorState.tsx   # shared error state
-    │   ├── ObservablePlotPanel.tsx # not built yet — Observable Plot
-    │   ├── TablePanel.tsx        # not built yet
+    │   ├── TablePanel.tsx        # done (005-table-panel)
+    │   ├── tableLogic.ts         # pure sort/paginate/search/color-scale
+    │   │                         # logic, split out of TablePanel.tsx same
+    │   │                         # reason as plotlyTraces.ts (005)
+    │   ├── formatValue.ts        # pure value-formatting helper (005)
+    │   ├── MarkdownPanel.tsx     # done (006-markdown-panel) — marked +
+    │   │                         # DOMPurify, sanitized rendering
+    │   ├── ObservablePlotPanel.tsx # done (007-observable-plot-panel)
+    │   ├── observablePlotEncoding.ts # pure, DOM-free mark/options
+    │   │                         # resolution, split out of
+    │   │                         # ObservablePlotPanel.tsx same reason as
+    │   │                         # plotlyTraces.ts (007)
     │   ├── FlowMapPanel.tsx      # not built yet — MapLibre + MapboxOverlay + FlowmapLayer
     │   ├── ZoneMapPanel.tsx      # not built yet — MapLibre choropleth + GeoParquet
     │   ├── SankeyPanel.tsx       # not built yet
-    │   ├── GraphicWalkerPanel.tsx # not built yet
-    │   └── MarkdownPanel.tsx     # not built yet
+    │   └── GraphicWalkerPanel.tsx # not built yet
     ├── components/
     │   └── ui/                   # shadcn-pattern primitives (002-design-
     │                              # tokens onward): button.tsx, card.tsx,
@@ -518,10 +532,12 @@ export default defineConfig({
 
 ## Implementation order
 
-Status as of `004-panel-expand-dialog` (audited against real files/git
-history, not assumed from this list — see that feature's session for the
-full cross-reference). ✅ done, 🟡 partial/started, ❌ not started,
-⏸️ explicitly deferred.
+Status as of `007-observable-plot-panel` (re-audited against real
+files/git history — `git log --oneline`, `src/panels/` and
+`src/panels/registry.tsx` on disk, `package.json` — not assumed from the
+prior list; see also the `004-panel-expand-dialog` session for the first
+cross-reference this list was built from). ✅ done, 🟡 partial/started,
+❌ not started, ⏸️ explicitly deferred.
 
 1. ✅ `vite.config.ts`, `index.html`, `package.json` + postinstall for
    coi-serviceworker — done (`001-data-state-layer`)
@@ -541,7 +557,7 @@ full cross-reference). ✅ done, 🟡 partial/started, ❌ not started,
 7. ⏸️ `scenario/scenarioManager.ts` — folder picker + view registration —
    **explicitly deferred, not an oversight**. `services/duckdb.ts`'s
    `registerScenario()` (item 2) has existed since `001` as a receiving
-   API with **zero callers** — no feature so far (`001`/`002`/`003`/`004`)
+   API with **zero callers** — no feature so far (`001` through `007`)
    has built the picker UI that would call it. The app's actual
    scenario-loading path today is entirely `scenarioDiscovery.ts`'s
    auto-registration of `public/observed/`/`public/scenarios/*` (item 3),
@@ -552,10 +568,20 @@ full cross-reference). ✅ done, 🟡 partial/started, ❌ not started,
 8. Panels — per-type status, list kept at its original six, not shrunk:
    - ✅ `ValueBoxPanel` — done (`003-dashboard-shell-navigation`)
    - ✅ `PlotlyPanel` — done (`003-dashboard-shell-navigation`)
-   - ❌ `TablePanel` — not started
-   - ❌ `ObservablePlotPanel` — not started
-   - ❌ `MarkdownPanel` — not started
-   - ❌ `SankeyPanel` — not started
+   - ✅ `TablePanel` — done (`005-table-panel`); split out
+     `panels/tableLogic.ts` (sort/paginate/search/color-scale, pure) and
+     `panels/formatValue.ts`, same reason `plotlyTraces.ts` was split out
+     of `PlotlyPanel.tsx`
+   - ✅ `MarkdownPanel` — done (`006-markdown-panel`); `marked` +
+     `dompurify` added to `package.json`, XSS-sanitized rendering with an
+     `afterSanitizeAttributes` hook forcing `target="_blank"`/
+     `rel="noopener noreferrer"` on every link
+   - ✅ `ObservablePlotPanel` — done (`007-observable-plot-panel`);
+     `@observablehq/plot` added to `package.json`; split out
+     `panels/observablePlotEncoding.ts` (pure, DOM-free mark/options
+     resolution), same reason as `plotlyTraces.ts`
+   - ❌ `SankeyPanel` — not started; now the **only** remaining panel type
+     in this six-item list
 9. ❌ `FlowMapPanel` + `ZoneMapPanel` (map panels — most complex) — not
    started; `@deck.gl/*`/`@flowmap.gl/layers`/`maplibre-gl` aren't in
    `package.json` yet either
