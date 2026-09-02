@@ -19,7 +19,7 @@ import {
 } from '@/panels/panelQuery'
 import { buildFlowmapData } from '@/panels/flowmapData'
 import { resolveEffectiveBasemap, basemapKey } from '@/panels/basemap/resolveEffectiveBasemap'
-import { loadBasemapStyle, BLANK_STYLE } from '@/panels/basemap/loadBasemapStyle'
+import { loadBasemapStyle, BLANK_STYLE, freshBlankStyle } from '@/panels/basemap/loadBasemapStyle'
 import { PanelEmptyState } from '@/panels/PanelEmptyState'
 import { PanelErrorState } from '@/panels/PanelErrorState'
 import type { FlowMapPanelConfig } from '@/layout/types'
@@ -32,6 +32,36 @@ const ALL_FILTERS: ['*'] = ['*']
 // same coordinates).
 const DEFAULT_CENTER: [number, number] = [-111.89, 40.76]
 const DEFAULT_ZOOM = 9
+
+// 012-webgl-context-management — a real, confirmed bug found via a live
+// user report AND direct browser instrumentation (a production preview
+// build, not just the dev server or the test suite): BLANK_STYLE's own
+// "background" layer (an opaque #e5e5e5 fill) must NEVER be treated as
+// app-owned content worth preserving across a style swap by the
+// transformStyle callback below. The bug: `previous.layers.filter((l) =>
+// !nextIds.has(l.id))` preserves any `previous`-style layer whose id
+// isn't already in the NEW style — correct for a genuine future app-
+// added custom layer (e.g. a zonemap's own choropleth fill, this
+// mechanism's actual documented intent — FlowMapPanel adds none today),
+// but wrong for BLANK_STYLE's own scaffolding "background" layer.
+// CARTO/OpenFreeMap presets happen to define their OWN "background"
+// layer as their first layer, so it was already in `nextIds` and never
+// duplicated — masking this bug entirely in 011's own test coverage.
+// A raster preset (no "background" layer of its own at all) or a
+// namespaced composition (its own "background", if any, renamed to
+// `layer0__background`) do NOT already have it in `nextIds` — so
+// BLANK_STYLE's own background layer got carried forward and appended
+// LAST (`layers: [...next.layers, ...preserved]` — later array entries
+// paint on top), opaquely covering the entire real basemap underneath
+// it. Confirmed directly: a real production build's own `map.getStyle()`
+// showed the correct real sources/tiles fetched and loaded successfully
+// for the affected panels, with "background" sitting at the LAST index
+// of the layers array specifically for those two panel types (index
+// 1 of 2 for a raster preset; index 547 of 548 for the real UGRC
+// composition) — not present at all for CARTO/OpenFreeMap panels'
+// layer-order problem, confirming the "background" layer itself, not
+// the basemap fetch, was the actual paint-blocking cause.
+const BLANK_STYLE_LAYER_IDS = new Set(BLANK_STYLE.layers.map((l) => l.id))
 
 // Test-only synchronization hook — lets a Playwright test force the
 // "data resolves before the map finishes initializing" ordering
@@ -86,6 +116,18 @@ export function FlowMapPanel({ config }: { config: FlowMapPanelConfig }) {
   // application effect's async result against being overwritten by a
   // stale/losing concurrent invocation (see that effect's own comment).
   const basemapGenerationRef = useRef(0)
+  // 012-webgl-context-management — tracks which `rows` reference the
+  // exclusion warning below has already fired for. Needed because
+  // layerRepopulateGeneration (added to the data-update effect's own
+  // dependency array) re-runs that effect for reasons OTHER than rows
+  // actually changing (a setStyle()-driven repopulate, a context-loss
+  // recovery) — without this guard, the SAME exclusion warning would
+  // log again on every one of those redundant re-runs, since `rows`
+  // itself (and therefore data.excludedCount) is unchanged. `rows` only
+  // gets a new array reference from the data-fetch effect's own
+  // setRows(result) call, never from a repopulate trigger, so reference
+  // equality is the correct, cheap "did the actual data change" check.
+  const warnedForRowsRef = useRef<Record<string, unknown>[] | null>(null)
   const [status, setStatus] = useState<'loading' | 'ready' | 'empty' | 'error'>('loading')
   const [rows, setRows] = useState<Record<string, unknown>[]>([])
   // Set to true at the end of the map-creation effect below, once
@@ -96,6 +138,30 @@ export function FlowMapPanel({ config }: { config: FlowMapPanelConfig }) {
   // data-update effect reading a bare ref with no corresponding
   // re-trigger mechanism if it happened to run first and returned early.
   const [mapReady, setMapReady] = useState(false)
+  // 012-webgl-context-management — bumped whenever the already-existing
+  // FlowmapLayer needs to be reconstructed and re-applied for a reason
+  // OTHER than rows/config/status changing: either the interleaved-mode
+  // setStyle() layer-wipe (basemap effect's style.load handler, below)
+  // or a WebGL context recovery (webglcontextrestored, below). Neither
+  // of those two call sites constructs a FlowmapLayer directly — both
+  // are long-lived closures (one fixed at first mount forever, the other
+  // fixed until the basemap effect's own next re-run) that would read
+  // stale status/rows/config if they tried (a real bug found and
+  // corrected during this feature's own plan review — contracts/
+  // interleaved-overlay-survival.md's "Why not a standalone helper
+  // function"). Bumping this counter instead routes both triggers
+  // through the data-update effect below, whose closure is guaranteed
+  // fresh every time it actually runs.
+  const [layerRepopulateGeneration, setLayerRepopulateGeneration] = useState(0)
+  // 012-webgl-context-management — independent of `status`, not a merged
+  // enum: `status` answers "did this panel's query return data?";
+  // `contextLost` answers "is this panel's map currently able to render
+  // at all, right now, regardless of whether it has data?". Only
+  // meaningfully becomes true once a real map/overlay exists to lose its
+  // context (i.e. after `status` has already reached 'ready' at least
+  // once) — never reset by the data-fetch effect below, only by
+  // webglcontextrestored or this whole component unmounting.
+  const [contextLost, setContextLost] = useState(false)
 
   // Data fetch — identical shape to every other data-bound panel type.
   useEffect(() => {
@@ -137,11 +203,33 @@ export function FlowMapPanel({ config }: { config: FlowMapPanelConfig }) {
 
     const map = new maplibregl.Map({
       container: el,
-      style: BLANK_STYLE,
+      // 012-webgl-context-management — freshBlankStyle() (an independent
+      // deep clone), NOT the shared BLANK_STYLE constant directly: a
+      // real, confirmed bug — MapLibre treats a Map's constructor-time
+      // style as a live, mutable object, not something it defensively
+      // clones, so handing every panel the SAME BLANK_STYLE reference let
+      // one panel's own real basemap transition mutate resolved fields
+      // (confirmed: sprite/glyphs) directly onto that shared object,
+      // corrupting every other panel still starting from "blank" (see
+      // loadBasemapStyle.ts's own freshBlankStyle() comment for the full
+      // trace).
+      style: freshBlankStyle(),
       center: config.center ?? DEFAULT_CENTER,
       zoom: config.zoom ?? DEFAULT_ZOOM,
     })
-    const overlay = new MapboxOverlay({ interleaved: false, layers: [] })
+    // 012-webgl-context-management — interleaved: true (was false).
+    // Halves this panel's WebGL context cost from 2 (a separate
+    // maplibregl.Map context plus a separate deck.gl-owned canvas/
+    // context) to 1 (deck.gl renders directly into MapLibre's own
+    // WebGL2RenderingContext — confirmed directly against
+    // @deck.gl/mapbox's real installed source: interleaved mode's
+    // _onAddInterleaved() reads map.painter.context.gl and creates no
+    // canvas of its own; getCanvas() returns this._map.getCanvas()).
+    // research.md §1/§2 rules out deck.gl's own View system and
+    // viewport-gated mounting as unnecessary/architecturally
+    // incompatible ways to raise this project's real ~8-panel-per-tab
+    // ceiling; this one line is the actual fix, raising it to ~16.
+    const overlay = new MapboxOverlay({ interleaved: true, layers: [] })
     map.addControl(overlay)
     mapRef.current = map
     overlayRef.current = overlay
@@ -149,6 +237,41 @@ export function FlowMapPanel({ config }: { config: FlowMapPanelConfig }) {
     window.__flowmapTestMaps[config.title] = map
     window.__flowmapTestOverlays ??= {}
     window.__flowmapTestOverlays[config.title] = overlay
+
+    // 012-webgl-context-management — MapLibre's own Map class already
+    // listens for the standard canvas-level webglcontextlost/
+    // webglcontextrestored events, already calls event.preventDefault()
+    // (the one action required for the browser to ever consider
+    // restoring the context later), already aborts any in-flight frame
+    // request so no crash/hang occurs, and already rebuilds its own
+    // internal painter/GL resources on restore — then re-fires both as
+    // its own real, public Map events (confirmed directly against the
+    // installed maplibre-gl source, research.md §3). This wires up
+    // events the library already produces, not new low-level
+    // instrumentation.
+    const onContextLost = () => setContextLost(true)
+    const onContextRestored = () => {
+      setContextLost(false)
+      // MapLibre has already rebuilt ITS OWN resources by the time this
+      // fires — but deck.gl's own interleaved-mode GPU resources
+      // (buffers/programs) are a separate concern layered on top of the
+      // same now-restored context, not rebuilt by MapLibre's own
+      // recovery. Deliberately does NOT construct a FlowmapLayer or read
+      // status/rows/config directly in this closure — see the
+      // layerRepopulateGeneration comment above. setProps({ layers: [] })
+      // needs no external state (a constant empty array), so it's safe
+      // to call directly here; the actual re-construction is deferred to
+      // the data-update effect below, re-triggered by the generation
+      // bump (FR-006: MapLibre's own restored style IS the panel's
+      // already-resolved effective basemap — nothing about
+      // basemapKey/resolveEffectiveBasemap needs to re-run, since
+      // neither the panel's pin nor its tab default nor the current
+      // theme changed just because the context was lost).
+      overlayRef.current?.setProps({ layers: [] })
+      setLayerRepopulateGeneration((g) => g + 1)
+    }
+    map.on('webglcontextlost', onContextLost)
+    map.on('webglcontextrestored', onContextRestored)
 
     const observer = new ResizeObserver(() => {
       mapRef.current?.resize()
@@ -168,6 +291,8 @@ export function FlowMapPanel({ config }: { config: FlowMapPanelConfig }) {
     return () => {
       window.clearTimeout(readyTimer)
       observer.disconnect()
+      map.off('webglcontextlost', onContextLost)
+      map.off('webglcontextrestored', onContextRestored)
       delete window.__flowmapTestMaps?.[config.title]
       delete window.__flowmapTestOverlays?.[config.title]
       overlayRef.current = null
@@ -217,6 +342,13 @@ export function FlowMapPanel({ config }: { config: FlowMapPanelConfig }) {
     // where abort() didn't reach every in-flight request in time.
     const myGeneration = ++basemapGenerationRef.current
     const controller = new AbortController()
+    // 012-webgl-context-management — set inside the .then() below, once
+    // the real onStyleReady listener for THIS invocation exists; read by
+    // this effect's own cleanup so a still-pending listener from a
+    // superseded invocation (e.g. a rapid double theme-toggle) is always
+    // detached, not left to fire against a map that's already moved on
+    // to a newer style.
+    let detachStyleReadyListener: (() => void) | undefined
 
     loadBasemapStyle(effectiveBasemap.selection, controller.signal)
       .then((resolved) => {
@@ -233,12 +365,25 @@ export function FlowMapPanel({ config }: { config: FlowMapPanelConfig }) {
         // mechanism entirely).
         const map = mapRef.current
 
+        // 012-webgl-context-management — interleaved mode (T003 above)
+        // inserts deck.gl's layers directly into MapLibre's own
+        // style/layer stack, unlike the non-interleaved overlay this
+        // effect was originally written against — setStyle() wipes them,
+        // a real, documented failure mode (github.com/visgl/deck.gl/
+        // discussions/7170, github.com/maplibre/maplibre-gl-js/
+        // issues/2587; research.md §2). Clearing layers before the style
+        // changes, then re-populating once the NEW style has finished
+        // loading (via the style.load handler's own
+        // setLayerRepopulateGeneration bump below), is deck.gl's own
+        // documented fix for exactly this.
+        overlayRef.current?.setProps({ layers: [] })
+
         // FR-010/research.md §7 — a real STYLE-LOAD failure (the style
         // document, its sprite/glyphs, or a source's TileJSON failing to
         // fetch/parse) surfaces as a maplibregl 'error' event, not a
         // rejected promise. This listener is deliberately scoped to only
-        // the WINDOW between this setStyle() call and its own
-        // 'style.load' — found necessary empirically, not part of the
+        // the WINDOW between this setStyle() call and its own style
+        // becoming ready — found necessary empirically, not part of the
         // original design: a first version listened for 'error' for the
         // map's entire lifetime, which also catches completely normal,
         // expected individual-tile-fetch issues that occur constantly
@@ -254,27 +399,111 @@ export function FlowMapPanel({ config }: { config: FlowMapPanelConfig }) {
         const onLoadError = () => {
           map.off('error', onLoadError)
           const current = map.getStyle()
+          // freshBlankStyle() when actually setting it (MapLibre mutates
+          // the live style object in place) — the comparison just above
+          // stays against the canonical BLANK_STYLE constant, a safe,
+          // read-only value comparison (JSON.stringify compares content,
+          // not identity).
           if (current && JSON.stringify(current) !== JSON.stringify(BLANK_STYLE)) {
-            map.setStyle(BLANK_STYLE)
+            map.setStyle(freshBlankStyle())
           }
         }
         map.on('error', onLoadError)
-        map.once('style.load', () => map.off('error', onLoadError))
+
+        // 012-webgl-context-management — 'style.load' is NOT used here
+        // (011's original design). Confirmed empirically (real
+        // instrumented Playwright run against this project's own pinned
+        // maplibre-gl) AND against MapLibre's own real-world-reported
+        // behavior (github.com/maplibre/maplibre-gl-js/discussions/2716:
+        // "style.load only runs once"): it fires exactly once per Map
+        // instance's lifetime — on the FIRST style becoming ready — and
+        // never again for any subsequent setStyle() call. 011's own
+        // original `map.once('style.load', () => map.off('error',
+        // onLoadError))` therefore never actually ran on a second+
+        // basemap switch, silently leaking one 'error' listener per
+        // switch (harmless in 011's own test scenarios, which never
+        // exercised a second setStyle() on the same map instance while
+        // checking for it, but a real latent bug this feature's own
+        // instrumentation surfaced while building the interleaved-mode
+        // repopulate trigger on the same assumption).
+        //
+        // 'styledata' DOES keep firing on every subsequent setStyle()
+        // call (confirmed by the same instrumentation) — it also fires
+        // many times per style load (once per internal style-related
+        // change, not just once when ready).
+        //
+        // Deliberately NOT filtered on `getStyle().sources` being
+        // non-empty (an earlier version of this fix did that, matching
+        // waitForBasemapApplied()'s own "simpler, race-free signal" —
+        // but that signal is specifically for detecting a REAL,
+        // non-blank basemap, not for "this setStyle() call has been
+        // processed" in general). BLANK_STYLE — the fallback
+        // loadBasemapStyle() itself resolves to for a genuinely
+        // unreachable preset (confirmed directly: resolvePresetName()'s
+        // own catch block, panels/basemap/loadBasemapStyle.ts) —
+        // legitimately has `sources: {}`. A sources-non-empty filter
+        // therefore NEVER fires for that transition, meaning the
+        // overlay's layers (cleared immediately above, unconditionally)
+        // never get re-populated — a REAL, confirmed regression found
+        // via direct instrumentation on the fixture's own "Unreachable
+        // Basemap" panel: its FlowmapLayer was silently wiped and never
+        // restored, violating FR-010/SC-004's "a missing/unreachable
+        // basemap never prevents a panel's data-driven content from
+        // rendering" guarantee (011's own core promise). Fixed by
+        // reacting to the FIRST 'styledata' after this setStyle() call
+        // unconditionally, regardless of source count — safe because
+        // nothing else calls setStyle() on this map instance between
+        // this listener's registration and this call (single-threaded
+        // JS, no other concurrent caller), so that first occurrence is
+        // always caused by THIS call, never a stale leftover. A
+        // repopulate triggered by a blank/unchanged style is a safe,
+        // cheap no-op-equivalent: the data-update effect below
+        // reconstructs the SAME FlowmapLayer from the SAME rows and
+        // calls setProps() again — redundant, not harmful.
+        //
+        // Deck.gl's own interleaved-mode 'styledata' listener
+        // (registered once, at overlay construction, inside
+        // MapboxOverlay's real _onAddInterleaved()) re-inserts its
+        // render slot into the new style on 'styledata' too — and,
+        // being registered long before this one, always runs first for
+        // the same event dispatch (MapLibre/DOM-standard listener
+        // ordering), so by the time this handler's body runs, deck.gl
+        // has already done its own reinsertion for that occurrence —
+        // true regardless of which 'styledata' occurrence we react to,
+        // so this doesn't depend on the source-count filter either.
+        const onStyleReady = () => {
+          map.off('styledata', onStyleReady)
+          map.off('error', onLoadError)
+          // Re-populate with the CURRENT data-derived layer, not the
+          // pre-clear one. Does NOT construct the FlowmapLayer directly
+          // here (see the layerRepopulateGeneration comment near its
+          // declaration) — bumping this counter re-triggers the
+          // data-update effect below, whose closure is guaranteed fresh
+          // at the moment it actually runs.
+          setLayerRepopulateGeneration((g) => g + 1)
+        }
+        map.on('styledata', onStyleReady)
+        detachStyleReadyListener = () => map.off('styledata', onStyleReady)
 
         // transformStyle — reused directly from APP-WFRC-Commute-Patterns'
         // own real, production setStyle() call (research.md §1), not
         // re-derived: preserves this project's own future custom
         // MapLibre-native layers (e.g. a later zonemap's choropleth fill)
         // across the swap by carrying forward any previous-style layer id
-        // the new style doesn't already have. No-op today (FlowMapPanel
-        // adds no MapLibre-native layers of its own — only the deck.gl
-        // overlay, which research.md §1 confirms lives outside this
-        // mechanism entirely).
+        // the new style doesn't already have. No-op today for genuine
+        // app-added layers (FlowMapPanel adds none of its own — only the
+        // deck.gl overlay, which research.md §1 confirms lives outside
+        // this mechanism entirely) — but see BLANK_STYLE_LAYER_IDS above:
+        // this preservation must explicitly exclude BLANK_STYLE's own
+        // scaffolding layer(s), which are not app-owned content and must
+        // never be carried forward to paint over a real basemap.
         map.setStyle(styleArg, {
           transformStyle: (previous, next) => {
             if (!previous) return next
             const nextIds = new Set(next.layers.map((l) => l.id))
-            const preserved = previous.layers.filter((l) => !nextIds.has(l.id))
+            const preserved = previous.layers.filter(
+              (l) => !nextIds.has(l.id) && !BLANK_STYLE_LAYER_IDS.has(l.id),
+            )
             return {
               ...next,
               sources: { ...next.sources, ...previous.sources },
@@ -293,6 +522,18 @@ export function FlowMapPanel({ config }: { config: FlowMapPanelConfig }) {
 
     return () => {
       controller.abort()
+      // 012-webgl-context-management — detaches a still-pending
+      // onStyleReady listener from a superseded invocation (e.g. a rapid
+      // double theme-toggle re-running this effect before the first
+      // setStyle()'s own style finished loading) — otherwise it would
+      // stay registered and could fire against a map that has already
+      // moved on to a newer style, redundantly bumping
+      // layerRepopulateGeneration for a generation() that already lost.
+      // undefined until the promise above actually resolves and reaches
+      // that point — a cleanup running before then has nothing to detach
+      // (the AbortController above already cancels the underlying
+      // fetch(es) in that case).
+      detachStyleReadyListener?.()
     }
     // Deliberately keyed on `key` (basemapKey's stable content-based
     // identity) alone, not on `effectiveBasemap`/`config.basemap`/
@@ -310,7 +551,8 @@ export function FlowMapPanel({ config }: { config: FlowMapPanelConfig }) {
     if (status !== 'ready' || !mapReady || !overlayRef.current || !containerRef.current) return
 
     const data = buildFlowmapData(config, rows)
-    if (data.excludedCount > 0) {
+    if (data.excludedCount > 0 && warnedForRowsRef.current !== rows) {
+      warnedForRowsRef.current = rows
       console.warn(
         `FlowMapPanel "${config.title}" (metric: ${config.metric}): excluded ${data.excludedCount} row(s) with a missing coordinate or non-positive value.`,
       )
@@ -343,7 +585,17 @@ export function FlowMapPanel({ config }: { config: FlowMapPanelConfig }) {
     containerRef.current.dataset.renderCount = String(renderCountRef.current)
     containerRef.current.dataset.flowCount = String(data.flows.length)
     containerRef.current.dataset.locationCount = String(data.locations.length)
-  }, [config, rows, status, mapReady])
+    // 012-webgl-context-management — layerRepopulateGeneration added.
+    // Bumped by (a) the basemap effect's style.load handler after an
+    // interleaved-mode setStyle() wipe, and (b) webglcontextrestored —
+    // both need the FlowmapLayer reconstructed from CURRENT rows/config,
+    // which only this effect's own always-fresh closure can guarantee
+    // (contracts/interleaved-overlay-survival.md's "Why not a standalone
+    // helper function"). If status isn't 'ready' when a repopulate is
+    // requested, the guard above already returns early — a correct
+    // no-op, since this effect re-runs again anyway once status reaches
+    // 'ready' (already in this dependency array).
+  }, [config, rows, status, mapReady, layerRepopulateGeneration])
 
   if (status === 'empty') {
     return <PanelEmptyState icon={MapIcon} message="No data for this selection" />
@@ -357,15 +609,35 @@ export function FlowMapPanel({ config }: { config: FlowMapPanelConfig }) {
       {status === 'loading' && (
         <div className="animate-pulse rounded-md bg-muted" style={{ height: config.height ?? 500 }} />
       )}
-      <div
-        ref={containerRef}
-        className="flowmap-chart"
-        style={{
-          width: '100%',
-          height: '100%',
-          display: status === 'ready' ? undefined : 'none',
-        }}
-      />
+      {/* 012-webgl-context-management — the containerRef div below must
+          NEVER unmount while contextLost is true: MapLibre's own
+          automatic restoration rebuilds resources against the SAME
+          canvas element, not a newly-created one. This wrapper lets the
+          banner overlay the (currently inert but still-mounted) canvas
+          instead of replacing it, unlike the 'empty'/'error' early
+          returns above (which correctly DO omit the container — a
+          context can only be lost after a map has already been
+          successfully constructed, which only happens once status
+          reaches 'ready'). */}
+      <div style={{ position: 'relative', height: '100%', width: '100%' }}>
+        {status === 'ready' && contextLost && (
+          <div
+            style={{ position: 'absolute', inset: 0, zIndex: 1 }}
+            className="flex items-center justify-center bg-background/80"
+          >
+            <PanelErrorState message="Map context lost — too many maps are open at once. It may recover automatically; try closing other panels or reloading if not." />
+          </div>
+        )}
+        <div
+          ref={containerRef}
+          className="flowmap-chart"
+          style={{
+            width: '100%',
+            height: '100%',
+            display: status === 'ready' ? undefined : 'none',
+          }}
+        />
+      </div>
     </>
   )
 }

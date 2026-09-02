@@ -305,7 +305,178 @@ APP-wftdm-dashboard/
     │   │                         # empirically: a first, lifetime-scoped
     │   │                         # version wrongly reverted an already-
     │   │                         # successfully-loaded style on ordinary,
-    │   │                         # expected post-load tile noise
+    │   │                         # expected post-load tile noise.
+    │   │                         # 012-webgl-context-management: the
+    │   │                         # MapboxOverlay flips to
+    │   │                         # interleaved: true (halves per-panel
+    │   │                         # WebGL context cost from 2 to 1 —
+    │   │                         # confirmed via @deck.gl/mapbox's own
+    │   │                         # source that interleaved mode creates
+    │   │                         # no separate canvas/context of its
+    │   │                         # own, unlike non-interleaved). This
+    │   │                         # reopens a setStyle()-wipes-deck.gl-
+    │   │                         # layers risk 011's non-interleaved
+    │   │                         # design didn't have, fixed by clearing
+    │   │                         # layers before setStyle() and re-
+    │   │                         # populating once the new style is
+    │   │                         # ready — via a NEW
+    │   │                         # layerRepopulateGeneration state
+    │   │                         # counter feeding the EXISTING data-
+    │   │                         # update effect's own dependency array
+    │   │                         # (not a new standalone helper — an
+    │   │                         # earlier design that read
+    │   │                         # status/rows/config directly from two
+    │   │                         # long-lived event-handler closures was
+    │   │                         # found to be a real stale-closure bug
+    │   │                         # during this feature's own plan
+    │   │                         # review). Also found empirically (and
+    │   │                         # confirmed against real upstream
+    │   │                         # reports, github.com/maplibre/
+    │   │                         # maplibre-gl-js/discussions/2716):
+    │   │                         # 'style.load' fires only ONCE per Map
+    │   │                         # instance's lifetime, never again on a
+    │   │                         # second+ setStyle() call — 011's own
+    │   │                         # original `map.once('style.load', ...)`
+    │   │                         # therefore never actually detached its
+    │   │                         # scoped 'error' listener past the
+    │   │                         # first basemap switch, a real latent
+    │   │                         # bug this feature's own instrumentation
+    │   │                         # surfaced and fixed by switching to a
+    │   │                         # 'styledata'-driven one-shot check
+    │   │                         # instead. That check FIRST tried
+    │   │                         # filtering on getStyle().sources being
+    │   │                         # non-empty (the same "simpler, race-
+    │   │                         # free signal" waitForBasemapApplied()
+    │   │                         # already relies on in the test suite)
+    │   │                         # — found, via direct instrumentation
+    │   │                         # on the fixture's own "Unreachable
+    │   │                         # Basemap" panel, to be a SECOND real
+    │   │                         # bug: BLANK_STYLE (loadBasemapStyle()'s
+    │   │                         # own fallback for a genuinely
+    │   │                         # unreachable preset) legitimately has
+    │   │                         # zero sources, so that filter NEVER
+    │   │                         # fired for it — the overlay's layers
+    │   │                         # (cleared unconditionally just before
+    │   │                         # every setStyle() call, interleaved-
+    │   │                         # mode's own requirement) were silently
+    │   │                         # wiped and never restored, violating
+    │   │                         # FR-010/SC-004's "a missing/unreachable
+    │   │                         # basemap never prevents a panel's
+    │   │                         # data-driven content from rendering"
+    │   │                         # guarantee — 011's own core promise.
+    │   │                         # Fixed by reacting to the FIRST
+    │   │                         # 'styledata' after each setStyle() call
+    │   │                         # unconditionally, regardless of source
+    │   │                         # count (safe: nothing else calls
+    │   │                         # setStyle() on this map between
+    │   │                         # registration and the call, and a
+    │   │                         # repopulate triggered by an unchanged
+    │   │                         # style is a safe, cheap no-op-
+    │   │                         # equivalent via the data-update
+    │   │                         # effect's own guards).
+    │   │                         # Also new: a contextLost boolean state,
+    │   │                         # independent of `status` (data-model.md's
+    │   │                         # own "Map Panel Rendering State" —
+    │   │                         # these answer different questions and
+    │   │                         # can each change independently), driven
+    │   │                         # by MapLibre's own already-built-in
+    │   │                         # webglcontextlost/webglcontextrestored
+    │   │                         # Map events (MapLibre already calls
+    │   │                         # preventDefault() and rebuilds its own
+    │   │                         # painter internally — this is wiring up
+    │   │                         # existing library events, not new
+    │   │                         # low-level instrumentation) — renders a
+    │   │                         # distinct "Map context lost" banner
+    │   │                         # overlaid on the still-mounted map
+    │   │                         # container (which must never unmount
+    │   │                         # while contextLost is true, since
+    │   │                         # MapLibre's automatic restoration
+    │   │                         # rebuilds resources against the SAME
+    │   │                         # canvas element). A THIRD real bug,
+    │   │                         # found only from a live user report
+    │   │                         # after this feature was believed
+    │   │                         # complete ("summary tab and top 2
+    │   │                         # basemap-tab panels work, the rest are
+    │   │                         # blank gray canvases with flow lines
+    │   │                         # on top"): `BLANK_STYLE`
+    │   │                         # (panels/basemap/loadBasemapStyle.ts)
+    │   │                         # was a single module-level object every
+    │   │                         # flowmap panel's Map was constructed
+    │   │                         # with directly — MapLibre treats a
+    │   │                         # Map's constructor-time/setStyle()
+    │   │                         # style as a LIVE, mutable reference,
+    │   │                         # not something it clones, so one
+    │   │                         # panel's own real basemap transition
+    │   │                         # mutated resolved sprite/glyphs fields
+    │   │                         # directly onto that shared object,
+    │   │                         # corrupting every other panel still
+    │   │                         # starting from "blank" — invisible with
+    │   │                         # one flowmap panel per tab (010/011's
+    │   │                         # own coverage), only surfaced once 012
+    │   │                         # made several real panels on one tab
+    │   │                         # normal. Fixed with `freshBlankStyle()`
+    │   │                         # (a real, independent `structuredClone`
+    │   │                         # each call) — every MapLibre-facing
+    │   │                         # call site (Map construction, both
+    │   │                         # `setStyle(BLANK_STYLE)` fallback
+    │   │                         # sites) now uses it; the exported
+    │   │                         # `BLANK_STYLE` constant itself stays
+    │   │                         # untouched, used only for read-only
+    │   │                         # value comparisons. A FOURTH real bug,
+    │   │                         # found from the SAME live user report
+    │   │                         # after the third bug's own fix was
+    │   │                         # believed to have resolved it (it
+    │   │                         # hadn't — a genuinely different root
+    │   │                         # cause behind the identical symptom):
+    │   │                         # the basemap-application effect's own
+    │   │                         # `transformStyle` callback (reused
+    │   │                         # directly from `APP-WFRC-Commute-
+    │   │                         # Patterns`, present since 011) merges
+    │   │                         # `previous`-style layers not already in
+    │   │                         # `next` and APPENDS them LAST — correct
+    │   │                         # for a genuine future app-added custom
+    │   │                         # layer (this mechanism's real intent),
+    │   │                         # but wrong for `BLANK_STYLE`'s own
+    │   │                         # opaque `background` layer: CARTO/
+    │   │                         # OpenFreeMap presets happen to define
+    │   │                         # their OWN `"background"` layer as
+    │   │                         # their first layer (masking the bug in
+    │   │                         # 011's own coverage), but a raster
+    │   │                         # preset (no `background` layer of its
+    │   │                         # own) or a namespaced composition (its
+    │   │                         # own `background`, if any, renamed to
+    │   │                         # `layer0__background`) do not — so
+    │   │                         # `BLANK_STYLE`'s own background layer
+    │   │                         # got carried forward and painted, fully
+    │   │                         # opaque, on top of an already-correctly
+    │   │                         # -resolved real basemap underneath it.
+    │   │                         # Confirmed directly against a real
+    │   │                         # production build (not just the dev
+    │   │                         # server or the test suite):
+    │   │                         # `map.getStyle()` showed the correct
+    │   │                         # real sources/tiles genuinely fetched
+    │   │                         # and loaded, with `"background"` sitting
+    │   │                         # at the LAST layer-array index
+    │   │                         # specifically for the two affected
+    │   │                         # panel types — real tile requests had
+    │   │                         # fired and succeeded; this was never a
+    │   │                         # fetch problem, and neither of the
+    │   │                         # first two bugs' own fixes touch this
+    │   │                         # code path at all. Fixed with a new
+    │   │                         # `BLANK_STYLE_LAYER_IDS` constant,
+    │   │                         # excluded from what `transformStyle`
+    │   │                         # preserves. Every existing "sources
+    │   │                         # resolved correctly" test kept passing
+    │   │                         # throughout — none of them inspect
+    │   │                         # layer stacking order, which is exactly
+    │   │                         # why this shipped once already; new
+    │   │                         # regression coverage asserts
+    │   │                         # `"background"` is absent from the
+    │   │                         # affected styles' own layer id list AND
+    │   │                         # samples real canvas pixels away from
+    │   │                         # the flow lines to confirm they aren't
+    │   │                         # uniformly `BLANK_STYLE`'s own fill
+    │   │                         # color.
     │   ├── basemap/              # done (011-basemap-style-system) — shared
     │   │   │                     # basemap registry/resolution, consumed by
     │   │   │                     # FlowMapPanel.tsx now, ZoneMapPanel.tsx
@@ -321,7 +492,57 @@ APP-wftdm-dashboard/
     │   │   │                     # shape, most providers nested under a
     │   │   │                     # parent with a variants map — NOT flat
     │   │   │                     # per-variant keys, a real correction
-    │   │   │                     # found only once real data existed)
+    │   │   │                     # found only once real data existed).
+    │   │   │                     # A FIFTH real bug, found from a live
+    │   │   │                     # user report AFTER the 012 fourth-bug
+    │   │   │                     # fixture work above was believed
+    │   │   │                     # complete: leaflet-providers' own
+    │   │   │                     # `{attribution.ProviderName}` placeholder
+    │   │   │                     # convention (real, un-extracted-away —
+    │   │   │                     # the catalog JSON is the RAW pre-
+    │   │   │                     # substitution provider-definitions
+    │   │   │                     # object; the real substitution only
+    │   │   │                     # happens inside leaflet-providers.js's
+    │   │   │                     # own `initialize()`, which this app
+    │   │   │                     # never calls) was never resolved at
+    │   │   │                     # all — the raw placeholder text was
+    │   │   │                     # passed straight through to MapLibre's
+    │   │   │                     # raster source, rendering literally.
+    │   │   │                     # Confirmed directly against
+    │   │   │                     # leaflet-providers.js's own real
+    │   │   │                     # `attributionReplacer` (quoted in
+    │   │   │                     # resolveAttributionPlaceholders()'s
+    │   │   │                     # own comment): a placeholder always
+    │   │   │                     # references another TOP-LEVEL
+    │   │   │                     # provider's own `options.attribution`
+    │   │   │                     # (never a variant's), and resolution
+    │   │   │                     # is genuinely RECURSIVE — a referenced
+    │   │   │                     # provider's own attribution can itself
+    │   │   │                     # carry another placeholder, though no
+    │   │   │                     # real 2-level chain exists in the
+    │   │   │                     # current catalog (confirmed directly).
+    │   │   │                     # OpenTopoMap's and Esri.WorldImagery's
+    │   │   │                     # own real, current attribution strings
+    │   │   │                     # both genuinely contain this
+    │   │   │                     # placeholder — the two regression
+    │   │   │                     # cases. Fixed with
+    │   │   │                     # resolveAttributionPlaceholders(),
+    │   │   │                     # applied to `resolveRasterProvider()`'s
+    │   │   │                     # return value before it reaches EITHER
+    │   │   │                     # of loadBasemapStyle.ts's two call
+    │   │   │                     # sites (resolvePresetName's simple-
+    │   │   │                     # preset branch, composeStyles' raster-
+    │   │   │                     # layer branch) — same fail-soft
+    │   │   │                     # convention as everything else in this
+    │   │   │                     # feature (an unresolvable reference
+    │   │   │                     # leaves that one placeholder's raw text
+    │   │   │                     # in place rather than throwing or
+    │   │   │                     # dropping the whole string), plus a
+    │   │   │                     # depth cap the real upstream code has
+    │   │   │                     # no equivalent of at all (pure defense
+    │   │   │                     # against a hypothetical malformed/
+    │   │   │                     # circular catalog hanging the browser
+    │   │   │                     # — no real cycle exists today).
     │   │   ├── resolveEffectiveBasemap.ts # pure panel > tab > app-default
     │   │   │                     # precedence resolver + basemapKey()
     │   │   │                     # (the content-stable identity
@@ -345,6 +566,84 @@ APP-wftdm-dashboard/
     │   │                         # non-setStyle(url)-loaded style (found
     │   │                         # empirically against the real UGRC
     │   │                         # endpoint, not assumed)
+    │   │                         # composeStyles() later (012, fixture
+    │   │                         # work) gained a SECOND composition-layer
+    │   │                         # shape: a bare raster provider preset
+    │   │                         # name (no http(s):// scheme, e.g.
+    │   │                         # "Esri.WorldImagery") instead of a URL
+    │   │                         # to fetch as a style document —
+    │   │                         # resolved via registry.ts's own
+    │   │                         # resolveRasterProvider() and inlined
+    │   │                         # directly as a namespaced raster
+    │   │                         # source+layer, no fetch needed (a raw
+    │   │                         # ArcGIS MapServer/raster endpoint has no
+    │   │                         # style-spec document the URL branch
+    │   │                         # could fetch-and-merge). Built to
+    │   │                         # represent UGRC's real "Vector Hybrid
+    │   │                         # Base Map" (opendata.gis.utah.gov/
+    │   │                         # datasets/utah-vector-hybrid-base-map,
+    │   │                         # confirmed via its own live ArcGIS item
+    │   │                         # JSON): Esri World Imagery raster UNDER
+    │   │                         # UGRC's own real Vector_Overlay vector
+    │   │                         # labels/roads service — the first
+    │   │                         # raster+vector mix this mechanism needed
+    │   │                         # to represent at all.
+    │   │                         #
+    │   │                         # A REAL bug found immediately after,
+    │   │                         # via live production-build debugging
+    │   │                         # (same discipline as every other 012
+    │   │                         # finding — dev-server/unit tests alone
+    │   │                         # didn't catch it): both this new branch
+    │   │                         # AND resolvePresetName()'s own existing
+    │   │                         # simple-preset raster branch built their
+    │   │                         # raster source object with
+    │   │                         # `maxzoom: raster.maxZoom` unconditionally
+    │   │                         # — for any leaflet-providers entry that
+    │   │                         # defines no maxZoom override at all
+    │   │                         # (confirmed: Esri.WorldImagery in the
+    │   │                         # real catalog is exactly this — only
+    │   │                         # some other Esri variants like
+    │   │                         # WorldTerrain/WorldPhysical define one),
+    │   │                         # `raster.maxZoom` is `undefined`, but the
+    │   │                         # `maxzoom` KEY still ends up own-
+    │   │                         # enumerable on the resulting object
+    │   │                         # (`Object.keys()` reports it even though
+    │   │                         # its value is `undefined` — confirmed
+    │   │                         # directly in a Node REPL, not assumed).
+    │   │                         # MapLibre's real style-spec validator
+    │   │                         # normalizes that to `null` for its type
+    │   │                         # check, producing a genuine, user-visible
+    │   │                         # "Expected value to be of type number,
+    │   │                         # but found null instead" warning AND a
+    │   │                         # real MapLibre 'error' event —
+    │   │                         # FlowMapPanel's own FR-010 error-
+    │   │                         # fallback listener (correctly, per its
+    │   │                         # own coarse-by-design contract) then
+    │   │                         # treats that as "the basemap failed,"
+    │   │                         # reverting straight to freshBlankStyle()
+    │   │                         # before any tile ever fetches — traced
+    │   │                         # live via temporary console.log
+    │   │                         # instrumentation in a real production
+    │   │                         # preview build: resolveRasterProvider()
+    │   │                         # itself resolved correctly every time,
+    │   │                         # confirming the bug was downstream, in
+    │   │                         # the object literal, not the lookup.
+    │   │                         # Fixed with a conditional spread (the
+    │   │                         # same defensive pattern
+    │   │                         # inlineTileJsonSource() already used for
+    │   │                         # its own optional TileJSON fields) at
+    │   │                         # both call sites, omitting the key
+    │   │                         # entirely instead of setting it to
+    │   │                         # undefined. The existing raster+vector
+    │   │                         # composition unit test had NOT caught
+    │   │                         # this — it used `toMatchObject`, which
+    │   │                         # only checks listed keys, never fails on
+    │   │                         # an extra own-enumerable key — so a new,
+    │   │                         # dedicated test was added asserting the
+    │   │                         # key is truly ABSENT via `Object.keys()`/
+    │   │                         # `hasOwnProperty`, confirmed to actually
+    │   │                         # fail against the reverted bug before
+    │   │                         # confirming it passes against the fix.
     │   ├── ZoneMapPanel.tsx      # not built yet — MapLibre choropleth +
     │   │                         # GeoParquet; will consume panels/basemap/
     │   │                         # unchanged once built (spec.md's own
@@ -572,11 +871,39 @@ didn't anticipate: a `mapReady` React-state gate on the data-update
 effect (a bare `overlayRef.current` ref check has no mechanism to
 re-trigger a React effect once it becomes non-null late — found during
 that feature's own contract review, `specs/010-flowmap-panel/
-research.md` §11) — and a base map style that's a minimal, self-contained
-`background`-only `StyleSpecification` (no external tile/CDN dependency,
-`docs/GRAMMAR.md`'s `type: flowmap` grammar has no `style:`/`basemap:`
-key yet — real basemap tiles remain unresolved, deliberately out of that
-feature's scope).
+research.md` §11). `010`'s own minimal, self-contained `background`-only
+`BLANK_STYLE` remains the mount-time default and the universal fallback;
+real basemap tiles were resolved by `011-basemap-style-system` (three-
+level panel/tab/app-default precedence, `panels/basemap/`) and are no
+longer unresolved.
+
+`012-webgl-context-management` then fixed a real production bug: enough
+flowmap panels on one tab (`010`'s non-interleaved `MapboxOverlay`, 2 real
+WebGL contexts each) could exceed the browser's own concurrent-context
+ceiling, silently losing context on the earliest-mounted panels — deck.gl's
+own View system and viewport-gated mounting were both researched and
+rejected (the former architecturally incompatible with this app's
+independent, individually-004-expandable panels; the latter unneeded once
+the chosen fix — `interleaved: true`, halving cost to 1 context/panel —
+already clears the real floor with margin). MapLibre's own already-
+built-in `webglcontextlost`/`webglcontextrestored` Map events (it already
+calls `preventDefault()` and rebuilds its own painter internally) now
+drive a `contextLost` panel state, rendering a distinct "Map context
+lost" banner overlaid on the still-mounted map container — the container
+must never unmount while it's true, since MapLibre's automatic
+restoration rebuilds resources against the SAME canvas element. A real,
+confirmed MapLibre behavior surfaced during this feature's own empirical
+testing (matching `github.com/maplibre/maplibre-gl-js/discussions/2716`):
+`'style.load'` fires only once per `Map` instance's lifetime, never again
+on a second+ `setStyle()` call — `011`'s original design assumed
+otherwise; both `011`'s error-listener cleanup and `012`'s own repopulate
+trigger now key off `'styledata'` instead. A follow-up, post-completion
+finding corrected that first `'styledata'` handler further: it originally
+still gated on the new style's `sources` being non-empty, which never
+fires for `BLANK_STYLE` (legitimately zero sources) — permanently
+skipping the overlay repopulate for any panel that fell back to blank.
+Fixed by firing unconditionally on the FIRST `'styledata'` after each
+`setStyle()` call, no sources filter at all.
 
 **ZoneMapPanel** — not yet built. Load zone GeoParquet once via DuckDB
 spatial, cache as module variable. Join metric rows to features in JS →

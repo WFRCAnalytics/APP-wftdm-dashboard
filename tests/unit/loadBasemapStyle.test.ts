@@ -1,7 +1,77 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
-import { loadBasemapStyle, BLANK_STYLE } from '@/panels/basemap/loadBasemapStyle'
+import { loadBasemapStyle, BLANK_STYLE, freshBlankStyle } from '@/panels/basemap/loadBasemapStyle'
 import { __resetProvidersCacheForTests } from '@/panels/basemap/registry'
 import type { StyleSpecification } from 'maplibre-gl'
+
+// 012-webgl-context-management — regression coverage for a real,
+// confirmed live-user bug: MapLibre treats a Map's constructor-time/
+// setStyle() style as a LIVE, mutable object, not something it
+// defensively clones. Handing every flowmap panel the SAME BLANK_STYLE
+// object reference let one panel's own real basemap transition mutate
+// resolved fields (confirmed: sprite/glyphs) directly onto that shared
+// object, corrupting every OTHER panel still starting from "blank" —
+// invisible with one flowmap panel per tab (010/011's own coverage),
+// only surfaced once this feature made several real panels on one tab
+// normal. The existing `.toEqual()`-based tests above (VALUE equality)
+// cannot catch a regression back to this bug — a broken freshBlankStyle()
+// that returned the shared BLANK_STYLE reference itself would still pass
+// every one of them. This block asserts REFERENCE independence
+// specifically, reproducing the exact corruption shape the real bug had
+// (a `sprite`/`glyphs` field mutated onto an otherwise-blank style).
+describe('freshBlankStyle', () => {
+  it('returns a genuinely independent object on every call — mutating one result never affects another call\'s result or the BLANK_STYLE constant', () => {
+    const first = freshBlankStyle()
+    const second = freshBlankStyle()
+
+    // Not the same object as each other, and not the same object as the
+    // canonical constant either — three distinct references.
+    expect(first).not.toBe(second)
+    expect(first).not.toBe(BLANK_STYLE)
+    expect(second).not.toBe(BLANK_STYLE)
+
+    // All three still agree on VALUE before any mutation.
+    expect(first).toEqual(BLANK_STYLE)
+    expect(second).toEqual(BLANK_STYLE)
+
+    // Reproduce the real corruption shape directly: a resolved style's
+    // sprite/glyphs mutated onto what should have been an independent
+    // blank style, plus a mutation of a NESTED field (the background
+    // layer's own paint color) to prove this is a genuine deep clone,
+    // not a shallow one that would still share nested objects/arrays.
+    ;(first as StyleSpecification & { sprite?: string; glyphs?: string }).sprite =
+      'https://tiles.basemaps.cartocdn.com/gl/positron-gl-style/sprite'
+    ;(first as StyleSpecification & { sprite?: string; glyphs?: string }).glyphs =
+      'https://tiles.basemaps.cartocdn.com/fonts/{fontstack}/{range}.pbf'
+    first.layers.push({ id: 'mutated-extra-layer', type: 'background', paint: {} })
+    const firstBackgroundLayer = first.layers[0] as { paint: { 'background-color'?: string } }
+    firstBackgroundLayer.paint['background-color'] = '#ff0000'
+
+    // The SECOND call's own, already-obtained result is completely
+    // unaffected by mutating the first.
+    expect((second as StyleSpecification & { sprite?: string }).sprite).toBeUndefined()
+    expect((second as StyleSpecification & { glyphs?: string }).glyphs).toBeUndefined()
+    expect(second.layers).toHaveLength(1)
+    expect((second.layers[0] as { paint: { 'background-color'?: string } }).paint['background-color']).toBe(
+      '#e5e5e5',
+    )
+
+    // The canonical BLANK_STYLE constant itself — what every future
+    // freshBlankStyle() call clones FROM — is also completely unaffected.
+    expect((BLANK_STYLE as StyleSpecification & { sprite?: string }).sprite).toBeUndefined()
+    expect((BLANK_STYLE as StyleSpecification & { glyphs?: string }).glyphs).toBeUndefined()
+    expect(BLANK_STYLE.layers).toHaveLength(1)
+    expect((BLANK_STYLE.layers[0] as { paint: { 'background-color'?: string } }).paint['background-color']).toBe(
+      '#e5e5e5',
+    )
+
+    // A call made AFTER the mutation is also unaffected — confirms
+    // freshBlankStyle() clones from the pristine constant every time,
+    // not from whatever the previous call's (now-mutated) result was.
+    const third = freshBlankStyle()
+    expect(third).toEqual(BLANK_STYLE)
+    expect((third as StyleSpecification & { sprite?: string }).sprite).toBeUndefined()
+  })
+})
 
 describe('loadBasemapStyle', () => {
   beforeEach(() => {
@@ -131,5 +201,177 @@ describe('loadBasemapStyle', () => {
         'https://c.tile.opentopomap.org/{z}/{x}/{y}.png',
       ],
     })
+  })
+
+  // 012-webgl-context-management — a composition layer entry that isn't
+  // a URL (no http(s):// scheme) resolves as a raster provider preset
+  // name instead of a fetched style document — the mechanism this
+  // feature added specifically to represent UGRC's real "Vector Hybrid
+  // Base Map" (a raster layer, Esri World Imagery, underneath a vector
+  // overlay layer, both real, confirmed live during implementation).
+  it('composes a raster provider layer underneath a real vector-style URL layer — a mixed raster+vector composition', async () => {
+    vi.mocked(fetch).mockImplementation(async (input) => {
+      const url = String(input)
+      if (url.endsWith('basemap/leaflet-providers.json')) {
+        return {
+          ok: true,
+          json: async () => ({
+            'Esri': {
+              url: 'https://server.arcgisonline.com/ArcGIS/rest/services/{variant}/MapServer/tile/{z}/{y}/{x}',
+              options: { variant: 'World_Street_Map', attribution: 'Tiles &copy; Esri' },
+              variants: {
+                WorldImagery: { options: { variant: 'World_Imagery', attribution: 'Esri World Imagery' } },
+              },
+            },
+          }),
+        } as Response
+      }
+      if (url === 'https://example.test/overlay/root.json') {
+        return {
+          ok: true,
+          json: async () => ({
+            version: 8,
+            sources: { overlay: { type: 'vector', url: '../../' } },
+            layers: [{ id: 'labels', type: 'symbol', source: 'overlay' }],
+          }),
+        } as Response
+      }
+      if (url === 'https://example.test/') {
+        return { ok: true, json: async () => ({ tiles: ['tile/{z}/{x}/{y}.pbf'] }) } as Response
+      }
+      throw new Error(`unexpected fetch: ${url}`)
+    })
+
+    const result = await loadBasemapStyle({
+      layers: ['Esri.WorldImagery', 'https://example.test/overlay/root.json'],
+    })
+
+    expect(result.kind).toBe('style')
+    const style = (result as { kind: 'style'; style: StyleSpecification }).style
+
+    // Raster layer (index 0, bottom) — namespaced, no fetch of a "style
+    // document" for it (none exists to fetch — resolved programmatically
+    // via resolveRasterProvider(), same mechanism a panel-level
+    // `basemap: Esri.WorldImagery` pin already uses).
+    expect(style.sources.layer0__basemap).toMatchObject({
+      type: 'raster',
+      tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+    })
+    expect(style.layers[0]).toMatchObject({ id: 'layer0__basemap', type: 'raster', source: 'layer0__basemap' })
+
+    // Vector layer (index 1, top) — fetched and rewritten exactly like
+    // any other URL composition layer, unaffected by the raster layer
+    // preceding it.
+    expect(style.sources.layer1__overlay).toMatchObject({ type: 'vector' })
+    expect((style.sources.layer1__overlay as { tiles?: string[] }).tiles).toEqual([
+      'https://example.test/tile/{z}/{x}/{y}.pbf',
+    ])
+    expect(style.layers[1]).toMatchObject({ id: 'layer1__labels', source: 'layer1__overlay' })
+
+    // Stacking order: raster (bottom) strictly before vector (top) —
+    // the real UGRC Vector Hybrid's own intended order (imagery under
+    // labels, not the reverse).
+    expect(style.layers.map((l) => l.id)).toEqual(['layer0__basemap', 'layer1__labels'])
+  })
+
+  // 012-webgl-context-management — a REAL bug found via live production
+  // debugging: the existing "mixed raster+vector composition" test above
+  // uses `toMatchObject`, which only asserts the listed keys are present
+  // with matching values — it does NOT fail if the object carries EXTRA
+  // own-enumerable keys, so it never caught this. Both raster-source call
+  // sites (resolvePresetName's simple-preset branch, composeStyles' own
+  // raster branch) unconditionally wrote `maxzoom: raster.maxZoom` even
+  // when a provider defines no maxZoom override at all (Esri.WorldImagery
+  // in the real catalog is exactly this case — confirmed directly).
+  // `raster.maxZoom` is then `undefined`, but the KEY still ends up
+  // own-enumerable on the resulting source object (`Object.keys()`
+  // reports it) — MapLibre's real style-spec validator normalizes that
+  // to `null` for its type check, firing a genuine 'error' event and
+  // silently reverting the whole map to BLANK_STYLE before any tile ever
+  // fetches (confirmed live: a real production build's browser console
+  // showed "Expected value to be of type number, but found null instead"
+  // for exactly this panel, and window.__flowmapTestMaps' own
+  // map.getStyle() showed zero sources — BLANK_STYLE — despite
+  // resolveRasterProvider() itself resolving correctly, traced with
+  // temporary instrumentation). Fixed with a conditional spread (the same
+  // pattern inlineTileJsonSource() already uses for its own optional
+  // fields) — this test asserts the key is truly ABSENT, not merely
+  // undefined-valued, which `toMatchObject`/`toEqual` alone cannot catch.
+  it('omits maxzoom/attribution entirely from a raster source when the provider defines neither — never an own-enumerable undefined-valued key', async () => {
+    vi.mocked(fetch).mockImplementation(async (input) => {
+      const url = String(input)
+      if (url.endsWith('basemap/leaflet-providers.json')) {
+        return {
+          ok: true,
+          json: async () => ({
+            Esri: {
+              url: 'https://server.arcgisonline.com/ArcGIS/rest/services/{variant}/MapServer/tile/{z}/{y}/{x}',
+              options: { variant: 'World_Street_Map' },
+              variants: {
+                // Real shape, real gap: WorldImagery defines a variant
+                // (so it's a resolvable name) but neither an attribution
+                // nor a maxZoom override of its own — matching the real
+                // catalog exactly (confirmed directly against
+                // public/basemap/leaflet-providers.json's real "Esri"
+                // entry during this bug's investigation).
+                WorldImagery: { options: { variant: 'World_Imagery' } },
+              },
+            },
+          }),
+        } as Response
+      }
+      throw new Error(`unexpected fetch: ${url}`)
+    })
+
+    // resolvePresetName's own simple-preset branch — a panel-level
+    // `basemap: Esri.WorldImagery` pin, not a composition.
+    const presetResult = await loadBasemapStyle('Esri.WorldImagery')
+    expect(presetResult.kind).toBe('style')
+    const presetStyle = (presetResult as { kind: 'style'; style: StyleSpecification }).style
+    const presetSource = presetStyle.sources.basemap as Record<string, unknown>
+    expect(Object.keys(presetSource)).not.toContain('maxzoom')
+    expect(Object.keys(presetSource)).not.toContain('attribution')
+    expect(Object.prototype.hasOwnProperty.call(presetSource, 'maxzoom')).toBe(false)
+
+    __resetProvidersCacheForTests()
+
+    // composeStyles' own raster branch — the SAME provider used as one
+    // layer of a composition (the real UGRC Vector Hybrid's own shape).
+    vi.mocked(fetch).mockImplementation(async (input) => {
+      const url = String(input)
+      if (url.endsWith('basemap/leaflet-providers.json')) {
+        return {
+          ok: true,
+          json: async () => ({
+            Esri: {
+              url: 'https://server.arcgisonline.com/ArcGIS/rest/services/{variant}/MapServer/tile/{z}/{y}/{x}',
+              options: { variant: 'World_Street_Map' },
+              variants: { WorldImagery: { options: { variant: 'World_Imagery' } } },
+            },
+          }),
+        } as Response
+      }
+      throw new Error(`unexpected fetch: ${url}`)
+    })
+    const compositionResult = await loadBasemapStyle({ layers: ['Esri.WorldImagery'] })
+    expect(compositionResult.kind).toBe('style')
+    const compositionStyle = (compositionResult as { kind: 'style'; style: StyleSpecification }).style
+    const compositionSource = compositionStyle.sources.layer0__basemap as Record<string, unknown>
+    expect(Object.keys(compositionSource)).not.toContain('maxzoom')
+    expect(Object.keys(compositionSource)).not.toContain('attribution')
+    expect(Object.prototype.hasOwnProperty.call(compositionSource, 'maxzoom')).toBe(false)
+  })
+
+  it('throws for an unrecognized raster provider name used as a composition layer — falls back to BLANK_STYLE, same as any other composition failure', async () => {
+    vi.mocked(fetch).mockImplementation(async (input) => {
+      const url = String(input)
+      if (url.endsWith('basemap/leaflet-providers.json')) {
+        return { ok: true, json: async () => ({}) } as Response
+      }
+      throw new Error(`unexpected fetch: ${url}`)
+    })
+
+    const result = await loadBasemapStyle({ layers: ['NotARealProvider.Variant'] })
+    expect(result).toEqual({ kind: 'style', style: BLANK_STYLE })
   })
 })

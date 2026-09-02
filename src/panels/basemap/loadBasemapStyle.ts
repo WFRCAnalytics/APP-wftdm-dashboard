@@ -14,6 +14,31 @@ export const BLANK_STYLE: StyleSpecification = {
   layers: [{ id: 'background', type: 'background', paint: { 'background-color': '#e5e5e5' } }],
 }
 
+// 012-webgl-context-management — a REAL, confirmed bug found via direct
+// instrumentation, not anticipated by 011's own design: MapLibre's
+// internal style engine treats a Map's constructor-time `style` (and any
+// `setStyle()` target) as a LIVE, mutable object reference, not something
+// it defensively clones — `transformStyle`'s own `previous` argument, for
+// a freshly-constructed map, is that SAME object. Since `BLANK_STYLE` is
+// a single module-level singleton every flowmap panel's `maplibregl.Map`
+// was being constructed with (and every `onLoadError` fallback was
+// calling `setStyle()` with) directly, ONE panel finishing its own real
+// basemap transition mutated resolved fields (confirmed: a real style's
+// `sprite`/`glyphs` URLs) directly onto that shared object — corrupting
+// every OTHER panel still starting from "blank," since they all
+// referenced the exact same reference. Invisible with a single flowmap
+// panel per tab (010/011's own test coverage); only became visible once
+// 012 made multiple flowmap panels on one tab a real, supported
+// configuration. `freshBlankStyle()` — a real, independent deep clone
+// every time — is what every MapLibre-facing call site (Map construction,
+// any `setStyle()` call) MUST use instead of the `BLANK_STYLE` constant
+// directly; `BLANK_STYLE` itself remains exported unchanged for VALUE
+// comparisons only (`JSON.stringify(current) === JSON.stringify(BLANK_STYLE)`
+// compares by content, not identity, so those call sites are unaffected).
+export function freshBlankStyle(): StyleSpecification {
+  return structuredClone(BLANK_STYLE)
+}
+
 /** What FlowMapPanel.tsx's basemap-application effect actually calls
  * map.setStyle() with — a URL is passed through directly (native relative
  * resolution); an object is a fully-resolved StyleSpecification (either
@@ -60,8 +85,11 @@ export async function loadBasemapStyle(
     // FR-010 — uniform fallback across every other source of failure.
     // Never rejects up to the caller for a REAL (non-abort) failure; a
     // broken/unreachable basemap must never prevent the panel's
-    // data-driven overlay from rendering.
-    return { kind: 'style', style: BLANK_STYLE }
+    // data-driven overlay from rendering. freshBlankStyle() — a real,
+    // independent clone every call — not the shared BLANK_STYLE constant
+    // (see that constant's own comment for why: MapLibre mutates a
+    // Map's live style object in place).
+    return { kind: 'style', style: freshBlankStyle() }
   }
 }
 
@@ -80,8 +108,29 @@ async function resolvePresetName(name: string, signal?: AbortSignal): Promise<Re
             type: 'raster',
             tiles: raster.tiles,
             tileSize: 256,
-            attribution: raster.attribution,
-            maxzoom: raster.maxZoom,
+            // 012-webgl-context-management — a REAL bug found via direct
+            // instrumentation: `attribution`/`maxZoom` unconditionally
+            // spread here (even when `undefined`, e.g. every leaflet-
+            // providers entry that never overrides a maxZoom, like
+            // Esri.WorldImagery) leaves an OWN-ENUMERABLE key on the
+            // source object whose value is `undefined` — `Object.keys()`
+            // still reports it, and MapLibre's style-spec validator
+            // normalizes that to `null` for its type check, producing a
+            // real, user-visible "Expected value to be of type number,
+            // but found null instead" warning AND a genuine MapLibre
+            // 'error' event — which FlowMapPanel's own FR-010
+            // error-fallback listener (correctly, per its own
+            // coarse-by-design contract) treats as "the basemap failed,"
+            // reverting to freshBlankStyle() before any tile ever
+            // fetches. Confirmed empirically: OpenTopoMap (which DOES
+            // define an explicit maxZoom) never hit this; Esri.WorldImagery
+            // (which has none in the real catalog) did, on every call
+            // site that builds a raster source this way. Conditional
+            // spread — the same defensive pattern inlineTileJsonSource()
+            // above already uses for its own optional TileJSON fields —
+            // omits the key entirely instead of setting it to undefined.
+            ...(raster.attribution !== undefined ? { attribution: raster.attribution } : {}),
+            ...(raster.maxZoom !== undefined ? { maxzoom: raster.maxZoom } : {}),
           },
         },
         layers: [{ id: 'basemap', type: 'raster', source: 'basemap' }],
@@ -92,12 +141,12 @@ async function resolvePresetName(name: string, signal?: AbortSignal): Promise<Re
   // Unrecognized name — same fallback path as a fetch failure (FR-010's
   // "at any precedence level, of any source category" language covers an
   // author typo exactly the same as a genuinely offline network).
-  return { kind: 'style', style: BLANK_STYLE }
+  return { kind: 'style', style: freshBlankStyle() }
 }
 
 /**
  * Composition (research.md §6, User Story 3, FR-008/FR-009): fetches each
- * layer's style.json, rewrites its own relative sources[*].url/sprite/
+ * URL layer's style.json, rewrites its own relative sources[*].url/sprite/
  * glyphs fields to absolute URLs resolved against THAT layer's own URL
  * (reproducing MapLibre's own native relative-resolution rule in
  * application code, since a merged in-memory object has no single
@@ -108,6 +157,21 @@ async function resolvePresetName(name: string, signal?: AbortSignal): Promise<Re
  * base -> labels order). Any single layer's failure aborts the WHOLE
  * composition — FR-010 is "the panel falls back to the blank style for
  * the whole basemap," never a partially-broken composite.
+ *
+ * 012-webgl-context-management — a layer entry may ALSO be a raster
+ * provider preset name (no http(s):// scheme, e.g. "Esri.WorldImagery")
+ * instead of a URL — resolved via resolveRasterProvider() and inlined
+ * directly as a namespaced raster source + layer, no fetch of a "style
+ * document" involved (raster providers have none). This is what makes a
+ * genuine raster-underneath-vector composition (e.g. UGRC's real
+ * "Vector Hybrid Base Map": Esri World Imagery raster underneath
+ * UGRC's own Vector_Overlay vector labels layer, confirmed directly
+ * against that web map's own real ArcGIS item JSON) representable at
+ * all — a raw ArcGIS MapServer raster endpoint is not itself a
+ * MapLibre style-spec document the way a real vector tile service's own
+ * root.json is, so it can never be fetched-and-merged via the URL
+ * branch below. See isRasterProviderName()'s own comment for why the
+ * URL-scheme check unambiguously distinguishes the two cases.
  */
 /**
  * `new URL(relative, base).href` percent-encodes `{`/`}` (not valid
@@ -173,15 +237,63 @@ async function inlineTileJsonSource(
   }
 }
 
+// 012-webgl-context-management — a real composition layer entry that is
+// NOT a URL (no http(s):// scheme) is treated as a raster provider
+// preset name instead (e.g. "Esri.WorldImagery") — the SAME dynamic
+// leaflet-providers lookup resolvePresetName()'s own raster branch
+// already uses for a panel-level `basemap: OpenTopoMap` pin, reused
+// here rather than re-derived. This is what makes a genuine raster-
+// underneath-vector composition representable at all: UGRC's real
+// "Vector Hybrid Base Map" (found via a live user-supplied reference,
+// opendata.gis.utah.gov/datasets/utah-vector-hybrid-base-map — its own
+// real web-map JSON, fetched directly, resolves to World_Imagery, a
+// plain ArcGIS MapServer raster endpoint, UNDER Vector_Overlay, a real
+// UGRC vector labels/roads layer with no background of its own)
+// composes a RASTER base layer with a VECTOR overlay — and a raw
+// ArcGIS MapServer endpoint is not itself a MapLibre style-spec
+// document the way a real vector tile service's own root.json is, so
+// it can never be fetched-and-merged the way the existing URL branch
+// below works. Distinguishing "URL to fetch as a style document" from
+// "raster provider name to resolve programmatically" by the presence
+// of a URL scheme is unambiguous: every real composition layer URL
+// this feature has ever used (LiteBase/LiteLabels/OutdoorsBase/
+// Outdoors_Labels/Vector_Overlay, all real ArcGIS `root.json`
+// documents) is an absolute https:// URL; leaflet-providers' own
+// dotted `Provider.Variant` naming convention (confirmed against the
+// real generated catalog, registry.ts) never contains "://".
+function isRasterProviderName(layerUrl: string): boolean {
+  return !/^https?:\/\//i.test(layerUrl)
+}
+
 async function composeStyles(layerUrls: string[], signal?: AbortSignal): Promise<StyleSpecification> {
   const merged: StyleSpecification = { version: 8, sources: {}, layers: [] }
 
   for (let i = 0; i < layerUrls.length; i++) {
     const layerUrl = layerUrls[i]
+    const prefix = `layer${i}__`
+
+    if (isRasterProviderName(layerUrl)) {
+      const raster = await resolveRasterProvider(layerUrl, signal)
+      if (!raster) {
+        throw new Error(`composeStyles: unrecognized raster provider name "${layerUrl}"`)
+      }
+      // Same undefined-key-survives-as-null-in-validation bug/fix as
+      // resolvePresetName()'s own raster branch above — see that call
+      // site's comment for the full root-cause trace.
+      merged.sources[`${prefix}basemap`] = {
+        type: 'raster',
+        tiles: raster.tiles,
+        tileSize: 256,
+        ...(raster.attribution !== undefined ? { attribution: raster.attribution } : {}),
+        ...(raster.maxZoom !== undefined ? { maxzoom: raster.maxZoom } : {}),
+      }
+      merged.layers.push({ id: `${prefix}basemap`, type: 'raster', source: `${prefix}basemap` })
+      continue
+    }
+
     const res = await fetch(layerUrl, { signal })
     if (!res.ok) throw new Error(`composeStyles: ${layerUrl} -> ${res.status}`)
     const raw = (await res.json()) as StyleSpecification
-    const prefix = `layer${i}__`
 
     const rewrittenSources: StyleSpecification['sources'] = {}
     for (const [sourceId, source] of Object.entries(raw.sources ?? {})) {

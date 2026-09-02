@@ -157,3 +157,128 @@ layout:
           - https://127.0.0.1:1/unreachable-layer.json
       height: 400
       width: 1.0
+
+  row_more_composition:
+    # A SECOND, genuinely different real UGRC composition, distinct from
+    # BOTH the existing "Flowmap UGRC Composition" panel below AND the
+    # real "Vector Hybrid" panel further down this file. This org's own
+    # ArcGIS services directory (99lidPhWCzftIe9K) has no VECTOR-ONLY
+    # service literally named "Hybrid" — confirmed directly, fetched.
+    # OutdoorsBase + Outdoors_Labels are real, ungated vector tile
+    # services at this SAME already-proven org (confirmed reachable,
+    # valid MapLibre-spec version 8 style documents, same relative-URL
+    # shape as LiteBase/LiteLabels above) — a genuinely different real
+    # endpoint pair, not a duplicate of the
+    # existing "Flowmap UGRC Composition" panel.
+    - type: flowmap
+      title: Flowmap UGRC Outdoors Composition
+      metric: od_flows
+      scenario: good_scenario
+      origin: orig_taz
+      origin_lat: orig_lat
+      origin_lon: orig_lon
+      destination: dest_taz
+      dest_lat: dest_lat
+      dest_lon: dest_lon
+      value: trips
+      basemap:
+        layers:
+          - https://tiles.arcgis.com/tiles/99lidPhWCzftIe9K/arcgis/rest/services/OutdoorsBase/VectorTileServer/resources/styles/root.json
+          - https://tiles.arcgis.com/tiles/99lidPhWCzftIe9K/arcgis/rest/services/Outdoors_Labels/VectorTileServer/resources/styles/root.json
+      height: 400
+      width: 1.0
+
+  row_more_presets:
+    # Confirmed present in registry.ts's own BUILT_IN_PRESETS (FR-001).
+    - type: flowmap
+      title: Flowmap Dark Matter Preset
+      metric: od_flows
+      scenario: good_scenario
+      origin: orig_taz
+      origin_lat: orig_lat
+      origin_lon: orig_lon
+      destination: dest_taz
+      dest_lat: dest_lat
+      dest_lon: dest_lon
+      value: trips
+      basemap: carto-dark-matter
+      height: 400
+      width: 0.33
+
+    - type: flowmap
+      title: Flowmap OpenFreeMap Liberty Preset
+      metric: od_flows
+      scenario: good_scenario
+      origin: orig_taz
+      origin_lat: orig_lat
+      origin_lon: orig_lon
+      destination: dest_taz
+      dest_lat: dest_lat
+      dest_lon: dest_lon
+      value: trips
+      basemap: openfreemap-liberty
+      height: 400
+      width: 0.33
+
+    # A SECOND leaflet-providers raster preset, genuinely different from
+    # the existing OpenTopoMap panel — a real, present dotted
+    # provider.variant entry confirmed directly against a freshly
+    # regenerated public/basemap/leaflet-providers.json (Esri is a
+    # PARENT entry with a `variants` map; `WorldImagery`'s own variant
+    # value substitutes `variant: "World_Imagery"` into Esri's parent
+    # tile URL template — no {s} subdomain placeholder needed for this
+    # one, unlike OpenTopoMap).
+    - type: flowmap
+      title: Flowmap Esri World Imagery Preset
+      metric: od_flows
+      scenario: good_scenario
+      origin: orig_taz
+      origin_lat: orig_lat
+      origin_lon: orig_lon
+      destination: dest_taz
+      dest_lat: dest_lat
+      dest_lon: dest_lon
+      value: trips
+      basemap: Esri.WorldImagery
+      height: 400
+      width: 0.33
+
+  row_hybrid_composition:
+    # The REAL UGRC "Utah Vector Hybrid Base Map"
+    # (opendata.gis.utah.gov/datasets/utah-vector-hybrid-base-map) — a
+    # real, ungated ArcGIS Online web map (item id
+    # ed173e51c27b41f3882064ce5de7d431, owner UtahAGRC), confirmed by
+    # fetching that item's own real data JSON directly rather than
+    # assumed: it composes Esri's World_Imagery (a RASTER ArcGIS
+    # MapServer, https://services.arcgisonline.com/ArcGIS/rest/services/
+    # World_Imagery/MapServer — resolved here via the SAME
+    # "Esri.WorldImagery" leaflet-providers name the panel above uses,
+    # not this literal MapServer URL, since a raw MapServer endpoint
+    # isn't itself a MapLibre style document) underneath UGRC's own
+    # Vector_Overlay — a real VECTOR tile service at the SAME org as
+    # every other UGRC panel on this tab (99lidPhWCzftIe9K), confirmed
+    # to be a valid MapLibre-spec style document with NO background
+    # layer of its own (by design — it's meant to sit over imagery, not
+    # stand alone). This is genuinely different from every other
+    # composition on this tab: the first mix of a raster layer with a
+    # vector layer in one basemap, requiring composeStyles() to actually
+    # gain a new capability (a composition layer entry may now be a
+    # raster provider preset name, not only a URL) — see that function's
+    # own comment in loadBasemapStyle.ts for the full reasoning.
+    - type: flowmap
+      title: Flowmap UGRC Vector Hybrid
+      metric: od_flows
+      scenario: good_scenario
+      origin: orig_taz
+      origin_lat: orig_lat
+      origin_lon: orig_lon
+      destination: dest_taz
+      dest_lat: dest_lat
+      dest_lon: dest_lon
+      value: trips
+      basemap:
+        layers:
+          - Esri.WorldImagery
+          - https://tiles.arcgis.com/tiles/99lidPhWCzftIe9K/arcgis/rest/services/Vector_Overlay/VectorTileServer/resources/styles/root.json
+      height: 400
+      width: 1.0

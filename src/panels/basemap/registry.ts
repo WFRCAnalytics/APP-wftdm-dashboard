@@ -128,6 +128,72 @@ function resolveProviderEntry(
   return { url, options }
 }
 
+// A malformed/hand-edited catalog COULD reference itself in a cycle
+// (A -> B -> A); leaflet-providers.js's own real attributionReplacer
+// (quoted directly in resolveAttributionPlaceholders()'s own comment
+// below) has no protection against this at all and would recurse until a
+// stack overflow. This app resolves at runtime against a fetched catalog
+// rather than at author-time against a trusted local require(), so a
+// defensive depth cap is worth the one extra line — fail-soft (leave
+// whatever placeholders remain unresolved) rather than crash the panel.
+// No real chain in the actual generated catalog is deeper than 1 level
+// (confirmed directly: every {attribution.X}-containing top-level
+// provider's own referenced provider has no placeholder of its own), so
+// this cap is pure defense-in-depth, never expected to actually bind.
+const MAX_ATTRIBUTION_RESOLUTION_DEPTH = 10
+
+/**
+ * Resolves leaflet-providers' own `{attribution.ProviderName}` placeholder
+ * convention against the already-loaded catalog — mirroring
+ * leaflet-providers.js's real `attributionReplacer` (quoted directly from
+ * its source during this session's research,
+ * node_modules/leaflet-providers/leaflet-providers.js):
+ *
+ *   var attributionReplacer = function (attr) {
+ *     if (attr.indexOf('{attribution.') === -1) { return attr; }
+ *     return attr.replace(/\{attribution.(\w*)\}/g, function (match, attributionName) {
+ *       return attributionReplacer(providers[attributionName].options.attribution);
+ *     });
+ *   };
+ *
+ * Two real behaviors confirmed directly against that source, not assumed:
+ * (1) a placeholder ALWAYS references another TOP-LEVEL provider's own
+ * `options.attribution` — never a specific variant's attribution, since
+ * variants aren't addressable via `providers[name]` at all; (2) it is
+ * genuinely RECURSIVE — the referenced provider's own attribution is
+ * itself run back through the replacer before substitution, so a chain
+ * (A's attribution references B, B's own attribution references C) fully
+ * resolves, not just one level. Confirmed against the real generated
+ * catalog (public/basemap/leaflet-providers.json): OpenTopoMap, Esri's
+ * variants (via Esri's own top-level attribution — note: Esri's variants
+ * carry no placeholder themselves), CartoDB, Stadia, Thunderforest, and
+ * several others all reference `{attribution.OpenStreetMap}`; no real
+ * entry in the current catalog chains more than one level deep (every
+ * referenced provider's own attribution is itself placeholder-free), but
+ * this resolves fully recursively regardless, matching leaflet's own
+ * behavior exactly rather than only the shallow case seen today.
+ *
+ * Unlike the real upstream version, this NEVER throws for an unresolvable
+ * reference (a hand-edited catalog missing the referenced provider, or a
+ * provider whose own `options.attribution` isn't a string) — this
+ * feature's established fail-soft convention (FR-010) — leaving that one
+ * placeholder's raw, un-substituted text in place rather than losing the
+ * rest of an otherwise-valid attribution string.
+ */
+function resolveAttributionPlaceholders(
+  catalog: Record<string, LeafletProviderEntry>,
+  attribution: string,
+  depth = 0,
+): string {
+  if (!attribution.includes('{attribution.')) return attribution
+  if (depth >= MAX_ATTRIBUTION_RESOLUTION_DEPTH) return attribution
+  return attribution.replace(/\{attribution\.(\w*)\}/g, (match, attributionName: string) => {
+    const referenced = catalog[attributionName]?.options?.attribution
+    if (typeof referenced !== 'string') return match
+    return resolveAttributionPlaceholders(catalog, referenced, depth + 1)
+  })
+}
+
 /**
  * Resolves a raster provider name (e.g. "CartoDB.Positron",
  * "Esri.WorldStreetMap", "OpenTopoMap") against the self-hosted catalog
@@ -182,7 +248,9 @@ export async function resolveRasterProvider(
   return {
     kind: 'inline-raster',
     tiles,
-    attribution: resolved.options.attribution,
+    attribution: resolved.options.attribution
+      ? resolveAttributionPlaceholders(catalog, resolved.options.attribution)
+      : resolved.options.attribution,
     maxZoom: resolved.options.maxZoom,
   }
 }
