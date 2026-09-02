@@ -1,5 +1,54 @@
 <!--
 Sync Impact Report
+- Version change: 2.3.0 → 2.4.0
+- Modified principles:
+  - VIII. Reuse Proven Reference Implementations — additive (MINOR), not a
+    redefinition. Two changes, drafted at `specs/012-webgl-context-
+    management/constitution-amendment-proposal.md` (which itself
+    incorporated and superseded the still-unmerged `specs/011-basemap-
+    style-system/constitution-amendment-proposal.md` — that file is now
+    marked superseded, not merged separately, to avoid double-adding the
+    same `APP-WFRC-Commute-Patterns` diff hunk):
+    1. `WFRCAnalytics/APP-WFRC-Commute-Patterns` joins the existing
+       mandate-tier reference table (real, production `setStyle()` +
+       `transformStyle` basemap-switching pattern, confirmed reused
+       directly by `011-basemap-style-system`'s own `FlowMapPanel.tsx`
+       basemap-application effect, and named again in `012-webgl-context-
+       management`'s own `plan.md` Phase 0 research). `WFRCAnalytics/
+       APP-Commute-Explorer` was checked against the current table during
+       this amendment and confirmed already present since v1.0.0 — not a
+       gap, despite being flagged as one in the originating request.
+    2. `simwrapper/simwrapper` (github.com/simwrapper/simwrapper) is added
+       as a new, explicitly lighter-weight "consider" tier — confirmed
+       real and active directly against the live repository (2,393+
+       commits, ongoing issues, real production tool at simwrapper.app,
+       built by VSP-TU-Berlin for ABM/TDM simulation-output
+       visualization, TypeScript/Vue + deck.gl stack) before adding. Not
+       folded into the existing MUST-copy list — that would have silently
+       given it mandate weight it was never meant to carry — but added as
+       its own paragraph: implementers MAY consult it for
+       architectural/UX judgment on future panel/navigation features; it
+       creates no new MUST, and does not relax Principle VI's fixed
+       technology choices.
+- Modified sections: none beyond Principle VIII's own text above
+- MINOR, not PATCH or MAJOR: checked against this file's own versioning
+  policy text directly, not assumed. Two new named reference sources plus
+  a new consider/mandate weight sub-mechanism is existing guidance
+  materially expanded, not a non-semantic wording fix (rules out PATCH);
+  no principle is removed or redefined in a backward-incompatible way —
+  the existing MUST-copy obligation on the original five repos is
+  untouched (rules out MAJOR). Matches the precedent already set twice in
+  this file's own history (2.2.0→2.3.0's `@deck.gl/layers` addition;
+  011's own now-superseded single-repo draft, self-assessed MINOR under
+  the identical "materially expanded" clause).
+- Added principles: none
+- Added sections: none
+- Removed sections: none
+- Deferred TODOs: none
+-->
+
+<!--
+Sync Impact Report (2.3.0, superseded above)
 - Version change: 2.2.0 → 2.3.0
 - Modified principles: none
 - Modified sections:
@@ -312,12 +361,34 @@ reference repositories rather than re-deriving the approach from scratch:
 coi-serviceworker, GH Actions), `WFRCAnalytics/APP-Commute-Explorer`
 (MapboxOverlay + FlowmapLayer + MapLibre wiring, hover/pick pattern),
 `ar-puuk/spatial-sql-explorer` (DuckDB spatial extension lazy-load, MapLibre
-choropleth, basemap switching), and `ar-puuk/parquet-viewer` (GeoParquet metadata
+choropleth, basemap switching), `ar-puuk/parquet-viewer` (GeoParquet metadata
 detection, `registerFileBuffer`, spatial extension fallback, buffer-pool
-collision fix).
+collision fix), and `WFRCAnalytics/APP-WFRC-Commute-Patterns` (real,
+production `setStyle()` + `transformStyle` basemap switching alongside a
+non-interleaved `MapboxOverlay`, confirmed to survive the switch without
+explicit remove/re-add — the pattern `011-basemap-style-system`'s own
+`FlowMapPanel.tsx` basemap-application effect reuses directly).
+
+Separately, `simwrapper/simwrapper` (github.com/simwrapper/simwrapper) is a
+standing reference to CONSIDER — not a mandate to adopt — for
+architectural and UX decisions on future dashboard/panel features. It
+solves the same domain problem this app does (ABM/TDM model-output
+visualization) with different underlying data/storage technology (Vue, not
+React; its own project/config-discovery convention, not this project's
+DuckDB-WASM + Parquet + `dashboard-*.yaml` set), which makes it
+architecturally comparable for panel-layout, navigation, and UX questions
+even where its specific implementation choices diverge from this project's
+own fixed ones (Principle VI). Implementers MAY consult it when a
+design decision has more than one reasonable answer; nothing in this
+principle requires copying any of its patterns, and it does not relax or
+extend the MUST-copy requirement above, which applies only to the
+first list.
 **Rationale**: these patterns are already validated in production-like use;
 re-deriving them risks reintroducing bugs (e.g., buffer-pool collisions) those
-repos already fixed.
+repos already fixed. `simwrapper/simwrapper` carries a different, lighter
+weight deliberately: it is a proven production peer solving the same
+domain problem, not a pattern validated against this project's own stack,
+so it informs design judgment rather than supplying code to copy.
 
 ### IX. Fixed Python/JS Source Split
 The Python package MUST live at `python/wftdm_dashboard/`. `src/` is reserved
@@ -398,4 +469,4 @@ forbidden config files, no Mapbox/Webpack/Web Storage usage. Any exception
 requires a
 prior amendment to this document, not a one-off waiver in review.
 
-**Version**: 2.3.0 | **Ratified**: 2026-08-19 | **Last Amended**: 2026-08-31
+**Version**: 2.4.0 | **Ratified**: 2026-08-19 | **Last Amended**: 2026-09-02

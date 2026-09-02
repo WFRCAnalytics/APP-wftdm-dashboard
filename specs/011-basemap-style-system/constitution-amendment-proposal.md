@@ -1,6 +1,16 @@
 # Proposed Constitution Amendment: Add `APP-WFRC-Commute-Patterns` to Principle VIII
 
-**Status**: Draft — NOT merged into `.specify/memory/constitution.md`. Per
+**Status**: SUPERSEDED — do not merge from this file. This proposal's own
+change (adding `APP-WFRC-Commute-Patterns` to Principle VIII's mandate-tier
+reference table) was incorporated into, and merged as part of,
+`specs/012-webgl-context-management/constitution-amendment-proposal.md`
+(the 2.3.0 → 2.4.0 amendment, which also added a separate `simwrapper/
+simwrapper` consider-tier entry). That amendment has since been applied to
+`.specify/memory/constitution.md` directly. This file is kept only as a
+historical record of the original single-repo proposal; merging it
+separately would double-add the same table entry.
+
+**Original status (below, for historical record)**: Draft — NOT merged into `.specify/memory/constitution.md`. Per
 the constitution's own Governance section, an amendment requires a
 proposal, an update to the affected section, a version bump per the
 versioning policy, and a Sync Impact Report — that's a separate review
