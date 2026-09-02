@@ -3,6 +3,7 @@
 // needed to know dashboard-content shape). This feature is the first
 // consumer that does, so the typed seam lives here, at the point of use,
 // not in yamlLoader.ts itself. See contracts/dashboard-config-types.md.
+import { isBasemapComposition, type BasemapSelection } from '@/panels/basemap/types'
 
 export interface FilterDefinition {
   id: string
@@ -209,6 +210,31 @@ export interface FlowMapPanelConfig extends DataBoundPanelConfigBase {
   max_flows?: number
   center?: [number, number]
   zoom?: number
+  /** 011-basemap-style-system, FR-004: optional panel-level basemap
+   * override — a built-in preset name or a custom composition. */
+  basemap?: BasemapSelection
+  /** Set only by dashboardRenderer.tsx as it constructs each row — never
+   * authored in YAML directly (no such key exists in docs/GRAMMAR.md's
+   * panel-level grammar and none is being added there). Carries the
+   * tab's default_basemap down to the one place resolveEffectiveBasemap
+   * is actually called (FlowMapPanel itself), without adding a second
+   * prop to the panel-pattern's "single config prop" contract. */
+  _tabDefaultBasemap?: BasemapSelection
+}
+
+/** Any panel type that participates in basemap resolution — today just
+ * FlowMapPanelConfig; a future ZoneMapPanelConfig extends this same
+ * interface unchanged (spec.md's own "zonemap will consume the same
+ * registry/composition mechanism" requirement). dashboardRenderer.tsx
+ * uses this as a type guard so tab-level default_basemap injection stays
+ * generic across current and future map-rendering panel types. */
+export interface MapRenderingPanelConfig {
+  basemap?: BasemapSelection
+  _tabDefaultBasemap?: BasemapSelection
+}
+
+export function isMapRenderingPanel(config: PanelConfig): config is PanelConfig & MapRenderingPanelConfig {
+  return config.type === 'flowmap' // extend with '|| config.type === 'zonemap'' when that panel type ships
 }
 
 /**
@@ -241,7 +267,25 @@ export type PanelConfig =
 export interface DashboardTabConfig {
   header: { tab: string; title: string; description?: string }
   filters: FilterDefinition[]
+  /** 011-basemap-style-system, FR-005: optional tab-level basemap
+   * default, scoped exactly like header:/filters: — a built-in preset
+   * name or a custom composition, applied to every map-rendering panel
+   * on this tab that doesn't set its own `basemap:`. */
+  default_basemap?: BasemapSelection
   layout: Record<string, PanelConfig[]>
+}
+
+/** A bare string or a { layers: string[] } object — the only two shapes
+ * BasemapSelection accepts (data-model.md). Anything else in the raw
+ * YAML is treated as absent, matching every other optional field's
+ * fail-soft parsing convention in this function. */
+function parseBasemapSelection(v: unknown): BasemapSelection | undefined {
+  if (typeof v === 'string') return v.trim().length > 0 ? v : undefined
+  if (v && typeof v === 'object' && Array.isArray((v as { layers?: unknown }).layers)) {
+    const candidate = v as BasemapSelection
+    return isBasemapComposition(candidate) ? candidate : undefined
+  }
+  return undefined
 }
 
 /**
@@ -268,6 +312,7 @@ export function parseDashboardConfig(raw: unknown, sourcePath = '(unknown source
       description: typeof header.description === 'string' ? header.description : undefined,
     },
     filters: Array.isArray(obj.filters) ? (obj.filters as FilterDefinition[]) : [],
+    default_basemap: parseBasemapSelection(obj.default_basemap),
     layout:
       obj.layout && typeof obj.layout === 'object'
         ? (obj.layout as Record<string, PanelConfig[]>)

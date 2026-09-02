@@ -1,9 +1,14 @@
 import { test, expect, type Page } from '@playwright/test'
 import type { WftdmDebugHook } from '../../src/main.tsx'
+import type maplibregl from 'maplibre-gl'
+import type { MapboxOverlay } from '@deck.gl/mapbox'
 
 declare global {
   interface Window {
     __wftdm?: WftdmDebugHook
+    __flowmapTestMaps?: Record<string, maplibregl.Map>
+    __flowmapTestOverlays?: Record<string, MapboxOverlay>
+    __setStyleCallCount?: number
   }
 }
 
@@ -184,22 +189,26 @@ test.describe('User Story 1 - Author renders an O-D metric as a flow map', () =>
     expect(warnings[0]).toContain('excluded 2 row(s)')
   })
 
-  test('zero requests to any external tile server or map-style host', async ({ page }) => {
-    // Scoped to map/tile-related hosts specifically, not literally every
-    // external request the whole page makes — found necessary when this
-    // test's first run correctly caught a real, but unrelated, pre-existing
-    // request: DuckDB-WASM lazy-loads its own parquet extension from
-    // extensions.duckdb.org on every panel that queries Parquet (every
-    // panel type in this app, not something FlowMapPanel introduces or
-    // could avoid). research.md §9's no-CDN claim was specifically about
-    // the map's own base style/tiles, not a blanket "zero external
-    // requests anywhere on the page" guarantee this app was never designed
-    // to make. blob: URLs are also excluded — same-origin, in-memory
-    // object references (e.g. a Worker's own script blob), not real
-    // network requests, mistakenly flagged by an earlier version of this
-    // check that only excluded data:.
-    const mapHostPattern = /maptiler|carto|mapbox|openstreetmap|demotiles\.maplibre/i
-    const externalMapRequests: string[] = []
+  test('every map-host request is to the expected default basemap source, nothing unexpected', async ({
+    page,
+  }) => {
+    // UPDATED for 011-basemap-style-system: this was originally a "zero
+    // requests to any map host" assertion, correct under 010's own
+    // BLANK_STYLE-only default. That default has since deliberately
+    // changed — this exact panel (no basemap: config) now loads a real
+    // CARTO Positron basemap by design (FR-007), so "zero requests" is no
+    // longer the right claim. What's still worth asserting: every
+    // map-host request this panel makes is to the ONE expected default
+    // source (basemaps.cartocdn.com / tiles.basemaps.cartocdn.com for
+    // CARTO's style/sprite/tiles/fonts), not some other, unexpected host
+    // — the same "no silent, unintended external dependency" concern the
+    // original test protected, updated to match the new intended
+    // behavior rather than deleted outright. Also confirms DuckDB-WASM's
+    // own unrelated extensions.duckdb.org request (present on every
+    // Parquet-querying panel, not map-specific) is correctly excluded by
+    // the host pattern below, not accidentally caught.
+    const mapHostPattern = /maptiler|mapbox|openstreetmap|demotiles\.maplibre|opentopomap|arcgis|openfreemap/i
+    const unexpectedMapRequests: string[] = []
     page.on('request', (req) => {
       const url = req.url()
       if (
@@ -208,7 +217,7 @@ test.describe('User Story 1 - Author renders an O-D metric as a flow map', () =>
         !url.startsWith('blob:') &&
         mapHostPattern.test(url)
       ) {
-        externalMapRequests.push(url)
+        unexpectedMapRequests.push(url)
       }
     })
 
@@ -218,9 +227,9 @@ test.describe('User Story 1 - Author renders an O-D metric as a flow map', () =>
     await trueEventually(async () => (await container.getAttribute('data-render-count')) !== null)
     // Give the map a moment to have issued any tile/style requests it was
     // going to issue.
-    await page.waitForTimeout(500)
+    await page.waitForTimeout(1500)
 
-    expect(externalMapRequests).toEqual([])
+    expect(unexpectedMapRequests).toEqual([])
   })
 })
 
@@ -472,5 +481,379 @@ test.describe('User Story 3 - Flowmap panel behaves consistently with the rest o
     // one, confirmed empirically by this exact assertion's first run.
     await expect(flowmapCard.locator('.flowmap-chart canvas').first()).toBeVisible() // flowmap
     await expect(expandTrigger(page, FLOWMAP_TITLE)).toBeVisible()
+  })
+})
+
+// 011-basemap-style-system — real-browser basemap coverage. Reuses
+// FLOWMAP_TITLE ("Flow Map Trip Distribution Desire Lines", no basemap:
+// config) for the app-default/theme-pairing path and the empirical
+// survival test; the "Basemaps" fixture tab (dashboard-3-basemaps.yaml)
+// hosts every other scenario (precedence, raster, composition, fallback).
+// See quickstart.md for the full scenario list this section implements.
+
+async function getStyleSources(page: Page, title: string): Promise<string[]> {
+  const style = await page.evaluate((t) => window.__flowmapTestMaps![t].getStyle(), title)
+  return Object.keys(style?.sources ?? {})
+}
+
+// Polls map.getStyle().sources rather than MapLibre's own `isStyleLoaded()`/
+// `'style.load'` — found necessary during implementation: `isStyleLoaded()`
+// tracks whether every currently-referenced tile has finished loading
+// (which can legitimately stay false well past the point the STYLE itself
+// has applied, and can flip back to false as new tiles are requested), and
+// `'style.load'` is a one-shot event that may already have fired before a
+// test gets around to registering a `.once()` listener for it — combining
+// both in a single "isStyleLoaded() ? resolve : once('style.load')" check
+// (the original version of this helper) hung indefinitely in real runs,
+// confirmed empirically, not a hypothetical race. Polling for a non-empty
+// `sources` object (BLANK_STYLE has none) is a simpler, race-free signal
+// for "the panel's own setStyle() call has applied."
+async function waitForBasemapApplied(page: Page, title: string) {
+  await trueEventually(async () => (await getStyleSources(page, title)).length > 0)
+}
+
+test.describe('011-basemap-style-system — US1: default basemap renders, paired to theme (quickstart.md Scenario 1)', () => {
+  test('a panel with no basemap config renders a real CARTO basemap, matching the light/dark theme', async ({
+    page,
+  }) => {
+    const requestUrls: string[] = []
+    page.on('request', (req) => requestUrls.push(req.url()))
+
+    await boot(page)
+    const container = panelCard(page, FLOWMAP_TITLE).locator('.flowmap-chart')
+    await trueEventually(async () => (await container.getAttribute('data-render-count')) !== null)
+    await waitForBasemapApplied(page, FLOWMAP_TITLE)
+
+    await trueEventually(async () => requestUrls.some((u) => u.includes('positron-gl-style')))
+    expect(await getStyleSources(page, FLOWMAP_TITLE)).not.toEqual([])
+
+    await page.evaluate(() => document.documentElement.classList.add('dark'))
+    await trueEventually(async () => requestUrls.some((u) => u.includes('dark-matter-gl-style')))
+  })
+})
+
+test.describe('011-basemap-style-system — US1: setStyle()/MapboxOverlay empirical survival (research.md §1 — GATING)', () => {
+  test('the deck.gl overlay and its FlowmapLayer survive a real light/dark theme switch', async ({ page }) => {
+    const consoleIssues: string[] = []
+    page.on('console', (msg) => {
+      if (/duplicate|already exists/i.test(msg.text())) consoleIssues.push(msg.text())
+    })
+    const requestUrls: string[] = []
+    page.on('request', (req) => requestUrls.push(req.url()))
+
+    await boot(page)
+    const card = panelCard(page, FLOWMAP_TITLE)
+    const container = card.locator('.flowmap-chart')
+    const baseCanvas = container.locator('canvas.maplibregl-canvas')
+    const overlayCanvas = container.locator('canvas#deckgl-overlay')
+    await expect(baseCanvas).toBeVisible()
+    await expect(overlayCanvas).toBeVisible()
+    await trueEventually(async () => (await container.getAttribute('data-render-count')) !== null)
+    await waitForBasemapApplied(page, FLOWMAP_TITLE)
+    await trueEventually(async () => requestUrls.some((u) => u.includes('positron-gl-style')))
+
+    const baseHandleBefore = await baseCanvas.elementHandle()
+    const overlayHandleBefore = await overlayCanvas.elementHandle()
+    const renderCountBefore = await container.getAttribute('data-render-count')
+    const flowCountBefore = await container.getAttribute('data-flow-count')
+
+    await page.evaluate(() => document.documentElement.classList.add('dark'))
+    // Wait for the DARK style specifically (not just "any" style) — a
+    // plain waitForBasemapApplied() would also be satisfied by the still-
+    // showing light style during the brief window before setStyle()
+    // actually swaps sources, so this test needs the more specific
+    // request-based signal Scenario 1's own test already establishes as
+    // reliable, not the generic "some sources exist" check.
+    await trueEventually(async () => requestUrls.some((u) => u.includes('dark-matter-gl-style')))
+    // Let deck.gl's own repaint (triggered by the base map's style change,
+    // not by any data/layer change) settle before sampling the canvas.
+    await page.waitForTimeout(500)
+
+    // (a) same DOM node — both canvases, not just MapLibre's.
+    const baseHandleAfter = await baseCanvas.elementHandle()
+    const overlayHandleAfter = await overlayCanvas.elementHandle()
+    expect(
+      await page.evaluate(([a, b]) => a === b, [baseHandleBefore, baseHandleAfter]),
+    ).toBe(true)
+    expect(
+      await page.evaluate(([a, b]) => a === b, [overlayHandleBefore, overlayHandleAfter]),
+    ).toBe(true)
+
+    // (b) render/flow-count unchanged — the FlowmapLayer's own data was
+    // never touched by the basemap style swap.
+    expect(await container.getAttribute('data-render-count')).toBe(renderCountBefore)
+    expect(await container.getAttribute('data-flow-count')).toBe(flowCountBefore)
+
+    // (c) the overlay still reports exactly one live FlowmapLayer.
+    // MapboxOverlay's public .d.ts has no accessor for its current
+    // layers — `_props` is a genuinely private field with no public
+    // equivalent (confirmed against node_modules/@deck.gl/mapbox's real
+    // type declaration, not assumed) — read here via an `any` cast for
+    // test-diagnostic purposes only, same category as this file's other
+    // test-only window hooks, not something application code ever does.
+    const overlayLayerCount = await page.evaluate((title) => {
+      const overlay = window.__flowmapTestOverlays![title] as unknown as { _props: { layers: unknown[] } }
+      return overlay._props.layers.length
+    }, FLOWMAP_TITLE)
+    expect(overlayLayerCount).toBe(1)
+
+    // (d) the deck.gl canvas actually drew something — scans the WHOLE
+    // overlay canvas's alpha channel for any non-fully-transparent pixel.
+    // A duplicate-layer-id bug (deck.gl#3763) can leave the overlay
+    // technically "not removed" while silently failing to draw, which a
+    // DOM-visibility check alone cannot distinguish from a genuinely
+    // healthy overlay.
+    const drewSomething = await overlayCanvas.evaluate((el: HTMLCanvasElement) => {
+      const ctx = (el.getContext('webgl2') ?? el.getContext('webgl')) as WebGLRenderingContext | null
+      if (!ctx) return false
+      const { width, height } = el
+      const pixels = new Uint8Array(width * height * 4)
+      ctx.readPixels(0, 0, width, height, ctx.RGBA, ctx.UNSIGNED_BYTE, pixels)
+      for (let i = 3; i < pixels.length; i += 4) {
+        if (pixels[i] !== 0) return true
+      }
+      return false
+    })
+    expect(drewSomething).toBe(true)
+
+    // (e) the map remains genuinely interactive — a programmatic panTo()
+    // produces a real 'moveend' event, proving the WebGL context is
+    // still alive, not a frozen last frame.
+    const moveEndFired = await page.evaluate(async (title) => {
+      const map = window.__flowmapTestMaps?.[title]
+      if (!map) return false
+      return new Promise((resolve) => {
+        map.once('moveend', () => resolve(true))
+        map.panTo([map.getCenter().lng + 0.01, map.getCenter().lat + 0.01], { duration: 100 })
+      })
+    }, FLOWMAP_TITLE)
+    expect(moveEndFired).toBe(true)
+
+    // (f) zero deck.gl#3763-shaped console messages across the whole flip.
+    expect(consoleIssues).toEqual([])
+  })
+})
+
+test.describe('011-basemap-style-system — US1: uniform blank-style fallback (quickstart.md Scenario 5, default-path subset)', () => {
+  test('an unreachable basemap preset falls back to BLANK_STYLE while the flow-line overlay still renders', async ({
+    page,
+  }) => {
+    await boot(page)
+    await page.getByRole('tab', { name: 'Basemaps' }).click()
+    const title = 'Flowmap Unreachable Basemap (intentional)'
+    const container = panelCard(page, title).locator('.flowmap-chart')
+    await trueEventually(async () => (await container.getAttribute('data-render-count')) !== null)
+    await page.waitForTimeout(1000) // the failed fetch/error event needs a moment to resolve
+
+    expect(await getStyleSources(page, title)).toEqual([]) // BLANK_STYLE has no sources
+    expect(Number(await container.getAttribute('data-flow-count'))).toBeGreaterThan(0)
+  })
+})
+
+test.describe('011-basemap-style-system — US2: three-level precedence (quickstart.md Scenario 3)', () => {
+  test('tab default applies with no panel override; panel override wins when set', async ({ page }) => {
+    const requestUrls: string[] = []
+    page.on('request', (req) => requestUrls.push(req.url()))
+
+    await boot(page)
+    await page.getByRole('tab', { name: 'Basemaps' }).click()
+
+    const tabDefaultTitle = 'Flowmap Tab Default Basemap'
+    const overrideTitle = 'Flowmap Panel Basemap Override'
+    await trueEventually(
+      async () =>
+        (await panelCard(page, tabDefaultTitle).locator('.flowmap-chart').getAttribute('data-render-count')) !==
+        null,
+    )
+    await trueEventually(
+      async () =>
+        (await panelCard(page, overrideTitle).locator('.flowmap-chart').getAttribute('data-render-count')) !== null,
+    )
+    await waitForBasemapApplied(page, tabDefaultTitle)
+    await waitForBasemapApplied(page, overrideTitle)
+
+    // Tab default (openfreemap-bright) resolves for the panel with no
+    // basemap: of its own.
+    expect(requestUrls.some((u) => u.includes('tiles.openfreemap.org/styles/bright'))).toBe(true)
+    // Panel-level override (carto-voyager) wins over the tab default for
+    // the other panel.
+    expect(requestUrls.some((u) => u.includes('voyager-gl-style'))).toBe(true)
+  })
+})
+
+test.describe('011-basemap-style-system — US2: explicit pin does not re-pair on theme change (quickstart.md Scenario 4)', () => {
+  test('an explicit panel-level basemap pin is not re-paired, and setStyle() is not called a second time', async ({
+    page,
+  }) => {
+    await boot(page)
+    await page.getByRole('tab', { name: 'Basemaps' }).click()
+    const title = 'Flowmap Panel Basemap Override' // basemap: carto-voyager
+    const container = panelCard(page, title).locator('.flowmap-chart')
+    await trueEventually(async () => (await container.getAttribute('data-render-count')) !== null)
+    await waitForBasemapApplied(page, title)
+
+    // Wrap the real instance's own setStyle AFTER its one legitimate,
+    // initial call already happened — counts only calls from this point.
+    await page.evaluate((t) => {
+      const map = window.__flowmapTestMaps![t]
+      window.__setStyleCallCount = 0
+      const original = map.setStyle.bind(map)
+      map.setStyle = ((...args: Parameters<typeof original>) => {
+        window.__setStyleCallCount!++
+        return original(...args)
+      }) as typeof map.setStyle
+    }, title)
+
+    await page.evaluate(() => document.documentElement.classList.add('dark'))
+    // Give any (incorrect) re-pair attempt time to fire — there is no
+    // positive event to await for "nothing happened," so a bounded wait
+    // is the honest mechanism here, not a weaker substitute for one.
+    await page.waitForTimeout(1000)
+
+    expect(await page.evaluate(() => window.__setStyleCallCount)).toBe(0)
+    // And the style itself is still the pinned one, not re-paired.
+    expect(await getStyleSources(page, title)).not.toEqual([])
+  })
+})
+
+test.describe('011-basemap-style-system — US2: a raster-provider preset renders (extends US1 Scenario 1 to the third source category)', () => {
+  test('a leaflet-providers raster preset renders real tiles as the basemap', async ({ page }) => {
+    const requestUrls: string[] = []
+    page.on('request', (req) => requestUrls.push(req.url()))
+
+    await boot(page)
+    await page.getByRole('tab', { name: 'Basemaps' }).click()
+    const title = 'Flowmap Raster Provider Preset' // basemap: OpenTopoMap
+    const container = panelCard(page, title).locator('.flowmap-chart')
+    await trueEventually(async () => (await container.getAttribute('data-render-count')) !== null)
+    await waitForBasemapApplied(page, title)
+
+    await trueEventually(async () => requestUrls.some((u) => /tile\.opentopomap\.org/.test(u)))
+    const style = await page.evaluate((t) => window.__flowmapTestMaps![t].getStyle(), title)
+    expect(style.sources.basemap?.type).toBe('raster')
+  })
+})
+
+test.describe('011-basemap-style-system — US3: real UGRC multi-source composition (quickstart.md Scenario 6)', () => {
+  test('both UGRC layers render correctly stacked with genuinely-fetchable resolved sprite/glyph URLs', async ({
+    page,
+  }) => {
+    await boot(page)
+    await page.getByRole('tab', { name: 'Basemaps' }).click()
+    const title = 'Flowmap UGRC Composition'
+    const container = panelCard(page, title).locator('.flowmap-chart')
+    await trueEventually(async () => (await container.getAttribute('data-render-count')) !== null)
+    // A real, multi-fetch composition genuinely can take a few seconds —
+    // 2 sequential real network round-trips (style docs) plus 2 more
+    // (each layer's own TileJSON, research.md §6 update), confirmed
+    // during implementation to reliably complete well within this window.
+    await expect.poll(async () => (await getStyleSources(page, title)).length > 0, { timeout: 15000 }).toBe(true)
+    // Stays stable — regression coverage for TWO real, compounding bugs
+    // found during implementation, both against this exact proof case:
+    // (1) composeStyles() originally left a vector source's `url`
+    // pointing at a TileJSON document whose OWN `tiles` template is
+    // itself relative (confirmed against the real UGRC endpoint:
+    // `{"tiles":["tile/{z}/{y}/{x}.pbf"], ...}`) — MapLibre has no base
+    // URL to resolve that against for an in-memory (non-
+    // setStyle(url)-loaded) style, throwing a real runtime error ("Failed
+    // to construct 'Request'..."); fixed by inlining each source's own
+    // TileJSON tiles array at composition time (research.md §6 update).
+    // (2) FlowMapPanel's own FR-010 error-fallback listener originally
+    // listened for 'error' over the map's ENTIRE lifetime, not just the
+    // style-loading window — meaning ordinary, expected individual-tile
+    // fetch noise from a real composition (which happens constantly and
+    // is not itself a basemap failure) triggered a revert to
+    // BLANK_STYLE moments after a successful load; fixed by scoping the
+    // listener to only fire before that setStyle() call's own
+    // 'style.load' (research.md §7 update). A single non-empty read
+    // caught neither bug — both required checking the state doesn't
+    // regress shortly after first appearing non-empty.
+    await page.waitForTimeout(1500)
+    const sourceKeys = await getStyleSources(page, title)
+    expect(sourceKeys.some((k) => k.startsWith('layer0__'))).toBe(true)
+    expect(sourceKeys.some((k) => k.startsWith('layer1__'))).toBe(true)
+
+    const style = await page.evaluate((t) => window.__flowmapTestMaps![t].getStyle(), title)
+    expect(style.sprite).toMatch(/^https:\/\//)
+    expect(style.glyphs).toMatch(/^https:\/\//)
+    // Regression coverage for a real bug found during implementation:
+    // resolving glyphs' relative URL via a naive `new URL()` percent-
+    // encodes its required literal {fontstack}/{range} template tokens,
+    // which MapLibre's own style validator then rejects outright
+    // ("glyphs url must include a {fontstack} token") — silently
+    // reverting the whole map to BLANK_STYLE via FlowMapPanel's own
+    // error-triggered fallback (research.md §7), even though the
+    // composition itself had already succeeded. Asserts the tokens
+    // survived resolution literally, not as %7Bfontstack%7D.
+    expect(style.glyphs).toContain('{fontstack}')
+    expect(style.glyphs).toContain('{range}')
+
+    // Confirms the relative-path rewrite produced a genuinely fetchable
+    // absolute URL, not just a syntactically-absolute-looking one.
+    const spriteReachable = await page.evaluate(async (spriteUrl: string) => {
+      try {
+        const res = await fetch(`${spriteUrl}.json`)
+        return res.ok
+      } catch {
+        return false
+      }
+    }, style.sprite as string)
+    expect(spriteReachable).toBe(true)
+  })
+})
+
+test.describe('011-basemap-style-system — US3: one broken composition layer falls back the WHOLE basemap (quickstart.md Scenario 5, composition subset)', () => {
+  test('never a partial composite', async ({ page }) => {
+    await boot(page)
+    await page.getByRole('tab', { name: 'Basemaps' }).click()
+    const title = 'Flowmap Broken Composition Layer (intentional)'
+    const container = panelCard(page, title).locator('.flowmap-chart')
+    await trueEventually(async () => (await container.getAttribute('data-render-count')) !== null)
+    await page.waitForTimeout(1500) // the failed layer fetch needs a moment to reject
+
+    expect(await getStyleSources(page, title)).toEqual([]) // BLANK_STYLE, not a partial 1-layer composite
+  })
+})
+
+test.describe('011-basemap-style-system — fully offline fallback (quickstart.md Scenario 7)', () => {
+  test('every basemap source category falls back to BLANK_STYLE when unreachable; flow lines still render', async ({
+    page,
+  }) => {
+    // Route-blocks every real built-in-preset/raster-catalog/composition
+    // host this feature can reach — the wftdm-dashboard here/no-internet
+    // case (docs/ARCHITECTURE.md). Deliberately does NOT block
+    // 127.0.0.1:5199 (the app's own dev server) or DuckDB-WASM's own
+    // extensions.duckdb.org dependency, same scoping discipline as this
+    // file's existing "every map-host request..." test.
+    await page.route(
+      /cartocdn\.com|openfreemap\.org|opentopomap\.org|tiles\.arcgis\.com|basemap\/leaflet-providers\.json/,
+      (route) => route.abort(),
+    )
+
+    await boot(page)
+
+    // The default-path panel (Summary tab, no basemap: config).
+    const defaultContainer = panelCard(page, FLOWMAP_TITLE).locator('.flowmap-chart')
+    await trueEventually(async () => (await defaultContainer.getAttribute('data-render-count')) !== null)
+    await page.waitForTimeout(1000)
+    expect(await getStyleSources(page, FLOWMAP_TITLE)).toEqual([])
+    expect(Number(await defaultContainer.getAttribute('data-flow-count'))).toBeGreaterThan(0)
+
+    // Every basemap-tab panel too — pinned preset, tab default, raster
+    // preset, and composition all funnel through the same FR-010
+    // fallback regardless of which source category they'd otherwise use.
+    await page.getByRole('tab', { name: 'Basemaps' }).click()
+    for (const title of [
+      'Flowmap Tab Default Basemap',
+      'Flowmap Panel Basemap Override',
+      'Flowmap Raster Provider Preset',
+      'Flowmap UGRC Composition',
+    ]) {
+      const container = panelCard(page, title).locator('.flowmap-chart')
+      await trueEventually(async () => (await container.getAttribute('data-render-count')) !== null)
+      await page.waitForTimeout(500)
+      expect(await getStyleSources(page, title)).toEqual([])
+      expect(Number(await container.getAttribute('data-flow-count'))).toBeGreaterThan(0)
+    }
   })
 })

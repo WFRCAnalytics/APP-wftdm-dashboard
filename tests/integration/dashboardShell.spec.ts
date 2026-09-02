@@ -20,8 +20,11 @@ test.describe('User Story 1 - An analyst navigates a real, professionally-styled
     await page.waitForFunction(() => window.__wftdm !== undefined, null, { timeout: 30_000 })
 
     // SC-001: tab set exactly matches dashboard-config's header.tab entries.
+    // "Basemaps" added by 011-basemap-style-system's own fixture tab
+    // (dashboard-3-basemaps.yaml) — a real, permanent addition to the
+    // shared fixture set, not a stray leftover.
     const tabs = await page.getByRole('tab').allTextContents()
-    expect(tabs).toEqual(['Summary', 'Detail'])
+    expect(tabs).toEqual(['Summary', 'Detail', 'Basemaps'])
 
     // FR-002: switching tabs changes content, no full page reload.
     let navigated = false

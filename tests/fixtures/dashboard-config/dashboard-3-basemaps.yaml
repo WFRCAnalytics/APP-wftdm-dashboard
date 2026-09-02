@@ -1,0 +1,159 @@
+# Third fixture tab — 011-basemap-style-system. Dedicated to basemap
+# precedence/composition/fallback coverage, kept separate from
+# dashboard-1-summary.yaml's own flowmap panel (which stays basemap-config-
+# free, exercising the app-default/theme-pairing path and the empirical
+# setStyle()/overlay-survival test — see flowmapPanel.spec.ts). All panels
+# here reuse od_flows/good_scenario's existing field mapping — same
+# convention as dashboard-1-summary.yaml's own flowmap panels — since this
+# tab is about basemap behavior, not data variety.
+
+header:
+  tab: Basemaps
+  title: Basemap Precedence and Composition
+
+# Tab-level default (FR-005) — every flowmap panel below that doesn't set
+# its own `basemap:` picks this up instead of the app's light/dark pairing.
+default_basemap: openfreemap-bright
+
+layout:
+  row_precedence:
+    # No panel-level basemap: — resolves to the TAB default above, not the
+    # app's light/dark CARTO pairing (quickstart.md Scenario 3, row 2).
+    - type: flowmap
+      title: Flowmap Tab Default Basemap
+      metric: od_flows
+      scenario: good_scenario
+      origin: orig_taz
+      origin_lat: orig_lat
+      origin_lon: orig_lon
+      destination: dest_taz
+      dest_lat: dest_lat
+      dest_lon: dest_lon
+      value: trips
+      height: 400
+      width: 0.5
+
+    # Panel-level basemap: WINS over the tab default (quickstart.md
+    # Scenario 3, row 3) — also the vehicle for T022's "an explicit pin
+    # does not re-pair on theme change, and setStyle() is not called a
+    # second time" test.
+    - type: flowmap
+      title: Flowmap Panel Basemap Override
+      metric: od_flows
+      scenario: good_scenario
+      origin: orig_taz
+      origin_lat: orig_lat
+      origin_lon: orig_lon
+      destination: dest_taz
+      dest_lat: dest_lat
+      dest_lon: dest_lon
+      value: trips
+      basemap: carto-voyager
+      height: 400
+      width: 0.5
+
+  row_sources:
+    # A real leaflet-providers raster preset, dotted provider.variant
+    # form — confirmed present in the real extracted catalog
+    # (public/basemap/leaflet-providers.json) during implementation.
+    - type: flowmap
+      title: Flowmap Raster Provider Preset
+      metric: od_flows
+      scenario: good_scenario
+      origin: orig_taz
+      origin_lat: orig_lat
+      origin_lon: orig_lon
+      destination: dest_taz
+      dest_lat: dest_lat
+      dest_lon: dest_lon
+      value: trips
+      basemap: OpenTopoMap
+      height: 400
+      width: 0.5
+
+    # Deliberately unreachable preset name — FR-010's uniform blank-style
+    # fallback (quickstart.md Scenario 5, default-path subset, but
+    # exercised here via an explicit panel-level pin rather than the
+    # app-default path dashboard-1-summary.yaml's own broken-panel
+    # equivalent would use).
+    - type: flowmap
+      title: Flowmap Unreachable Basemap (intentional)
+      metric: od_flows
+      scenario: good_scenario
+      origin: orig_taz
+      origin_lat: orig_lat
+      origin_lon: orig_lon
+      destination: dest_taz
+      dest_lat: dest_lat
+      dest_lon: dest_lon
+      value: trips
+      basemap: totally-made-up-preset-name
+      height: 400
+      width: 0.5
+
+  row_composition:
+    # Real UGRC Vector Lite Base Map endpoints (org 99lidPhWCzftIe9K) —
+    # confirmed reachable and MapLibre-spec-compatible by direct fetch
+    # during this feature's own research (research.md, quickstart.md
+    # Scenario 6). This string never appears in
+    # src/panels/basemap/registry.ts (FR-012) — fixture-only, same status
+    # any downstream author's own composition would have.
+    #
+    # Two layers (LiteBase + LiteLabels), not the originally-planned
+    # three: VectorHillshade's own real vector tile data was confirmed,
+    # during implementation, to trigger a genuine, real PBF-parsing
+    # incompatibility with this project's pinned maplibre-gl version —
+    # "Unimplemented type: 3", thrown by maplibre-gl's own vendored `pbf`
+    # reader when it hits a deprecated Protobuf wire type (group
+    # start/end) that reader doesn't implement. Confirmed directly: (1)
+    # the error traces to maplibre-gl's own bundled pbf library's error
+    # message, not any code in this feature; (2) removing VectorHillshade
+    # alone (keeping only LiteBase + LiteLabels) eliminates the error
+    # entirely, composing and rendering cleanly. This is a real, external
+    # tile-encoding incompatibility between Esri's VectorHillshade service
+    # specifically and MapLibre's vector-tile parser — not a bug in
+    # composeStyles() or anything else this feature owns, and not
+    # something this feature's own scope extends to fixing (it would
+    # require either a MapLibre upgrade with broader wire-type support, or
+    # Esri changing that one service's tile encoding). The composition
+    # mechanism itself (FR-006/FR-008/FR-012) is still fully proven here
+    # against two real, independently-hosted services.
+    - type: flowmap
+      title: Flowmap UGRC Composition
+      metric: od_flows
+      scenario: good_scenario
+      origin: orig_taz
+      origin_lat: orig_lat
+      origin_lon: orig_lon
+      destination: dest_taz
+      dest_lat: dest_lat
+      dest_lon: dest_lon
+      value: trips
+      basemap:
+        layers:
+          - https://tiles.arcgis.com/tiles/99lidPhWCzftIe9K/arcgis/rest/services/LiteBase/VectorTileServer/resources/styles/root.json
+          - https://tiles.arcgis.com/tiles/99lidPhWCzftIe9K/arcgis/rest/services/LiteLabels/VectorTileServer/resources/styles/root.json
+      height: 400
+      width: 1.0
+
+    # One deliberately-unreachable composition layer — the whole basemap
+    # MUST fall back to BLANK_STYLE, never a partial composite (User
+    # Story 3's own Acceptance Scenario 3, quickstart.md Scenario 5,
+    # composition-path subset).
+    - type: flowmap
+      title: Flowmap Broken Composition Layer (intentional)
+      metric: od_flows
+      scenario: good_scenario
+      origin: orig_taz
+      origin_lat: orig_lat
+      origin_lon: orig_lon
+      destination: dest_taz
+      dest_lat: dest_lat
+      dest_lon: dest_lon
+      value: trips
+      basemap:
+        layers:
+          - https://tiles.arcgis.com/tiles/99lidPhWCzftIe9K/arcgis/rest/services/LiteBase/VectorTileServer/resources/styles/root.json
+          - https://127.0.0.1:1/unreachable-layer.json
+      height: 400
+      width: 1.0

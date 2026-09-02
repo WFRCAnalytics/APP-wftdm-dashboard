@@ -803,6 +803,13 @@ filters:
     column:  mode
     default: all
 
+# Optional (011-basemap-style-system) — tab-level default basemap for every
+# map-rendering panel on this tab that doesn't set its own `basemap:`. Same
+# scope as header:/filters: (this one tab only, not shared across tabs).
+# Accepts a bare preset name or a composition object — see "Basemap style
+# system" under type: flowmap for the full grammar and precedence rules.
+default_basemap: carto-voyager
+
 # Layout — ordered rows of panels
 layout:
   row_kpis:
@@ -1065,7 +1072,54 @@ uses (`TableColumnConfig.field`, `SankeyPanelConfig`'s
   filter:  $filters.purpose
   center:  [-111.89, 40.76]
   zoom:    9
+  basemap: carto-voyager        # optional (011-basemap-style-system) — see "Basemap style system" below
 ```
+
+#### Basemap style system (011-basemap-style-system)
+
+Every map-rendering panel type (`flowmap` today; `zonemap` once built)
+accepts an optional `basemap:` key. When omitted, the panel renders a
+built-in default automatically paired to the dashboard's own light/dark
+theme (`carto-positron` in light mode, `carto-dark-matter` in dark mode)
+— no author configuration required.
+
+`basemap:` (panel-level) and `default_basemap:` (tab-level — see
+`header:`/`filters:` below, same scope) both accept the same two shapes:
+
+**A bare preset name** (string) — a built-in style from one of three
+source categories:
+
+```yaml
+basemap: carto-positron        # CARTO: carto-positron | carto-dark-matter | carto-voyager
+basemap: openfreemap-liberty   # OpenFreeMap: openfreemap-liberty | -bright | -positron | -dark | -fiord
+basemap: OpenTopoMap           # leaflet-providers raster catalog, resolved dynamically by
+basemap: CartoDB.Positron      # name — dotted provider.variant form where the provider has variants
+```
+
+**A composition object** — stacks multiple independently-hosted style
+resources into one basemap (bottom layer first), for a basemap not in
+the built-in registry above (e.g. a state/regional GIS agency's own
+multi-layer vector service):
+
+```yaml
+basemap:
+  layers:
+    - https://example.gis.gov/services/Hillshade/VectorTileServer/resources/styles/root.json
+    - https://example.gis.gov/services/BaseMap/VectorTileServer/resources/styles/root.json
+    - https://example.gis.gov/services/Labels/VectorTileServer/resources/styles/root.json
+```
+
+**Precedence** (panel > tab > app default): a panel's own `basemap:`
+wins if set; else its tab's `default_basemap:` wins if set; else the
+theme-paired default applies. An explicit `basemap:`/`default_basemap:`
+pin (either shape, either scope) is NOT re-paired when the dashboard's
+theme changes — it means that exact basemap regardless of theme. Only
+the no-config, theme-paired default reacts live to a theme change.
+
+If a configured or default basemap fails to load (unreachable host,
+unrecognized name, a composition with a broken layer), the panel falls
+back to a blank background — the data-driven overlay (e.g. flow lines)
+always still renders.
 
 ### `type: zonemap`
 

@@ -181,12 +181,25 @@ APP-wftdm-dashboard/
     ├── hooks/
     │   ├── useFilterState.ts   # wraps state/filterState.ts with
     │   │                       # useSyncExternalStore (constitution v2.2.0)
-    │   └── useActiveScenarios.ts # done (009-scenario-manager) — same
-    │                           # useSyncExternalStore shape, wrapping
-    │                           # appState.ts's new subscribe() instead;
-    │                           # every data-bound panel type consumes
-    │                           # this now, not appState.getActive()
-    │                           # directly (research.md §1)
+    │   ├── useActiveScenarios.ts # done (009-scenario-manager) — same
+    │   │                       # useSyncExternalStore shape, wrapping
+    │   │                       # appState.ts's new subscribe() instead;
+    │   │                       # every data-bound panel type consumes
+    │   │                       # this now, not appState.getActive()
+    │   │                       # directly (research.md §1)
+    │   └── useColorScheme.ts   # done (011-basemap-style-system) — reads
+    │                           # (never sets) the Tailwind `.dark` class
+    │                           # on document.documentElement via a
+    │                           # MutationObserver + useSyncExternalStore,
+    │                           # same shape as the two hooks above. No
+    │                           # real theme-toggle UI exists in the app
+    │                           # yet — only src/demo/DesignTokenDemo.tsx
+    │                           # (an out-of-band demo page) sets the
+    │                           # class today; this hook is the read side
+    │                           # of a feature (a real toggle) that hasn't
+    │                           # been built, same situation
+    │                           # registerScenario() was in from 001 until
+    │                           # 009 built its own caller.
     │   # layout/ and panels/ below are now real (003-dashboard-shell-
     │   # navigation built the shell/nav/panel-card layer and the first two
     │   # panel types; 004-panel-expand-dialog added the generic expand
@@ -210,7 +223,15 @@ APP-wftdm-dashboard/
     ├── layout/
     │   ├── shell.tsx             # top-level app shell: NavBar + active tab
     │   ├── navBar.tsx            # shadcn Tabs-based tab navigation
-    │   ├── dashboardRenderer.tsx # renders one tab's layout as rows of PanelCards
+    │   ├── dashboardRenderer.tsx # renders one tab's layout as rows of PanelCards;
+    │   │                         # also (011-basemap-style-system) the one place
+    │   │                         # that injects each map-rendering panel's
+    │   │                         # tab-level default_basemap onto its own config
+    │   │                         # as _tabDefaultBasemap — memoized on `tab` alone
+    │   │                         # (a real regression, found empirically: an
+    │   │                         # earlier version rebuilt this on every render,
+    │   │                         # breaking FlowMapPanel's own config-referential-
+    │   │                         # stability assumption)
     │   ├── panelCard.tsx         # shadcn Card wrapper: title, expand trigger
     │   │                         # (usePanelExpandHost), hosts one registry-
     │   │                         # resolved panel + its error boundary
@@ -270,8 +291,64 @@ APP-wftdm-dashboard/
     │   │                         # prior chart panel type)
     │   ├── flowmapData.ts        # pure, DOM-free rows-to-locations/flows
     │   │                         # transform, split out of FlowMapPanel.tsx
-    │   │                         # same reason as sankeyGraph.ts (010)
-    │   ├── ZoneMapPanel.tsx      # not built yet — MapLibre choropleth + GeoParquet
+    │   │                         # same reason as sankeyGraph.ts (010).
+    │   │                         # FlowMapPanel.tsx itself gained a real
+    │   │                         # basemap (011-basemap-style-system) —
+    │   │                         # a second, independent setStyle()-
+    │   │                         # application effect (never folded into
+    │   │                         # the mount or data-update effects),
+    │   │                         # keyed on panels/basemap/'s own
+    │   │                         # basemapKey(), plus a scoped map.on
+    │   │                         # ('error', ...) listener that only
+    │   │                         # reacts before that call's own
+    │   │                         # 'style.load' — a real fix, found
+    │   │                         # empirically: a first, lifetime-scoped
+    │   │                         # version wrongly reverted an already-
+    │   │                         # successfully-loaded style on ordinary,
+    │   │                         # expected post-load tile noise
+    │   ├── basemap/              # done (011-basemap-style-system) — shared
+    │   │   │                     # basemap registry/resolution, consumed by
+    │   │   │                     # FlowMapPanel.tsx now, ZoneMapPanel.tsx
+    │   │   │                     # once built (designed generically for
+    │   │   │                     # exactly that, not flowmap-specific)
+    │   │   ├── types.ts          # BasemapSelection/BasemapComposition/
+    │   │   │                     # EffectiveBasemap
+    │   │   ├── registry.ts       # built-in CARTO/OpenFreeMap style URLs +
+    │   │   │                     # resolveRasterProvider() — the real
+    │   │   │                     # dotted provider.variant lookup against
+    │   │   │                     # public/basemap/leaflet-providers.json
+    │   │   │                     # (leaflet-providers' own real catalog
+    │   │   │                     # shape, most providers nested under a
+    │   │   │                     # parent with a variants map — NOT flat
+    │   │   │                     # per-variant keys, a real correction
+    │   │   │                     # found only once real data existed)
+    │   │   ├── resolveEffectiveBasemap.ts # pure panel > tab > app-default
+    │   │   │                     # precedence resolver + basemapKey()
+    │   │   │                     # (the content-stable identity
+    │   │   │                     # FlowMapPanel.tsx's own basemap effect
+    │   │   │                     # keys its dependency array on, so a
+    │   │   │                     # pinned basemap's resolved value never
+    │   │   │                     # changes across a theme flip)
+    │   │   └── loadBasemapStyle.ts # BLANK_STYLE + preset/raster resolution
+    │   │                         # + composeStyles() (the generic
+    │   │                         # multi-source composition mechanism,
+    │   │                         # FR-006/FR-008/FR-012 — proven during
+    │   │                         # development against UGRC's real
+    │   │                         # 2-layer LiteBase+LiteLabels service,
+    │   │                         # never shipped as a named preset here).
+    │   │                         # Inlines each vector source's own
+    │   │                         # TileJSON `tiles` array at composition
+    │   │                         # time rather than leaving a `url`
+    │   │                         # reference — MapLibre cannot resolve a
+    │   │                         # fetched TileJSON's own relative
+    │   │                         # `tiles` template for an in-memory,
+    │   │                         # non-setStyle(url)-loaded style (found
+    │   │                         # empirically against the real UGRC
+    │   │                         # endpoint, not assumed)
+    │   ├── ZoneMapPanel.tsx      # not built yet — MapLibre choropleth +
+    │   │                         # GeoParquet; will consume panels/basemap/
+    │   │                         # unchanged once built (spec.md's own
+    │   │                         # requirement for 011)
     │   └── GraphicWalkerPanel.tsx # not built yet
     ├── components/
     │   └── ui/                   # shadcn-pattern primitives (002-design-

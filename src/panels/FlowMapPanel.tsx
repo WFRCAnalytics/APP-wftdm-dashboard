@@ -10,6 +10,7 @@ import * as sqlExpander from '@/services/sqlExpander'
 import * as filterState from '@/state/filterState'
 import { useFilterState } from '@/hooks/useFilterState'
 import { useActiveScenarios } from '@/hooks/useActiveScenarios'
+import { useColorScheme } from '@/hooks/useColorScheme'
 import {
   buildPanelQuery,
   resolveActiveScenarios,
@@ -17,6 +18,8 @@ import {
   EMPTY_SUMMARIZE_CONFIG,
 } from '@/panels/panelQuery'
 import { buildFlowmapData } from '@/panels/flowmapData'
+import { resolveEffectiveBasemap, basemapKey } from '@/panels/basemap/resolveEffectiveBasemap'
+import { loadBasemapStyle, BLANK_STYLE } from '@/panels/basemap/loadBasemapStyle'
 import { PanelEmptyState } from '@/panels/PanelEmptyState'
 import { PanelErrorState } from '@/panels/PanelErrorState'
 import type { FlowMapPanelConfig } from '@/layout/types'
@@ -29,22 +32,6 @@ const ALL_FILTERS: ['*'] = ['*']
 // same coordinates).
 const DEFAULT_CENTER: [number, number] = [-111.89, 40.76]
 const DEFAULT_ZOOM = 9
-
-// A minimal, self-contained MapLibre style — no external tile source, no
-// network request of any kind (constitution Principle II's no-CDN
-// discipline, established for DuckDB-WASM specifically but the same
-// reasoning applies here: `wftdm-dashboard here` must not require
-// internet access). NOT a real basemap — docs/GRAMMAR.md's type: flowmap
-// grammar has no style:/basemap: key at all today, so there is no
-// author-facing way to configure a real tile source yet; that remains a
-// genuinely open, unresolved question (research.md §9), out of this
-// feature's scope to settle, not silently papered over with a hardcoded
-// external CDN URL.
-const BLANK_STYLE: maplibregl.StyleSpecification = {
-  version: 8,
-  sources: {},
-  layers: [{ id: 'background', type: 'background', paint: { 'background-color': '#e5e5e5' } }],
-}
 
 // Test-only synchronization hook — lets a Playwright test force the
 // "data resolves before the map finishes initializing" ordering
@@ -65,6 +52,13 @@ declare global {
     // producing a real 'moveend' event), which no DOM-only assertion can
     // prove. Same category/rationale as __flowmapTestMapReadyDelayMs.
     __flowmapTestMaps?: Record<string, maplibregl.Map>
+    // 011-basemap-style-system: same registry shape as __flowmapTestMaps,
+    // for the live MapboxOverlay instance — needed because research.md
+    // §1's empirical setStyle()-survival test must inspect
+    // overlay.props.layers directly (a duplicate-layer-id bug can leave
+    // the overlay "not removed" while silently failing to draw, which no
+    // DOM-only check can distinguish from a genuinely healthy overlay).
+    __flowmapTestOverlays?: Record<string, MapboxOverlay>
   }
 }
 
@@ -83,10 +77,15 @@ export function FlowMapPanel({ config }: { config: FlowMapPanelConfig }) {
   const filterIds = extractGlobalFilterIds(config.filter)
   const filters = useFilterState(filterIds.length ? filterIds : ALL_FILTERS)
   const activeScenarioNames = useActiveScenarios()
+  const colorScheme = useColorScheme()
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
   const overlayRef = useRef<MapboxOverlay | null>(null)
   const renderCountRef = useRef(0)
+  // 011-basemap-style-system — generation counter guarding the basemap-
+  // application effect's async result against being overwritten by a
+  // stale/losing concurrent invocation (see that effect's own comment).
+  const basemapGenerationRef = useRef(0)
   const [status, setStatus] = useState<'loading' | 'ready' | 'empty' | 'error'>('loading')
   const [rows, setRows] = useState<Record<string, unknown>[]>([])
   // Set to true at the end of the map-creation effect below, once
@@ -148,6 +147,8 @@ export function FlowMapPanel({ config }: { config: FlowMapPanelConfig }) {
     overlayRef.current = overlay
     window.__flowmapTestMaps ??= {}
     window.__flowmapTestMaps[config.title] = map
+    window.__flowmapTestOverlays ??= {}
+    window.__flowmapTestOverlays[config.title] = overlay
 
     const observer = new ResizeObserver(() => {
       mapRef.current?.resize()
@@ -168,6 +169,7 @@ export function FlowMapPanel({ config }: { config: FlowMapPanelConfig }) {
       window.clearTimeout(readyTimer)
       observer.disconnect()
       delete window.__flowmapTestMaps?.[config.title]
+      delete window.__flowmapTestOverlays?.[config.title]
       overlayRef.current = null
       mapRef.current = null
       // mapReady is NOT reset to false here — this effect's deps are []
@@ -177,6 +179,128 @@ export function FlowMapPanel({ config }: { config: FlowMapPanelConfig }) {
       map.remove()
     }
   }, [])
+
+  // 011-basemap-style-system — basemap style application. Deliberately
+  // its own effect, not folded into the mount-only effect above (a style
+  // CHANGE, unlike map creation, must be able to re-run many times over
+  // the map's lifetime) and not folded into the data-update effect below
+  // (a basemap change is independent of query/data state — resolving
+  // them in the same effect would make an unrelated data refresh
+  // redundantly reapply the style, and vice versa). Keyed on
+  // basemapKey(...), NOT on colorScheme or config.basemap directly —
+  // research.md §2's core mechanism: an explicit pin resolves to the
+  // SAME key across a theme flip, so this effect correctly does NOT
+  // re-run for it, while the no-config app-default case resolves to a
+  // DIFFERENT key per theme, so it does.
+  const effectiveBasemap = resolveEffectiveBasemap(config.basemap, config._tabDefaultBasemap, colorScheme)
+  const key = basemapKey(effectiveBasemap.selection)
+
+  useEffect(() => {
+    if (!mapReady || !mapRef.current) return
+    // A generation counter AND a real AbortController — not just a
+    // boolean `cancelled` flag. Found necessary empirically during
+    // implementation (React 18 StrictMode, enabled in main.tsx,
+    // double-invokes this effect): a plain boolean flag correctly no-ops
+    // a stale invocation's own RESULT, but does nothing to stop that
+    // stale invocation's own fetch() calls from continuing to run on the
+    // network. For a multi-fetch composition, that redundant concurrent
+    // load was observed — running the real UGRC proof case for real, not
+    // assumed fine from the design alone — to cause the CURRENT
+    // (non-stale) invocation's own fetch to fail with a genuine
+    // `TypeError: Failed to fetch`, not just a benign race over which
+    // result gets applied. The AbortController's signal (threaded through
+    // loadBasemapStyle.ts into every fetch() it or its helpers make)
+    // actually cancels the stale invocation's requests on cleanup,
+    // removing the redundant load entirely; the generation counter
+    // remains as a second, independent guard against ever applying an
+    // aborted/stale invocation's result, even in a hypothetical case
+    // where abort() didn't reach every in-flight request in time.
+    const myGeneration = ++basemapGenerationRef.current
+    const controller = new AbortController()
+
+    loadBasemapStyle(effectiveBasemap.selection, controller.signal)
+      .then((resolved) => {
+        if (basemapGenerationRef.current !== myGeneration || !mapRef.current) return
+        const styleArg = resolved.kind === 'url' ? resolved.url : resolved.style
+        // transformStyle — reused directly from APP-WFRC-Commute-Patterns'
+        // own real, production setStyle() call (research.md §1), not
+        // re-derived: preserves this project's own future custom
+        // MapLibre-native layers (e.g. a later zonemap's choropleth fill)
+        // across the swap by carrying forward any previous-style layer id
+        // the new style doesn't already have. No-op today (FlowMapPanel
+        // adds no MapLibre-native layers of its own — only the deck.gl
+        // overlay, which research.md §1 confirms lives outside this
+        // mechanism entirely).
+        const map = mapRef.current
+
+        // FR-010/research.md §7 — a real STYLE-LOAD failure (the style
+        // document, its sprite/glyphs, or a source's TileJSON failing to
+        // fetch/parse) surfaces as a maplibregl 'error' event, not a
+        // rejected promise. This listener is deliberately scoped to only
+        // the WINDOW between this setStyle() call and its own
+        // 'style.load' — found necessary empirically, not part of the
+        // original design: a first version listened for 'error' for the
+        // map's entire lifetime, which also catches completely normal,
+        // expected individual-tile-fetch issues that occur constantly
+        // with a real, large multi-source composition (confirmed
+        // directly against the real UGRC proof case: disabling the
+        // lifetime-scoped listener left the style stable and correctly
+        // loaded; re-enabling it reverted an otherwise-successfully-
+        // loaded 569-layer style back to BLANK_STYLE within ~300ms of a
+        // routine post-load tile event). Once the style has genuinely
+        // finished loading, further errors are ordinary map runtime
+        // noise, not "the basemap failed," and must not trigger a
+        // revert.
+        const onLoadError = () => {
+          map.off('error', onLoadError)
+          const current = map.getStyle()
+          if (current && JSON.stringify(current) !== JSON.stringify(BLANK_STYLE)) {
+            map.setStyle(BLANK_STYLE)
+          }
+        }
+        map.on('error', onLoadError)
+        map.once('style.load', () => map.off('error', onLoadError))
+
+        // transformStyle — reused directly from APP-WFRC-Commute-Patterns'
+        // own real, production setStyle() call (research.md §1), not
+        // re-derived: preserves this project's own future custom
+        // MapLibre-native layers (e.g. a later zonemap's choropleth fill)
+        // across the swap by carrying forward any previous-style layer id
+        // the new style doesn't already have. No-op today (FlowMapPanel
+        // adds no MapLibre-native layers of its own — only the deck.gl
+        // overlay, which research.md §1 confirms lives outside this
+        // mechanism entirely).
+        map.setStyle(styleArg, {
+          transformStyle: (previous, next) => {
+            if (!previous) return next
+            const nextIds = new Set(next.layers.map((l) => l.id))
+            const preserved = previous.layers.filter((l) => !nextIds.has(l.id))
+            return {
+              ...next,
+              sources: { ...next.sources, ...previous.sources },
+              layers: [...next.layers, ...preserved],
+            }
+          },
+        })
+      })
+      .catch((e) => {
+        // loadBasemapStyle only re-throws a genuine AbortError (every
+        // other failure resolves to BLANK_STYLE internally, per FR-010) —
+        // this is a deliberate, silent no-op for exactly that case, not a
+        // caught-and-ignored real error.
+        if (!(e instanceof DOMException && e.name === 'AbortError')) throw e
+      })
+
+    return () => {
+      controller.abort()
+    }
+    // Deliberately keyed on `key` (basemapKey's stable content-based
+    // identity) alone, not on `effectiveBasemap`/`config.basemap`/
+    // `colorScheme` directly — see the comment above and research.md §2.
+    // No lint config exists in this repo to silence for this (confirmed
+    // — no .eslintrc*/eslint.config.* present), so no disable-comment is
+    // needed here, just this explanation.
+  }, [key, mapReady])
 
   // Data update — rebuilds the FlowmapLayer and pushes it to the
   // already-existing overlay via setProps(). Never creates a new
