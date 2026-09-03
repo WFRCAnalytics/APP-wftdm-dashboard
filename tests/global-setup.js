@@ -18,6 +18,9 @@ const copies = [
   // index.json, discovered by loadDashboards() the same way
   // public/scenarios/index.json is discovered for scenarios.
   ['tests/fixtures/dashboard-config', 'public/dashboard-config'],
+  // 013-zonemap-panel: the zone-boundary GeoParquet fixture, fetched by
+  // registerFileURL() at a stable public/geometry/ URL (data-model.md).
+  ['tests/fixtures/geometry', 'public/geometry'],
 ]
 
 export default async function globalSetup() {

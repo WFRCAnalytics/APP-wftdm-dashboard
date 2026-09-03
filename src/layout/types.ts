@@ -222,27 +222,62 @@ export interface FlowMapPanelConfig extends DataBoundPanelConfigBase {
   _tabDefaultBasemap?: BasemapSelection
 }
 
-/** Any panel type that participates in basemap resolution — today just
- * FlowMapPanelConfig; a future ZoneMapPanelConfig extends this same
- * interface unchanged (spec.md's own "zonemap will consume the same
- * registry/composition mechanism" requirement). dashboardRenderer.tsx
- * uses this as a type guard so tab-level default_basemap injection stays
- * generic across current and future map-rendering panel types. */
+/**
+ * The eighth and final originally-listed panel type — 013-zonemap-panel.
+ * Extends DataBoundPanelConfigBase (docs/GRAMMAR.md's type: zonemap
+ * grammar always queries a metric) AND MapRenderingPanelConfig below
+ * (that interface's own doc comment already anticipated this exact type
+ * unchanged). boundaries_id/metric_id/column are author-configurable
+ * field-mapping keys naming literal columns in the geometry/queried
+ * result — not $metric.<column>-prefixed (spec.md Grammar findings #3),
+ * the same convention SankeyPanelConfig/FlowMapPanelConfig already use.
+ * comparison defaults to 'side_by_side' when omitted — the panel renders
+ * its single selected/active scenario's values normally, the existing
+ * side-by-side-panels convention every other panel type's own scenario:
+ * key already provides (spec.md Grammar findings #8).
+ */
+export interface ComparisonDiff {
+  type: 'diff'
+  a: string
+  b: string
+  expr: string
+}
+
+export interface ZoneMapPanelConfig extends DataBoundPanelConfigBase, MapRenderingPanelConfig {
+  type: 'zonemap'
+  boundaries: string
+  boundaries_id: string
+  metric_id: string
+  column: string
+  label?: string
+  color_scale?: 'sequential' | 'diverging'
+  color_ramp?: string
+  steps?: number
+  domain?: [number, number]
+  comparison?: 'side_by_side' | ComparisonDiff
+  center?: [number, number]
+  zoom?: number
+}
+
+/** Any panel type that participates in basemap resolution — FlowMapPanelConfig
+ * and ZoneMapPanelConfig today. dashboardRenderer.tsx uses this as a type
+ * guard so tab-level default_basemap injection stays generic across
+ * current and future map-rendering panel types. */
 export interface MapRenderingPanelConfig {
   basemap?: BasemapSelection
   _tabDefaultBasemap?: BasemapSelection
 }
 
 export function isMapRenderingPanel(config: PanelConfig): config is PanelConfig & MapRenderingPanelConfig {
-  return config.type === 'flowmap' // extend with '|| config.type === 'zonemap'' when that panel type ships
+  return config.type === 'flowmap' || config.type === 'zonemap'
 }
 
 /**
- * Any other panel type (zonemap, graphic-walker — still out of scope,
- * still deferred; flowmap is no longer one of these as of
- * 010-flowmap-panel) still parses as this base shape rather than being
- * dropped or erroring at parse time — the registry lookup
- * (panels/registry.tsx), not the parser, is what surfaces an
+ * Any other panel type (graphic-walker — still out of scope, still
+ * deferred; flowmap and zonemap are no longer among these as of
+ * 010-flowmap-panel/013-zonemap-panel) still parses as this base shape
+ * rather than being dropped or erroring at parse time — the registry
+ * lookup (panels/registry.tsx), not the parser, is what surfaces an
  * unrecognized-type error, keeping "parse" and "renderable-by-this-app" as
  * separate concerns. Extends the plain PanelConfigBase, not
  * DataBoundPanelConfigBase — an unrecognized future type shouldn't be
@@ -262,6 +297,7 @@ export type PanelConfig =
   | ObservablePlotPanelConfig
   | SankeyPanelConfig
   | FlowMapPanelConfig
+  | ZoneMapPanelConfig
   | UnknownPanelConfig
 
 export interface DashboardTabConfig {

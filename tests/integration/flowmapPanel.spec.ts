@@ -53,7 +53,12 @@ function panelCard(page: Page, title: string) {
 }
 
 function expandTrigger(page: Page, title: string) {
-  return page.getByRole('button', { name: `Expand ${title}` })
+  // exact: true — 013-zonemap-panel added a title that's a prefix of
+  // another ("Zone Map VMT per Capita" / "... (Auto Domain)") to this
+  // tab's own mixed-panel-types test, which Playwright's default
+  // substring name matching treats as ambiguous otherwise (a real
+  // "strict mode violation" hit live once that panel was added here).
+  return page.getByRole('button', { name: `Expand ${title}`, exact: true })
 }
 
 async function queryCountFor(page: Page, needle: string) {
@@ -446,7 +451,7 @@ test.describe('User Story 3 - Flowmap panel behaves consistently with the rest o
     await expect(card.locator('canvas')).toHaveCount(0)
   })
 
-  test('a tab mixing all seven now-built panel types renders without error in a single load', async ({
+  test('a tab mixing all eight now-built panel types renders without error in a single load', async ({
     page,
   }) => {
     await boot(page)
@@ -471,6 +476,12 @@ test.describe('User Story 3 - Flowmap panel behaves consistently with the rest o
     // so .first() is a no-op here rather than disambiguating two.
     await expect(flowmapCard.locator('.flowmap-chart canvas').first()).toBeVisible() // flowmap
     await expect(expandTrigger(page, FLOWMAP_TITLE)).toBeVisible()
+
+    // 013-zonemap-panel — the eighth and final originally-listed panel
+    // type, completing this mixed-tab guarantee (spec.md SC-005).
+    const zonemapCard = panelCard(page, 'Zone Map VMT per Capita')
+    await expect(zonemapCard.locator('.zonemap-chart canvas').first()).toBeVisible() // zonemap
+    await expect(expandTrigger(page, 'Zone Map VMT per Capita')).toBeVisible()
   })
 })
 

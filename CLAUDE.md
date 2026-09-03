@@ -207,10 +207,12 @@ APP-wftdm-dashboard/
     │   # 007-observable-plot-panel, and 008-sankey-panel each added one
     │   # more panel type — table/markdown/observable-plot/sankey are all
     │   # real now, completing the originally-listed six-panel-type set;
-    │   # 010-flowmap-panel added the seventh and final one (this
-    │   # codebase's first real map — MapLibre + deck.gl + flowmap.gl).
-    │   # zonemap/graphic-walker remain the only panel types not yet
-    │   # built. scenario/scenarioManager.ts + manifestReader.ts are
+    │   # 010-flowmap-panel added the seventh one (this codebase's first
+    │   # real map — MapLibre + deck.gl + flowmap.gl); 013-zonemap-panel
+    │   # then added the eighth and actual final one (a second, pure-
+    │   # MapLibre map — no deck.gl, this project's first GeoParquet/
+    │   # DuckDB-spatial feature). graphic-walker remains the only panel
+    │   # type not yet built. scenario/scenarioManager.ts + manifestReader.ts are
     │   # also now real (009-scenario-manager, closing services/duckdb.ts's
     │   # registerScenario() zero-callers gap open since 001) — styles/ is
     │   # the only entry in this tree still not built (out of scope for
@@ -274,8 +276,9 @@ APP-wftdm-dashboard/
     │   │                         # ObservablePlotPanel.tsx same reason as
     │   │                         # plotlyTraces.ts (007)
     │   ├── SankeyPanel.tsx       # done (008-sankey-panel) — the sixth
-    │   │                         # panel type (flowmap below is the
-    │   │                         # seventh and final one, not this)
+    │   │                         # panel type (flowmap and zonemap below
+    │   │                         # are the seventh and eighth/final
+    │   │                         # ones, not this)
     │   ├── sankeyGraph.ts        # pure, DOM-free rows-to-graph transform +
     │   │                         # d3-sankey layout wrapper, split out of
     │   │                         # SankeyPanel.tsx same reason as
@@ -479,9 +482,11 @@ APP-wftdm-dashboard/
     │   │                         # color.
     │   ├── basemap/              # done (011-basemap-style-system) — shared
     │   │   │                     # basemap registry/resolution, consumed by
-    │   │   │                     # FlowMapPanel.tsx now, ZoneMapPanel.tsx
-    │   │   │                     # once built (designed generically for
-    │   │   │                     # exactly that, not flowmap-specific)
+    │   │   │                     # FlowMapPanel.tsx AND (013-zonemap-panel)
+    │   │   │                     # ZoneMapPanel.tsx unmodified — confirming
+    │   │   │                     # this module's own generic-across-map-
+    │   │   │                     # panel-types design intent for real,
+    │   │   │                     # not merely assumed
     │   │   ├── types.ts          # BasemapSelection/BasemapComposition/
     │   │   │                     # EffectiveBasemap
     │   │   ├── registry.ts       # built-in CARTO/OpenFreeMap style URLs +
@@ -644,10 +649,74 @@ APP-wftdm-dashboard/
     │   │                         # `hasOwnProperty`, confirmed to actually
     │   │                         # fail against the reverted bug before
     │   │                         # confirming it passes against the fix.
-    │   ├── ZoneMapPanel.tsx      # not built yet — MapLibre choropleth +
-    │   │                         # GeoParquet; will consume panels/basemap/
-    │   │                         # unchanged once built (spec.md's own
-    │   │                         # requirement for 011)
+    │   ├── ZoneMapPanel.tsx      # done (013-zonemap-panel) — the eighth
+    │   │                         # and final originally-listed panel
+    │   │                         # type. Pure MapLibre choropleth + real
+    │   │                         # GeoParquet (this codebase's first) —
+    │   │                         # confirmed no deck.gl/MapboxOverlay
+    │   │                         # capability gap (a data-driven
+    │   │                         # fill-color paint expression + native
+    │   │                         # mousemove/click cover fill + hover),
+    │   │                         # the ONE map-rendering panel type
+    │   │                         # outside 012's interleaved-mode/
+    │   │                         # context-loss scope entirely.
+    │   │                         # Consumes panels/basemap/ (011)
+    │   │                         # completely unmodified, confirming
+    │   │                         # that module's own generic-across-
+    │   │                         # map-panel-types design intent.
+    │   │                         # zonemapColor.ts (color-scale
+    │   │                         # resolution) and zoneGeometry.ts (the
+    │   │                         # module-level, never-evicted-by-design
+    │   │                         # geometry cache — a boundaries_id
+    │   │                         # mismatch across panels sharing one
+    │   │                         # boundaries file rejects loudly,
+    │   │                         # never silently) split out same
+    │   │                         # reason as every prior pure-module
+    │   │                         # split. Geometry loads via
+    │   │                         # registerFileURL() + read_parquet() +
+    │   │                         # ST_GeomFromWKB()/ST_AsGeoJSON() —
+    │   │                         # never ST_Read()/registerFileBuffer(),
+    │   │                         # a real, confirmed upstream
+    │   │                         # incompatibility (duckdb/
+    │   │                         # duckdb-wasm#1791) a scenario-
+    │   │                         # independent, registerFileURL-
+    │   │                         # published boundaries: file was never
+    │   │                         # going to hit anyway. DuckDB-WASM's
+    │   │                         # spatial extension — confirmed NOT
+    │   │                         # bundled/autoloaded, unlike parquet/
+    │   │                         # json/icu/autocomplete — needs an
+    │   │                         # explicit INSTALL/LOAD, fetched
+    │   │                         # lazily from extensions.duckdb.org on
+    │   │                         # first use; docs/ARCHITECTURE.md's
+    │   │                         # existing parquet-extension "no
+    │   │                         # internet required" caveat now covers
+    │   │                         # this second, confirmed exception too.
+    │   │                         # comparison: diff (panelQuery.ts's
+    │   │                         # buildComparisonDiffQuery()) resolves
+    │   │                         # its two named scenarios as literal,
+    │   │                         # unvalidated view-name prefixes — the
+    │   │                         # same zero-upfront-validation
+    │   │                         # convention config.scenario singular
+    │   │                         # already uses, corrected during
+    │   │                         # implementation from an earlier, more
+    │   │                         # complex draft that assumed
+    │   │                         # resolveActiveScenarios() performs
+    │   │                         # validation it actually doesn't. One
+    │   │                         # real, confirmed implementation-time
+    │   │                         # bug worth naming here too:
+    │   │                         # panelQuery.ts's existing
+    │   │                         # 'column' in config check (written
+    │   │                         # for ValueBoxPanelConfig) also
+    │   │                         # unintentionally matched
+    │   │                         # ZoneMapPanelConfig's own,
+    │   │                         # differently-meaning column field,
+    │   │                         # silently dropping metric_id from the
+    │   │                         # generated SQL and rendering every
+    │   │                         # zone as "no data" with no error at
+    │   │                         # all — found via Playwright, not
+    │   │                         # typecheck or any unit test; fixed by
+    │   │                         # also excluding any config that
+    │   │                         # carries metric_id.
     │   └── GraphicWalkerPanel.tsx # not built yet
     ├── components/
     │   └── ui/                   # shadcn-pattern primitives (002-design-
@@ -905,9 +974,28 @@ skipping the overlay repopulate for any panel that fell back to blank.
 Fixed by firing unconditionally on the FIRST `'styledata'` after each
 `setStyle()` call, no sources filter at all.
 
-**ZoneMapPanel** — not yet built. Load zone GeoParquet once via DuckDB
-spatial, cache as module variable. Join metric rows to features in JS →
-`map.getSource('zones').setData(geojson)` on update.
+**ZoneMapPanel** — done (`013-zonemap-panel`), built exactly to this
+note's own original sketch: zone GeoParquet loaded once via DuckDB
+spatial (`panels/zoneGeometry.ts`'s module-level, deliberately
+never-evicted cache — a `boundaries_id` mismatch across panels sharing
+one `boundaries` file rejects loudly rather than silently), metric rows
+joined to features in JS, `map.getSource('zonemap-zones').setData(geojson)`
+on update. Deliberately **pure MapLibre** — no `MapboxOverlay`/deck.gl at
+all, confirmed no capability gap forces it (a data-driven `fill-color`
+paint expression plus native `mousemove`/`click` events cover the
+choropleth fill and hover/click need, matching `ar-puuk/
+spatial-sql-explorer`'s own real reference implementation) — making this
+the one map-rendering panel type with a single WebGL context, entirely
+outside `012-webgl-context-management`'s interleaved-mode/context-loss
+scope. Geometry itself loads via `registerFileURL()` + plain
+`read_parquet()` + `ST_GeomFromWKB()`/`ST_AsGeoJSON()` — never
+`ST_Read()`/`registerFileBuffer()`, a real, confirmed upstream
+incompatibility (`duckdb/duckdb-wasm#1791`) a scenario-independent,
+`public/geometry/`-published `boundaries:` file was never going to hit
+anyway. DuckDB-WASM's `spatial` extension is confirmed NOT bundled/
+autoloaded (unlike `parquet`/`json`/`icu`/`autocomplete`) — a second,
+real instance of the `parquet`-extension network-fetch caveat already
+below, now both documented in `docs/ARCHITECTURE.md`.
 
 **Pinned versions (peer deps must match):**
 - `@deck.gl/core` + `@deck.gl/layers` + `@deck.gl/mapbox`: ^9.0.0
@@ -1086,15 +1174,69 @@ first cross-reference this list was built from). ✅ done,
      wiring), not rebuilt per-render the way every chart panel type
      before it works. Also required a `vite.config.ts` `manualChunks`
      addition (a `maps` chunk) — the first panel-type feature since
-     `003`'s own Plotly chunk to need a build-config change. **This
-     completes the originally-listed seven-panel-type set** — `sankey`
+     `003`'s own Plotly chunk to need a build-config change. `sankey`
      was mistakenly described as "sixth and final" in `008`'s own
-     completion note; flowmap is the actual final one.
-   - ❌ `ZoneMapPanel` — not started; needs GeoParquet/DuckDB-spatial
-     support `010-flowmap-panel` deliberately did not touch (its own
+     completion note, then flowmap in turn was mistakenly described as
+     "the actual final one" here — `zonemap` below is the real eighth
+     and final one.
+   - ✅ `ZoneMapPanel` — done (`013-zonemap-panel`). **This completes the
+     originally-listed eight-panel-type set** — no panel type in this
+     list remains not-started (`graphic-walker`, item 10 below, is a
+     separate, always-deferred Explore-tab feature, never part of this
+     eight). This project's first GeoParquet/DuckDB-spatial feature —
+     `010-flowmap-panel` deliberately avoided needing this (its own
      `docs/GRAMMAR.md` grammar correction replaced a live spatial-join
-     design with plain lat/lon field-mapping columns specifically to
-     avoid needing this — see that file's own inline correction note)
+     design with plain lat/lon field-mapping columns for flowmap
+     specifically), but zonemap's own real `boundaries`/`boundaries_id`
+     grammar genuinely needs it. Confirmed, not assumed, during planning
+     and implementation: the DuckDB-WASM `spatial` extension is NOT
+     bundled/autoloaded (unlike `parquet`/`json`/`icu`/`autocomplete`) —
+     needs an explicit `INSTALL spatial; LOAD spatial;`
+     (`panels/zoneGeometry.ts`'s `ensureSpatialExtensionLoaded()`), fetched
+     lazily from `extensions.duckdb.org` the first time any `zonemap`
+     panel loads — a second, real instance of `010`'s own already-
+     documented `parquet`-extension network-fetch caveat, both now
+     recorded in `docs/ARCHITECTURE.md`. Geometry itself is loaded via
+     `registerFileURL()` + plain `read_parquet()` + `ST_GeomFromWKB()`/
+     `ST_AsGeoJSON()` — never `ST_Read()`/`registerFileBuffer()`,
+     confirmed via a real, live upstream bug
+     (`duckdb/duckdb-wasm#1791`: `ST_Read()` fails against
+     `registerFileBuffer()`-registered files) that a `boundaries` file
+     (a scenario-independent, published `public/geometry/` static asset)
+     was never going to hit anyway. Deliberately **pure MapLibre, no
+     deck.gl/`MapboxOverlay`** — confirmed no capability gap forces it
+     (a data-driven `fill-color` paint expression plus native
+     `mousemove`/`click` events cover the choropleth fill and hover/click
+     need), matching `ar-puuk/spatial-sql-explorer`'s own real, fetched
+     reference implementation — making `zonemap` the one map-rendering
+     panel type with a single WebGL context, entirely outside
+     `012-webgl-context-management`'s interleaved-mode/context-loss
+     scope by design. Reuses `panels/basemap/` (011) completely
+     unmodified, confirming that module's own stated generic-across-
+     map-panel-types design intent. New pure modules: `panels/
+     zonemapColor.ts` (color-scale resolution — extends `005-table-
+     panel`'s `tableLogic.ts` `cellColor()` token-derived/capped-
+     `color-mix()`/zero-anchored-diverging convention, not `008-sankey-
+     panel`'s categorical `color_scheme` as originally assumed — a real
+     correction made during spec-writing, not silently designed around)
+     and `panels/zoneGeometry.ts` (the module-level, deliberately
+     never-evicted zone-geometry cache — `boundaries_id` mismatch across
+     panels sharing one `boundaries` file rejects loudly rather than
+     silently picking a winner, a real gap caught and fixed before
+     implementation began). `comparison: diff` (a genuinely new
+     cross-scenario per-zone SQL computation, `panelQuery.ts`'s
+     `buildComparisonDiffQuery()`) resolves `a`/`b` as literal,
+     unvalidated view-name prefixes — the same zero-upfront-validation
+     convention `config.scenario` singular already uses elsewhere in
+     that file, corrected during implementation from an earlier, more
+     complex draft. One real, confirmed implementation-time bug worth
+     naming: `panelQuery.ts`'s existing `'column' in config` check
+     (written for `ValueBoxPanelConfig`) also unintentionally matched
+     `ZoneMapPanelConfig`'s own, differently-meaning `column` field,
+     silently dropping `metric_id` from the generated SQL and rendering
+     every zone as "no data" with no error at all — found via Playwright,
+     not typecheck or any unit test; fixed by also excluding any config
+     that carries `metric_id`.
 10. ❌ `GraphicWalkerPanel` (Explore tab) — not started;
     `@kanaries/graphic-walker` isn't in `package.json` yet either
 11. ✅ `src/styles/tokens.css` (Tailwind CSS variables) — done

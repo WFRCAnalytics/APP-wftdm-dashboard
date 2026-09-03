@@ -282,3 +282,60 @@ layout:
           - https://tiles.arcgis.com/tiles/99lidPhWCzftIe9K/arcgis/rest/services/Vector_Overlay/VectorTileServer/resources/styles/root.json
       height: 400
       width: 1.0
+
+  # 013-zonemap-panel — same tab-default/panel-override/unreachable-
+  # fallback coverage as row_precedence's flowmap panels above, extended
+  # to the second (and final) map-rendering panel type, proving
+  # panels/basemap/'s panel > tab > app-default precedence (011) and the
+  # "a missing/unreachable basemap never blocks a panel's own data-driven
+  # content" guarantee (011/012) are genuinely generic across panel
+  # types, not flowmap-specific in practice (spec.md Grammar findings
+  # #6). Reuses good_scenario/vmt_by_home_taz + taz.geoparquet — same
+  # convention as row_precedence reusing od_flows/good_scenario.
+  row_zonemap_basemaps:
+    # No panel-level basemap: — resolves to the TAB default
+    # (openfreemap-bright, set at the top of this file), not the app's
+    # light/dark CARTO pairing.
+    - type: zonemap
+      title: Zone Map Tab Default Basemap
+      metric: vmt_by_home_taz
+      scenario: good_scenario
+      boundaries: taz.geoparquet
+      boundaries_id: TAZ_ID
+      metric_id: taz_id
+      column: vmt_per_capita
+      color_scale: sequential
+      height: 400
+      width: 0.5
+
+    # Panel-level basemap: WINS over the tab default.
+    - type: zonemap
+      title: Zone Map Panel Basemap Override
+      metric: vmt_by_home_taz
+      scenario: good_scenario
+      boundaries: taz.geoparquet
+      boundaries_id: TAZ_ID
+      metric_id: taz_id
+      column: vmt_per_capita
+      color_scale: sequential
+      basemap: carto-voyager
+      height: 400
+      width: 0.5
+
+    # Deliberately unreachable preset name — the choropleth itself must
+    # still render (falls back to the blank basemap background), a
+    # basemap failure never blocks the panel's own data-driven content
+    # (spec.md SC-004, extending 011/012's existing guarantee to this
+    # panel type).
+    - type: zonemap
+      title: Zone Map Unreachable Basemap (intentional)
+      metric: vmt_by_home_taz
+      scenario: good_scenario
+      boundaries: taz.geoparquet
+      boundaries_id: TAZ_ID
+      metric_id: taz_id
+      column: vmt_per_capita
+      color_scale: sequential
+      basemap: totally-made-up-preset-name
+      height: 400
+      width: 0.5

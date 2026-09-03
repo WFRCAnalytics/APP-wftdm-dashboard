@@ -179,6 +179,82 @@ OD_FLOWS_COLUMNS = [
 ]
 
 
+# 013-zonemap-panel: this project's first geometry fixture (research.md
+# §5's own explicit decision: synthetic and hand-authored, NOT the real
+# WFRC/UGRC TAZ dataset — every fixture in this generator has always been
+# tiny and synthetic, and pulling in a real external dataset would be the
+# one thing this generator has never had, an external data dependency).
+# 8 simple adjacent 0.05-degree-square zones in a 4x2 grid near the
+# Wasatch Front (matches every other fixture's own [-111.89, 40.76]-area
+# convention, e.g. OD_FLOWS_ROWS above).
+def _zone_boundary_rows():
+    base_lon, base_lat, cell = -111.95, 40.68, 0.05
+    rows = []
+    taz_id = 100
+    for row in range(2):
+        for col in range(4):
+            lon0 = base_lon + col * cell
+            lon1 = lon0 + cell
+            lat0 = base_lat + row * cell
+            lat1 = lat0 + cell
+            wkt = (
+                f"POLYGON(({lon0} {lat0}, {lon1} {lat0}, "
+                f"{lon1} {lat1}, {lon0} {lat1}, {lon0} {lat0}))"
+            )
+            rows.append((taz_id, wkt))
+            taz_id += 100
+    return rows
+
+
+ZONE_BOUNDARY_ROWS = _zone_boundary_rows()
+ZONE_BOUNDARY_ID_COLUMN = "TAZ_ID"
+
+# vmt_by_home_taz-shaped metric table (matches summarize.yaml's own real
+# vmt_by_home_taz metric — docs/GRAMMAR.md's type: zonemap worked
+# example) — with one deliberate departure from that real metric's own
+# minimal SQL: a synthetic `purpose` column, added ONLY so this fixture
+# can exercise filter reactivity (spec.md User Story 2, Acceptance
+# Scenario 1) the same way every other panel type's own fixture already
+# does — "made up, not modeled output" (SUMMARY_KPIS_ROWS' own precedent
+# comment), not a claim this matches the real metric's real SQL. The two
+# purpose groups are DISJOINT zone sets (HBW: 100-400, NHB: 500-700+900),
+# never two rows for the same taz_id — required so the "one metric row
+# per zone" join (FR-003/FR-009) never has to arbitrate between two
+# candidate rows for one zone, with or without a purpose filter applied.
+#
+# taz_id 800 (present in ZONE_BOUNDARY_ROWS above) never appears under
+# EITHER purpose — the permanent "zone with no matching metric row"
+# no-data case (FR-012). taz_id 900 (present here, absent from
+# ZONE_BOUNDARY_ROWS) is the mirror case — a metric row with no matching
+# geometry, excluded before rendering (FR-012). Values deliberately span
+# zero (made up, matching SCREENLINES_ROWS' own sign-spanning precedent)
+# so a diverging color_scale is meaningfully testable: with domain
+# [-10, 30], taz 300's value (0.0) is the TRUE diverging midpoint; taz
+# 500's value (10.0) sits at the domain's non-zero geometric center — the
+# zero-anchored-midpoint regression case (013-zonemap-panel spec.md User
+# Story 3, Acceptance Scenario 2).
+VMT_BY_HOME_TAZ_ROWS = [
+    (100, "HBW", -8.0),
+    (200, "HBW", -4.0),
+    (300, "HBW", 0.0),
+    (400, "HBW", 5.0),
+    (500, "NHB", 10.0),
+    (600, "NHB", 18.0),
+    (700, "NHB", 25.0),
+    (900, "NHB", 12.0),  # no matching geometry -> excluded before rendering
+]
+VMT_BY_HOME_TAZ_COLUMNS = ["taz_id", "purpose", "vmt_per_capita"]
+
+# A second, differently-valued copy of the same metric published under
+# `observed` — a flat 5.0 baseline for every zone `good_scenario` also has
+# real (non-orphan) data for — the two-scenario `comparison: diff`
+# fixture (research.md §7): diff = good_scenario.value - observed.value
+# gives a clean, hand-verifiable result per zone (e.g. taz 100:
+# -8.0 - 5.0 = -13.0; taz 700: 25.0 - 5.0 = 20.0).
+VMT_BY_HOME_TAZ_OBSERVED_ROWS = [(taz_id, 5.0) for taz_id in (100, 200, 300, 400, 500, 600, 700)]
+VMT_BY_HOME_TAZ_OBSERVED_COLUMNS = ["taz_id", "vmt_per_capita"]
+
+
 def write_parquet(con, dest: Path, columns: list[str], rows: list[tuple]) -> None:
     dest.parent.mkdir(parents=True, exist_ok=True)
     col_list = ", ".join(columns)
@@ -187,6 +263,33 @@ def write_parquet(con, dest: Path, columns: list[str], rows: list[tuple]) -> Non
     )
     con.execute(f"""
         COPY (SELECT * FROM (VALUES {values}) AS t({col_list}))
+        TO '{dest.as_posix()}' (FORMAT PARQUET)
+    """)
+
+
+def write_geoparquet(con, dest: Path, id_column: str, rows: list[tuple]) -> None:
+    """Writes a tiny synthetic GeoParquet fixture. `rows` is a list of
+    (zone_id, wkt_polygon) tuples. Geometry is stored as a WKB BLOB column
+    named `geometry`, matching ar-puuk/parquet-viewer's own confirmed
+    GeoParquet convention (013-zonemap-panel research.md §3) — read back
+    via read_parquet() + ST_GeomFromWKB(), never ST_Read()/
+    registerFileBuffer() (research.md §3's own confirmed duckdb-wasm#1791
+    finding). Requires the DuckDB spatial extension — INSTALL fetches it
+    once from the local cache after the first real run (same one-time
+    network dependency this feature's own docs/ARCHITECTURE.md caveat
+    documents for the browser side, here on the Python/offline side of
+    the post-processor pipeline instead, per docs/SPEC.md's own
+    "Convert geometry via DuckDB spatial... or GeoPandas -> GeoParquet"
+    step).
+    """
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    con.execute("INSTALL spatial; LOAD spatial;")
+    values = ", ".join(
+        f"({_sql_literal(zone_id)}, ST_AsWKB(ST_GeomFromText({_sql_literal(wkt)})))"
+        for zone_id, wkt in rows
+    )
+    con.execute(f"""
+        COPY (SELECT * FROM (VALUES {values}) AS t({id_column}, geometry))
         TO '{dest.as_posix()}' (FORMAT PARQUET)
     """)
 
@@ -238,8 +341,19 @@ def main():
     con = duckdb.connect()
 
     # Wipe and regenerate — fixtures are fully reproducible from this script.
-    for stale in ("observed", "scenarios"):
+    for stale in ("observed", "scenarios", "geometry"):
         shutil.rmtree(FIXTURES_DIR / stale, ignore_errors=True)
+
+    # ── geometry/ — 013-zonemap-panel's zone-boundary GeoParquet, shared
+    # across scenarios (zone geometry is scenario-independent — the same
+    # TAZ boundaries apply regardless of which model run is loaded, spec.md
+    # Grammar findings #6/research.md §3) ──────────────────────────────────
+    write_geoparquet(
+        con,
+        FIXTURES_DIR / "geometry" / "taz.geoparquet",
+        ZONE_BOUNDARY_ID_COLUMN,
+        ZONE_BOUNDARY_ROWS,
+    )
 
     # ── observed/ — always-available, pinned dataset ──────────────────────
     observed_summary = FIXTURES_DIR / "observed" / "summary"
@@ -249,7 +363,18 @@ def main():
         SUMMARY_KPIS_COLUMNS,
         SUMMARY_KPIS_ROWS,
     )
-    write_summary_index(observed_summary, ["summary_kpis.parquet"])
+    # 013-zonemap-panel: the `comparison: diff` baseline half (research.md
+    # §7) — flat 5.0 per zone, joined against good_scenario's own
+    # differently-valued VMT_BY_HOME_TAZ_ROWS below.
+    write_parquet(
+        con,
+        observed_summary / "vmt_by_home_taz.parquet",
+        VMT_BY_HOME_TAZ_OBSERVED_COLUMNS,
+        VMT_BY_HOME_TAZ_OBSERVED_ROWS,
+    )
+    write_summary_index(
+        observed_summary, ["summary_kpis.parquet", "vmt_by_home_taz.parquet"]
+    )
     write_manifest(
         FIXTURES_DIR / "observed" / "manifest.yaml",
         scenario_name="observed",
@@ -303,6 +428,14 @@ def main():
         OD_FLOWS_COLUMNS,
         OD_FLOWS_ROWS,
     )
+    # 013-zonemap-panel: side_by_side path (US1) and the `comparison: diff`
+    # non-baseline half (US3, research.md §7).
+    write_parquet(
+        con,
+        good_summary / "vmt_by_home_taz.parquet",
+        VMT_BY_HOME_TAZ_COLUMNS,
+        VMT_BY_HOME_TAZ_ROWS,
+    )
     write_summary_index(
         good_summary,
         [
@@ -312,6 +445,7 @@ def main():
             "trip_destination_dist.parquet",
             "tour_mode_to_trip_mode.parquet",
             "od_flows.parquet",
+            "vmt_by_home_taz.parquet",
         ],
     )
     write_manifest(

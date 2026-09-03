@@ -1,7 +1,17 @@
 import { describe, expect, it } from 'vitest'
 
-import { buildPanelQuery, resolveActiveScenarios, extractGlobalFilterIds } from '@/panels/panelQuery'
-import type { ValueBoxPanelConfig, PlotlyPanelConfig, ObservablePlotPanelConfig } from '@/layout/types'
+import {
+  buildComparisonDiffQuery,
+  buildPanelQuery,
+  resolveActiveScenarios,
+  extractGlobalFilterIds,
+} from '@/panels/panelQuery'
+import type {
+  ObservablePlotPanelConfig,
+  PlotlyPanelConfig,
+  ValueBoxPanelConfig,
+  ZoneMapPanelConfig,
+} from '@/layout/types'
 
 const valueBoxConfig: ValueBoxPanelConfig = {
   type: 'valuebox',
@@ -175,5 +185,90 @@ describe('resolveActiveScenarios', () => {
     const sql = buildPanelQuery(config, {})
     expect(sql).not.toContain('$scenario')
     expect(sql).toContain('"good_scenario__summary_kpis"')
+  })
+})
+
+// 013-zonemap-panel: regression test for a real bug found via Playwright
+// during implementation — ZoneMapPanelConfig's own `column` field
+// (docs/GRAMMAR.md's real grammar) was being caught by the same
+// `'column' in config` check written for ValueBoxPanelConfig, silently
+// dropping `metric_id` from the generated SELECT and breaking every
+// zone-id join (every zone rendered as "no data").
+describe('buildPanelQuery — zonemap column/metric_id disambiguation', () => {
+  it('uses SELECT * (not a single-column SELECT) for a config with both column and metric_id', () => {
+    const zonemapLikeConfig = {
+      type: 'zonemap',
+      title: 'VMT',
+      metric: 'vmt_by_home_taz',
+      scenario: 'good_scenario',
+      boundaries: 'taz.geoparquet',
+      boundaries_id: 'TAZ_ID',
+      metric_id: 'taz_id',
+      column: 'vmt_per_capita',
+    }
+    const sql = buildPanelQuery(zonemapLikeConfig, {})
+    expect(sql).toContain('SELECT *')
+    expect(sql).not.toContain('SELECT "vmt_per_capita"')
+  })
+
+  it('still uses the single-column SELECT for a config with column but no metric_id (valuebox)', () => {
+    const sql = buildPanelQuery(valueBoxConfig, {})
+    expect(sql).toContain('SELECT "total_trips"')
+  })
+})
+
+// 013-zonemap-panel, research.md §7 (corrected during implementation —
+// no upfront "active scenario" validation, matching config.scenario
+// singular's own zero-validation convention above).
+describe('buildComparisonDiffQuery', () => {
+  const zonemapConfig: ZoneMapPanelConfig = {
+    type: 'zonemap',
+    title: 'VMT Diff',
+    metric: 'vmt_by_home_taz',
+    boundaries: 'taz.geoparquet',
+    boundaries_id: 'TAZ_ID',
+    metric_id: 'taz_id',
+    column: 'vmt_per_capita',
+  }
+
+  it('interpolates a/b as literal view-name prefixes and copies expr verbatim', () => {
+    const sql = buildComparisonDiffQuery(zonemapConfig, {
+      type: 'diff',
+      a: 'observed',
+      b: 'good_scenario',
+      expr: 'b.vmt_per_capita - a.vmt_per_capita',
+    })
+    expect(sql).toContain('"observed__vmt_by_home_taz" a')
+    expect(sql).toContain('"good_scenario__vmt_by_home_taz" b')
+    expect(sql).toContain('(b.vmt_per_capita - a.vmt_per_capita) AS diff_value')
+    expect(sql).toContain('a."taz_id" = b."taz_id"')
+  })
+
+  it('never evaluates expr in JS — an arbitrary non-arithmetic string still passes through verbatim', () => {
+    // Proves this is plain string substitution, not eval() or any JS-side
+    // expression evaluation (constitution Principle III) — the function
+    // has no opinion about what expr actually contains.
+    const sql = buildComparisonDiffQuery(zonemapConfig, {
+      type: 'diff',
+      a: 'observed',
+      b: 'good_scenario',
+      expr: 'CASE WHEN b.vmt_per_capita > a.vmt_per_capita THEN 1 ELSE 0 END',
+    })
+    expect(sql).toContain(
+      '(CASE WHEN b.vmt_per_capita > a.vmt_per_capita THEN 1 ELSE 0 END) AS diff_value',
+    )
+  })
+
+  it('does not validate a/b existence — an unresolvable name still produces a well-formed query', () => {
+    // The resulting query fails naturally at DuckDB query time (a real
+    // "table does not exist" error), not here — same as config.scenario
+    // singular referencing a nonexistent scenario.
+    const sql = buildComparisonDiffQuery(zonemapConfig, {
+      type: 'diff',
+      a: 'nonexistent_scenario_xyz',
+      b: 'good_scenario',
+      expr: 'b.vmt_per_capita - a.vmt_per_capita',
+    })
+    expect(sql).toContain('"nonexistent_scenario_xyz__vmt_by_home_taz" a')
   })
 })

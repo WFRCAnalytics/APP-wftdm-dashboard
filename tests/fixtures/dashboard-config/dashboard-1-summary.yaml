@@ -432,3 +432,130 @@ layout:
       value: g
       height: 500
       width: 1.0
+
+  # 013-zonemap-panel — the eighth and final originally-listed panel
+  # type. boundaries/taz.geoparquet is this project's first geometry
+  # fixture (published to public/geometry/ by tests/global-setup.js — see
+  # data-model.md); boundaries_id: TAZ_ID / metric_id: taz_id join 8
+  # synthetic Wasatch-Front-area zones (TAZ 100-800) to
+  # tests/fixtures/generate.py's own VMT_BY_HOME_TAZ_ROWS. TAZ 800 never
+  # appears in that metric under either purpose value (the permanent
+  # "no data" case, FR-012); TAZ 900 appears in the metric but has no
+  # matching geometry (the excluded-row case, FR-012) whenever the
+  # 'purpose' filter includes it (NHB, or the 'all' default). No title
+  # here shares a prefix with any pre-existing panel title in this file
+  # (checked against the full list before choosing these — same
+  # collision-avoidance discipline every prior panel-type feature's own
+  # fixture additions have required since 007).
+  row_zonemap:
+    # Primary US1/US2 vehicle: core render, hover/click value display,
+    # global filter reactivity (purpose HBW narrows to TAZ 100-400;
+    # NHB narrows to TAZ 500/600/700 + the excluded 900), 004
+    # expand/resize correctness, and basemap inheritance (this tab sets
+    # no default_basemap — the app's light/dark theme pairing applies,
+    # same path dashboard-1-summary.yaml's own flowmap panel above
+    # already exercises). Also the diverging-midpoint-anchored-at-zero
+    # regression vehicle (US3 Acceptance Scenario 2): TAZ 300's value
+    # (0.0) is the true midpoint; TAZ 500's value (10.0) sits at this
+    # domain's non-zero geometric center and must NOT render as neutral.
+    - type: zonemap
+      title: Zone Map VMT per Capita
+      metric: vmt_by_home_taz
+      scenario: good_scenario
+      boundaries: taz.geoparquet
+      boundaries_id: TAZ_ID
+      metric_id: taz_id
+      column: vmt_per_capita
+      label: VMT / Capita
+      color_scale: diverging
+      color_ramp: RdBu
+      domain: [-10, 30]
+      filter:
+        purpose: $filters.purpose
+      center: [-111.925, 40.705]
+      zoom: 11
+      height: 450
+      width: 0.5
+
+    # US1 Acceptance Scenario 3 vehicle: no `domain` configured — the
+    # color scale's domain auto-computes from the actual min/max of the
+    # returned rows (FR-007). No `filter:` either, so every VMT_BY_HOME_
+    # TAZ_ROWS row returns unfiltered (both purposes) — min -8.0 (TAZ
+    # 100), max 25.0 (TAZ 700). `color_scale: sequential` with no
+    # `color_ramp` exercises the token-derived fallback default
+    # (research.md §8) rather than a named d3-scale-chromatic ramp.
+    - type: zonemap
+      title: Zone Map VMT per Capita (Auto Domain)
+      metric: vmt_by_home_taz
+      scenario: good_scenario
+      boundaries: taz.geoparquet
+      boundaries_id: TAZ_ID
+      metric_id: taz_id
+      column: vmt_per_capita
+      label: VMT / Capita
+      color_scale: sequential
+      center: [-111.925, 40.705]
+      zoom: 11
+      height: 450
+      width: 0.5
+
+    # US3 Acceptance Scenario 3 vehicle — comparison: diff between the
+    # `observed` baseline (flat 5.0 per TAZ, generate.py's
+    # VMT_BY_HOME_TAZ_OBSERVED_ROWS) and `good_scenario` (b - a): TAZ 100
+    # -8.0-5.0=-13.0 ... TAZ 700 25.0-5.0=20.0 — a direct,
+    # hand-verifiable per-zone diff (research.md §7).
+    - type: zonemap
+      title: Zone Map VMT Diff (Good vs Observed)
+      metric: vmt_by_home_taz
+      boundaries: taz.geoparquet
+      boundaries_id: TAZ_ID
+      metric_id: taz_id
+      column: vmt_per_capita
+      label: VMT / Capita Diff
+      color_scale: diverging
+      domain: [-15, 25]
+      comparison:
+        type: diff
+        a: observed
+        b: good_scenario
+        expr: "b.vmt_per_capita - a.vmt_per_capita"
+      center: [-111.925, 40.705]
+      zoom: 11
+      height: 450
+      width: 0.5
+
+    # US3 Acceptance Scenario 4 vehicle — `a` names a scenario no
+    # manifest ever registers. Fails naturally at query time (DuckDB
+    # "table does not exist"), same shared error state as any other
+    # unresolvable configuration (research.md §7's own corrected,
+    # validation-free design).
+    - type: zonemap
+      title: Zone Map Diff Unresolvable Scenario (intentional)
+      metric: vmt_by_home_taz
+      boundaries: taz.geoparquet
+      boundaries_id: TAZ_ID
+      metric_id: taz_id
+      column: vmt_per_capita
+      color_scale: diverging
+      domain: [-15, 25]
+      comparison:
+        type: diff
+        a: nonexistent_scenario_xyz
+        b: good_scenario
+        expr: "b.vmt_per_capita - a.vmt_per_capita"
+      height: 450
+      width: 0.5
+
+    # Deliberately broken — points at a metric no scenario publishes.
+    # Same convention as every other panel type's own "Broken Panel
+    # (intentional)" entries.
+    - type: zonemap
+      title: Zone Map Broken Panel (intentional)
+      metric: nonexistent_zonemap_metric
+      scenario: good_scenario
+      boundaries: taz.geoparquet
+      boundaries_id: TAZ_ID
+      metric_id: taz_id
+      column: vmt_per_capita
+      height: 450
+      width: 0.5

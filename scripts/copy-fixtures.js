@@ -19,6 +19,10 @@ const copies = [
   ['tests/fixtures/observed', 'public/observed'],
   ['tests/fixtures/scenarios', 'public/scenarios'],
   ['tests/fixtures/dashboard-config', 'public/dashboard-config'],
+  // 013-zonemap-panel: the zone-boundary GeoParquet fixture, published to
+  // the same new public/geometry/ location a real deployment's boundaries:
+  // files live under (data-model.md).
+  ['tests/fixtures/geometry', 'public/geometry'],
 ]
 
 for (const [src, dest] of copies) {

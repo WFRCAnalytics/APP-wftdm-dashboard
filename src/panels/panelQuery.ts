@@ -6,7 +6,7 @@
 // to services/sqlExpander.ts's expand(). See contracts/panel-query.md.
 import type { DashboardConfig } from '@/services/yamlLoader'
 import type { FilterId, FilterValue } from '@/state/filterState'
-import type { DataBoundPanelConfigBase } from '@/layout/types'
+import type { ComparisonDiff, DataBoundPanelConfigBase, ZoneMapPanelConfig } from '@/layout/types'
 
 const FILTERS_REF_RE = /^\$filters\.([A-Za-z0-9_]+)$/
 const INPUTS_REF_RE = /^\$inputs\.([A-Za-z0-9_]+)$/
@@ -88,7 +88,22 @@ export function buildPanelQuery(
   // 'column' in config (not config.type === 'valuebox') narrows correctly
   // against the union — a plain-object 'in' check still works against
   // DataBoundPanelConfigBase the same way it did against PanelConfig.
-  const selectClause = 'column' in config ? `SELECT "${config.column}"` : 'SELECT *'
+  //
+  // 013-zonemap-panel: a real, confirmed bug found via Playwright, not
+  // caught by typecheck or any unit test — ZoneMapPanelConfig ALSO has a
+  // top-level `column` field (docs/GRAMMAR.md's own real grammar names
+  // it exactly that, the choropleth's fill column), which this check
+  // originally couldn't distinguish from ValueBoxPanelConfig's `column`
+  // (a single scalar to display). The single-column SELECT this branch
+  // produces is correct for valuebox (which needs nothing else) but
+  // silently drops zonemap's own `metric_id` (zone-id join key) column
+  // from the result entirely — every zone lookup then misses, rendering
+  // every zone as "no data" with no error of any kind (confirmed live:
+  // all 8 fixture zones showed no-data instead of 7). ZoneMapPanelConfig
+  // uniquely also carries `metric_id` (no other panel type with a
+  // `column` field does) — excluding that case restores `SELECT *` for
+  // zonemap, unchanged for every other panel type.
+  const selectClause = 'column' in config && !('metric_id' in config) ? `SELECT "${config.column}"` : 'SELECT *'
 
   const entries = normalizeFilterEntries(config.filter)
   if (entries.length === 0) {
@@ -161,6 +176,35 @@ export function resolveActiveScenarios(
   globallyActive: string[],
 ): string[] {
   return config.scenarios ?? globallyActive
+}
+
+/**
+ * Builds the `comparison: diff` SQL for a zonemap panel
+ * (013-zonemap-panel, contracts/zonemap-panel.md, research.md §7).
+ *
+ * `a`/`b` are interpolated as literal view-name prefixes — the SAME
+ * zero-validation convention `config.scenario` (singular, above) already
+ * uses: no upfront check that either name is "active" or even
+ * registered (research.md §7's own correction note — `
+ * resolveActiveScenarios()` performs no such validation either). An
+ * unresolvable name fails naturally when the query built here actually
+ * runs (DuckDB's own "table does not exist" error), caught by the
+ * panel's existing query `.catch()` — same PanelErrorState path as any
+ * other unresolvable configuration, no new error-handling branch needed.
+ *
+ * `expr` is copied verbatim into the generated SQL — plain string
+ * substitution only, matching `$sql.x`'s own established convention;
+ * DuckDB's own SQL engine evaluates the arithmetic. Never `eval()`,
+ * never evaluated in JS (constitution Principle III).
+ */
+export function buildComparisonDiffQuery(config: ZoneMapPanelConfig, diff: ComparisonDiff): string {
+  const aView = `"${diff.a}__${config.metric}"`
+  const bView = `"${diff.b}__${config.metric}"`
+  return [
+    `SELECT a."${config.metric_id}" AS "${config.metric_id}", (${diff.expr}) AS diff_value`,
+    `FROM ${aView} a`,
+    `JOIN ${bView} b ON a."${config.metric_id}" = b."${config.metric_id}"`,
+  ].join('\n')
 }
 
 /**

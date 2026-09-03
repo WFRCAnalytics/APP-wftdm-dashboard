@@ -12,6 +12,7 @@ const dirs = [
   'public/scenarios',
   'public/all-placeholders-config.yaml',
   'public/dashboard-config',
+  'public/geometry',
 ]
 
 export default async function globalTeardown() {

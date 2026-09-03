@@ -7,6 +7,7 @@ import { PlotlyPanel } from '@/panels/PlotlyPanel'
 import { SankeyPanel } from '@/panels/SankeyPanel'
 import { TablePanel } from '@/panels/TablePanel'
 import { ValueBoxPanel } from '@/panels/ValueBoxPanel'
+import { ZoneMapPanel } from '@/panels/ZoneMapPanel'
 import type { PanelConfig } from '@/layout/types'
 
 export interface PanelProps<TConfig extends PanelConfig = PanelConfig> {
@@ -31,4 +32,5 @@ export const registry: Record<string, ComponentType<PanelProps<any>>> = {
   'observable-plot': ObservablePlotPanel,
   sankey: SankeyPanel,
   flowmap: FlowMapPanel,
+  zonemap: ZoneMapPanel,
 }

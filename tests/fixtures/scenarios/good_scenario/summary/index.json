@@ -1,1 +1,1 @@
-["summary_kpis.parquet", "trip_mode_share.parquet", "screenlines.parquet", "trip_destination_dist.parquet", "tour_mode_to_trip_mode.parquet", "od_flows.parquet"]
+["summary_kpis.parquet", "trip_mode_share.parquet", "screenlines.parquet", "trip_destination_dist.parquet", "tour_mode_to_trip_mode.parquet", "od_flows.parquet", "vmt_by_home_taz.parquet"]
