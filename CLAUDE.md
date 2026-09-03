@@ -14,7 +14,7 @@ Read `docs/ARCHITECTURE.md` and `docs/SPEC.md` before writing any code.
 | Query — offline | Python DuckDB (`uv run`) |
 | Charts — default | Plotly.js |
 | Charts — reactive inputs | Observable Plot (`@observablehq/plot`) |
-| Explore tab | Graphic Walker (`embedGraphicWalker`) |
+| Explore tab | Graphic Walker (`<GraphicWalker>` component, rendered directly — not `embedGraphicWalker`, see "Graphic Walker panel" below) |
 | Maps | MapLibre GL (NOT Mapbox) |
 | O-D flows | `@flowmap.gl/layers` + `@deck.gl/mapbox` (`MapboxOverlay`) |
 | Config parsing | js-yaml (runtime, not build-time) |
@@ -211,8 +211,10 @@ APP-wftdm-dashboard/
     │   # real map — MapLibre + deck.gl + flowmap.gl); 013-zonemap-panel
     │   # then added the eighth and actual final one (a second, pure-
     │   # MapLibre map — no deck.gl, this project's first GeoParquet/
-    │   # DuckDB-spatial feature). graphic-walker remains the only panel
-    │   # type not yet built. scenario/scenarioManager.ts + manifestReader.ts are
+    │   # DuckDB-spatial feature); 014-graphic-walker-panel added the
+    │   # ninth and actual final one — this project's originally-listed
+    │   # panel-type roadmap is now complete in full, no panel type left.
+    │   # scenario/scenarioManager.ts + manifestReader.ts are
     │   # also now real (009-scenario-manager, closing services/duckdb.ts's
     │   # registerScenario() zero-callers gap open since 001) — styles/ is
     │   # the only entry in this tree still not built (out of scope for
@@ -717,7 +719,39 @@ APP-wftdm-dashboard/
     │   │                         # typecheck or any unit test; fixed by
     │   │                         # also excluding any config that
     │   │                         # carries metric_id.
-    │   └── GraphicWalkerPanel.tsx # not built yet
+    │   └── GraphicWalkerPanel.tsx # done (014-graphic-walker-panel) — the
+    │                              # ninth and final originally-listed
+    │                              # panel type. Renders <GraphicWalker>
+    │                              # as ordinary JSX in its own React
+    │                              # tree — NOT embedGraphicWalker
+    │                              # (DOM-mount), reversing this file's
+    │                              # own original sketch: embedGraphicWalker's
+    │                              # own real, installed source creates an
+    │                              # independent React root it never
+    │                              # exposes, so it can never be disposed —
+    │                              # a real, confirmed leak (38 real
+    │                              # document/window listeners + a MobX
+    │                              # store per mount) given shell.tsx
+    │                              # mounts only the active tab's
+    │                              # DashboardRenderer (every tab switch
+    │                              # is a real mount/unmount cycle). See
+    │                              # "Graphic Walker panel" below for the
+    │                              # full finding. panels/
+    │                              # graphicWalkerFields.ts (new, pure) —
+    │                              # apache-arrow DataType-predicate field-
+    │                              # schema inference, this app's own code
+    │                              # rather than the library's internal,
+    │                              # non-public-API lib/inferMeta. Pins
+    │                              # @kanaries/graphic-walker to the EXACT
+    │                              # version "0.4.82" (no ^ range) — its
+    │                              # peer dependency requires React >=19
+    │                              # starting at 0.4.83, and a ^0.4.82
+    │                              # range was confirmed, live, to still
+    │                              # resolve to 0.4.84 and reproduce that
+    │                              # exact conflict (npm's own ^0.x.y
+    │                              # semantics keep the whole 0.x minor in
+    │                              # range) — the exact pin is load-
+    │                              # bearing, not a style choice.
     ├── components/
     │   └── ui/                   # shadcn-pattern primitives (002-design-
     │                              # tokens onward): button.tsx, card.tsx,
@@ -1006,28 +1040,63 @@ below, now both documented in `docs/ARCHITECTURE.md`.
 
 ## Graphic Walker panel
 
+Done (`014-graphic-walker-panel`). The sketch this section originally
+carried (`embedGraphicWalker`'s imperative DOM-mount, `query()` +
+string-templated SQL) is **not** what got built — both were corrected
+during implementation for real, confirmed reasons, not stylistic
+drift:
+
 ```tsx
-import { embedGraphicWalker } from '@kanaries/graphic-walker'
+import { useEffect, useState } from 'react'
+import { GraphicWalker } from '@kanaries/graphic-walker'
 
 export function GraphicWalkerPanel({ config }: PanelProps) {
-  const containerRef = useRef<HTMLDivElement>(null)
+  const [rows, setRows] = useState<Record<string, unknown>[]>([])
+  const [fields, setFields] = useState<InferredField[]>([])
+  const [status, setStatus] = useState<'loading' | 'ready' | 'empty' | 'error'>('loading')
 
   useEffect(() => {
     let cancelled = false
-    query(
-      `SELECT * FROM ${config.scenario}__${config.dataset} LIMIT ${config.limit ?? 100000}`
-    ).then((rows) => {
-      if (!cancelled && containerRef.current) {
-        containerRef.current.innerHTML = ''
-        embedGraphicWalker(containerRef.current, { data: rows, fields: config.fields ?? [] })
-      }
-    })
+    const sql = sqlExpander.expand(buildGraphicWalkerQuery(config), ..., activeScenarioNames)
+    queryArrow(sql).then((table) => {
+      if (cancelled) return
+      const nextRows = table.toArray().map((r) => r.toJSON())
+      if (nextRows.length === 0) { setStatus('empty'); return }
+      setRows(nextRows)
+      setFields(inferFields(table.schema.fields, config.fields))
+      setStatus('ready')
+    }).catch(() => { if (!cancelled) setStatus('error') })
     return () => { cancelled = true }
-  }, [config])
+  }, [config.dataset, config.scenario, config.limit, config, activeScenarioNames])
 
-  return <div ref={containerRef} style={{ height: config.height ?? 700 }} />
+  // ...error/empty/loading branches...
+  return (
+    <div style={{ height: config.height ?? 700 }}>
+      <GraphicWalker data={rows} fields={fields} themeKey="g2" />
+    </div>
+  )
 }
 ```
+
+Two real, confirmed corrections from this original sketch:
+
+1. **`queryArrow()`, not `query()`** — field-schema inference needs the
+   Arrow schema alongside the row data, not just plain JS objects
+   (`services/duckdb.ts`'s `queryArrow()` export existed since `001` with
+   zero callers until this feature).
+2. **`<GraphicWalker>` JSX, not `embedGraphicWalker`** — a real bug found
+   post-completion by reading `embedGraphicWalker`'s own installed
+   source directly: it creates a second, independent
+   `ReactDOM.createRoot()` and never exposes it, so it can never be
+   disposed. Since this app's `shell.tsx` mounts only the active tab's
+   `DashboardRenderer` (a real, repeated mount/unmount cycle on every tab
+   switch), that leaked 38 real `document`/`window` listeners plus a
+   MobX store on every cycle. Rendering the plain `<GraphicWalker>`
+   component as ordinary JSX — proven exactly equivalent in output by
+   `embedGraphicWalker`'s own source — lets this app's single, unified
+   React tree dispose it correctly via normal unmount reconciliation, no
+   manual cleanup needed. See `specs/014-graphic-walker-panel/
+   research.md` §3 for the full finding.
 
 Graphic Walker is a snapshot — does not share DuckDB connection or respond to
 global filters. Intentional — Explore tab is an open-ended sandbox.
@@ -1078,7 +1147,11 @@ export default defineConfig({
   "@deck.gl/core": "^9.0.0",
   "@deck.gl/mapbox": "^9.0.0",
   "@flowmap.gl/layers": "^9.3.0",
-  "@kanaries/graphic-walker": "latest",
+  "@kanaries/graphic-walker": "0.4.82",  // EXACT pin, not a range — the
+                                          // last React-18-compatible
+                                          // release; 0.4.83+ requires
+                                          // React >=19 (014-graphic-
+                                          // walker-panel)
   "@observablehq/plot": "latest",
   "apache-arrow": "^18.0.0",
   "js-yaml": "latest",
@@ -1181,9 +1254,10 @@ first cross-reference this list was built from). ✅ done,
      and final one.
    - ✅ `ZoneMapPanel` — done (`013-zonemap-panel`). **This completes the
      originally-listed eight-panel-type set** — no panel type in this
-     list remains not-started (`graphic-walker`, item 10 below, is a
-     separate, always-deferred Explore-tab feature, never part of this
-     eight). This project's first GeoParquet/DuckDB-spatial feature —
+     list remains not-started (`graphic-walker`, item 10 below, was a
+     separate, initially-deferred Explore-tab feature, never part of this
+     eight — it's since been built too; see item 10). This project's
+     first GeoParquet/DuckDB-spatial feature —
      `010-flowmap-panel` deliberately avoided needing this (its own
      `docs/GRAMMAR.md` grammar correction replaced a live spatial-join
      design with plain lat/lon field-mapping columns for flowmap
@@ -1237,8 +1311,98 @@ first cross-reference this list was built from). ✅ done,
      every zone as "no data" with no error at all — found via Playwright,
      not typecheck or any unit test; fixed by also excluding any config
      that carries `metric_id`.
-10. ❌ `GraphicWalkerPanel` (Explore tab) — not started;
-    `@kanaries/graphic-walker` isn't in `package.json` yet either
+10. ✅ `GraphicWalkerPanel` (Explore tab) — done
+    (`014-graphic-walker-panel`). **This completes this project's
+    originally-listed panel-type roadmap in full** — nine panel types
+    total (`valuebox`, `plotly`, `table`, `markdown`, `observable-plot`,
+    `sankey`, `flowmap`, `zonemap`, `graphic-walker`), none remaining.
+    Confirmed directly against `docs/GRAMMAR.md`'s own already-documented
+    `type: graphic-walker` grammar before any design work, not assumed:
+    this is an *ordinary* panel entry in the same row/panel grid every
+    other type uses (`dataset`/`limit`/`height`/`width`) — "Explore tab"
+    is purely an authoring convention (one full-width panel in its own
+    dashboard file), not a special construct the app needs to
+    special-case. A real, confirmed version-compatibility finding shaped
+    the dependency pin: `@kanaries/graphic-walker`'s peer dependency
+    requires React `>=19.0.0` starting at `0.4.83`, incompatible with
+    this project's pinned React `^18.3.1` — pinned to the exact version
+    `0.4.82` instead (the last React-18-compatible release), not a caret
+    range: `npm install @kanaries/graphic-walker@^0.4.82` was confirmed,
+    live, to still resolve to `0.4.84` (npm's own `^0.x.y` semantics keep
+    the whole `0.x` minor in range), reproducing the exact peer-dependency
+    error the pin exists to avoid — the exact version string, no range
+    operator, is load-bearing here, not a style choice. `0.4.82` was also
+    confirmed (via a direct GitHub diff, not just a version-string read)
+    to include two named bug fixes (`fix: arc`, `fix: text stack`) that
+    an earlier-considered `0.4.80` pin lacks, at no React-compatibility
+    cost. Renders `<GraphicWalker>` as ordinary JSX inside the panel's
+    own React tree — NOT `embedGraphicWalker` (DOM-mount), reversing this
+    file's own original sketch and `docs/ARCHITECTURE.md`'s "no React
+    ownership required" framing above, for a real, confirmed reason found
+    post-completion: `embedGraphicWalker`'s own real, installed source
+    (`node_modules/@kanaries/graphic-walker/dist/vanilla.js`, read
+    directly, not its `: any`-typed `.d.ts`) calls
+    `ReactDOM.createRoot(dom)` and keeps that root in a fully local
+    variable — never returned, never exposed, so no caller can ever
+    dispose of it. The compiled bundle registers 38 real `document`/
+    `window.addEventListener` calls (mostly the standard React
+    `useEffect`-cleanup idiom) plus a MobX `VizSpecStore` — none of it
+    gets torn down when the container is merely removed from the DOM,
+    since that doesn't trigger a *different, independent* React root's
+    own unmount lifecycle. This app's `shell.tsx` mounts only the active
+    tab's `DashboardRenderer`, so every tab switch is a real, repeated
+    mount/unmount cycle — a real, accumulating leak, not theoretical.
+    Fixed by rendering the plain `<GraphicWalker>` component directly —
+    `embedGraphicWalker`'s own source proves this is exactly equivalent
+    in rendered output once `data`/`fields` are provided (no extra
+    wrapping), so the only actual difference is disposal correctness: the
+    app's own single, unified React tree now handles it via ordinary
+    unmount reconciliation, no manual cleanup call needed. Confirmed via
+    the full existing Playwright suite passing unchanged against the new
+    component (identical rendered DOM, as the source predicted) plus a
+    repeated tab-switch mount/unmount smoke test showing no new console
+    errors.
+    Field-schema inference (`panels/graphicWalkerFields.ts`'s
+    `inferFields()`) is this app's own code, not the library's: GW's
+    `fields` prop is required input, not auto-inferred from an empty
+    array, and this app's own `apache-arrow`-`DataType`-predicate mapping
+    (confirmed directly against the installed `apache-arrow` version
+    before writing it) was judged safer than depending on the library's
+    own internal, non-public-API `lib/inferMeta` module (present in the
+    installed package but never re-exported from its own public entry
+    point). Dataset/scenario binding reuses `sqlExpander.ts`'s existing,
+    **unmodified** `$scenario.` UNION-ALL mechanism via a new, small
+    `panelQuery.ts` export (`buildGraphicWalkerQuery()`) — literal reuse,
+    not a parallel reimplementation; `GraphicWalkerPanelConfig` extends
+    `PanelConfigBase` directly, not `DataBoundPanelConfigBase` (that base
+    type requires a `metric` field this grammar never has, a real
+    correction caught during `/speckit-plan`). `panelCard.tsx`/`004`'s
+    `usePanelExpandHost` needed zero changes — confirmed by direct read,
+    not assumed, to already be fully generic across every panel type.
+    `services/duckdb.ts`'s `queryArrow()` (exported since `001`, simply
+    never called by any panel type until now) gained the same
+    `__debugQueryLog()` instrumentation `query()` already had — a real,
+    confirmed test-instrumentation gap this feature's own testing
+    surfaced, not present before. Testing needed one genuinely new
+    technique this project's Playwright suite hadn't needed before:
+    `@kanaries/graphic-walker`'s field list uses `react-beautiful-dnd`
+    (confirmed via its own `data-rbd-*` DOM attributes), which does not
+    respond to Playwright's native-HTML5-DnD-based `dragTo()`/raw mouse
+    sequences reliably — its own documented keyboard drag alternative
+    (focus the draggable, Space to lift, arrow keys to cross into a
+    neighboring droppable, Space to drop) does, and is what
+    `tests/integration/graphicWalkerPanel.spec.ts` uses throughout. A
+    real, confirmed regression surfaced by this feature's own new
+    Summary-tab fixture panel (added so the tab exercises all nine panel
+    types together, matching every prior panel-type feature's own closing
+    regression check): `dashboardShell.spec.ts`'s pre-existing, page-level
+    `page.getByRole('tab')` query also picked up GraphicWalker's own
+    internal chart-navigation UI (its "Data"/"Visualization" switcher and
+    "Chart 1" tab strip both genuinely use `role="tab"` too) once a
+    graphic-walker panel existed on the landing tab — fixed by scoping
+    that query to `navBar.tsx`'s own `role="tablist"` region specifically,
+    the correct fix now that the app legitimately has two independent
+    tablist regions on one page, not a workaround.
 11. ✅ `src/styles/tokens.css` (Tailwind CSS variables) — done
     (`002-design-tokens`). This **supersedes** the `styles/wfrc-theme.css`
     filename/approach this line originally named — that plan was replaced

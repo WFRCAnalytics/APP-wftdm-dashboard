@@ -23,7 +23,19 @@ test.describe('User Story 1 - An analyst navigates a real, professionally-styled
     // "Basemaps" added by 011-basemap-style-system's own fixture tab
     // (dashboard-3-basemaps.yaml) — a real, permanent addition to the
     // shared fixture set, not a stray leftover.
-    const tabs = await page.getByRole('tab').allTextContents()
+    //
+    // Scoped to navBar.tsx's own TabsList (a real role="tablist" region) —
+    // a real, confirmed regression found during 014-graphic-walker-panel's
+    // own implementation: a page-level, unscoped page.getByRole('tab')
+    // query also picks up @kanaries/graphic-walker's own internal chart-
+    // navigation UI (its "Data"/"Visualization" view switcher and "Chart
+    // 1" tab strip both use role="tab" too, confirmed live), once a
+    // graphic-walker panel exists on the Summary/landing tab. The app now
+    // legitimately has two independent role="tablist" regions on one
+    // page — scoping to the specific one this test actually means is the
+    // correct fix, not a workaround.
+    const navTabs = page.getByRole('tablist').first()
+    const tabs = await navTabs.getByRole('tab').allTextContents()
     expect(tabs).toEqual(['Summary', 'Detail', 'Basemaps'])
 
     // FR-002: switching tabs changes content, no full page reload.

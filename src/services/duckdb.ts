@@ -117,8 +117,18 @@ export async function query(sql: string): Promise<Record<string, unknown>[]> {
   return table.toArray().map((row) => row.toJSON() as Record<string, unknown>)
 }
 
-/** Returns the raw Arrow table (for callers doing columnar/large-result work). */
+/**
+ * Returns the raw Arrow table (for callers doing columnar/large-result
+ * work, or — 014-graphic-walker-panel — needing the Arrow schema itself,
+ * not just row data). Pushes to the same debugQueryLog as query() above
+ * (a real, confirmed gap found during 014's implementation: this export
+ * has existed since 001 with zero callers until GraphicWalkerPanel.tsx —
+ * its own __debugQueryLog()-based test instrumentation silently never
+ * covered this path before now, since nothing had called it) — every
+ * caller of either function is equally visible to that instrumentation.
+ */
 export async function queryArrow(sql: string) {
+  debugQueryLog.push(sql)
   const conn = await getConnection()
   return conn.query(sql)
 }

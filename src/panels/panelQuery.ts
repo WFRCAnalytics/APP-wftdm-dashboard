@@ -6,7 +6,12 @@
 // to services/sqlExpander.ts's expand(). See contracts/panel-query.md.
 import type { DashboardConfig } from '@/services/yamlLoader'
 import type { FilterId, FilterValue } from '@/state/filterState'
-import type { ComparisonDiff, DataBoundPanelConfigBase, ZoneMapPanelConfig } from '@/layout/types'
+import type {
+  ComparisonDiff,
+  DataBoundPanelConfigBase,
+  GraphicWalkerPanelConfig,
+  ZoneMapPanelConfig,
+} from '@/layout/types'
 
 const FILTERS_REF_RE = /^\$filters\.([A-Za-z0-9_]+)$/
 const INPUTS_REF_RE = /^\$inputs\.([A-Za-z0-9_]+)$/
@@ -205,6 +210,28 @@ export function buildComparisonDiffQuery(config: ZoneMapPanelConfig, diff: Compa
     `FROM ${aView} a`,
     `JOIN ${bView} b ON a."${config.metric_id}" = b."${config.metric_id}"`,
   ].join('\n')
+}
+
+/**
+ * Builds the bare SQL template for a graphic-walker panel's one-time
+ * snapshot query (014-graphic-walker-panel, research.md §6,
+ * contracts/graphic-walker-panel.md). GraphicWalkerPanelConfig does NOT
+ * extend DataBoundPanelConfigBase (data-model.md §1 — its own
+ * dataset-binding key is `dataset`, not `metric`), so this is a small,
+ * separate builder rather than a buildPanelQuery() branch — but it
+ * deliberately emits the SAME `$scenario.<x>` placeholder every other
+ * panel type's own template already uses when config.scenario is unset,
+ * so the caller can hand the result straight to the existing, UNMODIFIED
+ * sqlExpander.expand() — literal reuse of that function's own
+ * expandScenario() UNION-ALL construction, not a parallel
+ * reimplementation. No $filters./$inputs. placeholder is ever emitted —
+ * this panel type has no filter binding at all (spec.md FR-005).
+ */
+export function buildGraphicWalkerQuery(config: GraphicWalkerPanelConfig): string {
+  const source = config.scenario
+    ? `"${config.scenario}__${config.dataset}"`
+    : `($scenario.${config.dataset})`
+  return `SELECT * FROM ${source} LIMIT ${config.limit ?? 100000}`
 }
 
 /**

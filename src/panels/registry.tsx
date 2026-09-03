@@ -1,6 +1,7 @@
 import type { ComponentType } from 'react'
 
 import { FlowMapPanel } from '@/panels/FlowMapPanel'
+import { GraphicWalkerPanel } from '@/panels/GraphicWalkerPanel'
 import { MarkdownPanel } from '@/panels/MarkdownPanel'
 import { ObservablePlotPanel } from '@/panels/ObservablePlotPanel'
 import { PlotlyPanel } from '@/panels/PlotlyPanel'
@@ -33,4 +34,5 @@ export const registry: Record<string, ComponentType<PanelProps<any>>> = {
   sankey: SankeyPanel,
   flowmap: FlowMapPanel,
   zonemap: ZoneMapPanel,
+  'graphic-walker': GraphicWalkerPanel,
 }

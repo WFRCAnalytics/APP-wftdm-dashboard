@@ -43,6 +43,14 @@ export default defineConfig({
           ) {
             return 'maps'
           }
+          // 014-graphic-walker-panel: this codebase's first dependency on
+          // @kanaries/graphic-walker, whose own dependency tree pulls in
+          // vega/vega-lite/vega-embed, mobx/mobx-react-lite, a second
+          // @radix-ui/@headlessui component set, and styled-components —
+          // a large, previously-absent tree, the same situation
+          // plotly/maplibre-gl were each in when they got their own chunk
+          // above (research.md §9).
+          if (id.includes('@kanaries/graphic-walker')) return 'graphic-walker'
         },
       },
     },

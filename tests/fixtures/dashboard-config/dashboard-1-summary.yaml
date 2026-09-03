@@ -559,3 +559,17 @@ layout:
       column: vmt_per_capita
       height: 450
       width: 0.5
+
+  # 014-graphic-walker-panel — the ninth and last originally-listed panel
+  # type. One full-width row, own row key (dashboardRenderer.tsx treats
+  # `width` as a fraction of its OWN row's other panels, not the page —
+  # tests/fixtures/dashboard-config/dashboard-2-detail.yaml's own comment
+  # explains this in full). Added here specifically so this tab exercises
+  # all nine now-built panel types together in one load (SC-005) — every
+  # other panel type above already lives on this same tab.
+  row_explore:
+    - type: graphic-walker
+      title: Free-form Visual Analytics (Summary Tab)
+      dataset: trip_mode_share
+      scenario: good_scenario
+      width: 1.0

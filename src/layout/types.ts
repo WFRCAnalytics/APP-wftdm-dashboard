@@ -259,6 +259,36 @@ export interface ZoneMapPanelConfig extends DataBoundPanelConfigBase, MapRenderi
   zoom?: number
 }
 
+/**
+ * The ninth and last originally-listed panel type — 014-graphic-walker-panel.
+ * Extends PanelConfigBase directly, NOT DataBoundPanelConfigBase — that base
+ * type requires a `metric` field, but docs/GRAMMAR.md's type: graphic-walker
+ * grammar has no `metric:` key at all (its own dataset-binding key is named
+ * `dataset`, a different name with the same role) — the same structural
+ * reason MarkdownPanelConfig also extends PanelConfigBase directly
+ * (data-model.md §1, research.md §1; caught and corrected during
+ * /speckit-plan from an earlier draft that assumed DataBoundPanelConfigBase).
+ * scenario/fields are this feature's own additions beyond docs/GRAMMAR.md's
+ * documented example, both optional and both reusing this project's
+ * existing config vocabulary (research.md §1).
+ */
+export interface GraphicWalkerFieldOverride {
+  fid: string
+  name?: string
+  semanticType: 'quantitative' | 'nominal' | 'ordinal' | 'temporal'
+  analyticType: 'dimension' | 'measure'
+}
+
+export interface GraphicWalkerPanelConfig extends PanelConfigBase {
+  type: 'graphic-walker'
+  dataset: string
+  limit?: number // default 100000, per docs/GRAMMAR.md's own example
+  scenario?: string // optional — pins to one scenario's view; omit for
+  // the existing multi-scenario $scenario. union (research.md §6)
+  fields?: GraphicWalkerFieldOverride[] // optional — overrides specific
+  // inferred fields by `fid` (research.md §5)
+}
+
 /** Any panel type that participates in basemap resolution — FlowMapPanelConfig
  * and ZoneMapPanelConfig today. dashboardRenderer.tsx uses this as a type
  * guard so tab-level default_basemap injection stays generic across
@@ -273,10 +303,11 @@ export function isMapRenderingPanel(config: PanelConfig): config is PanelConfig 
 }
 
 /**
- * Any other panel type (graphic-walker — still out of scope, still
- * deferred; flowmap and zonemap are no longer among these as of
- * 010-flowmap-panel/013-zonemap-panel) still parses as this base shape
- * rather than being dropped or erroring at parse time — the registry
+ * Any other, truly unrecognized panel type still parses as this base shape
+ * rather than being dropped or erroring at parse time — every originally-
+ * listed panel type (valuebox through graphic-walker, 014-graphic-walker-
+ * panel) is now accounted for above, so this is only ever hit by a genuinely
+ * unknown future `type:` value. The registry
  * lookup (panels/registry.tsx), not the parser, is what surfaces an
  * unrecognized-type error, keeping "parse" and "renderable-by-this-app" as
  * separate concerns. Extends the plain PanelConfigBase, not
@@ -298,6 +329,7 @@ export type PanelConfig =
   | SankeyPanelConfig
   | FlowMapPanelConfig
   | ZoneMapPanelConfig
+  | GraphicWalkerPanelConfig
   | UnknownPanelConfig
 
 export interface DashboardTabConfig {

@@ -103,7 +103,7 @@ MapLibre (not Mapbox — no token required). `MapboxOverlay` from `@deck.gl/mapb
 
 ### Graphic Walker for the Explore tab
 
-Last tab is a free-form Tableau-style sandbox. `embedGraphicWalker(el, { data, fields })` — no React ownership required (React is bundled inside GW). Snapshot model: GW holds its own data copy, does not respond to global sidebar filters. Intentional — Explore is an open-ended context, not a reactive calibration panel.
+Last tab is a free-form Tableau-style sandbox. Renders the `<GraphicWalker>` React component directly (`data`/`fields` props), inside this app's own React tree — **not** `embedGraphicWalker` (the package's imperative DOM-mount helper). Corrected during `014-graphic-walker-panel`'s implementation, real bug found: `embedGraphicWalker`'s own installed source creates a second, independent `ReactDOM.createRoot()` it never exposes to the caller, so it can never be disposed — since this app mounts only the active tab's panels (switching tabs unmounts the rest), that leaks the library's own internal `document`/`window` listeners and MobX store on every tab switch. Rendering `<GraphicWalker>` as ordinary JSX — proven exactly equivalent in output to what `embedGraphicWalker` does internally once data is provided — lets this app's own unified React tree dispose it correctly via normal unmount reconciliation. Snapshot model: GW holds its own data copy, does not respond to global sidebar filters. Intentional — Explore is an open-ended context, not a reactive calibration panel.
 
 ### OMX handling (offline only)
 

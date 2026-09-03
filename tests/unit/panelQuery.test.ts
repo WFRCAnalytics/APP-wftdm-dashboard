@@ -2,11 +2,13 @@ import { describe, expect, it } from 'vitest'
 
 import {
   buildComparisonDiffQuery,
+  buildGraphicWalkerQuery,
   buildPanelQuery,
   resolveActiveScenarios,
   extractGlobalFilterIds,
 } from '@/panels/panelQuery'
 import type {
+  GraphicWalkerPanelConfig,
   ObservablePlotPanelConfig,
   PlotlyPanelConfig,
   ValueBoxPanelConfig,
@@ -270,5 +272,46 @@ describe('buildComparisonDiffQuery', () => {
       expr: 'b.vmt_per_capita - a.vmt_per_capita',
     })
     expect(sql).toContain('"nonexistent_scenario_xyz__vmt_by_home_taz" a')
+  })
+})
+
+// 014-graphic-walker-panel, research.md §6/quickstart.md's own unit test
+// list: buildGraphicWalkerQuery() produces a bare SQL template containing
+// the same $scenario.<x> placeholder every other panel type's own template
+// already uses (or a literal "<scenario>__<dataset>" FROM-clause when
+// scenario: is set) — handed to the existing, unmodified
+// sqlExpander.expand() by the caller, not expanded here.
+describe('buildGraphicWalkerQuery', () => {
+  const graphicWalkerConfig: GraphicWalkerPanelConfig = {
+    type: 'graphic-walker',
+    title: 'Free-form Visual Analytics',
+    dataset: 'trip_mode_share',
+  }
+
+  it('emits a $scenario.<dataset> placeholder when scenario is unset', () => {
+    const sql = buildGraphicWalkerQuery(graphicWalkerConfig)
+    expect(sql).toBe('SELECT * FROM ($scenario.trip_mode_share) LIMIT 100000')
+  })
+
+  it('emits a literal "<scenario>__<dataset>" FROM-clause when scenario is set', () => {
+    const sql = buildGraphicWalkerQuery({ ...graphicWalkerConfig, scenario: 'good_scenario' })
+    expect(sql).toBe('SELECT * FROM "good_scenario__trip_mode_share" LIMIT 100000')
+    expect(sql).not.toContain('$scenario')
+  })
+
+  it('defaults limit to 100000 when omitted', () => {
+    const sql = buildGraphicWalkerQuery(graphicWalkerConfig)
+    expect(sql).toContain('LIMIT 100000')
+  })
+
+  it('uses config.limit verbatim when set', () => {
+    const sql = buildGraphicWalkerQuery({ ...graphicWalkerConfig, limit: 5000 })
+    expect(sql).toContain('LIMIT 5000')
+  })
+
+  it('never emits a $filters. or $inputs. placeholder — this panel type has no filter binding', () => {
+    const sql = buildGraphicWalkerQuery(graphicWalkerConfig)
+    expect(sql).not.toContain('$filters')
+    expect(sql).not.toContain('$inputs')
   })
 })

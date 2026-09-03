@@ -1177,13 +1177,32 @@ Graphic Walker — full-tab free-form Tableau-style sandbox. Explore tab only.
 Snapshot model: does not share DuckDB connection or respond to global sidebar filters.
 
 ```yaml
-- type:    graphic-walker
-  title:   Free-form Visual Analytics
-  dataset: trip_mode_share      # which scenario__* view to query
-  limit:   100000               # row limit passed to DuckDB before handoff
-  height:  700
-  width:   1.0
+- type:     graphic-walker
+  title:    Free-form Visual Analytics
+  dataset:  trip_mode_share     # which scenario__* view to query
+  scenario: good_scenario       # optional — pins to one scenario's view,
+                                 # same meaning as every other data-bound
+                                 # panel type's own scenario: key; omit to
+                                 # union across all currently-active
+                                 # scenarios (the existing $scenario.
+                                 # mechanism, adding a scenario column the
+                                 # viewer can drag onto any shelf themselves)
+  limit:    100000               # row limit passed to DuckDB before handoff
+  height:   700
+  width:    1.0
+  fields:                       # optional — overrides the auto-inferred
+                                 # field schema for specific columns, by fid
+    - fid:          taz_id
+      semanticType:  nominal    # quantitative | nominal | ordinal | temporal
+      analyticType:  dimension  # dimension | measure
 ```
+
+Column semantic/analytic types are inferred automatically from each
+column's underlying data type (numeric → quantitative/measure, text →
+nominal/dimension, date/timestamp → temporal/dimension) — a dashboard
+author never has to hand-author a field-type definition for every column
+of a dataset. `fields:` only needs an entry for the columns where that
+default guess is wrong (014-graphic-walker-panel).
 
 ### `type: markdown`
 
