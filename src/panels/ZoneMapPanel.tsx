@@ -484,8 +484,23 @@ export function ZoneMapPanel({ config }: { config: ZoneMapPanelConfig }) {
         ref={containerRef}
         className="zonemap-chart"
         style={{
+          // '100%', not config.height ?? 450 — matches FlowMapPanel.tsx's
+          // own container exactly. A real bug found live (a reported
+          // expand-to-dialog discrepancy): panelExpandHost.tsx already
+          // applies config.height exactly once, at the host layer, for
+          // every panel type — to inlineAnchor only (the INLINE case);
+          // dialogAnchor deliberately uses flex-1 instead, so the
+          // expanded view fills the dialog's own larger space regardless
+          // of the panel's configured inline height. A fixed pixel value
+          // here happened to match config.height for the inline case
+          // (masking the bug there) but silently stomped the ancestor's
+          // intentionally-larger dialog height with this same fixed
+          // number once expanded — the container itself topping out at
+          // ~450px inside a much taller dialog, confirmed via a live
+          // screenshot comparison against FlowMapPanel's own (correctly
+          // full-height) expanded rendering.
           width: '100%',
-          height: config.height ?? 450,
+          height: '100%',
           display: loading ? 'none' : undefined,
         }}
       />
