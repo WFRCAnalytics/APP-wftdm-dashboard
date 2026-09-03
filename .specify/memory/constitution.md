@@ -1,5 +1,44 @@
 <!--
 Sync Impact Report
+- Version change: 2.4.0 → 2.4.1
+- Modified principles: none
+- Modified sections:
+  - Technology Stack Reference: "Explore tab | Graphic Walker
+    (`embedGraphicWalker`)" corrected to name the `<GraphicWalker>`
+    component instead — `014-graphic-walker-panel`'s own implementation
+    found, post-completion, that `embedGraphicWalker`'s real installed
+    source (`node_modules/@kanaries/graphic-walker/dist/vanilla.js`, read
+    directly) creates a second, independent `ReactDOM.createRoot()` it
+    never exposes to the caller, so it can never be disposed — a real,
+    confirmed leak (38 real `document`/`window` listeners plus a MobX
+    store per mount, since this app's `shell.tsx` mounts only the active
+    tab's panels and unmounts the rest on every tab switch). Rendering
+    `<GraphicWalker>` directly as ordinary JSX — proven exactly
+    equivalent in rendered output to what `embedGraphicWalker` does
+    internally once data is provided (its own source shows no other
+    wrapping happens) — fixes this by letting the app's own single React
+    tree dispose it via normal unmount reconciliation. See
+    `specs/014-graphic-walker-panel/research.md` §3 for the full finding.
+  - PATCH, not MINOR: this file's own versioning policy names "wording
+    clarifications... or other non-semantic refinements" as PATCH — this
+    is exactly that: one Technology Stack Reference table cell corrected
+    to name the actual API surface in use, no principle touched, no new
+    binding constraint added or relaxed. Directly analogous to the
+    1.1.0→1.2.0 `services/duckdb.worker.js` correction's own reasoning
+    (a reference fixed to match the real, installed library's actual
+    behavior, discovered during implementation) — that amendment was
+    itself categorized MINOR only because it also rewrote a Core
+    Principle's own title/body text (Principle II); this amendment
+    touches no principle at all, so PATCH is the correct tier under this
+    file's own rule, not that precedent's tier.
+- Added principles: none
+- Added sections: none
+- Removed sections: none
+- Deferred TODOs: none
+-->
+
+<!--
+Sync Impact Report (2.4.0, superseded above)
 - Version change: 2.3.0 → 2.4.0
 - Modified principles:
   - VIII. Reuse Proven Reference Implementations — additive (MINOR), not a
@@ -413,7 +452,7 @@ requires amending this constitution first:
 | Query — offline | Python DuckDB (`uv run`) |
 | Charts — default | Plotly.js |
 | Charts — reactive inputs | Observable Plot (`@observablehq/plot`) |
-| Explore tab | Graphic Walker (`embedGraphicWalker`) |
+| Explore tab | Graphic Walker (`<GraphicWalker>` component, rendered directly in this app's own React tree — not `embedGraphicWalker`) |
 | Maps | MapLibre GL (never Mapbox) |
 | O-D flows | `@flowmap.gl/layers` + `@deck.gl/mapbox` (`MapboxOverlay`) |
 | Config parsing | js-yaml, at runtime |
@@ -469,4 +508,4 @@ forbidden config files, no Mapbox/Webpack/Web Storage usage. Any exception
 requires a
 prior amendment to this document, not a one-off waiver in review.
 
-**Version**: 2.4.0 | **Ratified**: 2026-08-19 | **Last Amended**: 2026-09-02
+**Version**: 2.4.1 | **Ratified**: 2026-08-19 | **Last Amended**: 2026-09-03
