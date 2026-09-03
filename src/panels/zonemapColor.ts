@@ -125,6 +125,40 @@ function quantizeT(t: number, steps: number): number {
 }
 
 /**
+ * Normalizes `value` onto [0,1] using the SAME zero-anchored convention
+ * tokenDerivedColor/namedRampT already use internally to compute color
+ * intensity (linear across the domain for 'sequential'; magnitude-away-
+ * from-literal-zero for 'diverging') — reused for the 3D toggle's
+ * fill-extrusion-height so bar height and fill color always agree about
+ * which zones carry the most magnitude, per this feature's own
+ * requirement that extrusion height be driven by the same value already
+ * driving color. `null` (a "no data" zone, matching resolveZoneFillColor's
+ * own NO_DATA_COLOR treatment) returns 0 — a no-data zone gets no bar,
+ * not a phantom one.
+ */
+export function resolveZoneHeightFraction(
+  value: number | null,
+  colorScale: ColorScale | undefined,
+  domain: [number, number],
+): number {
+  if (value === null) return 0
+  const scale: ColorScale = colorScale ?? 'sequential'
+  const [domainMin, domainMax] = domain
+
+  if (scale === 'sequential') {
+    const span = domainMax - domainMin
+    return span === 0 ? 0 : clamp01((value - domainMin) / span)
+  }
+
+  // diverging — magnitude away from zero, mirroring tokenDerivedColor's
+  // own diverging branch exactly (same domainMax/domainMin halves).
+  if (value >= 0) {
+    return domainMax === 0 ? (value > 0 ? 1 : 0) : clamp01(value / domainMax)
+  }
+  return domainMin === 0 ? (value < 0 ? 1 : 0) : clamp01(value / domainMin)
+}
+
+/**
  * Resolves one zone's fill color (contracts/zonemap-panel.md). `domain`
  * is REQUIRED — the caller computes the effective domain (config.domain,
  * or computeAutoDomain()'s result per FR-007) before calling this.

@@ -338,6 +338,112 @@ test.describe('Attribution control renders MapLibre\'s compact form and the togg
   })
 })
 
+// 014-map-navigation-controls — MapLibre's own built-in NavigationControl
+// (zoom in/out + compass), added via map.addControl(new
+// maplibregl.NavigationControl({ visualizePitch: true })) at mount, same
+// "first-class library control, no custom UI" discipline the attribution
+// control coverage above already established. visualizePitch: true is
+// confirmed (against the installed maplibre-gl source, not assumed) to
+// make the compass button call the real Map.resetNorthPitch() on click —
+// zeroing bearing AND pitch together — rather than resetNorth() (bearing
+// only). FlowMapPanel has no 3D toggle of its own (see zonemapPanel.spec.ts
+// for that coverage) — this only verifies the shared NavigationControl.
+test.describe('014-map-navigation-controls — NavigationControl zoom/compass genuinely move the camera', () => {
+  test('zoom in/out buttons change map.getZoom(); the compass resets bearing AND pitch together', async ({
+    page,
+  }) => {
+    await boot(page)
+    const card = panelCard(page, FLOWMAP_TITLE)
+    const container = card.locator('.flowmap-chart')
+    await trueEventually(async () => (await container.getAttribute('data-render-count')) !== null)
+
+    const zoomInBtn = container.getByTitle('Zoom in')
+    const zoomOutBtn = container.getByTitle('Zoom out')
+    const compassBtn = container.getByTitle('Reset bearing to north')
+    await expect(zoomInBtn).toBeVisible()
+    await expect(zoomOutBtn).toBeVisible()
+    await expect(compassBtn).toBeVisible()
+
+    const getZoom = () => page.evaluate((t) => window.__flowmapTestMaps![t].getZoom(), FLOWMAP_TITLE)
+    const zoomBefore = await getZoom()
+    await zoomInBtn.click()
+    await trueEventually(async () => (await getZoom()) > zoomBefore)
+    const zoomAfterIn = await getZoom()
+
+    await zoomOutBtn.click()
+    await trueEventually(async () => (await getZoom()) < zoomAfterIn)
+
+    // A real non-zero bearing/pitch first — jumpTo() sets the camera
+    // transform directly, no animation to wait out — then the compass
+    // click must zero BOTH, not bearing alone.
+    await page.evaluate((t) => window.__flowmapTestMaps![t].jumpTo({ bearing: 45, pitch: 30 }), FLOWMAP_TITLE)
+    expect(
+      await page.evaluate((t) => window.__flowmapTestMaps![t].getBearing(), FLOWMAP_TITLE),
+    ).toBeCloseTo(45, 0)
+    expect(
+      await page.evaluate((t) => window.__flowmapTestMaps![t].getPitch(), FLOWMAP_TITLE),
+    ).toBeCloseTo(30, 0)
+
+    await compassBtn.click()
+    await trueEventually(async () => {
+      const bearing = await page.evaluate((t) => window.__flowmapTestMaps![t].getBearing(), FLOWMAP_TITLE)
+      const pitch = await page.evaluate((t) => window.__flowmapTestMaps![t].getPitch(), FLOWMAP_TITLE)
+      return Math.abs(bearing) < 0.5 && Math.abs(pitch) < 0.5
+    })
+  })
+})
+
+// 015-map-controls-polish — deck.gl's OWN picking/hover mechanism
+// (FlowmapLayer's onHover prop, backed by pickable: true), NOT MapLibre's
+// mousemove — MapLibre's event system cannot see deck.gl content at all,
+// confirmed this session. Uses the SAME shared mapTooltip.ts component
+// zonemapPanel.spec.ts's own hover coverage verifies, styled identically.
+test.describe('015-map-controls-polish — deck.gl onHover tooltip shows origin/destination/value', () => {
+  test('hovering the largest flow line shows a real tooltip with origin, destination, and value', async ({
+    page,
+  }) => {
+    await boot(page)
+    const card = panelCard(page, FLOWMAP_TITLE)
+    const container = card.locator('.flowmap-chart')
+    await trueEventually(async () => (await container.getAttribute('data-render-count')) !== null)
+    await container.scrollIntoViewIfNeeded()
+    await page.waitForTimeout(300) // let deck.gl actually paint a frame before picking
+
+    // Geographic midpoint between TAZ 100 (40.76, -111.89) and TAZ 200
+    // (40.70, -111.85) — the (100, 200) flow is this fixture's largest
+    // (590 = 500 HBW + 90 NHB, EXPECTED_FLOWS_ALL above), and therefore
+    // the widest, easiest-to-hit rendered line.
+    const point = await page.evaluate((t) => {
+      const map = window.__flowmapTestMaps![t]
+      const p = map.project([-111.87, 40.73])
+      const rect = map.getCanvas().getBoundingClientRect()
+      return { x: rect.left + p.x, y: rect.top + p.y }
+    }, FLOWMAP_TITLE)
+
+    const tooltip = container.locator('.map-tooltip')
+    // A small vertical sweep, not one exact point — flowmap.gl renders
+    // flow lines with a slight curve (flowLineCurviness), so the
+    // straight-line geographic midpoint doesn't always land EXACTLY on
+    // the rendered curve's own pixel. FlowMapPanel.tsx's own
+    // pickingRadius: 8 already affords some tolerance; this sweep affords
+    // a bit more — standard practice for hover-testing thin line
+    // geometry, not a sign anything is flaky.
+    let found = false
+    for (const dy of [0, -6, 6, -12, 12, -18, 18]) {
+      await page.mouse.move(point.x, point.y + dy, { steps: 3 })
+      if (await tooltip.isVisible().catch(() => false)) {
+        found = true
+        break
+      }
+      await page.waitForTimeout(100)
+    }
+    expect(found).toBe(true)
+    await expect(tooltip).toContainText('100')
+    await expect(tooltip).toContainText('200')
+    await expect(tooltip).toContainText('590')
+  })
+})
+
 test.describe('User Story 2 - Flowmap panel responds to global filters and resizes correctly', () => {
   test('changing a bound global filter updates the flow lines without recreating the map instance', async ({
     page,

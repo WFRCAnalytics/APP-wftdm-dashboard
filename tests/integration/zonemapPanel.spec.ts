@@ -190,7 +190,7 @@ test.describe('User Story 1 - Author renders a zone-level metric as a choropleth
     expect(zone100?.fillColor).toBe(expectedColor)
   })
 
-  test('hovering a zone shows its zone id and value', async ({ page }) => {
+  test('hovering a zone shows its zone id and value in the shared tooltip', async ({ page }) => {
     await boot(page)
     const container = await waitForRender(page, ZONEMAP_TITLE)
     await sourceFeatureProps(page, ZONEMAP_TITLE) // wait until the fill layer has real, queryable features
@@ -199,7 +199,7 @@ test.describe('User Story 1 - Author renders a zone-level metric as a choropleth
     // before computing viewport-relative pixel coordinates below, or
     // page.mouse.move() (unlike locator.hover(), which auto-scrolls)
     // targets a point outside the visible viewport entirely (confirmed
-    // live: the move silently landed nowhere real, no popup ever fired).
+    // live: the move silently landed nowhere real, no tooltip ever fired).
     await container.scrollIntoViewIfNeeded()
     await page.waitForTimeout(300) // let MapLibre actually paint a frame before picking
 
@@ -214,8 +214,63 @@ test.describe('User Story 1 - Author renders a zone-level metric as a choropleth
       return { x: rect.left + p.x, y: rect.top + p.y }
     }, ZONEMAP_TITLE)
     await page.mouse.move(point.x, point.y, { steps: 5 })
-    await trueEventually(async () => (await page.locator('.maplibregl-popup').count()) > 0)
-    await expect(page.locator('.maplibregl-popup')).toContainText('Zone')
+    // 015-map-controls-polish — mapTooltip.ts's shared component
+    // (.map-tooltip), not MapLibre's own maplibregl.Popup any more.
+    const tooltip = container.locator('.map-tooltip')
+    await trueEventually(async () => (await tooltip.isVisible()) === true)
+    await expect(tooltip).toContainText('Zone')
+  })
+
+  test('hovering a zone in 3D/extrusion mode also shows the tooltip — the real bug this feature fixed', async ({
+    page,
+  }) => {
+    await boot(page)
+    const card = panelCard(page, ZONEMAP_TITLE)
+    const container = await waitForRender(page, ZONEMAP_TITLE)
+    await sourceFeatureProps(page, ZONEMAP_TITLE)
+    await container.scrollIntoViewIfNeeded()
+    await page.waitForTimeout(300)
+
+    // Turn 3D on FIRST — the bug this test guards against: the hover
+    // listeners used to be registered against zonemap-fill only, which
+    // MapLibre never hit-tests once it's hidden (`visibility: 'none'`)
+    // in 3D mode, so hover silently never fired at all.
+    const toggle = card.getByRole('button', { name: 'Toggle 3D extrusion' })
+    await toggle.click()
+    await expect(toggle).toHaveAttribute('aria-pressed', 'true')
+    await trueEventually(async () => {
+      const vis = await page.evaluate(
+        (t) => window.__zonemapTestMaps![t].getLayoutProperty('zonemap-extrusion', 'visibility'),
+        ZONEMAP_TITLE,
+      )
+      return vis === 'visible'
+    })
+
+    // TAZ 100's centroid, not TAZ 300's — deliberately: this feature's
+    // own implementation-time investigation found a REAL, confirmed
+    // MapLibre behavior — a fill-extrusion feature with height EXACTLY 0
+    // (TAZ 300 sits at this panel's own diverging domain's literal zero,
+    // User Story 1's own coverage, so its resolveZoneHeightFraction is
+    // exactly 0) is not reliably layer-scoped-mousemove-pickable at all,
+    // confirmed directly via map.queryRenderedFeatures() finding it while
+    // the SAME query, run internally by MapLibre's own delegated
+    // mousemove listener, never fired — a genuine, narrow MapLibre
+    // picking quirk for zero-height extrusions, not a bug in this
+    // feature's own hover-wiring (confirmed by testing a non-zero-height
+    // zone, which fires immediately with no special handling needed).
+    // TAZ 100 (value -8, well away from zero) has real height and was
+    // confirmed to hover correctly at its own ground-projected point with
+    // NO sweep/offset needed, even under the full 45° tilt.
+    const point = await page.evaluate((t) => {
+      const map = window.__zonemapTestMaps![t]
+      const p = map.project([-111.925, 40.705])
+      const rect = map.getCanvas().getBoundingClientRect()
+      return { x: rect.left + p.x, y: rect.top + p.y }
+    }, ZONEMAP_TITLE)
+    await page.mouse.move(point.x, point.y, { steps: 5 })
+    const tooltip = container.locator('.map-tooltip')
+    await trueEventually(async () => (await tooltip.isVisible()) === true)
+    await expect(tooltip).toContainText('100')
   })
 
   test('a metric row with no matching zone geometry is excluded; a zone with no matching metric row shows the no-data treatment', async ({
@@ -476,6 +531,172 @@ test.describe('Attribution control renders MapLibre\'s compact form and the togg
     await page.keyboard.press('Escape')
     await expect(dialog).not.toBeVisible()
     await expect(panelCard(page, ZONEMAP_TITLE).locator('.zonemap-chart .maplibregl-ctrl-attrib')).toHaveCount(1)
+  })
+})
+
+// 014-map-navigation-controls — same MapLibre built-in NavigationControl
+// FlowMapPanel.tsx's own mount effect now adds (flowmapPanel.spec.ts's own
+// coverage documents the real resetNorthPitch()-on-compass-click behavior
+// in full) — this only re-verifies it actually works on THIS panel type
+// too, not the mechanism itself again.
+test.describe('014-map-navigation-controls — NavigationControl zoom/compass genuinely move the camera', () => {
+  test('zoom in/out buttons change map.getZoom(); the compass resets bearing AND pitch together', async ({
+    page,
+  }) => {
+    await boot(page)
+    const container = await waitForRender(page, ZONEMAP_TITLE)
+
+    const zoomInBtn = container.getByTitle('Zoom in')
+    const zoomOutBtn = container.getByTitle('Zoom out')
+    const compassBtn = container.getByTitle('Reset bearing to north')
+    await expect(zoomInBtn).toBeVisible()
+    await expect(zoomOutBtn).toBeVisible()
+    await expect(compassBtn).toBeVisible()
+
+    const getZoom = () => page.evaluate((t) => window.__zonemapTestMaps![t].getZoom(), ZONEMAP_TITLE)
+    const zoomBefore = await getZoom()
+    await zoomInBtn.click()
+    await trueEventually(async () => (await getZoom()) > zoomBefore)
+    const zoomAfterIn = await getZoom()
+
+    await zoomOutBtn.click()
+    await trueEventually(async () => (await getZoom()) < zoomAfterIn)
+
+    await page.evaluate((t) => window.__zonemapTestMaps![t].jumpTo({ bearing: 45, pitch: 30 }), ZONEMAP_TITLE)
+    expect(
+      await page.evaluate((t) => window.__zonemapTestMaps![t].getBearing(), ZONEMAP_TITLE),
+    ).toBeCloseTo(45, 0)
+    expect(
+      await page.evaluate((t) => window.__zonemapTestMaps![t].getPitch(), ZONEMAP_TITLE),
+    ).toBeCloseTo(30, 0)
+
+    await compassBtn.click()
+    await trueEventually(async () => {
+      const bearing = await page.evaluate((t) => window.__zonemapTestMaps![t].getBearing(), ZONEMAP_TITLE)
+      const pitch = await page.evaluate((t) => window.__zonemapTestMaps![t].getPitch(), ZONEMAP_TITLE)
+      return Math.abs(bearing) < 0.5 && Math.abs(pitch) < 0.5
+    })
+  })
+})
+
+// 014-map-navigation-controls — the 3D fill-extrusion toggle. ZoneMapPanel
+// ONLY — FlowMapPanel deliberately has no equivalent (research this
+// session: no line/flow-type visualization technique, in SimWrapper's own
+// real flow/network rendering paths or anywhere else referenced by this
+// project, ever encodes magnitude as height; flow magnitude stays
+// strictly 2D, via color/width only). Real MapLibre fill-extrusion layer
+// (zonemap-extrusion, ZoneMapPanel.tsx), not a mock/placeholder — toggled
+// via `visibility`, never removed/re-added (a layer's `type` is immutable
+// once added).
+test.describe('014-map-navigation-controls — the 3D fill-extrusion toggle', () => {
+  test('toggling on switches to the extrusion layer with height driven by the same value as color, and tilts the camera; toggling off restores flat + pitch 0, together', async ({
+    page,
+  }) => {
+    await boot(page)
+    const card = panelCard(page, ZONEMAP_TITLE)
+    await waitForRender(page, ZONEMAP_TITLE)
+    await sourceFeatureProps(page, ZONEMAP_TITLE) // wait until the source has real, queryable features
+
+    const toggle = card.getByRole('button', { name: 'Toggle 3D extrusion' })
+    await expect(toggle).toBeVisible()
+    await expect(toggle).toHaveAttribute('aria-pressed', 'false')
+
+    const layerVisibility = (layerId: string) =>
+      page.evaluate(
+        ({ title, id }) => window.__zonemapTestMaps![title].getLayoutProperty(id, 'visibility'),
+        { title: ZONEMAP_TITLE, id: layerId },
+      )
+    const getPitch = () => page.evaluate((t) => window.__zonemapTestMaps![t].getPitch(), ZONEMAP_TITLE)
+
+    // Flat, before toggling — the mount effect's own initial state
+    // (zonemap-fill has no explicit layout.visibility set at all, which
+    // MapLibre treats as visible — only "not 'none'" is the correct
+    // check; zonemap-extrusion is explicitly added hidden).
+    expect(await layerVisibility('zonemap-fill')).not.toBe('none')
+    expect(await layerVisibility('zonemap-extrusion')).toBe('none')
+    expect(await getPitch()).toBeCloseTo(0, 0)
+
+    await toggle.click()
+    await expect(toggle).toHaveAttribute('aria-pressed', 'true')
+    await trueEventually(async () => (await layerVisibility('zonemap-extrusion')) === 'visible')
+    expect(await layerVisibility('zonemap-fill')).toBe('none')
+    // The tilt is animated (map.easeTo) — poll for it to actually settle
+    // rather than reading immediately after the click.
+    await trueEventually(async () => (await getPitch()) > 30)
+
+    // fill-extrusion-height is data-driven from the SAME value already
+    // driving fill-color (resolveZoneHeightFraction, zonemapColor.ts) —
+    // TAZ 300 sits at this panel's own diverging domain's literal zero
+    // (User Story 1's own coverage above: "TAZ 300's value (0.0) is the
+    // diverging scale's true midpoint"), so its height must be ~0; at
+    // least one other zone with a real non-zero value must have real
+    // positive height — proving this isn't just a flat, unconditional
+    // extrusion.
+    const featureHeights = await page.evaluate((t) => {
+      const map = window.__zonemapTestMaps![t]
+      const raw = map.querySourceFeatures('zonemap-zones')
+      const byZone = new Map<string, number>()
+      for (const f of raw) {
+        const props = f.properties as { zoneId: string; fillHeight: number }
+        byZone.set(props.zoneId, props.fillHeight)
+      }
+      return Array.from(byZone.entries())
+    }, ZONEMAP_TITLE)
+    const heightByZone = new Map(featureHeights)
+    expect(heightByZone.get('300')).toBeCloseTo(0, 1)
+    const nonZeroHeight = featureHeights.find(([zoneId, h]) => zoneId !== '300' && h > 0)
+    expect(nonZeroHeight, 'expected at least one zone with real positive extrusion height').toBeDefined()
+
+    // Toggling off restores BOTH the flat fill AND pitch: 0, as one
+    // action — a top-down view of the now-flat fill layer, not a
+    // dangling tilted camera over a layer with no visible sides left.
+    await toggle.click()
+    await expect(toggle).toHaveAttribute('aria-pressed', 'false')
+    await trueEventually(async () => (await layerVisibility('zonemap-fill')) !== 'none')
+    expect(await layerVisibility('zonemap-extrusion')).toBe('none')
+    await trueEventually(async () => (await getPitch()) < 5)
+  })
+
+  test('the 3D toggle survives a real basemap setStyle() switch and 004\'s DOM relocation', async ({ page }) => {
+    await boot(page)
+    const card = panelCard(page, ZONEMAP_TITLE)
+    await waitForRender(page, ZONEMAP_TITLE)
+    await sourceFeatureProps(page, ZONEMAP_TITLE)
+
+    const toggle = card.getByRole('button', { name: 'Toggle 3D extrusion' })
+    await toggle.click()
+    await expect(toggle).toHaveAttribute('aria-pressed', 'true')
+    await trueEventually(async () => {
+      const vis = await page.evaluate(
+        (t) => window.__zonemapTestMaps![t].getLayoutProperty('zonemap-extrusion', 'visibility'),
+        ZONEMAP_TITLE,
+      )
+      return vis === 'visible'
+    })
+
+    // A real setStyle() call — zonemap-extrusion is carried forward by
+    // the SAME transformStyle preservation mechanism zonemap-fill
+    // already relies on (research.md §9 — "future app-added custom
+    // layer," now genuinely two of them).
+    await page.evaluate(() => document.documentElement.classList.add('dark'))
+    await page.waitForTimeout(1000)
+    const stillExtruded = await page.evaluate(
+      (t) => window.__zonemapTestMaps![t].getLayoutProperty('zonemap-extrusion', 'visibility'),
+      ZONEMAP_TITLE,
+    )
+    expect(stillExtruded).toBe('visible')
+
+    // 004's expand-to-dialog relocation — the toggle button itself is a
+    // React-rendered sibling of the map container, relocated by the same
+    // portal mechanism as everything else in this panel.
+    await expandTrigger(page, ZONEMAP_TITLE).click()
+    const dialogToggle = page.getByRole('dialog').getByRole('button', { name: 'Toggle 3D extrusion' })
+    await expect(dialogToggle).toBeVisible()
+    await expect(dialogToggle).toHaveAttribute('aria-pressed', 'true')
+
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('dialog')).not.toBeVisible()
+    await expect(card.getByRole('button', { name: 'Toggle 3D extrusion' })).toHaveAttribute('aria-pressed', 'true')
   })
 })
 

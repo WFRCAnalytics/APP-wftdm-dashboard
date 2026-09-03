@@ -17,7 +17,10 @@ import {
   EMPTY_SUMMARIZE_CONFIG,
 } from '@/panels/panelQuery'
 import { loadZoneGeometry, type ZoneGeometry } from '@/panels/zoneGeometry'
-import { computeAutoDomain, resolveZoneFillColor } from '@/panels/zonemapColor'
+import { computeAutoDomain, resolveZoneFillColor, resolveZoneHeightFraction } from '@/panels/zonemapColor'
+import { createMapTooltip } from '@/panels/mapTooltip'
+import { ThreeDToggleControl } from '@/panels/zonemap3dControl'
+import '@/panels/mapControls.css'
 import { resolveEffectiveBasemap, basemapKey } from '@/panels/basemap/resolveEffectiveBasemap'
 import { loadBasemapStyle, BLANK_STYLE, freshBlankStyle } from '@/panels/basemap/loadBasemapStyle'
 import { PanelEmptyState } from '@/panels/PanelEmptyState'
@@ -33,6 +36,40 @@ const DEFAULT_ZOOM = 9
 
 const SOURCE_ID = 'zonemap-zones'
 const FILL_LAYER_ID = 'zonemap-fill'
+// 014-map-navigation-controls — a second layer on the SAME source, not a
+// runtime type-swap of FILL_LAYER_ID: MapLibre layer `type` is immutable
+// once added (confirmed against the style-spec — changing a layer's
+// rendering mode requires removing and re-adding it), and removing a
+// layer mid-life reopens exactly the kind of setStyle()/transformStyle
+// timing risk 011/012 already fought hard to eliminate for FILL_LAYER_ID.
+// A second, permanently-present layer toggled via `visibility` (a cheap,
+// synchronous layout-property flip — no re-add, no risk to the existing
+// transformStyle preservation, which carries BOTH layers forward
+// identically since neither's id is ever in `nextIds`) is the safer,
+// idiomatic MapLibre pattern for a flat/3D toggle.
+const EXTRUSION_LAYER_ID = 'zonemap-extrusion'
+
+// A deliberately arbitrary, purely visual scaling constant — the
+// underlying metric (VMT per capita, mode share, whatever a given
+// zonemap panel is configured to show) has no natural unit of meters to
+// convert from. Chosen to read as a clearly legible 3D bar at this
+// panel's own default viewing zoom (DEFAULT_ZOOM = 9, a regional
+// TAZ/zone-scale view) without dwarfing the basemap underneath it —
+// tuned by inspection, not derived from the data. Applied via
+// resolveZoneHeightFraction's [0,1] output (zonemapColor.ts), which
+// mirrors the SAME zero-anchored convention already driving this panel's
+// fill color, per this feature's own requirement that height and color
+// agree about which zones carry the most magnitude.
+const MAX_EXTRUSION_HEIGHT_METERS = 3000
+
+// The angle the camera tilts to when the 3D toggle turns on — a top-down
+// (pitch: 0) view can't show extrusion height at all. 45°, per this
+// feature's own request (SimWrapper's own real precedent,
+// ShapeFile.vue's handleNewFillHeight(), auto-tilts to 30° instead —
+// confirmed this session — but that's tuned for a different, always-on
+// auto-tilt UX; 45° reads more legibly for a manually-toggled 3D mode
+// the user explicitly opted into).
+const EXTRUSION_PITCH = 45
 
 const EMPTY_FEATURE_COLLECTION: GeoJSON.FeatureCollection = { type: 'FeatureCollection', features: [] }
 
@@ -100,6 +137,17 @@ export function ZoneMapPanel({ config }: { config: ZoneMapPanelConfig }) {
   const colorCacheRef = useRef<Map<string, string>>(new Map())
   const renderCountRef = useRef(0)
   const basemapGenerationRef = useRef(0)
+  // 014/015-map-controls — the 3D toggle's own state. A plain ref, not
+  // React state: the toggle button is no longer React-rendered at all
+  // (015 rebuilt it as a genuine MapLibre IControl, zonemap3dControl.ts)
+  // so nothing in this component's own render output depends on it —
+  // it's read in exactly one place OUTSIDE a render, the data-update
+  // effect's rare source-re-ensure fallback, which must not silently
+  // reset an already-toggled-on 3D view back to flat just because a
+  // basemap transition's transformStyle happened not to carry the live
+  // source forward (see that effect's own comment). Kept in sync by the
+  // mount effect's own toggle handler on every click.
+  const is3dRef = useRef(false)
 
   const [status, setStatus] = useState<'loading' | 'ready' | 'empty' | 'error'>('loading')
   const [rows, setRows] = useState<Record<string, unknown>[]>([])
@@ -219,10 +267,58 @@ export function ZoneMapPanel({ config }: { config: ZoneMapPanelConfig }) {
     window.__zonemapTestMaps ??= {}
     window.__zonemapTestMaps[config.title] = map
 
+    // 014-map-navigation-controls — same NavigationControl/visualizePitch
+    // FlowMapPanel.tsx's own mount effect now adds, same reasoning
+    // (visualizePitch: true makes the compass click call MapLibre's own
+    // resetNorthPitch(), zeroing bearing AND pitch together). Matters
+    // more concretely here than for FlowMapPanel: the 3D toggle below can
+    // leave this panel's camera genuinely tilted, and the compass is a
+    // second, always-available way back to flat besides the toggle
+    // itself.
+    map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }))
+
+    // 015-map-controls-polish — the 3D toggle, rebuilt as a genuine
+    // MapLibre IControl (zonemap3dControl.ts) instead of a React-rendered
+    // overlay <Button>. Defined here, not as a component-scoped function
+    // referenced from JSX — the control itself is no longer part of
+    // React's render tree at all, and this closure only ever needs the
+    // CURRENT map/is3dRef, both stable for this effect's mount-only
+    // lifetime. Mirrors 014's own layer-visibility/pitch logic verbatim;
+    // only the trigger mechanism (an IControl's click, not a React
+    // onClick) and the state store (is3dRef alone, no is3d React state)
+    // changed.
+    const toggle3d = () => {
+      const next = !is3dRef.current
+      is3dRef.current = next
+      threeDToggle.setActive(next)
+      if (map.getLayer(FILL_LAYER_ID)) {
+        map.setLayoutProperty(FILL_LAYER_ID, 'visibility', next ? 'none' : 'visible')
+      }
+      if (map.getLayer(EXTRUSION_LAYER_ID)) {
+        map.setLayoutProperty(EXTRUSION_LAYER_ID, 'visibility', next ? 'visible' : 'none')
+      }
+      map.easeTo({ pitch: next ? EXTRUSION_PITCH : 0, duration: 500 })
+    }
+    const threeDToggle = new ThreeDToggleControl(toggle3d)
+    map.addControl(threeDToggle)
+
     // Hover/click value inspection (research.md §6) — plain MapLibre
     // mouse events reading the hovered feature's own properties, no
-    // deck.gl picking layer.
-    const popup = new maplibregl.Popup({ closeButton: false, closeOnClick: false })
+    // deck.gl picking layer. Uses the shared mapTooltip.ts component
+    // (015-map-controls-polish — replaces the previous unstyled
+    // `new maplibregl.Popup(...)`, matching FlowMapPanel.tsx's own
+    // tooltip visual language now instead of drifting independently).
+    //
+    // Registered against BOTH layer ids, not just FILL_LAYER_ID — a real
+    // bug this feature fixed: MapLibre's layer-scoped mousemove/
+    // mouseleave events only fire for a layer's own RENDERED features,
+    // and a layer with `visibility: 'none'` renders nothing to hit-test
+    // against at all — so hover silently never fired once the 3D toggle
+    // hid FILL_LAYER_ID and showed EXTRUSION_LAYER_ID instead. Since
+    // exactly one of the two is ever visible at a time (toggle3d above),
+    // registering on both is safe and needs no extra conditional: the
+    // hidden layer's own listener simply never receives events.
+    const tooltip = createMapTooltip(el)
     const onMouseMove = (e: MapLayerMouseEvent) => {
       const feature = e.features?.[0]
       if (!feature) return
@@ -230,14 +326,16 @@ export function ZoneMapPanel({ config }: { config: ZoneMapPanelConfig }) {
       const zoneId = feature.properties?.zoneId
       const value = feature.properties?.value
       const valueText = value === null || value === undefined ? 'No data' : String(value)
-      popup.setLngLat(e.lngLat).setHTML(`<strong>Zone ${zoneId}</strong><br/>${valueText}`).addTo(map)
+      tooltip.show(e.point.x, e.point.y, `<strong>Zone ${zoneId}</strong><br/>${valueText}`)
     }
     const onMouseLeave = () => {
       map.getCanvas().style.cursor = ''
-      popup.remove()
+      tooltip.hide()
     }
     map.on('mousemove', FILL_LAYER_ID, onMouseMove)
+    map.on('mousemove', EXTRUSION_LAYER_ID, onMouseMove)
     map.on('mouseleave', FILL_LAYER_ID, onMouseLeave)
+    map.on('mouseleave', EXTRUSION_LAYER_ID, onMouseLeave)
 
     // Matches 010-flowmap-panel's own precedent — an explicit
     // ResizeObserver, not relying solely on MapLibre's native
@@ -264,14 +362,37 @@ export function ZoneMapPanel({ config }: { config: ZoneMapPanelConfig }) {
           'fill-outline-color': 'rgba(0, 0, 0, 0.2)',
         },
       })
+      // 014-map-navigation-controls — the 3D toggle's own layer, added
+      // unconditionally alongside the flat fill layer above (not lazily
+      // on first toggle-on) — same "always present, visibility-toggled"
+      // reasoning EXTRUSION_LAYER_ID's own comment gives. Starts hidden
+      // (`visibility: 'none'`), matching `is3dRef.current`'s own initial
+      // `false`.
+      map.addLayer({
+        id: EXTRUSION_LAYER_ID,
+        type: 'fill-extrusion',
+        source: SOURCE_ID,
+        layout: { visibility: 'none' },
+        paint: {
+          // Same per-feature resolved color the flat fill layer uses —
+          // the 3D toggle changes HOW the zones are rendered, not what
+          // color each one is.
+          'fill-extrusion-color': ['get', 'fillColor'],
+          'fill-extrusion-height': ['get', 'fillHeight'],
+          'fill-extrusion-base': 0,
+          'fill-extrusion-opacity': 0.85,
+        },
+      })
       setMapReady(true)
     })
 
     return () => {
       observer.disconnect()
       map.off('mousemove', FILL_LAYER_ID, onMouseMove)
+      map.off('mousemove', EXTRUSION_LAYER_ID, onMouseMove)
       map.off('mouseleave', FILL_LAYER_ID, onMouseLeave)
-      popup.remove()
+      map.off('mouseleave', EXTRUSION_LAYER_ID, onMouseLeave)
+      tooltip.destroy()
       delete window.__zonemapTestMaps?.[config.title]
       probe.remove()
       probeRef.current = null
@@ -403,6 +524,15 @@ export function ZoneMapPanel({ config }: { config: ZoneMapPanelConfig }) {
       const value = valueByZoneId.get(zf.zoneId) ?? null
       if (value === null) noDataCount += 1
       const cssColor = resolveZoneFillColor(value, config.color_scale, config.color_ramp, domain, config.steps)
+      // 014-map-navigation-controls — same value/domain resolveZoneFillColor
+      // above just used, run through resolveZoneHeightFraction's own
+      // matching normalization (zonemapColor.ts) instead — the 3D
+      // toggle's fill-extrusion-height data-driven property. Computed for
+      // every feature unconditionally, not only while is3d is on: cheap
+      // (one extra numeric field per feature), and means toggling on
+      // never has to wait for a fresh data-update pass to have a height
+      // to show.
+      const fillHeight = resolveZoneHeightFraction(value, config.color_scale, domain) * MAX_EXTRUSION_HEIGHT_METERS
       return {
         type: 'Feature',
         // A per-feature id — enables any future feature-state use
@@ -421,6 +551,7 @@ export function ZoneMapPanel({ config }: { config: ZoneMapPanelConfig }) {
           zoneId: zf.zoneId,
           value,
           fillColor: resolveCssColor(cssColor, probe, colorCacheRef.current),
+          fillHeight,
         },
       }
     })
@@ -448,10 +579,31 @@ export function ZoneMapPanel({ config }: { config: ZoneMapPanelConfig }) {
           id: FILL_LAYER_ID,
           type: 'fill',
           source: SOURCE_ID,
+          // Visibility re-derived from is3dRef.current, not hardcoded
+          // 'visible' — this fallback path only runs when a basemap
+          // transition's transformStyle failed to carry the live layer
+          // forward (see the comment above), which must not silently
+          // undo an already-toggled-on 3D view by resetting back to the
+          // mount effect's own flat-first defaults.
+          layout: { visibility: is3dRef.current ? 'none' : 'visible' },
           paint: {
             'fill-color': ['get', 'fillColor'],
             'fill-opacity': 0.75,
             'fill-outline-color': 'rgba(0, 0, 0, 0.2)',
+          },
+        })
+      }
+      if (!map.getLayer(EXTRUSION_LAYER_ID)) {
+        map.addLayer({
+          id: EXTRUSION_LAYER_ID,
+          type: 'fill-extrusion',
+          source: SOURCE_ID,
+          layout: { visibility: is3dRef.current ? 'visible' : 'none' },
+          paint: {
+            'fill-extrusion-color': ['get', 'fillColor'],
+            'fill-extrusion-height': ['get', 'fillHeight'],
+            'fill-extrusion-base': 0,
+            'fill-extrusion-opacity': 0.85,
           },
         })
       }
@@ -480,6 +632,16 @@ export function ZoneMapPanel({ config }: { config: ZoneMapPanelConfig }) {
       {loading && (
         <div className="animate-pulse rounded-md bg-muted" style={{ height: config.height ?? 450 }} />
       )}
+      {/* 015-map-controls-polish — no wrapper div/JSX button needed here
+          any more: the 3D toggle is now a genuine MapLibre IControl
+          (zonemap3dControl.ts, added via map.addControl() in the mount
+          effect) and the hover tooltip is a plain DOM child appended
+          directly to this containerRef element (mapTooltip.ts) — both
+          anchor correctly on their own, since MapLibre already applies
+          `position: relative` to this exact container element (the
+          `maplibregl-map` class it adds directly to it, confirmed
+          against the installed maplibre-gl source), same as
+          FlowMapPanel.tsx's own containerRef. */}
       <div
         ref={containerRef}
         className="zonemap-chart"

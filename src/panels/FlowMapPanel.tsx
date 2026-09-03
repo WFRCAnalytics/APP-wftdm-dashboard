@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { MapboxOverlay } from '@deck.gl/mapbox'
-import { FlowmapLayer } from '@flowmap.gl/layers'
+import { FlowmapLayer, PickingType } from '@flowmap.gl/layers'
 import { Map as MapIcon } from 'lucide-react'
 
 import { query } from '@/services/duckdb'
@@ -18,6 +18,7 @@ import {
   EMPTY_SUMMARIZE_CONFIG,
 } from '@/panels/panelQuery'
 import { buildFlowmapData } from '@/panels/flowmapData'
+import { createMapTooltip, type MapTooltip } from '@/panels/mapTooltip'
 import { resolveEffectiveBasemap, basemapKey } from '@/panels/basemap/resolveEffectiveBasemap'
 import { loadBasemapStyle, BLANK_STYLE, freshBlankStyle } from '@/panels/basemap/loadBasemapStyle'
 import { PanelEmptyState } from '@/panels/PanelEmptyState'
@@ -111,6 +112,14 @@ export function FlowMapPanel({ config }: { config: FlowMapPanelConfig }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
   const overlayRef = useRef<MapboxOverlay | null>(null)
+  // 015-map-controls-polish — the shared tooltip component (mapTooltip.ts),
+  // created once in the mount effect below and read from the data-update
+  // effect's FlowmapLayer onHover callback. A ref, not a variable closed
+  // over directly: the FlowmapLayer instance is reconstructed on every
+  // data-update effect run, but the tooltip DOM node itself must persist
+  // for the whole mount lifetime (recreating it on every data refresh
+  // would flash/reset it, and there's no reason to).
+  const tooltipRef = useRef<MapTooltip | null>(null)
   const renderCountRef = useRef(0)
   // 011-basemap-style-system — generation counter guarding the basemap-
   // application effect's async result against being overwritten by a
@@ -229,6 +238,25 @@ export function FlowMapPanel({ config }: { config: FlowMapPanelConfig }) {
       // moves with the container, same as the canvas itself).
       attributionControl: { compact: true },
     })
+    // 014-map-navigation-controls — MapLibre's own built-in
+    // NavigationControl (zoom in/out + compass), not custom UI, per the
+    // same "first-class library control" discipline the attribution
+    // control above already established. visualizePitch: true makes the
+    // compass button call MapLibre's own resetNorthPitch() on click
+    // (confirmed directly against the installed maplibre-gl source:
+    // NavigationControl's compass click handler branches on this exact
+    // option) instead of resetNorth() — zeroing bearing AND pitch
+    // together in one click, not bearing alone. FlowMapPanel has no 3D
+    // mode of its own (research confirmed no real reference implementation
+    // — SimWrapper's own five real flow/network rendering paths included —
+    // ever encodes flow magnitude as height; pitch here can only ever be
+    // changed by a user's own manual map drag), but the reset affordance
+    // costs nothing to include and matches ZoneMapPanel's own control set
+    // for a control a user expects consistently across both map panel
+    // types. A persistent DOM child of the map container, like
+    // attributionControl above — unaffected by setStyle() and by 004's
+    // relocation for the same reason.
+    map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }))
     // 012-webgl-context-management — interleaved: true (was false).
     // Halves this panel's WebGL context cost from 2 (a separate
     // maplibregl.Map context plus a separate deck.gl-owned canvas/
@@ -241,10 +269,22 @@ export function FlowMapPanel({ config }: { config: FlowMapPanelConfig }) {
     // viewport-gated mounting as unnecessary/architecturally
     // incompatible ways to raise this project's real ~8-panel-per-tab
     // ceiling; this one line is the actual fix, raising it to ~16.
-    const overlay = new MapboxOverlay({ interleaved: true, layers: [] })
+    // pickingRadius: 8 — 015-map-controls-polish. Flow lines are thin
+    // (1-few px), and the new onHover tooltip below is otherwise
+    // pixel-perfect-only to trigger; a few extra pixels of hit-test
+    // tolerance around the pointer is standard deck.gl practice for thin
+    // line/point geometries and a real usability improvement, not just a
+    // testing convenience.
+    const overlay = new MapboxOverlay({ interleaved: true, layers: [], pickingRadius: 8 })
     map.addControl(overlay)
     mapRef.current = map
     overlayRef.current = overlay
+    // 015-map-controls-polish — the shared hover tooltip (mapTooltip.ts),
+    // appended directly to `el` (this map's own container element) —
+    // same anchor point ZoneMapPanel.tsx's own tooltip uses, and safe for
+    // the same reason: MapLibre applies `position: relative` to `el`
+    // itself via its own `maplibregl-map` class.
+    tooltipRef.current = createMapTooltip(el)
     window.__flowmapTestMaps ??= {}
     window.__flowmapTestMaps[config.title] = map
     window.__flowmapTestOverlays ??= {}
@@ -307,6 +347,8 @@ export function FlowMapPanel({ config }: { config: FlowMapPanelConfig }) {
       map.off('webglcontextrestored', onContextRestored)
       delete window.__flowmapTestMaps?.[config.title]
       delete window.__flowmapTestOverlays?.[config.title]
+      tooltipRef.current?.destroy()
+      tooltipRef.current = null
       overlayRef.current = null
       mapRef.current = null
       // mapReady is NOT reset to false here — this effect's deps are []
@@ -584,6 +626,35 @@ export function FlowMapPanel({ config }: { config: FlowMapPanelConfig }) {
       animationEnabled: config.animation ?? false,
       maxTopFlowsDisplayNum: config.max_flows,
       pickable: true,
+      // 015-map-controls-polish — deck.gl's OWN picking/hover mechanism
+      // (FlowmapLayer's own onHover prop, backed by `pickable: true`
+      // above), NOT MapLibre's mousemove — confirmed necessary, not just
+      // a style preference: deck.gl content under interleaved mode
+      // shares MapLibre's canvas but is NOT part of MapLibre's own
+      // source/layer/feature model, so MapLibre's `map.on('mousemove',
+      // layerId, ...)` (ZoneMapPanel.tsx's own mechanism) cannot see it
+      // at all — confirmed against MapLibre's own event system, which
+      // only ever hit-tests its OWN vector/GeoJSON/raster layers.
+      // `info.x`/`info.y` are already pixel coordinates relative to the
+      // shared canvas's own top-left corner — the same coordinate space
+      // mapTooltip.ts's `show()` expects, no translation needed.
+      onHover: (info) => {
+        const tooltip = tooltipRef.current
+        if (!tooltip) return
+        if (!info?.object) {
+          tooltip.hide()
+          return
+        }
+        if (info.object.type === PickingType.FLOW) {
+          const { origin, dest, count } = info.object
+          tooltip.show(info.x, info.y, `<strong>${origin.id} → ${dest.id}</strong><br/>${count}`)
+          return
+        }
+        // A location circle, not a flow line — origin/destination/value
+        // (this feature's own required content) only applies to flows;
+        // no tooltip for a bare location hover.
+        tooltip.hide()
+      },
     })
     overlayRef.current.setProps({ layers: [layer] })
 

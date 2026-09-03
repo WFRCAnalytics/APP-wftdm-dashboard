@@ -1,0 +1,158 @@
+/* 015-map-controls-polish — token-driven styling for zonemap3dControl.ts's
+   ThreeDToggleControl. Deliberately plain CSS custom-property references
+   (var(--card)/var(--border)/var(--muted)/var(--primary)/var(--font-heading)
+   from tokens.css), not Tailwind utility classes: MapLibre's own control
+   chrome (.maplibregl-ctrl-group's hardcoded #fff background, the
+   29x29px button grid, its own mask-image icon convention) doesn't
+   compose cleanly against Tailwind's own box-model assumptions — these
+   rules override the SAME semantic slots MapLibre's own default CSS
+   sets (background/border/hover), just with this app's tokens instead
+   of MapLibre's hardcoded #fff/#ddd/rgb(0 0 0/5%). Imported once, by
+   ZoneMapPanel.tsx only — the only panel type with this control. */
+
+/* box-shadow: var(--shadow-sm) — third round of design work on this
+   control, this time real research first (artifact-design skill's own
+   "when it's a UI, not a document" guidance: "what's interactive should
+   look interactive"; and this project's OWN already-committed elevation
+   language, not a new one invented here — components/ui/card.tsx's own
+   base class list is literally `border border-border ... shadow-md`,
+   this app's one established "resting elevation" pattern for a
+   surfaced/floating UI chrome element, applied to every PanelCard on
+   the page already. Reused here at the --shadow-sm tier, not --shadow-
+   md — proportionate to a 29px control vs. a full panel card, but the
+   SAME border+shadow combination, not one or the other.
+   MapLibre's own bare .maplibregl-ctrl-group default (confirmed
+   directly in the installed maplibre-gl.css: `background:#fff;
+   border-radius:4px` — no shadow at all) is exactly why this control
+   read as unpolished before: real, polished mapping products don't
+   leave floating map chrome flat against the canvas — Google Maps' own
+   zoom stack, Mapbox Studio's control rail, and ArcGIS Online's own
+   widget shelf all carry a visible drop shadow lifting them off the map
+   surface, not just a 1px border.
+   border-radius deliberately NOT changed to match Card's own rounded-lg
+   (var(--radius), 8px) — this control's job is to look like a natural
+   part of the SAME cluster NavigationControl sits in, immediately above
+   it in the same corner; MapLibre's shared 4px .maplibregl-ctrl-group
+   radius stays untouched so the two stacked groups' corners visually
+   match each other, which matters more here than matching Card's own
+   unrelated, larger-surface radius. */
+.wftdm-3d-toggle-group {
+  background: var(--card);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+}
+
+.wftdm-3d-toggle-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  height: 29px;
+  width: 29px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  font-family: var(--font-heading);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+/* Real bug found live: MapLibre's OWN stylesheet ships
+   `.maplibregl-ctrl button:not(:disabled):hover { background-color:
+   rgba(0, 0, 0, 0.05) }` (confirmed directly in the installed
+   maplibre-gl.css, and directly in the browser via getComputedStyle() —
+   not assumed). Its selector specificity is (0 ids, 3 classes/pseudo-
+   classes, 1 element) — HIGHER than either of this file's own hover
+   rules below (.wftdm-3d-toggle-button:hover is (0,2,0);
+   .wftdm-3d-toggle-button[aria-pressed='true']:hover is (0,3,0) — tied
+   on the middle column, but MapLibre's rule wins on the element column
+   because it also matches the bare `button` element, which neither of
+   our own class/attribute-only selectors do). That means on ANY hover
+   — pressed or not — MapLibre's own near-transparent dark tint silently
+   WON for `background-color`, not our intended var(--muted)/var(--primary):
+   invisible in the unpressed case (dark var(--foreground) text still
+   reads fine against a background that's still effectively the light
+   var(--card) group background underneath, barely darkened by 5% black),
+   but broken in the pressed case — var(--primary-foreground) (white in
+   light mode) rendered over a background that was STILL effectively the
+   light card color, not the intended dark var(--primary) navy: white
+   text on a near-white background.
+   `!important` here is a deliberate, narrow override of a specific
+   third-party rule this project doesn't control the specificity of —
+   not a general escape hatch — scoped to exactly the one property
+   MapLibre's own rule contests. */
+.wftdm-3d-toggle-button:hover {
+  /* var(--foreground) on var(--muted) — not one of
+     tokenContrast.test.ts's own asserted pairings verbatim (that file
+     only asserts muted-foreground/muted, 5.08:1 light / 5.12:1 dark),
+     but computed here with the SAME WCAG relative-luminance formula
+     that file uses: ~16.6:1 light, ~16.2:1 dark — var(--foreground) is
+     strictly further from mid-gray than var(--muted-foreground) is, so
+     contrast against the same var(--muted) background can only be
+     equal or higher; both numbers were computed directly, not assumed
+     from that monotonicity alone. */
+  background: var(--muted) !important;
+}
+
+/* aria-pressed, not a separate class — the button's own accessibility
+   state IS its visual "active" state, one source of truth instead of two
+   that could drift out of sync. primary-foreground/primary is one of
+   tokenContrast.test.ts's own directly-asserted, WCAG AA-verified
+   pairings (11.67:1 light, 7.54:1 dark — both far above the 4.5:1
+   minimum) — reused verbatim, not a new pairing invented for this
+   control. */
+.wftdm-3d-toggle-button[aria-pressed='true'] {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+/* Pressed + hovered — a real regression found live in the previous fix:
+   making this identical to plain pressed removed all hover feedback for
+   the active state (hovering an already-active toggle looked exactly
+   like not hovering it). Checked this app's own established convention
+   first, per that request — components/ui/button.tsx's own "primary"
+   variant uses `hover:bg-primary/90` (a 90%-opacity background tint,
+   text/background pairing otherwise UNCHANGED). That exact pattern
+   turned out not to be reusable here, for a real, confirmed reason, not
+   a style preference: built this project's actual Tailwind output
+   locally (`npx tailwindcss -i tokens.css -o out.css --content
+   button.tsx`) and found `hover:bg-primary/90` generates NO CSS rule at
+   all — Tailwind's own documented opacity-modifier requirement is a
+   space-separated `<r> <g> <b>` custom property (e.g. `34 90 130`);
+   this project's tokens.css deliberately uses plain hex custom
+   properties instead (tailwind-config-contract.md's own documented,
+   deliberate deviation from shadcn's usual HSL-triplet boilerplate) —
+   incompatible with the opacity-modifier syntax, so Tailwind silently
+   emits nothing for that utility. button.tsx's own "hover feedback" on
+   its primary variant is therefore ALREADY dead CSS in this exact
+   build, a pre-existing latent gap this feature's own investigation
+   surfaced, not something to copy forward as if it worked.
+   So: a non-color treatment instead, per this feature's own explicit
+   preference for sidestepping the contrast question entirely rather
+   than hunting for a second safe pairing — an inset ring using
+   var(--primary-foreground), the SAME already-WCAG-AA-verified token
+   the resting pressed state's own text already uses (11.67:1 light /
+   7.54:1 dark, tokenContrast.test.ts) — not a new color pairing that
+   needs its own contrast computation, since it's a decorative border
+   against the ALREADY-verified var(--primary) fill, not new text.
+   Background/text stay byte-for-byte identical to plain pressed (still
+   the same verified pairing, still `!important`-protected against
+   MapLibre's own hover rule for the same reason as before) — only the
+   ring is new, giving a real, visually distinct hover cue without
+   touching contrast at all. */
+.wftdm-3d-toggle-button[aria-pressed='true']:hover {
+  background: var(--primary) !important;
+  color: var(--primary-foreground);
+  /* !important required here too — a SECOND instance of the same root
+     cause: MapLibre's own `.maplibregl-ctrl-group button:focus:not
+     (:focus-visible) { box-shadow: none }` is (0,3,1), same tier as this
+     rule's own (0,3,0), and a real mouse click on this button (not just
+     Playwright's .click()) genuinely leaves it focused-but-not-
+     focus-visible in every real browser — confirmed live via
+     getComputedStyle(), not assumed: without !important here the ring
+     silently read back as "none" on any button a user had actually
+     clicked, which is every pressed button by definition. */
+  box-shadow: inset 0 0 0 2px var(--primary-foreground) !important;
+}
