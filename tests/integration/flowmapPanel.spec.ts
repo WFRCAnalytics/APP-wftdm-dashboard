@@ -238,6 +238,106 @@ test.describe('User Story 1 - Author renders an O-D metric as a flow map', () =>
   })
 })
 
+// Attribution control — MapLibre's own built-in attributionControl:
+// { compact: true } option (Map constructor), no custom UI. Confirmed via
+// a live Playwright probe (not assumed): MapLibre's real AttributionControl
+// renders its compact rounded-corner badge (className gains
+// "maplibregl-compact") the moment it first has a non-empty attribution
+// string, and that first transition ALSO adds "maplibregl-compact-show"
+// in the same call — i.e. the badge starts in its SHOWN sub-state (full
+// text visible in the small badge), not collapsed to icon-only, until
+// either the map's own 'drag' event auto-minimizes it or the toggle
+// button is clicked. This is genuine MapLibre library behavior (traced
+// directly in node_modules/maplibre-gl/dist/maplibre-gl-unminified.js's
+// AttributionControl class — _updateAttributions()'s own trailing
+// _updateCompact() call, and _updateCompact()'s own
+// "!classList.contains('maplibregl-compact')" guard, which is exactly
+// what makes that first transition add both classes together), not an
+// artifact of this app's own freshBlankStyle()-then-real-basemap
+// sequencing. Still a materially more compact, less obtrusive treatment
+// than the prior default (an always-visible full-width bar with no
+// icon/toggle at all): a small rounded badge instead of a spanning bar,
+// and the toggle button genuinely collapses/expands it on click — what
+// this coverage actually verifies below, rather than asserting a
+// collapsed-on-first-paint claim the library itself doesn't make.
+test.describe('Attribution control renders MapLibre\'s compact form and the toggle genuinely shows/hides text', () => {
+  test('the compact badge renders, and clicking its button actually collapses/expands the real attribution text', async ({
+    page,
+  }) => {
+    await boot(page)
+    const card = panelCard(page, FLOWMAP_TITLE)
+    const container = card.locator('.flowmap-chart')
+    await trueEventually(async () => (await container.getAttribute('data-render-count')) !== null)
+    await waitForBasemapApplied(page, FLOWMAP_TITLE)
+
+    const attrib = container.locator('.maplibregl-ctrl-attrib')
+    const button = attrib.locator('.maplibregl-ctrl-attrib-button')
+    const inner = attrib.locator('.maplibregl-ctrl-attrib-inner')
+
+    await expect(attrib).toHaveClass(/maplibregl-compact\b/) // compact badge, not the old full-width bar
+    await expect(button).toBeVisible()
+    await expect(inner).toContainText('OpenStreetMap') // real attribution text, not a placeholder
+
+    // First click: a real, observable DOM effect — not just "the option
+    // was passed to the constructor."
+    const wasVisible = await inner.isVisible()
+    await button.click()
+    await expect(inner).toBeVisible({ visible: !wasVisible })
+
+    // Second click toggles it back, with the SAME real text still there
+    // (not cleared/re-fetched by the toggle).
+    await button.click()
+    await expect(inner).toBeVisible({ visible: wasVisible })
+    if (wasVisible) await expect(inner).toContainText('OpenStreetMap')
+  })
+
+  test('the compact control survives a real basemap setStyle() switch and 004\'s DOM relocation', async ({
+    page,
+  }) => {
+    await boot(page)
+    const card = panelCard(page, FLOWMAP_TITLE)
+    const container = card.locator('.flowmap-chart')
+    await trueEventually(async () => (await container.getAttribute('data-render-count')) !== null)
+    await waitForBasemapApplied(page, FLOWMAP_TITLE)
+    await expect(container.locator('.maplibregl-ctrl-attrib')).toHaveCount(1)
+
+    // A real setStyle() call (theme flip) — map controls are a Map-owned
+    // DOM overlay independent of the style document (unlike sources/
+    // layers, which setStyle() does replace), so this must be completely
+    // unaffected: still exactly one control, never duplicated or dropped.
+    await page.evaluate(() => document.documentElement.classList.add('dark'))
+    await page.waitForTimeout(1000)
+    await expect(container.locator('.maplibregl-ctrl-attrib')).toHaveCount(1)
+    await expect(container.locator('.maplibregl-ctrl-attrib-button')).toBeVisible()
+
+    // 004's expand-to-dialog relocation — the control is a plain DOM
+    // child of the map container (added via addControl() at
+    // construction), so it must move with the container into the
+    // dialog, not be left behind or duplicated — same appendChild-based
+    // relocation every other part of this panel already survives.
+    await expandTrigger(page, FLOWMAP_TITLE).click()
+    const dialog = page.getByRole('dialog')
+    const dialogAttrib = dialog.locator('.flowmap-chart .maplibregl-ctrl-attrib')
+    await expect(dialogAttrib).toHaveCount(1)
+    const dialogButton = dialogAttrib.locator('.maplibregl-ctrl-attrib-button')
+    const dialogInner = dialogAttrib.locator('.maplibregl-ctrl-attrib-inner')
+    await expect(dialogButton).toBeVisible()
+
+    // Still genuinely interactive post-relocation, not just present in
+    // the DOM — the click handler must still be wired to the SAME
+    // relocated control, not a stale/detached one.
+    const wasVisibleInDialog = await dialogInner.isVisible()
+    await dialogButton.click()
+    await expect(dialogInner).toBeVisible({ visible: !wasVisibleInDialog })
+
+    await page.keyboard.press('Escape')
+    await expect(dialog).not.toBeVisible()
+    // And it's still there, once, back at card size — not duplicated by
+    // the round trip.
+    await expect(card.locator('.flowmap-chart .maplibregl-ctrl-attrib')).toHaveCount(1)
+  })
+})
+
 test.describe('User Story 2 - Flowmap panel responds to global filters and resizes correctly', () => {
   test('changing a bound global filter updates the flow lines without recreating the map instance', async ({
     page,

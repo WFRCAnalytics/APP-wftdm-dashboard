@@ -410,6 +410,75 @@ test.describe('User Story 3 - Color scale precision and comparison: diff', () =>
   })
 })
 
+// Attribution control — same MapLibre built-in attributionControl:
+// { compact: true } option ZoneMapPanel.tsx's own mount effect now sets,
+// same real, confirmed behavior flowmapPanel.spec.ts's own coverage
+// documents in full: the compact badge starts in its SHOWN sub-state (full
+// text visible) the first time it has a non-empty attribution, not
+// collapsed-to-icon on the very first paint — genuine MapLibre library
+// behavior (traced in AttributionControl's own _updateAttributions()/
+// _updateCompact()), not specific to either panel type. Still a real,
+// materially more compact treatment than the prior default (a spanning
+// full-width bar with no icon/toggle at all), and the toggle button
+// genuinely collapses/expands it on click — verified below the same way.
+test.describe('Attribution control renders MapLibre\'s compact form and the toggle genuinely shows/hides text', () => {
+  test('the compact badge renders, and clicking its button actually collapses/expands the real attribution text', async ({
+    page,
+  }) => {
+    await boot(page)
+    const container = await waitForRender(page, ZONEMAP_TITLE)
+    await trueEventually(async () => (await container.locator('.maplibregl-ctrl-attrib').count()) === 1)
+
+    const attrib = container.locator('.maplibregl-ctrl-attrib')
+    const button = attrib.locator('.maplibregl-ctrl-attrib-button')
+    const inner = attrib.locator('.maplibregl-ctrl-attrib-inner')
+
+    await expect(attrib).toHaveClass(/maplibregl-compact\b/) // compact badge, not the old full-width bar
+    await expect(button).toBeVisible()
+    await expect(inner).toContainText('OpenStreetMap') // real attribution text, not a placeholder
+
+    const wasVisible = await inner.isVisible()
+    await button.click()
+    await expect(inner).toBeVisible({ visible: !wasVisible })
+
+    await button.click()
+    await expect(inner).toBeVisible({ visible: wasVisible })
+    if (wasVisible) await expect(inner).toContainText('OpenStreetMap')
+  })
+
+  test('the compact control survives a real basemap setStyle() switch and 004\'s DOM relocation', async ({
+    page,
+  }) => {
+    await boot(page)
+    const container = await waitForRender(page, ZONEMAP_TITLE)
+    await trueEventually(async () => (await container.locator('.maplibregl-ctrl-attrib').count()) === 1)
+
+    // A real setStyle() call (theme flip) — controls are a Map-owned DOM
+    // overlay independent of the style document, unaffected by it.
+    await page.evaluate(() => document.documentElement.classList.add('dark'))
+    await page.waitForTimeout(1000)
+    await expect(container.locator('.maplibregl-ctrl-attrib')).toHaveCount(1)
+    await expect(container.locator('.maplibregl-ctrl-attrib-button')).toBeVisible()
+
+    // 004's expand-to-dialog relocation.
+    await expandTrigger(page, ZONEMAP_TITLE).click()
+    const dialog = page.getByRole('dialog')
+    const dialogAttrib = dialog.locator('.zonemap-chart .maplibregl-ctrl-attrib')
+    await expect(dialogAttrib).toHaveCount(1)
+    const dialogButton = dialogAttrib.locator('.maplibregl-ctrl-attrib-button')
+    const dialogInner = dialogAttrib.locator('.maplibregl-ctrl-attrib-inner')
+    await expect(dialogButton).toBeVisible()
+
+    const wasVisibleInDialog = await dialogInner.isVisible()
+    await dialogButton.click()
+    await expect(dialogInner).toBeVisible({ visible: !wasVisibleInDialog })
+
+    await page.keyboard.press('Escape')
+    await expect(dialog).not.toBeVisible()
+    await expect(panelCard(page, ZONEMAP_TITLE).locator('.zonemap-chart .maplibregl-ctrl-attrib')).toHaveCount(1)
+  })
+})
+
 test.describe('User Story 4 - Registry consistency', () => {
   test('expanding a zonemap panel shows the same data, not re-fetched', async ({ page }) => {
     await boot(page)

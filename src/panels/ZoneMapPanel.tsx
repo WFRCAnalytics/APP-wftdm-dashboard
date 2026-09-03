@@ -209,6 +209,11 @@ export function ZoneMapPanel({ config }: { config: ZoneMapPanelConfig }) {
       style: freshBlankStyle(),
       center: config.center ?? DEFAULT_CENTER,
       zoom: config.zoom ?? DEFAULT_ZOOM,
+      // Same compact attribution control FlowMapPanel.tsx's own mount
+      // effect sets, same reasoning — MapLibre's built-in option, a
+      // persistent control the map instance owns, unaffected by
+      // setStyle() or 004's relocation.
+      attributionControl: { compact: true },
     })
     mapRef.current = map
     window.__zonemapTestMaps ??= {}

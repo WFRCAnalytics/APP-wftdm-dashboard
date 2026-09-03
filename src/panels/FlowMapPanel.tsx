@@ -216,6 +216,18 @@ export function FlowMapPanel({ config }: { config: FlowMapPanelConfig }) {
       style: freshBlankStyle(),
       center: config.center ?? DEFAULT_CENTER,
       zoom: config.zoom ?? DEFAULT_ZOOM,
+      // Collapse the default attribution control to a small click-to-
+      // expand icon rather than the full attribution text rendered
+      // inline — MapLibre's own first-class, built-in option (no custom
+      // UI). A card-sized panel has little room to spare; the full text
+      // is one click away via the icon, never removed. Set once here at
+      // construction — the control is a persistent DOM child of the map
+      // container the Map instance itself owns and is unaffected by
+      // setStyle() (a style swap only replaces sources/layers, never the
+      // controls added via addControl()/the constructor's own control
+      // options) and by 004's appendChild-based relocation (the control
+      // moves with the container, same as the canvas itself).
+      attributionControl: { compact: true },
     })
     // 012-webgl-context-management — interleaved: true (was false).
     // Halves this panel's WebGL context cost from 2 (a separate
