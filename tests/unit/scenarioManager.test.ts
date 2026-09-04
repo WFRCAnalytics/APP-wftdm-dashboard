@@ -50,13 +50,13 @@ describe('scenarioManager collision classification (via loadLocalScenario\'s dec
   })
 
   it('classifies a name colliding with a published (source: url) scenario as reject', async () => {
-    appState.register('published_sc', { source: 'url' })
+    appState.register('published_sc', { source: 'url', path: 'test/published_sc' })
     const { classifyCollision } = await import('../../src/scenario/scenarioManager.ts')
     expect(classifyCollision('published_sc')).toBe('reject')
   })
 
   it('classifies a name colliding with an already-loaded local (source: handle) scenario as proceed', async () => {
-    appState.register('local_sc', { source: 'handle' })
+    appState.register('local_sc', { source: 'handle', path: 'test/local_sc' })
     const { classifyCollision } = await import('../../src/scenario/scenarioManager.ts')
     expect(classifyCollision('local_sc')).toBe('proceed')
   })

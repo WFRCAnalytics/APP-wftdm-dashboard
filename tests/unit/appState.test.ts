@@ -5,11 +5,15 @@
 // a key-based remount specifically to preserve panel-local state (FR-008).
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
+  clearLabel,
   get,
   getBaseline,
+  listByDisplayOrder,
+  moveScenario,
   register,
   setActive,
   setBaseline,
+  setLabel,
   setStatus,
   subscribe,
   unregister,
@@ -27,12 +31,12 @@ describe('appState.subscribe', () => {
   it('fires on register()', () => {
     const fn = vi.fn()
     subscribe(fn)
-    register('sub_test_1', { source: 'handle' })
+    register('sub_test_1', { source: 'handle', path: 'test/sub_test_1' })
     expect(fn).toHaveBeenCalledTimes(1)
   })
 
   it('fires on setStatus()', () => {
-    register('sub_test_2', { source: 'handle' })
+    register('sub_test_2', { source: 'handle', path: 'test/sub_test_2' })
     const fn = vi.fn()
     subscribe(fn)
     setStatus('sub_test_2', 'ready')
@@ -40,7 +44,7 @@ describe('appState.subscribe', () => {
   })
 
   it('fires on setActive()', () => {
-    register('sub_test_3', { source: 'handle' })
+    register('sub_test_3', { source: 'handle', path: 'test/sub_test_3' })
     const fn = vi.fn()
     subscribe(fn)
     setActive('sub_test_3', true)
@@ -48,7 +52,7 @@ describe('appState.subscribe', () => {
   })
 
   it('fires on unregister()', () => {
-    register('sub_test_4', { source: 'handle' })
+    register('sub_test_4', { source: 'handle', path: 'test/sub_test_4' })
     const fn = vi.fn()
     subscribe(fn)
     unregister('sub_test_4')
@@ -60,7 +64,7 @@ describe('appState.subscribe', () => {
     const fn = vi.fn()
     const unsubscribe = subscribe(fn)
     unsubscribe()
-    register('sub_test_1', { source: 'handle' })
+    register('sub_test_1', { source: 'handle', path: 'test/sub_test_1' })
     expect(fn).not.toHaveBeenCalled()
   })
 
@@ -69,7 +73,7 @@ describe('appState.subscribe', () => {
     const fn2 = vi.fn()
     subscribe(fn1)
     subscribe(fn2)
-    register('sub_test_1', { source: 'handle' })
+    register('sub_test_1', { source: 'handle', path: 'test/sub_test_1' })
     expect(fn1).toHaveBeenCalledTimes(1)
     expect(fn2).toHaveBeenCalledTimes(1)
   })
@@ -96,8 +100,8 @@ describe('appState.getBaseline / setBaseline', () => {
   })
 
   it('mutual exclusivity: marking a new baseline moves the designation, never both/neither', () => {
-    register('abm_2026', { source: 'url' })
-    register('base_tbm', { source: 'url' })
+    register('abm_2026', { source: 'url', path: 'test/abm_2026' })
+    register('base_tbm', { source: 'url', path: 'test/base_tbm' })
 
     setBaseline('abm_2026')
     expect(getBaseline()).toBe('abm_2026')
@@ -112,45 +116,45 @@ describe('appState.getBaseline / setBaseline', () => {
   })
 
   it('automatic default excludes pinned entries — observed never wins by default', () => {
-    register('observed', { source: 'url', pinned: true })
+    register('observed', { source: 'url', pinned: true, path: 'test/observed' })
     setStatus('observed', 'ready')
     expect(getBaseline()).toBeUndefined()
 
-    register('abm_2026', { source: 'url' })
+    register('abm_2026', { source: 'url', path: 'test/abm_2026' })
     setStatus('abm_2026', 'ready')
     expect(getBaseline()).toBe('abm_2026')
   })
 
   it('automatic default does not move once resolved, even as more scenarios load', () => {
-    register('abm_2026', { source: 'url' })
+    register('abm_2026', { source: 'url', path: 'test/abm_2026' })
     setStatus('abm_2026', 'ready')
     expect(getBaseline()).toBe('abm_2026')
 
-    register('base_tbm', { source: 'url' })
+    register('base_tbm', { source: 'url', path: 'test/base_tbm' })
     setStatus('base_tbm', 'ready')
     expect(getBaseline()).toBe('abm_2026')
   })
 
   it('automatic default skips a scenario that is not yet ready', () => {
-    register('not_ready', { source: 'url' }) // status stays 'registering'
+    register('not_ready', { source: 'url', path: 'test/not_ready' }) // status stays 'registering'
     expect(getBaseline()).toBeUndefined()
 
-    register('abm_2026', { source: 'url' })
+    register('abm_2026', { source: 'url', path: 'test/abm_2026' })
     setStatus('abm_2026', 'ready')
     expect(getBaseline()).toBe('abm_2026')
   })
 
   it('an explicit baseline can target a pinned scenario if chosen deliberately', () => {
-    register('observed', { source: 'url', pinned: true })
+    register('observed', { source: 'url', pinned: true, path: 'test/observed' })
     setStatus('observed', 'ready')
     setBaseline('observed')
     expect(getBaseline()).toBe('observed')
   })
 
   it('removing the explicit baseline falls back to the same automatic-default rule', () => {
-    register('abm_2026', { source: 'handle' })
+    register('abm_2026', { source: 'handle', path: 'test/abm_2026' })
     setStatus('abm_2026', 'ready')
-    register('base_tbm', { source: 'url' })
+    register('base_tbm', { source: 'url', path: 'test/base_tbm' })
     setStatus('base_tbm', 'ready')
 
     setBaseline('base_tbm')
@@ -161,7 +165,7 @@ describe('appState.getBaseline / setBaseline', () => {
   })
 
   it('removing the ONLY remaining scenario after it held the baseline resolves to undefined', () => {
-    register('abm_2026', { source: 'handle' })
+    register('abm_2026', { source: 'handle', path: 'test/abm_2026' })
     setStatus('abm_2026', 'ready')
     setBaseline('abm_2026')
     expect(getBaseline()).toBe('abm_2026')
@@ -171,13 +175,147 @@ describe('appState.getBaseline / setBaseline', () => {
   })
 
   it('removing a scenario that is NOT the current baseline leaves it completely unaffected', () => {
-    register('abm_2026', { source: 'url' })
+    register('abm_2026', { source: 'url', path: 'test/abm_2026' })
     setStatus('abm_2026', 'ready')
-    register('extra', { source: 'handle' })
+    register('extra', { source: 'handle', path: 'test/extra' })
     setStatus('extra', 'ready')
 
     setBaseline('abm_2026')
     unregister('extra')
     expect(getBaseline()).toBe('abm_2026')
+  })
+})
+
+// 020-settings-modal (T006, foundational): moveScenario()/listByDisplayOrder()/
+// setLabel()/clearLabel(), plus the two structural guarantees FR-008 and
+// FR-018 depend on. Self-contained afterEach, same convention as the
+// getBaseline/setBaseline describe above.
+describe('appState.listByDisplayOrder / moveScenario', () => {
+  afterEach(() => {
+    for (const name of ['a', 'b', 'c']) {
+      unregister(name)
+    }
+  })
+
+  it('defaults to registration order', () => {
+    register('a', { source: 'url', path: 'test/a' })
+    register('b', { source: 'url', path: 'test/b' })
+    register('c', { source: 'url', path: 'test/c' })
+    expect(listByDisplayOrder().map((s) => s.name)).toEqual(['a', 'b', 'c'])
+  })
+
+  it('moveScenario swaps with the neighbor in DISPLAY order', () => {
+    register('a', { source: 'url', path: 'test/a' })
+    register('b', { source: 'url', path: 'test/b' })
+    register('c', { source: 'url', path: 'test/c' })
+
+    moveScenario('c', 'up')
+    expect(listByDisplayOrder().map((s) => s.name)).toEqual(['a', 'c', 'b'])
+
+    moveScenario('c', 'up')
+    expect(listByDisplayOrder().map((s) => s.name)).toEqual(['c', 'a', 'b'])
+  })
+
+  it('moveScenario at a boundary is a harmless no-op — no error, no wraparound', () => {
+    register('a', { source: 'url', path: 'test/a' })
+    register('b', { source: 'url', path: 'test/b' })
+
+    expect(() => moveScenario('a', 'up')).not.toThrow()
+    expect(listByDisplayOrder().map((s) => s.name)).toEqual(['a', 'b'])
+
+    expect(() => moveScenario('b', 'down')).not.toThrow()
+    expect(listByDisplayOrder().map((s) => s.name)).toEqual(['a', 'b'])
+  })
+
+  it('moveScenario throws on an unregistered name', () => {
+    expect(() => moveScenario('nope', 'up')).toThrow(/never registered/)
+  })
+
+  it('a single loaded scenario has nothing to reorder', () => {
+    register('a', { source: 'url', path: 'test/a' })
+    expect(() => moveScenario('a', 'up')).not.toThrow()
+    expect(() => moveScenario('a', 'down')).not.toThrow()
+    expect(listByDisplayOrder().map((s) => s.name)).toEqual(['a'])
+  })
+
+  // FR-008 / quickstart.md Scenario 3: reordering must never change which
+  // scenario the automatic-default baseline rule resolves to.
+  it('FR-008: reordering the display list never changes the automatic-default baseline pick', () => {
+    register('a', { source: 'url', path: 'test/a' })
+    register('b', { source: 'url', path: 'test/b' })
+    setStatus('a', 'ready')
+    setStatus('b', 'ready')
+    expect(getBaseline()).toBe('a') // earliest-registered, ready, unpinned
+
+    moveScenario('b', 'up')
+    expect(listByDisplayOrder().map((s) => s.name)).toEqual(['b', 'a'])
+    expect(getBaseline()).toBe('a') // UNCHANGED — still registration order
+  })
+
+  // FR-018 / quickstart.md Scenario 4: a scenario registering after a
+  // reorder always appends at the end of the CURRENT display order.
+  it('FR-018: a newly registered scenario always appends last in display order', () => {
+    register('a', { source: 'url', path: 'test/a' })
+    register('b', { source: 'url', path: 'test/b' })
+    moveScenario('b', 'up') // display order: b, a
+    expect(listByDisplayOrder().map((s) => s.name)).toEqual(['b', 'a'])
+
+    register('c', { source: 'url', path: 'test/c' })
+    expect(listByDisplayOrder().map((s) => s.name)).toEqual(['b', 'a', 'c'])
+  })
+
+  it('removing a scenario discards its display-order position — no orphaned state', () => {
+    register('a', { source: 'url', path: 'test/a' })
+    register('b', { source: 'url', path: 'test/b' })
+    moveScenario('b', 'up')
+    unregister('b')
+    register('c', { source: 'url', path: 'test/c' })
+    // 'b' is gone; 'c' (freshly registered) still appends last after 'a'.
+    expect(listByDisplayOrder().map((s) => s.name)).toEqual(['a', 'c'])
+  })
+})
+
+describe('appState.setLabel / clearLabel', () => {
+  afterEach(() => {
+    unregister('a')
+  })
+
+  it('setLabel sets a display label distinct from the real name', () => {
+    register('a', { source: 'url', path: 'test/a' })
+    setLabel('a', 'Base Year')
+    expect(get('a')?.label).toBe('Base Year')
+    expect(get('a')?.name).toBe('a') // the real name is untouched
+  })
+
+  it('clearLabel resets the label to undefined', () => {
+    register('a', { source: 'url', path: 'test/a' })
+    setLabel('a', 'Base Year')
+    clearLabel('a')
+    expect(get('a')?.label).toBeUndefined()
+  })
+
+  it('setLabel/clearLabel throw on an unregistered name', () => {
+    expect(() => setLabel('nope', 'x')).toThrow(/never registered/)
+    expect(() => clearLabel('nope')).toThrow(/never registered/)
+  })
+
+  it('removing a scenario discards its label — no orphaned state', () => {
+    register('a', { source: 'url', path: 'test/a' })
+    setLabel('a', 'Base Year')
+    unregister('a')
+    expect(get('a')).toBeUndefined()
+  })
+
+  // FR-010 / quickstart.md Scenario 5: a label is display-only — it must
+  // never be usable as a substitute for the scenario's real `name` when
+  // looking the scenario back up (the same lookup every resolution path,
+  // sqlExpander.ts's $scenario/$baseline expansion and panelQuery.ts's
+  // resolveComparisonScenarioName(), performs).
+  it('FR-010: a scenario is never addressable by its label, only its real name', () => {
+    register('abm_2026_final_v3', { source: 'url', path: 'test/abm_2026_final_v3' })
+    setLabel('abm_2026_final_v3', 'Base Year')
+    expect(get('abm_2026_final_v3')?.label).toBe('Base Year')
+    expect(get('Base Year')).toBeUndefined()
+    unregister('abm_2026_final_v3')
   })
 })

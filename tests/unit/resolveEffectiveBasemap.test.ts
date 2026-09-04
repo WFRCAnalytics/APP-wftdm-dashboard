@@ -25,6 +25,38 @@ describe('resolveEffectiveBasemap', () => {
     })
   })
 
+  // 020-settings-modal (US2, FR-011/FR-012): the new 3rd-priority tier —
+  // fills the fallback ONLY when neither panel nor tab is set, and is
+  // itself still outranked by either of them.
+  it('global basemap wins over the app default, but never over panel or tab', () => {
+    expect(resolveEffectiveBasemap(undefined, undefined, 'light', 'openfreemap-liberty')).toEqual({
+      selection: 'openfreemap-liberty',
+      source: 'global',
+    })
+    expect(resolveEffectiveBasemap(undefined, undefined, 'dark', 'openfreemap-liberty')).toEqual({
+      selection: 'openfreemap-liberty',
+      source: 'global',
+    })
+    expect(resolveEffectiveBasemap('carto-voyager', undefined, 'light', 'openfreemap-liberty')).toEqual({
+      selection: 'carto-voyager',
+      source: 'panel',
+    })
+    expect(resolveEffectiveBasemap(undefined, 'carto-voyager', 'light', 'openfreemap-liberty')).toEqual({
+      selection: 'carto-voyager',
+      source: 'tab',
+    })
+  })
+
+  it('an unset global basemap (undefined) falls through to the app default, same as omitting the argument', () => {
+    expect(resolveEffectiveBasemap(undefined, undefined, 'light', undefined)).toEqual({
+      selection: APP_DEFAULT_LIGHT,
+      source: 'app-default',
+    })
+    expect(resolveEffectiveBasemap(undefined, undefined, 'light')).toEqual(
+      resolveEffectiveBasemap(undefined, undefined, 'light', undefined),
+    )
+  })
+
   it('falls back to the theme-paired app default when nothing is set', () => {
     expect(resolveEffectiveBasemap(undefined, undefined, 'light')).toEqual({
       selection: APP_DEFAULT_LIGHT,

@@ -404,7 +404,7 @@ test.describe('019-baseline-diff-consumption', () => {
     await expect(card.getByRole('alert')).toBeVisible()
 
     await page.evaluate(() => {
-      window.__wftdm!.appState.register('good_scenario', { source: 'url' })
+      window.__wftdm!.appState.register('good_scenario', { source: 'url', path: 'test/good_scenario' })
       window.__wftdm!.appState.setStatus('good_scenario', 'ready')
     })
     await expect(card.getByRole('alert')).not.toBeVisible()

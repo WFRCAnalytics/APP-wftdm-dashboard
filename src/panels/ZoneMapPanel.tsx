@@ -10,6 +10,7 @@ import { useFilterState } from '@/hooks/useFilterState'
 import { useActiveScenarios } from '@/hooks/useActiveScenarios'
 import { useBaseline } from '@/hooks/useBaseline'
 import { useColorScheme } from '@/hooks/useColorScheme'
+import { useGlobalBasemap } from '@/hooks/useGlobalBasemap'
 import {
   buildComparisonDiffQuery,
   buildPanelQuery,
@@ -135,6 +136,9 @@ export function ZoneMapPanel({ config }: { config: ZoneMapPanelConfig }) {
   // reactively re-triggers the fetch for a panel that uses it (FR-016).
   const baseline = useBaseline()
   const colorScheme = useColorScheme()
+  // 020-settings-modal — the viewer's Settings-modal Basemap-tab pick,
+  // threaded into resolveEffectiveBasemap() as its new 4th argument below.
+  const globalBasemap = useGlobalBasemap()
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
   const probeRef = useRef<HTMLDivElement | null>(null)
@@ -436,7 +440,12 @@ export function ZoneMapPanel({ config }: { config: ZoneMapPanelConfig }) {
   // style to wipe), and the post-style-ready trigger below re-ensures
   // AND re-populates this panel's native source/layer instead of a
   // deck.gl overlay's props.
-  const effectiveBasemap = resolveEffectiveBasemap(config.basemap, config._tabDefaultBasemap, colorScheme)
+  const effectiveBasemap = resolveEffectiveBasemap(
+    config.basemap,
+    config._tabDefaultBasemap,
+    colorScheme,
+    globalBasemap,
+  )
   const key = basemapKey(effectiveBasemap.selection)
 
   useEffect(() => {

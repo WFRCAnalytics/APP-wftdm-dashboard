@@ -26,6 +26,19 @@ export function resolveUrlPreset(name: BasemapPresetName): UrlPreset | undefined
   return BUILT_IN_PRESETS[name]
 }
 
+/**
+ * 020-settings-modal: every built-in preset name, for the Settings
+ * modal's Basemap tab picker (FR-011's "same catalog available to
+ * dashboard authors") — no prior export exposed this list at all, only
+ * single-name lookup via resolveUrlPreset(). A plain array copy, not a
+ * live reference to BUILT_IN_PRESETS's own keys — this module's own
+ * catalog is a fixed, hardcoded object (unlike the dynamically-fetched
+ * leaflet-providers.json catalog below), so no staleness risk either way.
+ */
+export function listBuiltInPresetNames(): BasemapPresetName[] {
+  return Object.keys(BUILT_IN_PRESETS)
+}
+
 // ---- leaflet-providers raster resolution (FR-002/FR-003) ----
 
 export interface RasterSourceSpec {

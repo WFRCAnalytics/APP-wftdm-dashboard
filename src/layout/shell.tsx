@@ -3,8 +3,7 @@ import { LayoutDashboard } from 'lucide-react'
 
 import { DashboardRenderer } from '@/layout/dashboardRenderer'
 import { NavBar } from '@/layout/navBar'
-import { ScenarioLoader } from '@/layout/scenarioLoader'
-import { ThemeToggle } from '@/layout/themeToggle'
+import { SettingsModal } from '@/layout/settingsModal'
 import { PanelEmptyState } from '@/panels/PanelEmptyState'
 import type { DashboardTabConfig } from '@/layout/types'
 
@@ -46,15 +45,12 @@ export function Shell({ dashboards }: { dashboards: DashboardTabConfig[] }) {
           activeTab={active.header.tab}
           onTabChange={setActiveTab}
         />
-        {/* 015-theme-toggle: ScenarioLoader + ThemeToggle share one
-            right-hand group (research.md §7) — top-right of the header,
-            matching the user's own stated placement preference, kept
-            visually grouped as one unit rather than a third
-            justify-between column (which would spread it across the
-            header's full width instead). */}
+        {/* 020-settings-modal: ScenarioLoader + ThemeToggle (the previous
+            top-right header group, 015-theme-toggle research.md §7) are
+            replaced entirely by a single SettingsModal trigger (FR-001,
+            FR-002) — not kept alongside it. */}
         <div className="flex items-center gap-3">
-          <ScenarioLoader />
-          <ThemeToggle />
+          <SettingsModal />
         </div>
       </header>
       <main>

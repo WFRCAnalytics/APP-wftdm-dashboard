@@ -12,7 +12,8 @@ export function isLocalDeployment(): boolean {
 
 /**
  * Chrome/Edge only (docs/ARCHITECTURE.md) — feature-detected, not
- * assumed. Used by scenarioLoader.tsx's US2 disabled/tooltip branch.
+ * assumed. Used by layout/settings/scenariosTab.tsx's (020-settings-modal;
+ * relocated from the former scenarioLoader.tsx) disabled/tooltip branch.
  */
 export function supportsLocalFolderLoading(): boolean {
   return typeof window.showDirectoryPicker === 'function'
@@ -51,7 +52,7 @@ export function classifyCollision(name: string): 'reject' | 'proceed' {
  */
 export async function loadLocalScenario(): Promise<LoadResult> {
   if (!window.showDirectoryPicker) {
-    // Defensive — scenarioLoader.tsx only calls this from the
+    // Defensive — scenariosTab.tsx only calls this from the
     // supportsLocalFolderLoading()-gated path, but this function makes no
     // assumption about its own caller.
     return { outcome: 'failed', name: '(unknown)', reason: new Error('showDirectoryPicker unsupported') }
@@ -90,6 +91,13 @@ export async function loadLocalScenario(): Promise<LoadResult> {
     color: manifest?.color,
     notes: manifest?.notes,
     source: 'handle',
+    // 020-settings-modal: the File System Access API exposes no real
+    // absolute path at all (a browser security boundary) — dirHandle.name
+    // (the local folder's own name) is the most specific real value
+    // available, and is already computed above as `name`'s own fallback;
+    // read directly from dirHandle here since `name` may instead be the
+    // manifest's own scenarioName override (research.md §5).
+    path: dirHandle.name,
   })
 
   try {

@@ -199,6 +199,66 @@ APP-wftdm-dashboard/
     │   │                       # re-applies the same automatic-default
     │   │                       # rule with no dangling reference
     │   │                       # possible (research.md §3, FR-005).
+    │   │                       # 020-settings-modal added three more
+    │   │                       # `Scenario` fields — `path: string` (the
+    │   │                       # real folder URL for a `source: 'url'`
+    │   │                       # entry, or `dirHandle.name` for a
+    │   │                       # `source: 'handle'` one — the File System
+    │   │                       # Access API exposes no real absolute path
+    │   │                       # at all, a browser security boundary, not
+    │   │                       # a gap in this app's own code),
+    │   │                       # `order: number` (viewer-controlled
+    │   │                       # DISPLAY order only, assigned from a new
+    │   │                       # module-level ever-incrementing
+    │   │                       # `nextOrder` counter at `register()` time
+    │   │                       # and reassigned only by the new
+    │   │                       # `moveScenario()` — deliberately never
+    │   │                       # read by `getBaseline()`, which still
+    │   │                       # iterates `scenarios.values()` directly,
+    │   │                       # making "reordering never moves the
+    │   │                       # automatic baseline" hold structurally,
+    │   │                       # with no guard needed), and
+    │   │                       # `label?: string` (an optional
+    │   │                       # viewer-facing display label, read by
+    │   │                       # nothing outside the Scenarios tab's own
+    │   │                       # rendering — no resolution path was ever
+    │   │                       # given access to it, so "never a
+    │   │                       # substitute for the real name in SQL"
+    │   │                       # holds with zero enforcement code).
+    │   │                       # New exports: `moveScenario(name,
+    │   │                       # direction)`, `listByDisplayOrder()`,
+    │   │                       # `setLabel(name, label)`,
+    │   │                       # `clearLabel(name)` — all following the
+    │   │                       # existing `setBaseline()`/`setActive()`
+    │   │                       # look-up/throw/mutate/`notify()`
+    │   │                       # convention. `unregister()` needed NO
+    │   │                       # change (unlike `explicitBaseline`'s own
+    │   │                       # special-cased clearing) — `order`/
+    │   │                       # `label` live directly on the `Scenario`
+    │   │                       # object, so `scenarios.delete(name)`
+    │   │                       # already discards both.
+    │   ├── basemapState.ts     # done (020-settings-modal) — the single,
+    │   │                       # viewer-set global basemap choice, NOT
+    │   │                       # added onto appState.ts (whose own header
+    │   │                       # comment scopes it explicitly to scenario
+    │   │                       # metadata/selection state) — mirrors
+    │   │                       # appState.ts's/filterState.ts's own
+    │   │                       # subscribe/notify shape, a single
+    │   │                       # module-level value rather than a Map
+    │   │                       # (there is exactly one global basemap
+    │   │                       # choice for the whole app). Typed
+    │   │                       # `BasemapPresetName | undefined` (a plain
+    │   │                       # string), not the full `BasemapSelection`
+    │   │                       # union that also includes
+    │   │                       # `BasemapComposition` objects — the
+    │   │                       # Basemap tab's picker only ever offers
+    │   │                       # entries from `registry.ts`'s
+    │   │                       # `BUILT_IN_PRESETS`, which never contains
+    │   │                       # a composition — keeping this a primitive
+    │   │                       # avoids `useGlobalBasemap()` needing a
+    │   │                       # memoized cache, matching `useBaseline.ts`'s
+    │   │                       # own reasoning for its own primitive
+    │   │                       # return value. No persistence (FR-015).
     │   └── filterState.ts      # global filters + pub/sub
     ├── services/
     │   ├── duckdb.ts           # DuckDB-WASM API — owns the sole AsyncDuckDB
@@ -249,25 +309,69 @@ APP-wftdm-dashboard/
     │   │                       # MutationObserver + useSyncExternalStore,
     │   │                       # same shape as the two hooks above. Its
     │   │                       # own write-side counterpart is now real
-    │   │                       # too (015-theme-toggle,
-    │   │                       # layout/themeToggle.tsx) — this hook
-    │   │                       # needed zero changes to compose with it
-    │   │                       # (its MutationObserver reacts to any
-    │   │                       # class mutation regardless of source),
-    │   │                       # the same relationship registerScenario()
-    │   │                       # had to 009's own caller from 001 until
-    │   │                       # 009 built it.
-    │   └── useBaseline.ts      # done (018-baseline-scenario-designation)
-    │                           # — useSyncExternalStore over appState's
-    │                           # subscribe()/getBaseline(), same shape as
-    │                           # useActiveScenarios() above BUT with no
-    │                           # memoized cache: getBaseline() returns a
-    │                           # primitive (string | undefined), which
-    │                           # useSyncExternalStore's default Object.is
-    │                           # comparison already handles correctly by
-    │                           # value — useActiveScenarios() only needs
-    │                           # its own cache because getActive() builds
-    │                           # a new ARRAY every call (research.md §7).
+    │   │                       # too (015-theme-toggle, originally
+    │   │                       # layout/themeToggle.tsx, RELOCATED by
+    │   │                       # 020-settings-modal to layout/settings/
+    │   │                       # appearanceTab.tsx — same component logic,
+    │   │                       # new file) — this hook needed zero changes
+    │   │                       # to compose with it either time (its
+    │   │                       # MutationObserver reacts to any class
+    │   │                       # mutation regardless of source), the same
+    │   │                       # relationship registerScenario() had to
+    │   │                       # 009's own caller from 001 until 009
+    │   │                       # built it.
+    │   ├── useBaseline.ts      # done (018-baseline-scenario-designation)
+    │   │                       # — useSyncExternalStore over appState's
+    │   │                       # subscribe()/getBaseline(), same shape as
+    │   │                       # useActiveScenarios() above BUT with no
+    │   │                       # memoized cache: getBaseline() returns a
+    │   │                       # primitive (string | undefined), which
+    │   │                       # useSyncExternalStore's default Object.is
+    │   │                       # comparison already handles correctly by
+    │   │                       # value — useActiveScenarios() only needs
+    │   │                       # its own cache because getActive() builds
+    │   │                       # a new ARRAY every call (research.md §7).
+    │   ├── useGlobalBasemap.ts # done (020-settings-modal) — same
+    │   │                       # primitive-return, no-cache shape as
+    │   │                       # useBaseline.ts, over
+    │   │                       # state/basemapState.ts instead. Consumed
+    │   │                       # by FlowMapPanel.tsx/ZoneMapPanel.tsx
+    │   │                       # (its only two callers, both already
+    │   │                       # reading useColorScheme() the same
+    │   │                       # symmetric way) as
+    │   │                       # resolveEffectiveBasemap()'s new 4th
+    │   │                       # argument.
+    │   └── useScenarioList.ts  # done (020-settings-modal) — the
+    │                           # Scenarios tab needs to re-render on ANY
+    │                           # scenario field changing (order/label/
+    │                           # path/status/pinned/active/source), not
+    │                           # just the active-scenario set
+    │                           # (useActiveScenarios.ts) or the resolved
+    │                           # baseline (useBaseline.ts), neither of
+    │                           # which changes for a label/order-only
+    │                           # mutation. A REAL bug found during this
+    │                           # feature's own implementation:
+    │                           # layout/settings/scenariosTab.tsx
+    │                           # originally relied on those two hooks
+    │                           # alone, so calling
+    │                           # appState.setLabel()/moveScenario() never
+    │                           # triggered a re-render at all. This hook's
+    │                           # own memoized-cache comparison then hit a
+    │                           # SECOND, subtler bug on first attempt:
+    │                           # appState.ts's listByDisplayOrder() (like
+    │                           # list()/getActive() before it) returns
+    │                           # LIVE Scenario object references — every
+    │                           # mutator changes fields IN PLACE on the
+    │                           # same object stored in its Map, never
+    │                           # replacing it. Caching those live
+    │                           # references directly meant a later
+    │                           # comparison's "previous" and "current"
+    │                           # values were literally the SAME object
+    │                           # read twice — always equal, permanently
+    │                           # suppressing re-renders. Fixed by
+    │                           # snapshotting shallow COPIES into the
+    │                           # cache (`live.map((s) => ({ ...s }))`)
+    │                           # instead of the live array itself.
     │   # layout/ and panels/ below are now real (003-dashboard-shell-
     │   # navigation built the shell/nav/panel-card layer and the first two
     │   # panel types; 004-panel-expand-dialog added the generic expand
@@ -294,13 +398,16 @@ APP-wftdm-dashboard/
     │   # services/ and state/ (constitution v2.2.0, Development Workflow)
     ├── layout/
     │   ├── shell.tsx             # top-level app shell: NavBar + active tab
-    │   │                         # (015-theme-toggle: header's right-hand
-    │   │                         # slot is now a small flex group —
-    │   │                         # ScenarioLoader + ThemeToggle together,
-    │   │                         # not ScenarioLoader alone — top-right,
-    │   │                         # matching the placement 009 already
-    │   │                         # established for a dashboard-wide,
-    │   │                         # not panel-specific, header control)
+    │   │                         # (020-settings-modal: header's right-
+    │   │                         # hand slot is now a single
+    │   │                         # <SettingsModal /> — REPLACING the
+    │   │                         # 015-theme-toggle-era
+    │   │                         # ScenarioLoader+ThemeToggle pair
+    │   │                         # entirely, not kept alongside it,
+    │   │                         # FR-001/FR-002 — top-right, same
+    │   │                         # placement 009 originally established
+    │   │                         # for a dashboard-wide, not
+    │   │                         # panel-specific, header control)
     │   ├── navBar.tsx            # shadcn Tabs-based tab navigation
     │   ├── dashboardRenderer.tsx # renders one tab's layout as rows of PanelCards;
     │   │                         # also (011-basemap-style-system) the one place
@@ -336,96 +443,97 @@ APP-wftdm-dashboard/
     │   │                         # not four independently invented ones
     │   │                         # (see panels/panelQuery.ts below for the
     │   │                         # full story).
-    │   ├── scenarioLoader.tsx    # done (009-scenario-manager) — the
-    │   │                         # "Load Local Scenario" trigger +
-    │   │                         # loaded-scenario list, mounted in
-    │   │                         # shell.tsx's header alongside NavBar;
-    │   │                         # hidden entirely in LOCAL deployment
-    │   │                         # mode (hostname === 'localhost').
-    │   │                         # 018-baseline-scenario-designation
-    │   │                         # widened the rendered list from
-    │   │                         # local-only (source === 'handle') to
-    │   │                         # EVERY registered scenario — a real,
-    │   │                         # previously-undocumented finding: this
-    │   │                         # was the only scenario-list UI
-    │   │                         # anywhere in the app, and the new
-    │   │                         # baseline-marking control (a Star
-    │   │                         # icon button per row, useBaseline()-
-    │   │                         # driven visual state) must be
-    │   │                         # reachable for a published/observed
-    │   │                         # scenario too, not just a local one
-    │   │                         # (research.md §6). The existing
-    │   │                         # remove (X) button stays gated to
-    │   │                         # source === 'handle' exactly as
-    │   │                         # before — unchanged. Marking calls
-    │   │                         # appState.setBaseline() directly, no
-    │   │                         # scenarioManager.ts indirection (no
-    │   │                         # I/O involved, unlike loadLocalScenario/
-    │   │                         # removeLocalScenario's own real async
-    │   │                         # flows).
-    │   ├── themeToggle.tsx       # done (015-theme-toggle) — the missing
-    │   │                         # write-side counterpart to
-    │   │                         # useColorScheme() (011). A three-state
-    │   │                         # System/Light/Dark control — an icon-
-    │   │                         # only DropdownMenu trigger showing the
-    │   │                         # current mode's icon (components/ui/
-    │   │                         # dropdown-menu.tsx, new — real post-
-    │   │                         # shipping revision from an originally-
-    │   │                         # shipped three-always-visible-button
-    │   │                         # Tabs shape: ScenarioLoader, this
-    │   │                         # control's own header neighbor, is
-    │   │                         # variable-width in WEB mode, and three
-    │   │                         # permanently-reserved buttons next to
-    │   │                         # it was a real crowding risk on
-    │   │                         # narrower viewports, not hypothetical.
-    │   │                         # A true Radix Switch was considered and
-    │   │                         # rejected — strictly binary, cannot
-    │   │                         # represent "System" as a third state at
-    │   │                         # all). Trigger is Button variant="ghost"
-    │   │                         # (no border at rest, only a hover
-    │   │                         # background) — the user's own pick from
-    │   │                         # five real, interactive prototypes
-    │   │                         # compared side by side in one HTML
-    │   │                         # artifact (real tokens, real header
-    │   │                         # context, one shared Theme Mode driving
-    │   │                         # all five), not guessed; research.md
-    │   │                         # §6's closing note has the full record.
-    │   │                         # Local useState only (no new state/ store —
-    │   │                         # no other component ever needs to read
-    │   │                         # Theme Mode itself, only the resolved
-    │   │                         # effective theme, which every consumer
-    │   │                         # already gets from useColorScheme()
-    │   │                         # unchanged). One effect both resolves+
-    │   │                         # applies the `dark` class AND owns the
-    │   │                         # matchMedia 'change' listener's own
-    │   │                         # lifecycle, scoped to Theme Mode via
-    │   │                         # the dependency array/cleanup function
-    │   │                         # — attached only while mode ===
-    │   │                         # 'system', torn down on every
-    │   │                         # transition away, deliberately not a
-    │   │                         # long-lived listener with an internal
-    │   │                         # no-op guard (a real design decision,
-    │   │                         # not the obvious-only option — the
-    │   │                         # rejected alternative would need a ref
-    │   │                         # just to dodge a stale-closure read of
-    │   │                         # Theme Mode; the chosen shape needs
-    │   │                         # none, research.md §5). No persistence
-    │   │                         # anywhere (constitution Principle VI,
-    │   │                         # absolute) — a manual override does
-    │   │                         # NOT survive a reload, a real, stated,
-    │   │                         # accepted limitation, not a bug.
-    │   │                         # main.tsx also gained one synchronous
-    │   │                         # pre-mount line (before its first
-    │   │                         # `await`) applying the resolved
-    │   │                         # System-preference class before React
-    │   │                         # ever mounts — a real, confirmed flash
-    │   │                         # risk no in-React effect could fix on
-    │   │                         # its own, since main.tsx's own boot
-    │   │                         # sequence (initDuckDB/
-    │   │                         # discoverScenarios/loadDashboards) runs
-    │   │                         # entirely before ReactDOM ever mounts
-    │   │                         # and index.html sets no background of
-    │   │                         # its own (research.md §3).
+    │   ├── settingsModal.tsx     # done (020-settings-modal) — the single
+    │   │                         # dashboard-wide settings entry point,
+    │   │                         # REPLACING scenarioLoader.tsx (009) and
+    │   │                         # themeToggle.tsx (015) entirely — both
+    │   │                         # DELETED, their logic relocated (not
+    │   │                         # duplicated) into layout/settings/
+    │   │                         # below. A trigger Button opening
+    │   │                         # components/ui/dialog.tsx's Dialog
+    │   │                         # (004-panel-expand-dialog's existing
+    │   │                         # primitive, reused unmodified) with
+    │   │                         # components/ui/tabs.tsx's Tabs (already
+    │   │                         # proven by navBar.tsx's own tab strip)
+    │   │                         # for the four-tab internal navigation —
+    │   │                         # no new modal/tab primitive built from
+    │   │                         # scratch. components/ui/dropdown-menu.tsx
+    │   │                         # (015) is now a zero-consumer file
+    │   │                         # (ThemeToggle was its only caller) —
+    │   │                         # deliberately left in place, not
+    │   │                         # deleted: a generic, reusable shadcn/ui
+    │   │                         # primitive, same category this project
+    │   │                         # already keeps unused-until-needed.
+    │   ├── settings/             # done (020-settings-modal) — the
+    │   │   │                     # SettingsModal's four tab components
+    │   │   ├── appearanceTab.tsx # relocated themeToggle.tsx's `mode`
+    │   │   │                     # state/effect UNCHANGED (FR-004) — only
+    │   │   │                     # the visual form reverts, from that
+    │   │   │                     # file's own later icon-only DropdownMenu
+    │   │   │                     # redesign back to THREE DIRECTLY VISIBLE
+    │   │   │                     # options. That redesign was driven
+    │   │   │                     # specifically by header-crowding next to
+    │   │   │                     # ScenarioLoader's own variable width in
+    │   │   │                     # the shared header row — a constraint
+    │   │   │                     # confirmed NOT to exist once the control
+    │   │   │                     # lives inside its own dedicated modal
+    │   │   │                     # tab with no competing header space
+    │   │   │                     # (research.md §9).
+    │   │   ├── scenariosTab.tsx  # relocated scenarioLoader.tsx's list/
+    │   │   │                     # add/remove/baseline-mark logic
+    │   │   │                     # UNCHANGED (FR-006), plus three real
+    │   │   │                     # differences: (1) renders each
+    │   │   │                     # scenario's real `path` (FR-005, new)
+    │   │   │                     # and `label ?? name` via
+    │   │   │                     # hooks/useScenarioList.ts (not
+    │   │   │                     # appState.list()/useActiveScenarios());
+    │   │   │                     # (2) LOCAL-deployment-mode handling is
+    │   │   │                     # CORRECTED (FR-019, research.md §8) —
+    │   │   │                     # scenarioLoader.tsx used to return
+    │   │   │                     # `null` entirely (hiding the whole
+    │   │   │                     # list/baseline/remove controls, not
+    │   │   │                     # just the loader) whenever
+    │   │   │                     # isLocalDeployment() was true; this
+    │   │   │                     # component instead ALWAYS renders its
+    │   │   │                     # full content, with only "Load Local
+    │   │   │                     # Scenario" itself going
+    │   │   │                     # disabled-with-tooltip, via the exact
+    │   │   │                     # same TooltipProvider/disabled-span
+    │   │   │                     # pattern already proven for the
+    │   │   │                     # no-File-System-API case; (3) new
+    │   │   │                     # move-up/move-down controls (US3,
+    │   │   │                     # FR-007) calling appState.moveScenario(),
+    │   │   │                     # and a new fully store-driven
+    │   │   │                     # controlled `<input>` per row (US4,
+    │   │   │                     # FR-009/FR-010) calling
+    │   │   │                     # appState.setLabel()/clearLabel() on
+    │   │   │                     # every change, `value={s.label ?? ''}`/
+    │   │   │                     # `placeholder={s.name}` — no local
+    │   │   │                     # draft state, matching every other
+    │   │   │                     # control in the same row. A real,
+    │   │   │                     # confirmed bug found while testing
+    │   │   │                     # this: `Button`'s own base CSS classes
+    │   │   │                     # already include `font-medium`, so a
+    │   │   │                     # test locator keying on that class
+    │   │   │                     # collided with the row's own move
+    │   │   │                     # buttons — fixed with a dedicated
+    │   │   │                     # `data-testid="scenario-name"`.
+    │   │   ├── basemapTab.tsx    # a single-select `role="radio"` list
+    │   │   │                     # over panels/basemap/registry.ts's new
+    │   │   │                     # listBuiltInPresetNames() export
+    │   │   │                     # (BUILT_IN_PRESETS itself was never
+    │   │   │                     # exported before this feature), calling
+    │   │   │                     # state/basemapState.ts's
+    │   │   │                     # setGlobalBasemap() on selection
+    │   │   │                     # (FR-011). Knows nothing about which
+    │   │   │                     # panels currently have their own
+    │   │   │                     # configured basemap — that's entirely
+    │   │   │                     # resolveEffectiveBasemap()'s/the panel
+    │   │   │                     # call sites' own responsibility
+    │   │   │                     # (FR-012/FR-013, research.md §6).
+    │   │   └── documentationTab.tsx # a static placeholder (FR-014) — no
+    │   │                         # `<a>` element at all, rather than a
+    │   │                         # dead/placeholder href.
     │   └── sidebar.tsx           # not built yet — no feature has needed it
     ├── panels/
     │   ├── registry.tsx          # type -> component map: valuebox, plotly
@@ -893,12 +1001,22 @@ APP-wftdm-dashboard/
     │   ├── basemap/              # done (011-basemap-style-system) — shared
     │   │   │                     # basemap registry/resolution, consumed by
     │   │   │                     # FlowMapPanel.tsx AND (013-zonemap-panel)
-    │   │   │                     # ZoneMapPanel.tsx unmodified — confirming
-    │   │   │                     # this module's own generic-across-map-
-    │   │   │                     # panel-types design intent for real,
-    │   │   │                     # not merely assumed
+    │   │   │                     # ZoneMapPanel.tsx unmodified through 013
+    │   │   │                     # — confirming this module's own generic-
+    │   │   │                     # across-map-panel-types design intent for
+    │   │   │                     # real, not merely assumed.
+    │   │   │                     # 020-settings-modal is the first feature
+    │   │   │                     # to actually touch either call site (one
+    │   │   │                     # line each — a new useGlobalBasemap()
+    │   │   │                     # call, threaded as resolveEffectiveBasemap()'s
+    │   │   │                     # new 4th argument), still symmetric with
+    │   │   │                     # how both already independently call
+    │   │   │                     # useColorScheme() the same way.
     │   │   ├── types.ts          # BasemapSelection/BasemapComposition/
-    │   │   │                     # EffectiveBasemap
+    │   │   │                     # EffectiveBasemap. 020-settings-modal:
+    │   │   │                     # BasemapSource gained a 4th literal,
+    │   │   │                     # 'global' — additive, every existing
+    │   │   │                     # literal/comparison unaffected.
     │   │   ├── registry.ts       # built-in CARTO/OpenFreeMap style URLs +
     │   │   │                     # resolveRasterProvider() — the real
     │   │   │                     # dotted provider.variant lookup against
@@ -958,13 +1076,32 @@ APP-wftdm-dashboard/
     │   │   │                     # against a hypothetical malformed/
     │   │   │                     # circular catalog hanging the browser
     │   │   │                     # — no real cycle exists today).
+    │   │   │                     # 020-settings-modal added
+    │   │   │                     # listBuiltInPresetNames() — every
+    │   │   │                     # BUILT_IN_PRESETS key, for the Settings
+    │   │   │                     # modal's Basemap tab picker (FR-011);
+    │   │   │                     # BUILT_IN_PRESETS itself was never
+    │   │   │                     # exported before, only single-name
+    │   │   │                     # lookup via resolveUrlPreset().
     │   │   ├── resolveEffectiveBasemap.ts # pure panel > tab > app-default
     │   │   │                     # precedence resolver + basemapKey()
     │   │   │                     # (the content-stable identity
     │   │   │                     # FlowMapPanel.tsx's own basemap effect
     │   │   │                     # keys its dependency array on, so a
     │   │   │                     # pinned basemap's resolved value never
-    │   │   │                     # changes across a theme flip)
+    │   │   │                     # changes across a theme flip).
+    │   │   │                     # 020-settings-modal added an optional
+    │   │   │                     # 4th parameter, `globalBasemap`, and a
+    │   │   │                     # new 3rd-priority branch between `tab`
+    │   │   │                     # and `app-default` — a viewer's
+    │   │   │                     # Settings-modal Basemap-tab pick FILLS
+    │   │   │                     # the app-default fallback tier
+    │   │   │                     # specifically, never outranking an
+    │   │   │                     # author's own explicit panel/tab
+    │   │   │                     # `basemap:` (FR-012). Backward
+    │   │   │                     # compatible — the existing 4-row truth
+    │   │   │                     # table stayed valid unchanged, a 5th
+    │   │   │                     # row added for the new branch.
     │   │   └── loadBasemapStyle.ts # BLANK_STYLE + preset/raster resolution
     │   │                         # + composeStyles() (the generic
     │   │                         # multi-source composition mechanism,

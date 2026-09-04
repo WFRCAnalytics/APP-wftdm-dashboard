@@ -12,6 +12,7 @@ import * as filterState from '@/state/filterState'
 import { useFilterState } from '@/hooks/useFilterState'
 import { useActiveScenarios } from '@/hooks/useActiveScenarios'
 import { useColorScheme } from '@/hooks/useColorScheme'
+import { useGlobalBasemap } from '@/hooks/useGlobalBasemap'
 import {
   buildPanelQuery,
   resolveActiveScenarios,
@@ -110,6 +111,9 @@ export function FlowMapPanel({ config }: { config: FlowMapPanelConfig }) {
   const filters = useFilterState(filterIds.length ? filterIds : ALL_FILTERS)
   const activeScenarioNames = useActiveScenarios()
   const colorScheme = useColorScheme()
+  // 020-settings-modal — the viewer's Settings-modal Basemap-tab pick,
+  // threaded into resolveEffectiveBasemap() as its new 4th argument below.
+  const globalBasemap = useGlobalBasemap()
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
   const overlayRef = useRef<MapboxOverlay | null>(null)
@@ -372,7 +376,12 @@ export function FlowMapPanel({ config }: { config: FlowMapPanelConfig }) {
   // SAME key across a theme flip, so this effect correctly does NOT
   // re-run for it, while the no-config app-default case resolves to a
   // DIFFERENT key per theme, so it does.
-  const effectiveBasemap = resolveEffectiveBasemap(config.basemap, config._tabDefaultBasemap, colorScheme)
+  const effectiveBasemap = resolveEffectiveBasemap(
+    config.basemap,
+    config._tabDefaultBasemap,
+    colorScheme,
+    globalBasemap,
+  )
   const key = basemapKey(effectiveBasemap.selection)
 
   useEffect(() => {

@@ -38,9 +38,10 @@ declare global {
 // entirely before ReactDOM ever mounts, and index.html sets no background
 // of its own, so a dark-preferring viewer would otherwise see the
 // browser's plain white default for the whole boot duration. This line
-// establishes NO ongoing tracking of its own — layout/themeToggle.tsx's
-// own effect is what keeps the theme live-updated (and overridable) once
-// it mounts, moments later.
+// establishes NO ongoing tracking of its own — layout/settings/
+// appearanceTab.tsx's own effect (020-settings-modal; relocated from
+// layout/themeToggle.tsx, deleted by that feature) is what keeps the
+// theme live-updated (and overridable) once it mounts, moments later.
 document.documentElement.classList.toggle(
   'dark',
   window.matchMedia('(prefers-color-scheme: dark)').matches,

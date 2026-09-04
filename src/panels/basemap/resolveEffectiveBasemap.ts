@@ -8,20 +8,25 @@
 // resolveEffectiveBasemap's returned `.selection` value differs across
 // calls with a different `theme`.
 import { APP_DEFAULT_LIGHT, APP_DEFAULT_DARK } from '@/panels/basemap/registry'
-import type { BasemapSelection, EffectiveBasemap } from '@/panels/basemap/types'
+import type { BasemapPresetName, BasemapSelection, EffectiveBasemap } from '@/panels/basemap/types'
 
 export type ColorScheme = 'light' | 'dark'
 
 /**
  * Truth table (identical to FR-006/FR-007, restated as the literal test
- * matrix resolveEffectiveBasemap.test.ts asserts against):
+ * matrix resolveEffectiveBasemap.test.ts asserts against). 020-settings-
+ * modal added the `globalBasemap` column/row (research.md §6,
+ * data-model.md): a viewer's Settings-modal Basemap-tab pick fills the
+ * fallback tier previously reserved for the static app-default pair —
+ * it never outranks an author's own explicit panel/tab `basemap:`.
  *
- * | panelBasemap | tabDefaultBasemap | theme   | .selection          | .source        |
- * |--------------|--------------------|---------|--------------------|-----------------|
- * | set (A)      | —                  | —       | A                   | 'panel'         |
- * | unset        | set (B)            | —       | B                   | 'tab'           |
- * | unset        | unset              | 'light' | APP_DEFAULT_LIGHT   | 'app-default'   |
- * | unset        | unset              | 'dark'  | APP_DEFAULT_DARK    | 'app-default'   |
+ * | panelBasemap | tabDefaultBasemap | globalBasemap | theme   | .selection          | .source        |
+ * |--------------|--------------------|-----------------|---------|--------------------|-----------------|
+ * | set (A)      | —                  | —               | —       | A                   | 'panel'         |
+ * | unset        | set (B)            | —               | —       | B                   | 'tab'           |
+ * | unset        | unset              | set (C)         | —       | C                   | 'global'        |
+ * | unset        | unset              | unset           | 'light' | APP_DEFAULT_LIGHT   | 'app-default'   |
+ * | unset        | unset              | unset           | 'dark'  | APP_DEFAULT_DARK    | 'app-default'   |
  *
  * `undefined`/`null`/empty-string are all treated as "unset" — a blank
  * string in dashboard-*.yaml (e.g. `basemap: ""`) is the same as omitting
@@ -32,12 +37,16 @@ export function resolveEffectiveBasemap(
   panelBasemap: BasemapSelection | undefined,
   tabDefaultBasemap: BasemapSelection | undefined,
   theme: ColorScheme,
+  globalBasemap?: BasemapPresetName,
 ): EffectiveBasemap {
   if (isSet(panelBasemap)) {
     return { selection: panelBasemap, source: 'panel' }
   }
   if (isSet(tabDefaultBasemap)) {
     return { selection: tabDefaultBasemap, source: 'tab' }
+  }
+  if (isSet(globalBasemap)) {
+    return { selection: globalBasemap, source: 'global' }
   }
   return {
     selection: theme === 'dark' ? APP_DEFAULT_DARK : APP_DEFAULT_LIGHT,

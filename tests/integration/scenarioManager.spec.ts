@@ -128,6 +128,25 @@ async function setFakePickerConfig(page: Page, config: FakePickerConfig) {
   }, config)
 }
 
+// 020-settings-modal: every control this file drives (Load Local Scenario,
+// the scenario list, baseline star, Remove) now lives inside the Settings
+// modal's Scenarios tab, not a standalone always-mounted header component
+// — opening it is a new, required step. Deliberately NOT folded into
+// boot() unconditionally: two existing tests below interact with an
+// underlying dashboard panel BEFORE ever touching a scenario control, and
+// the open modal's own overlay blocks pointer interaction with the page
+// behind it (a real regression found via this file's own first run
+// against this feature) — idempotent (safe to call whether or not the
+// modal is already open), called at the point each test actually needs
+// the Scenarios tab, either directly or via loadAndWait()'s own call
+// below.
+async function openScenariosTab(page: Page) {
+  if ((await page.getByRole('dialog').count()) === 0) {
+    await page.getByRole('button', { name: 'Settings' }).click()
+  }
+  await page.getByRole('tab', { name: 'Scenarios' }).click()
+}
+
 async function boot(page: Page) {
   await page.goto('/')
   await page.waitForFunction(() => window.__wftdm !== undefined, null, { timeout: 30_000 })
@@ -170,6 +189,7 @@ async function trueEventually(check: () => Promise<boolean>) {
  * registration as a result.
  */
 async function loadAndWait(page: Page, expectedName: string) {
+  await openScenariosTab(page)
   await page.getByRole('button', { name: 'Load Local Scenario' }).click()
   await trueEventually(async () =>
     page.evaluate((n) => {
@@ -247,6 +267,12 @@ test.describe('User Story 1 - Analyst loads a local scenario folder from the hos
     await expect(pageCard.getByText(/Page 2 of/)).toBeVisible()
 
     await loadAndWait(page, 't017_local')
+    // 020-settings-modal: loadAndWait() opens the Settings modal to reach
+    // "Load Local Scenario" and leaves it open — Radix Dialog's own
+    // hideOthers() (dialog.tsx's own header comment) makes the rest of the
+    // page inaccessible to role/text-based locators while it's open, so
+    // the dashboard-panel assertions below need it closed first.
+    await page.keyboard.press('Escape')
 
     // Both panels' local view state survived a scenario-activation-only
     // refetch — neither reset to its post-genuine-refetch default
@@ -309,6 +335,7 @@ test.describe('User Story 1 - Analyst loads a local scenario folder from the hos
     )
     const beforeEntry = await page.evaluate(() => window.__wftdm!.appState.get('good_scenario'))
 
+    await openScenariosTab(page)
     await page.getByRole('button', { name: 'Load Local Scenario' }).click()
     // Scoped to the ScenarioLoader's own error span (data-testid), not a
     // page-wide text search — this fixture page also renders several
@@ -374,6 +401,7 @@ test.describe('User Story 1 - Analyst loads a local scenario folder from the hos
     await boot(page)
 
     const namesBefore = await page.evaluate(() => window.__wftdm!.appState.list().map((s) => s.name))
+    await openScenariosTab(page)
     await page.getByRole('button', { name: 'Load Local Scenario' }).click()
     // No error message, no new registration — give any (incorrect) async
     // registration a moment to have landed before asserting its absence.
@@ -397,6 +425,7 @@ test.describe('User Story 2 - Unsupported browser sees a clear, non-broken contr
       delete window.showDirectoryPicker
     })
     await boot(page)
+    await openScenariosTab(page)
 
     const button = page.getByRole('button', { name: 'Load Local Scenario' })
     await expect(button).toBeDisabled()
@@ -412,7 +441,7 @@ test.describe('User Story 2 - Unsupported browser sees a clear, non-broken contr
     await expect(panelCard(page, 'Total Households')).toBeVisible()
   })
 
-  test('on localhost (LOCAL deployment mode), the control does not render at all', async ({
+  test('on localhost (LOCAL deployment mode), the control is visible but disabled with a tooltip — never hidden (FR-019)', async ({
     page,
   }) => {
     // Deliberately bypasses playwright.config.js's configured baseURL
@@ -423,9 +452,24 @@ test.describe('User Story 2 - Unsupported browser sees a clear, non-broken contr
     // reached by its other bound-interface hostname.
     await page.goto('http://localhost:5199/APP-wftdm-dashboard/')
     await page.waitForFunction(() => window.__wftdm !== undefined, null, { timeout: 30_000 })
+    await openScenariosTab(page)
 
-    await expect(page.getByRole('button', { name: 'Load Local Scenario' })).toHaveCount(0)
-    // Rest of the dashboard still works on this hostname too.
+    // 020-settings-modal (FR-019): corrected from "the whole control is
+    // absent" — the previous standalone ScenarioLoader's own behavior —
+    // to "visible but disabled, with an explanatory tooltip," matching the
+    // treatment already used for the browser-capability case above. The
+    // Settings modal and the rest of the Scenarios tab must stay fully
+    // reachable in LOCAL mode.
+    const trigger = page.getByTestId('scenario-load-trigger-disabled-wrapper')
+    await expect(trigger).toBeVisible()
+    await expect(trigger.getByRole('button')).toBeDisabled()
+    await trigger.hover()
+    await expect(page.getByText('This deployment already loads scenarios directly')).toBeVisible()
+
+    // Rest of the Scenarios tab (list) and the rest of the dashboard still
+    // work on this hostname too.
+    await expect(page.getByTestId('scenario-load-list')).toBeVisible()
+    await page.getByRole('button', { name: /^Close$/ }).click()
     await expect(panelCard(page, 'Total Households')).toBeVisible()
   })
 })
@@ -461,8 +505,15 @@ test.describe('User Story 3 - Analyst manages multiple loaded local scenarios', 
     expect(b?.active).toBe(true)
     expect(b?.status).toBe('ready')
 
-    await expect(page.getByTestId('scenario-load-list')).toContainText('t031_local_a')
-    await expect(page.getByTestId('scenario-load-list')).toContainText('t031_local_b')
+    // 020-settings-modal: a scenario's name is now shown via an editable
+    // <input>'s `value`/`placeholder` (US4's own label-editing control,
+    // scenariosTab.tsx), not plain text — an unlabeled scenario's name
+    // lives in `placeholder`, invisible to `toContainText` (which reads
+    // `textContent`, and neither an input's `value` nor its `placeholder`
+    // attribute counts as child text). Scoped to each scenario's own
+    // labeled input via its aria-label instead.
+    await expect(page.getByRole('textbox', { name: 'Custom label for t031_local_a' })).toBeVisible()
+    await expect(page.getByRole('textbox', { name: 'Custom label for t031_local_b' })).toBeVisible()
   })
 
   test('removing one loaded local scenario drops only its own views, leaves the other and auto-discovered scenarios unaffected', async ({
@@ -567,6 +618,7 @@ test.describe('018-baseline-scenario-designation', () => {
       page,
     }) => {
       await boot(page)
+      await openScenariosTab(page)
 
       // No explicit action taken at all — good_scenario (published,
       // non-pinned) resolves as baseline automatically; observed (pinned)

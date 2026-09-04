@@ -28,7 +28,11 @@ export function isBasemapComposition(v: BasemapSelection): v is BasemapCompositi
   return typeof v === 'object' && v !== null && Array.isArray((v as BasemapComposition).layers)
 }
 
-export type BasemapSource = 'panel' | 'tab' | 'app-default'
+// 020-settings-modal: 'global' added — a viewer's Settings-modal Basemap-
+// tab pick, resolved between 'tab' and 'app-default' in the precedence
+// chain (resolveEffectiveBasemap.ts). Additive: every existing literal
+// and every existing comparison against them is unaffected.
+export type BasemapSource = 'panel' | 'tab' | 'global' | 'app-default'
 
 export interface EffectiveBasemap {
   selection: BasemapSelection

@@ -27,11 +27,16 @@ async function registerSummaryFolder(folderUrl: string, namePrefix: string): Pro
 }
 
 async function registerObserved(): Promise<void> {
+  const folderUrl = `${base}observed/summary`
   // Register in appState first (source-of-truth entry exists regardless of
   // what happens next), then attempt the actual data registration.
-  appState.register('observed', { pinned: true, source: 'url' })
+  // 020-settings-modal: `path` is the real folder URL this scenario's
+  // data is fetched from (research.md §5) — already computed above as
+  // `folderUrl`, reused below rather than a second registerSummaryFolder()
+  // call.
+  appState.register('observed', { pinned: true, source: 'url', path: folderUrl })
   try {
-    await registerSummaryFolder(`${base}observed/summary`, 'observed')
+    await registerSummaryFolder(folderUrl, 'observed')
     appState.setStatus('observed', 'ready')
   } catch (err) {
     // Distinct, more severe warning than a published-scenario failure —
@@ -55,9 +60,11 @@ async function registerPublishedScenarios(): Promise<void> {
   }
 
   for (const name of names) {
-    appState.register(name, { source: 'url' })
+    // 020-settings-modal: `path` is the real folder URL (research.md §5).
+    const folderUrl = `${base}scenarios/${name}/summary`
+    appState.register(name, { source: 'url', path: folderUrl })
     try {
-      await registerSummaryFolder(`${base}scenarios/${name}/summary`, name)
+      await registerSummaryFolder(folderUrl, name)
       appState.setStatus(name, 'ready')
     } catch (err) {
       console.warn(`scenarioDiscovery: failed to register scenario "${name}"`, err)
