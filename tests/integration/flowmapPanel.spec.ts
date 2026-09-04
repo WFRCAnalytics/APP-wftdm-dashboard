@@ -1127,9 +1127,10 @@ test.describe('011-basemap-style-system — US3: real UGRC multi-source composit
     expect(spriteReachable).toBe(true)
 
     // 012-webgl-context-management — regression coverage: composition's
-    // own layer namespacing (layer0__/layer1__ prefixes) means it never
-    // has a literal "background" id of its own — so BLANK_STYLE's own
-    // opaque background layer (carried forward by an earlier, buggy
+    // own layer namespacing (layer0__/layer1__ prefixes) means a REAL
+    // composed source's own background layer (if any) never collides
+    // with a literal "background" id — so BLANK_STYLE's own opaque
+    // background layer (carried forward by an earlier, buggy
     // transformStyle merge) used to get appended LAST across the whole
     // 547+-layer composed style, painting over the ENTIRE real basemap.
     // Every assertion above this one — sources, sprite, glyphs — was
@@ -1137,8 +1138,88 @@ test.describe('011-basemap-style-system — US3: real UGRC multi-source composit
     // stacking order, which is exactly why this specific regression
     // shipped once already. Confirmed via a real production build and a
     // live user report, not just this suite.
-    expect(style.layers.map((l) => l.id)).not.toContain('background')
+    //
+    // 016-fix-ugrc-dark-mode — this composition's own real UGRC sources
+    // provide no `background`-typed layer of their own (confirmed: this
+    // is exactly what made both UGRC panels render with corrupted
+    // colors in dark mode on real hardware — see
+    // specs/016-fix-ugrc-dark-mode/diagnostic-results.md for the full,
+    // live-confirmed causation chain). composeStyles() now injects one
+    // itself when none exists — a literal "background" id IS now
+    // expected here, but it must be composeStyles()'s own intentional
+    // one (white, at the BOTTOM of the stack — index 0), never a
+    // leftover BLANK_STYLE leak (012's own concern above, which reached
+    // the TOP/end of the stack when it happened, not the bottom).
+    const backgroundLayers = style.layers.filter((l) => l.type === 'background')
+    expect(backgroundLayers).toHaveLength(1)
+    expect(style.layers[0].id).toBe('background')
+    expect((style.layers[0] as { paint?: { 'background-color'?: string } }).paint?.['background-color']).toBe(
+      '#ffffff',
+    )
     await trueEventually(() => canvasCornersAreNotUniformBlankGray(page, title))
+  })
+})
+
+test.describe('016-fix-ugrc-dark-mode — US1/US2: both UGRC panels get an injected background layer; chrome still follows dark mode', () => {
+  // US1/FR-001/FR-002: the actual, confirmed root-cause fix
+  // (composeStyles() in loadBasemapStyle.ts) — see
+  // specs/016-fix-ugrc-dark-mode/diagnostic-results.md for the full,
+  // live-confirmed causation chain (color-scheme ruled out across three
+  // real-hardware variants; missing `background` layer confirmed
+  // causal, live, on both real panels). This can only assert the DATA-
+  // level fix (the composed style now has a background layer) — the
+  // actual visual corruption never reproduced under Playwright/
+  // SwiftShader in the first place (research.md §1/§2), so this is not,
+  // and cannot be, a substitute for the real-hardware confirmation
+  // already recorded in diagnostic-results.md.
+  test('both real UGRC compositions get an injected white background layer at the bottom of the stack', async ({
+    page,
+  }) => {
+    await boot(page)
+    await page.getByRole('tab', { name: 'Basemaps' }).click()
+
+    for (const title of ['Flowmap UGRC Composition', 'Flowmap UGRC Outdoors Composition']) {
+      await waitForBasemapApplied(page, title)
+      const style = await page.evaluate((t) => window.__flowmapTestMaps![t].getStyle(), title)
+      expect(style.layers[0]).toMatchObject({
+        id: 'background',
+        type: 'background',
+        paint: { 'background-color': '#ffffff' },
+      })
+      expect(style.layers.filter((l) => l.type === 'background')).toHaveLength(1)
+    }
+  })
+
+  // FR-006 / User Story 2: the fix above touches only the composed
+  // style's own `layers` array — it must not regress this panel's
+  // already-fixed NavigationControl dark-mode chrome, which the
+  // existing test above (line ~401) only ever exercised against
+  // FLOWMAP_TITLE, never against a real UGRC composition specifically.
+  test('NavigationControl on the Flowmap UGRC Composition panel still matches the app theme in dark mode', async ({
+    page,
+  }) => {
+    await boot(page)
+    await page.getByRole('tab', { name: 'Basemaps' }).click()
+    const title = 'Flowmap UGRC Composition'
+    const card = panelCard(page, title)
+    const container = card.locator('.flowmap-chart')
+    await waitForBasemapApplied(page, title)
+    const zoomIn = container.locator('.maplibregl-ctrl-zoom-in')
+    const zoomOut = container.locator('.maplibregl-ctrl-zoom-out')
+    await expect(zoomIn).toBeVisible()
+
+    await page.evaluate(() => document.documentElement.classList.add('dark'))
+
+    const styles = await zoomIn.evaluate((el) => {
+      const group = el.closest('.maplibregl-ctrl-group') as HTMLElement
+      const icon = el.querySelector('.maplibregl-ctrl-icon') as HTMLElement
+      return { groupBg: getComputedStyle(group).backgroundColor, iconFilter: getComputedStyle(icon).filter }
+    })
+    expect(styles.groupBg).toBe('rgb(8, 27, 38)') // --card/--background in dark mode
+    expect(styles.iconFilter).toBe('invert(1)')
+
+    const dividerColor = await zoomOut.evaluate((el) => getComputedStyle(el).borderTopColor)
+    expect(dividerColor).toBe('rgb(35, 57, 74)') // --border in dark mode
   })
 })
 

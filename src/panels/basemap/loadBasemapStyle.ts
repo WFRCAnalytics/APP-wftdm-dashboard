@@ -323,5 +323,40 @@ async function composeStyles(layerUrls: string[], signal?: AbortSignal): Promise
     }
   }
 
+  // 016-fix-ugrc-dark-mode — a REAL, confirmed bug found via a live,
+  // real-hardware causation test (not assumed): a composition with no
+  // `background` layer of its own (checked by TYPE here, not id —
+  // `background`-typed layers from a composed source are namespaced to
+  // e.g. `layer0__background` above, same as everything else) leaves
+  // alpha-blended regions of the canvas (antialiasing edges, tile-join
+  // gaps) compositing incorrectly. MapLibre's own docs name this exact
+  // failure mode ("avoid transparent or semi-transparent backgrounds —
+  // have the first layer be a background layer with a background-color",
+  // github.com/maplibre/maplibre-gl-js/issues/4036), and a directly
+  // matching real MapLibre issue describes the same mechanism
+  // ("Opacity blending without background causing colours to darken",
+  // github.com/maplibre/maplibre-native/issues/3125). This was NEVER a
+  // dark-mode-specific rendering defect — it's present in both themes —
+  // it only became visually obvious specifically against this app's own
+  // dark page chrome; the SAME defect blending toward black against an
+  // already-light basemap/page in light mode reads as ordinary anti-
+  // aliasing, invisible. Confirmed causally, live, on both real UGRC
+  // panels (specs/016-fix-ugrc-dark-mode/diagnostic-results.md):
+  // manually adding an opaque background layer immediately corrected
+  // both panels' dark-mode rendering, no other change needed. `#ffffff`
+  // — not a theme-aware color; matches what was directly tested and
+  // confirmed, and these specific compositions' own light basemap
+  // aesthetic (composeStyles() is deliberately theme-blind, FR-011 —
+  // this fix does not change that). Skipped when a composition already
+  // provides its own background layer, so a real author's intentional
+  // background is never double-covered or overridden.
+  if (!merged.layers.some((layer) => layer.type === 'background')) {
+    merged.layers.unshift({
+      id: 'background',
+      type: 'background',
+      paint: { 'background-color': '#ffffff' },
+    })
+  }
+
   return merged
 }

@@ -154,9 +154,57 @@ describe('loadBasemapStyle', () => {
     // encodes glyphs' required literal {fontstack}/{range} template
     // tokens, which MapLibre's style validator then rejects outright.
     expect(style.glyphs).toBe('https://example.test/{fontstack}/{range}.pbf')
-    expect(style.layers.map((l) => l.id)).toEqual(['layer0__hs-layer', 'layer1__base-layer'])
-    expect((style.layers[0] as { source?: string }).source).toBe('layer0__hillshade')
-    expect((style.layers[1] as { source?: string }).source).toBe('layer1__base')
+    // 016-fix-ugrc-dark-mode: neither composed source above provides its
+    // own `background`-typed layer, so composeStyles() injects one at
+    // the bottom (index 0) — a real, confirmed fix for corrupted-color
+    // rendering on real hardware (specs/016-fix-ugrc-dark-mode/
+    // diagnostic-results.md); every other layer shifts down by one.
+    expect(style.layers.map((l) => l.id)).toEqual(['background', 'layer0__hs-layer', 'layer1__base-layer'])
+    expect(style.layers[0]).toMatchObject({ type: 'background', paint: { 'background-color': '#ffffff' } })
+    expect((style.layers[1] as { source?: string }).source).toBe('layer0__hillshade')
+    expect((style.layers[2] as { source?: string }).source).toBe('layer1__base')
+  })
+
+  // 016-fix-ugrc-dark-mode — a composed source that DOES provide its own
+  // background-typed layer (namespaced like any other layer id, e.g.
+  // `layer0__background`) must NOT get a second, redundant one injected
+  // — a real author's own intentional background is never double-covered
+  // or overridden.
+  it('does not inject a background layer when a composed source already provides its own', async () => {
+    vi.mocked(fetch).mockImplementation(async (input) => {
+      const url = String(input)
+      if (url === 'https://example.test/base/root.json') {
+        return {
+          ok: true,
+          json: async () => ({
+            version: 8,
+            sources: { base: { type: 'vector', url: '../../' } },
+            layers: [
+              { id: 'own-background', type: 'background', paint: { 'background-color': '#123456' } },
+              { id: 'base-layer', type: 'fill', source: 'base' },
+            ],
+          }),
+        } as Response
+      }
+      if (url === 'https://example.test/') {
+        return { ok: true, json: async () => ({ tiles: ['tile/{z}/{x}/{y}.pbf'] }) } as Response
+      }
+      throw new Error(`unexpected fetch: ${url}`)
+    })
+
+    const result = await loadBasemapStyle({ layers: ['https://example.test/base/root.json'] })
+    expect(result.kind).toBe('style')
+    const style = (result as { kind: 'style'; style: StyleSpecification }).style
+
+    const backgroundLayers = style.layers.filter((l) => l.type === 'background')
+    expect(backgroundLayers).toHaveLength(1)
+    // The composed source's own namespaced background — not a second,
+    // injected one — and its own real color, untouched.
+    expect(style.layers[0]).toMatchObject({
+      id: 'layer0__own-background',
+      paint: { 'background-color': '#123456' },
+    })
+    expect(style.layers.map((l) => l.id)).toEqual(['layer0__own-background', 'layer0__base-layer'])
   })
 
   it('falls back to BLANK_STYLE for the WHOLE composition when any one layer fails — never a partial composite', async () => {
@@ -257,21 +305,27 @@ describe('loadBasemapStyle', () => {
       type: 'raster',
       tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
     })
-    expect(style.layers[0]).toMatchObject({ id: 'layer0__basemap', type: 'raster', source: 'layer0__basemap' })
+    // 016-fix-ugrc-dark-mode: neither the raster layer nor the vector
+    // overlay provides its own `background`-typed layer, so
+    // composeStyles() injects one at the very bottom (index 0) — every
+    // other layer shifts down by one (see the "rewrites a relative
+    // source..." test above for the full reasoning/citation).
+    expect(style.layers[0]).toMatchObject({ type: 'background', paint: { 'background-color': '#ffffff' } })
+    expect(style.layers[1]).toMatchObject({ id: 'layer0__basemap', type: 'raster', source: 'layer0__basemap' })
 
-    // Vector layer (index 1, top) — fetched and rewritten exactly like
-    // any other URL composition layer, unaffected by the raster layer
-    // preceding it.
+    // Vector layer (top) — fetched and rewritten exactly like any other
+    // URL composition layer, unaffected by the raster layer preceding it.
     expect(style.sources.layer1__overlay).toMatchObject({ type: 'vector' })
     expect((style.sources.layer1__overlay as { tiles?: string[] }).tiles).toEqual([
       'https://example.test/tile/{z}/{x}/{y}.pbf',
     ])
-    expect(style.layers[1]).toMatchObject({ id: 'layer1__labels', source: 'layer1__overlay' })
+    expect(style.layers[2]).toMatchObject({ id: 'layer1__labels', source: 'layer1__overlay' })
 
-    // Stacking order: raster (bottom) strictly before vector (top) —
-    // the real UGRC Vector Hybrid's own intended order (imagery under
-    // labels, not the reverse).
-    expect(style.layers.map((l) => l.id)).toEqual(['layer0__basemap', 'layer1__labels'])
+    // Stacking order: injected background (bottom) → raster → vector
+    // (top) — the real UGRC Vector Hybrid's own intended order (imagery
+    // under labels, not the reverse) is preserved above the new
+    // background layer.
+    expect(style.layers.map((l) => l.id)).toEqual(['background', 'layer0__basemap', 'layer1__labels'])
   })
 
   // 012-webgl-context-management — a REAL bug found via live production

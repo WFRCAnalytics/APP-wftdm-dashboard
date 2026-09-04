@@ -122,6 +122,27 @@
   filter: invert(1);
 }
 
+/* 016-fix-ugrc-dark-mode: `color-scheme` was investigated at length as
+   the cause of the two UGRC composition panels' dark-mode corruption —
+   a standalone, pure-MapLibre-no-deck.gl artifact cleanly isolated it
+   as causal (3/3, both directions). It does NOT explain the real,
+   in-app defect, though: THREE real-hardware variants of a
+   `color-scheme` fix (canvas-scoped/static-from-load, root-scoped/live,
+   root-scoped/static-from-load) were each confirmed applied
+   (getComputedStyle) and each left both panels exactly as broken as
+   before. See specs/016-fix-ugrc-dark-mode/diagnostic-results.md for
+   the full record — `color-scheme` is ruled out as the real cause,
+   and this file (`mapControls.css`) carries no fix for it, deliberately
+   — the ACTUAL root cause and fix (a missing `background` layer in
+   `composeStyles()`'s own output) live in
+   `src/panels/basemap/loadBasemapStyle.ts`, not here; see
+   `research.md` §8 for the full, confirmed finding. The standalone
+   artifact's own clean result is presumed to be a real but DIFFERENT
+   effect, not reproducing the actual reported bug — see
+   diagnostic-results.md's own reasoning (the artifact has no
+   deck.gl/MapboxOverlay involved at all, unlike every real flowmap
+   panel in this app). */
+
 .wftdm-3d-toggle-button {
   display: flex;
   align-items: center;

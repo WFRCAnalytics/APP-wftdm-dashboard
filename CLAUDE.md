@@ -553,6 +553,83 @@ APP-wftdm-dashboard/
     │   │                         # the flow lines to confirm they aren't
     │   │                         # uniformly `BLANK_STYLE`'s own fill
     │   │                         # color.
+    │   │                         # 016-fix-ugrc-dark-mode: a SIXTH real
+    │   │                         # bug, this one confirmed real-hardware-
+    │   │                         # only (NVIDIA Quadro RTX 4000,
+    │   │                         # Chromium AND Firefox) — never
+    │   │                         # reproduced under Playwright's own
+    │   │                         # SwiftShader software rendering,
+    │   │                         # meaning this bug could only ever be
+    │   │                         # found and confirmed by a human on
+    │   │                         # real hardware, not by this project's
+    │   │                         # own CI. Two specific real UGRC
+    │   │                         # vector-tile compositions (Flowmap
+    │   │                         # UGRC Composition / Flowmap UGRC
+    │   │                         # Outdoors Composition) rendered with
+    │   │                         # corrupted/inverted-looking colors
+    │   │                         # specifically in dark mode. `color-
+    │   │                         # scheme` was a strong, thoroughly-
+    │   │                         # tested lead — a standalone, pure-
+    │   │                         # MapLibre-no-deck.gl artifact cleanly
+    │   │                         # isolated it as causal (3/3, both
+    │   │                         # directions) — but THREE separate
+    │   │                         # real-hardware fix variants each
+    │   │                         # confirmed applying and each left both
+    │   │                         # panels exactly as broken as before —
+    │   │                         # RULED OUT as the real cause; the
+    │   │                         # artifact's own clean result was a
+    │   │                         # real but DIFFERENT effect, not the
+    │   │                         # actual bug. ROOT CAUSE FOUND:
+    │   │                         # `composeStyles()` never guaranteed a
+    │   │                         # `background`-typed layer in its
+    │   │                         # output, and neither real UGRC service
+    │   │                         # provides one of its own (already
+    │   │                         # indirectly confirmed by this app's
+    │   │                         # own pre-existing test suite). MapLibre's
+    │   │                         # own docs name this exact failure mode
+    │   │                         # ("avoid transparent or semi-
+    │   │                         # transparent backgrounds — have the
+    │   │                         # first layer be a background layer",
+    │   │                         # github.com/maplibre/maplibre-gl-js/
+    │   │                         # issues/4036) and a directly matching
+    │   │                         # real issue describes the same
+    │   │                         # mechanism ("Opacity blending without
+    │   │                         # background causing colours to
+    │   │                         # darken", github.com/maplibre/
+    │   │                         # maplibre-native/issues/3125) — never
+    │   │                         # actually dark-mode-specific; the same
+    │   │                         # defect is present in both themes, only
+    │   │                         # visually obvious against this app's
+    │   │                         # own dark page chrome (invisible
+    │   │                         # against an already-light page/basemap
+    │   │                         # in light mode). Confirmed causally,
+    │   │                         # live, on real hardware, on BOTH
+    │   │                         # panels independently (manually adding
+    │   │                         # a background layer to the already-
+    │   │                         # running map immediately fixed each
+    │   │                         # one). Fixed: `composeStyles()` now
+    │   │                         # injects `{ id: 'background', type:
+    │   │                         # 'background', paint: {'background-
+    │   │                         # color': '#ffffff'} }` at the bottom
+    │   │                         # of the composed layer stack whenever
+    │   │                         # none of the composed layers already
+    │   │                         # provides one (checked by TYPE, not
+    │   │                         # id, so a real author's own namespaced
+    │   │                         # background is respected, never
+    │   │                         # double-covered) — general across
+    │   │                         # every composition with this gap, not
+    │   │                         # scoped to these two panels by name.
+    │   │                         # See `specs/016-fix-ugrc-dark-mode/
+    │   │                         # diagnostic-results.md` and
+    │   │                         # `research.md` §8 for the full record.
+    │   │                         # Confirmed a SECOND time, real hardware,
+    │   │                         # a genuine page reload of the SHIPPED
+    │   │                         # fix (not just the live console patch
+    │   │                         # used above to confirm causation) —
+    │   │                         # both panels render correctly in dark
+    │   │                         # mode, light mode unaffected, chrome
+    │   │                         # unregressed, no new corruption
+    │   │                         # elsewhere. RESOLVED.
     │   ├── basemap/              # done (011-basemap-style-system) — shared
     │   │   │                     # basemap registry/resolution, consumed by
     │   │   │                     # FlowMapPanel.tsx AND (013-zonemap-panel)
