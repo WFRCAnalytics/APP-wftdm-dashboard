@@ -165,7 +165,40 @@ APP-wftdm-dashboard/
     │   │                       # newly-activated local scenario without
     │   │                       # losing their own local UI state, which
     │   │                       # a naive remount-based fix would have
-    │   │                       # broken (research.md §1)
+    │   │                       # broken (research.md §1). 018-baseline-
+    │   │                       # scenario-designation added a second
+    │   │                       # piece of derived state alongside the
+    │   │                       # scenarios Map: a single nullable
+    │   │                       # explicitBaseline pointer (mutual
+    │   │                       # exclusivity falls out of the data shape
+    │   │                       # itself, not per-scenario-boolean
+    │   │                       # invariant-maintenance code) plus
+    │   │                       # setBaseline()/getBaseline() — the latter
+    │   │                       # always resolved fresh (explicit-if-
+    │   │                       # still-valid, else the earliest
+    │   │                       # pinned === false && status === 'ready'
+    │   │                       # entry, else undefined), never a second
+    │   │                       # cached value. A real, confirmed finding
+    │   │                       # shaped that resolver: observed is
+    │   │                       # ALWAYS the literal first-registered
+    │   │                       # entry in every real deployment
+    │   │                       # (scenarioDiscovery.ts's
+    │   │                       # registerObserved() registers it
+    │   │                       # synchronously before any published
+    │   │                       # scenario, even before its own data
+    │   │                       # fetch resolves) — a naive "first Map
+    │   │                       # entry" default would therefore always
+    │   │                       # pick survey/count reference data as the
+    │   │                       # diff baseline, never a real model run
+    │   │                       # (research.md §1). unregister() now
+    │   │                       # clears explicitBaseline when it matches
+    │   │                       # the removed name, BEFORE deleting the
+    │   │                       # entry — not a separate "shift to next"
+    │   │                       # rule; getBaseline() being always-fresh
+    │   │                       # means the very next read naturally
+    │   │                       # re-applies the same automatic-default
+    │   │                       # rule with no dangling reference
+    │   │                       # possible (research.md §3, FR-005).
     │   └── filterState.ts      # global filters + pub/sub
     ├── services/
     │   ├── duckdb.ts           # DuckDB-WASM API — owns the sole AsyncDuckDB
@@ -176,7 +209,30 @@ APP-wftdm-dashboard/
     │   │                       # nothing for the app to author into one
     │   │                       # (constitution Principle II, amended 1.2.0)
     │   ├── yamlLoader.ts       # fetch + parse dashboard-*.yaml files
-    │   ├── sqlExpander.ts       # expand $mappings/$bins/$sql/$filters/$scenario
+    │   ├── sqlExpander.ts       # expand $mappings/$bins/$sql/$filters/$scenario/
+    │   │                       # $inputs — plus $baseline (018-baseline-
+    │   │                       # scenario-designation): a NEW, sixth,
+    │   │                       # optional trailing expand() parameter
+    │   │                       # (baselineScenario?: string), same
+    │   │                       # zero-touch evolution shape $inputs
+    │   │                       # itself already established — verified
+    │   │                       # directly, not assumed, that all nine
+    │   │                       # real existing call sites need zero
+    │   │                       # changes (research.md §5). $baseline.x
+    │   │                       # resolves to a single bare quoted view
+    │   │                       # reference ("{scenario}__{metric}"), NOT
+    │   │                       # a UNION ALL like $scenario.x — matching
+    │   │                       # 013-zonemap-panel's own comparison:
+    │   │                       # diff `a`/`b` expansion shape instead
+    │   │                       # (the nearer precedent for "reference
+    │   │                       # one specific named scenario directly",
+    │   │                       # research.md §4). No dashboard-*.yaml
+    │   │                       # grammar or panel call site supplies
+    │   │                       # this value yet — that's the next,
+    │   │                       # separate feature (spec.md FR-011); this
+    │   │                       # one only proves expand() itself
+    │   │                       # resolves correctly, via direct unit
+    │   │                       # tests, not through any real panel.
     │   └── scenarioDiscovery.ts # register observed/ + public/scenarios/ at startup
     ├── hooks/
     │   ├── useFilterState.ts   # wraps state/filterState.ts with
@@ -187,20 +243,31 @@ APP-wftdm-dashboard/
     │   │                       # every data-bound panel type consumes
     │   │                       # this now, not appState.getActive()
     │   │                       # directly (research.md §1)
-    │   └── useColorScheme.ts   # done (011-basemap-style-system) — reads
-    │                           # (never sets) the Tailwind `.dark` class
-    │                           # on document.documentElement via a
-    │                           # MutationObserver + useSyncExternalStore,
-    │                           # same shape as the two hooks above. Its
-    │                           # own write-side counterpart is now real
-    │                           # too (015-theme-toggle,
-    │                           # layout/themeToggle.tsx) — this hook
-    │                           # needed zero changes to compose with it
-    │                           # (its MutationObserver reacts to any
-    │                           # class mutation regardless of source),
-    │                           # the same relationship registerScenario()
-    │                           # had to 009's own caller from 001 until
-    │                           # 009 built it.
+    │   ├── useColorScheme.ts   # done (011-basemap-style-system) — reads
+    │   │                       # (never sets) the Tailwind `.dark` class
+    │   │                       # on document.documentElement via a
+    │   │                       # MutationObserver + useSyncExternalStore,
+    │   │                       # same shape as the two hooks above. Its
+    │   │                       # own write-side counterpart is now real
+    │   │                       # too (015-theme-toggle,
+    │   │                       # layout/themeToggle.tsx) — this hook
+    │   │                       # needed zero changes to compose with it
+    │   │                       # (its MutationObserver reacts to any
+    │   │                       # class mutation regardless of source),
+    │   │                       # the same relationship registerScenario()
+    │   │                       # had to 009's own caller from 001 until
+    │   │                       # 009 built it.
+    │   └── useBaseline.ts      # done (018-baseline-scenario-designation)
+    │                           # — useSyncExternalStore over appState's
+    │                           # subscribe()/getBaseline(), same shape as
+    │                           # useActiveScenarios() above BUT with no
+    │                           # memoized cache: getBaseline() returns a
+    │                           # primitive (string | undefined), which
+    │                           # useSyncExternalStore's default Object.is
+    │                           # comparison already handles correctly by
+    │                           # value — useActiveScenarios() only needs
+    │                           # its own cache because getActive() builds
+    │                           # a new ARRAY every call (research.md §7).
     │   # layout/ and panels/ below are now real (003-dashboard-shell-
     │   # navigation built the shell/nav/panel-card layer and the first two
     │   # panel types; 004-panel-expand-dialog added the generic expand
@@ -260,7 +327,28 @@ APP-wftdm-dashboard/
     │   │                         # loaded-scenario list, mounted in
     │   │                         # shell.tsx's header alongside NavBar;
     │   │                         # hidden entirely in LOCAL deployment
-    │   │                         # mode (hostname === 'localhost')
+    │   │                         # mode (hostname === 'localhost').
+    │   │                         # 018-baseline-scenario-designation
+    │   │                         # widened the rendered list from
+    │   │                         # local-only (source === 'handle') to
+    │   │                         # EVERY registered scenario — a real,
+    │   │                         # previously-undocumented finding: this
+    │   │                         # was the only scenario-list UI
+    │   │                         # anywhere in the app, and the new
+    │   │                         # baseline-marking control (a Star
+    │   │                         # icon button per row, useBaseline()-
+    │   │                         # driven visual state) must be
+    │   │                         # reachable for a published/observed
+    │   │                         # scenario too, not just a local one
+    │   │                         # (research.md §6). The existing
+    │   │                         # remove (X) button stays gated to
+    │   │                         # source === 'handle' exactly as
+    │   │                         # before — unchanged. Marking calls
+    │   │                         # appState.setBaseline() directly, no
+    │   │                         # scenarioManager.ts indirection (no
+    │   │                         # I/O involved, unlike loadLocalScenario/
+    │   │                         # removeLocalScenario's own real async
+    │   │                         # flows).
     │   ├── themeToggle.tsx       # done (015-theme-toggle) — the missing
     │   │                         # write-side counterpart to
     │   │                         # useColorScheme() (011). A three-state

@@ -48,7 +48,7 @@ function raw(config: DashboardConfig): SummarizeConfigShape {
   return (config.raw ?? {}) as SummarizeConfigShape
 }
 
-const PLACEHOLDER_RE = /\$(mappings|bins|sql|filters|scenario|inputs)\.([A-Za-z0-9_]+)/g
+const PLACEHOLDER_RE = /\$(mappings|bins|sql|filters|scenario|inputs|baseline)\.([A-Za-z0-9_]+)/g
 
 /**
  * @param sqlTemplate literal SQL text containing zero or more placeholders
@@ -65,6 +65,16 @@ const PLACEHOLDER_RE = /\$(mappings|bins|sql|filters|scenario|inputs)\.([A-Za-z0
  *   rejected alternative). Optional — every existing caller
  *   (ValueBoxPanel/PlotlyPanel/TablePanel) never emits an $inputs.
  *   placeholder and passes nothing here.
+ * @param baselineScenario resolves $baseline.<metric> (018-baseline-
+ *   scenario-designation) — the caller-resolved result of
+ *   appState.getBaseline() at query time (this function stays a pure,
+ *   appState-decoupled function, per its own file-header comment — same
+ *   caller-resolves-first convention activeScenarios already uses).
+ *   Optional, sixth/trailing — every existing caller keeps compiling and
+ *   behaving identically unchanged (research.md §5), same evolution shape
+ *   inputState itself already established. No panel type supplies this
+ *   yet in this feature (FR-011) — proven correct here via direct tests
+ *   of expand() itself, not through any real panel/chart.
  * @returns literal SQL text with every placeholder resolved
  */
 export function expand(
@@ -73,6 +83,7 @@ export function expand(
   filterState: FilterStateLike,
   activeScenarios: string[],
   inputState?: FilterStateLike,
+  baselineScenario?: string,
 ): string {
   // $filters.<id> or $inputs.<id> with an 'all' value: drop the entire line
   // it appears on (per contract — the template is written so this is
@@ -105,6 +116,8 @@ export function expand(
         return expandScenario(activeScenarios, name)
       case 'inputs':
         return expandInputs(inputState, name)
+      case 'baseline':
+        return expandBaseline(baselineScenario, name)
       default:
         return fullMatch
     }
@@ -232,4 +245,20 @@ function expandScenario(activeScenarios: string[], metric: string): string {
   return activeScenarios
     .map((name) => `SELECT *, '${name}' AS scenario FROM "${name}__${metric}"`)
     .join('\n  UNION ALL\n  ')
+}
+
+/**
+ * 018-baseline-scenario-designation. Unlike expandScenario() above, this
+ * resolves to exactly ONE scenario's view reference — a bare, double-
+ * quoted "{scenario}__{metric}" table name, not a UNION ALL — matching
+ * 013-zonemap-panel's own comparison: diff `a`/`b` expansion shape
+ * (panelQuery.ts's buildComparisonDiffQuery(), the nearest existing
+ * precedent for "reference one specific named scenario's view directly";
+ * research.md §4). $baseline answers "which ONE scenario is baseline right
+ * now" (spec FR-008), not "which scenarios are currently active" — a
+ * structurally different question from $scenario.x's own.
+ */
+function expandBaseline(baselineScenario: string | undefined, metric: string): string {
+  if (!baselineScenario) missing(`baseline.${metric} (no baseline scenario)`)
+  return `"${baselineScenario}__${metric}"`
 }

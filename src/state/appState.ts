@@ -37,6 +37,16 @@ export interface ScenarioMetadata {
 
 const scenarios = new Map<string, Scenario>()
 
+// 018-baseline-scenario-designation: the explicit half of the baseline
+// designation. A single nullable pointer, not a per-scenario boolean flag
+// — mutual exclusivity (spec FR-001) falls out of the data shape itself,
+// no invariant-maintenance code needed to un-mark a previous holder.
+// Never read directly outside this module — always through getBaseline(),
+// which is what actually resolves "which scenario is baseline right now"
+// (data-model.md's Resolution rule). Cleared, never left dangling, by
+// unregister() below when the scenario it names is removed.
+let explicitBaseline: string | null = null
+
 export type ScenarioSubscriber = () => void
 export type Unsubscribe = () => void
 
@@ -116,6 +126,62 @@ export function getActive(): Scenario[] {
 }
 
 export function unregister(name: string): void {
+  // 018-baseline-scenario-designation (FR-005): clear the explicit
+  // designation before deleting the entry it points at, rather than
+  // leaving it dangling for getBaseline()'s own existence check to catch
+  // on next read. Both would be correct (research.md §3) — clearing here
+  // too documents the intent directly at the mutation site.
+  if (explicitBaseline === name) {
+    explicitBaseline = null
+  }
   scenarios.delete(name)
   notify()
+}
+
+/**
+ * Marks `name` as the explicit baseline scenario (018-baseline-scenario-
+ * designation, spec FR-001/FR-002). Throws on an unregistered name,
+ * matching setActive()/setStatus()'s existing convention. Marking the
+ * scenario that already holds the designation is a harmless no-op write
+ * (FR-001 Acceptance Scenario 3) — still calls notify(), same as every
+ * other mutator here regardless of whether the value actually changed.
+ */
+export function setBaseline(name: string): void {
+  const entry = scenarios.get(name)
+  if (!entry) {
+    throw new Error(`appState.setBaseline: "${name}" was never registered`)
+  }
+  explicitBaseline = name
+  notify()
+}
+
+/**
+ * Resolves "which scenario is baseline right now" (018-baseline-scenario-
+ * designation, data-model.md's Resolution rule). Always computed fresh —
+ * never a second stored/cached resolved value that could go stale:
+ *   1. The explicit choice (setBaseline()'s target), if it still exists.
+ *   2. Else the earliest-registered (Map insertion order) scenario with
+ *      pinned === false AND status === 'ready' — excluding pinned entries
+ *      is deliberate, not incidental: `observed` is always registered
+ *      first in every real deployment (scenarioDiscovery.ts's
+ *      registerObserved() runs, and calls appState.register(), before
+ *      any published scenario), so a literal "first Map entry" reading
+ *      would make survey/count reference data the default baseline 100%
+ *      of the time — the opposite of this feature's purpose (research.md
+ *      §1). status === 'ready' is required too: a still-registering or
+ *      failed scenario has no queryable views yet for the SQL placeholder
+ *      (services/sqlExpander.ts's $baseline.<metric>) to resolve against
+ *      (research.md §2).
+ *   3. Else undefined — no scenario is baseline (e.g. nothing loaded yet).
+ */
+export function getBaseline(): string | undefined {
+  if (explicitBaseline !== null && scenarios.has(explicitBaseline)) {
+    return explicitBaseline
+  }
+  for (const entry of scenarios.values()) {
+    if (!entry.pinned && entry.status === 'ready') {
+      return entry.name
+    }
+  }
+  return undefined
 }

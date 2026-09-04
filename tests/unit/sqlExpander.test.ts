@@ -218,3 +218,79 @@ WHERE 1=1
     expect(code).not.toMatch(/\bnew Function\s*\(/)
   })
 })
+
+// 018-baseline-scenario-designation: $baseline.<metric> — resolves to a
+// single bare view reference ("{scenario}__{metric}"), NOT a UNION ALL
+// like $scenario.x above (quickstart.md Scenario 4, FR-007-FR-009).
+describe('sqlExpander.expand — $baseline.<metric>', () => {
+  it('resolves to the correct single-scenario view reference', () => {
+    const filterState = fakeFilterState({})
+    const result = expand(
+      'SELECT * FROM $baseline.trip_mode_share',
+      config,
+      filterState,
+      [],
+      undefined,
+      'abm_2026',
+    )
+    expect(result).toBe('SELECT * FROM "abm_2026__trip_mode_share"')
+    expect(result).not.toContain('UNION ALL')
+  })
+
+  it('the same authored template tracks a later change to the baseline scenario', () => {
+    const filterState = fakeFilterState({})
+    const template = 'SELECT * FROM $baseline.trip_mode_share'
+
+    const first = expand(template, config, filterState, [], undefined, 'abm_2026')
+    expect(first).toContain('"abm_2026__trip_mode_share"')
+
+    const second = expand(template, config, filterState, [], undefined, 'base_tbm')
+    expect(second).toContain('"base_tbm__trip_mode_share"')
+    expect(second).not.toContain('abm_2026')
+  })
+
+  it('throws clearly when no baseline scenario is resolved (FR-009)', () => {
+    const filterState = fakeFilterState({})
+    expect(() =>
+      expand('SELECT * FROM $baseline.trip_mode_share', config, filterState, []),
+    ).toThrow(/unresolved placeholder "baseline\.trip_mode_share \(no baseline scenario\)"/)
+  })
+
+  it('does not require a leading FROM keyword, matching $sql.x\'s own bare-reference convention', () => {
+    const filterState = fakeFilterState({})
+    const result = expand(
+      'JOIN $baseline.trip_mode_share b ON a.taz_id = b.taz_id',
+      config,
+      filterState,
+      [],
+      undefined,
+      'abm_2026',
+    )
+    expect(result).toBe('JOIN "abm_2026__trip_mode_share" b ON a.taz_id = b.taz_id')
+  })
+
+  it('every existing call site remains unaffected — omitting the new 6th param changes nothing else', () => {
+    // Direct proof of research.md §5's "zero-touch on every existing
+    // caller" finding: the exact same expansion this file's very first
+    // test (SC-004) already asserted still holds byte-for-byte when
+    // called with the pre-existing 4/5-argument shape.
+    const filterState = fakeFilterState({ purpose: 'HBW' })
+    const template = `
+SELECT
+  purpose,
+  CASE mode $mappings.major_mode END AS major_mode,
+  $bins.share_bucket AS share_bucket
+FROM (SELECT * FROM $sql.base_table)
+WHERE 1=1
+  AND purpose = '$filters.purpose'
+`.trim()
+
+    const result = expand(template, config, filterState, ['good_scenario'])
+
+    expect(result).not.toMatch(/\$mappings\./)
+    expect(result).not.toMatch(/\$baseline\./)
+    expect(result).toContain("WHEN 'SOV' THEN 'Drive'")
+    expect(result).toContain('good_scenario__trip_mode_share')
+    expect(result).toContain("purpose = 'HBW'")
+  })
+})

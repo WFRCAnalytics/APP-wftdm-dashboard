@@ -512,3 +512,153 @@ test.describe('User Story 3 - Analyst manages multiple loaded local scenarios', 
     ).rejects.toThrow()
   })
 })
+
+// 018-baseline-scenario-designation. Reuses this file's own boot()/
+// installFakePicker()/loadAndWait() helpers rather than a new spec file —
+// baseline marking lives in the same ScenarioLoader component 009 already
+// covers here, and the fixture page already registers 'observed' (pinned)
+// and 'good_scenario' (published, non-pinned) at boot, which is exactly
+// the shape User Story 2's automatic-default behavior needs to exercise
+// for real, not synthetically.
+test.describe('018-baseline-scenario-designation', () => {
+  function baselineStar(page: Page, name: string, currentlyBaseline: boolean) {
+    const label = currentlyBaseline ? `${name} is the baseline scenario` : `Mark ${name} as baseline scenario`
+    return page.getByRole('button', { name: label })
+  }
+
+  test.describe('User Story 1 - Analyst marks a scenario as baseline via the UI', () => {
+    test('marking a scenario moves the designation; re-marking the same one is a no-op', async ({
+      page,
+    }) => {
+      await installFakePicker(page, {
+        folderName: 'ignored',
+        manifestText: 'scenario_name: t040_local\n',
+        hasSummary: true,
+        files: loadFixtureParquetFiles(),
+      })
+      await boot(page)
+      await loadAndWait(page, 't040_local')
+
+      await baselineStar(page, 't040_local', false).click()
+      await expect.poll(() => page.evaluate(() => window.__wftdm!.appState.getBaseline())).toBe(
+        't040_local',
+      )
+      await expect(baselineStar(page, 't040_local', true)).toBeVisible()
+
+      // Marking the published fixture scenario instead moves the
+      // designation — never both, never neither.
+      await baselineStar(page, 'good_scenario', false).click()
+      await expect.poll(() => page.evaluate(() => window.__wftdm!.appState.getBaseline())).toBe(
+        'good_scenario',
+      )
+      await expect(baselineStar(page, 'good_scenario', true)).toBeVisible()
+      await expect(baselineStar(page, 't040_local', false)).toBeVisible()
+
+      // Re-marking the current baseline is idempotent.
+      await baselineStar(page, 'good_scenario', true).click()
+      await expect(page.evaluate(() => window.__wftdm!.appState.getBaseline())).resolves.toBe(
+        'good_scenario',
+      )
+    })
+  })
+
+  test.describe('User Story 2 - Automatic default baseline with zero clicks', () => {
+    test('the first ready, non-pinned scenario is baseline automatically — never observed', async ({
+      page,
+    }) => {
+      await boot(page)
+
+      // No explicit action taken at all — good_scenario (published,
+      // non-pinned) resolves as baseline automatically; observed (pinned)
+      // never does, matching research.md §1's real-registration-order
+      // finding.
+      await expect
+        .poll(() => page.evaluate(() => window.__wftdm!.appState.getBaseline()))
+        .toBe('good_scenario')
+      await expect(baselineStar(page, 'good_scenario', true)).toBeVisible()
+      await expect(baselineStar(page, 'observed', false)).toBeVisible()
+    })
+
+    test('loading a further scenario does not move an already-resolved automatic default', async ({
+      page,
+    }) => {
+      await installFakePicker(page, {
+        folderName: 'ignored',
+        manifestText: 'scenario_name: t041_local\n',
+        hasSummary: true,
+        files: loadFixtureParquetFiles(),
+      })
+      await boot(page)
+      await expect
+        .poll(() => page.evaluate(() => window.__wftdm!.appState.getBaseline()))
+        .toBe('good_scenario')
+
+      await loadAndWait(page, 't041_local')
+      await expect(page.evaluate(() => window.__wftdm!.appState.getBaseline())).resolves.toBe(
+        'good_scenario',
+      )
+    })
+  })
+
+  test.describe('User Story 3 - Removing the baseline scenario falls back cleanly', () => {
+    test('removing the explicit baseline reverts to the automatic-default rule, not a dangling reference', async ({
+      page,
+    }) => {
+      await installFakePicker(page, {
+        folderName: 'ignored',
+        manifestText: 'scenario_name: t042_local\n',
+        hasSummary: true,
+        files: loadFixtureParquetFiles(),
+      })
+      await boot(page)
+      await loadAndWait(page, 't042_local')
+
+      await baselineStar(page, 't042_local', false).click()
+      await expect
+        .poll(() => page.evaluate(() => window.__wftdm!.appState.getBaseline()))
+        .toBe('t042_local')
+
+      await page.getByRole('button', { name: 'Remove t042_local' }).click()
+      await expect
+        .poll(async () => page.evaluate(() => window.__wftdm!.appState.get('t042_local')))
+        .toBeUndefined()
+
+      // Falls back to the same automatic-default rule Phase 4 already
+      // proves in isolation — good_scenario, never left referencing the
+      // now-removed local scenario.
+      await expect
+        .poll(() => page.evaluate(() => window.__wftdm!.appState.getBaseline()))
+        .toBe('good_scenario')
+      await expect(baselineStar(page, 'good_scenario', true)).toBeVisible()
+    })
+
+    test('removing a scenario that is NOT the current baseline leaves it unaffected', async ({
+      page,
+    }) => {
+      await installFakePicker(page, {
+        folderName: 'ignored',
+        manifestText: 'scenario_name: t043_local\n',
+        hasSummary: true,
+        files: loadFixtureParquetFiles(),
+      })
+      await boot(page)
+      await loadAndWait(page, 't043_local')
+
+      // good_scenario is already baseline via the automatic-default rule
+      // (User Story 2) — no click needed to establish that here; this
+      // test is specifically about removal NOT disturbing it.
+      await expect
+        .poll(() => page.evaluate(() => window.__wftdm!.appState.getBaseline()))
+        .toBe('good_scenario')
+      await expect(baselineStar(page, 'good_scenario', true)).toBeVisible()
+
+      await page.getByRole('button', { name: 'Remove t043_local' }).click()
+      await expect
+        .poll(async () => page.evaluate(() => window.__wftdm!.appState.get('t043_local')))
+        .toBeUndefined()
+      await expect(page.evaluate(() => window.__wftdm!.appState.getBaseline())).resolves.toBe(
+        'good_scenario',
+      )
+    })
+  })
+})

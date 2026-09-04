@@ -1355,7 +1355,20 @@ Default for calibration summaries: `z.super_district`. TAZ reserved for
 | `$filters.x` | dashboard panel `filter:` | Current sidebar filter value |
 | `$inputs.x` | dashboard panel `filter:` | Current panel-level input value |
 | `$scenario.x` | dashboard panel traces | Auto-generates UNION ALL per scenario |
+| `$baseline.x` | expander mechanism only — see note below | Single bare view reference to whichever scenario is currently marked baseline (018-baseline-scenario-designation) — `"{scenario}__{metric}"`, not a UNION ALL like `$scenario.x` |
 | `$metric.col` | dashboard panel trace axes | Column reference in result set |
+
+**`$baseline.x` is foundation-only — no `dashboard-*.yaml` key can reach it
+yet.** `services/sqlExpander.ts`'s `expand()` resolves it correctly given a
+resolved baseline scenario name (the sixth, optional parameter), and the
+scenario list UI lets a viewer mark/unmark which scenario is baseline — but
+no panel type's own query-building code supplies that value to `expand()`
+today (018-baseline-scenario-designation's own explicit scope boundary; see
+that feature's spec.md FR-011). A dashboard author cannot use `$baseline.x`
+from any panel's `filter:`/SQL yet — teaching a panel type's grammar to
+actually consume it (for a computed difference/percent-difference) is a
+separate, later feature, the same relationship `011-basemap-style-system`
+had to `013-zonemap-panel`.
 
 **`$filters.x` and the `all` sentinel:** when a filter's current value is the
 `all` sentinel (see `all_option: true` above), the entire condition
