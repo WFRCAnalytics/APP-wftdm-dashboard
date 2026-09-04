@@ -81,7 +81,19 @@ const DialogContent = React.forwardRef<
         // currentColor by design) that only ever appeared correctly
         // colored inline (inside Card's own text-card-foreground) and
         // went black the moment 004's expand mechanism relocated it here.
-        'fixed left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2 rounded-lg border border-border bg-card text-card-foreground shadow-lg',
+        //
+        // p-6 — 004-panel-expand-dialog's own original padding, restored
+        // here: the text-card-foreground fix above rewrote this whole
+        // string and silently dropped p-6 in the process (no comment ever
+        // addressed padding — a genuine accidental loss, not a deliberate
+        // spacing change). Confirmed via `git diff` against the pre-015
+        // commit that this was the ONLY class removed. Every expanded
+        // panel's content was rendering flush against the dialog's own
+        // border with zero breathing room as a result — usePanelExpandHost
+        // (layout/panelExpandHost.tsx) and PanelCard (layout/panelCard.tsx)
+        // were both confirmed unchanged since 004, so this was the sole
+        // cause.
+        'fixed left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2 rounded-lg border border-border bg-card p-6 text-card-foreground shadow-lg',
         className,
       )}
       {...props}

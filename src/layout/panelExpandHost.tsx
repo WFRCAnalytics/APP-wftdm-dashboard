@@ -123,7 +123,26 @@ export function usePanelExpandHost(
             it explicitly here achieves the same user-visible guarantee
             without needing <DialogTrigger>. */}
         <DialogContent
-          className="flex h-[90vh] w-[95vw] max-w-[1600px] flex-col"
+          // gap-4 — not a regression, a genuine pre-existing gap in 004's
+          // original design (confirmed via `git show` on the 004 commit:
+          // DialogContent's className never had a gap-* class, in either
+          // dialog.tsx or here). It went unnoticed because every panel
+          // type except flowmap/zonemap happens to have its own incidental
+          // top spacing (Plotly/table/markdown content, a value box's own
+          // layout) between its rendered content and its top edge — a real
+          // user report on the map panel types surfaced it: their
+          // containerRef div (FlowMapPanel.tsx/ZoneMapPanel.tsx) is
+          // height:100%/width:100% with zero internal top margin by
+          // design, so it renders flush against dialogAnchor's own top
+          // edge, immediately below DialogTitle with no separator at all.
+          // gap-4 matches shadcn/ui's own reference DialogContent template
+          // (this file is hand-authored, not generated from that
+          // template, but the value is still the right convention to
+          // borrow) — deliberately smaller than Card's own p-6
+          // header-to-content separation (components/ui/card.tsx), since
+          // DialogTitle here isn't wrapped in its own padded header box
+          // the way CardHeader is.
+          className="flex h-[90vh] w-[95vw] max-w-[1600px] flex-col gap-4"
           onCloseAutoFocus={(event) => {
             event.preventDefault()
             triggerRef.current?.focus()
