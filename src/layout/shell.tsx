@@ -30,37 +30,36 @@ export function Shell({ dashboards }: { dashboards: DashboardTabConfig[] }) {
   const active = dashboards.find((d) => d.header.tab === activeTab) ?? dashboards[0]
 
   return (
-    // bg-background spans the full viewport edge to edge (a deliberate
-    // full-bleed app background), but the actual content — nav and
-    // panels alike — is capped and centered inside it below, so neither
-    // stretches to an unreadable width on a wide viewport nor leaves a
-    // large blank void down one side. Missing container was here in
-    // shell.tsx, not a viewport-width assumption inside panelCard.tsx —
-    // panelCard.tsx has no width logic of its own; it fills whatever
-    // column dashboardRenderer.tsx's grid gives it.
+    // bg-background spans the full viewport edge to edge. Content used to
+    // be capped at mx-auto max-w-7xl (003-dashboard-shell-navigation) to
+    // avoid an "unreadable width" on wide viewports — but for a data-dense
+    // dashboard (chart/map/table grids, not prose), that tradeoff left a
+    // large, unwanted blank void down both sides on any monitor wider than
+    // ~1280px, reported directly by the user. Removed entirely: nav and
+    // the panel grid both now go full width, edge to edge. panelCard.tsx
+    // has no width logic of its own either way — it fills whatever column
+    // dashboardRenderer.tsx's grid gives it.
     <div className="min-h-screen bg-background text-foreground">
-      <div className="mx-auto max-w-7xl">
-        <header className="flex items-center justify-between border-b border-border px-6 py-4">
-          <NavBar
-            tabs={dashboards}
-            activeTab={active.header.tab}
-            onTabChange={setActiveTab}
-          />
-          {/* 015-theme-toggle: ScenarioLoader + ThemeToggle share one
-              right-hand group (research.md §7) — top-right of the header,
-              matching the user's own stated placement preference, kept
-              visually grouped as one unit rather than a third
-              justify-between column (which would spread it across the
-              header's full width instead). */}
-          <div className="flex items-center gap-3">
-            <ScenarioLoader />
-            <ThemeToggle />
-          </div>
-        </header>
-        <main>
-          <DashboardRenderer tab={active} />
-        </main>
-      </div>
+      <header className="flex items-center justify-between border-b border-border px-6 py-4">
+        <NavBar
+          tabs={dashboards}
+          activeTab={active.header.tab}
+          onTabChange={setActiveTab}
+        />
+        {/* 015-theme-toggle: ScenarioLoader + ThemeToggle share one
+            right-hand group (research.md §7) — top-right of the header,
+            matching the user's own stated placement preference, kept
+            visually grouped as one unit rather than a third
+            justify-between column (which would spread it across the
+            header's full width instead). */}
+        <div className="flex items-center gap-3">
+          <ScenarioLoader />
+          <ThemeToggle />
+        </div>
+      </header>
+      <main>
+        <DashboardRenderer tab={active} />
+      </main>
     </div>
   )
 }
