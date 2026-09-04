@@ -7,8 +7,17 @@
    compose cleanly against Tailwind's own box-model assumptions — these
    rules override the SAME semantic slots MapLibre's own default CSS
    sets (background/border/hover), just with this app's tokens instead
-   of MapLibre's hardcoded #fff/#ddd/rgb(0 0 0/5%). Imported once, by
-   ZoneMapPanel.tsx only — the only panel type with this control. */
+   of MapLibre's hardcoded #fff/#ddd/rgb(0 0 0/5%).
+   Extended (015-theme-toggle) beyond the 3D toggle to MapLibre's own
+   built-in NavigationControl (zoom/compass) too, following a real user
+   report: once a real dark-mode trigger existed to actually look at it,
+   NavigationControl still rendered with MapLibre's hardcoded white
+   background and fixed dark-gray icons regardless of app theme — visually
+   inconsistent with the (now-fixed) 3D toggle sitting right next to it in
+   the same corner. Imported by BOTH FlowMapPanel.tsx and ZoneMapPanel.tsx
+   now (previously ZoneMapPanel.tsx only) — NavigationControl is added by
+   both panel types; only ZoneMapPanel additionally mounts the 3D toggle,
+   whose own rules stay scoped to it specifically further down. */
 
 /* box-shadow: var(--shadow-sm) — third round of design work on this
    control, this time real research first (artifact-design skill's own
@@ -36,10 +45,81 @@
    radius stays untouched so the two stacked groups' corners visually
    match each other, which matters more here than matching Card's own
    unrelated, larger-surface radius. */
-.wftdm-3d-toggle-group {
-  background: var(--card);
+/* Real bug found live in dark mode (015-theme-toggle): confirmed via
+   getComputedStyle(), not assumed — the button's OWN text correctly
+   resolved to var(--foreground) (white in dark mode), but this group's
+   background stayed MapLibre's hardcoded #fff, producing white-on-white,
+   illegible "3D" text. Root cause: MapLibre's own `.maplibregl-ctrl-group{
+   background:#fff; border-radius:4px }` (confirmed directly in the
+   installed maplibre-gl.css) and this rule are BOTH single-class
+   selectors — tied specificity (0,1,0) — and MapLibre's rule was winning
+   the tie in the actual built cascade. `border`/`box-shadow` have no
+   competing MapLibre rule (confirmed: MapLibre's own rule sets only
+   `background`/`border-radius`), so only `background` needs the
+   `!important` override.
+   Targets the BARE .maplibregl-ctrl-group class, not the app-specific
+   .wftdm-3d-toggle-group one — this rule now covers every control group
+   in this app, NavigationControl's own included (the 3D toggle's
+   container still carries BOTH classes, so it stays covered too; see the
+   file header for the full reasoning). */
+.maplibregl-ctrl-group {
+  background: var(--card) !important;
   border: 1px solid var(--border);
   box-shadow: var(--shadow-sm);
+}
+
+/* The divider line between stacked buttons in one group (e.g. Zoom in /
+   Zoom out) — a second real bug found live, same category as the group
+   background above: MapLibre's own `.maplibregl-ctrl-group button+button{
+   border-top:1px solid #ddd}` (confirmed directly in the installed
+   maplibre-gl.css) is untouched by any rule above (those only style the
+   group container and individual buttons' own background/color, never
+   this inter-button border) — confirmed via getComputedStyle():
+   `border-top-color: rgb(221, 221, 221)` (#ddd) even after the fixes
+   above, a light gray line that reads as too bright against this
+   control's own dark var(--card) background in dark mode. Same selector
+   MapLibre uses, so no specificity gap to fight (0,1,2 vs 0,1,2, later in
+   source order) — `!important` added anyway, matching this file's own
+   established defensive convention for every other MapLibre-default
+   conflict here, rather than relying on source-order alone. */
+.maplibregl-ctrl-group button + button {
+  border-top: 1px solid var(--border) !important;
+}
+
+/* NavigationControl's own zoom/compass buttons — same hover treatment as
+   the 3D toggle button below, generalized. `!important` for the same
+   reason documented there: MapLibre's own `.maplibregl-ctrl
+   button:not(:disabled):hover` rule has no `!important` of its own, so
+   ours wins regardless of the specificity gap once it's present. Also
+   matches .wftdm-3d-toggle-button (it's a `button` inside a
+   `.maplibregl-ctrl-group` too) — harmless duplication of the identical
+   value already set by that rule's own, more specific selector below. */
+.maplibregl-ctrl-group button:hover {
+  background-color: var(--muted) !important;
+}
+
+/* NavigationControl's zoom/compass icons are MapLibre's own fixed
+   dark-gray (#333) SVG data-URI background-images, not currentColor-
+   driven — confirmed directly in the installed maplibre-gl.css, no
+   normal light/dark variant exists there at all (the only alternate-fill
+   rules present are gated on `forced-colors: active`, Windows High
+   Contrast Mode, not `prefers-color-scheme`/this app's own `.dark`
+   class). A CSS filter is the lightweight fix over supplying a whole
+   parallel icon set: filter: invert(1) turns #333 (rgb(51,51,51)) into
+   rgb(204,204,204), legible against this control's own dark var(--card)
+   background in dark mode (verified via getComputedStyle(), not assumed
+   — see zonemapPanel.spec.ts's/flowmapPanel.spec.ts's own regression
+   coverage). Scoped to NavigationControl's own icon classes specifically,
+   not the bare .maplibregl-ctrl-icon class more broadly — AttributionControl
+   uses its own, differently-named classes/pseudo-elements (confirmed
+   directly in the installed CSS: .maplibregl-ctrl-attrib-button and
+   .maplibregl-ctrl-attrib.maplibregl-compact:after, neither
+   .maplibregl-ctrl-icon), so this scoping cannot affect it even if a
+   future control coincidentally reused the bare class name. */
+.dark .maplibregl-ctrl-zoom-in .maplibregl-ctrl-icon,
+.dark .maplibregl-ctrl-zoom-out .maplibregl-ctrl-icon,
+.dark .maplibregl-ctrl-compass .maplibregl-ctrl-icon {
+  filter: invert(1);
 }
 
 .wftdm-3d-toggle-button {

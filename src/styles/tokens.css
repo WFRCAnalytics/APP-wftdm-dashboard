@@ -39,6 +39,19 @@
   --input: var(--border);
   --ring: var(--primary);
   --radius: 0.5rem;
+  /* 015-theme-toggle: real bug found live — native form controls (the
+     bare <select>/<option> in ObservablePlotPanel.tsx's PanelLocalInput,
+     any future one) are rendered by the OS/browser itself, not by this
+     app's own CSS — their default light/dark appearance follows the
+     color-scheme property specifically, not var(--background)/
+     var(--foreground) or any class. Confirmed empirically: with no
+     color-scheme declared anywhere, a <select multiple> rendered with a
+     plain white dropdown and (depending on OS) illegible text once the
+     surrounding app went dark, since nothing told the browser dark
+     styling was appropriate here. This is also what themes native
+     scrollbars, date pickers, and any other future unstyled native
+     control — not narrowly scoped to <select>. */
+  color-scheme: light;
 
   /* Tier 3 — typography (research.md §8) — not theme-dependent, declared
      once, reused verbatim from Scoresheet's tokens.css */
@@ -84,6 +97,7 @@ body {
   --input: var(--border);
   --ring: var(--primary);
   /* --radius, --font-* not redeclared — not theme-dependent */
+  color-scheme: dark;
 
   /* Elevation: dark mode — different mechanism, not just different colors
      (edge-highlight ring, since a drop shadow alone reads too weakly

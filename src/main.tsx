@@ -31,6 +31,21 @@ declare global {
   }
 }
 
+// 015-theme-toggle: one-shot pre-mount application of the OS-level
+// prefers-color-scheme preference — closes a real, confirmed flash risk
+// (research.md §3), not addressable from inside React at all: the boot
+// sequence below (initDuckDB/discoverScenarios/loadDashboards) runs
+// entirely before ReactDOM ever mounts, and index.html sets no background
+// of its own, so a dark-preferring viewer would otherwise see the
+// browser's plain white default for the whole boot duration. This line
+// establishes NO ongoing tracking of its own — layout/themeToggle.tsx's
+// own effect is what keeps the theme live-updated (and overridable) once
+// it mounts, moments later.
+document.documentElement.classList.toggle(
+  'dark',
+  window.matchMedia('(prefers-color-scheme: dark)').matches,
+)
+
 await initDuckDB()
 await discoverScenarios()
 const dashboards = await loadDashboards()

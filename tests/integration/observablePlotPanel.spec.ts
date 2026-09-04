@@ -471,3 +471,72 @@ test.describe('User Story 3 - Panel behaves consistently with the rest of the re
     await expect(card.locator('.animate-pulse')).toHaveCount(0)
   })
 })
+
+// 015-theme-toggle: real bugs found live once a real theme toggle existed
+// to actually exercise dark mode. Observable Plot's own axis/tick text
+// already used currentColor by design and picked up the inline card's
+// text-card-foreground correctly with no change needed — the real gap was
+// EXPANDED panels specifically: DialogContent (components/ui/dialog.tsx)
+// set bg-card but never text-card-foreground, and DialogPortal renders
+// into document.body, OUTSIDE shell.tsx's own text-foreground wrapper —
+// so anything relying on inherited color (this panel type's own SVG text,
+// DialogTitle) fell back to the plain browser default (black) once
+// relocated there by 004's expand mechanism, regardless of theme.
+// PanelLocalInput's native <select>/<option> was a second, independent
+// bug: entirely unstyled, so its OS-rendered chrome (including the
+// dropdown popup itself, unreachable by any CSS class) followed no theme
+// at all until tokens.css gained a real color-scheme declaration.
+test.describe('Polish - dark mode (015-theme-toggle)', () => {
+  test('expanding a panel in dark mode keeps chart text and the dialog title legible, not black-on-dark', async ({
+    page,
+  }) => {
+    await boot(page)
+    await page.evaluate(() => document.documentElement.classList.add('dark'))
+
+    const card = panelCard(page, 'Observable Plot Mode Share (Bar)')
+    await expect(card.locator('.observable-plot-chart svg[viewBox] rect')).not.toHaveCount(0)
+
+    // Inline case — already correct via currentColor, confirmed here so a
+    // future regression can't quietly reintroduce it.
+    const inlineFill = await card
+      .locator('.observable-plot-chart svg[viewBox] text')
+      .first()
+      .evaluate((el) => getComputedStyle(el).fill)
+    expect(inlineFill).toBe('rgb(255, 255, 255)')
+
+    await expandTrigger(page, 'Observable Plot Mode Share (Bar)').click()
+    const dialog = page.getByRole('dialog')
+    await expect(dialog).toBeVisible()
+
+    const dialogTitleColor = await dialog
+      .getByRole('heading', { name: 'Observable Plot Mode Share (Bar)' })
+      .evaluate((el) => getComputedStyle(el).color)
+    expect(dialogTitleColor).toBe('rgb(255, 255, 255)')
+
+    const expandedFill = await dialog
+      .locator('.observable-plot-chart svg[viewBox] text')
+      .first()
+      .evaluate((el) => getComputedStyle(el).fill)
+    expect(expandedFill).toBe('rgb(255, 255, 255)')
+  })
+
+  test('the multiselect/select input follows the app theme — real color-scheme, not a bare unstyled native control', async ({
+    page,
+  }) => {
+    await boot(page)
+    await page.evaluate(() => document.documentElement.classList.add('dark'))
+
+    const card = panelCard(page, 'Observable Plot Mode Share (Multiselect Filter)')
+    const select = card.locator('select')
+    await expect(select).toBeVisible()
+
+    const styles = await select.evaluate((el) => ({
+      colorScheme: getComputedStyle(el).colorScheme,
+      background: getComputedStyle(el).backgroundColor,
+      color: getComputedStyle(el).color,
+    }))
+    expect(styles.colorScheme).toBe('dark')
+    expect(styles.background).toBe('rgb(8, 27, 38)') // --background in dark mode
+    expect(styles.color).toBe('rgb(255, 255, 255)') // --foreground in dark mode
+  })
+})

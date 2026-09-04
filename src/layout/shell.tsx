@@ -4,6 +4,7 @@ import { LayoutDashboard } from 'lucide-react'
 import { DashboardRenderer } from '@/layout/dashboardRenderer'
 import { NavBar } from '@/layout/navBar'
 import { ScenarioLoader } from '@/layout/scenarioLoader'
+import { ThemeToggle } from '@/layout/themeToggle'
 import { PanelEmptyState } from '@/panels/PanelEmptyState'
 import type { DashboardTabConfig } from '@/layout/types'
 
@@ -45,7 +46,16 @@ export function Shell({ dashboards }: { dashboards: DashboardTabConfig[] }) {
             activeTab={active.header.tab}
             onTabChange={setActiveTab}
           />
-          <ScenarioLoader />
+          {/* 015-theme-toggle: ScenarioLoader + ThemeToggle share one
+              right-hand group (research.md §7) — top-right of the header,
+              matching the user's own stated placement preference, kept
+              visually grouped as one unit rather than a third
+              justify-between column (which would spread it across the
+              header's full width instead). */}
+          <div className="flex items-center gap-3">
+            <ScenarioLoader />
+            <ThemeToggle />
+          </div>
         </header>
         <main>
           <DashboardRenderer tab={active} />

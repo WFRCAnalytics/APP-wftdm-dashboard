@@ -66,7 +66,22 @@ const DialogContent = React.forwardRef<
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        'fixed left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2 rounded-lg border border-border bg-card p-6 shadow-lg',
+        // text-card-foreground — a real bug found live in dark mode: this
+        // element sets bg-card but, unlike Card (components/ui/card.tsx),
+        // never paired it with a text color of its own. In light mode
+        // that's invisible (its own inherited default color happens to
+        // already read dark-on-light), but DialogPortal renders into
+        // document.body — OUTSIDE shell.tsx's own text-foreground-setting
+        // wrapper div — so nothing here actually inherits this app's
+        // token-driven text color at all; it was falling back to the
+        // plain browser default (black) regardless of theme. Confirmed
+        // via getComputedStyle(): DialogTitle read a hardcoded black in
+        // dark mode before this fix. Also fixes every currentColor-based
+        // child (e.g. Observable Plot's own axis/tick text, which uses
+        // currentColor by design) that only ever appeared correctly
+        // colored inline (inside Card's own text-card-foreground) and
+        // went black the moment 004's expand mechanism relocated it here.
+        'fixed left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2 rounded-lg border border-border bg-card text-card-foreground shadow-lg',
         className,
       )}
       {...props}

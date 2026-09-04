@@ -7,6 +7,7 @@ import * as sqlExpander from '@/services/sqlExpander'
 import * as filterState from '@/state/filterState'
 import { useFilterState } from '@/hooks/useFilterState'
 import { useActiveScenarios } from '@/hooks/useActiveScenarios'
+import { useColorScheme } from '@/hooks/useColorScheme'
 import {
   buildPanelQuery,
   resolveActiveScenarios,
@@ -20,6 +21,36 @@ import type { PlotlyPanelConfig } from '@/layout/types'
 
 const ALL_FILTERS: ['*'] = ['*']
 
+// 015-theme-toggle: real bug found live — Plotly.js's own default
+// paper_bgcolor/plot_bgcolor is opaque white and font.color/gridcolor
+// default to a fixed dark gray, none of it theme-aware, so every Plotly
+// panel rendered a bright white card in dark mode. paper/plot background
+// go fully transparent (letting the panel card's own bg-card/DialogContent's
+// own bg-card show through underneath — no hex value to keep in sync with
+// tokens.css at all), but text/gridlines/axis-lines need a REAL resolvable
+// color (an SVG can't render "transparent" text) — resolved via
+// getComputedStyle against the mounted container, the same pattern
+// SankeyPanel.tsx's own resolveFallbackColors() already established for
+// exactly this "need a token's current computed value in a canvas/SVG
+// render path, not just a CSS class" problem. Hardcoded hex fallbacks
+// match tokens.css's own current --foreground/--border values, used only
+// if resolution somehow fails (e.g. no stylesheet loaded at all).
+const FALLBACK_FOREGROUND = { light: '#151515', dark: '#ffffff' } as const
+const FALLBACK_BORDER = { light: '#d8d5d2', dark: '#23394a' } as const
+
+function resolveThemeLayout(el: HTMLElement, colorScheme: 'light' | 'dark'): Partial<Plotly.Layout> {
+  const style = getComputedStyle(el)
+  const foreground = style.getPropertyValue('--foreground').trim() || FALLBACK_FOREGROUND[colorScheme]
+  const border = style.getPropertyValue('--border').trim() || FALLBACK_BORDER[colorScheme]
+  return {
+    paper_bgcolor: 'transparent',
+    plot_bgcolor: 'transparent',
+    font: { color: foreground },
+    xaxis: { gridcolor: border, linecolor: border, zerolinecolor: border },
+    yaxis: { gridcolor: border, linecolor: border, zerolinecolor: border },
+  }
+}
+
 // Proves the full pipeline (spec.md User Story 3): YAML config -> SQL
 // expansion -> query -> Plotly.react() render, filter-reactive, using
 // docs/SPEC.md's corrected two-effect pattern. See contracts/plotly-panel.md.
@@ -32,12 +63,22 @@ export function PlotlyPanel({ config }: { config: PlotlyPanelConfig }) {
   // ValueBoxPanel.tsx's own comment on why this replaced a direct
   // appState.getActive() read inside the effect below.
   const activeScenarioNames = useActiveScenarios()
+  const colorScheme = useColorScheme()
   const containerRef = useRef<HTMLDivElement>(null)
   const [status, setStatus] = useState<'loading' | 'ready' | 'empty' | 'error'>('loading')
 
+  // Remembers the last successfully-resolved traces/barmode so a theme-only
+  // change (the effect below) can re-render with fresh colors WITHOUT
+  // re-querying — a theme flip is not a reason to hit DuckDB-WASM again,
+  // the underlying data hasn't changed.
+  const lastTracesRef = useRef<Partial<Plotly.PlotData>[] | null>(null)
+  const lastBarmodeRef = useRef<Plotly.Layout['barmode'] | undefined>(undefined)
+
   // Data fetch + Plotly.react() — re-runs on config/filters change. Never
   // purges here; react() diffs against the existing plot (docs/SPEC.md's
-  // "use react() not newPlot()" guidance).
+  // "use react() not newPlot()" guidance). Deliberately does NOT list
+  // colorScheme as a dependency — see the theme-only effect below, which
+  // handles that case without a redundant re-query.
   useEffect(() => {
     let cancelled = false
     setStatus('loading')
@@ -63,8 +104,11 @@ export function PlotlyPanel({ config }: { config: PlotlyPanelConfig }) {
         const barmode = config.traces.find((t) => t.barmode)?.barmode as
           | Plotly.Layout['barmode']
           | undefined
+        lastTracesRef.current = traces
+        lastBarmodeRef.current = barmode
         const layout: Partial<Plotly.Layout> = {
           autosize: true,
+          ...resolveThemeLayout(containerRef.current, colorScheme),
           ...(config.layout ?? {}),
           ...(barmode ? { barmode } : {}),
         }
@@ -78,7 +122,30 @@ export function PlotlyPanel({ config }: { config: PlotlyPanelConfig }) {
     return () => {
       cancelled = true
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- colorScheme
+    // intentionally excluded, see comment above
   }, [config, filters, activeScenarioNames])
+
+  // Theme-only re-render — reapplies resolveThemeLayout() colors against
+  // the SAME already-fetched traces (lastTracesRef), no new query. Guarded
+  // on status === 'ready' so this never fires before the effect above has
+  // ever successfully rendered a plot at all (nothing for Plotly.react()
+  // to diff against yet).
+  useEffect(() => {
+    if (status !== 'ready' || !containerRef.current || !lastTracesRef.current) return
+    const layout: Partial<Plotly.Layout> = {
+      autosize: true,
+      ...resolveThemeLayout(containerRef.current, colorScheme),
+      ...(config.layout ?? {}),
+      ...(lastBarmodeRef.current ? { barmode: lastBarmodeRef.current } : {}),
+    }
+    Plotly.react(containerRef.current, lastTracesRef.current, layout, { responsive: true })
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deliberately
+    // scoped to colorScheme/status only; config/lastTracesRef/lastBarmodeRef
+    // are read for their CURRENT value at the time colorScheme changes, not
+    // meant to re-trigger this effect on their own (that's the fetch
+    // effect's job above)
+  }, [colorScheme, status])
 
   // ResizeObserver, not just Plotly's own `responsive: true` (which only
   // reacts to window resize events): Plotly.react() above runs while this

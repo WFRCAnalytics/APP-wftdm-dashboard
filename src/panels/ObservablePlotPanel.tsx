@@ -303,7 +303,7 @@ function PanelLocalInput({
     // the effect above syncs the underlying value to match (see its own
     // comment) so the query stays consistent with what's shown.
     return (
-      <div className="mb-2 flex items-center gap-2 text-sm">
+      <div className="mb-2 flex items-center gap-2 text-sm text-foreground">
         <span>{config.label}</span>
         <input
           type="range"
@@ -312,6 +312,7 @@ function PanelLocalInput({
           max={range?.max}
           value={typeof value === 'string' ? value : ''}
           onChange={(e) => onChange(e.target.value)}
+          className="accent-primary"
         />
       </div>
     )
@@ -329,8 +330,17 @@ function PanelLocalInput({
   const displayOptions = [...new Set([...options, ...currentValues])]
 
   return (
-    <div className="mb-2 flex items-center gap-2 text-sm">
+    <div className="mb-2 flex items-center gap-2 text-sm text-foreground">
       <span>{config.label}</span>
+      {/* Previously entirely unstyled — a real, confirmed dark-mode bug:
+          native <select>/<option> chrome (including the OS-rendered
+          dropdown popup, which no CSS class can reach) follows the
+          color-scheme property, not this app's own tokens — fixed in
+          tokens.css. The classes below are this control's own first real
+          styling pass, matching Button's own border/background/radius/
+          focus-ring convention (components/ui/button.tsx's outline
+          variant) so it reads as part of this app's design system rather
+          than a bare browser default, in either theme. */}
       <select
         aria-label={config.label}
         multiple={config.type === 'multiselect'}
@@ -342,6 +352,7 @@ function PanelLocalInput({
             onChange(e.target.value)
           }
         }}
+        className="rounded-md border border-input bg-background px-2 py-1 text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         {displayOptions.map((opt) => (
           <option key={opt} value={opt}>

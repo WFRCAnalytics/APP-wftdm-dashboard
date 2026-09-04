@@ -577,6 +577,39 @@ test.describe('014-map-navigation-controls — NavigationControl zoom/compass ge
       return Math.abs(bearing) < 0.5 && Math.abs(pitch) < 0.5
     })
   })
+
+  // Real bug found live (015-theme-toggle), same root cause and fix as
+  // the 3D-toggle regression test below: MapLibre's own NavigationControl
+  // rendered with a hardcoded white group background and fixed dark-gray
+  // icons regardless of app theme. Asserts real getComputedStyle() output.
+  test('NavigationControl matches the app theme in dark mode — dark group background, inverted icon, real divider color', async ({
+    page,
+  }) => {
+    await boot(page)
+    const container = await waitForRender(page, ZONEMAP_TITLE)
+    const zoomIn = container.locator('.maplibregl-ctrl-zoom-in')
+    const zoomOut = container.locator('.maplibregl-ctrl-zoom-out')
+    await expect(zoomIn).toBeVisible()
+
+    await page.evaluate(() => document.documentElement.classList.add('dark'))
+
+    const styles = await zoomIn.evaluate((el) => {
+      const group = el.closest('.maplibregl-ctrl-group') as HTMLElement
+      const icon = el.querySelector('.maplibregl-ctrl-icon') as HTMLElement
+      return { groupBg: getComputedStyle(group).backgroundColor, iconFilter: getComputedStyle(icon).filter }
+    })
+    expect(styles.groupBg).toBe('rgb(8, 27, 38)') // --card/--background in dark mode
+    expect(styles.iconFilter).toBe('invert(1)')
+
+    // A second, separate real bug found live after the above: the
+    // divider between the stacked Zoom in/Zoom out buttons is MapLibre's
+    // own hardcoded `#ddd`, untouched by any rule above (those style the
+    // group container and each button individually, never the
+    // button+button inter-button border) — read back as too bright/white
+    // against the now-dark group background.
+    const dividerColor = await zoomOut.evaluate((el) => getComputedStyle(el).borderTopColor)
+    expect(dividerColor).toBe('rgb(35, 57, 74)') // --border in dark mode
+  })
 })
 
 // 014-map-navigation-controls — the 3D fill-extrusion toggle. ZoneMapPanel
@@ -697,6 +730,42 @@ test.describe('014-map-navigation-controls — the 3D fill-extrusion toggle', ()
     await page.keyboard.press('Escape')
     await expect(page.getByRole('dialog')).not.toBeVisible()
     await expect(card.getByRole('button', { name: 'Toggle 3D extrusion' })).toHaveAttribute('aria-pressed', 'true')
+  })
+
+  // Real bug found live (015-theme-toggle, once a real dark-mode trigger
+  // existed to actually look at it): the toggle's own text color DID
+  // correctly resolve to var(--foreground) in dark mode, but its
+  // .wftdm-3d-toggle-group container's background stayed MapLibre's own
+  // hardcoded #fff (a tied-specificity cascade loss against
+  // .maplibregl-ctrl-group{background:#fff} — mapControls.css) — white
+  // text on a white background, illegible. The existing dark-mode test
+  // above only ever asserted aria-pressed/layer-visibility (functional
+  // survival), never actual computed color, so this slipped through
+  // undetected. Asserts real getComputedStyle() output, not just that a
+  // CSS custom property was passed somewhere.
+  test('the 3D toggle button text stays legible against its own group background in dark mode', async ({
+    page,
+  }) => {
+    await boot(page)
+    const card = panelCard(page, ZONEMAP_TITLE)
+    await waitForRender(page, ZONEMAP_TITLE)
+    const toggle = card.getByRole('button', { name: 'Toggle 3D extrusion' })
+    await expect(toggle).toBeVisible()
+
+    await page.evaluate(() => document.documentElement.classList.add('dark'))
+
+    const styles = await toggle.evaluate((el) => {
+      const group = el.closest('.wftdm-3d-toggle-group') as HTMLElement
+      return {
+        text: getComputedStyle(el).color,
+        groupBg: getComputedStyle(group).backgroundColor,
+      }
+    })
+    // The real, dark-mode token values (tokens.css .dark block) — white
+    // text (--foreground) on dark navy (--card/--background), not
+    // MapLibre's own hardcoded white staying stuck underneath it.
+    expect(styles.text).toBe('rgb(255, 255, 255)')
+    expect(styles.groupBg).toBe('rgb(8, 27, 38)')
   })
 })
 

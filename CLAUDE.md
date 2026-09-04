@@ -191,15 +191,16 @@ APP-wftdm-dashboard/
     │                           # (never sets) the Tailwind `.dark` class
     │                           # on document.documentElement via a
     │                           # MutationObserver + useSyncExternalStore,
-    │                           # same shape as the two hooks above. No
-    │                           # real theme-toggle UI exists in the app
-    │                           # yet — only src/demo/DesignTokenDemo.tsx
-    │                           # (an out-of-band demo page) sets the
-    │                           # class today; this hook is the read side
-    │                           # of a feature (a real toggle) that hasn't
-    │                           # been built, same situation
-    │                           # registerScenario() was in from 001 until
-    │                           # 009 built its own caller.
+    │                           # same shape as the two hooks above. Its
+    │                           # own write-side counterpart is now real
+    │                           # too (015-theme-toggle,
+    │                           # layout/themeToggle.tsx) — this hook
+    │                           # needed zero changes to compose with it
+    │                           # (its MutationObserver reacts to any
+    │                           # class mutation regardless of source),
+    │                           # the same relationship registerScenario()
+    │                           # had to 009's own caller from 001 until
+    │                           # 009 built it.
     │   # layout/ and panels/ below are now real (003-dashboard-shell-
     │   # navigation built the shell/nav/panel-card layer and the first two
     │   # panel types; 004-panel-expand-dialog added the generic expand
@@ -226,6 +227,13 @@ APP-wftdm-dashboard/
     │   # services/ and state/ (constitution v2.2.0, Development Workflow)
     ├── layout/
     │   ├── shell.tsx             # top-level app shell: NavBar + active tab
+    │   │                         # (015-theme-toggle: header's right-hand
+    │   │                         # slot is now a small flex group —
+    │   │                         # ScenarioLoader + ThemeToggle together,
+    │   │                         # not ScenarioLoader alone — top-right,
+    │   │                         # matching the placement 009 already
+    │   │                         # established for a dashboard-wide,
+    │   │                         # not panel-specific, header control)
     │   ├── navBar.tsx            # shadcn Tabs-based tab navigation
     │   ├── dashboardRenderer.tsx # renders one tab's layout as rows of PanelCards;
     │   │                         # also (011-basemap-style-system) the one place
@@ -253,6 +261,69 @@ APP-wftdm-dashboard/
     │   │                         # shell.tsx's header alongside NavBar;
     │   │                         # hidden entirely in LOCAL deployment
     │   │                         # mode (hostname === 'localhost')
+    │   ├── themeToggle.tsx       # done (015-theme-toggle) — the missing
+    │   │                         # write-side counterpart to
+    │   │                         # useColorScheme() (011). A three-state
+    │   │                         # System/Light/Dark control — an icon-
+    │   │                         # only DropdownMenu trigger showing the
+    │   │                         # current mode's icon (components/ui/
+    │   │                         # dropdown-menu.tsx, new — real post-
+    │   │                         # shipping revision from an originally-
+    │   │                         # shipped three-always-visible-button
+    │   │                         # Tabs shape: ScenarioLoader, this
+    │   │                         # control's own header neighbor, is
+    │   │                         # variable-width in WEB mode, and three
+    │   │                         # permanently-reserved buttons next to
+    │   │                         # it was a real crowding risk on
+    │   │                         # narrower viewports, not hypothetical.
+    │   │                         # A true Radix Switch was considered and
+    │   │                         # rejected — strictly binary, cannot
+    │   │                         # represent "System" as a third state at
+    │   │                         # all). Trigger is Button variant="ghost"
+    │   │                         # (no border at rest, only a hover
+    │   │                         # background) — the user's own pick from
+    │   │                         # five real, interactive prototypes
+    │   │                         # compared side by side in one HTML
+    │   │                         # artifact (real tokens, real header
+    │   │                         # context, one shared Theme Mode driving
+    │   │                         # all five), not guessed; research.md
+    │   │                         # §6's closing note has the full record.
+    │   │                         # Local useState only (no new state/ store —
+    │   │                         # no other component ever needs to read
+    │   │                         # Theme Mode itself, only the resolved
+    │   │                         # effective theme, which every consumer
+    │   │                         # already gets from useColorScheme()
+    │   │                         # unchanged). One effect both resolves+
+    │   │                         # applies the `dark` class AND owns the
+    │   │                         # matchMedia 'change' listener's own
+    │   │                         # lifecycle, scoped to Theme Mode via
+    │   │                         # the dependency array/cleanup function
+    │   │                         # — attached only while mode ===
+    │   │                         # 'system', torn down on every
+    │   │                         # transition away, deliberately not a
+    │   │                         # long-lived listener with an internal
+    │   │                         # no-op guard (a real design decision,
+    │   │                         # not the obvious-only option — the
+    │   │                         # rejected alternative would need a ref
+    │   │                         # just to dodge a stale-closure read of
+    │   │                         # Theme Mode; the chosen shape needs
+    │   │                         # none, research.md §5). No persistence
+    │   │                         # anywhere (constitution Principle VI,
+    │   │                         # absolute) — a manual override does
+    │   │                         # NOT survive a reload, a real, stated,
+    │   │                         # accepted limitation, not a bug.
+    │   │                         # main.tsx also gained one synchronous
+    │   │                         # pre-mount line (before its first
+    │   │                         # `await`) applying the resolved
+    │   │                         # System-preference class before React
+    │   │                         # ever mounts — a real, confirmed flash
+    │   │                         # risk no in-React effect could fix on
+    │   │                         # its own, since main.tsx's own boot
+    │   │                         # sequence (initDuckDB/
+    │   │                         # discoverScenarios/loadDashboards) runs
+    │   │                         # entirely before ReactDOM ever mounts
+    │   │                         # and index.html sets no background of
+    │   │                         # its own (research.md §3).
     │   └── sidebar.tsx           # not built yet — no feature has needed it
     ├── panels/
     │   ├── registry.tsx          # type -> component map: valuebox, plotly
@@ -755,7 +826,13 @@ APP-wftdm-dashboard/
     ├── components/
     │   └── ui/                   # shadcn-pattern primitives (002-design-
     │                              # tokens onward): button.tsx, card.tsx,
-    │                              # tabs.tsx, tooltip.tsx, dialog.tsx (004)
+    │                              # tabs.tsx, tooltip.tsx, dialog.tsx (004),
+    │                              # dropdown-menu.tsx (015-theme-toggle —
+    │                              # ThemeToggle's icon-only trigger; only
+    │                              # Root/Trigger/Content/RadioGroup/
+    │                              # RadioItem exported, same "only what's
+    │                              # needed" convention tooltip.tsx already
+    │                              # established)
     ├── scenario/                # done (009-scenario-manager) — closes
     │   │                        # services/duckdb.ts's registerScenario()
     │   │                        # zero-callers gap, open since 001

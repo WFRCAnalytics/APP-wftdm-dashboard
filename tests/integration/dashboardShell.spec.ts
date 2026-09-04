@@ -111,6 +111,44 @@ test.describe('User Story 3 - An analyst sees a real, filter-reactive chart', ()
     const plotlyDivCount = await page.locator('.js-plotly-plot').count()
     expect(plotlyDivCount).toBe(1) // same container reused, not duplicated
   })
+
+  // Real bug found live (015-theme-toggle): Plotly.js's own default
+  // paper_bgcolor/plot_bgcolor is opaque white and font.color/gridcolor
+  // default to a fixed dark gray — none of it theme-aware on its own —
+  // so every Plotly panel showed a bright white card in dark mode.
+  // PlotlyPanel.tsx now resolves paper/plot background to fully
+  // transparent (letting the card's own bg-card show through) and
+  // font/gridline colors from the real --foreground/--border tokens via
+  // getComputedStyle, re-applied on a theme change with no extra query
+  // (a second, theme-only effect reusing the last-fetched traces).
+  test('a plotly panel matches the app theme in dark mode — transparent background, real token colors, no re-query', async ({
+    page,
+  }) => {
+    await page.goto('/')
+    await page.waitForFunction(() => window.__wftdm !== undefined, null, { timeout: 30_000 })
+    await expect(page.locator('.js-plotly-plot')).toBeVisible({ timeout: 10_000 })
+
+    const queryCountBefore = await page.evaluate(() => window.__wftdm!.__debugQueryLog().length)
+
+    await page.evaluate(() => document.documentElement.classList.add('dark'))
+    await page.waitForTimeout(300)
+
+    const styles = await page.locator('.js-plotly-plot .bg').first().evaluate((el) => {
+      const cs = getComputedStyle(el)
+      return { fillOpacity: cs.fillOpacity }
+    })
+    expect(styles.fillOpacity).toBe('0') // fully transparent — the card's own bg-card shows through
+
+    const tickFill = await page.locator('.js-plotly-plot .xtick text').first().evaluate((el) => getComputedStyle(el).fill)
+    expect(tickFill).toBe('rgb(255, 255, 255)') // --foreground in dark mode
+
+    // A theme flip must not re-query DuckDB-WASM — only colors change.
+    // A short settle wait first: if a (bugged) re-query DID fire, it needs
+    // a moment to actually reach the log before this assertion would see it.
+    await page.waitForTimeout(300)
+    const queryCountAfter = await page.evaluate(() => window.__wftdm!.__debugQueryLog().length)
+    expect(queryCountAfter).toBe(queryCountBefore)
+  })
 })
 
 test.describe('Panel error isolation (SC-006, FR-010)', () => {

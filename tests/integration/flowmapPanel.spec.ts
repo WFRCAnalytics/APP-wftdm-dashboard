@@ -391,6 +391,43 @@ test.describe('014-map-navigation-controls — NavigationControl zoom/compass ge
       return Math.abs(bearing) < 0.5 && Math.abs(pitch) < 0.5
     })
   })
+
+  // Real bug found live (015-theme-toggle), same root cause and fix as
+  // zonemapPanel.spec.ts's own 3D-toggle regression test: MapLibre's own
+  // NavigationControl rendered with a hardcoded white group background
+  // and fixed dark-gray icons regardless of app theme (mapControls.css,
+  // now imported by this panel type too, not just ZoneMapPanel). Asserts
+  // real getComputedStyle() output.
+  test('NavigationControl matches the app theme in dark mode — dark group background, inverted icon, real divider color', async ({
+    page,
+  }) => {
+    await boot(page)
+    const card = panelCard(page, FLOWMAP_TITLE)
+    const container = card.locator('.flowmap-chart')
+    await trueEventually(async () => (await container.getAttribute('data-render-count')) !== null)
+    const zoomIn = container.locator('.maplibregl-ctrl-zoom-in')
+    const zoomOut = container.locator('.maplibregl-ctrl-zoom-out')
+    await expect(zoomIn).toBeVisible()
+
+    await page.evaluate(() => document.documentElement.classList.add('dark'))
+
+    const styles = await zoomIn.evaluate((el) => {
+      const group = el.closest('.maplibregl-ctrl-group') as HTMLElement
+      const icon = el.querySelector('.maplibregl-ctrl-icon') as HTMLElement
+      return { groupBg: getComputedStyle(group).backgroundColor, iconFilter: getComputedStyle(icon).filter }
+    })
+    expect(styles.groupBg).toBe('rgb(8, 27, 38)') // --card/--background in dark mode
+    expect(styles.iconFilter).toBe('invert(1)')
+
+    // A second, separate real bug found live after the above: the
+    // divider between the stacked Zoom in/Zoom out buttons is MapLibre's
+    // own hardcoded `#ddd`, untouched by any rule above (those style the
+    // group container and each button individually, never the
+    // button+button inter-button border) — read back as too bright/white
+    // against the now-dark group background.
+    const dividerColor = await zoomOut.evaluate((el) => getComputedStyle(el).borderTopColor)
+    expect(dividerColor).toBe('rgb(35, 57, 74)') // --border in dark mode
+  })
 })
 
 // 015-map-controls-polish — deck.gl's OWN picking/hover mechanism

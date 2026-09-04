@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
+import '@/panels/mapControls.css'
 import { MapboxOverlay } from '@deck.gl/mapbox'
 import { FlowmapLayer, PickingType } from '@flowmap.gl/layers'
 import { Map as MapIcon } from 'lucide-react'
