@@ -267,10 +267,19 @@ function isRasterProviderName(layerUrl: string): boolean {
 
 async function composeStyles(layerUrls: string[], signal?: AbortSignal): Promise<StyleSpecification> {
   const merged: StyleSpecification = { version: 8, sources: {}, layers: [] }
+  // 017-multi-sprite-support: collected across the whole loop, one entry
+  // per composed layer that declares its own sprite — see the comment
+  // just after the loop for why this replaces the old "first sprite
+  // wins" single-string assignment entirely.
+  const spriteEntries: { id: string; url: string }[] = []
 
   for (let i = 0; i < layerUrls.length; i++) {
     const layerUrl = layerUrls[i]
     const prefix = `layer${i}__`
+    // 017-multi-sprite-support: a DISTINCT namespace from `prefix` above
+    // (MapLibre's own sprite-id separator is `:`, not `__`) — reuses the
+    // same per-layer index `i`, not a new numbering scheme.
+    const spriteId = `layer${i}`
 
     if (isRasterProviderName(layerUrl)) {
       const raster = await resolveRasterProvider(layerUrl, signal)
@@ -306,21 +315,85 @@ async function composeStyles(layerUrls: string[], signal?: AbortSignal): Promise
     }
     Object.assign(merged.sources, rewrittenSources)
 
-    const rewrittenLayers = (raw.layers ?? []).map((layer) => ({
-      ...layer,
-      id: `${prefix}${layer.id}`,
-      source: 'source' in layer && layer.source ? `${prefix}${layer.source}` : undefined,
-    }))
+    const rewrittenLayers = (raw.layers ?? []).map((layer) => {
+      const rewritten: Record<string, unknown> = {
+        ...layer,
+        id: `${prefix}${layer.id}`,
+        source: 'source' in layer && layer.source ? `${prefix}${layer.source}` : undefined,
+      }
+      // 017-multi-sprite-support — a real, confirmed bug found via a
+      // live, real-hardware causation test (not assumed): a symbol
+      // layer's own `icon-image` is only ever resolvable against ITS
+      // OWN originating layer's sprite, but every prior version of this
+      // function kept at most one composed layer's sprite at all (the
+      // first that declared one) — silently dropping every other
+      // layer's own icons (e.g. the real UGRC highway/route-shield
+      // icons, which live ONLY in `LiteLabels`/`Outdoors_Labels`, never
+      // in `LiteBase`/`OutdoorsBase`, the layer that used to win).
+      // Rewritten here, uniformly, for EVERY composed layer regardless
+      // of how many total layers in this composition declare a sprite —
+      // deliberately no "only bother if there's more than one sprite"
+      // fast path (specs/017-multi-sprite-support/spec.md FR-004):
+      // MapLibre's own colon-prefixed multi-sprite lookup only works
+      // against the array `sprite` form (confirmed directly against the
+      // installed maplibre-gl package's real types/runtime bundle,
+      // research.md §2) — a plain-string `sprite` has no `id` to prefix
+      // against at all, so a single-sprite fast path would have forced
+      // skipping this rewrite too, recreating exactly the two-divergent-
+      // code-paths risk this uniform approach avoids.
+      const layout = rewritten.layout as Record<string, unknown> | undefined
+      if (layout && 'icon-image' in layout) {
+        const iconImage = layout['icon-image']
+        if (typeof iconImage === 'string') {
+          rewritten.layout = { ...layout, 'icon-image': `${spriteId}:${iconImage}` }
+        } else {
+          // Confirmed, exhaustively, against every real layer in every
+          // composition this app currently supports (research.md §1):
+          // zero use anything but a literal string here. This branch
+          // exists only for a hypothetical FUTURE composed layer whose
+          // icon-image is a style expression, which a plain string
+          // prefix can't safely rewrite — left unresolved deliberately,
+          // not silently (FR-005), via a scoped, named warning rather
+          // than throwing and aborting the whole composition.
+          console.warn(
+            `composeStyles: layer "${layer.id}" from ${layerUrl} has a non-literal icon-image value (a style expression) — left unrewritten, so it will only resolve if it already references sprite "${spriteId}" itself.`,
+          )
+        }
+      }
+      return rewritten
+    })
     merged.layers.push(...(rewrittenLayers as StyleSpecification['layers']))
 
-    // sprite/glyphs are top-level style fields, not per-source — the
-    // FIRST layer that declares one wins.
-    if (!merged.sprite && typeof raw.sprite === 'string') {
-      merged.sprite = resolveUrlPreservingTemplateTokens(raw.sprite, layerUrl)
+    // 017-multi-sprite-support: every composed layer's own sprite is now
+    // preserved — not just the first that declares one (the prior
+    // behavior, "first sprite wins," silently discarded every other
+    // layer's own icons entirely; see the icon-image rewrite comment
+    // above for the real, confirmed bug this caused). Collected here,
+    // assigned to merged.sprite as a whole once the loop finishes (see
+    // below) — always the array form, even when only one layer declares
+    // a sprite, for the same reason the icon-image rewrite above is
+    // never skipped for that case. glyphs keeps its original "first
+    // wins" behavior — MapLibre has no equivalent multi-glyphs
+    // capability, and no bug report exists for it; out of scope here.
+    if (typeof raw.sprite === 'string') {
+      spriteEntries.push({ id: spriteId, url: resolveUrlPreservingTemplateTokens(raw.sprite, layerUrl) })
     }
     if (!merged.glyphs && typeof raw.glyphs === 'string') {
       merged.glyphs = resolveUrlPreservingTemplateTokens(raw.glyphs, layerUrl)
     }
+  }
+
+  // 017-multi-sprite-support: MapLibre's own real, installed
+  // `SpriteSpecification` type is `string | {id: string; url: string}[]`
+  // — confirmed directly against the installed package, not assumed
+  // (research.md §2). No sprite is ever assigned MapLibre's special
+  // unprefixed `"default"` id — uniform prefixing on every layer avoids
+  // designating any one composed layer's sprite as special, which would
+  // reintroduce exactly the "is this the first/special one" asymmetry
+  // this feature exists to remove. `undefined` when zero composed
+  // layers declare a sprite — identical to today, nothing to collect.
+  if (spriteEntries.length > 0) {
+    merged.sprite = spriteEntries
   }
 
   // 016-fix-ugrc-dark-mode — a REAL, confirmed bug found via a live,

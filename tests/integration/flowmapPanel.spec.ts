@@ -1100,7 +1100,20 @@ test.describe('011-basemap-style-system — US3: real UGRC multi-source composit
     expect(sourceKeys.some((k) => k.startsWith('layer1__'))).toBe(true)
 
     const style = await page.evaluate((t) => window.__flowmapTestMaps![t].getStyle(), title)
-    expect(style.sprite).toMatch(/^https:\/\//)
+    // 017-multi-sprite-support: BOTH real composed layers here
+    // (LiteBase/OutdoorsBase AND LiteLabels/Outdoors_Labels) declare
+    // their own sprite — style.sprite is now the array form, one entry
+    // per layer, not a single string (research.md §2). This is the
+    // real, confirmed fix for both panels' missing highway/route-shield
+    // icons — see specs/017-multi-sprite-support/diagnostic notes and
+    // the `map.hasImage()` assertions further down in this file's own
+    // 017-multi-sprite-support describe block for the actual icon-level
+    // proof.
+    const spriteEntries = style.sprite as { id: string; url: string }[]
+    expect(Array.isArray(spriteEntries)).toBe(true)
+    expect(spriteEntries).toHaveLength(2)
+    expect(spriteEntries.map((s) => s.id)).toEqual(['layer0', 'layer1'])
+    for (const entry of spriteEntries) expect(entry.url).toMatch(/^https:\/\//)
     expect(style.glyphs).toMatch(/^https:\/\//)
     // Regression coverage for a real bug found during implementation:
     // resolving glyphs' relative URL via a naive `new URL()` percent-
@@ -1115,16 +1128,20 @@ test.describe('011-basemap-style-system — US3: real UGRC multi-source composit
     expect(style.glyphs).toContain('{range}')
 
     // Confirms the relative-path rewrite produced a genuinely fetchable
-    // absolute URL, not just a syntactically-absolute-looking one.
-    const spriteReachable = await page.evaluate(async (spriteUrl: string) => {
-      try {
-        const res = await fetch(`${spriteUrl}.json`)
-        return res.ok
-      } catch {
-        return false
-      }
-    }, style.sprite as string)
-    expect(spriteReachable).toBe(true)
+    // absolute URL for EVERY declared sprite, not just a syntactically-
+    // absolute-looking one — extended (017-multi-sprite-support) from a
+    // single-sprite check to every entry in the array.
+    for (const entry of spriteEntries) {
+      const spriteReachable = await page.evaluate(async (spriteUrl: string) => {
+        try {
+          const res = await fetch(`${spriteUrl}.json`)
+          return res.ok
+        } catch {
+          return false
+        }
+      }, entry.url)
+      expect(spriteReachable).toBe(true)
+    }
 
     // 012-webgl-context-management — regression coverage: composition's
     // own layer namespacing (layer0__/layer1__ prefixes) means a REAL
@@ -1157,6 +1174,64 @@ test.describe('011-basemap-style-system — US3: real UGRC multi-source composit
       '#ffffff',
     )
     await trueEventually(() => canvasCornersAreNotUniformBlankGray(page, title))
+  })
+})
+
+test.describe('017-multi-sprite-support — US1: both UGRC panels\' highway/route-shield icons resolve', () => {
+  // FR-001/FR-002/SC-001: the actual, confirmed root-cause fix — see
+  // specs/017-multi-sprite-support/research.md §1 for how these exact
+  // real icon names were confirmed (fetching both real sprite index
+  // JSONs directly): LiteBase/OutdoorsBase (layer0 in both real
+  // compositions) declare ZERO highway-shield icons; LiteLabels/
+  // Outdoors_Labels (layer1) declare ONLY highway-shield icons. Under
+  // the prior "first sprite wins" behavior, layer1's own sprite was
+  // silently discarded entirely, so these icon-image references could
+  // never resolve — `map.hasImage()` is MapLibre's own real, public API
+  // (confirmed present in the installed package's real `.d.ts`,
+  // research.md §3) for asserting this at the data level, fully
+  // automatable, no real hardware required (unlike 016's own defect).
+  test('Flowmap UGRC Composition — LiteLabels\' own highway-shield icons are present', async ({ page }) => {
+    await boot(page)
+    await page.getByRole('tab', { name: 'Basemaps' }).click()
+    const title = 'Flowmap UGRC Composition'
+    await waitForBasemapApplied(page, title)
+    await page.waitForTimeout(1500) // same real multi-fetch settle window as the composition test above
+
+    const iconNames = [
+      'Labels/Roads - white version/Interstates',
+      'Labels/Roads - Interstates and Ramps - white version/Interstates',
+      'Labels/Roads - Interstates and Ramps - white version/US Highways',
+      'Labels/Roads - white version/US Highways',
+      'Labels/Roads - Interstates and Ramps - white version/State Highways - 2.3m-2.8k',
+      'Labels/Roads - white version/State Highways',
+      'Labels/Roads - Interstates and Ramps - white version/State Highways',
+    ]
+    for (const iconName of iconNames) {
+      const hasImage = await page.evaluate(
+        ({ t, name }) => window.__flowmapTestMaps![t].hasImage(`layer1:${name}`),
+        { t: title, name: iconName },
+      )
+      expect(hasImage, `expected layer1:${iconName} to be loaded`).toBe(true)
+    }
+  })
+
+  test('Flowmap UGRC Outdoors Composition — Outdoors_Labels\' own highway-shield icons are present', async ({
+    page,
+  }) => {
+    await boot(page)
+    await page.getByRole('tab', { name: 'Basemaps' }).click()
+    const title = 'Flowmap UGRC Outdoors Composition'
+    await waitForBasemapApplied(page, title)
+    await page.waitForTimeout(1500)
+
+    const iconNames = ['LABELS/Roads - LABELS/Interstates', 'LABELS/Roads - LABELS/US Highways', 'LABELS/Roads - LABELS/State Highways']
+    for (const iconName of iconNames) {
+      const hasImage = await page.evaluate(
+        ({ t, name }) => window.__flowmapTestMaps![t].hasImage(`layer1:${name}`),
+        { t: title, name: iconName },
+      )
+      expect(hasImage, `expected layer1:${iconName} to be loaded`).toBe(true)
+    }
   })
 })
 

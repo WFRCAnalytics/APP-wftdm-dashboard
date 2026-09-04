@@ -105,7 +105,20 @@ describe('loadBasemapStyle', () => {
             sources: { hillshade: { type: 'vector', url: '../../' } },
             sprite: '../../sprites/sprite',
             glyphs: '../../{fontstack}/{range}.pbf',
-            layers: [{ id: 'hs-layer', type: 'fill', source: 'hillshade' }],
+            layers: [
+              { id: 'hs-layer', type: 'fill', source: 'hillshade' },
+              // 017-multi-sprite-support: this composition has only ONE
+              // sprite-declaring layer (hillshade) — base-layer below
+              // declares none. icon-image still gets prefixed here even
+              // so, per FR-004's own "no special-cased skip" — see the
+              // sprite/icon-image assertions below.
+              {
+                id: 'hs-icon-layer',
+                type: 'symbol',
+                source: 'hillshade',
+                layout: { 'icon-image': 'peak' },
+              },
+            ],
           }),
         } as Response
       }
@@ -148,7 +161,13 @@ describe('loadBasemapStyle', () => {
     expect((style.sources.layer0__hillshade as { tiles?: string[] }).tiles).toEqual([
       'https://example.test/tile/{z}/{x}/{y}.pbf',
     ])
-    expect(style.sprite).toBe('https://example.test/sprites/sprite')
+    // 017-multi-sprite-support: this composition has only ONE
+    // sprite-declaring layer (hillshade) — base-layer's own root.json
+    // declares no sprite at all. `style.sprite` is STILL the array
+    // form (length 1), never a plain string, per FR-004's own "no
+    // special-cased skip for the single-sprite case" — see
+    // contracts/compose-styles-multi-sprite.md's own table.
+    expect(style.sprite).toEqual([{ id: 'layer0', url: 'https://example.test/sprites/sprite' }])
     // Regression coverage for a real bug found during implementation
     // (research.md §6 update): a naive `new URL()` resolution percent-
     // encodes glyphs' required literal {fontstack}/{range} template
@@ -159,10 +178,202 @@ describe('loadBasemapStyle', () => {
     // the bottom (index 0) — a real, confirmed fix for corrupted-color
     // rendering on real hardware (specs/016-fix-ugrc-dark-mode/
     // diagnostic-results.md); every other layer shifts down by one.
-    expect(style.layers.map((l) => l.id)).toEqual(['background', 'layer0__hs-layer', 'layer1__base-layer'])
+    expect(style.layers.map((l) => l.id)).toEqual([
+      'background',
+      'layer0__hs-layer',
+      'layer0__hs-icon-layer',
+      'layer1__base-layer',
+    ])
     expect(style.layers[0]).toMatchObject({ type: 'background', paint: { 'background-color': '#ffffff' } })
     expect((style.layers[1] as { source?: string }).source).toBe('layer0__hillshade')
-    expect((style.layers[2] as { source?: string }).source).toBe('layer1__base')
+    // 017-multi-sprite-support: icon-image is prefixed with this layer's
+    // OWN sprite id ("layer0") even though it's the composition's only
+    // sprite-declaring layer — the reference STRING changes ("peak" ->
+    // "layer0:peak"), but this is not a rendering regression (FR-003/
+    // FR-004's own explicit distinction): the rendered icon is
+    // unaffected, since "layer0" IS this sprite's own real id in the
+    // array form above, not an arbitrary/unresolvable prefix.
+    expect((style.layers[2] as { layout?: { 'icon-image'?: string } }).layout?.['icon-image']).toBe('layer0:peak')
+    expect((style.layers[3] as { source?: string }).source).toBe('layer1__base')
+  })
+
+  // 017-multi-sprite-support — the actual, confirmed real-world bug
+  // (specs/017-multi-sprite-support/research.md §1): TWO composed
+  // layers each declare their own sprite, and the layer that actually
+  // needs its OWN icons (matching LiteLabels/Outdoors_Labels's own real
+  // shape — an icon-only layer, no icons on the base layer at all) is
+  // NOT the first one processed. Under the old "first sprite wins"
+  // logic, this layer's own sprite was silently discarded entirely and
+  // its icon-image references could never resolve. Confirmed fixed.
+  it('preserves and correctly resolves a SECOND composed layer\'s own sprite/icon-image — the real UGRC bug shape', async () => {
+    vi.mocked(fetch).mockImplementation(async (input) => {
+      const url = String(input)
+      if (url === 'https://example.test/base-no-icons/nested/root.json') {
+        return {
+          ok: true,
+          json: async () => ({
+            version: 8,
+            sources: { base: { type: 'vector', url: '../../' } },
+            sprite: '../sprites/sprite',
+            layers: [{ id: 'base-layer', type: 'fill', source: 'base' }],
+          }),
+        } as Response
+      }
+      if (url === 'https://example.test/labels-with-icons/nested/root.json') {
+        return {
+          ok: true,
+          json: async () => ({
+            version: 8,
+            sources: { labels: { type: 'vector', url: '../../' } },
+            sprite: '../sprites/sprite',
+            layers: [
+              { id: 'highway-shield', type: 'symbol', source: 'labels', layout: { 'icon-image': 'Interstates' } },
+            ],
+          }),
+        } as Response
+      }
+      if (url === 'https://example.test/') {
+        return { ok: true, json: async () => ({ tiles: ['tile/{z}/{x}/{y}.pbf'] }) } as Response
+      }
+      throw new Error(`unexpected fetch: ${url}`)
+    })
+
+    const result = await loadBasemapStyle({
+      layers: [
+        'https://example.test/base-no-icons/nested/root.json',
+        'https://example.test/labels-with-icons/nested/root.json',
+      ],
+    })
+
+    expect(result.kind).toBe('style')
+    const style = (result as { kind: 'style'; style: StyleSpecification }).style
+
+    // BOTH layers' own sprites survive — the real, confirmed fix. Under
+    // the old logic, only layer0's own sprite URL would appear here at
+    // all, as a plain string, and layer1's would be silently dropped.
+    expect(style.sprite).toEqual([
+      { id: 'layer0', url: 'https://example.test/base-no-icons/sprites/sprite' },
+      { id: 'layer1', url: 'https://example.test/labels-with-icons/sprites/sprite' },
+    ])
+
+    // layer1's own icon-image resolves against ITS OWN sprite id
+    // ("layer1"), not layer0's (which is what "first sprite wins" would
+    // have silently left it stuck referencing).
+    const shieldLayer = style.layers.find((l) => l.id === 'layer1__highway-shield')
+    expect((shieldLayer as { layout?: { 'icon-image'?: string } })?.layout?.['icon-image']).toBe(
+      'layer1:Interstates',
+    )
+  })
+
+  // 017-multi-sprite-support — User Story 3: the mechanism generalizes
+  // to ANY future composition with multiple sprite-declaring layers,
+  // not just the two currently-known real UGRC panels. Deliberately
+  // generic, non-UGRC-shaped fixture URLs/icon names — proves this is
+  // not a special case reading panel titles or specific real service
+  // names (FR-006), and — unlike the previous test, where only layer1
+  // had icon-image layers — BOTH layers here have their own icons, so
+  // this confirms each one resolves to its OWN sprite specifically,
+  // not merely that "the second layer's icons now work."
+  it('resolves each composed layer\'s own icon-image against its own sprite when BOTH layers declare one, with non-overlapping icon names', async () => {
+    vi.mocked(fetch).mockImplementation(async (input) => {
+      const url = String(input)
+      if (url === 'https://example.test/roadsigns/nested/root.json') {
+        return {
+          ok: true,
+          json: async () => ({
+            version: 8,
+            sources: { roads: { type: 'vector', url: '../../' } },
+            sprite: '../sprites/sprite',
+            layers: [{ id: 'stop-sign-layer', type: 'symbol', source: 'roads', layout: { 'icon-image': 'stop_sign' } }],
+          }),
+        } as Response
+      }
+      if (url === 'https://example.test/shops/nested/root.json') {
+        return {
+          ok: true,
+          json: async () => ({
+            version: 8,
+            sources: { shops: { type: 'vector', url: '../../' } },
+            sprite: '../sprites/sprite',
+            layers: [{ id: 'cafe-layer', type: 'symbol', source: 'shops', layout: { 'icon-image': 'cafe' } }],
+          }),
+        } as Response
+      }
+      if (url === 'https://example.test/') {
+        return { ok: true, json: async () => ({ tiles: ['tile/{z}/{x}/{y}.pbf'] }) } as Response
+      }
+      throw new Error(`unexpected fetch: ${url}`)
+    })
+
+    const result = await loadBasemapStyle({
+      layers: ['https://example.test/roadsigns/nested/root.json', 'https://example.test/shops/nested/root.json'],
+    })
+
+    expect(result.kind).toBe('style')
+    const style = (result as { kind: 'style'; style: StyleSpecification }).style
+
+    expect(style.sprite).toEqual([
+      { id: 'layer0', url: 'https://example.test/roadsigns/sprites/sprite' },
+      { id: 'layer1', url: 'https://example.test/shops/sprites/sprite' },
+    ])
+
+    const stopSignLayer = style.layers.find((l) => l.id === 'layer0__stop-sign-layer')
+    const cafeLayer = style.layers.find((l) => l.id === 'layer1__cafe-layer')
+    // Each layer's own icon resolves against its OWN sprite id — not
+    // both collapsing onto layer0 (the old "first wins" bug) and not
+    // swapped (layer0 getting layer1's prefix or vice versa).
+    expect((stopSignLayer as { layout?: { 'icon-image'?: string } })?.layout?.['icon-image']).toBe(
+      'layer0:stop_sign',
+    )
+    expect((cafeLayer as { layout?: { 'icon-image'?: string } })?.layout?.['icon-image']).toBe('layer1:cafe')
+  })
+
+  // 017-multi-sprite-support — FR-005: confirmed, exhaustively, that no
+  // real currently-composed layer's icon-image is a style expression
+  // (research.md §1) — this test exercises that branch anyway, via a
+  // synthetic fixture, since the requirement is to handle it
+  // explicitly (warn, leave unrewritten), never silently.
+  it('warns and leaves icon-image untouched when its value is a style expression, not a literal string', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    vi.mocked(fetch).mockImplementation(async (input) => {
+      const url = String(input)
+      if (url === 'https://example.test/expr/root.json') {
+        return {
+          ok: true,
+          json: async () => ({
+            version: 8,
+            sources: { data: { type: 'vector', url: '../../' } },
+            sprite: '../../sprites/sprite',
+            layers: [
+              {
+                id: 'dynamic-icon-layer',
+                type: 'symbol',
+                source: 'data',
+                layout: { 'icon-image': ['get', 'icon'] },
+              },
+            ],
+          }),
+        } as Response
+      }
+      if (url === 'https://example.test/') {
+        return { ok: true, json: async () => ({ tiles: ['tile/{z}/{x}/{y}.pbf'] }) } as Response
+      }
+      throw new Error(`unexpected fetch: ${url}`)
+    })
+
+    const result = await loadBasemapStyle({ layers: ['https://example.test/expr/root.json'] })
+    expect(result.kind).toBe('style')
+    const style = (result as { kind: 'style'; style: StyleSpecification }).style
+
+    const exprLayer = style.layers.find((l) => l.id === 'layer0__dynamic-icon-layer')
+    // Untouched — NOT prefixed, since a bare string prefix can't safely
+    // rewrite an expression tree.
+    expect((exprLayer as { layout?: { 'icon-image'?: unknown } })?.layout?.['icon-image']).toEqual(['get', 'icon'])
+    // But not silent either (FR-005) — a scoped warning names the
+    // specific layer and its source composition URL.
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('dynamic-icon-layer'))
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('https://example.test/expr/root.json'))
+    warnSpy.mockRestore()
   })
 
   // 016-fix-ugrc-dark-mode — a composed source that DOES provide its own

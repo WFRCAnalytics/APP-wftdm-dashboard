@@ -630,6 +630,65 @@ APP-wftdm-dashboard/
     │   │                         # mode, light mode unaffected, chrome
     │   │                         # unregressed, no new corruption
     │   │                         # elsewhere. RESOLVED.
+    │   │                         # 017-multi-sprite-support: a SEVENTH
+    │   │                         # real, separate bug, found while
+    │   │                         # investigating the two UGRC panels
+    │   │                         # further after 016 shipped — highway/
+    │   │                         # route-shield icons were missing from
+    │   │                         # both panels' road labels entirely,
+    │   │                         # in both themes. Root cause:
+    │   │                         # composeStyles()'s own long-standing
+    │   │                         # "first sprite wins" behavior (every
+    │   │                         # composed layer's sprite EXCEPT the
+    │   │                         # first that declared one was silently
+    │   │                         # discarded) — confirmed directly by
+    │   │                         # fetching both real UGRC compositions'
+    │   │                         # own sprite index JSONs: LiteBase/
+    │   │                         # OutdoorsBase (layer0 in both real
+    │   │                         # compositions) declare ZERO highway-
+    │   │                         # shield icons; LiteLabels/
+    │   │                         # Outdoors_Labels (layer1, the one
+    │   │                         # that actually needs them) declare
+    │   │                         # ONLY highway-shield icons — exactly
+    │   │                         # the sprite "first wins" discarded.
+    │   │                         # maplibre-gl@^4.7.1 (this project's
+    │   │                         # pinned version) genuinely supports a
+    │   │                         # multi-sprite array — confirmed
+    │   │                         # directly against the installed
+    │   │                         # package's real types AND runtime
+    │   │                         # bundle (colon-prefixed `{spriteId}:
+    │   │                         # {iconName}` lookup, landed in
+    │   │                         # MapLibre 3.0). Fixed: composeStyles()
+    │   │                         # now collects EVERY composed layer's
+    │   │                         # own sprite into that array form
+    │   │                         # (`{id: 'layer<i>', url: ...}`, one
+    │   │                         # entry per layer, ALWAYS the array
+    │   │                         # form even for a single sprite — no
+    │   │                         # special-cased skip, confirmed
+    │   │                         # necessary since a plain-string
+    │   │                         # sprite has no id to prefix against
+    │   │                         # at all) and rewrites every symbol
+    │   │                         # layer's own `icon-image` to
+    │   │                         # reference its own originating
+    │   │                         # layer's sprite id. Confirmed,
+    │   │                         # exhaustively (not assumed): zero of
+    │   │                         # 39 real symbol layers across every
+    │   │                         # currently-composed service use a
+    │   │                         # style expression for icon-image
+    │   │                         # (only the literal-string case
+    │   │                         # exists today) — a synthetic test
+    │   │                         # covers the hypothetical expression
+    │   │                         # case anyway (warn, leave
+    │   │                         # unrewritten, never silent). Unlike
+    │   │                         # 016's own GPU-dependent defect, this
+    │   │                         # one is a data-lookup process, not a
+    │   │                         # rendering one — confirmed fully
+    │   │                         # verifiable via Playwright alone
+    │   │                         # (MapLibre's own real, public
+    │   │                         # `map.hasImage()`/`listImages()` API),
+    │   │                         # no real-hardware step needed. See
+    │   │                         # `specs/017-multi-sprite-support/
+    │   │                         # research.md` for the full record.
     │   ├── basemap/              # done (011-basemap-style-system) — shared
     │   │   │                     # basemap registry/resolution, consumed by
     │   │   │                     # FlowMapPanel.tsx AND (013-zonemap-panel)
