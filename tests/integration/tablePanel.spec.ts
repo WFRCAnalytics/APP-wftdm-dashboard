@@ -342,3 +342,72 @@ test.describe('Polish - three-way reset on refetch, and 004 expand-dialog inheri
     await expect(card.locator('tbody tr').first().locator('td').first()).toHaveText(expandedValue)
   })
 })
+
+// 019-baseline-diff-consumption. Reuses this file's own boot()/panelCard()
+// helpers plus generate.py's real VMT_BY_HOME_TAZ_ROWS/
+// VMT_BY_HOME_TAZ_OBSERVED_ROWS fixture data — the exact same values
+// zonemapPanel.spec.ts's own hardcoded-name comparison: diff test already
+// hand-verifies (TAZ 100: -13.0, TAZ 700: 20.0), and a genuine 0.0 at TAZ
+// 300 in good_scenario's own data for the zero-baseline percent-diff case.
+test.describe('019-baseline-diff-consumption', () => {
+  function rowFor(card: ReturnType<typeof panelCard>, taz: string) {
+    return card.locator('tbody tr', { hasText: taz })
+  }
+
+  test('User Story 1: $baseline resolves and computes the correct absolute diff, reactively', async ({
+    page,
+  }) => {
+    await boot(page)
+    const card = panelCard(page, 'Table VMT Diff via $baseline')
+    await expect(card.getByRole('columnheader', { name: 'TAZ' })).toBeVisible()
+
+    // Explicitly mark 'observed' baseline — a === observed, b === good_scenario.
+    await page.evaluate(() => window.__wftdm!.appState.setBaseline('observed'))
+
+    await expect(rowFor(card, '100').locator('td').nth(1)).toHaveText('-13.0')
+    await expect(rowFor(card, '700').locator('td').nth(1)).toHaveText('20.0')
+  })
+
+  test('User Story 2: a zero baseline value renders a distinct "N/A" state, never Infinity/NaN/the literal string "null"', async ({
+    page,
+  }) => {
+    await boot(page)
+    const card = panelCard(page, 'Table VMT Percent Diff via $baseline (zero-baseline case)')
+    await page.evaluate(() => window.__wftdm!.appState.setBaseline('good_scenario'))
+
+    // TAZ 300: good_scenario's own value is 0.0 -> NULLIF(0,0) -> NULL.
+    const naCell = rowFor(card, '300').locator('td').nth(1)
+    await expect(naCell).toHaveText('N/A')
+    const naStyle = (await naCell.getAttribute('style')) ?? ''
+    expect(naStyle).toContain('muted-foreground') // dedicated "not computable" color
+
+    // TAZ 700: good_scenario's own value is 25.0 -> a real, non-null
+    // percentage, clean and hand-verifiable: (5.0 - 25.0) / 25.0 = -80.0%.
+    const realCell = rowFor(card, '700').locator('td').nth(1)
+    await expect(realCell).toHaveText('-80.0%')
+    const realStyle = (await realCell.getAttribute('style')) ?? ''
+    expect(realStyle).not.toContain('muted-foreground') // distinct from the N/A cell above
+  })
+
+  test('User Story 4: shows the existing error state when no baseline resolves, recovers automatically once one does', async ({
+    page,
+  }) => {
+    await boot(page)
+    const card = panelCard(page, 'Table VMT Diff via $baseline')
+    await expect(card.getByRole('columnheader', { name: 'TAZ' })).toBeVisible()
+
+    await page.evaluate(() => {
+      for (const s of window.__wftdm!.appState.list()) {
+        window.__wftdm!.appState.unregister(s.name)
+      }
+    })
+    await expect(card.getByRole('alert')).toBeVisible()
+
+    await page.evaluate(() => {
+      window.__wftdm!.appState.register('good_scenario', { source: 'url' })
+      window.__wftdm!.appState.setStatus('good_scenario', 'ready')
+    })
+    await expect(card.getByRole('alert')).not.toBeVisible()
+    await expect(card.getByRole('columnheader', { name: 'TAZ' })).toBeVisible()
+  })
+})

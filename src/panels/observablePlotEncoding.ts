@@ -58,7 +58,24 @@ export function resolveObservablePlotEncoding(
   // check, not covered when this feature originally shipped).
   if (config.fill || config.stroke) plotOptions.color = { legend: true }
 
-  return { markName: config.mark, data: rows, options, plotOptions }
+  // 019-baseline-diff-consumption (FR-014): a real, confirmed finding —
+  // research.md §6 originally assumed Observable Plot's own native
+  // null-handling omits a null-valued mark the same way Plotly's does.
+  // Empirically false for barY specifically: a null y renders as a real
+  // <rect height="0"> at the EXACT position a genuine 0 value would
+  // occupy — visually indistinguishable from "no change," which is
+  // exactly the silent-coercion-to-0 outcome FR-014 forbids. Rather than
+  // special-case per mark type (whether lineY's own null-handling truly
+  // differs was not exhaustively re-verified either), rows with a null
+  // value on the configured y channel are filtered out here,
+  // unconditionally — a genuine omission, matching the visual guarantee
+  // FR-014 requires uniformly across every mark type this panel type
+  // supports, not a behavior this app merely hopes each mark honors on
+  // its own.
+  const yField = config.y
+  const data = yField ? rows.filter((row) => row[yField] !== null) : rows
+
+  return { markName: config.mark, data, options, plotOptions }
 }
 
 /**

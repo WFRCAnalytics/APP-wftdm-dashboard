@@ -27,6 +27,7 @@ const AUTO_DOMAIN_TITLE = 'Zone Map VMT per Capita (Auto Domain)'
 const DIFF_TITLE = 'Zone Map VMT Diff (Good vs Observed)'
 const DIFF_UNRESOLVABLE_TITLE = 'Zone Map Diff Unresolvable Scenario (intentional)'
 const BROKEN_TITLE = 'Zone Map Broken Panel (intentional)'
+const DIFF_BASELINE_TITLE = 'Zone Map VMT Diff via $baseline'
 
 async function boot(page: Page) {
   await page.goto('/')
@@ -463,6 +464,65 @@ test.describe('User Story 3 - Color scale precision and comparison: diff', () =>
     await boot(page)
     await expect(panelCard(page, DIFF_UNRESOLVABLE_TITLE).getByRole('alert')).toBeVisible()
   })
+})
+
+// 019-baseline-diff-consumption, User Story 1 (T019) and User Story 4
+// (T028) — the '$baseline' sentinel case, reusing this file's own real
+// observed(flat 5.0)/good_scenario fixture data. good_scenario is
+// automatically baseline the moment it registers ready (018's own
+// automatic-default rule, since observed is pinned) — so this panel
+// initially renders with a === b (both good_scenario), every diff_value
+// trivially 0, BEFORE the test ever calls setBaseline() itself. Explicitly
+// setting baseline to 'observed' afterward is what actually exercises the
+// sentinel resolving to a DIFFERENT scenario, and directly proves FR-016's
+// reactivity requirement (User Story 1 Acceptance Scenario 2: recompute on
+// a live baseline change, no reload) — not just the resolver's own logic
+// in isolation (already unit-tested).
+test.describe('019-baseline-diff-consumption', () => {
+  test('$baseline resolves to whichever scenario is currently baseline, and recomputes reactively on change (US1)', async ({
+    page,
+  }) => {
+    await boot(page)
+    // Lives on the Detail tab, not Summary — see
+    // tests/fixtures/dashboard-config/dashboard-2-detail.yaml's own
+    // comment on this panel for why (a precaution against a suspected,
+    // later-disproven WebGL-context regression — the placement was kept
+    // anyway as harmless, but is not fixing a real, confirmed problem).
+    await page.getByRole('tab', { name: 'Detail' }).click()
+    const container = await waitForRender(page, DIFF_BASELINE_TITLE)
+
+    // Initial state: automatic default (good_scenario) on both sides —
+    // every zone's diff is trivially 0.
+    await trueEventually(async () => {
+      const features = await sourceFeatureProps(page, DIFF_BASELINE_TITLE)
+      const zone100 = features.find((f) => f.zoneId === '100')
+      return zone100?.value === 0
+    })
+
+    // Explicitly mark 'observed' as baseline — the SAME real values the
+    // hardcoded-name DIFF_TITLE panel above already hand-verifies.
+    await page.evaluate(() => window.__wftdm!.appState.setBaseline('observed'))
+
+    await trueEventually(async () => {
+      const features = await sourceFeatureProps(page, DIFF_BASELINE_TITLE)
+      const zone100 = features.find((f) => f.zoneId === '100')
+      return zone100?.value === -13
+    })
+    const features = await sourceFeatureProps(page, DIFF_BASELINE_TITLE)
+    const zone700 = features.find((f) => f.zoneId === '700')
+    expect(zone700?.value).toBe(20)
+    await expect(container).toBeVisible()
+  })
+
+  // User Story 4 (unresolved baseline -> error -> automatic recovery) is
+  // covered in tests/integration/tablePanel.spec.ts's own
+  // 019-baseline-diff-consumption block instead — this test's first draft
+  // here mistakenly reused waitForRender() (this file's OWN
+  // zonemap-specific .zonemap-chart-container helper) against a `table`
+  // panel title, which can never resolve; fixed by not duplicating the
+  // check here at all, since tablePanel.spec.ts's own version already
+  // exercises the identical FR-011/FR-016 behavior correctly, panelCard()
+  // and getByRole('columnheader') scoped to that panel type properly.
 })
 
 // Attribution control — same MapLibre built-in attributionControl:

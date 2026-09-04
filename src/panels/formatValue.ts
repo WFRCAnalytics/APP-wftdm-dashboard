@@ -6,6 +6,16 @@
 // regex. Behavior is unchanged from the original: minimal support for
 // {:,.0f} / {:.1f} / {:.1%}; non-numeric values are stringified as-is.
 export function formatValue(value: unknown, format: string): string {
+  // 019-baseline-diff-consumption: a real, confirmed bug fixed here —
+  // without this branch, null/undefined fell through to the generic
+  // `String(value)` fallback below, rendering the literal three-character
+  // string "null"/"undefined" (String(null) === 'null'). A diff_value
+  // column's own zero-baseline degenerate case (a NULLIF-guarded percent-
+  // diff formula, FR-013) legitimately produces SQL NULL for some rows —
+  // this must read as a distinct, defined "not computable" state (FR-014),
+  // never a raw JS-artifact string. Checked before the typeof guard below
+  // so it takes precedence over the generic stringify fallback.
+  if (value === null || value === undefined) return 'N/A'
   if (typeof value !== 'number') return String(value)
   const match = format.match(/\{:(,)?\.(\d+)(f|%)\}/)
   if (!match) return String(value)

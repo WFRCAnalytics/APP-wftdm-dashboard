@@ -7,10 +7,14 @@ import * as sqlExpander from '@/services/sqlExpander'
 import * as filterState from '@/state/filterState'
 import { useFilterState } from '@/hooks/useFilterState'
 import { useActiveScenarios } from '@/hooks/useActiveScenarios'
+import { useBaseline } from '@/hooks/useBaseline'
 import { useColorScheme } from '@/hooks/useColorScheme'
 import {
+  buildComparisonDiffQuery,
   buildPanelQuery,
+  isComparisonDiff,
   resolveActiveScenarios,
+  resolveComparisonScenarioName,
   extractGlobalFilterIds,
   EMPTY_SUMMARIZE_CONFIG,
 } from '@/panels/panelQuery'
@@ -63,6 +67,11 @@ export function PlotlyPanel({ config }: { config: PlotlyPanelConfig }) {
   // ValueBoxPanel.tsx's own comment on why this replaced a direct
   // appState.getActive() read inside the effect below.
   const activeScenarioNames = useActiveScenarios()
+  // 019-baseline-diff-consumption: only consulted when config.comparison
+  // references the '$baseline' sentinel — included in the fetch effect's
+  // own dependency array below regardless, so a live baseline change
+  // reactively re-triggers the fetch for a panel that uses it (FR-016).
+  const baseline = useBaseline()
   const colorScheme = useColorScheme()
   const containerRef = useRef<HTMLDivElement>(null)
   const [status, setStatus] = useState<'loading' | 'ready' | 'empty' | 'error'>('loading')
@@ -83,11 +92,37 @@ export function PlotlyPanel({ config }: { config: PlotlyPanelConfig }) {
     let cancelled = false
     setStatus('loading')
 
-    const template = buildPanelQuery(config, filters)
-    const activeScenarios = resolveActiveScenarios(config, activeScenarioNames)
-    // Intentionally empty, not a stub — panel queries only ever use
-    // $scenario/$filters, never $mappings/$bins/$sql (research.md §2).
-    const sql = sqlExpander.expand(template, EMPTY_SUMMARIZE_CONFIG, filterState, activeScenarios)
+    // 019-baseline-diff-consumption: same isComparisonDiff()/
+    // buildComparisonDiffQuery()/resolveComparisonScenarioName() shape
+    // ZoneMapPanel.tsx's own reference migration establishes — a
+    // '$baseline' sentinel on either side is resolved BEFORE the query is
+    // built; an unresolved baseline shows this panel's existing error
+    // state directly, never attempting a doomed query (FR-011).
+    let sql: string
+    if (isComparisonDiff(config.comparison)) {
+      const diff = config.comparison
+      const resolvedA = resolveComparisonScenarioName(diff.a, baseline)
+      const resolvedB = resolveComparisonScenarioName(diff.b, baseline)
+      if (resolvedA === undefined || resolvedB === undefined) {
+        setStatus('error')
+        return
+      }
+      // config.compare_on is required for comparison: diff on this panel
+      // type (no zonemap-style metric_id default exists — research.md
+      // §1/§3); an omitted compare_on here is a config-authoring error,
+      // surfacing the same defined way as any other missing-required-
+      // field misconfiguration — an empty compareOn produces malformed
+      // SQL, which DuckDB rejects and this panel's own existing .catch()
+      // below turns into the shared PanelErrorState, same as any other
+      // unresolvable configuration (spec.md Edge Cases).
+      sql = buildComparisonDiffQuery(config.metric, resolvedA, resolvedB, config.compare_on ?? [], diff.expr)
+    } else {
+      const template = buildPanelQuery(config, filters)
+      const activeScenarios = resolveActiveScenarios(config, activeScenarioNames)
+      // Intentionally empty, not a stub — panel queries only ever use
+      // $scenario/$filters, never $mappings/$bins/$sql (research.md §2).
+      sql = sqlExpander.expand(template, EMPTY_SUMMARIZE_CONFIG, filterState, activeScenarios)
+    }
 
     query(sql)
       .then((rows) => {
@@ -124,7 +159,7 @@ export function PlotlyPanel({ config }: { config: PlotlyPanelConfig }) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- colorScheme
     // intentionally excluded, see comment above
-  }, [config, filters, activeScenarioNames])
+  }, [config, filters, activeScenarioNames, baseline])
 
   // Theme-only re-render — reapplies resolveThemeLayout() colors against
   // the SAME already-fetched traces (lastTracesRef), no new query. Guarded

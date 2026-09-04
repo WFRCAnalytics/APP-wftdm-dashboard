@@ -7,9 +7,13 @@ import * as sqlExpander from '@/services/sqlExpander'
 import * as filterState from '@/state/filterState'
 import { useFilterState } from '@/hooks/useFilterState'
 import { useActiveScenarios } from '@/hooks/useActiveScenarios'
+import { useBaseline } from '@/hooks/useBaseline'
 import {
+  buildComparisonDiffQuery,
   buildPanelQuery,
+  isComparisonDiff,
   resolveActiveScenarios,
+  resolveComparisonScenarioName,
   extractGlobalFilterIds,
   EMPTY_SUMMARIZE_CONFIG,
 } from '@/panels/panelQuery'
@@ -66,6 +70,11 @@ export function ObservablePlotPanel({ config }: { config: ObservablePlotPanelCon
   // 007-observable-plot-panel).
   const activeScenarios = useActiveScenarios()
   const view = resolveInputOptionsView(config, activeScenarios)
+  // 019-baseline-diff-consumption: only consulted when config.comparison
+  // references the '$baseline' sentinel — included in the fetch effect's
+  // own dependency array below regardless, so a live baseline change
+  // reactively re-triggers the fetch for a panel that uses it (FR-016).
+  const baseline = useBaseline()
 
   const containerRef = useRef<HTMLDivElement>(null)
   const plotElementRef = useRef<Element | null>(null)
@@ -80,14 +89,37 @@ export function ObservablePlotPanel({ config }: { config: ObservablePlotPanelCon
     let cancelled = false
     setStatus('loading')
 
-    const template = buildPanelQuery(config, filters)
-    const sql = sqlExpander.expand(
-      template,
-      EMPTY_SUMMARIZE_CONFIG,
-      filterState,
-      resolveActiveScenarios(config, activeScenarios),
-      inputState, // new 5th param — research.md §2
-    )
+    // 019-baseline-diff-consumption: same isComparisonDiff()/
+    // buildComparisonDiffQuery()/resolveComparisonScenarioName() shape
+    // ZoneMapPanel.tsx's own reference migration establishes — a
+    // '$baseline' sentinel on either side is resolved BEFORE the query is
+    // built; an unresolved baseline shows this panel's existing error
+    // state directly, never attempting a doomed query (FR-011).
+    let sql: string
+    if (isComparisonDiff(config.comparison)) {
+      const diff = config.comparison
+      const resolvedA = resolveComparisonScenarioName(diff.a, baseline)
+      const resolvedB = resolveComparisonScenarioName(diff.b, baseline)
+      if (resolvedA === undefined || resolvedB === undefined) {
+        setStatus('error')
+        return
+      }
+      // config.compare_on is required for comparison: diff on this panel
+      // type (no zonemap-style metric_id default — research.md §1/§3);
+      // an omitted compare_on is a config-authoring error, surfacing the
+      // same defined way as any other missing-required-field
+      // misconfiguration (spec.md Edge Cases).
+      sql = buildComparisonDiffQuery(config.metric, resolvedA, resolvedB, config.compare_on ?? [], diff.expr)
+    } else {
+      const template = buildPanelQuery(config, filters)
+      sql = sqlExpander.expand(
+        template,
+        EMPTY_SUMMARIZE_CONFIG,
+        filterState,
+        resolveActiveScenarios(config, activeScenarios),
+        inputState, // 5th param — research.md §2 (007-observable-plot-panel)
+      )
+    }
 
     query(sql)
       .then((result) => {
@@ -113,7 +145,7 @@ export function ObservablePlotPanel({ config }: { config: ObservablePlotPanelCon
     // useActiveScenarios() hook above provides a real, stable-until-
     // changed reference, so exhaustive-deps is satisfied honestly now,
     // not suppressed).
-  }, [config, filters, inputValues, activeScenarios])
+  }, [config, filters, inputValues, activeScenarios, baseline])
 
   // Render-and-swap — runs when `rows`/`status` changes AND on every
   // ResizeObserver-observed container resize (research.md §5: Plot.plot()

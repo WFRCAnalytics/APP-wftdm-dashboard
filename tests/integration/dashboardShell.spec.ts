@@ -80,13 +80,20 @@ test.describe('User Story 3 - An analyst sees a real, filter-reactive chart', ()
   }) => {
     await page.goto('/')
     await page.waitForFunction(() => window.__wftdm !== undefined, null, { timeout: 30_000 })
-    await expect(page.locator('.js-plotly-plot')).toBeVisible({ timeout: 10_000 })
+    // Scoped to this specific plotly panel's card, not the whole page —
+    // 019-baseline-diff-consumption added further plotly panels to this
+    // same fixture tab, so the page now legitimately has more than one
+    // .js-plotly-plot div; an unscoped locator is a real strict-mode
+    // violation now, not a workaround-worthy edge case (the same class of
+    // fix 014-graphic-walker-panel's own CLAUDE.md history note already
+    // documents for an unrelated unscoped role="tab" query).
+    const plotlyCard = page.getByText('Mode Share by Purpose', { exact: true }).locator('..').locator('..')
+    await expect(plotlyCard.locator('.js-plotly-plot')).toBeVisible({ timeout: 10_000 })
 
     // SC-003: changing the purpose filter re-queries and redraws without
     // a page reload, and — same container, not torn down and rebuilt.
-    const before = await page.evaluate(() => {
-      const gd = document.querySelector('.js-plotly-plot')
-      return gd ? (gd as unknown as { data: unknown[] }).data.length : 0
+    const before = await plotlyCard.locator('.js-plotly-plot').evaluate((gd) => {
+      return (gd as unknown as { data: unknown[] }).data.length
     })
     expect(before).toBeGreaterThan(0)
 
@@ -95,20 +102,18 @@ test.describe('User Story 3 - An analyst sees a real, filter-reactive chart', ()
       navigated = true
     })
     await page.evaluate(() => window.__wftdm!.filterState.set('purpose', 'NONEXISTENT'))
-    // Scoped to this specific plotly panel's card, not the whole page —
     // other panels bound to the same global purpose filter (e.g.
     // 007-observable-plot-panel's fixture panels) legitimately also show
     // this same empty-state text when purpose matches nothing, which
     // would make an unscoped page-wide locator ambiguous (and flaky,
     // since how many have finished their own async fetch by the time
     // this assertion polls varies run to run).
-    const plotlyCard = page.getByText('Mode Share by Purpose', { exact: true }).locator('..').locator('..')
     await expect(plotlyCard.getByText('No data for this selection')).toBeVisible()
     expect(navigated).toBe(false)
 
     await page.evaluate(() => window.__wftdm!.filterState.set('purpose', 'HBW'))
-    await expect(page.locator('.js-plotly-plot')).toBeVisible()
-    const plotlyDivCount = await page.locator('.js-plotly-plot').count()
+    await expect(plotlyCard.locator('.js-plotly-plot')).toBeVisible()
+    const plotlyDivCount = await plotlyCard.locator('.js-plotly-plot').count()
     expect(plotlyDivCount).toBe(1) // same container reused, not duplicated
   })
 
@@ -126,20 +131,28 @@ test.describe('User Story 3 - An analyst sees a real, filter-reactive chart', ()
   }) => {
     await page.goto('/')
     await page.waitForFunction(() => window.__wftdm !== undefined, null, { timeout: 30_000 })
-    await expect(page.locator('.js-plotly-plot')).toBeVisible({ timeout: 10_000 })
+    // Scoped — see the filter-change test above for why an unscoped
+    // .js-plotly-plot locator is a real strict-mode violation now that
+    // 019-baseline-diff-consumption added further plotly panels to this
+    // same fixture tab.
+    const plotlyCard = page.getByText('Mode Share by Purpose', { exact: true }).locator('..').locator('..')
+    await expect(plotlyCard.locator('.js-plotly-plot')).toBeVisible({ timeout: 10_000 })
 
     const queryCountBefore = await page.evaluate(() => window.__wftdm!.__debugQueryLog().length)
 
     await page.evaluate(() => document.documentElement.classList.add('dark'))
     await page.waitForTimeout(300)
 
-    const styles = await page.locator('.js-plotly-plot .bg').first().evaluate((el) => {
+    const styles = await plotlyCard.locator('.js-plotly-plot .bg').first().evaluate((el) => {
       const cs = getComputedStyle(el)
       return { fillOpacity: cs.fillOpacity }
     })
     expect(styles.fillOpacity).toBe('0') // fully transparent — the card's own bg-card shows through
 
-    const tickFill = await page.locator('.js-plotly-plot .xtick text').first().evaluate((el) => getComputedStyle(el).fill)
+    const tickFill = await plotlyCard
+      .locator('.js-plotly-plot .xtick text')
+      .first()
+      .evaluate((el) => getComputedStyle(el).fill)
     expect(tickFill).toBe('rgb(255, 255, 255)') // --foreground in dark mode
 
     // A theme flip must not re-query DuckDB-WASM — only colors change.
@@ -165,5 +178,68 @@ test.describe('Panel error isolation (SC-006, FR-010)', () => {
     // ...while its sibling on the same tab still renders correctly.
     await expect(page.getByText('Average Trip Distance')).toBeVisible()
     await expect(page.getByText('6.4')).toBeVisible()
+  })
+})
+
+// 019-baseline-diff-consumption. Reuses this file's own real
+// .js-plotly-plot-scoping pattern (the SQL expander plotly panel test
+// above) plus generate.py's real VMT_BY_HOME_TAZ_ROWS/
+// VMT_BY_HOME_TAZ_OBSERVED_ROWS fixture data — same values
+// zonemapPanel.spec.ts's own hardcoded-name comparison: diff test already
+// hand-verifies.
+test.describe('019-baseline-diff-consumption', () => {
+  function plotlyCard(page: import('@playwright/test').Page, title: string) {
+    return page.getByText(title, { exact: true }).locator('..').locator('..')
+  }
+
+  /** Reads a specific x value's y from the FIRST already-rendered trace,
+   * or undefined if the chart hasn't drawn that trace/x value yet — never
+   * throws on a not-yet-populated .data. Polled with a generous timeout
+   * below: this fixture page now has many panels (019 added 8), and
+   * DuckDB-WASM processes their queries with real contention — a fixed
+   * short toBeVisible() wait raced ahead of a real, if slow, correct
+   * resolution in this suite's first run, not a logic bug. */
+  async function plotlyYFor(page: import('@playwright/test').Page, title: string, x: number) {
+    return plotlyCard(page, title)
+      .locator('.js-plotly-plot')
+      .evaluate(
+        (gd, needle) => {
+          const data = (gd as unknown as { data?: { x: number[]; y: (number | null)[] }[] }).data
+          const i = data?.[0]?.x?.indexOf(needle) ?? -1
+          return i === -1 ? undefined : data![0].y[i]
+        },
+        x,
+      )
+      .catch(() => undefined)
+  }
+
+  test('User Story 1: $baseline resolves and computes the correct absolute diff', async ({ page }) => {
+    await page.goto('/')
+    await page.waitForFunction(() => window.__wftdm !== undefined, null, { timeout: 30_000 })
+
+    await page.evaluate(() => window.__wftdm!.appState.setBaseline('observed'))
+
+    await expect
+      .poll(() => plotlyYFor(page, 'Plotly VMT Diff via $baseline', 100), { timeout: 20_000 })
+      .toBe(-13)
+    expect(await plotlyYFor(page, 'Plotly VMT Diff via $baseline', 700)).toBe(20)
+  })
+
+  test('User Story 2: a zero-baseline row is cleanly omitted as a null data point, never Infinity/NaN', async ({
+    page,
+  }) => {
+    await page.goto('/')
+    await page.waitForFunction(() => window.__wftdm !== undefined, null, { timeout: 30_000 })
+
+    await page.evaluate(() => window.__wftdm!.appState.setBaseline('good_scenario'))
+
+    const title = 'Plotly VMT Percent Diff via $baseline (zero-baseline case)'
+    // SQL NULL arrives as a real null data point — not coerced to 0, not
+    // Infinity/NaN. Polled: same real query-contention reason as above.
+    await expect.poll(() => plotlyYFor(page, title, 300), { timeout: 20_000 }).toBe(null)
+
+    const nonNullValue = await plotlyYFor(page, title, 700)
+    expect(nonNullValue).not.toBeNull()
+    expect(Number.isFinite(nonNullValue)).toBe(true) // a real, finite number — not Infinity/NaN
   })
 })

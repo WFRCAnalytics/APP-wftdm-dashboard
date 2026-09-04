@@ -4,7 +4,9 @@ import {
   buildComparisonDiffQuery,
   buildGraphicWalkerQuery,
   buildPanelQuery,
+  isComparisonDiff,
   resolveActiveScenarios,
+  resolveComparisonScenarioName,
   extractGlobalFilterIds,
 } from '@/panels/panelQuery'
 import type {
@@ -12,7 +14,6 @@ import type {
   ObservablePlotPanelConfig,
   PlotlyPanelConfig,
   ValueBoxPanelConfig,
-  ZoneMapPanelConfig,
 } from '@/layout/types'
 
 const valueBoxConfig: ValueBoxPanelConfig = {
@@ -222,24 +223,22 @@ describe('buildPanelQuery — zonemap column/metric_id disambiguation', () => {
 // 013-zonemap-panel, research.md §7 (corrected during implementation —
 // no upfront "active scenario" validation, matching config.scenario
 // singular's own zero-validation convention above).
+//
+// 019-baseline-diff-consumption: generalized from
+// buildComparisonDiffQuery(config: ZoneMapPanelConfig, diff) to plain
+// parameters (metric, aScenario, bScenario, compareOn, expr) — every call
+// below updated to the new signature, with compareOn: ['taz_id'] standing
+// in for zonemap's own metric_id (research.md §2). Assertions unchanged —
+// direct proof this generalization produces the identical SQL shape.
 describe('buildComparisonDiffQuery', () => {
-  const zonemapConfig: ZoneMapPanelConfig = {
-    type: 'zonemap',
-    title: 'VMT Diff',
-    metric: 'vmt_by_home_taz',
-    boundaries: 'taz.geoparquet',
-    boundaries_id: 'TAZ_ID',
-    metric_id: 'taz_id',
-    column: 'vmt_per_capita',
-  }
-
   it('interpolates a/b as literal view-name prefixes and copies expr verbatim', () => {
-    const sql = buildComparisonDiffQuery(zonemapConfig, {
-      type: 'diff',
-      a: 'observed',
-      b: 'good_scenario',
-      expr: 'b.vmt_per_capita - a.vmt_per_capita',
-    })
+    const sql = buildComparisonDiffQuery(
+      'vmt_by_home_taz',
+      'observed',
+      'good_scenario',
+      ['taz_id'],
+      'b.vmt_per_capita - a.vmt_per_capita',
+    )
     expect(sql).toContain('"observed__vmt_by_home_taz" a')
     expect(sql).toContain('"good_scenario__vmt_by_home_taz" b')
     expect(sql).toContain('(b.vmt_per_capita - a.vmt_per_capita) AS diff_value')
@@ -250,12 +249,13 @@ describe('buildComparisonDiffQuery', () => {
     // Proves this is plain string substitution, not eval() or any JS-side
     // expression evaluation (constitution Principle III) — the function
     // has no opinion about what expr actually contains.
-    const sql = buildComparisonDiffQuery(zonemapConfig, {
-      type: 'diff',
-      a: 'observed',
-      b: 'good_scenario',
-      expr: 'CASE WHEN b.vmt_per_capita > a.vmt_per_capita THEN 1 ELSE 0 END',
-    })
+    const sql = buildComparisonDiffQuery(
+      'vmt_by_home_taz',
+      'observed',
+      'good_scenario',
+      ['taz_id'],
+      'CASE WHEN b.vmt_per_capita > a.vmt_per_capita THEN 1 ELSE 0 END',
+    )
     expect(sql).toContain(
       '(CASE WHEN b.vmt_per_capita > a.vmt_per_capita THEN 1 ELSE 0 END) AS diff_value',
     )
@@ -265,13 +265,75 @@ describe('buildComparisonDiffQuery', () => {
     // The resulting query fails naturally at DuckDB query time (a real
     // "table does not exist" error), not here — same as config.scenario
     // singular referencing a nonexistent scenario.
-    const sql = buildComparisonDiffQuery(zonemapConfig, {
-      type: 'diff',
-      a: 'nonexistent_scenario_xyz',
-      b: 'good_scenario',
-      expr: 'b.vmt_per_capita - a.vmt_per_capita',
-    })
+    const sql = buildComparisonDiffQuery(
+      'vmt_by_home_taz',
+      'nonexistent_scenario_xyz',
+      'good_scenario',
+      ['taz_id'],
+      'b.vmt_per_capita - a.vmt_per_capita',
+    )
     expect(sql).toContain('"nonexistent_scenario_xyz__vmt_by_home_taz" a')
+  })
+
+  it('joins/selects on every compare_on column when more than one is given (research.md §2/§3)', () => {
+    const sql = buildComparisonDiffQuery(
+      'trip_mode_share',
+      'abm_2026',
+      'base_tbm',
+      ['purpose', 'mode'],
+      'b.share - a.share',
+    )
+    expect(sql).toContain('a."purpose" AS "purpose"')
+    expect(sql).toContain('a."mode" AS "mode"')
+    expect(sql).toContain('a."purpose" = b."purpose" AND a."mode" = b."mode"')
+  })
+
+  it('produces byte-for-byte identical SQL to the pre-generalization zonemap-only shape for a single compare_on column (regression, FR-005/SC-004)', () => {
+    // The exact same inputs/assertions as the original 013-zonemap-panel
+    // test above (compareOn: ['taz_id'] standing in for the old
+    // config.metric_id argument) — confirms the generalization changed
+    // nothing about zonemap's own existing single-column case.
+    const sql = buildComparisonDiffQuery(
+      'vmt_by_home_taz',
+      'observed',
+      'good_scenario',
+      ['taz_id'],
+      'b.vmt_per_capita - a.vmt_per_capita',
+    )
+    expect(sql).toBe(
+      [
+        'SELECT a."taz_id" AS "taz_id", (b.vmt_per_capita - a.vmt_per_capita) AS diff_value',
+        'FROM "observed__vmt_by_home_taz" a',
+        'JOIN "good_scenario__vmt_by_home_taz" b ON a."taz_id" = b."taz_id"',
+      ].join('\n'),
+    )
+  })
+})
+
+// 019-baseline-diff-consumption
+describe('isComparisonDiff', () => {
+  it('is true for the diff shape', () => {
+    expect(isComparisonDiff({ type: 'diff', a: 'x', b: 'y', expr: 'b.v - a.v' })).toBe(true)
+  })
+
+  it('is false for side_by_side, undefined, and anything else', () => {
+    expect(isComparisonDiff('side_by_side')).toBe(false)
+    expect(isComparisonDiff(undefined)).toBe(false)
+  })
+})
+
+describe('resolveComparisonScenarioName', () => {
+  it('resolves the $baseline sentinel to the given baseline scenario', () => {
+    expect(resolveComparisonScenarioName('$baseline', 'abm_2026')).toBe('abm_2026')
+  })
+
+  it('passes an ordinary hardcoded scenario name through unchanged, ignoring baseline entirely', () => {
+    expect(resolveComparisonScenarioName('base_tbm', 'abm_2026')).toBe('base_tbm')
+    expect(resolveComparisonScenarioName('base_tbm', undefined)).toBe('base_tbm')
+  })
+
+  it('returns undefined when $baseline is used but no baseline is currently resolved (FR-011)', () => {
+    expect(resolveComparisonScenarioName('$baseline', undefined)).toBeUndefined()
   })
 })
 

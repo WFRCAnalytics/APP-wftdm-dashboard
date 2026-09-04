@@ -25,4 +25,16 @@ describe('formatValue', () => {
   it('falls back to String(value) when the format string does not match the supported patterns', () => {
     expect(formatValue(42, 'not-a-format-string')).toBe('42')
   })
+
+  // 019-baseline-diff-consumption: a real, confirmed bug fixed here —
+  // formatValue(null, ...) previously fell through to String(value),
+  // rendering the literal string "null" (String(null) === 'null'). A
+  // diff_value column's own zero-baseline percent-diff case legitimately
+  // produces SQL NULL (FR-013) and must read as a distinct "N/A" state
+  // (FR-014), not a raw JS artifact.
+  it('renders null/undefined as a distinct "N/A" state, not the literal string "null"/"undefined"', () => {
+    expect(formatValue(null, '{:.1%}')).toBe('N/A')
+    expect(formatValue(undefined, '{:.1%}')).toBe('N/A')
+    expect(formatValue(null, 'not-a-format-string')).toBe('N/A')
+  })
 })

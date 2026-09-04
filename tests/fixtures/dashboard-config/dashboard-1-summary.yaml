@@ -560,6 +560,127 @@ layout:
       height: 450
       width: 0.5
 
+    # 019-baseline-diff-consumption's own zonemap $baseline coverage lives
+    # on the Detail tab instead (dashboard-2-detail.yaml) — a precaution,
+    # not a confirmed fix for a proven regression. A single git-stash
+    # comparison first suggested adding one more WebGL-context-consuming
+    # zonemap panel to THIS tab (already host to 012-webgl-context-
+    # management's own flowmap/zonemap context-ceiling tests) was
+    # destabilizing that feature's own real-context-loss simulation test.
+    # A larger, repeated-run comparison afterward (4 runs on each side)
+    # showed that conclusion was WRONG: the test fails at a similar rate
+    # (roughly 1 in 3-4 runs) with or without this panel present on this
+    # tab, including on the clean pre-019 commit — genuine, pre-existing
+    # flakiness in that test, not something this feature caused. Left on
+    # the Detail tab anyway (harmless, arguably still marginally better
+    # practice), but the move is NOT a proven fix — recorded here plainly
+    # rather than leaving the original, disproven "deterministic
+    # regression" claim standing uncorrected.
+
+  # 019-baseline-diff-consumption — the same '$baseline' sentinel coverage
+  # as the zonemap panel above, extended to plotly/table/observable-plot
+  # (spec.md User Story 3: one shared convention, not four). Reuses
+  # vmt_by_home_taz's own real fixture data throughout. compare_on is
+  # REQUIRED here (no zonemap-style metric_id default exists for these
+  # three panel types — research.md §1/§3).
+  row_baseline_diff:
+    - type: table
+      title: Table VMT Diff via $baseline
+      metric: vmt_by_home_taz
+      compare_on: [taz_id]
+      comparison:
+        type: diff
+        a: "$baseline"
+        b: good_scenario
+        expr: "b.vmt_per_capita - a.vmt_per_capita"
+      columns:
+        - { field: taz_id, label: TAZ }
+        - { field: diff_value, label: Diff, format: "{:.1f}" }
+      width: 0.33
+
+    - type: plotly
+      title: Plotly VMT Diff via $baseline
+      metric: vmt_by_home_taz
+      compare_on: [taz_id]
+      comparison:
+        type: diff
+        a: "$baseline"
+        b: good_scenario
+        expr: "b.vmt_per_capita - a.vmt_per_capita"
+      traces:
+        - type: bar
+          x: $metric.taz_id
+          y: $metric.diff_value
+      width: 0.33
+
+    - type: observable-plot
+      title: Observable Plot VMT Diff via $baseline
+      metric: vmt_by_home_taz
+      compare_on: [taz_id]
+      comparison:
+        type: diff
+        a: "$baseline"
+        b: good_scenario
+        expr: "b.vmt_per_capita - a.vmt_per_capita"
+      mark: barY
+      x: taz_id
+      y: diff_value
+      width: 0.34
+
+  # 019-baseline-diff-consumption — the zero-baseline percent-diff
+  # degenerate case (FR-013/FR-014). Tests set baseline to good_scenario
+  # (via the debug hook), which has a genuine 0.0 at TAZ 300
+  # (VMT_BY_HOME_TAZ_ROWS) — NULLIF(b.vmt_per_capita, 0) turns that one
+  # row's percent-diff into SQL NULL, never Infinity/NaN; every other TAZ
+  # gets a real, non-null percentage.
+  row_baseline_pct_diff:
+    - type: table
+      title: Table VMT Percent Diff via $baseline (zero-baseline case)
+      metric: vmt_by_home_taz
+      compare_on: [taz_id]
+      comparison:
+        type: diff
+        a: observed
+        b: "$baseline"
+        expr: "(a.vmt_per_capita - b.vmt_per_capita) * 1.0 / NULLIF(b.vmt_per_capita, 0)"
+      columns:
+        - { field: taz_id, label: TAZ }
+        - field: diff_value
+          label: "% Diff"
+          format: "{:.1%}"
+          color_scale: diverging
+          domain: [-1, 1]
+      width: 0.34
+
+    - type: plotly
+      title: Plotly VMT Percent Diff via $baseline (zero-baseline case)
+      metric: vmt_by_home_taz
+      compare_on: [taz_id]
+      comparison:
+        type: diff
+        a: observed
+        b: "$baseline"
+        expr: "(a.vmt_per_capita - b.vmt_per_capita) * 1.0 / NULLIF(b.vmt_per_capita, 0)"
+      traces:
+        - type: bar
+          x: $metric.taz_id
+          y: $metric.diff_value
+      width: 0.33
+
+    - type: observable-plot
+      title: Observable Plot VMT Percent Diff via $baseline (zero-baseline case)
+      metric: vmt_by_home_taz
+      compare_on: [taz_id]
+      comparison:
+        type: diff
+        a: observed
+        b: "$baseline"
+        expr: "(a.vmt_per_capita - b.vmt_per_capita) * 1.0 / NULLIF(b.vmt_per_capita, 0)"
+      mark: barY
+      x: taz_id
+      y: diff_value
+      width: 0.33
+
   # 014-graphic-walker-panel — the ninth and last originally-listed panel
   # type. One full-width row, own row key (dashboardRenderer.tsx treats
   # `width` as a fraction of its OWN row's other panels, not the page —

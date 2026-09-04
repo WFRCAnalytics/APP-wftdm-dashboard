@@ -108,11 +108,28 @@ function clamp01(t: number): number {
  * (research.md §4), never actually ambiguous since a reader only ever
  * interprets one column's cells against that column's own scale.
  */
+// 019-baseline-diff-consumption: a dedicated, visibly-distinct color for
+// a "not computable" value (e.g. a diff_value whose zero-baseline
+// percent-diff formula produced SQL NULL, FR-013/FR-014) — token-driven,
+// matching panels/zonemapColor.ts's own established NO_DATA_COLOR
+// convention for exactly this situation (a missing/undefined value gets
+// its own color, never the scale's zero/minimum color and never silently
+// no color at all). Not imported from zonemapColor.ts — that constant is
+// module-private by design, and both modules already independently
+// derive their own tokens from the same underlying CSS variables
+// (research.md §6).
+const NOT_COMPUTABLE_COLOR = 'color-mix(in srgb, var(--muted-foreground) 25%, var(--muted))'
+
 export function cellColor(
   value: unknown,
   colorScale: 'sequential' | 'diverging' | undefined,
   domain: [number, number] | undefined,
 ): string | undefined {
+  // Checked BEFORE the colorScale/domain guard below, deliberately: a
+  // null diff_value must read as visibly distinct even on a column with
+  // no color_scale configured at all — matching formatValue.ts's own
+  // null branch, which likewise applies regardless of format string.
+  if (value === null) return NOT_COMPUTABLE_COLOR
   if (!colorScale || !domain || typeof value !== 'number') return undefined
   const [domainMin, domainMax] = domain
 

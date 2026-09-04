@@ -119,3 +119,50 @@ layout:
           semanticType: quantitative
           analyticType: measure
       width: 1.0
+
+  # 019-baseline-diff-consumption's own zonemap $baseline coverage —
+  # deliberately placed HERE, not dashboard-1-summary.yaml's own
+  # row_zonemap (right alongside its sibling comparison: diff panels,
+  # which would have been the more obviously-thematic location). A
+  # single-run git-stash comparison first suggested adding one more
+  # WebGL-context-consuming zonemap panel to that already context-heavy
+  # Summary tab (host to 012-webgl-context-management's own flowmap/
+  # zonemap context-ceiling tests) was destabilizing that feature's own
+  # real-context-loss simulation test. A larger, repeated-run comparison
+  # afterward (4 runs each side) disproved that: the test fails at a
+  # similar rate (roughly 1 in 3-4 runs) with or without this panel
+  # present there, including on the clean pre-019 commit — genuine,
+  # pre-existing flakiness, not something this feature caused. Left here
+  # anyway as a harmless precaution (this tab has zero map-rendering
+  # panels of its own), but this placement is NOT a proven fix for
+  # anything — see dashboard-1-summary.yaml's own matching comment for
+  # the full, corrected record. Same real, hand-verifiable
+  # observed(flat 5.0)/good_scenario data
+  # tests/fixtures/dashboard-config/dashboard-1-summary.yaml's own
+  # hardcoded-name zonemap diff panel uses, but `a` references the
+  # '$baseline' sentinel instead of a literal scenario name. Tests
+  # explicitly call window.__wftdm.appState.setBaseline('observed') before
+  # asserting — which scenario this resolves against is a live, test-
+  # controlled variable, not fixed at fixture-authoring time. metric_id
+  # doubles as compare_on's default (omitted here deliberately,
+  # research.md §7).
+  row_baseline_diff:
+    - type: zonemap
+      title: Zone Map VMT Diff via $baseline
+      metric: vmt_by_home_taz
+      boundaries: taz.geoparquet
+      boundaries_id: TAZ_ID
+      metric_id: taz_id
+      column: vmt_per_capita
+      label: VMT / Capita Diff
+      color_scale: diverging
+      domain: [-15, 25]
+      comparison:
+        type: diff
+        a: "$baseline"
+        b: good_scenario
+        expr: "b.vmt_per_capita - a.vmt_per_capita"
+      center: [-111.925, 40.705]
+      zoom: 11
+      height: 450
+      width: 1.0

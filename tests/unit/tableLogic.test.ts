@@ -159,4 +159,28 @@ describe('cellColor', () => {
     const atMin = cellColor(-0.5, 'diverging', [-0.5, 0.5])!
     expect(beyondMin).toBe(atMin)
   })
+
+  // 019-baseline-diff-consumption (research.md §6, FR-014): a null value
+  // (e.g. a diff_value column's own zero-baseline percent-diff case) must
+  // get a dedicated, visibly-distinct "not computable" color — never
+  // silently no color at all (the pre-existing behavior for any other
+  // non-numeric value, still correct for those), and never blended into
+  // the real scale's normal range.
+  it('null gets a dedicated "not computable" color, distinct from "no color" and from the real scale', () => {
+    const notComputable = cellColor(null, 'diverging', [-0.5, 0.5])
+    expect(notComputable).toBeDefined()
+    expect(notComputable).toContain('--muted-foreground')
+    // Distinct from every real-scale color this suite already exercises
+    // above — none of them reference --muted-foreground.
+    const zero = cellColor(0, 'diverging', [-0.5, 0.5])
+    expect(notComputable).not.toBe(zero)
+  })
+
+  it('null gets the dedicated color even when no colorScale/domain is configured at all', () => {
+    // Deliberately checked BEFORE the colorScale/domain guard — a null
+    // diff_value must read as distinct regardless of whether the column
+    // even has a color_scale configured (matching formatValue.ts's own
+    // null branch, which likewise applies regardless of format string).
+    expect(cellColor(null, undefined, undefined)).toContain('--muted-foreground')
+  })
 })

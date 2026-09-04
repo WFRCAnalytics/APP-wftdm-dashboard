@@ -6,9 +6,13 @@ import * as sqlExpander from '@/services/sqlExpander'
 import * as filterState from '@/state/filterState'
 import { useFilterState } from '@/hooks/useFilterState'
 import { useActiveScenarios } from '@/hooks/useActiveScenarios'
+import { useBaseline } from '@/hooks/useBaseline'
 import {
+  buildComparisonDiffQuery,
   buildPanelQuery,
+  isComparisonDiff,
   resolveActiveScenarios,
+  resolveComparisonScenarioName,
   extractGlobalFilterIds,
   EMPTY_SUMMARIZE_CONFIG,
 } from '@/panels/panelQuery'
@@ -46,6 +50,14 @@ export function TablePanel({ config }: { config: TablePanelConfig }) {
   // set below) — FR-008 requires exactly this: local UI state MUST survive
   // a scenario-activation-triggered refetch.
   const activeScenarioNames = useActiveScenarios()
+  // 019-baseline-diff-consumption: only consulted when config.comparison
+  // references the '$baseline' sentinel — included in the fetch effect's
+  // own dependency array below regardless, so a live baseline change
+  // reactively re-triggers the fetch for a panel that uses it (FR-016).
+  // Deliberately NOT part of isContentChange below (same treatment
+  // activeScenarioNames already gets) — a baseline-only refetch must not
+  // reset sortState/searchTerm/currentPage either (FR-008's own principle).
+  const baseline = useBaseline()
   const [rows, setRows] = useState<Record<string, unknown>[]>([])
   const [status, setStatus] = useState<'loading' | 'ready' | 'empty' | 'error'>('loading')
   const [sortState, setSortState] = useState<SortState>(() => initialSort(config))
@@ -79,9 +91,32 @@ export function TablePanel({ config }: { config: TablePanelConfig }) {
       lastContentKeyRef.current.filters !== filters
     lastContentKeyRef.current = { config, filters }
 
-    const template = buildPanelQuery(config, filters)
-    const activeScenarios = resolveActiveScenarios(config, activeScenarioNames)
-    const sql = sqlExpander.expand(template, EMPTY_SUMMARIZE_CONFIG, filterState, activeScenarios)
+    // 019-baseline-diff-consumption: same isComparisonDiff()/
+    // buildComparisonDiffQuery()/resolveComparisonScenarioName() shape
+    // ZoneMapPanel.tsx's own reference migration establishes — a
+    // '$baseline' sentinel on either side is resolved BEFORE the query is
+    // built; an unresolved baseline shows this panel's existing error
+    // state directly, never attempting a doomed query (FR-011).
+    let sql: string
+    if (isComparisonDiff(config.comparison)) {
+      const diff = config.comparison
+      const resolvedA = resolveComparisonScenarioName(diff.a, baseline)
+      const resolvedB = resolveComparisonScenarioName(diff.b, baseline)
+      if (resolvedA === undefined || resolvedB === undefined) {
+        setStatus('error')
+        return
+      }
+      // config.compare_on is required for comparison: diff on this panel
+      // type (no zonemap-style metric_id default — research.md §1/§3);
+      // an omitted compare_on is a config-authoring error, surfacing the
+      // same defined way as any other missing-required-field
+      // misconfiguration (spec.md Edge Cases).
+      sql = buildComparisonDiffQuery(config.metric, resolvedA, resolvedB, config.compare_on ?? [], diff.expr)
+    } else {
+      const template = buildPanelQuery(config, filters)
+      const activeScenarios = resolveActiveScenarios(config, activeScenarioNames)
+      sql = sqlExpander.expand(template, EMPTY_SUMMARIZE_CONFIG, filterState, activeScenarios)
+    }
 
     query(sql)
       .then((result) => {
@@ -112,7 +147,7 @@ export function TablePanel({ config }: { config: TablePanelConfig }) {
     return () => {
       cancelled = true
     }
-  }, [config, filters, activeScenarioNames])
+  }, [config, filters, activeScenarioNames, baseline])
 
   if (status === 'loading') {
     return <div className="h-40 animate-pulse rounded-md bg-muted" />

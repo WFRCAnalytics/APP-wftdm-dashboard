@@ -148,9 +148,9 @@ test.describe('User Story 1 - Expand a panel to a large view', () => {
     const legendEntry = dialog.locator('.legend .traces').first()
     await expect(legendEntry).toBeVisible()
 
-    const tracesBefore = await page.evaluate(() => {
-      const gd = document.querySelector('.js-plotly-plot')
-      return gd ? (gd as unknown as { data: { visible?: boolean }[] }).data.map((t) => t.visible ?? true) : []
+    const dialogChart = dialog.locator('.js-plotly-plot')
+    const tracesBefore = await dialogChart.evaluate((gd) => {
+      return (gd as unknown as { data: { visible?: boolean }[] }).data.map((t) => t.visible ?? true)
     })
 
     // Plotly's modebar (zoom/pan/camera icons, shown on hover) floats over
@@ -163,7 +163,13 @@ test.describe('User Story 1 - Expand a panel to a large view', () => {
     // check (Radix's outside-click detection vs. Plotly's own legend
     // interaction), so it's a legitimate, test-only DOM cleanup rather
     // than a workaround for anything this feature's mechanism does.
-    await page.evaluate(() => document.querySelector('.modebar-container')?.remove())
+    // Scoped to the DIALOG's own modebar specifically — 019-baseline-
+    // diff-consumption added further plotly panels to this same fixture
+    // tab, so an unscoped document.querySelector('.modebar-container')
+    // could pick a DIFFERENT (still-inline, not-yet-relocated) panel's
+    // own modebar instead of the expanded dialog's real one, a genuine,
+    // confirmed regression this scoping fixes.
+    await dialog.evaluate((el) => el.querySelector('.modebar-container')?.remove())
     await legendEntry.click()
 
     // Plotly updates its internal trace state slightly after the click
@@ -172,15 +178,11 @@ test.describe('User Story 1 - Expand a panel to a large view', () => {
     // pre-click state and look like nothing happened.
     await expect
       .poll(async () => {
-        const tracesNow = await page.evaluate(() => {
-          const gd = document.querySelector('.js-plotly-plot')
-          return gd
-            ? (gd as unknown as { data: { visible?: boolean | 'legendonly' }[] }).data.map(
-                (t) => t.visible ?? true,
-              )
-            : []
+        return dialogChart.evaluate((gd) => {
+          return (gd as unknown as { data: { visible?: boolean | 'legendonly' }[] }).data.map(
+            (t) => t.visible ?? true,
+          )
         })
-        return tracesNow
       })
       .not.toEqual(tracesBefore) // the legend click actually toggled something
 
@@ -338,7 +340,11 @@ test.describe('User Story 3 - Charts render correctly sized inside the expanded 
     page,
   }) => {
     await boot(page)
-    const cardChart = page.locator('.js-plotly-plot')
+    // Scoped to this specific panel's card — 019-baseline-diff-consumption
+    // added further plotly panels to this same fixture tab, so an
+    // unscoped .js-plotly-plot locator is a real strict-mode violation
+    // now (the page legitimately has more than one).
+    const cardChart = panelCard(page, 'Mode Share by Purpose').locator('.js-plotly-plot')
     await expect(cardChart).toBeVisible()
     const cardBox = await cardChart.boundingBox()
     expect(cardBox).not.toBeNull()
@@ -372,27 +378,30 @@ test.describe('User Story 3 - Charts render correctly sized inside the expanded 
     page,
   }) => {
     await boot(page)
-    await expect(page.locator('.js-plotly-plot')).toBeVisible()
-    await page.evaluate(() => {
-      document.querySelector('.js-plotly-plot')?.setAttribute('data-preexpand-identity', 'same-node')
-    })
+    // Scoped — see the resize test above for why an unscoped
+    // .js-plotly-plot locator is now a real strict-mode violation.
+    const cardChart = panelCard(page, 'Mode Share by Purpose').locator('.js-plotly-plot')
+    await expect(cardChart).toBeVisible()
+    await cardChart.evaluate((el) => el.setAttribute('data-preexpand-identity', 'same-node'))
 
     await expandTrigger(page, 'Mode Share by Purpose').click()
     const dialog = page.getByRole('dialog')
     await expect(dialog.locator('.js-plotly-plot')).toBeVisible()
 
-    // Exactly one chart container exists on the whole page (not
-    // duplicated), and it's the same node that carried the marker set
-    // before expanding — proof of relocation, not remount.
-    await expect(page.locator('.js-plotly-plot')).toHaveCount(1)
+    // Exactly one chart container carries the marker set before expanding
+    // (unique regardless of how many total .js-plotly-plot divs exist on
+    // the page) — proof of relocation, not remount — and it's now inside
+    // the dialog specifically, not still in the (now-hidden) inline card.
     await expect(page.locator('.js-plotly-plot[data-preexpand-identity="same-node"]')).toHaveCount(1)
+    await expect(dialog.locator('.js-plotly-plot[data-preexpand-identity="same-node"]')).toHaveCount(1)
   })
 
   test('collapsing an expanded chart panel returns it to correct card-sized rendering', async ({
     page,
   }) => {
     await boot(page)
-    const cardChart = page.locator('.js-plotly-plot')
+    // Scoped — same reason as the two tests above.
+    const cardChart = panelCard(page, 'Mode Share by Purpose').locator('.js-plotly-plot')
     await expect(cardChart).toBeVisible()
     const cardBoxBefore = await cardChart.boundingBox()
 
@@ -404,8 +413,8 @@ test.describe('User Story 3 - Charts render correctly sized inside the expanded 
     await expect(dialog).not.toBeVisible()
 
     await page.waitForTimeout(300)
-    await expect(page.locator('.js-plotly-plot')).toHaveCount(1)
     await expect(cardChart).toBeVisible()
+    await expect(cardChart).toHaveCount(1) // this panel's own container, not duplicated
     const cardBoxAfter = await cardChart.boundingBox()
     expect(cardBoxAfter!.width).toBeCloseTo(cardBoxBefore!.width, 0)
     expect(cardBoxAfter!.height).toBeCloseTo(cardBoxBefore!.height, 0)

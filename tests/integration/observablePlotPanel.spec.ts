@@ -540,3 +540,38 @@ test.describe('Polish - dark mode (015-theme-toggle)', () => {
     expect(styles.color).toBe('rgb(255, 255, 255)') // --foreground in dark mode
   })
 })
+
+// 019-baseline-diff-consumption. Reuses this file's own rect-count
+// convention (barY marks render one <rect> per row) plus generate.py's
+// real VMT_BY_HOME_TAZ_ROWS/VMT_BY_HOME_TAZ_OBSERVED_ROWS fixture data.
+test.describe('019-baseline-diff-consumption', () => {
+  test('User Story 1: $baseline resolves — all 7 TAZ rows render as bar marks, no error', async ({
+    page,
+  }) => {
+    await boot(page)
+    const card = panelCard(page, 'Observable Plot VMT Diff via $baseline')
+    await expect(card.locator('.observable-plot-chart svg[viewBox]')).toBeVisible()
+
+    await page.evaluate(() => window.__wftdm!.appState.setBaseline('observed'))
+
+    await expect(card.locator('.observable-plot-chart svg[viewBox] rect')).toHaveCount(7)
+  })
+
+  test('User Story 2: a zero-baseline row is cleanly omitted — 6 marks render, not 7, never a crash', async ({
+    page,
+  }) => {
+    await boot(page)
+    const card = panelCard(page, 'Observable Plot VMT Percent Diff via $baseline (zero-baseline case)')
+    await expect(card.locator('.observable-plot-chart svg[viewBox]')).toBeVisible()
+
+    await page.evaluate(() => window.__wftdm!.appState.setBaseline('good_scenario'))
+
+    // TAZ 300's own diff_value is SQL NULL (good_scenario's own value is
+    // 0.0 there) — Observable Plot's own native null-handling omits that
+    // one mark entirely, same as every other null data point already
+    // does in this library (research.md §6) — 6 rects, not 7, and no
+    // PanelErrorState anywhere in the card.
+    await expect(card.locator('.observable-plot-chart svg[viewBox] rect')).toHaveCount(6)
+    await expect(card.getByRole('alert')).toHaveCount(0)
+  })
+})

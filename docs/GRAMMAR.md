@@ -974,6 +974,8 @@ fullscreen, PNG export, and formatted hover tooltips. Use `Plotly.react()` inter
     showlegend: true
 ```
 
+Also accepts `comparison:`/`compare_on:` (019-baseline-diff-consumption) — see "Scenario comparison / diff mode" under `type: zonemap` below, the shared grammar all four comparison-capable panel types use identically.
+
 ### `type: observable-plot`
 
 Observable Plot — use when the panel has user-controlled filter inputs that update
@@ -1001,6 +1003,8 @@ the chart reactively. Inputs render as controls inside the panel card.
   width:   1.0
 ```
 
+Also accepts `comparison:`/`compare_on:` (019-baseline-diff-consumption) — see "Scenario comparison / diff mode" under `type: zonemap` below, the shared grammar all four comparison-capable panel types use identically. A row whose `diff_value` is `NULL` (the zero-baseline percent-diff case) is cleanly omitted from the rendered marks, never coerced to `0`.
+
 ### `type: table`
 
 Sortable, paginated data table. Supports inline column expressions and color scales.
@@ -1020,6 +1024,8 @@ Sortable, paginated data table. Supports inline column expressions and color sca
     - { field: pct_error,     label: "% Error", format: "+.1%",
         color_scale: diverging, domain: [-0.5, 0.5] }
 ```
+
+Also accepts `comparison:`/`compare_on:` (019-baseline-diff-consumption) — see "Scenario comparison / diff mode" under `type: zonemap` below, the shared grammar all four comparison-capable panel types use identically. The computed result is always named `diff_value` — reference it like any other queried column, e.g. `{ field: diff_value, label: "Diff", format: ",.1f" }`.
 
 ### `type: flowmap`
 
@@ -1155,6 +1161,28 @@ MapLibre choropleth — zone-level metric joined to TAZ GeoParquet geometry.
   color_ramp:  RdBu
   domain: [-5, 5]
 ```
+
+#### Scenario comparison / diff mode (013-zonemap-panel, extended by 019-baseline-diff-consumption)
+
+`comparison:`/`compare_on:` — one shared grammar, identically shaped and named, across all four comparison-capable panel types: `zonemap` (above), `plotly`, `table`, and `observable-plot`. `comparison:` accepts `side_by_side` (the default — a panel's own single selected/active scenario, unchanged) or a `diff` object:
+
+```yaml
+comparison:
+  type: diff
+  a:    base_tbm      # OR the literal string '$baseline' — see below
+  b:    abm_2026       # OR '$baseline'
+  expr: "b.vmt_per_capita - a.vmt_per_capita"   # any SQL expression, referencing the a/b table aliases
+compare_on: [taz_id]   # required for plotly/table/observable-plot; optional for
+                        # zonemap, where it defaults to metric_id (existing configs
+                        # need no change)
+```
+
+- **`a`/`b`** each name a scenario, either a literal hardcoded name (unchanged since `013`) or the literal string `$baseline` — a sentinel resolved at query time to whichever scenario currently holds the baseline designation (`018-baseline-scenario-designation`, set via the scenario list UI). A `$baseline`-referencing panel automatically recomputes when a viewer changes which scenario is baseline — no reload, no config change needed.
+- **`compare_on`** names the column(s) that jointly identify a "comparable row" between the two sides — every column a chart wants to bind (`x`/`y`/`fill`/`field`/etc.) on a diff view must also appear in `compare_on`, since the diff is only meaningful when both sides are matched on those exact columns. Rows present on only one side are excluded (an inner join), matching `zonemap`'s own original behavior.
+- The computed result is always a column named **`diff_value`** — reference it through each panel type's own ordinary field-binding grammar (`column:`, `field:`, `x:`/`y:`/`color:`, `x:`/`y:`/`fill:`/`stroke:`) exactly like any other queried column. No new binding key exists for it.
+- A **percent-difference** formula is authored the same way any other `expr:` is — no separate mode. Guard against a zero denominator with SQL's own `NULLIF(<denominator>, 0)` (the same idiom `summarize.yaml`'s own `screenlines` metric already uses for `pct_error`), which yields `NULL` rather than `Infinity`/`NaN`. Every panel type treats a `NULL` `diff_value` as a distinct, defined "not computable" state (a table cell shows `N/A` with a dedicated color; a chart mark is cleanly omitted) — never silently `0`.
+- `comparison: diff` (any `a`/`b` combination) does **not** apply the panel's own `filter:` bindings — this was already `zonemap`'s existing, deliberate behavior and is unchanged here.
+- If `$baseline` is used and no scenario currently resolves as baseline, the panel shows its ordinary error state — the query is never built or run against an unresolved name.
 
 ### `type: sankey`
 
@@ -1358,17 +1386,18 @@ Default for calibration summaries: `z.super_district`. TAZ reserved for
 | `$baseline.x` | expander mechanism only — see note below | Single bare view reference to whichever scenario is currently marked baseline (018-baseline-scenario-designation) — `"{scenario}__{metric}"`, not a UNION ALL like `$scenario.x` |
 | `$metric.col` | dashboard panel trace axes | Column reference in result set |
 
-**`$baseline.x` is foundation-only — no `dashboard-*.yaml` key can reach it
-yet.** `services/sqlExpander.ts`'s `expand()` resolves it correctly given a
-resolved baseline scenario name (the sixth, optional parameter), and the
-scenario list UI lets a viewer mark/unmark which scenario is baseline — but
-no panel type's own query-building code supplies that value to `expand()`
-today (018-baseline-scenario-designation's own explicit scope boundary; see
-that feature's spec.md FR-011). A dashboard author cannot use `$baseline.x`
-from any panel's `filter:`/SQL yet — teaching a panel type's grammar to
-actually consume it (for a computed difference/percent-difference) is a
-separate, later feature, the same relationship `011-basemap-style-system`
-had to `013-zonemap-panel`.
+**`$baseline.x` (this table's own placeholder-expansion mechanism, `services/sqlExpander.ts`)
+is still not reachable from any panel's `filter:`/SQL** — no
+`dashboard-*.yaml` key routes a value into `expand()`'s sixth parameter yet
+(018-baseline-scenario-designation's own explicit scope boundary, spec.md
+FR-011, unchanged by `019`). **Do not confuse this with the separate `$baseline`
+sentinel VALUE** a `comparison: diff`'s `a`/`b` field can hold (`019-baseline-diff-consumption`,
+"Scenario comparison / diff mode" under `type: zonemap` above) — that
+mechanism resolves the same underlying baseline designation
+(`appState.getBaseline()`), but through `panels/panelQuery.ts`'s own
+`resolveComparisonScenarioName()`, never through this table's placeholder-
+regex mechanism at all. Both exist and both work; they are two independent
+paths to the same piece of state, not one feature building on the other.
 
 **`$filters.x` and the `all` sentinel:** when a filter's current value is the
 `all` sentinel (see `all_option: true` above), the entire condition

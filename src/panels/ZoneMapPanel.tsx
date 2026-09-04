@@ -8,11 +8,14 @@ import * as sqlExpander from '@/services/sqlExpander'
 import * as filterState from '@/state/filterState'
 import { useFilterState } from '@/hooks/useFilterState'
 import { useActiveScenarios } from '@/hooks/useActiveScenarios'
+import { useBaseline } from '@/hooks/useBaseline'
 import { useColorScheme } from '@/hooks/useColorScheme'
 import {
   buildComparisonDiffQuery,
   buildPanelQuery,
+  isComparisonDiff,
   resolveActiveScenarios,
+  resolveComparisonScenarioName,
   extractGlobalFilterIds,
   EMPTY_SUMMARIZE_CONFIG,
 } from '@/panels/panelQuery'
@@ -25,7 +28,7 @@ import { resolveEffectiveBasemap, basemapKey } from '@/panels/basemap/resolveEff
 import { loadBasemapStyle, BLANK_STYLE, freshBlankStyle } from '@/panels/basemap/loadBasemapStyle'
 import { PanelEmptyState } from '@/panels/PanelEmptyState'
 import { PanelErrorState } from '@/panels/PanelErrorState'
-import type { ComparisonDiff, ZoneMapPanelConfig } from '@/layout/types'
+import type { ZoneMapPanelConfig } from '@/layout/types'
 
 const ALL_FILTERS: ['*'] = ['*']
 
@@ -111,10 +114,6 @@ function resolveCssColor(cssColor: string, probe: HTMLElement, cache: Map<string
   return resolved
 }
 
-function isComparisonDiff(comparison: ZoneMapPanelConfig['comparison']): comparison is ComparisonDiff {
-  return typeof comparison === 'object' && comparison !== null && comparison.type === 'diff'
-}
-
 // The eighth and final originally-listed panel type — the second
 // map-rendering panel type, and the first with only ONE WebGL context
 // (research.md §1: confirmed no deck.gl/MapboxOverlay capability gap —
@@ -130,6 +129,11 @@ export function ZoneMapPanel({ config }: { config: ZoneMapPanelConfig }) {
   const filterIds = extractGlobalFilterIds(config.filter)
   const filters = useFilterState(filterIds.length ? filterIds : ALL_FILTERS)
   const activeScenarioNames = useActiveScenarios()
+  // 019-baseline-diff-consumption: only consulted when config.comparison
+  // references the '$baseline' sentinel — included in the fetch effect's
+  // own dependency array below regardless, so a live baseline change
+  // reactively re-triggers the fetch for a panel that uses it (FR-016).
+  const baseline = useBaseline()
   const colorScheme = useColorScheme()
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
@@ -177,19 +181,42 @@ export function ZoneMapPanel({ config }: { config: ZoneMapPanelConfig }) {
   // sqlExpander involved — that query has no $filters/$scenario
   // placeholders to expand, research.md §7) when config.comparison is
   // the diff shape; otherwise identical to every other data-bound panel
-  // type.
+  // type. 019-baseline-diff-consumption: buildComparisonDiffQuery() is
+  // now the generalized, shared version (panelQuery.ts) — this is the
+  // reference migration every other panel type's own wiring mirrors
+  // (research.md §7). A '$baseline' sentinel on either side of
+  // config.comparison is resolved via resolveComparisonScenarioName()
+  // BEFORE the query is built; an unresolved baseline shows the panel's
+  // existing error state directly, never attempting a query built from
+  // an undefined scenario name (FR-011).
   useEffect(() => {
     let cancelled = false
     setStatus('loading')
 
-    const sql = isComparisonDiff(config.comparison)
-      ? buildComparisonDiffQuery(config, config.comparison)
-      : sqlExpander.expand(
-          buildPanelQuery(config, filters),
-          EMPTY_SUMMARIZE_CONFIG,
-          filterState,
-          resolveActiveScenarios(config, activeScenarioNames),
-        )
+    let sql: string
+    if (isComparisonDiff(config.comparison)) {
+      const diff = config.comparison
+      const resolvedA = resolveComparisonScenarioName(diff.a, baseline)
+      const resolvedB = resolveComparisonScenarioName(diff.b, baseline)
+      if (resolvedA === undefined || resolvedB === undefined) {
+        setStatus('error')
+        return
+      }
+      sql = buildComparisonDiffQuery(
+        config.metric,
+        resolvedA,
+        resolvedB,
+        config.compare_on ?? [config.metric_id],
+        diff.expr,
+      )
+    } else {
+      sql = sqlExpander.expand(
+        buildPanelQuery(config, filters),
+        EMPTY_SUMMARIZE_CONFIG,
+        filterState,
+        resolveActiveScenarios(config, activeScenarioNames),
+      )
+    }
 
     query(sql)
       .then((result) => {
@@ -208,7 +235,7 @@ export function ZoneMapPanel({ config }: { config: ZoneMapPanelConfig }) {
     return () => {
       cancelled = true
     }
-  }, [config, filters, activeScenarioNames])
+  }, [config, filters, activeScenarioNames, baseline])
 
   // 2. Geometry fetch — independent of the data fetch above.
   useEffect(() => {

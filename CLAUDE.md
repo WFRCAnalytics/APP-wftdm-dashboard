@@ -321,7 +321,21 @@ APP-wftdm-dashboard/
     │   │                         # target swap (found not to preserve
     │   │                         # mounted state — research.md §1b)
     │   ├── types.ts              # typed DashboardTabConfig/PanelConfig,
-    │   │                         # parsed from yamlLoader's DashboardConfig.raw
+    │   │                         # parsed from yamlLoader's DashboardConfig.raw.
+    │   │                         # 019-baseline-diff-consumption: new
+    │   │                         # ComparisonCapablePanelConfig mixin
+    │   │                         # (comparison?/compare_on?), mirroring
+    │   │                         # MapRenderingPanelConfig's own mixin
+    │   │                         # pattern exactly — ZoneMapPanelConfig's
+    │   │                         # previously-local `comparison` field
+    │   │                         # is now inherited from it (gaining
+    │   │                         # compare_on too), and PlotlyPanelConfig/
+    │   │                         # TablePanelConfig/ObservablePlotPanelConfig
+    │   │                         # each gain the same mixin — one shared
+    │   │                         # comparison-diff grammar across all four,
+    │   │                         # not four independently invented ones
+    │   │                         # (see panels/panelQuery.ts below for the
+    │   │                         # full story).
     │   ├── scenarioLoader.tsx    # done (009-scenario-manager) — the
     │   │                         # "Load Local Scenario" trigger +
     │   │                         # loaded-scenario list, mounted in
@@ -415,7 +429,106 @@ APP-wftdm-dashboard/
     │   └── sidebar.tsx           # not built yet — no feature has needed it
     ├── panels/
     │   ├── registry.tsx          # type -> component map: valuebox, plotly
-    │   ├── panelQuery.ts         # PanelConfig + filters -> SQL template
+    │   ├── panelQuery.ts         # PanelConfig + filters -> SQL template.
+    │   │                         # 019-baseline-diff-consumption:
+    │   │                         # buildComparisonDiffQuery() — 013's own
+    │   │                         # zonemap-only version — generalized to
+    │   │                         # plain parameters (metric, aScenario,
+    │   │                         # bScenario, compareOn, expr) instead of
+    │   │                         # (config: ZoneMapPanelConfig, diff);
+    │   │                         # compareOn generalizes zonemap's own
+    │   │                         # hardcoded metric_id to one or more
+    │   │                         # join/select columns, byte-for-byte
+    │   │                         # identical output for the single-column
+    │   │                         # case (verified by a dedicated
+    │   │                         # regression test). New
+    │   │                         # resolveComparisonScenarioName(name,
+    │   │                         # baseline) — resolves the new '$baseline'
+    │   │                         # sentinel a comparison: diff's a/b may
+    │   │                         # now hold, to appState.getBaseline()'s
+    │   │                         # current value; returns undefined if
+    │   │                         # unresolved, checked by the CALLER
+    │   │                         # before ever building a query (never a
+    │   │                         # thrown exception here) — same
+    │   │                         # caller-resolves-first convention
+    │   │                         # sqlExpander.ts's own inputState/
+    │   │                         # activeScenarios params already
+    │   │                         # established. isComparisonDiff() moved
+    │   │                         # here from its previous
+    │   │                         # ZoneMapPanel.tsx-local definition, now
+    │   │                         # shared by all four comparison-capable
+    │   │                         # panel types (plotly/table/observable-
+    │   │                         # plot/zonemap), each of which gained a
+    │   │                         # comparison: diff branch in their own
+    │   │                         # fetch effect (identical shape across
+    │   │                         # all four) plus useBaseline() in that
+    │   │                         # effect's dependency array, so a live
+    │   │                         # baseline change reactively recomputes
+    │   │                         # with no reload. NOT the same mechanism
+    │   │                         # as 018's own $baseline.<metric>
+    │   │                         # sqlExpander placeholder — that's a
+    │   │                         # separate, still-unconsumed-by-any-
+    │   │                         # panel path (docs/GRAMMAR.md's own
+    │   │                         # placeholder-reference table has the
+    │   │                         # full disambiguation); this one never
+    │   │                         # touches sqlExpander.ts at all, matching
+    │   │                         # comparison: diff's own pre-existing
+    │   │                         # "no $filters/$scenario expansion"
+    │   │                         # behavior (research.md §4).
+    │   │                         #
+    │   │                         # Two real, confirmed findings from this
+    │   │                         # feature's own implementation, not
+    │   │                         # merely planned: (1) panels/
+    │   │                         # observablePlotEncoding.ts's own
+    │   │                         # resolveObservablePlotEncoding() now
+    │   │                         # filters out any row whose configured y
+    │   │                         # value is null before Plot.plot() ever
+    │   │                         # sees it — this feature's own plan
+    │   │                         # originally assumed Observable Plot's
+    │   │                         # native null-handling would omit a
+    │   │                         # null-valued barY mark the same way
+    │   │                         # Plotly's does; empirically false,
+    │   │                         # caught only because a real Playwright
+    │   │                         # assertion against the live rendered
+    │   │                         # SVG failed — barY actually renders a
+    │   │                         # real <rect height="0"> at the exact
+    │   │                         # position a genuine 0 value would
+    │   │                         # occupy, silently indistinguishable
+    │   │                         # from "no change." (2) panels/
+    │   │                         # formatValue.ts's formatValue(null, ...)
+    │   │                         # was found, live, to return the literal
+    │   │                         # string "null" (String(null)) — fixed
+    │   │                         # with an explicit null/undefined branch
+    │   │                         # returning "N/A"; panels/tableLogic.ts's
+    │   │                         # cellColor() gained the equivalent
+    │   │                         # dedicated-color branch, matching
+    │   │                         # panels/zonemapColor.ts's own
+    │   │                         # already-established NO_DATA_COLOR
+    │   │                         # convention for a missing value.
+    │   │                         #
+    │   │                         # A third, non-code finding worth
+    │   │                         # recording: a single git-stash
+    │   │                         # comparison first suggested this
+    │   │                         # feature's own new fixture panels were
+    │   │                         # causing a real regression in an
+    │   │                         # unrelated 012-webgl-context-management
+    │   │                         # test (moved a new zonemap fixture
+    │   │                         # panel off the Summary tab in response)
+    │   │                         # — a LARGER, repeated-run comparison
+    │   │                         # afterward disproved that: the test
+    │   │                         # fails at a similar rate (~1 in 3-4
+    │   │                         # runs) with or without this feature's
+    │   │                         # changes, including on the clean
+    │   │                         # pre-019 commit — genuine, pre-existing
+    │   │                         # flakiness. The fixture panel was left
+    │   │                         # in its new (Detail tab) location
+    │   │                         # anyway as a harmless precaution, but
+    │   │                         # the move is explicitly NOT a proven
+    │   │                         # fix — a real example of this project's
+    │   │                         # own "confirm before concluding"
+    │   │                         # discipline catching its own
+    │   │                         # insufficiently-sampled first
+    │   │                         # conclusion, not just other people's.
     │   ├── ValueBoxPanel.tsx
     │   ├── PlotlyPanel.tsx
     │   ├── plotlyTraces.ts       # pure trace-resolution logic (split out of

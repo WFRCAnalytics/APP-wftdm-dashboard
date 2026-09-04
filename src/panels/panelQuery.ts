@@ -10,7 +10,6 @@ import type {
   ComparisonDiff,
   DataBoundPanelConfigBase,
   GraphicWalkerPanelConfig,
-  ZoneMapPanelConfig,
 } from '@/layout/types'
 
 const FILTERS_REF_RE = /^\$filters\.([A-Za-z0-9_]+)$/
@@ -184,31 +183,86 @@ export function resolveActiveScenarios(
 }
 
 /**
- * Builds the `comparison: diff` SQL for a zonemap panel
- * (013-zonemap-panel, contracts/zonemap-panel.md, research.md §7).
+ * True when `comparison` is the `diff` shape, not `'side_by_side'`/
+ * undefined. 019-baseline-diff-consumption: moved here from its previous
+ * ZoneMapPanel.tsx-local definition — all four comparison-capable panel
+ * types need the identical check now (research.md §5), not just zonemap.
+ */
+export function isComparisonDiff(
+  comparison: 'side_by_side' | ComparisonDiff | undefined,
+): comparison is ComparisonDiff {
+  return typeof comparison === 'object' && comparison !== null && comparison.type === 'diff'
+}
+
+const BASELINE_SENTINEL = '$baseline'
+
+/**
+ * Resolves one side of a `comparison: diff` (`diff.a`/`diff.b`):
+ * `'$baseline'` (019-baseline-diff-consumption's own sentinel) resolves to
+ * `baseline` (the caller's already-read `appState.getBaseline()`/
+ * `useBaseline()` value); any other string passes through unchanged —
+ * ordinary hardcoded scenario names behave exactly as they did before
+ * this feature (013's own original convention, FR-005). Returns
+ * `undefined` when the sentinel is used but `baseline` is itself
+ * `undefined` (no scenario currently resolves as baseline) — the CALLER
+ * checks for this and shows its existing error state BEFORE ever
+ * building a query (FR-011), rather than letting a malformed view name
+ * reach DuckDB and fail there. Deliberately pure — no direct appState
+ * import, matching sqlExpander.ts's own "caller resolves, function stays
+ * decoupled" convention (research.md §4).
+ */
+export function resolveComparisonScenarioName(
+  name: string,
+  baseline: string | undefined,
+): string | undefined {
+  return name === BASELINE_SENTINEL ? baseline : name
+}
+
+/**
+ * Builds the `comparison: diff` SQL — shared by all four comparison-
+ * capable panel types as of 019-baseline-diff-consumption (FR-006),
+ * generalized from 013-zonemap-panel's own original zonemap-only version
+ * (contracts/zonemap-panel.md, research.md §7). Every input this function
+ * needs is now a plain parameter, not a config object — `compareOn`
+ * generalizes zonemap's own hardcoded `metric_id` (still that panel
+ * type's own default when its `compare_on` is omitted, applied by the
+ * CALLER, not here) to one or more join/select columns (research.md §2).
+ * Produces byte-for-byte identical SQL to the pre-generalization version
+ * when `compareOn` is a single-element array matching the old `metric_id`
+ * argument — verified in tests/unit/panelQuery.test.ts.
  *
- * `a`/`b` are interpolated as literal view-name prefixes — the SAME
- * zero-validation convention `config.scenario` (singular, above) already
- * uses: no upfront check that either name is "active" or even
- * registered (research.md §7's own correction note — `
- * resolveActiveScenarios()` performs no such validation either). An
- * unresolvable name fails naturally when the query built here actually
- * runs (DuckDB's own "table does not exist" error), caught by the
- * panel's existing query `.catch()` — same PanelErrorState path as any
- * other unresolvable configuration, no new error-handling branch needed.
+ * `aScenario`/`bScenario` are interpolated as literal view-name prefixes
+ * — the SAME zero-validation convention `config.scenario` (singular,
+ * above) already uses: no upfront check that either name is "active" or
+ * even registered (research.md §7's own correction note — `
+ * resolveActiveScenarios()` performs no such validation either). Callers
+ * are expected to have already resolved any `'$baseline'` sentinel via
+ * `resolveComparisonScenarioName()` above — an unresolvable ordinary name
+ * still fails naturally when the query built here actually runs (DuckDB's
+ * own "table does not exist" error), caught by the panel's existing query
+ * `.catch()` — same PanelErrorState path as any other unresolvable
+ * configuration, no new error-handling branch needed for that case.
  *
  * `expr` is copied verbatim into the generated SQL — plain string
  * substitution only, matching `$sql.x`'s own established convention;
  * DuckDB's own SQL engine evaluates the arithmetic. Never `eval()`,
  * never evaluated in JS (constitution Principle III).
  */
-export function buildComparisonDiffQuery(config: ZoneMapPanelConfig, diff: ComparisonDiff): string {
-  const aView = `"${diff.a}__${config.metric}"`
-  const bView = `"${diff.b}__${config.metric}"`
+export function buildComparisonDiffQuery(
+  metric: string,
+  aScenario: string,
+  bScenario: string,
+  compareOn: string[],
+  expr: string,
+): string {
+  const aView = `"${aScenario}__${metric}"`
+  const bView = `"${bScenario}__${metric}"`
+  const selectCols = compareOn.map((c) => `a."${c}" AS "${c}"`).join(', ')
+  const joinCond = compareOn.map((c) => `a."${c}" = b."${c}"`).join(' AND ')
   return [
-    `SELECT a."${config.metric_id}" AS "${config.metric_id}", (${diff.expr}) AS diff_value`,
+    `SELECT ${selectCols}, (${expr}) AS diff_value`,
     `FROM ${aView} a`,
-    `JOIN ${bView} b ON a."${config.metric_id}" = b."${config.metric_id}"`,
+    `JOIN ${bView} b ON ${joinCond}`,
   ].join('\n')
 }
 

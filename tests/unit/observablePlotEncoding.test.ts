@@ -98,4 +98,40 @@ describe('resolveObservablePlotEncoding', () => {
     expect(Object.keys(result.options)).toEqual([])
     expect(Object.keys(result.plotOptions)).toEqual([])
   })
+
+  // 019-baseline-diff-consumption (FR-014): a real, confirmed finding —
+  // Observable Plot's barY renders a null y as a real <rect height="0">
+  // at the exact position a genuine 0 value would occupy (empirically
+  // verified against the real, rendered SVG — not assumed), silently
+  // indistinguishable from "no change." Rows with a null y value are now
+  // filtered out before ever reaching Plot.plot().
+  describe('null y-value filtering (FR-014)', () => {
+    const diffRows = [
+      { taz_id: 100, diff_value: -13 },
+      { taz_id: 300, diff_value: null },
+      { taz_id: 700, diff_value: 20 },
+    ]
+
+    it('drops rows whose configured y field is null when y is set', () => {
+      const result = resolveObservablePlotEncoding({ ...baseConfig, y: 'diff_value' }, diffRows)
+      expect(result.data).toEqual([
+        { taz_id: 100, diff_value: -13 },
+        { taz_id: 700, diff_value: 20 },
+      ])
+    })
+
+    it('does not filter at all when y is not configured — data passes through unchanged, same reference', () => {
+      const result = resolveObservablePlotEncoding(baseConfig, diffRows)
+      expect(result.data).toBe(diffRows)
+    })
+
+    it('never drops a row whose y value is a real, non-null number (including 0)', () => {
+      const rowsWithZero = [
+        { taz_id: 100, diff_value: 0 },
+        { taz_id: 300, diff_value: null },
+      ]
+      const result = resolveObservablePlotEncoding({ ...baseConfig, y: 'diff_value' }, rowsWithZero)
+      expect(result.data).toEqual([{ taz_id: 100, diff_value: 0 }]) // real 0 kept, null dropped
+    })
+  })
 })

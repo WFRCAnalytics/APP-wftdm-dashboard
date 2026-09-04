@@ -76,7 +76,12 @@ export interface PlotlyTraceConfig {
   barmode?: string
 }
 
-export interface PlotlyPanelConfig extends DataBoundPanelConfigBase {
+// 019-baseline-diff-consumption: ComparisonCapablePanelConfig (below,
+// defined alongside ComparisonDiff) is mixed into PlotlyPanelConfig here —
+// see that interface's own doc comment for why.
+export interface PlotlyPanelConfig
+  extends DataBoundPanelConfigBase,
+    ComparisonCapablePanelConfig {
   type: 'plotly'
   traces: PlotlyTraceConfig[]
   layout?: Record<string, unknown>
@@ -94,7 +99,12 @@ export interface TableColumnConfig {
   domain?: [number, number]
 }
 
-export interface TablePanelConfig extends DataBoundPanelConfigBase {
+// 019-baseline-diff-consumption: ComparisonCapablePanelConfig mixed in —
+// see that interface's own doc comment (defined below, alongside
+// ComparisonDiff) for why.
+export interface TablePanelConfig
+  extends DataBoundPanelConfigBase,
+    ComparisonCapablePanelConfig {
   type: 'table'
   columns?: TableColumnConfig[]
   sort?: { column: string; order: 'asc' | 'desc' }
@@ -140,7 +150,12 @@ export interface ObservablePlotInputConfig {
  * PlotlyTraceConfig's own fields (research.md §4, a confirmed grammar
  * difference from type: plotly).
  */
-export interface ObservablePlotPanelConfig extends DataBoundPanelConfigBase {
+// 019-baseline-diff-consumption: ComparisonCapablePanelConfig mixed in —
+// see that interface's own doc comment (defined below, alongside
+// ComparisonDiff) for why.
+export interface ObservablePlotPanelConfig
+  extends DataBoundPanelConfigBase,
+    ComparisonCapablePanelConfig {
   type: 'observable-plot'
   /** Names an @observablehq/plot mark-constructor export (e.g. 'barY',
    * 'lineY') — looked up dynamically, not an exhaustive hardcoded enum,
@@ -236,6 +251,16 @@ export interface FlowMapPanelConfig extends DataBoundPanelConfigBase {
  * side-by-side-panels convention every other panel type's own scenario:
  * key already provides (spec.md Grammar findings #8).
  */
+/**
+ * `a`/`b` are plain scenario-name strings, unchanged since 013 — with one
+ * new accepted value as of 019-baseline-diff-consumption: the literal
+ * string `'$baseline'`, a sentinel resolved at query time to whichever
+ * scenario currently holds the baseline designation
+ * (018-baseline-scenario-designation's appState.getBaseline()). This is a
+ * VALUE the field may hold, not a type-level change — `a`/`b` stay plain
+ * `string` (spec.md Grammar finding #1); resolution lives in
+ * panels/panelQuery.ts's resolveComparisonScenarioName(), never here.
+ */
 export interface ComparisonDiff {
   type: 'diff'
   a: string
@@ -243,7 +268,31 @@ export interface ComparisonDiff {
   expr: string
 }
 
-export interface ZoneMapPanelConfig extends DataBoundPanelConfigBase, MapRenderingPanelConfig {
+/**
+ * 019-baseline-diff-consumption: mirrors MapRenderingPanelConfig's own
+ * mixin-interface pattern exactly — a small interface carrying only the
+ * fields a specific subset of panel types opt into via `extends`, not
+ * promoted onto the universal DataBoundPanelConfigBase (data-model.md).
+ * `comparison` is ZoneMapPanelConfig's own pre-existing field (013),
+ * generalized here so plotly/table/observable-plot share the identical
+ * field name/shape rather than three independently-invented mechanisms
+ * (spec.md's own explicit requirement). `compare_on` is new: names the
+ * column(s) that jointly identify a "comparable row" between the two
+ * sides of a diff — generalizes ZoneMapPanelConfig's own metric_id (which
+ * remains usable as compare_on's default when omitted, so no existing
+ * zonemap comparison: diff config needs to change) to the three panel
+ * types with no single well-known identity column of their own
+ * (research.md §1/§3).
+ */
+export interface ComparisonCapablePanelConfig {
+  comparison?: 'side_by_side' | ComparisonDiff
+  compare_on?: string[]
+}
+
+export interface ZoneMapPanelConfig
+  extends DataBoundPanelConfigBase,
+    MapRenderingPanelConfig,
+    ComparisonCapablePanelConfig {
   type: 'zonemap'
   boundaries: string
   boundaries_id: string
@@ -254,7 +303,6 @@ export interface ZoneMapPanelConfig extends DataBoundPanelConfigBase, MapRenderi
   color_ramp?: string
   steps?: number
   domain?: [number, number]
-  comparison?: 'side_by_side' | ComparisonDiff
   center?: [number, number]
   zoom?: number
 }
