@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { Monitor, Moon, Sun } from 'lucide-react'
 
-import { Button } from '@/components/ui/button'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useThemeMode } from '@/hooks/useThemeMode'
 import { setMode, type ThemeMode } from '@/state/themeState'
 
@@ -28,6 +28,31 @@ import { setMode, type ThemeMode } from '@/state/themeState'
 // that module's own comment for the full finding. Re-exports ThemeMode
 // from state/themeState.ts unchanged so no other import site needs to
 // change.
+//
+// 024-settings-modal-visual-redesign (US4): rebuilt on this app's shared
+// Tabs/TabsList/TabsTrigger primitive (already used by navBar.tsx and by
+// settingsModal.tsx's own outer navigation) instead of a plain <Button>
+// row — a real keyboard-navigable, role="tab" control instead of three
+// independently-clickable buttons. `mode`/`setMode()` wiring and the
+// mount/matchMedia effect below are UNCHANGED — only the rendered control
+// shape changes (research.md §5, data-model.md). No `orientation` prop is
+// passed, so this renders horizontally, matching navBar.tsx's own
+// default-orientation usage exactly (research.md §5).
+//
+// This nests a SECOND role="tablist" region inside settingsModal.tsx's own
+// outer one while the modal is open on this tab. Distinguished via
+// aria-label — this TabsList is "Theme" (the exact label the previous
+// plain `role="group"` wrapper already used, so the accessible name a
+// screen-reader user hears does not change across this rebuild),
+// settingsModal.tsx's own outer TabsList is "Settings sections"
+// (research.md §3, FR-013). Confirmed via direct grep of this project's
+// own test suite that no existing query relies on an unscoped, name-less
+// tablist/tab lookup against this modal — every existing by-name query
+// ("Appearance"/"Scenarios"/"Basemap"/"Documentation" vs. "System"/
+// "Light"/"Dark") already resolves unambiguously since the two sets of
+// names are disjoint; only the assertions that queried System/Light/Dark
+// by role="button"+aria-pressed needed migrating to role="tab"+
+// aria-selected (settingsModal.spec.ts, this feature's own test changes).
 export type { ThemeMode } from '@/state/themeState'
 
 const MODE_ICON: Record<ThemeMode, typeof Monitor> = {
@@ -65,23 +90,18 @@ export function AppearanceTab() {
   }, [mode])
 
   return (
-    <div className="flex items-center gap-2" role="group" aria-label="Theme">
-      {MODES.map((m) => {
-        const Icon = MODE_ICON[m]
-        const selected = mode === m
-        return (
-          <Button
-            key={m}
-            type="button"
-            variant={selected ? 'secondary' : 'outline'}
-            aria-pressed={selected}
-            onClick={() => setMode(m)}
-          >
-            <Icon className="h-4 w-4" />
-            {MODE_LABEL[m]}
-          </Button>
-        )
-      })}
-    </div>
+    <Tabs value={mode} onValueChange={(value) => setMode(value as ThemeMode)}>
+      <TabsList aria-label="Theme">
+        {MODES.map((m) => {
+          const Icon = MODE_ICON[m]
+          return (
+            <TabsTrigger key={m} value={m} className="gap-1.5">
+              <Icon className="h-4 w-4" />
+              {MODE_LABEL[m]}
+            </TabsTrigger>
+          )
+        })}
+      </TabsList>
+    </Tabs>
   )
 }

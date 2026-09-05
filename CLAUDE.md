@@ -501,6 +501,32 @@ APP-wftdm-dashboard/
     │   │   │                     # lives inside its own dedicated modal
     │   │   │                     # tab with no competing header space
     │   │   │                     # (research.md §9).
+    │   │   │                     # 024-settings-modal-visual-redesign
+    │   │   │                     # (US4): the three-button row is REBUILT
+    │   │   │                     # on this app's shared Tabs/TabsList/
+    │   │   │                     # TabsTrigger primitive (state/effect
+    │   │   │                     # wiring unchanged) — a real, keyboard-
+    │   │   │                     # navigable role="tab" control instead of
+    │   │   │                     # three independent role="button"
+    │   │   │                     # elements. This nests a SECOND
+    │   │   │                     # role="tablist" inside settingsModal.tsx's
+    │   │   │                     # own outer one; both gained a distinct
+    │   │   │                     # aria-label ("Theme" here, "Settings
+    │   │   │                     # sections" on the outer TabsList) so any
+    │   │   │                     # query can tell them apart — the same
+    │   │   │                     # class of nested-role="tab" collision
+    │   │   │                     # risk 014-graphic-walker-panel already
+    │   │   │                     # taught this codebase to guard against
+    │   │   │                     # up front (research.md §3). Confirmed via
+    │   │   │                     # direct grep, not assumed: every existing
+    │   │   │                     # test query for "System"/"Light"/"Dark"
+    │   │   │                     # used role="button"+aria-pressed and
+    │   │   │                     # needed migrating to role="tab"+
+    │   │   │                     # aria-selected — more call sites than
+    │   │   │                     # this feature's own plan.md originally
+    │   │   │                     # estimated ("only two assertions"), a
+    │   │   │                     # real correction made during
+    │   │   │                     # implementation, not left stale.
     │   │   ├── scenariosTab.tsx  # relocated scenarioLoader.tsx's list/
     │   │   │                     # add/remove/baseline-mark logic
     │   │   │                     # UNCHANGED (FR-006), plus three real
@@ -540,6 +566,88 @@ APP-wftdm-dashboard/
     │   │   │                     # collided with the row's own move
     │   │   │                     # buttons — fixed with a dedicated
     │   │   │                     # `data-testid="scenario-name"`.
+    │   │   │                     # 024-settings-modal-visual-redesign
+    │   │   │                     # (US1): each row gains a color status
+    │   │   │                     # dot (new `scenarioStatusColor.ts`, a
+    │   │   │                     # pure module same category as
+    │   │   │                     # `panels/zonemapColor.ts`/
+    │   │   │                     # `panels/sankeyColor.ts`) ALONGSIDE the
+    │   │   │                     # existing "(status)" text, not replacing
+    │   │   │                     # it (FR-001) — `ready`→new `--success`
+    │   │   │                     # token, `failed`→the SAME `--destructive`
+    │   │   │                     # this tab's own load-error text already
+    │   │   │                     # uses, `registering`→neutral/pulsing,
+    │   │   │                     # no new color. Confirmed directly
+    │   │   │                     # (`state/appState.ts`) that
+    │   │   │                     # `ScenarioStatus` has no "warning" third
+    │   │   │                     # value at all — the feature request's own
+    │   │   │                     # "yellow for warning" suggestion doesn't
+    │   │   │                     # map to any real status, recorded as an
+    │   │   │                     # Assumption rather than invented.
+    │   │   │                     # SUPERSEDED by a second pass, same
+    │   │   │                     # feature: the dot+"(status)"-text change
+    │   │   │                     # above was correctly assessed by the
+    │   │   │                     # user as incremental polish on the
+    │   │   │                     # existing single-line-per-row shape, not
+    │   │   │                     # a real redesign — the same failure mode
+    │   │   │                     # this project already hit once with
+    │   │   │                     # 015-map-navigation-controls' 3D toggle
+    │   │   │                     # button (three rounds of unproductive
+    │   │   │                     # text-only iteration). Fixed the same way
+    │   │   │                     # that was resolved: consulting this
+    │   │   │                     # environment's own design skill directly,
+    │   │   │                     # AND grounding the row layout in a real
+    │   │   │                     # reference — `gropaul/dash`'s own
+    │   │   │                     # installed `connections-view.tsx`
+    │   │   │                     # (fetched and read directly from
+    │   │   │                     # `gropaul/dash-ui`, docs/PIPELINE.md's
+    │   │   │                     # own on-record design-inspiration note —
+    │   │   │                     # its own UI source, not the extension
+    │   │   │                     # repo, and confirmed to run nearly the
+    │   │   │                     # same stack this app already does:
+    │   │   │                     # Next.js/React/Tailwind/Radix/CVA/
+    │   │   │                     # lucide-react). The ACTUAL row shape is
+    │   │   │                     # now: one card surface (`rounded-xl
+    │   │   │                     # border bg-card overflow-hidden`) with a
+    │   │   │                     # summary band above the rows ("N
+    │   │   │                     # scenarios loaded · N need attention" —
+    │   │   │                     # "surface the summary before the
+    │   │   │                     # detail," the artifact-design skill's own
+    │   │   │                     # "When it's a UI, not a document"
+    │   │   │                     # section); rows are hairline-`border-b`
+    │   │   │                     # separated INSIDE that card, not N
+    │   │   │                     # individually-bordered boxes; each row is
+    │   │   │                     # a real two-tier stack — leading status
+    │   │   │                     # dot, a two-line identity block (label
+    │   │   │                     # input on top, `font-mono text-xs`
+    │   │   │                     # path below — monospace specifically
+    │   │   │                     # marking it as a technical identifier,
+    │   │   │                     # distinct from UI chrome), a trailing
+    │   │   │                     # independently-colored "(status)" word,
+    │   │   │                     # then the move/baseline/remove actions
+    │   │   │                     # grouped at the far end (Dash's own row
+    │   │   │                     # has no per-row reorder/pin — that
+    │   │   │                     # cluster's grouping convention, not its
+    │   │   │                     # specific controls, is what's reused).
+    │   │   │                     # A REAL, confirmed project-specific
+    │   │   │                     # constraint shaped the exact classes
+    │   │   │                     # used: a local `npx tailwindcss` build
+    │   │   │                     # re-confirmed mapControls.css's own prior
+    │   │   │                     # finding that an opacity-modifier utility
+    │   │   │                     # (`bg-muted/40`, and — newly confirmed
+    │   │   │                     # here — `bg-background/80`, already used
+    │   │   │                     # elsewhere in this codebase, e.g.
+    │   │   │                     # dialog.tsx/FlowMapPanel.tsx) generates
+    │   │   │                     # NO CSS AT ALL against this project's
+    │   │   │                     # plain-hex tokens.css — every
+    │   │   │                     # background/hover treatment in this
+    │   │   │                     # redesign uses a full-opacity token
+    │   │   │                     # utility instead (`bg-muted`, never
+    │   │   │                     # `bg-muted/40`). The `bg-background/80`
+    │   │   │                     # instances elsewhere were NOT touched —
+    │   │   │                     # out of scope for this feature, a
+    │   │   │                     # separate latent bug to fix later, not
+    │   │   │                     # here.
     │   │   ├── basemapTab.tsx    # 020-settings-modal's own version was a
     │   │   │                     # flat single-select `role="radio"` list
     │   │   │                     # over listBuiltInPresetNames(), applying
@@ -600,6 +708,88 @@ APP-wftdm-dashboard/
     │   │   │                     # history. No new dependency: no
     │   │   │                     # `components/ui/popover.tsx` exists in
     │   │   │                     # this codebase.
+    │   │   │                     # 024-settings-modal-visual-redesign
+    │   │   │                     # (US2/US3): REVERSES 021's own FR-008
+    │   │   │                     # ("no live preview for raster
+    │   │   │                     # providers") — a real, confirmed finding
+    │   │   │                     # made BEFORE writing any new code:
+    │   │   │                     # `loadBasemapStyle()`'s own
+    │   │   │                     # `resolvePresetName()` already had a
+    │   │   │                     # working raster-provider branch (built
+    │   │   │                     # for Apply-time use), reached via the
+    │   │   │                     # SAME call every vector entry already
+    │   │   │                     # goes through — the preview effect's own
+    │   │   │                     # `isRasterProviderSelection(...)` early
+    │   │   │                     # return was the ONLY thing skipping it.
+    │   │   │                     # Fixed by removing that bypass and the
+    │   │   │                     # placeholder render — no change to
+    │   │   │                     # `loadBasemapStyle.ts` at all. A second,
+    │   │   │                     # real MapLibre-internal finding surfaced
+    │   │   │                     # only once a genuinely-unreachable
+    │   │   │                     # provider was tested end-to-end: its own
+    │   │   │                     # `map.on('error', ...)` event does NOT
+    │   │   │                     # reliably fire for a raster tile
+    │   │   │                     # failure — `SourceCache` can self-abort
+    │   │   │                     # an in-flight tile for unrelated internal
+    │   │   │                     # reasons, and a self-aborted tile never
+    │   │   │                     # reaches the code path that fires
+    │   │   │                     # `'error'` at all (confirmed by reading
+    │   │   │                     # `SourceCache#_loadTile`'s own real,
+    │   │   │                     # installed source directly). Fixed with a
+    │   │   │                     # bounded (4s) timeout fallback, cleared
+    │   │   │                     # the moment a real tile-loaded `'data'`
+    │   │   │                     # event is observed for the current
+    │   │   │                     # generation — the `'error'` listener
+    │   │   │                     # stays as the FAST path, the timeout is
+    │   │   │                     # what makes FR-007 actually reliable.
+    │   │   │                     # Also: visual polish (US3, first pass) of
+    │   │   │                     # the existing flat section/entry markup —
+    │   │   │                     # section headings gained a border-b/
+    │   │   │                     # uppercase/muted "section label"
+    │   │   │                     # treatment; entries gained a colored
+    │   │   │                     # left-accent border on the staged one.
+    │   │   │                     # SUPERSEDED by a second pass, same
+    │   │   │                     # feature: correctly assessed by the user
+    │   │   │                     # as the same "border/color accent on the
+    │   │   │                     # unchanged shape" pattern already once
+    │   │   │                     # unproductive in this project's own
+    │   │   │                     # history (015-map-navigation-controls'
+    │   │   │                     # 3D toggle button). The section-heading
+    │   │   │                     # treatment above was kept (it already
+    │   │   │                     # worked); the per-entry `<Button>`
+    │   │   │                     # VERTICAL LIST inside each section is
+    │   │   │                     # REPLACED with a responsive
+    │   │   │                     # `grid-cols-[repeat(auto-fit,minmax(84px,
+    │   │   │                     # 1fr))]` grid of icon-topped tiles —
+    │   │   │                     # `gropaul/dash`'s own real, installed
+    │   │   │                     # `view-mode-picker.tsx` (fetched directly
+    │   │   │                     # from `gropaul/dash-ui`, same on-record
+    │   │   │                     # inspiration source as scenariosTab.tsx's
+    │   │   │                     # own note above) solves the adjacent
+    │   │   │                     # "pick one of several visual options"
+    │   │   │                     # problem with exactly this shape — a
+    │   │   │                     # grid of square tiles (icon on top, label
+    │   │   │                     # below), the SELECTED tile using the
+    │   │   │                     # accent color pair, resting tiles on the
+    │   │   │                     # card surface with muted text. Still no
+    │   │   │                     # accordion, still no real thumbnail
+    │   │   │                     # images (out of scope, unchanged) — each
+    │   │   │                     # tile instead gets a new per-entry
+    │   │   │                     # CATEGORY icon (Sun/Sparkles/Moon/
+    │   │   │                     # Compass/Palette/Waves/Satellite/
+    │   │   │                     # Mountain), an honest categorical cue
+    │   │   │                     # (light/dark/hybrid/outdoors/colorful),
+    │   │   │                     # never a fabricated preview of what the
+    │   │   │                     # style actually renders as. The selected-
+    │   │   │                     # tile pairing (`bg-accent
+    │   │   │                     # text-accent-foreground`) is not a new
+    │   │   │                     # convention borrowed wholesale from
+    │   │   │                     # Dash — `components/ui/tabs.tsx`'s own
+    │   │   │                     # `TabsTrigger` already uses that exact
+    │   │   │                     # pair for the active Settings-modal tab,
+    │   │   │                     # one file up from here; reusing it here
+    │   │   │                     # is consistency with this app's own
+    │   │   │                     # existing "active" language.
     │   │   └── documentationTab.tsx # a static placeholder (FR-014) — no
     │   │                         # `<a>` element at all, rather than a
     │   │                         # dead/placeholder href.

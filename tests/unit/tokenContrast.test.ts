@@ -100,6 +100,10 @@ const PAIRINGS: Array<{
   { name: 'muted-foreground/muted', foreground: 'muted-foreground', base: 'muted', expectedLight: 5.08, expectedDark: 5.12 },
   { name: 'accent-foreground/accent', foreground: 'accent-foreground', base: 'accent', expectedLight: 10.44, expectedDark: 10.44 },
   { name: 'destructive-foreground/destructive', foreground: 'destructive-foreground', base: 'destructive', expectedLight: 5.27, expectedDark: 5.27 },
+  // 024-settings-modal-visual-redesign: --success/--success-foreground,
+  // added for the Scenarios tab's "ready" status indicator (research.md
+  // §2) — same identical-in-both-modes shape as --destructive above.
+  { name: 'success-foreground/success', foreground: 'success-foreground', base: 'success', expectedLight: 5.02, expectedDark: 5.02 },
 ]
 
 describe('token contrast (WCAG 2.1 AA)', () => {

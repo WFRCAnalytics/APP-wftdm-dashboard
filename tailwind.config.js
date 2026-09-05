@@ -18,6 +18,12 @@ export default {
         muted: { DEFAULT: 'var(--muted)', foreground: 'var(--muted-foreground)' },
         accent: { DEFAULT: 'var(--accent)', foreground: 'var(--accent-foreground)' },
         destructive: { DEFAULT: 'var(--destructive)', foreground: 'var(--destructive-foreground)' },
+        // 024-settings-modal-visual-redesign: new --success token pair
+        // (tokens.css) needs its own entry here, same shape as
+        // destructive above — Tailwind silently drops any utility class
+        // (bg-success, text-success-foreground) with no matching color
+        // key, it does not error, so this is required, not optional.
+        success: { DEFAULT: 'var(--success)', foreground: 'var(--success-foreground)' },
         border: 'var(--border)',
         input: 'var(--input)',
         ring: 'var(--ring)',

@@ -35,6 +35,17 @@
   --accent-foreground: var(--brand-black);
   --destructive: #c23c33;
   --destructive-foreground: #ffffff;
+  /* 024-settings-modal-visual-redesign: the Scenarios tab's status
+     indicator needs a "ready"/success color to pair with the existing
+     --destructive ("failed") — confirmed via direct read of tokens.css
+     that no green/success semantic token existed anywhere in this file
+     before this (research.md §2). Same value in both :root and .dark
+     (matching --destructive's own identical-in-both-modes pattern below)
+     — #15803d/white contrast is 5.02:1 in both, comfortably above WCAG AA
+     (tokenContrast.test.ts asserts this directly against tokens.css's
+     real values, not a hardcoded copy). */
+  --success: #15803d;
+  --success-foreground: #ffffff;
   --border: #d8d5d2;
   --input: var(--border);
   --ring: var(--primary);
@@ -129,6 +140,9 @@ body {
   --accent-foreground: var(--brand-black);
   --destructive: #c23c33;
   --destructive-foreground: #ffffff;
+  /* Same literal values as :root — see that block's own comment. */
+  --success: #15803d;
+  --success-foreground: #ffffff;
   --border: #23394a;
   --input: var(--border);
   --ring: var(--primary);

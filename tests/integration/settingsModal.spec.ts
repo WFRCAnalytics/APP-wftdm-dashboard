@@ -79,20 +79,28 @@ test.describe('User Story 1 - One place to manage dashboard-wide settings', () =
     await page.getByRole('button', { name: 'Settings' }).click()
     await page.getByRole('tab', { name: 'Appearance' }).click()
 
+    // 024-settings-modal-visual-redesign (US4): migrated from
+    // role="button"/aria-pressed to role="tab"/aria-selected — the
+    // Appearance tab's System/Light/Dark control is now a real Tabs
+    // instance, not a plain button row (research.md §3). Scoped to the
+    // "Theme" tablist specifically — the dialog now also contains the
+    // Settings modal's own outer "Settings sections" tablist, and both
+    // expose role="tab" children.
+    const themeTabs = page.getByRole('tablist', { name: 'Theme' })
     // All three are visible simultaneously — no dropdown/menu interaction
     // needed to reveal Light/Dark, unlike the deleted ThemeToggle.
     for (const name of ['System', 'Light', 'Dark']) {
-      await expect(page.getByRole('button', { name })).toBeVisible()
+      await expect(themeTabs.getByRole('tab', { name })).toBeVisible()
     }
 
-    await page.getByRole('button', { name: 'Dark' }).click()
+    await themeTabs.getByRole('tab', { name: 'Dark' }).click()
     await expect(page.locator('html')).toHaveClass(/dark/)
-    await expect(page.getByRole('button', { name: 'Dark' })).toHaveAttribute('aria-pressed', 'true')
+    await expect(themeTabs.getByRole('tab', { name: 'Dark' })).toHaveAttribute('aria-selected', 'true')
 
-    await page.getByRole('button', { name: 'Light' }).click()
+    await themeTabs.getByRole('tab', { name: 'Light' }).click()
     await expect(page.locator('html')).not.toHaveClass(/dark/)
-    await expect(page.getByRole('button', { name: 'Light' })).toHaveAttribute('aria-pressed', 'true')
-    await expect(page.getByRole('button', { name: 'Dark' })).toHaveAttribute('aria-pressed', 'false')
+    await expect(themeTabs.getByRole('tab', { name: 'Light' })).toHaveAttribute('aria-selected', 'true')
+    await expect(themeTabs.getByRole('tab', { name: 'Dark' })).toHaveAttribute('aria-selected', 'false')
   })
 
   // UI polish pass (post-merge correction): a REAL regression, confirmed
@@ -109,15 +117,46 @@ test.describe('User Story 1 - One place to manage dashboard-wide settings', () =
     await boot(page)
     await page.getByRole('button', { name: 'Settings' }).click()
     await page.getByRole('tab', { name: 'Appearance' }).click()
-    await page.getByRole('button', { name: 'Light' }).click()
-    await expect(page.getByRole('button', { name: 'Light' })).toHaveAttribute('aria-pressed', 'true')
+    // 024-settings-modal-visual-redesign (US4): role="tab"/aria-selected,
+    // migrated from role="button"/aria-pressed — see research.md §3.
+    const themeTabs = page.getByRole('tablist', { name: 'Theme' })
+    await themeTabs.getByRole('tab', { name: 'Light' }).click()
+    await expect(themeTabs.getByRole('tab', { name: 'Light' })).toHaveAttribute('aria-selected', 'true')
 
     await page.getByRole('tab', { name: 'Scenarios' }).click()
     await page.getByRole('tab', { name: 'Appearance' }).click()
 
-    await expect(page.getByRole('button', { name: 'Light' })).toHaveAttribute('aria-pressed', 'true')
-    await expect(page.getByRole('button', { name: 'System' })).toHaveAttribute('aria-pressed', 'false')
+    await expect(themeTabs.getByRole('tab', { name: 'Light' })).toHaveAttribute('aria-selected', 'true')
+    await expect(themeTabs.getByRole('tab', { name: 'System' })).toHaveAttribute('aria-selected', 'false')
     await expect(page.locator('html')).not.toHaveClass(/dark/)
+  })
+
+  // 024-settings-modal-visual-redesign (US4, FR-013/SC-005): proves the
+  // disambiguation mechanism directly, rather than assuming distinct
+  // aria-labels are sufficient — with the Appearance tab open, the modal
+  // now genuinely contains TWO nested role="tablist" regions (the outer
+  // Settings navigation, and this tab's own System/Light/Dark control).
+  // Each must resolve to exactly ONE element by its own accessible name —
+  // a Playwright strict-mode violation here would mean the two are not
+  // actually distinguishable.
+  test('the outer Settings navigation and the inner Theme control are two distinguishable tablist regions (FR-013)', async ({
+    page,
+  }) => {
+    await boot(page)
+    await page.getByRole('button', { name: 'Settings' }).click()
+    await page.getByRole('tab', { name: 'Appearance' }).click()
+
+    const dialog = page.getByRole('dialog')
+    await expect(dialog.getByRole('tablist', { name: 'Settings sections' })).toHaveCount(1)
+    await expect(dialog.getByRole('tablist', { name: 'Theme' })).toHaveCount(1)
+
+    // The outer tablist's own tabs are still reachable by name with no
+    // collision against the inner "System"/"Light"/"Dark" names.
+    for (const name of ['Appearance', 'Scenarios', 'Basemap', 'Documentation']) {
+      await expect(dialog.getByRole('tablist', { name: 'Settings sections' }).getByRole('tab', { name })).toHaveCount(
+        1,
+      )
+    }
   })
 
   test('Scenarios tab shows each loaded scenario\'s real file path and status (FR-005)', async ({
@@ -143,6 +182,35 @@ test.describe('User Story 1 - One place to manage dashboard-wide settings', () =
     await expect(list).toContainText('scenarios/good_scenario/summary')
     await expect(list).toContainText('(ready)')
     await expect(list).toContainText('observed/summary')
+  })
+
+  // 024-settings-modal-visual-redesign (US1, FR-001): a color status dot
+  // ALONGSIDE the existing "(status)" text above, not a replacement — the
+  // preceding test's own '(ready)' text assertion must keep passing
+  // unchanged. Only 'ready'/'failed' are asserted here — the fixture's
+  // scenarios settle to a final status well before boot() resolves
+  // (research.md has no note otherwise), so a live 'registering' row is not
+  // reliably observable in a real browser; that branch's mapping is
+  // covered directly by tests/unit/scenarioStatusColor.test.ts instead.
+  test('a "ready" and a "failed" scenario render visually distinct status dots (FR-001)', async ({
+    page,
+  }) => {
+    await boot(page)
+    await page.getByRole('button', { name: 'Settings' }).click()
+    await page.getByRole('tab', { name: 'Scenarios' }).click()
+
+    const readyDot = page.getByTestId('scenario-status-dot-good_scenario')
+    const failedDot = page.getByTestId('scenario-status-dot-broken_scenario')
+    await expect(readyDot).toBeVisible()
+    await expect(failedDot).toBeVisible()
+    await expect(readyDot).toHaveAttribute('aria-label', 'Ready')
+    await expect(failedDot).toHaveAttribute('aria-label', 'Failed')
+
+    const [readyColor, failedColor] = await Promise.all([
+      readyDot.evaluate((el) => getComputedStyle(el).backgroundColor),
+      failedDot.evaluate((el) => getComputedStyle(el).backgroundColor),
+    ])
+    expect(readyColor).not.toBe(failedColor)
   })
 
   test('the modal is dismissible via close button, overlay click, and Escape (FR-016)', async ({
@@ -174,7 +242,9 @@ test.describe('User Story 1 - One place to manage dashboard-wide settings', () =
     await boot(page)
     await page.getByRole('button', { name: 'Settings' }).click()
     await page.getByRole('tab', { name: 'Appearance' }).click()
-    await page.getByRole('button', { name: 'Dark' }).click()
+    // 024-settings-modal-visual-redesign (US4): role="tab", migrated from
+    // role="button" — see research.md §3.
+    await page.getByRole('tablist', { name: 'Theme' }).getByRole('tab', { name: 'Dark' }).click()
     await page.getByRole('button', { name: /^Close$/ }).click()
     await expect(page.locator('html')).toHaveClass(/dark/)
   })
@@ -304,10 +374,13 @@ test.describe('User Story 3 - A settings modal that does not resize or rearrange
     await boot(page)
     await page.getByRole('button', { name: 'Settings' }).click()
     await page.getByRole('tab', { name: 'Appearance' }).click()
+    // 024-settings-modal-visual-redesign (US4): role="tab", migrated from
+    // role="button" — see research.md §3.
+    const themeTabs = page.getByRole('tablist', { name: 'Theme' })
     for (const name of ['System', 'Light', 'Dark']) {
-      await expect(page.getByRole('button', { name })).toBeVisible()
+      await expect(themeTabs.getByRole('tab', { name })).toBeVisible()
     }
-    await page.getByRole('button', { name: 'Dark' }).click()
+    await themeTabs.getByRole('tab', { name: 'Dark' }).click()
     await expect(page.locator('html')).toHaveClass(/dark/)
   })
 })
@@ -340,6 +413,45 @@ test.describe('User Story 1 - Sectioned basemap catalog with stage-then-Apply', 
     await expect(ugrc.getByRole('radio', { name: 'Vector Lite' })).toBeVisible()
     await expect(ugrc.getByRole('radio', { name: 'Vector Hybrid' })).toBeVisible()
     await expect(ugrc.getByRole('radio', { name: 'Vector Outdoors' })).toBeVisible()
+  })
+
+  // 024-settings-modal-visual-redesign (US3, FR-010): the staged entry
+  // must be distinguishable beyond aria-checked/data-staged alone —
+  // proven directly via a real computed-style comparison, not just
+  // presence of the attribute.
+  test('the staged catalog entry has a distinct computed style from an unstaged one (FR-010)', async ({
+    page,
+  }) => {
+    await boot(page)
+    await page.getByRole('button', { name: 'Settings' }).click()
+    await page.getByRole('tab', { name: 'Basemap' }).click()
+
+    const carto = sectionRadioGroup(page, 'CARTO Vector Tiles')
+    const positron = carto.getByRole('radio', { name: 'Positron' })
+    const voyager = carto.getByRole('radio', { name: 'Voyager' })
+    await voyager.click()
+
+    const [stagedBorder, unstagedBorder] = await Promise.all([
+      voyager.evaluate((el) => getComputedStyle(el).borderLeftColor),
+      positron.evaluate((el) => getComputedStyle(el).borderLeftColor),
+    ])
+    expect(stagedBorder).not.toBe(unstagedBorder)
+  })
+
+  // 024-settings-modal-visual-redesign (US3, FR-010): a real hover state,
+  // distinct from the resting appearance.
+  test('an unstaged catalog entry has a distinct hover state (FR-010)', async ({ page }) => {
+    await boot(page)
+    await page.getByRole('button', { name: 'Settings' }).click()
+    await page.getByRole('tab', { name: 'Basemap' }).click()
+
+    const positron = sectionRadioGroup(page, 'CARTO Vector Tiles').getByRole('radio', { name: 'Positron' })
+    const before = await positron.evaluate((el) => getComputedStyle(el).backgroundColor)
+    await positron.hover()
+    // toHaveCSS polls (unlike a one-shot evaluate()) — the :hover-driven
+    // style recalculation is not always reflected in the very next
+    // synchronous getComputedStyle() call right after hover() resolves.
+    await expect(positron).not.toHaveCSS('background-color', before)
   })
 
   test('clicking a UGRC entry stages it and updates the shared preview, without applying it (FR-008, FR-009, FR-010)', async ({
@@ -439,7 +551,14 @@ test.describe('User Story 1 - Sectioned basemap catalog with stage-then-Apply', 
     await trueEventually(async () => requestUrls.some((u) => u.includes('tiles.openfreemap.org/styles/liberty')))
   })
 
-  test('selecting a raster provider stages it without a live preview, but Apply still works (FR-008, FR-013)', async ({
+  // 024-settings-modal-visual-redesign (US2): REVERSES 021's own FR-008
+  // ("no live preview for raster providers") — research.md §1 confirmed
+  // loadBasemapStyle() already resolves a raster provider name to a real
+  // style, so the preview effect's own bypass was removed rather than any
+  // new resolution logic added. This test now asserts the OPPOSITE of its
+  // pre-existing name: a raster selection previews live, same as any
+  // vector entry, and Apply still works unchanged.
+  test('selecting a raster provider now previews live, and Apply still works (FR-004, FR-008 superseded)', async ({
     page,
   }) => {
     await boot(page)
@@ -452,13 +571,86 @@ test.describe('User Story 1 - Sectioned basemap catalog with stage-then-Apply', 
     const requestUrls: string[] = []
     page.on('request', (req) => requestUrls.push(req.url()))
     await dropdown.selectOption('OpenTopoMap')
-    await page.waitForTimeout(300)
-    expect(requestUrls.some((u) => u.includes('opentopomap.org'))).toBe(false) // no live preview
-    await expect(page.getByText(/no live preview for raster providers/i)).toBeVisible()
+    await trueEventually(async () => requestUrls.some((u) => u.includes('opentopomap.org')))
+    await expect(page.getByText(/no live preview for raster providers/i)).toHaveCount(0)
+    await expect(page.getByTestId('basemap-preview-error')).toHaveCount(0)
 
     await page.getByRole('button', { name: 'Apply' }).click()
     await page.getByRole('button', { name: /^Close$/ }).click()
     await trueEventually(async () => requestUrls.some((u) => u.includes('opentopomap.org')))
+  })
+
+  // 024-settings-modal-visual-redesign (US2, spec.md Acceptance Scenario 2):
+  // a raster preview must not leave anything stale behind when the viewer
+  // switches to a vector entry instead — proven by a real subsequent
+  // request for that entry's own style, not merely the absence of an
+  // error.
+  test('switching from a raster preview back to a vector entry cleanly re-renders the vector style (FR-006)', async ({
+    page,
+  }) => {
+    await boot(page)
+    await page.getByRole('button', { name: 'Settings' }).click()
+    await page.getByRole('tab', { name: 'Basemap' }).click()
+
+    const requestUrls: string[] = []
+    page.on('request', (req) => requestUrls.push(req.url()))
+
+    const dropdown = page.getByRole('combobox', { name: 'Raster tile provider' })
+    await dropdown.selectOption('OpenTopoMap')
+    await trueEventually(async () => requestUrls.some((u) => u.includes('opentopomap.org')))
+
+    await sectionRadioGroup(page, 'CARTO Vector Tiles').getByRole('radio', { name: 'Voyager' }).click()
+    await trueEventually(async () => requestUrls.some((u) => u.includes('voyager-gl-style')))
+    await expect(page.getByTestId('basemap-preview-error')).toHaveCount(0)
+    await expect(page.getByText(/no live preview for raster providers/i)).toHaveCount(0)
+  })
+
+  // 024-settings-modal-visual-redesign (US2, FR-007): a raster provider
+  // whose tiles genuinely fail to load must show a distinct failure
+  // message, not a blank map or silence — loadBasemapStyle()'s own
+  // fail-soft "-> blank" contract (research.md §1) is correct for a real
+  // panel but not expressive enough for a preview surface. Routes every
+  // OpenTopoMap tile request to abort, simulating a real network/provider
+  // failure.
+  test('a raster provider whose tiles fail to load shows a distinct preview failure state (FR-007)', async ({
+    page,
+  }) => {
+    // Two real, confirmed findings from writing this test, neither a bug
+    // in this app's own logic:
+    // (1) page.route()'s own abort only intercepts a request that
+    //     actually reaches the network layer — a PRECEDING test in this
+    //     describe block already loads real OpenTopoMap tiles
+    //     successfully, and Chromium's HTTP disk cache can still serve
+    //     those same tiles to a later test's fresh page/context with no
+    //     new network request for page.route() to see at all. Disabling
+    //     the cache via CDP first makes the abort() reliably observed
+    //     regardless of test order.
+    // (2) Even with every tile request genuinely failing at the network
+    //     layer (confirmed via requestfailed events), MapLibre's own
+    //     'error' Map event does not reliably fire for a raster tile
+    //     failure — its SourceCache can self-abort an in-flight tile
+    //     request for unrelated internal reasons, and a self-aborted tile
+    //     never reaches the code path that fires 'error' at all (see
+    //     basemapTab.tsx's own comment on its bounded-timeout fallback,
+    //     added specifically because of this). The timeout below (well
+    //     past that fallback's own 4s) is what this test actually relies
+    //     on being reliable, not the 'error' event.
+    const cdp = await page.context().newCDPSession(page)
+    await cdp.send('Network.setCacheDisabled', { cacheDisabled: true })
+
+    await page.route('**opentopomap.org**', (route) => route.abort())
+    await boot(page)
+    await page.getByRole('button', { name: 'Settings' }).click()
+    await page.getByRole('tab', { name: 'Basemap' }).click()
+
+    const dropdown = page.getByRole('combobox', { name: 'Raster tile provider' })
+    await dropdown.selectOption('OpenTopoMap')
+    await expect(page.getByTestId('basemap-preview-error')).toBeVisible({ timeout: 8_000 })
+
+    // Switching to a vector entry clears the failure state — it doesn't
+    // linger for a selection it no longer applies to.
+    await sectionRadioGroup(page, 'CARTO Vector Tiles').getByRole('radio', { name: 'Voyager' }).click()
+    await expect(page.getByTestId('basemap-preview-error')).toHaveCount(0)
   })
 
   test('the Raster Tiles dropdown never offers a known API-key-requiring provider', async ({ page }) => {

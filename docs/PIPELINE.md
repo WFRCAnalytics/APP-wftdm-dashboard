@@ -150,6 +150,27 @@ fits — NOT specifically tied to `graphic-walker`'s own presentation.
 This is a loose, exploratory design note, not a commitment to adopt
 Dash's specific visual style anywhere in particular.
 
+**First actually acted on: `024-settings-modal-visual-redesign`.** This
+note sat as an exploratory pointer until this feature's Scenarios-tab and
+Basemap-tab redesigns, which fetched Dash's own real, installed UI source
+directly (`gropaul/dash-ui`, a separate, real repo — the actual Next.js/
+React/Tailwind/Radix app Dash's extension serves, confirmed to use nearly
+the same UI stack this app already does) rather than treating the note as
+abstract inspiration. Two of its real components were read in full and
+reused as concrete layout references, not copied verbatim:
+`connections-view.tsx` (a list of named things each with attached/error
+status — the same domain shape as this app's own Scenarios tab: one card
+surface, hairline-separated rows, a leading status dot, a two-line
+identity block, a trailing colored status word) and
+`view-mode-picker.tsx` (a grid of icon-topped selectable tiles — the same
+domain shape as this app's own Basemap catalog: a responsive
+`grid-cols-[repeat(auto-fit,minmax(_,1fr))]`, the selected tile using the
+accent color pair). See `specs/024-settings-modal-visual-redesign/` and
+`CLAUDE.md`'s own `scenariosTab.tsx`/`basemapTab.tsx` entries for the full
+account, including what was deliberately NOT copied (Dash has no per-row
+reorder/pin; this app's own tile icons are honest category glyphs, not a
+port of any thumbnail Dash itself doesn't use here either).
+
 ---
 
 ## Map synchronization and comparison features

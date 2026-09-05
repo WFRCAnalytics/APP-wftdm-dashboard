@@ -48,7 +48,14 @@ export function SettingsModal() {
       <DialogContent className="flex h-[600px] max-h-[85vh] w-[95vw] max-w-[720px] flex-col gap-4">
         <DialogTitle>Settings</DialogTitle>
         <Tabs defaultValue="appearance" orientation="vertical" className="flex min-h-0 flex-1 flex-row gap-4">
-          <TabsList>
+          {/* 024-settings-modal-visual-redesign (US4, FR-013): the
+              Appearance tab's own System/Light/Dark control is now ALSO a
+              Tabs instance (appearanceTab.tsx), nesting a second
+              role="tablist" inside this one while the modal is open on
+              that tab. Distinct aria-labels on each TabsList (this one,
+              and appearanceTab.tsx's own "Theme") is what lets any query
+              or assistive technology tell them apart — research.md §3. */}
+          <TabsList aria-label="Settings sections">
             <TabsTrigger value="appearance">Appearance</TabsTrigger>
             <TabsTrigger value="scenarios">Scenarios</TabsTrigger>
             <TabsTrigger value="basemap">Basemap</TabsTrigger>
