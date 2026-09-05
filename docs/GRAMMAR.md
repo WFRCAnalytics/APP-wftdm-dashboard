@@ -120,8 +120,15 @@ Share any combination: one, two, or three scenarios. On first load with no param
 
 ## `summarize.yaml`
 
-Runs via `uv run summarize.py`. Produces one named Parquet file per metric.
-The same SQL dialect runs unchanged in DuckDB-WASM in the browser.
+Runs via `wftdm-dashboard summarize --input <raw-activitysim-output-dir>
+--config summarize.yaml --output <scenario-dir> --scenario-name <name>`
+(025-python-postprocessor) — a subcommand of the same `wftdm-dashboard` CLI
+that ships `serve`/`here`/`init`, not a standalone `summarize.py` script (an
+earlier draft of this document named that invocation; corrected once the
+real pipeline was built — see `specs/025-python-postprocessor/
+contracts/cli.md` for the full option list). Produces one named Parquet
+file per metric, plus an auto-generated `manifest.yaml`. The same SQL
+dialect runs unchanged in DuckDB-WASM in the browser.
 
 ### Top-level structure
 

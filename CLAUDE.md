@@ -146,15 +146,160 @@ APP-wftdm-dashboard/
 ├── pyproject.toml
 ├── Makefile                    # npm run build → copy dist/ → uv build
 ├── python/
-│   └── wftdm_dashboard/        # Python package
-│       ├── __init__.py
-│       ├── cli.py              # wftdm-dashboard serve / here / init
-│       ├── server.py           # Flask/uvicorn file server with CORS headers
-│       ├── static/             # built dist/ embedded at package build time
-│       └── templates/          # default configs copied by `init` (never overwrites existing files)
-│           ├── summarize.yaml          # pre-filled with standard WFRC segmentations
-│           ├── dashboard-1-summary.yaml
-│           └── ...                     # dashboard-2-person.yaml through dashboard-7-explore.yaml
+│   ├── wftdm_dashboard/        # Python package
+│   │   ├── __init__.py
+│   │   ├── cli.py              # done (025-python-postprocessor) — a
+│   │   │                       # click.group `main` with one real
+│   │   │                       # subcommand, `summarize` (wftdm-dashboard
+│   │   │                       # serve/here/init from CLAUDE.md's own
+│   │   │                       # earlier sketch are NOT built by this
+│   │   │                       # feature — separate, still-not-started
+│   │   │                       # work; this file did not exist at all
+│   │   │                       # before this feature, matching
+│   │   │                       # pyproject.toml's own already-existing
+│   │   │                       # [project.scripts] wftdm-dashboard =
+│   │   │                       # "wftdm_dashboard.cli:main" entry point,
+│   │   │                       # which had zero real target until now)
+│   │   ├── server.py           # not built yet — no feature has needed it
+│   │   ├── static/             # not built yet — no feature has needed it
+│   │   ├── templates/          # not built yet — `init`'s own scaffolding
+│   │   │                       # job (summarize.yaml + dashboard-*.yaml
+│   │   │                       # defaults) is separate, deliberately
+│   │   │                       # out-of-scope work
+│   │   │                       # (025-python-postprocessor's own spec.md
+│   │   │                       # Assumptions section)
+│   │   └── postprocessor/      # done (025-python-postprocessor) — the
+│   │       │                   # actual CSV→Parquet pipeline this
+│   │       │                   # dashboard has always assumed exists.
+│   │       │                   # Generic by construction (FR-007, mirroring
+│   │       │                   # the frontend's own already-confirmed
+│   │       │                   # discipline) — zero hardcoded real-world
+│   │       │                   # table/column/mapping/bin name anywhere in
+│   │       │                   # this subpackage; every name flows through
+│   │       │                   # a parsed summarize.yaml.
+│   │       ├── __init__.py
+│   │       ├── errors.py       # PostprocessorError + 6 subclasses
+│   │       │                   # (SourceNotFoundError/
+│   │       │                   # UnresolvedPlaceholderError/
+│   │       │                   # UnknownBinTypeError/DuplicateMetricError/
+│   │       │                   # MetricExecutionError/InvalidConfigError —
+│   │       │                   # the last one added beyond this feature's
+│   │       │                   # own original plan, for the
+│   │       │                   # malformed/missing-key summarize.yaml
+│   │       │                   # edge case) — each names the specific
+│   │       │                   # offending element in its message,
+│   │       │                   # mirroring services/sqlExpander.ts's own
+│   │       │                   # missing() convention on the TS side
+│   │       ├── config.py       # parses summarize.yaml (PyYAML, a new
+│   │       │                   # dependency — no YAML library existed in
+│   │       │                   # this project's Python side before this
+│   │       │                   # feature) into typed dataclasses
+│   │       │                   # (Source/Mapping/Bin-as-tagged-union/
+│   │       │                   # SqlFragment/Metric/SummarizeConfig).
+│   │       │                   # A bad `bins.type` parses into an
+│   │       │                   # `UnknownBin` placeholder rather than
+│   │       │                   # failing at parse time — the actual
+│   │       │                   # UnknownBinTypeError only fires later, in
+│   │       │                   # expand.py, if some metric's SQL actually
+│   │       │                   # references that bin (deferred validation,
+│   │       │                   # mirroring sqlExpander.ts's own lazy
+│   │       │                   # $bins.x resolution)
+│   │       ├── expand.py       # $mappings.x/$bins.x/$sql.x → literal SQL
+│   │       │                   # text — an independent Python
+│   │       │                   # reimplementation targeting the same SQL
+│   │       │                   # shapes as services/sqlExpander.ts's own
+│   │       │                   # expandMappings()/expandBins()/
+│   │       │                   # expandSqlFragment() (confirmed directly
+│   │       │                   # against that file's real source, not
+│   │       │                   # docs/GRAMMAR.md's prose alone — catching
+│   │       │                   # one real doc/code divergence along the
+│   │       │                   # way: $mappings.x emits no ELSE, despite
+│   │       │                   # GRAMMAR.md's own worked example showing
+│   │       │                   # one). Plain string templating only, no
+│   │       │                   # eval()/exec() (constitution Principle
+│   │       │                   # III) — the same non-negotiable this
+│   │       │                   # project's TS side already holds itself
+│   │       │                   # to
+│   │       ├── sources.py      # loads one `sources:` entry into DuckDB
+│   │       │                   # as a queryable, UNPREFIXED view (`CREATE
+│   │       │                   # OR REPLACE VIEW "<name>" AS SELECT * FROM
+│   │       │                   # read_csv_auto(...)`/`read_parquet(...)`,
+│   │       │                   # chosen purely by file extension) —
+│   │       │                   # mirrors services/duckdb.ts's own
+│   │       │                   # createViewOverParquet() pattern, an
+│   │       │                   # independent implementation of the same
+│   │       │                   # idea. Unprefixed (unlike the browser's own
+│   │       │                   # `{scenario}__{metric}` scheme) because
+│   │       │                   # this pipeline processes exactly one
+│   │       │                   # scenario's raw data per run, in its own
+│   │       │                   # fresh connection — required, not just
+│   │       │                   # simpler: every real metric SQL in
+│   │       │                   # docs/GRAMMAR.md already references
+│   │       │                   # sources this way unprefixed
+│   │       │                   # (`FROM trips t`). `ensure_source_exists()`
+│   │       │                   # is the pre-flight existence check
+│   │       │                   # pipeline.py calls for every declared
+│   │       │                   # source, as a batch, before any source is
+│   │       │                   # loaded or any metric SQL runs
+│   │       ├── pipeline.py     # run_pipeline() — the actual
+│   │       │                   # orchestration: validate every source
+│   │       │                   # exists, delete+recreate
+│   │       │                   # `{output}/summary/` in full (idempotent
+│   │       │                   # re-runs — no Parquet file survives from a
+│   │       │                   # metric since renamed or removed), load
+│   │       │                   # every source, then for each metric expand
+│   │       │                   # its SQL and run `COPY (...) TO
+│   │       │                   # '...' (FORMAT PARQUET)`. Uses DuckDB's own
+│   │       │                   # Python API throughout for both
+│   │       │                   # reading (CSV/Parquet) and writing
+│   │       │                   # (Parquet) — no pandas dependency
+│   │       │                   # introduced. A metric SQL execution
+│   │       │                   # failure is re-raised as
+│   │       │                   # MetricExecutionError naming the metric,
+│   │       │                   # not a bare DuckDB error with no context
+│   │       └── manifest.py     # generate_manifest()/write_manifest() —
+│   │                           # the standard Tableau10 categorical
+│   │                           # palette (confirmed against
+│   │                           # docs/GRAMMAR.md's own worked
+│   │                           # manifest.yaml example, whose
+│   │                           # `color: "#4e79a7"` is exactly this
+│   │                           # palette's first entry), auto-assigned via
+│   │                           # `hashlib.sha256(scenario_name) % 10` — a
+│   │                           # real, self-caught bug during this
+│   │                           # feature's own implementation: an initial
+│   │                           # draft used Python's builtin `hash()`,
+│   │                           # which is per-process randomized for `str`
+│   │                           # (`PYTHONHASHSEED`) and would have
+│   │                           # silently broken the "same scenario
+│   │                           # re-run twice gets the same color"
+│   │                           # guarantee this function exists to
+│   │                           # provide — fixed before it ever shipped,
+│   │                           # not found later. `model_version`/`notes`
+│   │                           # are omitted from the written YAML
+│   │                           # entirely when not supplied, never written
+│   │                           # as a literal `null`
+│   └── tests/                  # pytest suite for the Python package — a
+│       │                       # NEW, separate tree from the repo-root
+│       │                       # tests/ (Vitest/Playwright, JS-only);
+│       │                       # mixing two languages/runners into one
+│       │                       # directory had no existing convention to
+│       │                       # follow, so this stays its own sibling of
+│       │                       # wftdm_dashboard/ itself, matching uv's
+│       │                       # own module-root = "python" boundary
+│       ├── conftest.py         # shared fixtures — tiny CSV/Parquet files
+│       │                       # written to tmp_path using real
+│       │                       # ActivitySim column names (confirmed
+│       │                       # directly against ActivitySim's own
+│       │                       # current example config, not assumed),
+│       │                       # plus a minimal summarize.yaml-shaped dict
+│       │                       # exercising all three placeholder kinds
+│       │                       # together
+│       ├── test_config.py
+│       ├── test_expand.py
+│       ├── test_sources.py
+│       ├── test_pipeline.py
+│       ├── test_manifest.py
+│       └── test_cli.py         # 57/57 passing across the whole suite
 └── src/                        # Dashboard application source (JS app only) — TypeScript (constitution v2.0.0)
     ├── main.ts                 # boot sequence
     ├── state/
@@ -2409,9 +2554,21 @@ first cross-reference this list was built from). ✅ done,
     filename/approach this line originally named — that plan was replaced
     by `002`'s actual Tailwind + shadcn/ui token approach, not merely
     not-yet-built under the old name
-12. 🟡 Python package (`python/`) — started but essentially empty:
-    `python/wftdm_dashboard/` currently holds only `__init__.py` — no
-    `cli.py`, `server.py`, `static/`, or `templates/` yet
+12. 🟡 Python package (`python/`) — partial, no longer "essentially empty".
+    ✅ `postprocessor/` (the summarize.yaml → Parquet pipeline) and
+    `cli.py` (a `summarize` subcommand) are now real, done
+    (`025-python-postprocessor`) — the foundational data-preparation step
+    this dashboard has always assumed exists. Verified end-to-end against
+    a real, packaged `uv run wftdm-dashboard summarize` subprocess
+    invocation (not just in-process `pytest`/`CliRunner`), producing
+    correct Parquet output (mode mapping + income binning + a 3-table join
+    all confirmed correct together) and a correct `manifest.yaml`.
+    `server.py`/`static/`/`templates/` (the `serve`/`here`/`init`
+    subcommands) remain ❌ not started — separate, still-unscoped work;
+    `pyproject.toml` gained two new dependencies this feature needed and
+    didn't have before: `PyYAML` (no YAML parser existed on the Python
+    side at all) and `pytest` (dev-only, this package's first test
+    runner)
 13. ✅ Panel error/empty/loading states — done
     (`003-dashboard-shell-navigation`). `PanelErrorState.tsx`/
     `PanelEmptyState.tsx` are shared components; loading states are
