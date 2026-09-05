@@ -3,7 +3,7 @@
 // specs/011-basemap-style-system/research.md §5/§6/§7.
 import type { StyleSpecification } from 'maplibre-gl'
 import { isBasemapComposition, type BasemapSelection } from '@/panels/basemap/types'
-import { resolveUrlPreset, resolveRasterProvider } from '@/panels/basemap/registry'
+import { resolveBuiltInPreset, resolveRasterProvider } from '@/panels/basemap/registry'
 
 // Same background-only, zero-network style FlowMapPanel.tsx defined in
 // 010-flowmap-panel — re-exported here as the single source of truth for
@@ -94,8 +94,14 @@ export async function loadBasemapStyle(
 }
 
 async function resolvePresetName(name: string, signal?: AbortSignal): Promise<ResolvedStyle> {
-  const urlPreset = resolveUrlPreset(name)
-  if (urlPreset) return { kind: 'url', url: urlPreset.url }
+  // 021-basemap-catalog-redesign (T007): a built-in preset name may now
+  // resolve to either a single style.json URL OR a composition — the
+  // latter (the three UGRC aliases) reaches the SAME composeStyles() call
+  // an author's own hand-written `basemap: { layers: [...] }` already
+  // uses (research.md §1), never a separate resolution mechanism.
+  const builtIn = resolveBuiltInPreset(name)
+  if (builtIn?.kind === 'url') return { kind: 'url', url: builtIn.url }
+  if (builtIn?.kind === 'composition') return { kind: 'style', style: await composeStyles(builtIn.layers, signal) }
 
   const raster = await resolveRasterProvider(name, signal)
   if (raster) {

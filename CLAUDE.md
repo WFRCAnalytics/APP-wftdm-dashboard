@@ -464,6 +464,28 @@ APP-wftdm-dashboard/
     │   │                         # deleted: a generic, reusable shadcn/ui
     │   │                         # primitive, same category this project
     │   │                         # already keeps unused-until-needed.
+    │   │                         # 021-basemap-catalog-redesign: gave
+    │   │                         # `DialogContent` a fixed target height
+    │   │                         # (`h-[600px]`) ALONGSIDE its existing
+    │   │                         # viewport-relative caps
+    │   │                         # (`max-h-[85vh] w-[95vw] max-w-[720px]`)
+    │   │                         # — the modal's size is now a pure
+    │   │                         # function of the viewport, never of
+    │   │                         # which tab is active (FR-019/FR-021).
+    │   │                         # Switched `Tabs` from a horizontal
+    │   │                         # top-row strip to a vertical left-side
+    │   │                         # rail (`orientation="vertical"` +
+    │   │                         # `flex-row` container) — confirmed
+    │   │                         # directly against the installed
+    │   │                         # `@radix-ui/react-tabs` version that
+    │   │                         # this needed zero primitive changes,
+    │   │                         # only markup/CSS (see
+    │   │                         # components/ui/tabs.tsx below).
+    │   │                         # `TabsContent` keeps its existing
+    │   │                         # `overflow-y-auto` — it just needed a
+    │   │                         # properly `flex-1 min-h-0`-bounded
+    │   │                         # ancestor to actually take effect,
+    │   │                         # which it hadn't had before.
     │   ├── settings/             # done (020-settings-modal) — the
     │   │   │                     # SettingsModal's four tab components
     │   │   ├── appearanceTab.tsx # relocated themeToggle.tsx's `mode`
@@ -518,19 +540,66 @@ APP-wftdm-dashboard/
     │   │   │                     # collided with the row's own move
     │   │   │                     # buttons — fixed with a dedicated
     │   │   │                     # `data-testid="scenario-name"`.
-    │   │   ├── basemapTab.tsx    # a single-select `role="radio"` list
-    │   │   │                     # over panels/basemap/registry.ts's new
-    │   │   │                     # listBuiltInPresetNames() export
-    │   │   │                     # (BUILT_IN_PRESETS itself was never
-    │   │   │                     # exported before this feature), calling
-    │   │   │                     # state/basemapState.ts's
-    │   │   │                     # setGlobalBasemap() on selection
-    │   │   │                     # (FR-011). Knows nothing about which
-    │   │   │                     # panels currently have their own
-    │   │   │                     # configured basemap — that's entirely
-    │   │   │                     # resolveEffectiveBasemap()'s/the panel
-    │   │   │                     # call sites' own responsibility
-    │   │   │                     # (FR-012/FR-013, research.md §6).
+    │   │   ├── basemapTab.tsx    # 020-settings-modal's own version was a
+    │   │   │                     # flat single-select `role="radio"` list
+    │   │   │                     # over listBuiltInPresetNames(), applying
+    │   │   │                     # immediately on click.
+    │   │   │                     # 021-basemap-catalog-redesign REPLACED
+    │   │   │                     # this entirely (not extended) with:
+    │   │   │                     # four labeled sections (UGRC Vector
+    │   │   │                     # Tiles ×3 real compositions, CARTO
+    │   │   │                     # Vector Tiles ×3, OpenFreeMap ×5, Raster
+    │   │   │                     # Tiles — a curated
+    │   │   │                     # `listCuratedRasterProviders()`
+    │   │   │                     # dropdown); ONE persistent shared
+    │   │   │                     # `maplibregl.Map` preview area above
+    │   │   │                     # them, mount-scoped to the Basemap tab's
+    │   │   │                     # own active lifetime (created/destroyed
+    │   │   │                     # by ordinary React mount/unmount, since
+    │   │   │                     # neither TabsContent nor DialogContent
+    │   │   │                     # force-mount in this codebase — no
+    │   │   │                     # exclusivity-guard state needed, because
+    │   │   │                     # there is structurally only ever one
+    │   │   │                     # preview map to begin with); and a
+    │   │   │                     # stage-then-Apply flow — clicking any
+    │   │   │                     # entry only sets local `stagedSelection`
+    │   │   │                     # state (initialized once, on mount, to
+    │   │   │                     # `useGlobalBasemap() ?? APP_DEFAULT` —
+    │   │   │                     # the preview never starts blank,
+    │   │   │                     # FR-011) and, for a vector selection,
+    │   │   │                     # re-styles the preview map via the SAME
+    │   │   │                     # `loadBasemapStyle()` every real panel
+    │   │   │                     # already calls; a raster selection
+    │   │   │                     # stages identically but never drives the
+    │   │   │                     # live preview (FR-008/FR-013 — the
+    │   │   │                     # preview area shows a placeholder
+    │   │   │                     # message instead). A single Apply
+    │   │   │                     # `Button` is the ONLY call site for
+    │   │   │                     # `setGlobalBasemap()` anywhere in this
+    │   │   │                     # component (FR-012) — closing the modal
+    │   │   │                     # or switching Settings tabs with an
+    │   │   │                     # unapplied staged selection discards it
+    │   │   │                     # with NO explicit discard code: it lives
+    │   │   │                     # only in this component's own state,
+    │   │   │                     # which simply ceases to exist on unmount
+    │   │   │                     # (FR-014). An earlier draft of this
+    │   │   │                     # redesign gave each catalog entry its
+    │   │   │                     # own independent `Popover`-based preview
+    │   │   │                     # (applying immediately on click) — found
+    │   │   │                     # during review to allow more than one
+    │   │   │                     # preview open simultaneously; rather
+    │   │   │                     # than patching that with a shared
+    │   │   │                     # "which one is open" gating value, the
+    │   │   │                     # whole per-entry-preview design was
+    │   │   │                     # discarded in favor of the single shared
+    │   │   │                     # preview above, which removes the
+    │   │   │                     # multiplicity at its root instead of
+    │   │   │                     # gating it — see
+    │   │   │                     # `specs/021-basemap-catalog-redesign/
+    │   │   │                     # research.md` §3/§4 for the full design
+    │   │   │                     # history. No new dependency: no
+    │   │   │                     # `components/ui/popover.tsx` exists in
+    │   │   │                     # this codebase.
     │   │   └── documentationTab.tsx # a static placeholder (FR-014) — no
     │   │                         # `<a>` element at all, rather than a
     │   │                         # dead/placeholder href.
@@ -998,6 +1067,80 @@ APP-wftdm-dashboard/
     │   │                         # no real-hardware step needed. See
     │   │                         # `specs/017-multi-sprite-support/
     │   │                         # research.md` for the full record.
+    │   │                         # 021-basemap-catalog-redesign: an EIGHTH
+    │   │                         # real bug, found via this feature's own
+    │   │                         # new integration test coverage (never
+    │   │                         # via manual/real-hardware testing this
+    │   │                         # time — fully reproducible via
+    │   │                         # Playwright alone). This panel's
+    │   │                         # `setStyle()` call carried a
+    │   │                         # `transformStyle` option (011's own
+    │   │                         # original mechanism, unmodified through
+    │   │                         # 012/016/017) that preserved ANY
+    │   │                         # `previous`-style layer id not already
+    │   │                         # in the new style — intended to protect
+    │   │                         # a hypothetical future app-owned custom
+    │   │                         # layer, but this panel adds none of its
+    │   │                         # own (confirmed directly, not assumed).
+    │   │                         # No prior test ever exercised a LIVE
+    │   │                         # switch FROM a real vector style (e.g.
+    │   │                         # carto-voyager) TO a raster preset — the
+    │   │                         # only precedent was a raster preset set
+    │   │                         # STATICALLY in a panel's own YAML config
+    │   │                         # (`previous === null`, this option's own
+    │   │                         # no-op case). 020/021's own global
+    │   │                         # basemap picker is what first made that
+    │   │                         # transition reachable at all (021 is the
+    │   │                         # first feature to put a raster provider
+    │   │                         # option in that picker in the first
+    │   │                         # place). The bug: `transformStyle`
+    │   │                         # carried carto-voyager's own real text/
+    │   │                         # symbol layers forward (their ids
+    │   │                         # weren't in the new style), but the
+    │   │                         # merge only touched `sources`/`layers`,
+    │   │                         # never `next.glyphs` — the new raster
+    │   │                         # style legitimately has none — so
+    │   │                         # MapLibre rejected the WHOLE merged
+    │   │                         # style
+    │   │                         # (`layers[N].layout.text-field: use of
+    │   │                         # "text-field" requires a style "glyphs"
+    │   │                         # property`) and the panel silently
+    │   │                         # reverted to BLANK_STYLE via the
+    │   │                         # already-existing `onLoadError` handler
+    │   │                         # (working exactly as designed — the bug
+    │   │                         # was upstream of it, in what got merged
+    │   │                         # into the style `onLoadError` then had
+    │   │                         # to reject). Traced via temporary
+    │   │                         # `console.log` instrumentation on
+    │   │                         # `onLoadError`/`resolveEffectiveBasemap`/
+    │   │                         # the basemap-application effect itself
+    │   │                         # (removed once confirmed). Fixed by
+    │   │                         # REMOVING the `transformStyle` option
+    │   │                         # entirely from this panel's `setStyle()`
+    │   │                         # call — the preservation it provided was
+    │   │                         # already a no-op for every real case in
+    │   │                         # this codebase, so removing it is
+    │   │                         # strictly simpler than special-casing
+    │   │                         # which previous layers are "safe" to
+    │   │                         # keep. ZoneMapPanel.tsx (below) has a
+    │   │                         # REAL preservation need of its own (its
+    │   │                         # `zonemap-zones`/`zonemap-fill` layer)
+    │   │                         # and got the equivalent fix narrowed
+    │   │                         # instead of removed — see that file's
+    │   │                         # own entry. See
+    │   │                         # `specs/021-basemap-catalog-redesign/
+    │   │                         # research.md` §8 for the full record,
+    │   │                         # including a SECOND, smaller finding
+    │   │                         # from the same debugging session: a
+    │   │                         # test asserting "no new basemap request
+    │   │                         # on a theme flip" via raw page-wide
+    │   │                         # network-request counting intermittently
+    │   │                         # failed on unrelated MapLibre-internal
+    │   │                         # resize-driven re-tiling noise — fixed
+    │   │                         # by counting `setStyle()` calls directly
+    │   │                         # instead, the same technique the
+    │   │                         # existing "explicit pin is not
+    │   │                         # re-paired" test already used reliably.
     │   ├── basemap/              # done (011-basemap-style-system) — shared
     │   │   │                     # basemap registry/resolution, consumed by
     │   │   │                     # FlowMapPanel.tsx AND (013-zonemap-panel)
@@ -1083,6 +1226,46 @@ APP-wftdm-dashboard/
     │   │   │                     # BUILT_IN_PRESETS itself was never
     │   │   │                     # exported before, only single-name
     │   │   │                     # lookup via resolveUrlPreset().
+    │   │   │                     # 021-basemap-catalog-redesign generalized
+    │   │   │                     # BUILT_IN_PRESETS from
+    │   │   │                     # Record<name, UrlPreset> to a tagged
+    │   │   │                     # union (UrlPreset | CompositionPreset),
+    │   │   │                     # replacing resolveUrlPreset() with
+    │   │   │                     # resolveBuiltInPreset() — same lookup,
+    │   │   │                     # generalized return type — and added
+    │   │   │                     # three named UGRC composition aliases
+    │   │   │                     # ('ugrc-vector-lite'/'-hybrid'/
+    │   │   │                     # '-outdoors', the exact three real
+    │   │   │                     # compositions already fixture-proven by
+    │   │   │                     # 011/016/017, promoted from ad hoc
+    │   │   │                     # dashboard-3-basemaps.yaml panels into
+    │   │   │                     # reusable presets). Also replaced the
+    │   │   │                     # theme-paired APP_DEFAULT_LIGHT/
+    │   │   │                     # APP_DEFAULT_DARK pair with one static
+    │   │   │                     # APP_DEFAULT ('carto-voyager') — see
+    │   │   │                     # resolveEffectiveBasemap.ts below. New
+    │   │   │                     # listCuratedRasterProviders() export — a
+    │   │   │                     # read-only VIEW over the SAME cached
+    │   │   │                     # leaflet-providers.json fetch
+    │   │   │                     # resolveRasterProvider() already
+    │   │   │                     # performs (no second network request),
+    │   │   │                     # computed (not hand-copied) by checking
+    │   │   │                     # every effective URL a provider can
+    │   │   │                     # produce against three conditions — no
+    │   │   │                     # API-key/token placeholder, HTTPS-only,
+    │   │   │                     # no URL-template token outside
+    │   │   │                     # {s}/{r}/{variant}/{z}/{x}/{y} — plus
+    │   │   │                     # one explicit editorial exclusion
+    │   │   │                     # (CartoDB, whose vector GL styles are
+    │   │   │                     # already offered more prominently
+    │   │   │                     # elsewhere in the same catalog).
+    │   │   │                     # Deliberately lets its own catalog-fetch
+    │   │   │                     # rejection propagate (unlike
+    │   │   │                     # resolveRasterProvider()'s fail-soft
+    │   │   │                     # "return undefined") — the Basemap tab's
+    │   │   │                     # loading/error/empty UI states need to
+    │   │   │                     # distinguish a genuine fetch failure
+    │   │   │                     # from an empty result.
     │   │   ├── resolveEffectiveBasemap.ts # pure panel > tab > app-default
     │   │   │                     # precedence resolver + basemapKey()
     │   │   │                     # (the content-stable identity
@@ -1102,6 +1285,23 @@ APP-wftdm-dashboard/
     │   │   │                     # compatible — the existing 4-row truth
     │   │   │                     # table stayed valid unchanged, a 5th
     │   │   │                     # row added for the new branch.
+    │   │   │                     # 021-basemap-catalog-redesign REMOVED
+    │   │   │                     # the `theme` parameter entirely — the
+    │   │   │                     # bottom fallback tier is now the single
+    │   │   │                     # static APP_DEFAULT unconditionally,
+    │   │   │                     # never theme-dependent (confirmed
+    │   │   │                     # directly, not assumed: `theme` was
+    │   │   │                     # consumed by exactly one ternary in the
+    │   │   │                     # bottom branch). The `ColorScheme` type
+    │   │   │                     # this file used to export is deleted
+    │   │   │                     # along with it. This function's only two
+    │   │   │                     # callers (FlowMapPanel.tsx/
+    │   │   │                     # ZoneMapPanel.tsx) each dropped the
+    │   │   │                     # now-removed 3rd positional argument —
+    │   │   │                     # `useColorScheme()` was each panel's
+    │   │   │                     # ONLY use of that hook, confirmed dead
+    │   │   │                     # and deleted from both, not left as an
+    │   │   │                     # unused import.
     │   │   └── loadBasemapStyle.ts # BLANK_STYLE + preset/raster resolution
     │   │                         # + composeStyles() (the generic
     │   │                         # multi-source composition mechanism,
@@ -1196,6 +1396,23 @@ APP-wftdm-dashboard/
     │   │                         # `hasOwnProperty`, confirmed to actually
     │   │                         # fail against the reverted bug before
     │   │                         # confirming it passes against the fix.
+    │   │                         # 021-basemap-catalog-redesign:
+    │   │                         # resolvePresetName() gained one new
+    │   │                         # branch, checked before the existing
+    │   │                         # raster-provider fallback: a built-in
+    │   │                         # preset name may now resolve to a
+    │   │                         # `kind: 'composition'` value (via
+    │   │                         # registry.ts's new
+    │   │                         # resolveBuiltInPreset()), in which case
+    │   │                         # it calls composeStyles() with that
+    │   │                         # preset's own `layers` array — the EXACT
+    │   │                         # same call an author's own hand-written
+    │   │                         # `basemap: { layers: [...] }` composition
+    │   │                         # already reaches, proving the three new
+    │   │                         # UGRC preset aliases structurally cannot
+    │   │                         # diverge from what an author could
+    │   │                         # always write by hand (FR-009). No
+    │   │                         # change to composeStyles() itself.
     │   ├── ZoneMapPanel.tsx      # done (013-zonemap-panel) — the eighth
     │   │                         # and final originally-listed panel
     │   │                         # type. Pure MapLibre choropleth + real
@@ -1264,6 +1481,34 @@ APP-wftdm-dashboard/
     │   │                         # typecheck or any unit test; fixed by
     │   │                         # also excluding any config that
     │   │                         # carries metric_id.
+    │   │                         # 021-basemap-catalog-redesign: NARROWED
+    │   │                         # this panel's own `transformStyle`
+    │   │                         # option (011/012's original "preserve
+    │   │                         # any previous-style layer id not already
+    │   │                         # in next" mechanism, unmodified until
+    │   │                         # now) from that unscoped shape to
+    │   │                         # preserving ONLY `previous` layers whose
+    │   │                         # `source` is this panel's own SOURCE_ID
+    │   │                         # ('zonemap-zones') — its real, current
+    │   │                         # need (FILL_LAYER_ID/EXTRUSION_LAYER_ID)
+    │   │                         # is satisfied exactly, while a
+    │   │                         # third-party basemap's own real content
+    │   │                         # (e.g. carto-voyager's text/symbol
+    │   │                         # layers) is never eligible for
+    │   │                         # preservation regardless of what the
+    │   │                         # next style does or doesn't provide.
+    │   │                         # Companion fix to FlowMapPanel.tsx's own
+    │   │                         # entry above (that panel had NO real
+    │   │                         # preservation need at all and had this
+    │   │                         # option removed entirely instead) — see
+    │   │                         # that entry, and
+    │   │                         # `specs/021-basemap-catalog-redesign/
+    │   │                         # research.md` §8, for the full bug this
+    │   │                         # fixes (a real, confirmed MapLibre
+    │   │                         # style-rejection when switching a
+    │   │                         # zonemap FROM a real vector basemap TO a
+    │   │                         # raster preset via the new global
+    │   │                         # Raster Tiles picker).
     │   └── GraphicWalkerPanel.tsx # done (014-graphic-walker-panel) — the
     │                              # ninth and final originally-listed
     │                              # panel type. Renders <GraphicWalker>
@@ -1306,7 +1551,22 @@ APP-wftdm-dashboard/
     │                              # Root/Trigger/Content/RadioGroup/
     │                              # RadioItem exported, same "only what's
     │                              # needed" convention tooltip.tsx already
-    │                              # established)
+    │                              # established). tabs.tsx
+    │                              # (021-basemap-catalog-redesign): gained
+    │                              # `data-[orientation=vertical]:`
+    │                              # Tailwind variants on `TabsList`/
+    │                              # `TabsTrigger`, alongside their existing
+    │                              # horizontal classes — Radix sets
+    │                              # `data-orientation` automatically from
+    │                              # the Root's own `orientation` prop, so
+    │                              # this needed zero new prop threading.
+    │                              # navBar.tsx's own horizontal usage
+    │                              # (dashboard tab strip, unrelated to the
+    │                              # Settings modal) is unaffected — it
+    │                              # never sets `orientation`, so Radix's
+    │                              # own default ("horizontal") still
+    │                              # applies and none of the new variants
+    │                              # match.
     ├── scenario/                # done (009-scenario-manager) — closes
     │   │                        # services/duckdb.ts's registerScenario()
     │   │                        # zero-callers gap, open since 001

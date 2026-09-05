@@ -1,103 +1,83 @@
 import { describe, expect, it } from 'vitest'
 import { resolveEffectiveBasemap, basemapKey } from '@/panels/basemap/resolveEffectiveBasemap'
-import { APP_DEFAULT_LIGHT, APP_DEFAULT_DARK } from '@/panels/basemap/registry'
+import { APP_DEFAULT } from '@/panels/basemap/registry'
 
+// 021-basemap-catalog-redesign (T023): every call site drops the `theme`
+// argument this function no longer accepts (research.md §6, FR-018).
 describe('resolveEffectiveBasemap', () => {
-  it('panel basemap wins over everything, regardless of theme', () => {
-    expect(resolveEffectiveBasemap('openfreemap-bright', 'carto-voyager', 'light')).toEqual({
-      selection: 'openfreemap-bright',
-      source: 'panel',
-    })
-    expect(resolveEffectiveBasemap('openfreemap-bright', 'carto-voyager', 'dark')).toEqual({
+  it('panel basemap wins over everything', () => {
+    expect(resolveEffectiveBasemap('openfreemap-bright', 'carto-voyager')).toEqual({
       selection: 'openfreemap-bright',
       source: 'panel',
     })
   })
 
-  it('tab default wins when no panel override is set, regardless of theme', () => {
-    expect(resolveEffectiveBasemap(undefined, 'carto-voyager', 'light')).toEqual({
-      selection: 'carto-voyager',
-      source: 'tab',
-    })
-    expect(resolveEffectiveBasemap(undefined, 'carto-voyager', 'dark')).toEqual({
+  it('tab default wins when no panel override is set', () => {
+    expect(resolveEffectiveBasemap(undefined, 'carto-voyager')).toEqual({
       selection: 'carto-voyager',
       source: 'tab',
     })
   })
 
-  // 020-settings-modal (US2, FR-011/FR-012): the new 3rd-priority tier —
+  // 020-settings-modal (US2, FR-011/FR-012): the 3rd-priority tier —
   // fills the fallback ONLY when neither panel nor tab is set, and is
   // itself still outranked by either of them.
   it('global basemap wins over the app default, but never over panel or tab', () => {
-    expect(resolveEffectiveBasemap(undefined, undefined, 'light', 'openfreemap-liberty')).toEqual({
+    expect(resolveEffectiveBasemap(undefined, undefined, 'openfreemap-liberty')).toEqual({
       selection: 'openfreemap-liberty',
       source: 'global',
     })
-    expect(resolveEffectiveBasemap(undefined, undefined, 'dark', 'openfreemap-liberty')).toEqual({
-      selection: 'openfreemap-liberty',
-      source: 'global',
-    })
-    expect(resolveEffectiveBasemap('carto-voyager', undefined, 'light', 'openfreemap-liberty')).toEqual({
+    expect(resolveEffectiveBasemap('carto-voyager', undefined, 'openfreemap-liberty')).toEqual({
       selection: 'carto-voyager',
       source: 'panel',
     })
-    expect(resolveEffectiveBasemap(undefined, 'carto-voyager', 'light', 'openfreemap-liberty')).toEqual({
+    expect(resolveEffectiveBasemap(undefined, 'carto-voyager', 'openfreemap-liberty')).toEqual({
       selection: 'carto-voyager',
       source: 'tab',
     })
   })
 
   it('an unset global basemap (undefined) falls through to the app default, same as omitting the argument', () => {
-    expect(resolveEffectiveBasemap(undefined, undefined, 'light', undefined)).toEqual({
-      selection: APP_DEFAULT_LIGHT,
+    expect(resolveEffectiveBasemap(undefined, undefined, undefined)).toEqual({
+      selection: APP_DEFAULT,
       source: 'app-default',
     })
-    expect(resolveEffectiveBasemap(undefined, undefined, 'light')).toEqual(
-      resolveEffectiveBasemap(undefined, undefined, 'light', undefined),
+    expect(resolveEffectiveBasemap(undefined, undefined)).toEqual(
+      resolveEffectiveBasemap(undefined, undefined, undefined),
     )
   })
 
-  it('falls back to the theme-paired app default when nothing is set', () => {
-    expect(resolveEffectiveBasemap(undefined, undefined, 'light')).toEqual({
-      selection: APP_DEFAULT_LIGHT,
+  // 021-basemap-catalog-redesign: replaces the old "falls back to the
+  // theme-paired app default" test — there is no theme parameter, and no
+  // theme-dependent branch, to test anymore (research.md §6).
+  it('falls back to the single static APP_DEFAULT when nothing is set', () => {
+    expect(resolveEffectiveBasemap(undefined, undefined)).toEqual({
+      selection: APP_DEFAULT,
       source: 'app-default',
     })
-    expect(resolveEffectiveBasemap(undefined, undefined, 'dark')).toEqual({
-      selection: APP_DEFAULT_DARK,
-      source: 'app-default',
-    })
+    expect(APP_DEFAULT).toBe('carto-voyager')
   })
 
   it('treats an empty/blank basemap string as unset, not as an explicit pin', () => {
-    expect(resolveEffectiveBasemap('', 'carto-voyager', 'light').source).toBe('tab')
-    expect(resolveEffectiveBasemap('   ', undefined, 'dark').source).toBe('app-default')
+    expect(resolveEffectiveBasemap('', 'carto-voyager').source).toBe('tab')
+    expect(resolveEffectiveBasemap('   ', undefined).source).toBe('app-default')
   })
 
   it('accepts a composition object at either scope', () => {
     const composition = { layers: ['https://example.test/a.json', 'https://example.test/b.json'] }
-    expect(resolveEffectiveBasemap(composition, undefined, 'light')).toEqual({
+    expect(resolveEffectiveBasemap(composition, undefined)).toEqual({
       selection: composition,
       source: 'panel',
     })
-    expect(resolveEffectiveBasemap(undefined, composition, 'dark')).toEqual({
+    expect(resolveEffectiveBasemap(undefined, composition)).toEqual({
       selection: composition,
       source: 'tab',
     })
   })
 
-  // The failure mode this whole contract exists to prevent (research.md
-  // §2): an explicit pin must NOT change its resolved value across a
-  // theme flip (so the caller's effect never re-runs for it), while the
-  // no-config app default MUST change (so the caller's effect does
-  // re-run). Asserted directly via basemapKey, the exact mechanism the
-  // caller (FlowMapPanel.tsx) keys its effect's dependency array on.
-  it('basemapKey is stable across a theme flip for an explicit pin, but not for the app default', () => {
-    const pinnedLight = resolveEffectiveBasemap('openfreemap-bright', undefined, 'light')
-    const pinnedDark = resolveEffectiveBasemap('openfreemap-bright', undefined, 'dark')
-    expect(basemapKey(pinnedLight.selection)).toBe(basemapKey(pinnedDark.selection))
-
-    const defaultLight = resolveEffectiveBasemap(undefined, undefined, 'light')
-    const defaultDark = resolveEffectiveBasemap(undefined, undefined, 'dark')
-    expect(basemapKey(defaultLight.selection)).not.toBe(basemapKey(defaultDark.selection))
+  it('basemapKey is stable across repeated calls with the same selection', () => {
+    const first = resolveEffectiveBasemap('openfreemap-bright', undefined)
+    const second = resolveEffectiveBasemap('openfreemap-bright', undefined)
+    expect(basemapKey(first.selection)).toBe(basemapKey(second.selection))
   })
 })

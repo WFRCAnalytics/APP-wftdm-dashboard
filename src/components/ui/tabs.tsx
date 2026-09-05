@@ -8,6 +8,13 @@ import { cn } from '@/lib/utils'
 // font-heading (navigation-like label); panel content inherits font-body.
 const Tabs = TabsPrimitive.Root
 
+// 021-basemap-catalog-redesign (T025): data-[orientation=vertical]:
+// variants added alongside the existing horizontal-row classes — Radix
+// sets data-orientation on List/Trigger automatically from the Root's own
+// orientation prop, so no new prop threading is needed here. navBar.tsx's
+// existing horizontal usage passes no orientation prop at all and is
+// therefore unaffected: Radix's own default ("horizontal") continues to
+// apply, and none of the new vertical variants match.
 const TabsList = React.forwardRef<
   React.ElementRef<typeof TabsPrimitive.List>,
   React.ComponentPropsWithoutRef<typeof TabsPrimitive.List>
@@ -16,6 +23,7 @@ const TabsList = React.forwardRef<
     ref={ref}
     className={cn(
       'inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground',
+      'data-[orientation=vertical]:h-full data-[orientation=vertical]:w-40 data-[orientation=vertical]:flex-col data-[orientation=vertical]:items-stretch data-[orientation=vertical]:justify-start',
       className,
     )}
     {...props}
@@ -31,6 +39,7 @@ const TabsTrigger = React.forwardRef<
     ref={ref}
     className={cn(
       'inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 font-heading text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-accent data-[state=active]:text-accent-foreground',
+      'data-[orientation=vertical]:w-full data-[orientation=vertical]:justify-start data-[orientation=vertical]:text-left',
       className,
     )}
     {...props}

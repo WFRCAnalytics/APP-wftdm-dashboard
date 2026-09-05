@@ -9,7 +9,6 @@ import * as filterState from '@/state/filterState'
 import { useFilterState } from '@/hooks/useFilterState'
 import { useActiveScenarios } from '@/hooks/useActiveScenarios'
 import { useBaseline } from '@/hooks/useBaseline'
-import { useColorScheme } from '@/hooks/useColorScheme'
 import { useGlobalBasemap } from '@/hooks/useGlobalBasemap'
 import {
   buildComparisonDiffQuery,
@@ -77,11 +76,6 @@ const EXTRUSION_PITCH = 45
 
 const EMPTY_FEATURE_COLLECTION: GeoJSON.FeatureCollection = { type: 'FeatureCollection', features: [] }
 
-// Same exclusion 011/012 already established for FlowMapPanel.tsx's own
-// transformStyle — BLANK_STYLE's own scaffolding layer(s) must never be
-// carried forward across a real setStyle() call by the layer-
-// preservation mechanism below (research.md §9).
-const BLANK_STYLE_LAYER_IDS = new Set(BLANK_STYLE.layers.map((l) => l.id))
 
 // Test-only instrumentation, same category as FlowMapPanel.tsx's own
 // __flowmapTestMaps — no MapboxOverlay/deck.gl exists for this panel
@@ -135,9 +129,12 @@ export function ZoneMapPanel({ config }: { config: ZoneMapPanelConfig }) {
   // own dependency array below regardless, so a live baseline change
   // reactively re-triggers the fetch for a panel that uses it (FR-016).
   const baseline = useBaseline()
-  const colorScheme = useColorScheme()
   // 020-settings-modal — the viewer's Settings-modal Basemap-tab pick,
-  // threaded into resolveEffectiveBasemap() as its new 4th argument below.
+  // threaded into resolveEffectiveBasemap() below. 021-basemap-catalog-
+  // redesign: this panel no longer reads useColorScheme() at all — this
+  // was its only use of that hook, confirmed dead once
+  // resolveEffectiveBasemap()'s bottom fallback tier stopped being
+  // theme-dependent (research.md §6).
   const globalBasemap = useGlobalBasemap()
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
@@ -440,12 +437,7 @@ export function ZoneMapPanel({ config }: { config: ZoneMapPanelConfig }) {
   // style to wipe), and the post-style-ready trigger below re-ensures
   // AND re-populates this panel's native source/layer instead of a
   // deck.gl overlay's props.
-  const effectiveBasemap = resolveEffectiveBasemap(
-    config.basemap,
-    config._tabDefaultBasemap,
-    colorScheme,
-    globalBasemap,
-  )
+  const effectiveBasemap = resolveEffectiveBasemap(config.basemap, config._tabDefaultBasemap, globalBasemap)
   const key = basemapKey(effectiveBasemap.selection)
 
   useEffect(() => {
@@ -482,23 +474,32 @@ export function ZoneMapPanel({ config }: { config: ZoneMapPanelConfig }) {
         map.on('styledata', onStyleReady)
         detachStyleReadyListener = () => map.off('styledata', onStyleReady)
 
-        // transformStyle — same mechanism 011/012 already built,
-        // reused verbatim: carries this panel's own zonemap-zones
-        // source / zonemap-fill layer forward across the style swap
-        // (excluding BLANK_STYLE's own scaffolding layers) — the
-        // "future app-added custom layer" FlowMapPanel.tsx's own
-        // comment already anticipated this panel type would be.
+        // 021-basemap-catalog-redesign — NARROWED from "preserve any
+        // previous-style layer id the new style doesn't already have"
+        // (011/012's own original mechanism, reused verbatim until now)
+        // to preserving ONLY this panel's own known zone layers
+        // (SOURCE_ID-sourced: FILL_LAYER_ID, EXTRUSION_LAYER_ID). A real,
+        // confirmed bug found via this feature's own testing: the
+        // original, unscoped version ALSO preserved the OLD basemap's own
+        // real content (e.g. carto-voyager's own text/symbol layers)
+        // whenever switching TO a raster preset with no `glyphs` URL —
+        // those carried-forward layers still needed glyphs the new style
+        // doesn't provide, so MapLibre rejected the WHOLE style and the
+        // panel silently reverted to BLANK_STYLE (see FlowMapPanel.tsx's
+        // own setStyle() call site for the full history — that panel had
+        // no real preservation need at all and had its transformStyle
+        // option removed entirely; this panel genuinely does need to
+        // preserve its own zone layer, so it keeps a transformStyle, just
+        // scoped correctly this time to what it actually owns).
         map.setStyle(styleArg, {
           transformStyle: (previous, next) => {
             if (!previous) return next
-            const nextIds = new Set(next.layers.map((l) => l.id))
-            const preserved = previous.layers.filter(
-              (l) => !nextIds.has(l.id) && !BLANK_STYLE_LAYER_IDS.has(l.id),
-            )
+            const ownLayers = previous.layers.filter((l) => 'source' in l && l.source === SOURCE_ID)
+            if (ownLayers.length === 0) return next
             return {
               ...next,
-              sources: { ...next.sources, ...previous.sources },
-              layers: [...next.layers, ...preserved],
+              sources: { ...next.sources, [SOURCE_ID]: previous.sources[SOURCE_ID] },
+              layers: [...next.layers, ...ownLayers],
             }
           },
         })

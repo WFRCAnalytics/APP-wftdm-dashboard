@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
-import { resolveRasterProvider, __resetProvidersCacheForTests } from '@/panels/basemap/registry'
+import { resolveRasterProvider, listCuratedRasterProviders, __resetProvidersCacheForTests } from '@/panels/basemap/registry'
 
 // Fixture catalog shaped exactly like the REAL, extracted
 // public/basemap/leaflet-providers.json (confirmed directly against the
@@ -245,5 +245,69 @@ describe('resolveRasterProvider', () => {
   it('returns undefined (not a thrown error) when the catalog fetch itself fails', async () => {
     vi.mocked(fetch).mockResolvedValueOnce({ ok: false, status: 404 } as Response)
     expect(await resolveRasterProvider('CartoDB.Positron')).toBeUndefined()
+  })
+})
+
+// 021-basemap-catalog-redesign (T009): reuses this file's own existing
+// FIXTURE_CATALOG + fetch-mocking convention rather than a second,
+// duplicated fixture — listCuratedRasterProviders() shares the exact same
+// cached leaflet-providers.json fetch resolveRasterProvider() already
+// tests against (research.md §2).
+describe('listCuratedRasterProviders', () => {
+  // One extra entry per real disqualifying condition (research.md §2),
+  // spread alongside FIXTURE_CATALOG's own already-curated entries
+  // (OpenStreetMap, OpenTopoMap, Esri, HikeBikeHikeBike — none of which
+  // require a key, use http://, or carry an unhandled token) plus
+  // FIXTURE_CATALOG's own CartoDB (the one explicit editorial exclusion).
+  const CATALOG_WITH_DISQUALIFIED_ENTRIES = {
+    ...FIXTURE_CATALOG,
+    // Condition 1: requires an API key.
+    MapTilerFixture: {
+      url: 'https://api.maptiler.test/maps/{variant}/{z}/{x}/{y}.png?key={key}',
+      options: { variant: 'streets' },
+    },
+    // Condition 2: HTTP-only (mixed-content blocked on this app's own
+    // HTTPS-served deployments).
+    OpenFireMapFixture: {
+      url: 'http://openfiremap.test/hytiles/{z}/{x}/{y}.png',
+      options: {},
+    },
+    // Condition 3: a genuinely keyless URL, but with a template token
+    // (`{ext}`) this app's own raster-resolution code doesn't substitute.
+    StadiaFixture: {
+      url: 'https://tiles.stadiamaps.test/tiles/{variant}/{z}/{x}/{y}{r}.{ext}',
+      options: { variant: 'alidade_smooth' },
+    },
+  }
+
+  it('excludes every disqualified provider (API key, HTTP-only, unhandled token, and the explicit CartoDB exclusion)', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce({ ok: true, json: async () => CATALOG_WITH_DISQUALIFIED_ENTRIES } as Response)
+    const providers = await listCuratedRasterProviders()
+    const names = providers.map((p) => p.name)
+    expect(names).not.toContain('MapTilerFixture')
+    expect(names).not.toContain('OpenFireMapFixture')
+    expect(names).not.toContain('StadiaFixture')
+    expect(names).not.toContain('CartoDB')
+  })
+
+  it('includes every genuinely keyless, HTTPS-only, fully-substitutable provider', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce({ ok: true, json: async () => CATALOG_WITH_DISQUALIFIED_ENTRIES } as Response)
+    const providers = await listCuratedRasterProviders()
+    const names = providers.map((p) => p.name)
+    expect(names).toEqual(expect.arrayContaining(['OpenStreetMap', 'OpenTopoMap', 'Esri', 'HikeBikeHikeBike']))
+  })
+
+  it("reports each included provider's own real variant names", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce({ ok: true, json: async () => CATALOG_WITH_DISQUALIFIED_ENTRIES } as Response)
+    const providers = await listCuratedRasterProviders()
+    const openStreetMap = providers.find((p) => p.name === 'OpenStreetMap')
+    expect(openStreetMap?.variants).toEqual(['Mapnik', 'HOT'])
+    const hikeBike = providers.find((p) => p.name === 'HikeBikeHikeBike')
+    expect(hikeBike?.variants).toEqual([]) // no variants — selectable by its bare name
+  })
+
+  it('propagates a real catalog-fetch failure rather than swallowing it (Raster Tiles needs to show an explicit error state)', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce({ ok: false, status: 404 } as Response)
+    await expect(listCuratedRasterProviders()).rejects.toThrow()
   })
 })

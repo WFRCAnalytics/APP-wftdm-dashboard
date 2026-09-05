@@ -1,6 +1,16 @@
 // 011-basemap-style-system: built-in preset registry (FR-001). Dynamic
 // leaflet-providers raster resolution (FR-002/FR-003) is added by
 // resolveRasterProvider() below — see research.md §4/§5.
+//
+// 021-basemap-catalog-redesign: BUILT_IN_PRESETS generalized to a tagged
+// union (T004, research.md §1) so a preset name can resolve to either a
+// single style.json URL OR a multi-layer BasemapComposition — the exact
+// shape an author's own dashboard-*.yaml `basemap: { layers: [...] }`
+// already uses (types.ts's own BasemapComposition). This is what lets the
+// three new UGRC preset aliases (T005) reach composeStyles() (in
+// loadBasemapStyle.ts) through the SAME code path a hand-written
+// composition already does — never a second, parallel resolution
+// mechanism (FR-009).
 import type { BasemapPresetName } from '@/panels/basemap/types'
 
 interface UrlPreset {
@@ -8,7 +18,14 @@ interface UrlPreset {
   url: string
 }
 
-const BUILT_IN_PRESETS: Record<BasemapPresetName, UrlPreset> = {
+interface CompositionPreset {
+  kind: 'composition'
+  layers: string[] // identical shape to BasemapComposition.layers (types.ts)
+}
+
+type BuiltInPreset = UrlPreset | CompositionPreset
+
+const BUILT_IN_PRESETS: Record<BasemapPresetName, BuiltInPreset> = {
   'carto-positron': { kind: 'url', url: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json' },
   'carto-dark-matter': { kind: 'url', url: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json' },
   'carto-voyager': { kind: 'url', url: 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json' },
@@ -17,12 +34,51 @@ const BUILT_IN_PRESETS: Record<BasemapPresetName, UrlPreset> = {
   'openfreemap-positron': { kind: 'url', url: 'https://tiles.openfreemap.org/styles/positron' },
   'openfreemap-dark': { kind: 'url', url: 'https://tiles.openfreemap.org/styles/dark' },
   'openfreemap-fiord': { kind: 'url', url: 'https://tiles.openfreemap.org/styles/fiord' },
+
+  // 021-basemap-catalog-redesign (T005): three real, already fixture-
+  // tested UGRC compositions (org 99lidPhWCzftIe9K — spec.md Finding 1),
+  // promoted from tests/fixtures/dashboard-config/dashboard-3-basemaps.yaml's
+  // own ad hoc `basemap: { layers: [...] }` panels into named, reusable
+  // presets. Removing any of these three in the future does not remove an
+  // author's ability to write the identical composition by hand (FR-009)
+  // — these are aliases, not a special case.
+  'ugrc-vector-lite': {
+    kind: 'composition',
+    layers: [
+      'https://tiles.arcgis.com/tiles/99lidPhWCzftIe9K/arcgis/rest/services/LiteBase/VectorTileServer/resources/styles/root.json',
+      'https://tiles.arcgis.com/tiles/99lidPhWCzftIe9K/arcgis/rest/services/LiteLabels/VectorTileServer/resources/styles/root.json',
+    ],
+  },
+  'ugrc-vector-hybrid': {
+    kind: 'composition',
+    layers: [
+      'Esri.WorldImagery',
+      'https://tiles.arcgis.com/tiles/99lidPhWCzftIe9K/arcgis/rest/services/Vector_Overlay/VectorTileServer/resources/styles/root.json',
+    ],
+  },
+  'ugrc-vector-outdoors': {
+    kind: 'composition',
+    layers: [
+      'https://tiles.arcgis.com/tiles/99lidPhWCzftIe9K/arcgis/rest/services/OutdoorsBase/VectorTileServer/resources/styles/root.json',
+      'https://tiles.arcgis.com/tiles/99lidPhWCzftIe9K/arcgis/rest/services/Outdoors_Labels/VectorTileServer/resources/styles/root.json',
+    ],
+  },
 }
 
-export const APP_DEFAULT_LIGHT: BasemapPresetName = 'carto-positron'
-export const APP_DEFAULT_DARK: BasemapPresetName = 'carto-dark-matter'
+// 021-basemap-catalog-redesign (T002): replaces the prior theme-paired
+// APP_DEFAULT_LIGHT/APP_DEFAULT_DARK pair — resolveEffectiveBasemap()'s
+// bottom fallback tier is now one static value, never theme-dependent
+// (research.md §6, FR-015/FR-016). Change this one value to change the
+// deployer-configured app-default; if never changed, it is 'carto-voyager'.
+export const APP_DEFAULT: BasemapPresetName = 'carto-voyager'
 
-export function resolveUrlPreset(name: BasemapPresetName): UrlPreset | undefined {
+/**
+ * 021-basemap-catalog-redesign (T004): replaces resolveUrlPreset() — same
+ * lookup, generalized return type. loadBasemapStyle.ts's resolvePresetName()
+ * branches on `.kind` to decide between a direct style.json fetch and a
+ * composeStyles() call (research.md §1).
+ */
+export function resolveBuiltInPreset(name: BasemapPresetName): BuiltInPreset | undefined {
   return BUILT_IN_PRESETS[name]
 }
 
@@ -34,6 +90,8 @@ export function resolveUrlPreset(name: BasemapPresetName): UrlPreset | undefined
  * live reference to BUILT_IN_PRESETS's own keys — this module's own
  * catalog is a fixed, hardcoded object (unlike the dynamically-fetched
  * leaflet-providers.json catalog below), so no staleness risk either way.
+ * Unchanged by 021-basemap-catalog-redesign — still returns every key
+ * regardless of `.kind`, including the three new UGRC ones.
  */
 export function listBuiltInPresetNames(): BasemapPresetName[] {
   return Object.keys(BUILT_IN_PRESETS)
@@ -266,4 +324,102 @@ export async function resolveRasterProvider(
       : resolved.options.attribution,
     maxZoom: resolved.options.maxZoom,
   }
+}
+
+// ---- curated raster provider catalog (021-basemap-catalog-redesign, T006) ----
+
+/**
+ * A viewer-supplied API key is never acceptable anywhere in this app's
+ * built-in catalog (spec.md FR-006, hard constraint) — matched
+ * case-insensitively against every real key/token placeholder name seen
+ * across the current public/basemap/leaflet-providers.json catalog
+ * during this feature's own research (research.md §2).
+ */
+const API_KEY_TOKEN_PATTERN =
+  /\{(apikey|api_key|key|accesstoken|access_token|subscriptionkey|app_id|app_code|token)\}/i
+
+/**
+ * The only URL-template tokens this module's own raster-resolution code
+ * (resolveRasterProvider() above) actually substitutes. A provider whose
+ * URL contains any OTHER {token} (e.g. leaflet-providers' real {ext},
+ * {type}, {format}, {time}, {tilematrixset}, {size}, {apiVersion}) would
+ * render with that token left literally in the request URL — genuinely
+ * keyless, but not currently resolvable by this app, so excluded from the
+ * curated list as a scoping decision rather than a licensing one
+ * (research.md §2, spec.md Assumptions). {z}/{x}/{y} are handled here too
+ * even though this module never substitutes them itself — MapLibre's own
+ * native XYZ tile-URL resolution does that at render time.
+ */
+const HANDLED_RASTER_URL_TOKENS = new Set(['s', 'r', 'variant', 'z', 'x', 'y'])
+
+/**
+ * One small, explicit, hand-maintained exclusion — CartoDB's raster tile
+ * variants are keyless and technically resolvable, but its equivalent
+ * (and better) vector GL styles are already offered, more prominently, in
+ * the CARTO Vector Tiles section; surfacing both would present two
+ * different-fidelity "Positron"/"Dark Matter"/"Voyager" options with no
+ * clear reason to prefer either (spec.md Assumptions). This is the ONLY
+ * name excluded for a reason other than the three URL-template conditions
+ * below — everything else is computed, not hand-copied, precisely so this
+ * list self-corrects the next time leaflet-providers.json is regenerated
+ * (research.md §2).
+ */
+const CURATED_RASTER_EXCLUDE = new Set(['CartoDB'])
+
+function effectiveUrlsForProvider(entry: LeafletProviderEntry): string[] {
+  const urls = [entry.url]
+  if (entry.variants) {
+    for (const variant of Object.values(entry.variants)) {
+      if (typeof variant === 'object' && variant.url) urls.push(variant.url)
+    }
+  }
+  return urls
+}
+
+function unhandledUrlTokens(url: string): string[] {
+  return [...url.matchAll(/\{(\w+)\}/g)].map((m) => m[1].toLowerCase()).filter((t) => !HANDLED_RASTER_URL_TOKENS.has(t))
+}
+
+/**
+ * A provider is curated only if EVERY effective URL it can produce (its
+ * own parent `url`, plus every variant's own `url` override) requires no
+ * API key, uses `https://` only (an `http://`-only endpoint is blocked by
+ * this app's own HTTPS-served deployments' mixed-content policy — a real,
+ * practical exclusion independent of licensing), and uses no URL-template
+ * token this module doesn't already substitute (research.md §2).
+ */
+function isCuratedRasterProvider(name: string, entry: LeafletProviderEntry): boolean {
+  if (CURATED_RASTER_EXCLUDE.has(name)) return false
+  for (const url of effectiveUrlsForProvider(entry)) {
+    if (API_KEY_TOKEN_PATTERN.test(url)) return false
+    if (/^http:\/\//i.test(url)) return false
+    if (unhandledUrlTokens(url).length > 0) return false
+  }
+  return true
+}
+
+export interface CuratedRasterProvider {
+  name: string // dotted PARENT provider name, e.g. "OpenStreetMap"
+  variants: string[] // e.g. ["Mapnik", "DE", ...]; empty if the provider has no variants — selectable by its bare `name` in that case
+}
+
+/**
+ * The Raster Tiles section's own catalog (spec.md FR-006/FR-007/FR-008) —
+ * a read-only VIEW over the exact same cached leaflet-providers.json
+ * fetch resolveRasterProvider() already performs (no second network
+ * request), filtered down to genuinely keyless, HTTPS-only, currently-
+ * resolvable entries. Lets the catalog fetch's own rejection propagate
+ * (unlike resolveRasterProvider()'s fail-soft "return undefined") — the
+ * Basemap tab's own loading/error/empty UI states (research.md §5) need
+ * to distinguish "the catalog fetch failed" from "the list is empty" or
+ * "still loading," which a swallowed error would make impossible.
+ */
+export async function listCuratedRasterProviders(signal?: AbortSignal): Promise<CuratedRasterProvider[]> {
+  const catalog = await loadProvidersCatalog(signal)
+  const curated: CuratedRasterProvider[] = []
+  for (const [name, entry] of Object.entries(catalog)) {
+    if (!isCuratedRasterProvider(name, entry)) continue
+    curated.push({ name, variants: entry.variants ? Object.keys(entry.variants) : [] })
+  }
+  return curated
 }

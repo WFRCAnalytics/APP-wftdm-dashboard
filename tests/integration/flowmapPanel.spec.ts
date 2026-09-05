@@ -756,10 +756,8 @@ async function waitForBasemapApplied(page: Page, title: string) {
   await trueEventually(async () => (await getStyleSources(page, title)).length > 0)
 }
 
-test.describe('011-basemap-style-system — US1: default basemap renders, paired to theme (quickstart.md Scenario 1)', () => {
-  test('a panel with no basemap config renders a real CARTO basemap, matching the light/dark theme', async ({
-    page,
-  }) => {
+test.describe('011-basemap-style-system — US1: default basemap renders (quickstart.md Scenario 1)', () => {
+  test('a panel with no basemap config renders a real CARTO basemap', async ({ page }) => {
     const requestUrls: string[] = []
     page.on('request', (req) => requestUrls.push(req.url()))
 
@@ -768,16 +766,60 @@ test.describe('011-basemap-style-system — US1: default basemap renders, paired
     await trueEventually(async () => (await container.getAttribute('data-render-count')) !== null)
     await waitForBasemapApplied(page, FLOWMAP_TITLE)
 
-    await trueEventually(async () => requestUrls.some((u) => u.includes('positron-gl-style')))
+    // 021-basemap-catalog-redesign: the app-default tier is now one
+    // static value (carto-voyager), never theme-paired — replaces this
+    // test's own prior positron/dark-matter-pairing assertion.
+    await trueEventually(async () => requestUrls.some((u) => u.includes('voyager-gl-style')))
     expect(await getStyleSources(page, FLOWMAP_TITLE)).not.toEqual([])
+  })
+})
+
+test.describe('021-basemap-catalog-redesign — US2: the static app-default never re-pairs on a theme change (quickstart.md Scenario 10)', () => {
+  test('a panel with no basemap config issues no new setStyle() call when the Appearance theme flips', async ({
+    page,
+  }) => {
+    // Instruments map.setStyle() call COUNT directly — the same,
+    // already-reliable technique the sibling "explicit pin is not
+    // re-paired" test just above this one already uses — rather than
+    // counting raw network requests. A real, confirmed flake source was
+    // found while writing this test: MapLibre legitimately re-issues
+    // several sprite/glyph/tile requests of its own on a resize-driven
+    // internal repaint (a dark-mode class toggle can shift page layout
+    // enough to trigger one), completely unrelated to whether THIS
+    // panel's own basemap-application effect re-ran. Counting
+    // setStyle() calls directly tests the actual claim (no re-pairing)
+    // and is immune to that unrelated noise.
+    await boot(page)
+    const title = FLOWMAP_TITLE
+    const container = panelCard(page, title).locator('.flowmap-chart')
+    await trueEventually(async () => (await container.getAttribute('data-render-count')) !== null)
+    await waitForBasemapApplied(page, title)
+
+    await page.evaluate((t) => {
+      const map = window.__flowmapTestMaps![t]
+      window.__setStyleCallCount = 0
+      const original = map.setStyle.bind(map)
+      map.setStyle = ((...args: Parameters<typeof original>) => {
+        window.__setStyleCallCount!++
+        return original(...args)
+      }) as typeof map.setStyle
+    }, title)
 
     await page.evaluate(() => document.documentElement.classList.add('dark'))
-    await trueEventually(async () => requestUrls.some((u) => u.includes('dark-matter-gl-style')))
+    // Give a (bugged) re-pair attempt time to fire — there is no positive
+    // event to await for "nothing happened," matching this suite's own
+    // established convention for a negative assertion.
+    await page.waitForTimeout(1000)
+    expect(await page.evaluate(() => window.__setStyleCallCount)).toBe(0)
+
+    await page.evaluate(() => document.documentElement.classList.remove('dark'))
+    await page.waitForTimeout(1000)
+    expect(await page.evaluate(() => window.__setStyleCallCount)).toBe(0)
   })
 })
 
 test.describe('011-basemap-style-system — US1: setStyle()/MapboxOverlay empirical survival (research.md §1 — GATING)', () => {
-  test('the interleaved deck.gl overlay and its FlowmapLayer survive a real light/dark theme switch', async ({ page }) => {
+  test('the interleaved deck.gl overlay and its FlowmapLayer survive a real basemap change', async ({ page }) => {
     // 012-webgl-context-management — this test is UPDATED, not left as
     // 011 wrote it: interleaved mode (this feature's own fix) means
     // deck.gl no longer creates its own canvas#deckgl-overlay element at
@@ -786,6 +828,18 @@ test.describe('011-basemap-style-system — US1: setStyle()/MapboxOverlay empiri
     // contracts/interleaved-overlay-survival.md "Existing 011 test must
     // be UPDATED, not left alone"). canvas.maplibregl-canvas is now the
     // ONE canvas both the base map and deck.gl draw into.
+    //
+    // 021-basemap-catalog-redesign — UPDATED a second time: this test
+    // originally triggered its real setStyle() call via a light/dark
+    // theme flip, relying on the (now-removed) theme-paired app-default
+    // tier. Since the app-default is now one static value that never
+    // re-pairs on a theme change (research.md §6), a theme flip no
+    // longer triggers any setStyle() call at all for an unconfigured
+    // panel like this one — this test now triggers the real setStyle()
+    // it needs via the Settings modal's own global-basemap Apply action
+    // instead (020/021's own real, shipped mechanism), which still
+    // causes exactly the same kind of live setStyle() transition this
+    // test exists to verify overlay survival across.
     const consoleIssues: string[] = []
     page.on('console', (msg) => {
       if (/duplicate|already exists/i.test(msg.text())) consoleIssues.push(msg.text())
@@ -801,20 +855,24 @@ test.describe('011-basemap-style-system — US1: setStyle()/MapboxOverlay empiri
     await expect(container.locator('canvas#deckgl-overlay')).toHaveCount(0)
     await trueEventually(async () => (await container.getAttribute('data-render-count')) !== null)
     await waitForBasemapApplied(page, FLOWMAP_TITLE)
-    await trueEventually(async () => requestUrls.some((u) => u.includes('positron-gl-style')))
+    await trueEventually(async () => requestUrls.some((u) => u.includes('voyager-gl-style')))
 
     const baseHandleBefore = await baseCanvas.elementHandle()
     const renderCountBefore = Number(await container.getAttribute('data-render-count'))
     const flowCountBefore = await container.getAttribute('data-flow-count')
 
-    await page.evaluate(() => document.documentElement.classList.add('dark'))
-    // Wait for the DARK style specifically (not just "any" style) — a
+    await page.getByRole('button', { name: 'Settings' }).click()
+    await page.getByRole('tab', { name: 'Basemap' }).click()
+    await page.getByRole('radiogroup', { name: 'OpenFreeMap' }).getByRole('radio', { name: 'Bright' }).click()
+    await page.getByRole('button', { name: 'Apply' }).click()
+    await page.getByRole('button', { name: /^Close$/ }).click()
+    // Wait for the NEW style specifically (not just "any" style) — a
     // plain waitForBasemapApplied() would also be satisfied by the still-
-    // showing light style during the brief window before setStyle()
+    // showing previous style during the brief window before setStyle()
     // actually swaps sources, so this test needs the more specific
     // request-based signal Scenario 1's own test already establishes as
     // reliable, not the generic "some sources exist" check.
-    await trueEventually(async () => requestUrls.some((u) => u.includes('dark-matter-gl-style')))
+    await trueEventually(async () => requestUrls.some((u) => u.includes('tiles.openfreemap.org/styles/bright')))
     // Wait for the post-style.load repopulate specifically (the
     // layerRepopulateGeneration-triggered data-update-effect re-run),
     // not a fixed timeout — data-render-count incrementing is that
@@ -875,33 +933,44 @@ test.describe('011-basemap-style-system — US1: setStyle()/MapboxOverlay empiri
     }, FLOWMAP_TITLE)
     expect(moveEndFired).toBe(true)
 
-    // (f) zero deck.gl#3763-shaped console messages across the whole flip.
+    // (f) zero deck.gl#3763-shaped console messages across the whole change.
     expect(consoleIssues).toEqual([])
   })
 })
 
 test.describe('012-webgl-context-management — interleaved overlay repopulates exactly once per style change', () => {
-  test('two rapid theme switches settle correctly: no duplicate/missing layer, data unchanged', async ({ page }) => {
+  test('two rapid global-basemap switches settle correctly: no duplicate/missing layer, data unchanged', async ({
+    page,
+  }) => {
     // The adversarial case for layerRepopulateGeneration's handling: no
-    // settle delay between the two setStyle()-triggering toggles.
+    // settle delay between the two setStyle()-triggering changes.
+    //
+    // 021-basemap-catalog-redesign — UPDATED trigger mechanism: this test
+    // originally used two rapid light/dark theme toggles to produce two
+    // rapid, real setStyle() calls on this unconfigured panel, relying on
+    // the (now-removed) theme-paired app-default tier. Since the
+    // app-default no longer depends on theme at all (research.md §6), a
+    // theme flip no longer triggers any setStyle() call here — two rapid
+    // global-basemap Apply actions (020/021's own real, shipped
+    // mechanism) reproduce the identical adversarial "no settle delay
+    // between two setStyle()-triggering changes" shape instead.
     //
     // NOT asserting an exact "+2 repopulates" count here (an earlier
     // version of this test did, and was wrong) — confirmed empirically
     // that the existing generation-guard/AbortController mechanism
     // (research.md §2's own already-established design, unchanged by
     // this feature) correctly CANCELS a still-in-flight, now-superseded
-    // basemap-application invocation when a second toggle preempts it
+    // basemap-application invocation when a second change preempts it
     // before the first one's onStyleReady fires (this effect's own
     // cleanup calls detachStyleReadyListener() on every re-run/unmount).
-    // Two back-to-back toggles can therefore legitimately settle with
-    // anywhere from zero repopulates (if the browser's MutationObserver
-    // batches both DOM mutations into one callback, so React never
-    // observes an intermediate colorScheme value at all) up to two — the
-    // real, correct guarantee this test verifies is the END STATE:
-    // exactly one live FlowmapLayer, unchanged underlying data, and the
-    // FINAL settled theme's basemap actually rendering — not a specific
-    // intermediate count that depends on browser-batching timing this
-    // feature does not control.
+    // Two back-to-back changes can therefore legitimately settle with
+    // anywhere from zero repopulates (if React batches both state updates
+    // into one render, so the effect never observes the intermediate
+    // value at all) up to two — the real, correct guarantee this test
+    // verifies is the END STATE: exactly one live FlowmapLayer, unchanged
+    // underlying data, and the FINAL applied basemap actually rendering —
+    // not a specific intermediate count that depends on batching timing
+    // this feature does not control.
     await boot(page)
     const container = panelCard(page, FLOWMAP_TITLE).locator('.flowmap-chart')
     await trueEventually(async () => (await container.getAttribute('data-render-count')) !== null)
@@ -909,8 +978,14 @@ test.describe('012-webgl-context-management — interleaved overlay repopulates 
 
     const flowCountBefore = await container.getAttribute('data-flow-count')
 
-    await page.evaluate(() => document.documentElement.classList.add('dark'))
-    await page.evaluate(() => document.documentElement.classList.remove('dark'))
+    await page.getByRole('button', { name: 'Settings' }).click()
+    await page.getByRole('tab', { name: 'Basemap' }).click()
+    await page.getByRole('radiogroup', { name: 'OpenFreeMap' }).getByRole('radio', { name: 'Liberty' }).click()
+    await page.getByRole('button', { name: 'Apply' }).click()
+    // No settle delay before the second change — the adversarial case.
+    await page.getByRole('radiogroup', { name: 'CARTO Vector Tiles' }).getByRole('radio', { name: 'Positron' }).click()
+    await page.getByRole('button', { name: 'Apply' }).click()
+    await page.getByRole('button', { name: /^Close$/ }).click()
 
     // Let everything settle, then assert the end state is correct.
     await page.waitForTimeout(1500)
@@ -923,9 +998,9 @@ test.describe('012-webgl-context-management — interleaved overlay repopulates 
     }, FLOWMAP_TITLE)
     expect(overlayLayerCount).toBe(1)
 
-    // The final, settled theme is light again (both toggles net out) —
-    // its basemap (carto-positron) must actually be rendering, not left
-    // mid-transition from a cancelled dark attempt.
+    // The final, settled selection (carto-positron, both changes applied
+    // in order) must actually be rendering, not left mid-transition from
+    // a cancelled first attempt.
     await trueEventually(() => canvasHasDrawnPixels(page, FLOWMAP_TITLE))
   })
 })
@@ -1550,7 +1625,7 @@ test.describe('012-webgl-context-management — WebGL context loss is reported h
 })
 
 test.describe('012-webgl-context-management — a pinned basemap recovers to itself, not the app default (quickstart.md Scenario 5)', () => {
-  test('recovery re-applies the panel\'s own pinned preset, not the theme-paired default', async ({ page }) => {
+  test('recovery re-applies the panel\'s own pinned preset, not the app default', async ({ page }) => {
     await boot(page)
     await page.getByRole('tab', { name: 'Basemaps' }).click()
 

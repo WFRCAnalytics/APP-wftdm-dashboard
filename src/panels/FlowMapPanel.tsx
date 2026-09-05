@@ -11,7 +11,6 @@ import * as sqlExpander from '@/services/sqlExpander'
 import * as filterState from '@/state/filterState'
 import { useFilterState } from '@/hooks/useFilterState'
 import { useActiveScenarios } from '@/hooks/useActiveScenarios'
-import { useColorScheme } from '@/hooks/useColorScheme'
 import { useGlobalBasemap } from '@/hooks/useGlobalBasemap'
 import {
   buildPanelQuery,
@@ -36,35 +35,14 @@ const ALL_FILTERS: ['*'] = ['*']
 const DEFAULT_CENTER: [number, number] = [-111.89, 40.76]
 const DEFAULT_ZOOM = 9
 
-// 012-webgl-context-management — a real, confirmed bug found via a live
-// user report AND direct browser instrumentation (a production preview
-// build, not just the dev server or the test suite): BLANK_STYLE's own
-// "background" layer (an opaque #e5e5e5 fill) must NEVER be treated as
-// app-owned content worth preserving across a style swap by the
-// transformStyle callback below. The bug: `previous.layers.filter((l) =>
-// !nextIds.has(l.id))` preserves any `previous`-style layer whose id
-// isn't already in the NEW style — correct for a genuine future app-
-// added custom layer (e.g. a zonemap's own choropleth fill, this
-// mechanism's actual documented intent — FlowMapPanel adds none today),
-// but wrong for BLANK_STYLE's own scaffolding "background" layer.
-// CARTO/OpenFreeMap presets happen to define their OWN "background"
-// layer as their first layer, so it was already in `nextIds` and never
-// duplicated — masking this bug entirely in 011's own test coverage.
-// A raster preset (no "background" layer of its own at all) or a
-// namespaced composition (its own "background", if any, renamed to
-// `layer0__background`) do NOT already have it in `nextIds` — so
-// BLANK_STYLE's own background layer got carried forward and appended
-// LAST (`layers: [...next.layers, ...preserved]` — later array entries
-// paint on top), opaquely covering the entire real basemap underneath
-// it. Confirmed directly: a real production build's own `map.getStyle()`
-// showed the correct real sources/tiles fetched and loaded successfully
-// for the affected panels, with "background" sitting at the LAST index
-// of the layers array specifically for those two panel types (index
-// 1 of 2 for a raster preset; index 547 of 548 for the real UGRC
-// composition) — not present at all for CARTO/OpenFreeMap panels'
-// layer-order problem, confirming the "background" layer itself, not
-// the basemap fetch, was the actual paint-blocking cause.
-const BLANK_STYLE_LAYER_IDS = new Set(BLANK_STYLE.layers.map((l) => l.id))
+// 012-webgl-context-management's own BLANK_STYLE_LAYER_IDS constant
+// (guarding a since-REMOVED transformStyle option below against
+// preserving BLANK_STYLE's own scaffolding "background" layer) no longer
+// exists — 021-basemap-catalog-redesign removed transformStyle from this
+// panel's setStyle() call entirely after finding a real, related bug in
+// it (see that call site's own comment for the full history). The
+// original 012 finding is preserved in CLAUDE.md's file-tree history,
+// not restated here now that the code it described is gone.
 
 // Test-only synchronization hook — lets a Playwright test force the
 // "data resolves before the map finishes initializing" ordering
@@ -110,9 +88,13 @@ export function FlowMapPanel({ config }: { config: FlowMapPanelConfig }) {
   const filterIds = extractGlobalFilterIds(config.filter)
   const filters = useFilterState(filterIds.length ? filterIds : ALL_FILTERS)
   const activeScenarioNames = useActiveScenarios()
-  const colorScheme = useColorScheme()
   // 020-settings-modal — the viewer's Settings-modal Basemap-tab pick,
-  // threaded into resolveEffectiveBasemap() as its new 4th argument below.
+  // threaded into resolveEffectiveBasemap() below. 021-basemap-catalog-
+  // redesign: this panel no longer reads useColorScheme() at all —
+  // resolveEffectiveBasemap()'s bottom fallback tier is now a single
+  // static APP_DEFAULT, never theme-dependent (research.md §6); this was
+  // this panel's ONLY use of useColorScheme(), confirmed dead once
+  // removed.
   const globalBasemap = useGlobalBasemap()
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
@@ -371,17 +353,13 @@ export function FlowMapPanel({ config }: { config: FlowMapPanelConfig }) {
   // (a basemap change is independent of query/data state — resolving
   // them in the same effect would make an unrelated data refresh
   // redundantly reapply the style, and vice versa). Keyed on
-  // basemapKey(...), NOT on colorScheme or config.basemap directly —
-  // research.md §2's core mechanism: an explicit pin resolves to the
-  // SAME key across a theme flip, so this effect correctly does NOT
-  // re-run for it, while the no-config app-default case resolves to a
-  // DIFFERENT key per theme, so it does.
-  const effectiveBasemap = resolveEffectiveBasemap(
-    config.basemap,
-    config._tabDefaultBasemap,
-    colorScheme,
-    globalBasemap,
-  )
+  // basemapKey(...), NOT on config.basemap directly — 021-basemap-
+  // catalog-redesign: this key is no longer theme-sensitive at all
+  // (resolveEffectiveBasemap()'s bottom fallback tier is a single static
+  // APP_DEFAULT, research.md §6) — kept as a stable, content-based
+  // identity regardless, so an unrelated re-render that resolves to the
+  // SAME selection still doesn't redundantly re-run this effect.
+  const effectiveBasemap = resolveEffectiveBasemap(config.basemap, config._tabDefaultBasemap, globalBasemap)
   const key = basemapKey(effectiveBasemap.selection)
 
   useEffect(() => {
@@ -549,32 +527,43 @@ export function FlowMapPanel({ config }: { config: FlowMapPanelConfig }) {
         map.on('styledata', onStyleReady)
         detachStyleReadyListener = () => map.off('styledata', onStyleReady)
 
-        // transformStyle — reused directly from APP-WFRC-Commute-Patterns'
-        // own real, production setStyle() call (research.md §1), not
-        // re-derived: preserves this project's own future custom
-        // MapLibre-native layers (e.g. a later zonemap's choropleth fill)
-        // across the swap by carrying forward any previous-style layer id
-        // the new style doesn't already have. No-op today for genuine
-        // app-added layers (FlowMapPanel adds none of its own — only the
-        // deck.gl overlay, which research.md §1 confirms lives outside
-        // this mechanism entirely) — but see BLANK_STYLE_LAYER_IDS above:
-        // this preservation must explicitly exclude BLANK_STYLE's own
-        // scaffolding layer(s), which are not app-owned content and must
-        // never be carried forward to paint over a real basemap.
-        map.setStyle(styleArg, {
-          transformStyle: (previous, next) => {
-            if (!previous) return next
-            const nextIds = new Set(next.layers.map((l) => l.id))
-            const preserved = previous.layers.filter(
-              (l) => !nextIds.has(l.id) && !BLANK_STYLE_LAYER_IDS.has(l.id),
-            )
-            return {
-              ...next,
-              sources: { ...next.sources, ...previous.sources },
-              layers: [...next.layers, ...preserved],
-            }
-          },
-        })
+        // 021-basemap-catalog-redesign — REMOVED the `transformStyle`
+        // option this call used to pass (originally reused verbatim from
+        // APP-WFRC-Commute-Patterns' own production setStyle() call,
+        // research.md §1 of 011-basemap-style-system): a REAL, confirmed
+        // bug this feature's own testing found — indiscriminately
+        // preserving "any previous-style layer id the new style doesn't
+        // already have" preserves the OLD basemap's OWN real content, not
+        // just a hypothetical future app-added layer, whenever the
+        // PREVIOUS style is a real vector style (e.g. carto-voyager) and
+        // the NEXT style is a raster preset with no `glyphs` URL — the
+        // carried-forward text/symbol layers still need glyphs the new
+        // style doesn't provide, MapLibre rejects the whole style with
+        // `layers[N].layout.text-field: use of "text-field" requires a
+        // style "glyphs" property`, and the panel silently reverts to
+        // BLANK_STYLE via the onLoadError handler below. This exact
+        // transition (a real vector app-default/global pick switching to
+        // a raster provider via the viewer's own Settings-modal Raster
+        // Tiles selection) was never possible before this feature added
+        // the Raster Tiles section to the global picker — 011's own
+        // pre-existing test coverage only ever exercised a raster preset
+        // as a panel's very FIRST setStyle() call (`previous === null`,
+        // this transformStyle's own no-op case), never a live switch FROM
+        // a real vector style. Confirmed directly, not assumed: this
+        // panel adds no MapLibre-native layer of its own at all (only the
+        // deck.gl overlay, which lives entirely outside this mechanism —
+        // research.md §1's own already-documented finding) — the
+        // preservation this option existed to provide was already a
+        // no-op for every real case in this codebase today, so removing
+        // it outright (rather than trying to special-case which previous
+        // layers are "safe" to keep) is the correct, minimal fix. A
+        // future feature that genuinely needs to preserve an app-owned
+        // FlowMapPanel layer across a style swap should scope its own
+        // transformStyle to that layer's specific id/source (the same
+        // fix applied to ZoneMapPanel.tsx's own real zonemap-zones/
+        // zonemap-fill preservation need), not resurrect this
+        // unconditional "preserve everything" shape.
+        map.setStyle(styleArg)
       })
       .catch((e) => {
         // loadBasemapStyle only re-throws a genuine AbortError (every
@@ -600,8 +589,8 @@ export function FlowMapPanel({ config }: { config: FlowMapPanelConfig }) {
       detachStyleReadyListener?.()
     }
     // Deliberately keyed on `key` (basemapKey's stable content-based
-    // identity) alone, not on `effectiveBasemap`/`config.basemap`/
-    // `colorScheme` directly — see the comment above and research.md §2.
+    // identity) alone, not on `effectiveBasemap`/`config.basemap`
+    // directly — see the comment above and research.md §6.
     // No lint config exists in this repo to silence for this (confirmed
     // — no .eslintrc*/eslint.config.* present), so no disable-comment is
     // needed here, just this explanation.

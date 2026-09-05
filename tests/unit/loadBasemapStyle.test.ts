@@ -639,4 +639,36 @@ describe('loadBasemapStyle', () => {
     const result = await loadBasemapStyle({ layers: ['NotARealProvider.Variant'] })
     expect(result).toEqual({ kind: 'style', style: BLANK_STYLE })
   })
+
+  // 021-basemap-catalog-redesign (T010): proves FR-009 structurally — a
+  // built-in UGRC preset NAME reaches composeStyles() through the exact
+  // same call this test makes by hand with the equivalent ad hoc
+  // `{ layers: [...] }` object, so removing the preset alias from the
+  // registry in the future could never break an author's own manually-
+  // written equivalent (research.md §1).
+  it("resolves the built-in 'ugrc-vector-lite' preset via composeStyles() identically to the equivalent ad hoc composition object", async () => {
+    const LITE_BASE_URL =
+      'https://tiles.arcgis.com/tiles/99lidPhWCzftIe9K/arcgis/rest/services/LiteBase/VectorTileServer/resources/styles/root.json'
+    const LITE_LABELS_URL =
+      'https://tiles.arcgis.com/tiles/99lidPhWCzftIe9K/arcgis/rest/services/LiteLabels/VectorTileServer/resources/styles/root.json'
+    vi.mocked(fetch).mockImplementation(async (input) => {
+      const url = String(input)
+      if (url === LITE_BASE_URL) {
+        return { ok: true, json: async () => ({ version: 8, sources: {}, layers: [{ id: 'base-layer', type: 'fill' }] }) } as Response
+      }
+      if (url === LITE_LABELS_URL) {
+        return {
+          ok: true,
+          json: async () => ({ version: 8, sources: {}, layers: [{ id: 'labels-layer', type: 'fill' }] }),
+        } as Response
+      }
+      throw new Error(`unexpected fetch: ${url}`)
+    })
+
+    const viaPreset = await loadBasemapStyle('ugrc-vector-lite')
+    const viaAdHocComposition = await loadBasemapStyle({ layers: [LITE_BASE_URL, LITE_LABELS_URL] })
+
+    expect(viaPreset.kind).toBe('style')
+    expect(viaPreset).toEqual(viaAdHocComposition)
+  })
 })
