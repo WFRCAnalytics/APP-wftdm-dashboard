@@ -52,6 +52,30 @@ layout:
       height: 400
       width: 0.5
 
+    # 027-map-auto-fit-and-reset (US3/FR-003) — an explicit center/zoom
+    # deliberately far from this panel's own real flow data (which spans
+    # roughly lon -112.00..-111.75 / lat 40.60..40.85, generate.py's
+    # OD_FLOWS_ROWS) must still win outright: auto-fit must never run for
+    # this panel at all. No existing flowmap fixture panel had an explicit
+    # center/zoom before this feature — every other panel in this tab
+    # configures `basemap:` but not `center`/`zoom` — so this is genuinely
+    # new fixture content, not a repurposed existing panel.
+    - type: flowmap
+      title: Flowmap Explicit View Override
+      metric: od_flows
+      scenario: good_scenario
+      origin: orig_taz
+      origin_lat: orig_lat
+      origin_lon: orig_lon
+      destination: dest_taz
+      dest_lat: dest_lat
+      dest_lon: dest_lon
+      value: trips
+      center: [-110.0, 39.0]
+      zoom: 6
+      height: 400
+      width: 0.5
+
   row_sources:
     # A real leaflet-providers raster preset, dotted provider.variant
     # form — confirmed present in the real extracted catalog

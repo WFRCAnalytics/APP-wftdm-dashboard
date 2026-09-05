@@ -257,3 +257,40 @@
      clicked, which is every pressed button by definition. */
   box-shadow: inset 0 0 0 2px var(--primary-foreground) !important;
 }
+
+/* 027-map-auto-fit-and-reset — ResetViewControl's own button. Same
+   token-driven box/hover convention as .wftdm-3d-toggle-button above
+   (29x29px, var(--foreground) text/icon color, var(--muted) hover via the
+   generic .maplibregl-ctrl-group button:hover rule already declared
+   further up this file) — deliberately WITHOUT that button's own
+   aria-pressed-keyed active-state rules: a reset button has no persistent
+   pressed state, only a transient hover/disabled one. The icon itself is
+   an inline stroke="currentColor" SVG (resetViewControl.ts) — it inherits
+   `color` automatically, so no icon-specific dark-mode override is needed
+   here the way NavigationControl's own hardcoded-color icons required
+   above. */
+.wftdm-reset-view-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  height: 29px;
+  width: 29px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  color: var(--foreground);
+}
+
+/* FR-009 — no effective view has been established yet (no author config,
+   auto-fit hasn't run). Reduced opacity + a non-interactive cursor, not
+   `display: none` — the control's position in the cluster stays stable
+   rather than shifting the buttons above/below it once it becomes
+   available. MapLibre's own `.maplibregl-ctrl button:not(:disabled):hover`
+   selector already excludes `:disabled` buttons, so no separate
+   `:disabled:hover` override is needed to suppress the hover tint. */
+.wftdm-reset-view-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}

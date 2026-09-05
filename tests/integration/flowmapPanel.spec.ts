@@ -122,17 +122,12 @@ test.describe('User Story 1 - Author renders an O-D metric as a flow map', () =>
     }
   })
 
-  test('the map centers/zooms per config, and per the documented default when omitted', async ({
-    page,
-  }) => {
+  test('the map has a real, non-zero-size canvas once rendered', async ({ page }) => {
     await boot(page)
     const card = panelCard(page, FLOWMAP_TITLE)
     const container = card.locator('.flowmap-chart')
     await trueEventually(async () => (await container.getAttribute('data-render-count')) !== null)
 
-    // The fixture panel omits center/zoom — confirms DEFAULT_CENTER/
-    // DEFAULT_ZOOM (contracts/flowmap-panel.md) apply, not a crash or an
-    // unset/NaN view state.
     const center = await page.evaluate(() => {
       const el = document.querySelector('.flowmap-chart canvas')
       return el ? { width: el.clientWidth, height: el.clientHeight } : null
@@ -140,6 +135,84 @@ test.describe('User Story 1 - Author renders an O-D metric as a flow map', () =>
     expect(center).not.toBeNull()
     expect(center!.width).toBeGreaterThan(0)
     expect(center!.height).toBeGreaterThan(0)
+  })
+
+  // 027-map-auto-fit-and-reset (FR-001/FR-004/FR-005/FR-006) — FLOWMAP_TITLE
+  // omits center/zoom in its fixture config, so once its real flow data
+  // (generate.py's OD_FLOWS_ROWS) resolves, the map's initial view must be
+  // auto-fitted to that data's own real extent — no longer left at
+  // DEFAULT_CENTER/DEFAULT_ZOOM (that assertion was this test's OWN
+  // previous behavior before this feature; superseded here, not merely
+  // extended, since the correct expectation genuinely changed).
+  test('auto-fits its initial view to the real loaded flow data (no author-configured center/zoom)', async ({
+    page,
+  }) => {
+    await boot(page)
+    const card = panelCard(page, FLOWMAP_TITLE)
+    const container = card.locator('.flowmap-chart')
+    await trueEventually(async () => (await container.getAttribute('data-render-count')) !== null)
+
+    // fitBounds() animates (duration: 800, research.md §2) — wait for the
+    // camera to actually stop moving before reading getBounds(), the same
+    // 'moveend'-settled discipline this file's own pan/zoom tests already
+    // use elsewhere (matching the real reference precedent, not an
+    // instant jump).
+    await page.evaluate(
+      (t) =>
+        new Promise<void>((resolve) => {
+          const map = window.__flowmapTestMaps![t]
+          if (!map.isMoving()) return resolve()
+          map.once('moveend', () => resolve())
+        }),
+      FLOWMAP_TITLE,
+    )
+
+    const bounds = await page.evaluate((t) => {
+      const b = window.__flowmapTestMaps![t].getBounds()
+      return { west: b.getWest(), south: b.getSouth(), east: b.getEast(), north: b.getNorth() }
+    }, FLOWMAP_TITLE)
+
+    // The real, known extent of every displayable flow's origin/
+    // destination point (generate.py's OD_FLOWS_ROWS, excluding TAZ 600's
+    // missing-coordinate row) — west=-112.00 (TAZ 500), east=-111.75 (TAZ
+    // 400), south=40.60 (TAZ 400), north=40.85 (TAZ 300). fitBounds()'s own
+    // padding only ever EXPANDS the visible viewport beyond the raw data
+    // extent, never contracts it, so the real viewport must be a superset.
+    expect(bounds.west).toBeLessThanOrEqual(-112.0)
+    expect(bounds.east).toBeGreaterThanOrEqual(-111.75)
+    expect(bounds.south).toBeLessThanOrEqual(40.6)
+    expect(bounds.north).toBeGreaterThanOrEqual(40.85)
+
+    // Not the static default — a real, computed fit genuinely happened,
+    // not a coincidental no-op.
+    const zoom = await page.evaluate((t) => window.__flowmapTestMaps![t].getZoom(), FLOWMAP_TITLE)
+    const center = await page.evaluate((t) => window.__flowmapTestMaps![t].getCenter(), FLOWMAP_TITLE)
+    expect([zoom, center.lng, center.lat]).not.toEqual([9, -111.89, 40.76])
+  })
+
+  // FR-004 — a panel that never reaches a genuine displayable-data state
+  // must never attempt a fit at all. "Flow Map Broken Panel (intentional)"
+  // (a metric no scenario publishes) reaches `status: 'error'` — which,
+  // per FlowMapPanel.tsx's own render logic, renders the shared
+  // PanelErrorState with NO map/canvas mounted at all (asserted below and
+  // already covered, unchanged, by this file's own pre-existing "a broken
+  // metric config renders the shared PanelErrorState..." test) — so there
+  // is trivially nothing for auto-fit to run against. The complementary
+  // "real rows exist but every one gets excluded" sub-case (a genuinely
+  // different code path — status reaches 'ready', a map IS mounted, but
+  // computeFlowBounds() returns null) is covered at the unit level
+  // (tests/unit/mapBounds.test.ts's empty-array case) plus direct review
+  // of FlowMapPanel.tsx's own `if (bounds)` guard — not re-added as a new
+  // fixture panel here, since no such "every row excluded" fixture exists
+  // today and manufacturing one purely for this one edge case would be
+  // disproportionate new fixture surface for what the unit test already
+  // proves.
+  test('a panel that never reaches displayable data renders no map to (mis)fit at all', async ({ page }) => {
+    await boot(page)
+    const card = panelCard(page, 'Flow Map Broken Panel (intentional)')
+    await expect(card.getByText("Couldn't load this map")).toBeVisible()
+    await expect(card.locator('.flowmap-chart')).toHaveCount(0)
+    await expect(card.locator('canvas')).toHaveCount(0)
   })
 
   test('clustering/clustering_auto config values reach the constructed FlowmapLayer', async ({
@@ -235,6 +308,37 @@ test.describe('User Story 1 - Author renders an O-D metric as a flow map', () =>
     await page.waitForTimeout(1500)
 
     expect(unexpectedMapRequests).toEqual([])
+  })
+})
+
+// 027-map-auto-fit-and-reset, User Story 3 — an author's explicit
+// center/zoom always wins outright; auto-fit must never run at all for
+// such a panel. "Flowmap Explicit View Override" (dashboard-3-basemaps.yaml,
+// the "Basemaps" tab) is deliberately configured with a center/zoom far
+// from its own real flow data (which spans roughly lon -112.00..-111.75 /
+// lat 40.60..40.85) specifically so this test can tell "stayed at the
+// authored view" apart from "coincidentally close to a real fit". Named
+// with this feature's own number, not a bare "User Story 3" — this file
+// already has a pre-existing, differently-scoped "User Story 3" describe
+// block (010-flowmap-panel's own numbering) further below.
+test.describe('027-map-auto-fit-and-reset — User Story 3: an author explicit view configuration is always respected', () => {
+  test('an explicit center/zoom wins outright over auto-fit, even when it is nowhere near the real data', async ({
+    page,
+  }) => {
+    await boot(page)
+    await page.getByRole('tab', { name: 'Basemaps' }).click()
+    const title = 'Flowmap Explicit View Override'
+    const container = panelCard(page, title).locator('.flowmap-chart')
+    await trueEventually(async () => (await container.getAttribute('data-render-count')) !== null)
+
+    // No animated transition to wait out here — auto-fit never runs at
+    // all for this panel, so the view is exactly its constructor-time
+    // value with no later fitBounds()/easeTo() call in flight.
+    const center = await page.evaluate((t) => window.__flowmapTestMaps![t].getCenter(), title)
+    const zoom = await page.evaluate((t) => window.__flowmapTestMaps![t].getZoom(), title)
+    expect(center.lng).toBeCloseTo(-110.0, 2)
+    expect(center.lat).toBeCloseTo(39.0, 2)
+    expect(zoom).toBeCloseTo(6, 0)
   })
 })
 
@@ -427,6 +531,165 @@ test.describe('014-map-navigation-controls — NavigationControl zoom/compass ge
     // against the now-dark group background.
     const dividerColor = await zoomOut.evaluate((el) => getComputedStyle(el).borderTopColor)
     expect(dividerColor).toBe('rgb(35, 57, 74)') // --border in dark mode
+  })
+})
+
+// 027-map-auto-fit-and-reset, User Story 4 — the shared reset-to-view
+// control, same corner cluster as NavigationControl above.
+test.describe('027-map-auto-fit-and-reset — User Story 4: reset-to-view control', () => {
+  test('is disabled before data loads, then returns the camera to the auto-fitted view after a manual pan', async ({
+    page,
+  }) => {
+    // FR-009 — deterministically force the "map exists, but auto-fit
+    // hasn't run yet" window via the same test-only mapReady delay hook
+    // research.md §11's own mapReady-race test uses, rather than hoping
+    // real-world timing (a real DuckDB-WASM query resolving in ~tens of
+    // ms) happens to leave a reliably-observable gap.
+    await page.addInitScript(() => {
+      window.__flowmapTestMapReadyDelayMs = 1000
+    })
+    await boot(page)
+    const card = panelCard(page, FLOWMAP_TITLE)
+    const container = card.locator('.flowmap-chart')
+    const resetBtn = container.getByTitle('Reset view')
+
+    // The button (created at Map construction, unaffected by the
+    // mapReady delay) already exists but has no effective view yet — the
+    // data-update effect that would call fitBounds() is itself gated on
+    // mapReady, still false for the next ~1000ms.
+    await expect(resetBtn).toBeDisabled()
+
+    await trueEventually(async () => (await container.getAttribute('data-render-count')) !== null)
+    // Auto-fit's own animation must settle before the control is
+    // guaranteed enabled.
+    await page.evaluate(
+      (t) =>
+        new Promise<void>((resolve) => {
+          const map = window.__flowmapTestMaps![t]
+          if (!map.isMoving()) return resolve()
+          map.once('moveend', () => resolve())
+        }),
+      FLOWMAP_TITLE,
+    )
+    await expect(resetBtn).toBeEnabled()
+
+    const fittedView = await page.evaluate((t) => {
+      const m = window.__flowmapTestMaps![t]
+      return { center: m.getCenter(), zoom: m.getZoom() }
+    }, FLOWMAP_TITLE)
+
+    // Pan/zoom well away from the fitted view.
+    await page.evaluate((t) => window.__flowmapTestMaps![t].jumpTo({ center: [-100, 45], zoom: 3 }), FLOWMAP_TITLE)
+    expect(
+      await page.evaluate((t) => window.__flowmapTestMaps![t].getZoom(), FLOWMAP_TITLE),
+    ).toBeCloseTo(3, 0)
+
+    await resetBtn.click()
+    await trueEventually(async () => {
+      const m = await page.evaluate((t) => {
+        const map = window.__flowmapTestMaps![t]
+        return { center: map.getCenter(), zoom: map.getZoom() }
+      }, FLOWMAP_TITLE)
+      return (
+        Math.abs(m.center.lng - fittedView.center.lng) < 0.01 &&
+        Math.abs(m.center.lat - fittedView.center.lat) < 0.01 &&
+        Math.abs(m.zoom - fittedView.zoom) < 0.1
+      )
+    })
+  })
+
+  test('for an author-configured panel, returns exactly to the configured center/zoom after a manual pan', async ({
+    page,
+  }) => {
+    await boot(page)
+    await page.getByRole('tab', { name: 'Basemaps' }).click()
+    const title = 'Flowmap Explicit View Override'
+    const container = panelCard(page, title).locator('.flowmap-chart')
+    const resetBtn = container.getByTitle('Reset view')
+    await trueEventually(async () => (await container.getAttribute('data-render-count')) !== null)
+    // No auto-fit animation to wait out — the view was captured
+    // synchronously at mount for this panel.
+    await expect(resetBtn).toBeEnabled()
+
+    await page.evaluate((t) => window.__flowmapTestMaps![t].jumpTo({ center: [-100, 45], zoom: 3 }), title)
+
+    await resetBtn.click()
+    await trueEventually(async () => {
+      const center = await page.evaluate((t) => window.__flowmapTestMaps![t].getCenter(), title)
+      const zoom = await page.evaluate((t) => window.__flowmapTestMaps![t].getZoom(), title)
+      return Math.abs(center.lng - -110.0) < 0.01 && Math.abs(center.lat - 39.0) < 0.01 && Math.abs(zoom - 6) < 0.1
+    })
+  })
+})
+
+// 027-map-auto-fit-and-reset (FR-006/SC-004) — once auto-fit has run,
+// nothing else should ever move the camera again on its own: a viewer's
+// manual pan must survive 004 expand/collapse, a genuine data reload
+// (filter/scenario change), and a basemap switch — none of which reload
+// the flow data itself, and FR-006 requires auto-fit to run at most once
+// per mount regardless of what re-triggers the data-update effect.
+test.describe('027-map-auto-fit-and-reset — Polish: no re-trigger after a manual pan', () => {
+  test('a manual pan survives 004 expand/collapse, a filter change, and a basemap switch', async ({ page }) => {
+    await boot(page)
+    const card = panelCard(page, FLOWMAP_TITLE)
+    const container = card.locator('.flowmap-chart')
+    await trueEventually(async () => (await container.getAttribute('data-render-count')) !== null)
+    await page.evaluate(
+      (t) =>
+        new Promise<void>((resolve) => {
+          const map = window.__flowmapTestMaps![t]
+          if (!map.isMoving()) return resolve()
+          map.once('moveend', () => resolve())
+        }),
+      FLOWMAP_TITLE,
+    )
+
+    // A manual pan, clearly distinct from the fitted view.
+    await page.evaluate((t) => window.__flowmapTestMaps![t].jumpTo({ center: [-105, 42], zoom: 5 }), FLOWMAP_TITLE)
+    const getView = () =>
+      page.evaluate((t) => {
+        const m = window.__flowmapTestMaps![t]
+        return { center: m.getCenter(), zoom: m.getZoom() }
+      }, FLOWMAP_TITLE)
+    const pannedView = await getView()
+
+    // (a) 004 expand/collapse.
+    await expandTrigger(page, FLOWMAP_TITLE).click()
+    const dialog = page.getByRole('dialog')
+    await expect(dialog).toBeVisible()
+    await expect(dialog.locator('.flowmap-chart canvas').first()).toBeVisible()
+    await dialog.getByRole('button', { name: 'Close' }).click()
+    await expect(dialog).not.toBeVisible()
+    let view = await getView()
+    expect(view.center.lng).toBeCloseTo(pannedView.center.lng, 3)
+    expect(view.center.lat).toBeCloseTo(pannedView.center.lat, 3)
+    expect(view.zoom).toBeCloseTo(pannedView.zoom, 3)
+
+    // (b) a genuine data reload — a global filter change.
+    await page.evaluate(() => window.__wftdm!.filterState.set('purpose', 'HBW'))
+    await trueEventually(async () => {
+      const flowCount = await container.getAttribute('data-flow-count')
+      return flowCount !== null && Number(flowCount) === 5 // HBW narrows to 5 flows
+    })
+    view = await getView()
+    expect(view.center.lng).toBeCloseTo(pannedView.center.lng, 3)
+    expect(view.center.lat).toBeCloseTo(pannedView.center.lat, 3)
+    expect(view.zoom).toBeCloseTo(pannedView.zoom, 3)
+    await page.evaluate(() => window.__wftdm!.filterState.set('purpose', 'all'))
+
+    // (c) a basemap switch (Settings modal's real, shipped Apply action —
+    // same mechanism this file's own interleaved-overlay-survival test
+    // already uses to trigger a real setStyle() call).
+    await page.getByRole('button', { name: 'Settings' }).click()
+    await page.getByRole('tab', { name: 'Basemap' }).click()
+    await page.getByRole('radiogroup', { name: 'OpenFreeMap' }).getByRole('radio', { name: 'Bright' }).click()
+    await page.getByRole('button', { name: 'Apply' }).click()
+    await page.getByRole('button', { name: /^Close$/ }).click()
+    await page.waitForTimeout(500) // let the setStyle()-driven repopulate settle
+    view = await getView()
+    expect(view.center.lng).toBeCloseTo(pannedView.center.lng, 3)
+    expect(view.center.lat).toBeCloseTo(pannedView.center.lat, 3)
+    expect(view.zoom).toBeCloseTo(pannedView.zoom, 3)
   })
 })
 

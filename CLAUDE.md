@@ -1761,6 +1761,75 @@ APP-wftdm-dashboard/
     │   │                         # diverge from what an author could
     │   │                         # always write by hand (FR-009). No
     │   │                         # change to composeStyles() itself.
+    │   │                         # 027-map-auto-fit-and-reset: this panel
+    │   │                         # no longer fits its initial view to a
+    │   │                         # static DEFAULT_CENTER/DEFAULT_ZOOM
+    │   │                         # regardless of data — a new
+    │   │                         # `hasAutoFittedRef` one-shot guard, added
+    │   │                         # to the existing data-update effect
+    │   │                         # (zero new effects, zero dependency-array
+    │   │                         # changes), calls the new
+    │   │                         # `panels/mapBounds.ts`'s
+    │   │                         # `computeFlowBounds()` against
+    │   │                         # `buildFlowmapData()`'s own already-
+    │   │                         # deduplicated `locations` output and
+    │   │                         # `map.fitBounds()`s the result — but
+    │   │                         # ONLY when the author configured NEITHER
+    │   │                         # `center` NOR `zoom` (FR-003, the pair
+    │   │                         # treated as one unit), and only once per
+    │   │                         # mount, ever (FR-006 — later filter/
+    │   │                         # scenario changes, basemap switches, and
+    │   │                         # 004 expand/collapse never re-trigger
+    │   │                         # it). Also adds a new shared
+    │   │                         # `ResetViewControl` (new module,
+    │   │                         # `panels/resetViewControl.ts` — the
+    │   │                         # first custom `IControl` shared by BOTH
+    │   │                         # map panel types, matching
+    │   │                         # `mapTooltip.ts`'s own existing shared-
+    │   │                         # module precedent rather than
+    │   │                         # `zonemap3dControl.ts`'s zonemap-only
+    │   │                         # one) to the same corner cluster as
+    │   │                         # `NavigationControl`, resetting to
+    │   │                         # whichever view is currently effective.
+    │   │                         # A real, confirmed MapLibre finding
+    │   │                         # shaped the reset design: `map.
+    │   │                         # cameraForBounds(bounds, opts)` and the
+    │   │                         # position `map.fitBounds(bounds, opts)`
+    │   │                         # itself actually animates to — called
+    │   │                         # back-to-back from the identical,
+    │   │                         # untouched transform, same bounds/
+    │   │                         # padding/maxZoom — can disagree
+    │   │                         # measurably on the resulting center
+    │   │                         # (confirmed empirically via this
+    │   │                         # feature's own Playwright coverage: a
+    │   │                         # real ~0.02°–0.03° drift, reproduced
+    │   │                         # identically across three separate
+    │   │                         # panel instances, ruled out as caused by
+    │   │                         # object mutation or React 18 StrictMode's
+    │   │                         # dev-only double-mount). Fixed by never
+    │   │                         # predicting the destination ahead of
+    │   │                         # time at all — a one-time `map.once
+    │   │                         # ('moveend', ...)` listener captures the
+    │   │                         # REAL landed `getCenter()`/`getZoom()`
+    │   │                         # once the initial fit animation
+    │   │                         # genuinely finishes, and reset always
+    │   │                         # `easeTo()`s straight back to that
+    │   │                         # concrete, already-resolved value —
+    │   │                         # ground truth by construction, nothing
+    │   │                         # left to disagree with reality. Also
+    │   │                         # found and fixed during this feature's
+    │   │                         # own implementation: calling a second,
+    │   │                         # separate `easeTo({pitch:0,bearing:0})`
+    │   │                         # immediately after `fitBounds()`
+    │   │                         # INTERRUPTS it (a second camera
+    │   │                         # animation call issued right after the
+    │   │                         # first one starts freezes center/zoom at
+    │   │                         # whatever they were at that instant) —
+    │   │                         # `pitch`/`bearing` are folded into the
+    │   │                         # SAME `easeTo()`/`fitBounds()` call
+    │   │                         # instead (`FitBoundsOptions` already
+    │   │                         # extends `CameraOptions`, which already
+    │   │                         # includes both).
     │   ├── ZoneMapPanel.tsx      # done (013-zonemap-panel) — the eighth
     │   │                         # and final originally-listed panel
     │   │                         # type. Pure MapLibre choropleth + real
@@ -1857,6 +1926,40 @@ APP-wftdm-dashboard/
     │   │                         # zonemap FROM a real vector basemap TO a
     │   │                         # raster preset via the new global
     │   │                         # Raster Tiles picker).
+    │   │                         # 027-map-auto-fit-and-reset: the same
+    │   │                         # `hasAutoFittedRef`/`ResetViewControl`
+    │   │                         # addition as `FlowMapPanel.tsx`'s own
+    │   │                         # entry above, sourced from geometry
+    │   │                         # instead of flow points —
+    │   │                         # `mapBounds.ts`'s `computeGeometryBounds()`
+    │   │                         # reduces the ALREADY-loaded
+    │   │                         # `zoneGeometry.features` cache (013's
+    │   │                         # own module-level cache, unmodified) to
+    │   │                         # its real polygon extent, independent of
+    │   │                         # which zones have matching metric data
+    │   │                         # (FR-002) — added inside the existing
+    │   │                         # data-update effect, gated the same way
+    │   │                         # (no `center`/`zoom` configured, once
+    │   │                         # per mount). `onReset` additionally
+    │   │                         # resets the existing 3D toggle
+    │   │                         # (`is3dRef`/`threeDToggle.setActive`/
+    │   │                         # layer visibility) before easing
+    │   │                         # pitch/bearing back to 0 — a viewer who
+    │   │                         # tilted into 3D and hits reset gets back
+    │   │                         # to the panel's genuine flat starting
+    │   │                         # state, not a tilted view of the correct
+    │   │                         # bounds. Hit the SAME real
+    │   │                         # `cameraForBounds()`-vs-`fitBounds()`-
+    │   │                         # actual-landing-spot discrepancy
+    │   │                         # `FlowMapPanel.tsx`'s own entry above
+    │   │                         # documents in full — this file's own
+    │   │                         # three real fixture panels sharing one
+    │   │                         # `boundaries` file reproduced it
+    │   │                         # identically byte-for-byte (same
+    │   │                         # resolved-vs-landed drift on all three),
+    │   │                         # which is what first ruled out a
+    │   │                         # per-instance fluke and pointed at the
+    │   │                         # `moveend`-capture fix instead.
     │   └── GraphicWalkerPanel.tsx # done (014-graphic-walker-panel) — the
     │                              # ninth and final originally-listed
     │                              # panel type. Renders <GraphicWalker>

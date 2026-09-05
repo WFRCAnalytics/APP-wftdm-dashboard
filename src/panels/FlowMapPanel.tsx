@@ -19,6 +19,8 @@ import {
   EMPTY_SUMMARIZE_CONFIG,
 } from '@/panels/panelQuery'
 import { buildFlowmapData } from '@/panels/flowmapData'
+import { computeFlowBounds } from '@/panels/mapBounds'
+import { ResetViewControl, type EffectiveView } from '@/panels/resetViewControl'
 import { createMapTooltip, type MapTooltip } from '@/panels/mapTooltip'
 import { resolveEffectiveBasemap, basemapKey } from '@/panels/basemap/resolveEffectiveBasemap'
 import { loadBasemapStyle, BLANK_STYLE, freshBlankStyle } from '@/panels/basemap/loadBasemapStyle'
@@ -129,6 +131,22 @@ export function FlowMapPanel({ config }: { config: FlowMapPanelConfig }) {
   // setRows(result) call, never from a repopulate trigger, so reference
   // equality is the correct, cheap "did the actual data change" check.
   const warnedForRowsRef = useRef<Record<string, unknown>[] | null>(null)
+  // 027-map-auto-fit-and-reset — guards the one-shot auto-fit call in the
+  // data-update effect below: this effect re-runs for reasons OTHER than
+  // a genuine first data load (a layerRepopulateGeneration bump from a
+  // basemap switch or WebGL context recovery, a later real data change
+  // from a filter/scenario switch), and FR-006 requires auto-fit to run
+  // at MOST once per panel mount, never re-triggered afterward — this ref
+  // makes every one of those later re-runs a correct no-op with no new
+  // dependency-array engineering needed (research.md §6).
+  const hasAutoFittedRef = useRef(false)
+  // 027-map-auto-fit-and-reset — the view ResetViewControl's onReset
+  // reads at click time (data-model.md's EffectiveView): populated
+  // synchronously in the mount effect below for an author-configured
+  // panel, or once in the data-update effect for an auto-fitted one.
+  // Never reassigned after its first write (research.md §7).
+  const appliedViewRef = useRef<EffectiveView | null>(null)
+  const resetControlRef = useRef<ResetViewControl | null>(null)
   const [status, setStatus] = useState<'loading' | 'ready' | 'empty' | 'error'>('loading')
   const [rows, setRows] = useState<Record<string, unknown>[]>([])
   // Set to true at the end of the map-creation effect below, once
@@ -249,6 +267,43 @@ export function FlowMapPanel({ config }: { config: FlowMapPanelConfig }) {
     // attributionControl above — unaffected by setStyle() and by 004's
     // relocation for the same reason.
     map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }))
+
+    // 027-map-auto-fit-and-reset (FR-007/FR-008/FR-009) — the shared
+    // reset-to-view control, added into the SAME corner cluster as
+    // NavigationControl above (contracts/map-auto-fit-and-reset.md).
+    // `onReset` reads appliedViewRef.current/mapRef.current at CLICK
+    // time, not at construction time (research.md §7) — always fresh,
+    // regardless of how many times any other effect in this component has
+    // re-run since this control was created.
+    const onReset = () => {
+      const view = appliedViewRef.current
+      const currentMap = mapRef.current
+      if (!view || !currentMap) return
+      // A single easeTo() to a concrete, already-resolved center/zoom
+      // (EffectiveView) for BOTH the author-config and auto-fit cases —
+      // see resetViewControl.ts's own EffectiveView comment for why the
+      // auto-fit case stores a resolved camera rather than re-running
+      // fitBounds() against a raw bounds tuple from whatever camera state
+      // the viewer has since moved to.
+      currentMap.easeTo({ center: view.center, zoom: view.zoom, pitch: 0, bearing: 0, duration: 500 })
+    }
+    const resetControl = new ResetViewControl(onReset)
+    map.addControl(resetControl)
+    resetControlRef.current = resetControl
+
+    // An author-configured center/zoom is known synchronously, right here
+    // at mount — no need to wait for any async data (FR-003's "either one
+    // disables auto-fit entirely" — the data-update effect's own guard
+    // never even attempts a fit for this panel, so this is the ONLY place
+    // appliedViewRef gets populated for such a panel).
+    if (config.center != null || config.zoom != null) {
+      appliedViewRef.current = {
+        center: config.center ?? DEFAULT_CENTER,
+        zoom: config.zoom ?? DEFAULT_ZOOM,
+      }
+      resetControl.setEnabled(true)
+    }
+
     // 012-webgl-context-management — interleaved: true (was false).
     // Halves this panel's WebGL context cost from 2 (a separate
     // maplibregl.Map context plus a separate deck.gl-owned canvas/
@@ -343,6 +398,7 @@ export function FlowMapPanel({ config }: { config: FlowMapPanelConfig }) {
       tooltipRef.current = null
       overlayRef.current = null
       mapRef.current = null
+      resetControlRef.current = null
       // mapReady is NOT reset to false here — this effect's deps are []
       // (mount-only), so this cleanup only ever runs on actual unmount,
       // where no later render would read it anyway; resetting it would
@@ -614,6 +670,47 @@ export function FlowMapPanel({ config }: { config: FlowMapPanelConfig }) {
       console.warn(
         `FlowMapPanel "${config.title}" (metric: ${config.metric}): excluded ${data.excludedCount} row(s) with a missing coordinate or non-positive value.`,
       )
+    }
+
+    // 027-map-auto-fit-and-reset (FR-001/FR-003/FR-004/FR-005/FR-006) —
+    // auto-fit the initial view to the real loaded flow data, but only
+    // when the author has configured NEITHER center NOR zoom (treated as
+    // one unit, FR-003) and only once per panel mount (hasAutoFittedRef,
+    // above). computeFlowBounds() returning null (no displayable flow —
+    // empty result or every row excluded) correctly leaves the static
+    // DEFAULT_CENTER/DEFAULT_ZOOM view already applied at Map construction
+    // in place (FR-004). padding/maxZoom/duration match the real,
+    // confirmed WFRCAnalytics/APP-WFRC-Commute-Patterns production
+    // precedent (research.md §2) — maxZoom bounds the degenerate
+    // single-point case (FR-005) via MapLibre's own fitBounds() option,
+    // no custom degenerate-detection code needed.
+    if (config.center == null && config.zoom == null && !hasAutoFittedRef.current) {
+      const bounds = computeFlowBounds(data.locations)
+      if (bounds && mapRef.current) {
+        hasAutoFittedRef.current = true
+        const currentMap = mapRef.current
+        currentMap.fitBounds(bounds, { padding: 60, maxZoom: 11, duration: 800 })
+        // FR-007/FR-009 — captures the REAL landed center/zoom once the
+        // fit animation genuinely finishes, rather than a value predicted
+        // ahead of time via map.cameraForBounds(). A real, empirically-
+        // confirmed MapLibre quirk ruled out that seemingly simpler
+        // alternative: cameraForBounds() and the actual position
+        // fitBounds() itself animates to for the SAME bounds/options,
+        // called back-to-back from the same untouched transform, can
+        // disagree measurably on center (this feature's own Playwright
+        // coverage caught a real ~0.02°/0.03° drift this way on
+        // ZoneMapPanel.tsx's matching auto-fit block — confirmed not
+        // caused by object mutation or a stale/duplicate map instance,
+        // e.g. from React 18 StrictMode's double-invoke in dev). Reading
+        // the map's own post-animation state directly, via the real
+        // 'moveend' event, is ground truth by construction — there is no
+        // prediction left to disagree with reality.
+        currentMap.once('moveend', () => {
+          const c = currentMap.getCenter()
+          appliedViewRef.current = { center: [c.lng, c.lat], zoom: currentMap.getZoom() }
+          resetControlRef.current?.setEnabled(true)
+        })
+      }
     }
 
     const layer = new FlowmapLayer({

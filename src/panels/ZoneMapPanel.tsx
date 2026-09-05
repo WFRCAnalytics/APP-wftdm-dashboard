@@ -20,9 +20,11 @@ import {
   EMPTY_SUMMARIZE_CONFIG,
 } from '@/panels/panelQuery'
 import { loadZoneGeometry, type ZoneGeometry } from '@/panels/zoneGeometry'
+import { computeGeometryBounds } from '@/panels/mapBounds'
 import { computeAutoDomain, resolveZoneFillColor, resolveZoneHeightFraction } from '@/panels/zonemapColor'
 import { createMapTooltip } from '@/panels/mapTooltip'
 import { ThreeDToggleControl } from '@/panels/zonemap3dControl'
+import { ResetViewControl, type EffectiveView } from '@/panels/resetViewControl'
 import '@/panels/mapControls.css'
 import { resolveEffectiveBasemap, basemapKey } from '@/panels/basemap/resolveEffectiveBasemap'
 import { loadBasemapStyle, BLANK_STYLE, freshBlankStyle } from '@/panels/basemap/loadBasemapStyle'
@@ -153,6 +155,17 @@ export function ZoneMapPanel({ config }: { config: ZoneMapPanelConfig }) {
   // source forward (see that effect's own comment). Kept in sync by the
   // mount effect's own toggle handler on every click.
   const is3dRef = useRef(false)
+  // 027-map-auto-fit-and-reset — same one-shot guard shape as
+  // FlowMapPanel.tsx's own hasAutoFittedRef (research.md §6): the
+  // data-update effect below re-runs for reasons other than a genuine
+  // first geometry load (a layerRepopulateGeneration bump from a basemap
+  // switch, a later real rows/geometry change), and FR-006 requires
+  // auto-fit to run at most once per panel mount.
+  const hasAutoFittedRef = useRef(false)
+  // 027-map-auto-fit-and-reset — same shape as FlowMapPanel.tsx's own
+  // appliedViewRef/resetControlRef (data-model.md, research.md §7).
+  const appliedViewRef = useRef<EffectiveView | null>(null)
+  const resetControlRef = useRef<ResetViewControl | null>(null)
 
   const [status, setStatus] = useState<'loading' | 'ready' | 'empty' | 'error'>('loading')
   const [rows, setRows] = useState<Record<string, unknown>[]>([])
@@ -330,6 +343,54 @@ export function ZoneMapPanel({ config }: { config: ZoneMapPanelConfig }) {
     const threeDToggle = new ThreeDToggleControl(toggle3d)
     map.addControl(threeDToggle)
 
+    // 027-map-auto-fit-and-reset (FR-007/FR-008/FR-009) — same shared
+    // reset-to-view control FlowMapPanel.tsx's own mount effect adds,
+    // added to the SAME corner cluster after NavigationControl/
+    // ThreeDToggleControl above. `onReset` additionally resets the 3D
+    // toggle FIRST (is3dRef/threeDToggle.setActive/layer visibility, the
+    // same three statements toggle3d() above performs for turning 3D
+    // off) before the pitch/bearing easeTo() — a viewer who tilted into
+    // 3D and then hits reset gets back to the panel's genuine flat
+    // starting state, not a tilted view of the correct bounds
+    // (contracts/map-auto-fit-and-reset.md).
+    const onReset = () => {
+      const view = appliedViewRef.current
+      const currentMap = mapRef.current
+      if (!view || !currentMap) return
+      if (is3dRef.current) {
+        is3dRef.current = false
+        threeDToggle.setActive(false)
+        if (currentMap.getLayer(FILL_LAYER_ID)) {
+          currentMap.setLayoutProperty(FILL_LAYER_ID, 'visibility', 'visible')
+        }
+        if (currentMap.getLayer(EXTRUSION_LAYER_ID)) {
+          currentMap.setLayoutProperty(EXTRUSION_LAYER_ID, 'visibility', 'none')
+        }
+      }
+      // A single easeTo() to a concrete, already-resolved center/zoom for
+      // BOTH the author-config and auto-fit cases — see
+      // resetViewControl.ts's own EffectiveView comment and
+      // FlowMapPanel.tsx's own matching onReset for why the auto-fit case
+      // stores a resolved camera rather than re-running fitBounds()
+      // against a raw bounds tuple later.
+      currentMap.easeTo({ center: view.center, zoom: view.zoom, pitch: 0, bearing: 0, duration: 500 })
+    }
+    const resetControl = new ResetViewControl(onReset)
+    map.addControl(resetControl)
+    resetControlRef.current = resetControl
+
+    // Same synchronous author-config capture as FlowMapPanel.tsx's own
+    // mount effect (FR-003 — the data-update effect's own guard never
+    // even attempts a fit for such a panel, so this is the only place
+    // appliedViewRef gets populated for it).
+    if (config.center != null || config.zoom != null) {
+      appliedViewRef.current = {
+        center: config.center ?? DEFAULT_CENTER,
+        zoom: config.zoom ?? DEFAULT_ZOOM,
+      }
+      resetControl.setEnabled(true)
+    }
+
     // Hover/click value inspection (research.md §6) — plain MapLibre
     // mouse events reading the hovered feature's own properties, no
     // deck.gl picking layer. Uses the shared mapTooltip.ts component
@@ -425,6 +486,7 @@ export function ZoneMapPanel({ config }: { config: ZoneMapPanelConfig }) {
       probe.remove()
       probeRef.current = null
       mapRef.current = null
+      resetControlRef.current = null
       map.remove()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -533,6 +595,40 @@ export function ZoneMapPanel({ config }: { config: ZoneMapPanelConfig }) {
     }
     const map = mapRef.current
     const probe = probeRef.current
+
+    // 027-map-auto-fit-and-reset (FR-002/FR-003/FR-004/FR-005/FR-006) —
+    // auto-fit the initial view to the real loaded zone GEOMETRY's own
+    // extent (independent of which zones have matching metric data), but
+    // only when the author has configured NEITHER center NOR zoom
+    // (treated as one unit, FR-003) and only once per panel mount
+    // (hasAutoFittedRef, above). computeGeometryBounds() returning null
+    // (empty geometry) correctly leaves the static DEFAULT_CENTER/
+    // DEFAULT_ZOOM view already applied at Map construction in place
+    // (FR-004). Same padding/maxZoom/duration as FlowMapPanel.tsx's own
+    // call, for a consistent camera-behavior feel across both map panel
+    // types (research.md §2/§4).
+    if (config.center == null && config.zoom == null && !hasAutoFittedRef.current) {
+      const bounds = computeGeometryBounds(zoneGeometry.features)
+      if (bounds) {
+        hasAutoFittedRef.current = true
+        map.fitBounds(bounds, { padding: 60, maxZoom: 11, duration: 800 })
+        // FR-007/FR-009 — captures the REAL landed center/zoom once the
+        // fit animation genuinely finishes, rather than a value predicted
+        // ahead of time — see FlowMapPanel.tsx's own matching auto-fit
+        // block for the full reasoning (a real, empirically-confirmed
+        // MapLibre quirk: map.cameraForBounds() and the actual position
+        // map.fitBounds() itself animates to for the SAME bounds/options,
+        // called back-to-back from the same untouched transform, can
+        // disagree measurably on center — this feature's own Playwright
+        // coverage caught a ~0.02°/0.03° drift this way, confirmed not
+        // caused by object mutation or a stale/duplicate map instance).
+        map.once('moveend', () => {
+          const c = map.getCenter()
+          appliedViewRef.current = { center: [c.lng, c.lat], zoom: map.getZoom() }
+          resetControlRef.current?.setEnabled(true)
+        })
+      }
+    }
 
     const valueField = isComparisonDiff(config.comparison) ? 'diff_value' : config.column
 

@@ -164,6 +164,68 @@ test.describe('User Story 1 - Author renders a zone-level metric as a choropleth
     expect(zoom).toBeCloseTo(11, 0)
   })
 
+  // 027-map-auto-fit-and-reset (FR-002/FR-003) — this is the SAME panel
+  // T007's flowmap regression test relies on being unaffected: ZONEMAP_TITLE
+  // has an explicit `center`/`zoom` in its fixture config
+  // ([-111.925, 40.705] / 11, asserted immediately above), so auto-fit's
+  // own `config.center == null && config.zoom == null` guard must never
+  // even attempt a fit for it — the test above passing unchanged after
+  // this feature's own implementation IS the regression proof (US3); no
+  // separate assertion needed here.
+
+  // "Zone Map Tab Default Basemap" (dashboard-3-basemaps.yaml) omits
+  // center/zoom — the real vehicle for FR-002's own auto-fit-to-geometry
+  // behavior. Its zone geometry (tests/fixtures/geometry/taz.geoparquet,
+  // generate.py's own _zone_boundary_rows()) is a real, known 4x2 grid of
+  // 0.05°-square zones: west=-111.95, south=40.68, east=-111.75,
+  // north=40.78 — independent of which zones have matching metric data
+  // (TAZ 800 has none at all, per this file's own header comment).
+  test('auto-fits its initial view to the real loaded zone geometry (no author-configured center/zoom)', async ({
+    page,
+  }) => {
+    await boot(page)
+    await page.getByRole('tab', { name: 'Basemaps' }).click()
+    const title = 'Zone Map Tab Default Basemap'
+    await waitForRender(page, title)
+
+    await page.evaluate(
+      (t) =>
+        new Promise<void>((resolve) => {
+          const map = window.__zonemapTestMaps![t]
+          if (!map.isMoving()) return resolve()
+          map.once('moveend', () => resolve())
+        }),
+      title,
+    )
+
+    const bounds = await page.evaluate((t) => {
+      const b = window.__zonemapTestMaps![t].getBounds()
+      return { west: b.getWest(), south: b.getSouth(), east: b.getEast(), north: b.getNorth() }
+    }, title)
+
+    // fitBounds()'s own padding only ever EXPANDS the viewport beyond the
+    // raw geometry extent, never contracts it.
+    expect(bounds.west).toBeLessThanOrEqual(-111.95)
+    expect(bounds.east).toBeGreaterThanOrEqual(-111.75)
+    expect(bounds.south).toBeLessThanOrEqual(40.68)
+    expect(bounds.north).toBeGreaterThanOrEqual(40.78)
+
+    const zoom = await page.evaluate((t) => window.__zonemapTestMaps![t].getZoom(), title)
+    const center = await page.evaluate((t) => window.__zonemapTestMaps![t].getCenter(), title)
+    expect([zoom, center.lng, center.lat]).not.toEqual([9, -111.89, 40.76])
+  })
+
+  // FR-004 — "Zone Map Broken Panel (intentional)" (BROKEN_TITLE) reaches
+  // a status/geometryStatus error and renders the shared PanelErrorState
+  // with no map/canvas mounted at all (already covered, unchanged, by this
+  // file's own pre-existing broken-panel test elsewhere below) —
+  // trivially nothing for auto-fit to run against. As with FlowMapPanel.tsx
+  // (see that file's own spec.ts comment), the complementary "geometry
+  // loads but resolves to zero features, panel still reaches 'ready'"
+  // sub-case is covered at the unit level (tests/unit/mapBounds.test.ts's
+  // empty-array case) plus direct review of ZoneMapPanel.tsx's own
+  // `if (bounds)` guard.
+
   test('with no domain configured, the color scale auto-computes from the actual min/max of the returned rows', async ({
     page,
   }) => {
@@ -826,6 +888,158 @@ test.describe('014-map-navigation-controls — the 3D fill-extrusion toggle', ()
     // MapLibre's own hardcoded white staying stuck underneath it.
     expect(styles.text).toBe('rgb(255, 255, 255)')
     expect(styles.groupBg).toBe('rgb(8, 27, 38)')
+  })
+})
+
+// 027-map-auto-fit-and-reset, User Story 4 — the shared reset-to-view
+// control, same corner cluster as NavigationControl/ThreeDToggleControl.
+test.describe('027-map-auto-fit-and-reset — User Story 4: reset-to-view control', () => {
+  test('returns the camera to the auto-fitted geometry extent, with 3D turned back off, after a manual pan/tilt', async ({
+    page,
+  }) => {
+    await boot(page)
+    await page.getByRole('tab', { name: 'Basemaps' }).click()
+    const title = 'Zone Map Tab Default Basemap'
+    const card = panelCard(page, title)
+    await waitForRender(page, title)
+
+    await page.evaluate(
+      (t) =>
+        new Promise<void>((resolve) => {
+          const map = window.__zonemapTestMaps![t]
+          if (!map.isMoving()) return resolve()
+          map.once('moveend', () => resolve())
+        }),
+      title,
+    )
+    const resetBtn = card.locator('.zonemap-chart').getByTitle('Reset view')
+    await expect(resetBtn).toBeEnabled()
+
+    const fittedView = await page.evaluate((t) => {
+      const m = window.__zonemapTestMaps![t]
+      return { center: m.getCenter(), zoom: m.getZoom() }
+    }, title)
+
+    // Toggle 3D on, then pan/tilt well away from the fitted view.
+    await card.getByRole('button', { name: 'Toggle 3D extrusion' }).click()
+    await page.evaluate((t) => window.__zonemapTestMaps![t].jumpTo({ center: [-100, 45], zoom: 3 }), title)
+    expect(
+      await page.evaluate((t) => window.__zonemapTestMaps![t].getPitch(), title),
+    ).toBeGreaterThan(0)
+
+    await resetBtn.click()
+    await trueEventually(async () => {
+      const m = await page.evaluate((t) => {
+        const map = window.__zonemapTestMaps![t]
+        return { center: map.getCenter(), zoom: map.getZoom(), pitch: map.getPitch() }
+      }, title)
+      return (
+        Math.abs(m.center.lng - fittedView.center.lng) < 0.01 &&
+        Math.abs(m.center.lat - fittedView.center.lat) < 0.01 &&
+        Math.abs(m.zoom - fittedView.zoom) < 0.1 &&
+        Math.abs(m.pitch) < 0.5
+      )
+    })
+    await expect(card.getByRole('button', { name: 'Toggle 3D extrusion' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    )
+  })
+
+  test('for an author-configured panel, returns exactly to the configured center/zoom, with 3D back off, after a manual pan/tilt', async ({
+    page,
+  }) => {
+    await boot(page)
+    const card = panelCard(page, ZONEMAP_TITLE)
+    await waitForRender(page, ZONEMAP_TITLE)
+    const resetBtn = card.locator('.zonemap-chart').getByTitle('Reset view')
+    // No auto-fit animation to wait out — captured synchronously at mount.
+    await expect(resetBtn).toBeEnabled()
+
+    await card.getByRole('button', { name: 'Toggle 3D extrusion' }).click()
+    await page.evaluate((t) => window.__zonemapTestMaps![t].jumpTo({ center: [-100, 45], zoom: 3 }), ZONEMAP_TITLE)
+
+    await resetBtn.click()
+    await trueEventually(async () => {
+      const center = await page.evaluate((t) => window.__zonemapTestMaps![t].getCenter(), ZONEMAP_TITLE)
+      const zoom = await page.evaluate((t) => window.__zonemapTestMaps![t].getZoom(), ZONEMAP_TITLE)
+      const pitch = await page.evaluate((t) => window.__zonemapTestMaps![t].getPitch(), ZONEMAP_TITLE)
+      return (
+        Math.abs(center.lng - -111.925) < 0.01 &&
+        Math.abs(center.lat - 40.705) < 0.01 &&
+        Math.abs(zoom - 11) < 0.1 &&
+        Math.abs(pitch) < 0.5
+      )
+    })
+    await expect(card.getByRole('button', { name: 'Toggle 3D extrusion' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    )
+  })
+})
+
+// 027-map-auto-fit-and-reset (FR-006/SC-004) — same guarantee
+// flowmapPanel.spec.ts's own matching test proves for that panel type.
+test.describe('027-map-auto-fit-and-reset — Polish: no re-trigger after a manual pan', () => {
+  test('a manual pan survives 004 expand/collapse, a filter change, and a basemap switch', async ({ page }) => {
+    await boot(page)
+    await page.getByRole('tab', { name: 'Basemaps' }).click()
+    const title = 'Zone Map Tab Default Basemap'
+    const container = await waitForRender(page, title)
+    await page.evaluate(
+      (t) =>
+        new Promise<void>((resolve) => {
+          const map = window.__zonemapTestMaps![t]
+          if (!map.isMoving()) return resolve()
+          map.once('moveend', () => resolve())
+        }),
+      title,
+    )
+
+    await page.evaluate((t) => window.__zonemapTestMaps![t].jumpTo({ center: [-105, 42], zoom: 5 }), title)
+    const getView = () =>
+      page.evaluate((t) => {
+        const m = window.__zonemapTestMaps![t]
+        return { center: m.getCenter(), zoom: m.getZoom() }
+      }, title)
+    const pannedView = await getView()
+
+    // (a) 004 expand/collapse.
+    await expandTrigger(page, title).click()
+    const dialog = page.getByRole('dialog')
+    await expect(dialog).toBeVisible()
+    await expect(dialog.locator('.zonemap-chart canvas').first()).toBeVisible()
+    await dialog.getByRole('button', { name: 'Close' }).click()
+    await expect(dialog).not.toBeVisible()
+    let view = await getView()
+    expect(view.center.lng).toBeCloseTo(pannedView.center.lng, 3)
+    expect(view.center.lat).toBeCloseTo(pannedView.center.lat, 3)
+    expect(view.zoom).toBeCloseTo(pannedView.zoom, 3)
+
+    // (b) a genuine data reload — a global filter change (this panel
+    // reacts to every global filter by default, no `filter:` config).
+    const renderCountBefore = await container.getAttribute('data-render-count')
+    await page.evaluate(() => window.__wftdm!.filterState.set('purpose', 'HBW'))
+    await trueEventually(
+      async () => (await container.getAttribute('data-render-count')) !== renderCountBefore,
+    )
+    view = await getView()
+    expect(view.center.lng).toBeCloseTo(pannedView.center.lng, 3)
+    expect(view.center.lat).toBeCloseTo(pannedView.center.lat, 3)
+    expect(view.zoom).toBeCloseTo(pannedView.zoom, 3)
+    await page.evaluate(() => window.__wftdm!.filterState.set('purpose', 'all'))
+
+    // (c) a basemap switch.
+    await page.getByRole('button', { name: 'Settings' }).click()
+    await page.getByRole('tab', { name: 'Basemap' }).click()
+    await page.getByRole('radiogroup', { name: 'OpenFreeMap' }).getByRole('radio', { name: 'Liberty' }).click()
+    await page.getByRole('button', { name: 'Apply' }).click()
+    await page.getByRole('button', { name: /^Close$/ }).click()
+    await page.waitForTimeout(500)
+    view = await getView()
+    expect(view.center.lng).toBeCloseTo(pannedView.center.lng, 3)
+    expect(view.center.lat).toBeCloseTo(pannedView.center.lat, 3)
+    expect(view.zoom).toBeCloseTo(pannedView.zoom, 3)
   })
 })
 
