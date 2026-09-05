@@ -1,0 +1,55 @@
+/* Bug fix (post-027, no dedicated feature number — a direct fix request,
+ * same as resetViewControl.ts's icon-centering fix above it in git history):
+ * GraphicWalkerPanel.tsx didn't fill its panel's actual height, in both the
+ * inline card view and the 004 expand-dialog view.
+ *
+ * Root cause, confirmed via direct DOM/shadow-DOM inspection (Playwright,
+ * not assumed): `<GraphicWalker>` (the real, installed @kanaries/graphic-
+ * walker React component) renders its own shadow-DOM HOST element — the
+ * div this library creates to attach its shadow root to — with NO height
+ * style or class of its own (confirmed: empty `style` attribute, empty
+ * `className`). INSIDE the shadow root, the library's own top-level `.App`
+ * element correctly uses Tailwind's `h-full` (height: 100%) — so the
+ * library DOES try to stretch to fill its own host, but that host itself
+ * has nothing forcing ITS height, so it just shrinks-to-fit its shadow
+ * content's own intrinsic size instead (confirmed empirically: a 700px
+ * fixed-height wrapper around it left the host at only 635px — `h-full`
+ * inside an unconstrained ancestor bottoms out at intrinsic/auto height,
+ * not 100% of any real container).
+ *
+ * This is a GENUINE library limitation, not just a CSS value to flip on
+ * OUR OWN markup (unlike ZoneMapPanel.tsx's earlier, structurally simpler
+ * hardcoded-height bug, where the map container div is entirely this
+ * app's own element) — `<GraphicWalker>`'s IGWProps has no `style`/
+ * `className` prop reaching that host div (confirmed against the
+ * installed package's own interfaces.d.ts), so there is no prop-based way
+ * to size it from the React side. The host div IS a real, plain light-DOM
+ * element we can still reach via CSS from outside (Shadow DOM only
+ * encapsulates the library's OWN internal styles from leaking out — it
+ * does not stop the app's own stylesheet from styling the host element
+ * itself, which lives in OUR light DOM, not inside the shadow root).
+ *
+ * Fixed the same way this codebase already overrides a third-party
+ * library's own unhelpful default styling elsewhere (mapControls.css) —
+ * a scoped CSS child-selector, not a JS-side imperative DOM mutation.
+ * `.graphic-walker-panel-host` is OUR OWN wrapper div (GraphicWalkerPanel.tsx),
+ * whose own height now correctly comes from its real ancestor (100%,
+ * matching FlowMapPanel.tsx's/ZoneMapPanel.tsx's own established
+ * "trust the ancestor, don't hardcode a pixel number" convention) — the
+ * child selector below then forces the ONE div `<GraphicWalker>` itself
+ * renders directly inside it (its shadow host) to actually fill 100% of
+ * that real height, so the library's own internal `h-full` chain finally
+ * has a definite, non-auto height to resolve against. No `!important`
+ * needed — the host has no competing height rule of its own to out-
+ * specify (confirmed: empty style/class), unlike mapControls.css's own
+ * fight against MapLibre's higher-specificity default CSS.
+ */
+.graphic-walker-panel-host {
+  height: 100%;
+  width: 100%;
+}
+
+.graphic-walker-panel-host > div {
+  height: 100%;
+  width: 100%;
+}

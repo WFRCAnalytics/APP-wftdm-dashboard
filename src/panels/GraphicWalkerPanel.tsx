@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { GraphicWalker } from '@kanaries/graphic-walker'
 import '@kanaries/graphic-walker/dist/style.css'
+import '@/panels/graphicWalkerPanel.css'
 import { Compass } from 'lucide-react'
 
 import { queryArrow } from '@/services/duckdb'
@@ -136,8 +137,21 @@ export function GraphicWalkerPanel({ config }: { config: GraphicWalkerPanelConfi
   // `appearance` (IThemeProps.appearance: 'media' | 'light' | 'dark') —
   // NOT `dark`, that prop's own real .d.ts marks it `@deprecated renamed
   // to appearence` [sic] on the very next line above `appearance` itself.
+  //
+  // height: '100%' (not `config.height ?? 700`) — a real bug fix, the
+  // same class of hardcoded-pixel-height bug already found and fixed once
+  // for ZoneMapPanel.tsx: this div's real ancestor (panelExpandHost.tsx's
+  // inlineAnchor in the card view, dialogAnchor in the 004 expand-dialog
+  // view) already supplies the correct height for whichever context this
+  // panel is currently rendered in — trusting it, rather than reasserting
+  // an independent, disconnected pixel number here, is what lets this
+  // panel actually fill a much taller expand-dialog instead of clipping
+  // at a stale 700px. See graphicWalkerPanel.css for the second, distinct
+  // half of this fix: <GraphicWalker>'s own shadow-DOM host div (this
+  // component has no prop to size it directly) needed a CSS child-
+  // selector override to actually respect that height in turn.
   return (
-    <div style={{ height: config.height ?? 700 }}>
+    <div className="graphic-walker-panel-host" style={{ height: '100%' }}>
       <GraphicWalker data={rows} fields={fields} themeKey="g2" appearance={colorScheme} />
     </div>
   )
