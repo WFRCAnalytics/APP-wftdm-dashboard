@@ -1,0 +1,7 @@
+scenario_name: activitysim-density-variant
+display_name: 'ActivitySim: TAZ 1 Density +40%'
+engine: activitysim
+run_date: '2026-09-05'
+color: '#BAB0AC'
+pinned: false
+notes: TAZ 1 employment +40% (TOTEMP/RETEMPN/FPSEMPN/HEREMPN/OTHEMPN/AGREMPN/MWTEMPN)

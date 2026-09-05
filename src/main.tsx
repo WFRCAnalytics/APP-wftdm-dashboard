@@ -49,7 +49,16 @@ document.documentElement.classList.toggle(
 
 await initDuckDB()
 await discoverScenarios()
-const dashboards = await loadDashboards()
+
+// 026-activitysim-demo-content: dashboards from the new, git-tracked
+// public/demo-dashboard-config/ content root are concatenated after the
+// existing public/dashboard-config/ tabs — loadDashboards() itself needs
+// no change at all, its existing `baseUrl` parameter already supports
+// this second call (research.md #4).
+const dashboards = [
+  ...(await loadDashboards()),
+  ...(await loadDashboards(`${import.meta.env.BASE_URL}demo-dashboard-config/`)),
+]
 
 // Parse failures are per-file and fail loud, not silent — a malformed
 // dashboard-*.yaml is a config-authoring bug (contracts/

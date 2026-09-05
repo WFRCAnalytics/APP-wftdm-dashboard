@@ -74,6 +74,7 @@ manifest.yaml         per-scenario metadata
 - `public/dashboard-config/index.json` and `public/scenarios/index.json` are discovery metadata (a list of filenames/names to fetch), not one of the three config file types above — same category as each other, not a new type (constitution Principle VII still holds: exactly three *config* file types, no more)
 - Parquet outputs live in `{scenario-dir}/summary/` — written by the post-processor
 - Published scenarios are manually copied into `public/scenarios/` in the dashboard repo
+- `public/scenarios/`, `public/dashboard-config/`, and `public/observed/` are ALL gitignored (`npm run dev:fixtures` destructively copies `tests/fixtures/{scenarios,dashboard-config,observed}` into them for local/CI checks — see `scripts/copy-fixtures.js`) — nothing real was ever checked in at those exact paths before `026-activitysim-demo-content`. That feature's own real, non-fixture content (a `summarize.yaml` run through the post-processor against three real ActivitySim `prototype_mtc` runs — baseline + a land-use-density variant + a transit-service variant) lives instead at a **new, separate, git-tracked root**, `public/demo-scenarios/`/`public/demo-dashboard-config/`, discovered via the same `index.json` pattern but never touched by `copy-fixtures.js` and never gitignored (`.gitignore`'s existing three entries are exact directory names, not a wildcard, so no `.gitignore` edit was needed at all). `main.ts`/`scenarioDiscovery.ts` fetch this second root additively, alongside (never instead of) the existing fixture-copy-targeted paths — see `services/scenarioDiscovery.ts`'s entry below and `specs/026-activitysim-demo-content/` for the full design record.
 
 ---
 
@@ -438,7 +439,19 @@ APP-wftdm-dashboard/
     │   │                       # one only proves expand() itself
     │   │                       # resolves correctly, via direct unit
     │   │                       # tests, not through any real panel.
-    │   └── scenarioDiscovery.ts # register observed/ + public/scenarios/ at startup
+    │   └── scenarioDiscovery.ts # register observed/ + public/scenarios/ at startup.
+    │                             # 026-activitysim-demo-content added
+    │                             # registerDemoScenarios() — structurally
+    │                             # identical to registerPublishedScenarios(),
+    │                             # pointed at the new, git-tracked
+    │                             # public/demo-scenarios/ root instead,
+    │                             # called from discoverScenarios() alongside
+    │                             # (not instead of) the two existing
+    │                             # registration calls. A deliberate sibling
+    │                             # function rather than parameterizing
+    │                             # registerPublishedScenarios() itself —
+    │                             # keeps that function's own existing
+    │                             # behavior/tests completely untouched.
     ├── hooks/
     │   ├── useFilterState.ts   # wraps state/filterState.ts with
     │   │                       # useSyncExternalStore (constitution v2.2.0)
@@ -1957,12 +1970,21 @@ const LOCAL = window.location.hostname === 'localhost'
 
 ```js
 await initDuckDB()                          // Web Worker init
-await discoverScenarios()                   // register observed/ + public/scenarios/*
+await discoverScenarios()                   // register observed/ + public/scenarios/* + public/demo-scenarios/*
 applyURLParams()                            // pre-select ?s= scenarios from URL
 const dashboards = await loadDashboards()   // fetch public/dashboard-config/index.json, then each listed dashboard-*.yaml
 renderShell(dashboards)                     // nav tabs, sidebar, scenario manager
 renderDashboard(dashboards[0])              // first tab (Summary) as landing page
 ```
+
+`026-activitysim-demo-content` added a second `loadDashboards()` call
+against `public/demo-dashboard-config/`, concatenated with the existing
+call's result before rendering — `loadDashboards()` itself needed **zero**
+code change, since its existing `baseUrl` parameter already supported this
+second call (confirmed by direct read before implementing). `discoverScenarios()`
+similarly gained one new, additive call (`registerDemoScenarios()`, see
+`services/scenarioDiscovery.ts`'s entry above) — both existing calls in the
+snippet above are unmodified.
 
 ---
 
@@ -2584,6 +2606,79 @@ first cross-reference this list was built from). ✅ done,
     (every registry panel type inherits it automatically, current and
     future, no per-type wiring), added here so the list has a record of
     it at all
+15. ✅ Real, non-synthetic demo content — done
+    (`026-activitysim-demo-content`). Not part of this list when
+    originally written either — the first feature to exercise item 12's
+    Python post-processor (`025-python-postprocessor`) against real
+    ActivitySim output rather than synthetic fixtures. One `summarize.yaml`
+    (repo root, never published — authored against ActivitySim's real
+    confirmed `final_*.csv` column shape, e.g. `zone_id`/`primary_purpose`/
+    `depart`, not `docs/GRAMMAR.md`'s own illustrative example column
+    names, which this feature's own research directly confirmed do NOT
+    match real ActivitySim output) run three times through the unmodified
+    `wftdm-dashboard summarize` CLI against three real `prototype_mtc` runs
+    (a baseline, a land-use-density variant raising TAZ 1 employment ~40%,
+    and a transit-service variant cutting AM/PM `WALK_LOC` in-vehicle-time
+    20%/wait-time 50%) produces 3 scenario folders published to a **new,
+    separate, git-tracked root** — `public/demo-scenarios/`/
+    `public/demo-dashboard-config/` — rather than the existing
+    `public/scenarios/`/`public/dashboard-config/` paths, which stay
+    reserved for `npm run dev:fixtures`'s ephemeral, gitignored copy from
+    `tests/fixtures/` (confirmed, before building anything, that those
+    paths hold zero real checked-in content today — `git ls-files` returns
+    nothing under any of the three existing `public/*` content roots).
+    Three new `dashboard-*.yaml` tabs (Overview, Destination Choice,
+    Transit Service) make both real causal stories directly visible, and
+    the Destination Choice tab's diff table is the first time the
+    project's own already-built `comparison: diff`/`$baseline` mechanism
+    (`018`–`021`) has ever run against real, non-fixture data. Confirmed a
+    real, load-bearing correctness detail before authoring the
+    `time_of_day_period` bin: `expand.py`'s `_expand_manual_breaks()` only
+    ever reads `breaks[1..len(labels)-1]` in the generated SQL — the first
+    and last `breaks` entries are documentary bookends only, not literal
+    boundaries — resolved by reading that function's real source directly
+    rather than trusting `docs/GRAMMAR.md`'s own two worked examples, which
+    use inconsistent breaks-vs-labels lengths relative to each other.
+    Confirmed no usable real zone-boundary geometry exists for
+    `prototype_mtc`'s 25 zones (the only geometry ActivitySim's own example
+    ships, `taz1454.geojson`, is an unrelated 1,454-zone full-region MTC
+    system) — `zonemap` is deliberately not used anywhere in this feature's
+    panel set. `main.ts`/`scenarioDiscovery.ts` gained small, additive-only
+    code (a second `loadDashboards()` call — needing zero change to that
+    function itself, since its existing `baseUrl` parameter already
+    supported it — and one new sibling function, `registerDemoScenarios()`)
+    to also discover the new root; every existing call/behavior for
+    `public/observed/`/`public/scenarios/`/`public/dashboard-config/` is
+    untouched, confirmed by the full existing Vitest/Playwright suite
+    passing unchanged.
+
+    A real, confirmed regression was found and fixed during this feature's
+    own implementation, not merely anticipated: `playwright.config.js`'s
+    `webServer` runs the raw `vite` dev server directly against the repo's
+    real `public/` tree, and `tests/global-setup.js`/`global-teardown.js`
+    only ever swap fixture content in/out of `public/observed`/
+    `public/scenarios`/`public/dashboard-config`/`public/geometry` — never
+    `public/demo-scenarios`/`public/demo-dashboard-config`, since those
+    didn't exist before this feature. Because the new content is real,
+    git-tracked, and *permanently* present (unlike every other path under
+    `public/`, which are all gitignored and only ever populated
+    ephemerally), it bled into every Playwright run unconditionally,
+    breaking 5 real assertions that count or name scenarios/tabs exactly
+    (`scenarioNamesInOrder()` in `settingsModal.spec.ts`, a query-count
+    check in `dashboardShell.spec.ts`). Fixed, with the user's explicit
+    sign-off on touching test-harness infrastructure (not test assertions,
+    not `tests/fixtures/`, not `copy-fixtures.js`) to do it: `global-setup.js`
+    now blanks `public/demo-scenarios/index.json` and
+    `public/demo-dashboard-config/index.json` to `[]` before the run (so
+    `registerDemoScenarios()`/`loadDashboards()` discover nothing, the
+    identical effect to the directories not existing), and
+    `global-teardown.js` restores the original file content after. A
+    directory-rename approach (hiding the whole `public/demo-scenarios/`
+    tree, not just its `index.json`) was tried first and rejected — it hit
+    a real, repeatedly-reproducible Windows `EPERM` on `renameSync()` even
+    with a retry-with-backoff wrapper, while blanking two small files never
+    failed once. Full suite re-confirmed passing (230/230) after the fix.
+    See `specs/026-activitysim-demo-content/` for the full design record.
 
 ---
 

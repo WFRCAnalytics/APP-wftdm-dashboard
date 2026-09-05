@@ -1,0 +1,46 @@
+# 026-activitysim-demo-content — User Story 2. Demonstrates the transit
+# variant's real, already-measured AM/PM WALK_LOC mode-share shift:
+# AM/PM WLK_LOC_WLK_TOTIVT cut 20%, WLK_LOC_WLK_IWAIT cut 50%, producing a
+# real ~+1 percentage-point WALK_LOC share increase specifically in AM/PM,
+# with MD/EV as an internal control that stays essentially flat
+# (specs/026-activitysim-demo-content/spec.md Research Finding #7).
+
+header:
+  tab: Transit Service
+  title: Transit Service — AM/PM WALK_LOC Effect
+
+layout:
+  row_mode_share_by_period:
+    - type:    plotly
+      title:   "WALK_LOC Mode Share by Time-of-Day Period"
+      metric:  mode_share_by_period
+      height:  450
+      width:   1.0
+      scenarios: [activitysim-baseline, activitysim-transit-variant]
+      filter:
+        trip_mode: WALK_LOC
+      traces:
+        - type: bar
+          x:    $metric.time_of_day_period
+          y:    $metric.share
+          name: $scenario
+      layout:
+        xaxis: { title: "Time-of-Day Period", categoryorder: "array",
+                 categoryarray: [EA, AM, MD, PM, EV] }
+        yaxis: { title: "WALK_LOC Share of Trips", tickformat: ".1%" }
+        showlegend: true
+
+  row_mode_share_by_period_all_modes:
+    - type:    table
+      title:   All Modes by Time-of-Day Period (baseline)
+      metric:  mode_share_by_period
+      scenario: activitysim-baseline
+      width:   1.0
+      sort:       { column: time_of_day_period, order: asc }
+      pagination: 25
+      searchable: true
+      columns:
+        - { field: time_of_day_period, label: Period }
+        - { field: trip_mode,          label: Mode }
+        - { field: trips,              label: Trips, format: ",.0f" }
+        - { field: share,              label: Share, format: ".1%" }

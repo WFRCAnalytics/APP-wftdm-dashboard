@@ -1,0 +1,53 @@
+# 026-activitysim-demo-content — User Story 1 (+ User Story 3's $baseline
+# diff table, added below). Demonstrates the density variant's real,
+# already-measured destination-choice pull toward TAZ 1 (destination_zone_id
+# = 1): TAZ 1's employment was raised ~40%, producing a real +37%-40%
+# increase in trips/tours destined there (specs/026-activitysim-demo-content/
+# spec.md Research Finding #7).
+
+header:
+  tab: Destination Choice
+  title: Destination Choice — Land-Use Density Effect
+
+layout:
+  row_destination_zone:
+    - type:    plotly
+      title:   Trips by Destination Zone
+      metric:  trips_by_destination_zone
+      height:  450
+      width:   1.0
+      scenarios: [activitysim-baseline, activitysim-density-variant, activitysim-transit-variant]
+      traces:
+        - type: bar
+          x:    $metric.destination_zone_id
+          y:    $metric.trips
+          name: $scenario
+      layout:
+        xaxis: { title: "Destination Zone ID (TAZ)" }
+        yaxis: { title: "Trips" }
+        showlegend: true
+
+  # User Story 3 — the project's existing $baseline comparison: diff
+  # mechanism (018-021), exercised against real data for the first time.
+  # activitysim-baseline is listed first in public/demo-scenarios/index.json
+  # (FR-006), so it resolves as the automatic diff baseline with zero
+  # manual Settings > Scenarios action required.
+  row_baseline_diff:
+    - type:       table
+      title:      Density Variant vs. Baseline — Trip Count Change
+      metric:     trips_by_destination_zone
+      width:      1.0
+      comparison:
+        type: diff
+        a:    "$baseline"
+        b:    activitysim-density-variant
+        expr: "b.trips - a.trips"
+      compare_on: [destination_zone_id, primary_purpose]
+      sort:       { column: diff_value, order: desc }
+      pagination: 25
+      searchable: true
+      columns:
+        - { field: destination_zone_id, label: "Destination Zone (TAZ)" }
+        - { field: primary_purpose,     label: Purpose }
+        - { field: diff_value,          label: "Trip Count Change", format: "+,.0f",
+            color_scale: diverging, domain: [-50, 50] }

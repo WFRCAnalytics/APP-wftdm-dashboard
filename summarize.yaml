@@ -1,0 +1,146 @@
+# summarize.yaml — 026-activitysim-demo-content
+#
+# Authored against ActivitySim's real, confirmed prototype_mtc output shape
+# (specs/026-activitysim-demo-content/research.md), not the illustrative
+# column names in docs/GRAMMAR.md's own worked example. Run unmodified,
+# three times, once per real raw ActivitySim output directory (baseline,
+# density-variant, transit-variant) — see
+# specs/026-activitysim-demo-content/contracts/discovery.md for the exact
+# three `wftdm-dashboard summarize` invocations.
+#
+# Never published to the browser (constitution: summarize.yaml is
+# post-processor-only).
+
+version: 2
+
+# ── Sources ──────────────────────────────────────────────────────────────
+# Real ActivitySim final_*.csv output filenames, resolved relative to
+# --input at CLI invocation time.
+
+sources:
+  households: final_households.csv
+  persons:    final_persons.csv
+  tours:      final_tours.csv
+  trips:      final_trips.csv
+  land_use:   final_land_use.csv
+
+# ── Mappings ─────────────────────────────────────────────────────────────
+# Real ActivitySim mode names (confirmed against configs/tour_mode_choice.csv
+# / trip_mode_choice.csv this session) grouped into 5 categories.
+
+mappings:
+  major_trip_mode:
+    DRIVEALONEFREE: SOV
+    DRIVEALONEPAY:  SOV
+    SHARED2FREE:    HOV
+    SHARED2PAY:     HOV
+    SHARED3FREE:    HOV
+    SHARED3PAY:     HOV
+    WALK_LOC:       Transit
+    WALK_LRF:       Transit
+    WALK_EXP:       Transit
+    WALK_HVY:       Transit
+    WALK_COM:       Transit
+    DRIVE_LOC:      Transit
+    DRIVE_LRF:      Transit
+    DRIVE_EXP:      Transit
+    DRIVE_HVY:      Transit
+    DRIVE_COM:      Transit
+    WALK:           Non-Motorized
+    BIKE:           Non-Motorized
+    TAXI:           Ride Hail
+    TNC_SINGLE:     Ride Hail
+    TNC_SHARED:     Ride Hail
+
+# ── Bins ─────────────────────────────────────────────────────────────────
+# time_of_day_period buckets `depart` (an integer hour-of-day column on
+# trips) into ActivitySim's own real EA/AM/MD/PM/EV periods, per this
+# feature's own network_los.yaml-confirmed boundaries (research.md #2).
+# Only breaks[1..4] (5, 9, 14, 18) are load-bearing SQL boundaries —
+# breaks[0]/breaks[5] (0, 24) are documentary bookends only, per
+# _expand_manual_breaks()'s real, confirmed codegen.
+
+bins:
+  time_of_day_period:
+    column: depart
+    type:   manual_breaks
+    breaks: [0, 5, 9, 14, 18, 24]
+    labels: [EA, AM, MD, PM, EV]
+
+# ── SQL Fragments ────────────────────────────────────────────────────────
+
+sql_fragments:
+  trips_merged: |
+    trips t
+    JOIN land_use lu ON t.destination = lu.zone_id
+
+# ── Metrics ──────────────────────────────────────────────────────────────
+# Five metrics, each → one Parquet file in summary/{name}.parquet.
+# See data-model.md for the full column-level contract each one satisfies.
+
+metrics:
+
+  # FR-002(c): scalar KPIs for the Overview tab's value boxes.
+  - name: summary_kpis
+    description: Scalar KPIs for the Overview tab's value boxes
+    sql: |
+      SELECT
+        (SELECT COUNT(DISTINCT household_id) FROM households) AS total_households,
+        (SELECT COUNT(DISTINCT person_id)    FROM persons)    AS total_persons,
+        (SELECT COUNT(DISTINCT trip_id)      FROM trips)      AS total_trips,
+        (SELECT COUNT(DISTINCT tour_id)      FROM tours)      AS total_tours,
+        (SELECT AVG(mode_choice_logsum)      FROM trips)      AS avg_trip_mode_choice_logsum,
+        (SELECT COUNT(DISTINCT trip_id) FROM trips) * 1.0
+          / (SELECT COUNT(DISTINCT household_id) FROM households) AS trips_per_household
+
+  # FR-002(a): trips/tours by destination zone — makes the density
+  # variant's real TAZ 1 destination-choice pull visible (User Story 1),
+  # and is the basis of the $baseline diff panel (User Story 3).
+  - name: trips_by_destination_zone
+    description: Trips and tours aggregated by destination zone and purpose
+    sql: |
+      SELECT
+        lu.zone_id       AS destination_zone_id,
+        t.primary_purpose,
+        COUNT(*)                  AS trips,
+        COUNT(DISTINCT t.tour_id) AS tours
+      FROM $sql.trips_merged
+      GROUP BY lu.zone_id, t.primary_purpose
+
+  # FR-002(b): trip mode share by time-of-day period — makes the transit
+  # variant's real AM/PM WALK_LOC shift visible (User Story 2). Kept at
+  # the real, ungrouped trip_mode (not major_trip_mode) since the whole
+  # point is the WALK_LOC-specific shift, which grouping into "Transit"
+  # would hide.
+  - name: mode_share_by_period
+    description: Trip mode share by real ActivitySim time-of-day period
+    sql: |
+      SELECT
+        $bins.time_of_day_period AS time_of_day_period,
+        t.trip_mode,
+        COUNT(*) AS trips,
+        COUNT(*) * 1.0 / SUM(COUNT(*)) OVER (PARTITION BY $bins.time_of_day_period) AS share
+      FROM trips t
+      GROUP BY time_of_day_period, t.trip_mode
+
+  # FR-002(d): overall trip mode share (not time-split) for the Overview tab.
+  - name: trip_mode_share
+    description: Overall trip mode share by grouped major mode category
+    sql: |
+      SELECT
+        CASE t.trip_mode $mappings.major_trip_mode END AS major_trip_mode,
+        COUNT(*) AS trips,
+        COUNT(*) * 1.0 / SUM(COUNT(*)) OVER () AS share
+      FROM trips t
+      GROUP BY major_trip_mode
+
+  # FR-002(e): trip purpose breakdown for the Overview tab.
+  - name: trip_purpose_share
+    description: Trip counts and share by primary purpose
+    sql: |
+      SELECT
+        t.primary_purpose,
+        COUNT(*) AS trips,
+        COUNT(*) * 1.0 / SUM(COUNT(*)) OVER () AS share
+      FROM trips t
+      GROUP BY t.primary_purpose

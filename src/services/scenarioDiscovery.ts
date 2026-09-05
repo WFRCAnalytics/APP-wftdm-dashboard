@@ -1,6 +1,10 @@
 // Registers public/observed/ and public/scenarios/* at startup, and (step 3,
 // added by User Story 3) applies ?s= URL params. See
 // specs/001-data-state-layer/contracts/scenario-discovery.md.
+// 026-activitysim-demo-content: also registers public/demo-scenarios/* —
+// the new, git-tracked real-content root, additive alongside (not a
+// replacement for) the paths above. See
+// specs/026-activitysim-demo-content/contracts/discovery.md.
 import { registerFileURL } from './duckdb.ts'
 import * as appState from '../state/appState.ts'
 
@@ -74,6 +78,40 @@ async function registerPublishedScenarios(): Promise<void> {
 }
 
 /**
+ * 026-activitysim-demo-content: registers every scenario listed in
+ * public/demo-scenarios/index.json — structurally identical to
+ * registerPublishedScenarios() above (same fail-soft-per-scenario and
+ * fail-soft-on-missing-index.json behavior), pointed at the new,
+ * git-tracked demo-scenarios/ content root instead. A deliberate sibling
+ * function rather than a parameterized registerPublishedScenarios(), so
+ * that function's own existing behavior/tests stay completely untouched
+ * (spec.md FR-010).
+ */
+async function registerDemoScenarios(): Promise<void> {
+  let names: string[]
+  try {
+    names = await fetchJSON<string[]>(`${base}demo-scenarios/index.json`)
+  } catch {
+    // No public/demo-scenarios/index.json — this feature's content hasn't
+    // been generated/published yet. Not a failure of discoverScenarios()
+    // as a whole, mirroring registerPublishedScenarios()'s own handling.
+    return
+  }
+
+  for (const name of names) {
+    const folderUrl = `${base}demo-scenarios/${name}/summary`
+    appState.register(name, { source: 'url', path: folderUrl })
+    try {
+      await registerSummaryFolder(folderUrl, name)
+      appState.setStatus(name, 'ready')
+    } catch (err) {
+      console.warn(`scenarioDiscovery: failed to register demo scenario "${name}"`, err)
+      appState.setStatus(name, 'failed')
+    }
+  }
+}
+
+/**
  * Reads repeated `s` params from the page URL (`?s=observed&s=abm_2026`) and
  * marks each matching, already-registered scenario active. Any value
  * matching nothing is ignored, never thrown. Duplicate values collapse to a
@@ -97,5 +135,6 @@ function applyURLParams(): void {
 export async function discoverScenarios(): Promise<void> {
   await registerObserved()
   await registerPublishedScenarios()
+  await registerDemoScenarios()
   applyURLParams()
 }
