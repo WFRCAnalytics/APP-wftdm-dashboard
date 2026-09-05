@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
+import '@/panels/mapControls.css'
 import { Landmark, Globe, Map as MapIcon, type LucideIcon } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -11,6 +12,7 @@ import {
   type CuratedRasterProvider,
 } from '@/panels/basemap/registry'
 import { loadBasemapStyle, freshBlankStyle } from '@/panels/basemap/loadBasemapStyle'
+import { DEFAULT_CENTER, DEFAULT_ZOOM } from '@/panels/FlowMapPanel'
 import { useGlobalBasemap } from '@/hooks/useGlobalBasemap'
 import { setGlobalBasemap } from '@/state/basemapState'
 import { PanelEmptyState } from '@/panels/PanelEmptyState'
@@ -23,6 +25,13 @@ import type { BasemapPresetName } from '@/panels/basemap/types'
 // specs/021-basemap-catalog-redesign/research.md for the full design
 // history — including a superseded per-entry-Popover-preview draft (§3's
 // own revision note) this component deliberately does NOT implement.
+// UI polish pass (post-merge correction): preview map now carries the
+// same NavigationControl/attribution/default-view-state FlowMapPanel.tsx/
+// ZoneMapPanel.tsx already use (see the mount effect below), "Explore
+// options" moved beside the Raster Tiles heading, and this component's
+// own top block (preview + description + Apply) is now fixed while only
+// the catalog sections scroll — see settingsModal.tsx's own Basemap
+// TabsContent, which no longer owns that scroll itself.
 
 // Test-only instrumentation, additive only, never read by application
 // code — same category as FlowMapPanel.tsx's own __flowmapTestMaps.
@@ -119,12 +128,35 @@ export function BasemapTab() {
   // (a tab switch or modal close), since neither TabsContent nor
   // DialogContent force-mounts in this codebase. No overlay, no data
   // query — this map renders nothing but the staged basemap itself.
+  //
+  // UI polish pass: center/zoom, NavigationControl, and the collapsing
+  // attribution control now reuse the EXACT same values/construction
+  // FlowMapPanel.tsx/ZoneMapPanel.tsx already use — DEFAULT_CENTER/
+  // DEFAULT_ZOOM imported directly from FlowMapPanel.tsx (not redefined
+  // here), so UGRC's real regional styling is visible immediately without
+  // a manual zoom-in, and every catalog entry is compared at the same,
+  // consistent extent. `interactive: false` is kept (the preview is
+  // deliberately not a free-roam map), but MapLibre's `interactive`
+  // option only disables the MAP's own drag/scroll/keyboard handlers —
+  // NavigationControl's buttons call map.zoomIn()/zoomOut()/
+  // resetNorthPitch() directly and are unaffected, so a viewer can still
+  // zoom in for a closer look or reset rotation via the control itself.
   useEffect(() => {
     const map = new maplibregl.Map({
       container: previewContainerRef.current!,
       style: freshBlankStyle(),
+      center: DEFAULT_CENTER,
+      zoom: DEFAULT_ZOOM,
       interactive: false,
+      // Same first-class-library-control discipline FlowMapPanel.tsx/
+      // ZoneMapPanel.tsx already established — MapLibre's own built-in
+      // collapsing attribution, not custom UI.
+      attributionControl: { compact: true },
     })
+    // Same NavigationControl construction as FlowMapPanel.tsx/
+    // ZoneMapPanel.tsx — visualizePitch: true makes the compass button
+    // reset bearing AND pitch together in one click.
+    map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }))
     mapRef.current = map
     map.on('load', () => setMapReady(true))
     window.__basemapPreviewTestMap = map
@@ -179,29 +211,47 @@ export function BasemapTab() {
   const stagedIsRaster = isRasterProviderSelection(stagedSelection)
 
   return (
-    <div className="flex flex-col gap-4">
-      {/* T012/T016 — the ONE shared preview area, above the four sections. */}
-      <div className="relative h-[220px] w-full overflow-hidden rounded-md border border-border">
-        <div ref={previewContainerRef} className="h-full w-full" />
-        {stagedIsRaster && (
-          <div className="absolute inset-0 flex items-center justify-center bg-muted p-4 text-center text-sm text-muted-foreground">
-            No live preview for raster providers — Apply to use it.
-          </div>
-        )}
+    // UI polish pass: this component now owns its OWN internal scroll
+    // split — settingsModal.tsx's Basemap TabsContent no longer sets
+    // overflow-y-auto itself (unlike every other tab, which still relies
+    // on that shared behavior unchanged). h-full so the fixed-height
+    // ancestor chain (DialogContent -> Tabs -> TabsContent) actually
+    // reaches this component; min-h-0 so the flex-1 scroll region below
+    // can shrink correctly instead of forcing the whole tab to grow.
+    <div className="flex h-full min-h-0 flex-col gap-4">
+      {/* FIXED header block — preview map, description, and Apply never
+          scroll, regardless of how long the sections list below gets. */}
+      <div className="flex flex-shrink-0 flex-col gap-4">
+        {/* T012/T016 — the ONE shared preview area, above the four sections. */}
+        <div className="relative h-[220px] w-full overflow-hidden rounded-md border border-border">
+          <div ref={previewContainerRef} className="h-full w-full" />
+          {stagedIsRaster && (
+            <div className="absolute inset-0 flex items-center justify-center bg-muted p-4 text-center text-sm text-muted-foreground">
+              No live preview for raster providers — Apply to use it.
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-sm text-muted-foreground">
+            Applies to every flowmap/zonemap panel that has no basemap configured by its own
+            dashboard author.
+          </p>
+          {/* T018 — the ONLY call to setGlobalBasemap() in this component. */}
+          <Button type="button" size="sm" onClick={() => setGlobalBasemap(stagedSelection)}>
+            Apply
+          </Button>
+        </div>
       </div>
 
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-sm text-muted-foreground">
-          Applies to every flowmap/zonemap panel that has no basemap configured by its own
-          dashboard author.
-        </p>
-        {/* T018 — the ONLY call to setGlobalBasemap() in this component. */}
-        <Button type="button" size="sm" onClick={() => setGlobalBasemap(stagedSelection)}>
-          Apply
-        </Button>
-      </div>
-
-      <div className="flex flex-col gap-4">
+      {/* SCROLLABLE region — only the catalog sections scroll. scrollbar-thin
+          — see tokens.css's own comment for why (a codebase-wide search
+          found no existing custom scrollbar style to match, so this
+          feature proposes one and applies it consistently, not just here). */}
+      <div
+        data-testid="basemap-sections-scroll"
+        className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto scrollbar-thin pr-1"
+      >
         {/* T014 — UGRC Vector Tiles / CARTO Vector Tiles / OpenFreeMap. */}
         {SECTIONS.map((section) => (
           <div key={section.heading} className="flex flex-col gap-1">
@@ -232,12 +282,23 @@ export function BasemapTab() {
           </div>
         ))}
 
-        {/* T015/T016/T017 — Raster Tiles: loading/error/empty/ready + the
-            "Explore options" link. Participates in the SAME stage-then-
-            Apply flow as the sections above (FR-013) — it just never
-            drives the live preview (FR-008). */}
+        {/* T015/T016/T017 — Raster Tiles: loading/error/empty/ready.
+            Participates in the SAME stage-then-Apply flow as the sections
+            above (FR-013) — it just never drives the live preview
+            (FR-008). "Explore options" sits beside the heading itself
+            (same flex row), not stacked below the dropdown. */}
         <div className="flex flex-col gap-1">
-          <h3 className="font-heading text-sm font-semibold">Raster Tiles</h3>
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="font-heading text-sm font-semibold">Raster Tiles</h3>
+            <a
+              href="https://leaflet-extras.github.io/leaflet-providers/preview/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm text-primary underline-offset-2 hover:underline"
+            >
+              Explore options
+            </a>
+          </div>
           {rasterStatus.kind === 'loading' && (
             <div
               data-testid="raster-loading-skeleton"
@@ -275,14 +336,6 @@ export function BasemapTab() {
               )}
             </select>
           )}
-          <a
-            href="https://leaflet-extras.github.io/leaflet-providers/preview/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-sm text-primary underline-offset-2 hover:underline"
-          >
-            Explore options
-          </a>
         </div>
       </div>
     </div>

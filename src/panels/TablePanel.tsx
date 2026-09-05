@@ -208,7 +208,12 @@ export function TablePanel({ config }: { config: TablePanelConfig }) {
         <PanelEmptyState icon={SearchX} message="No rows match your search" />
       ) : (
         <>
-          <div className="overflow-x-auto">
+          {/* 021-basemap-catalog-redesign: scrollbar-thin — see
+              tokens.css's own comment; applied here as one of this app's
+              other significant scrollable regions, found during that
+              feature's own codebase-wide search, not newly introduced by
+              it. */}
+          <div className="overflow-x-auto scrollbar-thin">
             <table className="w-full border-collapse font-body text-sm">
               <thead>
                 <tr className="border-b border-border">

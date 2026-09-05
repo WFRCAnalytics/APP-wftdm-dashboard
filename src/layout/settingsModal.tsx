@@ -23,9 +23,19 @@ import { DocumentationTab } from '@/layout/settings/documentationTab'
 // (FR-019/FR-021, research.md §7). Tabs switches from a horizontal
 // top-row strip to a vertical left-side rail (orientation="vertical" +
 // flex-row), making a future tab addition a straightforward list
-// insertion (FR-020). TabsContent keeps its existing overflow-y-auto —
-// it just needed a properly-bounded ancestor (flex-1 min-h-0) to actually
-// take effect, which it didn't have before this change.
+// insertion (FR-020). TabsContent keeps its existing overflow-y-auto for
+// three of the four tabs — it just needed a properly-bounded ancestor
+// (flex-1 min-h-0) to actually take effect, which it didn't have before
+// this change. scrollbar-thin (tokens.css) applied to all three for
+// consistency with the Basemap tab below, even though Appearance/
+// Documentation rarely grow tall enough to actually scroll.
+//
+// UI polish pass (post-merge correction): the Basemap tab's own
+// TabsContent no longer sets overflow-y-auto itself — basemapTab.tsx now
+// owns its OWN internal fixed-header/scrollable-sections split (its
+// preview map + description + Apply button must never scroll, only the
+// catalog sections below them), so the outer TabsContent here is just a
+// plain flex passthrough giving it real height to work with.
 export function SettingsModal() {
   return (
     <Dialog>
@@ -44,16 +54,16 @@ export function SettingsModal() {
             <TabsTrigger value="basemap">Basemap</TabsTrigger>
             <TabsTrigger value="documentation">Documentation</TabsTrigger>
           </TabsList>
-          <TabsContent value="appearance" className="min-h-0 flex-1 overflow-y-auto">
+          <TabsContent value="appearance" className="min-h-0 flex-1 overflow-y-auto scrollbar-thin">
             <AppearanceTab />
           </TabsContent>
-          <TabsContent value="scenarios" className="min-h-0 flex-1 overflow-y-auto">
+          <TabsContent value="scenarios" className="min-h-0 flex-1 overflow-y-auto scrollbar-thin">
             <ScenariosTab />
           </TabsContent>
-          <TabsContent value="basemap" className="min-h-0 flex-1 overflow-y-auto">
+          <TabsContent value="basemap" className="flex min-h-0 flex-1 flex-col">
             <BasemapTab />
           </TabsContent>
-          <TabsContent value="documentation" className="min-h-0 flex-1 overflow-y-auto">
+          <TabsContent value="documentation" className="min-h-0 flex-1 overflow-y-auto scrollbar-thin">
             <DocumentationTab />
           </TabsContent>
         </Tabs>

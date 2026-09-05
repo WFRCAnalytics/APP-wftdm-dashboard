@@ -54,7 +54,26 @@ const TabsContent = React.forwardRef<
   <TabsPrimitive.Content
     ref={ref}
     className={cn(
-      'mt-2 font-body focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+      // UI polish pass (post-merge correction): data-[state=inactive]:!hidden
+      // is load-bearing, not decorative. Radix already sets the native
+      // `hidden` HTML attribute on inactive content, but the browser's own
+      // `[hidden] { display: none }` rule is a user-agent-origin default —
+      // ANY author-defined display utility a caller passes via `className`
+      // (e.g. basemapTab.tsx's own `flex`) wins the cascade over it
+      // regardless of selector specificity, since author styles beat
+      // user-agent styles unless the UA rule is !important (it isn't).
+      // Confirmed directly, via a live Playwright reproduction: with a
+      // `flex` TabsContent inactive, its computed `display` was `flex`, not
+      // `none` — it stayed a real flex item in the shared Tabs Root's row,
+      // silently splitting that row's width with whichever tab WAS active
+      // and shifting that tab's own position. The `!` (important) modifier
+      // here forces `display: none !important` whenever `data-state`
+      // reports inactive, unconditionally overriding any display utility a
+      // caller applies on top — a fix at the shared primitive, not a
+      // one-off workaround in basemapTab.tsx alone, since any future
+      // TabsContent usage with a non-block display utility would hit the
+      // exact same bug.
+      'mt-2 font-body focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring data-[state=inactive]:!hidden',
       className,
     )}
     {...props}

@@ -31,9 +31,14 @@ const ALL_FILTERS: ['*'] = ['*']
 // Default view state when a panel's config omits center/zoom — roughly
 // the Wasatch Front, matching both real reference apps' own default
 // centering (research.md; docs/GRAMMAR.md's own worked example uses the
-// same coordinates).
-const DEFAULT_CENTER: [number, number] = [-111.89, 40.76]
-const DEFAULT_ZOOM = 9
+// same coordinates). Exported (021-basemap-catalog-redesign) so
+// layout/settings/basemapTab.tsx's own shared preview map can reuse the
+// EXACT same values directly rather than redefining an equivalent pair —
+// ZoneMapPanel.tsx still keeps its own private copy (untouched, out of
+// this feature's scope) since importing across two already-independent
+// panel types for two primitive numbers isn't worth the coupling.
+export const DEFAULT_CENTER: [number, number] = [-111.89, 40.76]
+export const DEFAULT_ZOOM = 9
 
 // 012-webgl-context-management's own BLANK_STYLE_LAYER_IDS constant
 // (guarding a since-REMOVED transformStyle option below against

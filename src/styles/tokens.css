@@ -78,6 +78,42 @@ body {
   font-family: var(--font-body);
 }
 
+/* 021-basemap-catalog-redesign: a single, simple, token-driven custom
+   scrollbar style — confirmed via a full codebase search (grep for
+   scrollbar-thin/::-webkit-scrollbar/scrollbar-color across src/) that NO
+   custom scrollbar styling existed anywhere in this app before this.
+   Applied consistently to every significant scrollable region found
+   during that same search (this feature's own new Basemap-tab sections
+   region, the Settings modal's other per-tab scroll regions, and
+   TablePanel.tsx's horizontal table scroll) rather than only this
+   feature's own — a one-off scrollbar style here would just relocate the
+   inconsistency, not fix it. Plain custom properties, not a Tailwind
+   plugin: `scrollbar-width`/`scrollbar-color` (Firefox) and the
+   `::-webkit-scrollbar*` pseudo-elements (Chromium/WebKit) have no
+   Tailwind utility equivalents at all in this project's pinned Tailwind
+   v3 — `tailwindcss-scrollbar`-style plugins exist but would be a new
+   dependency for four rules. Colors reference the SAME --border/
+   --muted-foreground tokens already used everywhere else, so this
+   automatically follows the app's light/dark theme with no extra rule. */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+.scrollbar-thin::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background-color: var(--border);
+  border-radius: 9999px;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background-color: var(--muted-foreground);
+}
+
 .dark {
   --background: var(--brand-background-dark);
   --foreground: var(--brand-white);

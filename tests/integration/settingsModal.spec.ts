@@ -95,6 +95,31 @@ test.describe('User Story 1 - One place to manage dashboard-wide settings', () =
     await expect(page.getByRole('button', { name: 'Dark' })).toHaveAttribute('aria-pressed', 'false')
   })
 
+  // UI polish pass (post-merge correction): a REAL regression, confirmed
+  // directly before this fix — Radix Tabs' Presence child genuinely tears
+  // down an inactive tab's content (not merely CSS-hides it), so the
+  // Appearance tab's own `mode` used to be lost on every round trip
+  // through another Settings tab, silently reverting Light/Dark back to
+  // System. Fixed by lifting `mode` out of local useState into
+  // state/themeState.ts (module-level, survives the remount) — see that
+  // module's own comment for the full finding.
+  test('a Light/Dark selection survives switching to another Settings tab and back', async ({
+    page,
+  }) => {
+    await boot(page)
+    await page.getByRole('button', { name: 'Settings' }).click()
+    await page.getByRole('tab', { name: 'Appearance' }).click()
+    await page.getByRole('button', { name: 'Light' }).click()
+    await expect(page.getByRole('button', { name: 'Light' })).toHaveAttribute('aria-pressed', 'true')
+
+    await page.getByRole('tab', { name: 'Scenarios' }).click()
+    await page.getByRole('tab', { name: 'Appearance' }).click()
+
+    await expect(page.getByRole('button', { name: 'Light' })).toHaveAttribute('aria-pressed', 'true')
+    await expect(page.getByRole('button', { name: 'System' })).toHaveAttribute('aria-pressed', 'false')
+    await expect(page.locator('html')).not.toHaveClass(/dark/)
+  })
+
   test('Scenarios tab shows each loaded scenario\'s real file path and status (FR-005)', async ({
     page,
   }) => {
@@ -175,6 +200,56 @@ test.describe('User Story 3 - A settings modal that does not resize or rearrange
     expect(new Set(sizes).size).toBe(1)
   })
 
+  // UI polish pass (post-merge correction): a REAL regression, confirmed
+  // directly before this fix — Radix already sets the native `hidden`
+  // attribute on an inactive tabpanel, but basemapTab.tsx's own TabsContent
+  // additionally carried a `flex` display utility, which (as an
+  // author-origin style) silently overrode the browser's own
+  // `[hidden] { display: none }` user-agent default. The Basemap tabpanel
+  // therefore stayed a real flex item in the shared Tabs Root's row even
+  // while inactive, splitting that row's width with whichever tab WAS
+  // active — Appearance/Scenarios/Documentation each rendered at roughly
+  // HALF their real available width, visibly clipping their own content.
+  // Fixed at the shared primitive (components/ui/tabs.tsx's own
+  // `data-[state=inactive]:!hidden`), not just in basemapTab.tsx, since any
+  // future TabsContent usage with a non-block display utility would hit
+  // the identical bug.
+  test('every tab\'s own content area renders at the full available width, not split with a hidden sibling tab', async ({
+    page,
+  }) => {
+    await boot(page)
+    await page.getByRole('button', { name: 'Settings' }).click()
+    // Scoped to the dialog — an unscoped [role="tabpanel"] query is a real
+    // strict-mode violation once a graphic-walker panel is on the page at
+    // all (its own internal Data/Visualization switcher uses role="tabpanel"
+    // too, the same nested-tablist hazard already documented for
+    // dashboardShell.spec.ts's page-level getByRole('tab') query).
+    const dialog = page.getByRole('dialog')
+
+    const widths: number[] = []
+    for (const name of ['Appearance', 'Scenarios', 'Basemap', 'Documentation']) {
+      await page.getByRole('tab', { name }).click()
+      const panel = dialog.locator('[role="tabpanel"]:not([hidden])')
+      const box = await panel.boundingBox()
+      widths.push(box!.width)
+    }
+    // All four active tabpanels must occupy the SAME width — any hidden
+    // sibling still participating in flex layout would shrink whichever
+    // tab is currently active below this shared value.
+    for (const w of widths) expect(Math.abs(w - widths[0])).toBeLessThan(2)
+
+    // Every inactive tabpanel (within this modal) must be genuinely
+    // display:none, not merely visually offscreen — confirms the fix,
+    // not just its side effect.
+    const inactiveDisplays = await dialog.evaluate((dialogEl) =>
+      Array.from(dialogEl.querySelectorAll('[role="tabpanel"][hidden]')).map(
+        (el) => getComputedStyle(el).display,
+      ),
+    )
+    expect(inactiveDisplays.length).toBeGreaterThan(0)
+    for (const d of inactiveDisplays) expect(d).toBe('none')
+  })
+
   test('the four tab triggers stack vertically, to the left of the active content (FR-020)', async ({ page }) => {
     await boot(page)
     await page.getByRole('button', { name: 'Settings' }).click()
@@ -210,13 +285,17 @@ test.describe('User Story 3 - A settings modal that does not resize or rearrange
     const tallBox = await dialog.boundingBox()
 
     expect(tallBox!.height).toBe(shortBox!.height)
-    // The Basemap tab's own content area is the one that scrolls — not
-    // the dialog itself.
-    const basemapContentOverflowsY = await page.evaluate(() => {
-      const panel = document.querySelector('[role="tabpanel"][data-state="active"]')
-      return panel ? panel.scrollHeight > panel.clientHeight : false
+    // The Basemap tab's own internal sections region is the one that
+    // scrolls — not the outer tabpanel/dialog, and not the fixed preview/
+    // description/Apply header block above it (UI polish pass:
+    // basemapTab.tsx now owns its own fixed-header/scrollable-sections
+    // split instead of relying on the shared TabsContent-level scroll
+    // every other tab still uses unchanged).
+    const sectionsOverflowY = await page.evaluate(() => {
+      const el = document.querySelector('[data-testid="basemap-sections-scroll"]')
+      return el ? el.scrollHeight > el.clientHeight : false
     })
-    expect(basemapContentOverflowsY).toBe(true)
+    expect(sectionsOverflowY).toBe(true)
   })
 
   test("020-settings-modal's existing Appearance tab coverage is unaffected by this feature (FR-022)", async ({
@@ -432,6 +511,49 @@ test.describe('User Story 1 - Sectioned basemap catalog with stage-then-Apply', 
 
     await page.getByRole('tab', { name: 'Basemap' }).click() // switch back
     await trueEventually(async () => page.evaluate(() => window.__basemapPreviewTestMap !== undefined))
+  })
+
+  test('the preview map carries the same NavigationControl/attribution/default view state as FlowMapPanel/ZoneMapPanel', async ({
+    page,
+  }) => {
+    await boot(page)
+    await page.getByRole('button', { name: 'Settings' }).click()
+    await page.getByRole('tab', { name: 'Basemap' }).click()
+    await trueEventually(async () => page.evaluate(() => window.__basemapPreviewTestMap !== undefined))
+
+    const state = await page.evaluate(() => {
+      const map = window.__basemapPreviewTestMap!
+      const center = map.getCenter()
+      return {
+        center: [center.lng, center.lat],
+        zoom: map.getZoom(),
+        hasNavigationControl: document.querySelector('.maplibregl-ctrl-zoom-in, .maplibregl-ctrl-compass') !== null,
+        hasCompactAttribution: document.querySelector('.maplibregl-ctrl-attrib.maplibregl-compact') !== null,
+      }
+    })
+    // Same DEFAULT_CENTER/DEFAULT_ZOOM FlowMapPanel.tsx exports and uses
+    // itself — imported directly by basemapTab.tsx, not redefined.
+    expect(state.center[0]).toBeCloseTo(-111.89, 1)
+    expect(state.center[1]).toBeCloseTo(40.76, 1)
+    expect(state.zoom).toBeCloseTo(9, 0)
+    expect(state.hasNavigationControl).toBe(true)
+    expect(state.hasCompactAttribution).toBe(true)
+  })
+
+  test('the preview map\'s fixed header (map, description, Apply) never scrolls with the sections list', async ({
+    page,
+  }) => {
+    await boot(page)
+    await page.getByRole('button', { name: 'Settings' }).click()
+    await page.getByRole('tab', { name: 'Basemap' }).click()
+
+    const applyButton = page.getByRole('button', { name: 'Apply' })
+    const beforeScroll = await applyButton.boundingBox()
+    await page.getByTestId('basemap-sections-scroll').evaluate((el) => {
+      el.scrollTop = el.scrollHeight
+    })
+    const afterScroll = await applyButton.boundingBox()
+    expect(afterScroll).toEqual(beforeScroll) // Apply (and the preview above it) never moved
   })
 
   test('picking a global preset re-renders an unconfigured panel, with no page reload (SC-003)', async ({
