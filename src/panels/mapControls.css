@@ -143,8 +143,21 @@
    deck.gl/MapboxOverlay involved at all, unlike every real flowmap
    panel in this app). */
 
+/* display: flex !important — a THIRD instance of this file's own
+   documented specificity gap (see the `background`/`:hover` overrides
+   above): MapLibre's own `.maplibregl-ctrl-group button{display:block;
+   ...}` (confirmed directly in the installed maplibre-gl.css) has an
+   extra type selector (`button`) beyond this rule's bare single class —
+   (0,1,1) beats (0,1,0) — so `display:flex` was silently losing the
+   cascade and never actually applying; `align-items`/`justify-content`
+   were correspondingly inert. Real, confirmed bug (027-map-auto-fit-
+   and-reset's own investigation into a visibly off-center
+   ResetViewControl icon): this button's own '3D'/'2D' TEXT content
+   happened to look acceptably centered anyway, purely as a coincidence
+   of block-level text flow — masking that this rule's flex centering
+   had never actually been in effect at all. */
 .wftdm-3d-toggle-button {
-  display: flex;
+  display: flex !important;
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
@@ -269,8 +282,18 @@
    `color` automatically, so no icon-specific dark-mode override is needed
    here the way NavigationControl's own hardcoded-color icons required
    above. */
+/* display: flex !important — the SAME real, confirmed specificity gap as
+   `.wftdm-3d-toggle-button` above: MapLibre's own `.maplibregl-ctrl-group
+   button{display:block; ...}` (0,1,1) beats this rule's bare single class
+   (0,1,0), so `display:flex` never actually applied — `align-items`/
+   `justify-content` were correspondingly inert. This is what was actually
+   causing the icon to render off-center (flush against the LEFT edge,
+   vertically centered only by an unrelated block-layout coincidence) —
+   confirmed directly via getBoundingClientRect() on both the button and
+   its child <svg> (leftGap: 0px, rightGap: 14px, before this fix), not
+   assumed from reading the CSS alone. */
 .wftdm-reset-view-button {
-  display: flex;
+  display: flex !important;
   align-items: center;
   justify-content: center;
   box-sizing: border-box;

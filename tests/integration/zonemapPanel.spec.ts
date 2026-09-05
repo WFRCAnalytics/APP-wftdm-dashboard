@@ -912,7 +912,7 @@ test.describe('027-map-auto-fit-and-reset — User Story 4: reset-to-view contro
         }),
       title,
     )
-    const resetBtn = card.locator('.zonemap-chart').getByTitle('Reset view')
+    const resetBtn = card.locator('.zonemap-chart').getByTitle('Zoom to extents')
     await expect(resetBtn).toBeEnabled()
 
     const fittedView = await page.evaluate((t) => {
@@ -952,7 +952,7 @@ test.describe('027-map-auto-fit-and-reset — User Story 4: reset-to-view contro
     await boot(page)
     const card = panelCard(page, ZONEMAP_TITLE)
     await waitForRender(page, ZONEMAP_TITLE)
-    const resetBtn = card.locator('.zonemap-chart').getByTitle('Reset view')
+    const resetBtn = card.locator('.zonemap-chart').getByTitle('Zoom to extents')
     // No auto-fit animation to wait out — captured synchronously at mount.
     await expect(resetBtn).toBeEnabled()
 

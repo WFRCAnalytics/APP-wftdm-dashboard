@@ -34,14 +34,29 @@ export type EffectiveView = { center: [number, number]; zoom: number }
 // this class, so this control never goes stale regardless of how many
 // times the owning panel's effects re-run.
 //
-// The icon is the real, verbatim stroke="currentColor" home SVG confirmed
-// directly in WFRCAnalytics/APP-WFRC-Commute-Patterns's own shipped
-// src/map.js (constitution Principle VIII mandate tier — research.md §2),
-// not redrawn. stroke="currentColor" means the icon automatically
+// The icon is lucide-react's real, installed `Maximize` icon (this
+// project's fixed, established icon set, constitution Principle
+// VI/Technology Stack Reference — confirmed directly against the
+// installed lucide-react@0.460.0 package's own
+// dist/esm/icons/maximize.js, not guessed: its four corner-bracket paths
+// are reproduced verbatim below) — the classic GIS "zoom to full extent"
+// convention (ArcGIS/QGIS), replacing an earlier hand-drawn home icon
+// that read as "go home", not "fit to bounds" (a real, confirmed mismatch
+// between the icon's own metaphor and what this control actually does).
+// lucide-react's icons are React components, not usable directly inside
+// this plain-DOM/innerHTML IControl (matching ThreeDToggleControl's own
+// non-React pattern) — its own real, installed `defaultAttributes.js`
+// (viewBox 0 0 24 24, fill=none, stroke=currentColor, stroke-linecap/
+// -linejoin=round) is reproduced by hand instead of adding lucide's
+// separate raw-SVG distribution as a new dependency for four path
+// strings. stroke-width kept at 2.5 (not lucide's own default of 2) to
+// match this control's own already-established visual weight at this
+// 15px render size (the icon this replaces used the same 2.5). Like its
+// predecessor, stroke="currentColor" means the icon automatically
 // inherits the button's own `color: var(--foreground)` (mapControls.css)
 // in both themes — no dark-mode-specific CSS fix needed, unlike
 // NavigationControl's own hardcoded-color icons.
-const HOME_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>`
+const ZOOM_TO_EXTENTS_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>`
 
 export class ResetViewControl implements IControl {
   private container?: HTMLDivElement
@@ -63,9 +78,9 @@ export class ResetViewControl implements IControl {
     this.button = document.createElement('button')
     this.button.type = 'button'
     this.button.className = 'wftdm-reset-view-button'
-    this.button.innerHTML = HOME_ICON_SVG
-    this.button.title = 'Reset view'
-    this.button.setAttribute('aria-label', 'Reset view')
+    this.button.innerHTML = ZOOM_TO_EXTENTS_ICON_SVG
+    this.button.title = 'Zoom to extents'
+    this.button.setAttribute('aria-label', 'Zoom to extents')
     // Starts disabled — spec.md FR-009: no effective view (author-config
     // or auto-fit) has been established yet at construction time. The
     // owning panel calls setEnabled(true) the moment one is.

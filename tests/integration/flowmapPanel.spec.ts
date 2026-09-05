@@ -551,7 +551,7 @@ test.describe('027-map-auto-fit-and-reset — User Story 4: reset-to-view contro
     await boot(page)
     const card = panelCard(page, FLOWMAP_TITLE)
     const container = card.locator('.flowmap-chart')
-    const resetBtn = container.getByTitle('Reset view')
+    const resetBtn = container.getByTitle('Zoom to extents')
 
     // The button (created at Map construction, unaffected by the
     // mapReady delay) already exists but has no effective view yet — the
@@ -605,7 +605,7 @@ test.describe('027-map-auto-fit-and-reset — User Story 4: reset-to-view contro
     await page.getByRole('tab', { name: 'Basemaps' }).click()
     const title = 'Flowmap Explicit View Override'
     const container = panelCard(page, title).locator('.flowmap-chart')
-    const resetBtn = container.getByTitle('Reset view')
+    const resetBtn = container.getByTitle('Zoom to extents')
     await trueEventually(async () => (await container.getAttribute('data-render-count')) !== null)
     // No auto-fit animation to wait out — the view was captured
     // synchronously at mount for this panel.
