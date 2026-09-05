@@ -111,6 +111,15 @@ python/wftdm_dashboard/static/
 *.hdf5
 *.csv.gz
 
+# 026-activitysim-demo-content: public/demo-scenarios/ is this project's
+# first REAL, permanent, git-tracked scenario content (see CLAUDE.md item
+# 15) — unlike every other Parquet on disk, its .parquet files are the
+# actual deliverable, not ephemeral fixture/model-run output, and must be
+# committed. Scoped negation, this one content root only — public/scenarios/
+# and public/geometry/ (fixture-copy destinations, see the "Fixture copies
+# into public/" block above) correctly keep the blanket rule.
+!/public/demo-scenarios/**/*.parquet
+
 # ── Dashboard YAML configs ────────────────────────────────────────────────────
 # .wfrc/ configs live in the model repo alongside scenario output, not here
 .wfrc/
