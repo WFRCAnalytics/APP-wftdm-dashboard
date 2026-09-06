@@ -14,6 +14,7 @@ import {
 } from '@/panels/panelQuery'
 import { buildFlowGraph, layoutFlowGraph, type SankeyLayout } from '@/panels/sankeyGraph'
 import { resolveNamedColorScheme } from '@/panels/sankeyColor'
+import { createMapTooltip, type MapTooltip } from '@/panels/mapTooltip'
 import { PanelEmptyState } from '@/panels/PanelEmptyState'
 import { PanelErrorState } from '@/panels/PanelErrorState'
 import type { SankeyPanelConfig } from '@/layout/types'
@@ -42,7 +43,37 @@ function resolveFallbackColors(el: HTMLElement): string[] {
 
 const SVG_NS = 'http://www.w3.org/2000/svg'
 
-function renderSvg(layout: SankeyLayout, width: number, height: number, colors: readonly string[]): SVGSVGElement {
+// Real, confirmed bug (not application logic at all): every link <path>/
+// node <rect> used to carry a native SVG <title> child for its hover text.
+// Native title-attribute tooltips are shown by the BROWSER itself, on a
+// fixed OS-level timer, historically well over a second (Chrome) before
+// ever appearing — the ENTIRE ~2s hover delay, confirmed by finding this
+// <title> usage directly (not a debounce/setTimeout/d3 event-binding issue
+// anywhere in this file). Replaced with the SAME shared, instant, custom
+// tooltip component this project already built and proved this session for
+// FlowMapPanel.tsx/ZoneMapPanel.tsx's own hover — mapTooltip.ts is already
+// fully framework/library-agnostic (plain DOM, `show(x, y, html)` taking
+// container-relative pixel coordinates) with no map-specific assumption
+// anywhere in its own implementation, so reusing it here needed zero
+// changes to that module — a real THIRD caller confirming its own
+// "shared across panel types" design intent, not a new bespoke tooltip.
+//
+// `container` is the same element the tooltip was created against
+// (`createMapTooltip(el)` in the mount effect below) — needed here only to
+// convert each mouse event's viewport-relative clientX/clientY into
+// coordinates relative to that container's own top-left corner, exactly
+// what mapTooltip.ts's own `show()` contract expects (the same conversion
+// MapLibre's MapMouseEvent.point/deck.gl's PickingInfo.x/y already do for
+// the two map panel types, done by hand here since a raw native DOM event
+// carries no such convenience).
+function renderSvg(
+  layout: SankeyLayout,
+  width: number,
+  height: number,
+  colors: readonly string[],
+  tooltip: MapTooltip,
+  container: HTMLElement,
+): SVGSVGElement {
   const colorForId = new Map<string, string>()
   let colorIndex = 0
   const colorFor = (id: string): string => {
@@ -53,6 +84,19 @@ function renderSvg(layout: SankeyLayout, width: number, height: number, colors: 
       colorForId.set(id, color)
     }
     return color
+  }
+
+  // id -> real label lookup, so link tooltips show "SOV → HOV" rather than
+  // the internal side-namespaced node id ("source:SOV -> target:HOV") the
+  // removed <title> text literally rendered before — a real, minor content
+  // quality fix that falls directly out of building real tooltip content
+  // here instead of a one-line native title string, not a separate,
+  // unrelated change.
+  const labelById = new Map(layout.nodes.map((n) => [n.id, n.label]))
+
+  function showTooltip(event: MouseEvent, html: string) {
+    const rect = container.getBoundingClientRect()
+    tooltip.show(event.clientX - rect.left, event.clientY - rect.top, html)
   }
 
   const svg = document.createElementNS(SVG_NS, 'svg')
@@ -72,9 +116,11 @@ function renderSvg(layout: SankeyLayout, width: number, height: number, colors: 
     path.setAttribute('data-source-id', link.sourceId)
     path.setAttribute('data-target-id', link.targetId)
     path.setAttribute('data-value', String(link.value))
-    const title = document.createElementNS(SVG_NS, 'title')
-    title.textContent = `${link.sourceId} -> ${link.targetId}: ${link.value}`
-    path.appendChild(title)
+    const sourceLabel = labelById.get(link.sourceId) ?? link.sourceId
+    const targetLabel = labelById.get(link.targetId) ?? link.targetId
+    const html = `<strong>${sourceLabel} → ${targetLabel}</strong><br/>${link.value}`
+    path.addEventListener('mousemove', (event) => showTooltip(event, html))
+    path.addEventListener('mouseleave', () => tooltip.hide())
     linksGroup.appendChild(path)
   }
   svg.appendChild(linksGroup)
@@ -89,9 +135,9 @@ function renderSvg(layout: SankeyLayout, width: number, height: number, colors: 
     rect.setAttribute('fill', colorFor(node.id))
     rect.setAttribute('data-node-id', node.id)
     rect.setAttribute('data-node-side', node.side)
-    const title = document.createElementNS(SVG_NS, 'title')
-    title.textContent = node.label
-    rect.appendChild(title)
+    const html = `<strong>${node.label}</strong>`
+    rect.addEventListener('mousemove', (event) => showTooltip(event, html))
+    rect.addEventListener('mouseleave', () => tooltip.hide())
     nodesGroup.appendChild(rect)
 
     const text = document.createElementNS(SVG_NS, 'text')
@@ -127,8 +173,28 @@ export function SankeyPanel({ config }: { config: SankeyPanelConfig }) {
   // ValueBoxPanel.tsx's own comment.
   const activeScenarioNames = useActiveScenarios()
   const containerRef = useRef<HTMLDivElement>(null)
+  const tooltipRef = useRef<MapTooltip | null>(null)
+  const svgRef = useRef<SVGSVGElement | null>(null)
   const [status, setStatus] = useState<'loading' | 'ready' | 'empty' | 'error'>('loading')
   const [rows, setRows] = useState<Record<string, unknown>[]>([])
+
+  // Mount-only: create the shared hover tooltip (mapTooltip.ts) once,
+  // against this panel's own container — same lifetime/cleanup convention
+  // as FlowMapPanel.tsx/ZoneMapPanel.tsx's own tooltip. Deliberately NOT
+  // recreated inside the render-and-swap effect below (which replaces the
+  // <svg> on every data/resize change) — the tooltip div is a SEPARATE,
+  // persistent sibling of the <svg> inside this same container, never
+  // touched by that effect's own svg-only swap (see its own comment).
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return undefined
+    const tooltip = createMapTooltip(el)
+    tooltipRef.current = tooltip
+    return () => {
+      tooltip.destroy()
+      tooltipRef.current = null
+    }
+  }, [])
 
   // Data fetch — identical shape to every other data-bound panel type
   // (PlotlyPanel.tsx/ObservablePlotPanel.tsx). Does NOT build the
@@ -192,6 +258,8 @@ export function SankeyPanel({ config }: { config: SankeyPanelConfig }) {
     let renderCount = 0
 
     const rebuild = () => {
+      const tooltip = tooltipRef.current
+      if (!tooltip) return
       const { width, height } = el.getBoundingClientRect()
       if (width === 0 || height === 0) return
       if (width === lastWidth && height === lastHeight) return
@@ -200,8 +268,13 @@ export function SankeyPanel({ config }: { config: SankeyPanelConfig }) {
       try {
         const layout = layoutFlowGraph(graph, width, height)
         const colors = resolveNamedColorScheme(config.color_scheme) ?? resolveFallbackColors(el)
-        const svg = renderSvg(layout, width, height, colors)
-        el.replaceChildren(svg)
+        const svg = renderSvg(layout, width, height, colors, tooltip, el)
+        // Swap ONLY the <svg> — never el.replaceChildren(svg), which would
+        // also wipe the tooltip div the mount effect above appended as a
+        // separate, persistent sibling inside this same container.
+        svgRef.current?.remove()
+        el.appendChild(svg)
+        svgRef.current = svg
         renderCount += 1
         el.dataset.renderCount = String(renderCount)
       } catch {
@@ -247,6 +320,14 @@ export function SankeyPanel({ config }: { config: SankeyPanelConfig }) {
           // container is the same DOM node whether inline or inside 004's
           // expand dialog.
           height: '100%',
+          // relative — mapTooltip.ts's own documented requirement: its
+          // tooltip div is `position: absolute`, anchored to the nearest
+          // positioned ancestor, which must be THIS container (matching
+          // FlowMapPanel.tsx/ZoneMapPanel.tsx's own map container, which
+          // gets this from MapLibre's own `maplibregl-map` class instead —
+          // this container has no such library-provided class, so it's set
+          // explicitly here).
+          position: 'relative',
           display: status === 'ready' ? undefined : 'none',
         }}
       />
