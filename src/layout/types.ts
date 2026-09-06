@@ -335,6 +335,14 @@ export interface GraphicWalkerPanelConfig extends PanelConfigBase {
   // the existing multi-scenario $scenario. union (research.md §6)
   fields?: GraphicWalkerFieldOverride[] // optional — overrides specific
   // inferred fields by `fid` (research.md §5)
+  dataset_picker?: boolean // optional, additive (028-graphic-walker-
+  // dataset-picker) — when true, the viewer gets a control listing every
+  // dataset queryable against the active scenario(s) (or, if `scenario`
+  // is also set, against that one scenario alone) and can switch it at
+  // view time. `dataset` stays REQUIRED regardless — it's the picker's
+  // initial/default selection, never optional (research.md §6). Absent
+  // or false: identical to this panel type's original 014 behavior, no
+  // picker shown.
 }
 
 /** Any panel type that participates in basemap resolution — FlowMapPanelConfig

@@ -1214,7 +1214,10 @@ Snapshot model: does not share DuckDB connection or respond to global sidebar fi
 ```yaml
 - type:     graphic-walker
   title:    Free-form Visual Analytics
-  dataset:  trip_mode_share     # which scenario__* view to query
+  dataset:  trip_mode_share     # which scenario__* view to query — also
+                                 # the picker's initial selection when
+                                 # dataset_picker is true (still required
+                                 # either way)
   scenario: good_scenario       # optional — pins to one scenario's view,
                                  # same meaning as every other data-bound
                                  # panel type's own scenario: key; omit to
@@ -1222,6 +1225,17 @@ Snapshot model: does not share DuckDB connection or respond to global sidebar fi
                                  # scenarios (the existing $scenario.
                                  # mechanism, adding a scenario column the
                                  # viewer can drag onto any shelf themselves)
+  dataset_picker: true          # optional, default false
+                                 # (028-graphic-walker-dataset-picker) —
+                                 # shows the viewer a control listing every
+                                 # dataset queryable against the active
+                                 # scenario(s) (or, with scenario: also
+                                 # set, against that one scenario alone)
+                                 # and lets them switch it at view time.
+                                 # Switching re-queries and discards any
+                                 # chart the viewer had built. Absent or
+                                 # false: identical to this panel type's
+                                 # original fixed-dataset behavior.
   limit:    100000               # row limit passed to DuckDB before handoff
   height:   700
   width:    1.0
@@ -1238,6 +1252,16 @@ nominal/dimension, date/timestamp → temporal/dimension) — a dashboard
 author never has to hand-author a field-type definition for every column
 of a dataset. `fields:` only needs an entry for the columns where that
 default guess is wrong (014-graphic-walker-panel).
+
+`dataset_picker`'s own list of selectable datasets only ever offers a
+metric name that (a) has a real `{scenario}__{metric}` view for every
+scenario in scope, and (b) has the SAME real columns in every one of
+those views — a metric present everywhere but with genuinely different
+columns per scenario (a data-authoring inconsistency, not something a
+real `summarize.yaml` should ever produce, since one metric definition is
+applied identically to every scenario) is deliberately excluded rather
+than offered as a choice that would fail the moment it's picked
+(028-graphic-walker-dataset-picker).
 
 ### `type: markdown`
 

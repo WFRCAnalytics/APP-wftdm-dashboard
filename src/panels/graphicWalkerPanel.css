@@ -47,9 +47,27 @@
 .graphic-walker-panel-host {
   height: 100%;
   width: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
-.graphic-walker-panel-host > div {
+/* 028-graphic-walker-dataset-picker: the host's own direct children now
+ * include the (optional) DatasetPicker control ABOVE this content area —
+ * a real bug caught during that feature's implementation: the original,
+ * unscoped `.graphic-walker-panel-host > div` rule below matched EVERY
+ * direct child div, including the picker's own small wrapper, stretching
+ * it to fill the panel's entire height too. Scoped to this dedicated
+ * `.graphic-walker-panel-content` wrapper instead — flex:1/min-height:0
+ * lets it correctly absorb whatever height picker doesn't use, giving the
+ * child-selector rule below a definite, bounded height to resolve `h-full`
+ * against exactly as before, with the picker unaffected. */
+.graphic-walker-panel-content {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+}
+
+.graphic-walker-panel-content > div {
   height: 100%;
   width: 100%;
 }

@@ -2059,6 +2059,113 @@ APP-wftdm-dashboard/
     │                              # semantics keep the whole 0.x minor in
     │                              # range) — the exact pin is load-
     │                              # bearing, not a style choice.
+    │                              # 028-graphic-walker-dataset-picker
+    │                              # added a NEW, opt-in capability
+    │                              # alongside 014's original fixed-
+    │                              # dataset behavior (never a
+    │                              # replacement — every existing config
+    │                              # is unaffected): a new
+    │                              # `dataset_picker?: boolean` field on
+    │                              # `GraphicWalkerPanelConfig`
+    │                              # (`dataset` itself stays required
+    │                              # unconditionally — it's simply the
+    │                              # picker's initial selection) shows the
+    │                              # viewer a control listing every
+    │                              # dataset genuinely queryable against
+    │                              # the active scenario(s), and lets them
+    │                              # switch it at view time — re-querying
+    │                              # and discarding whatever chart they'd
+    │                              # built, by design (a fresh `data`/
+    │                              # `fields` prop pair is what
+    │                              # `<GraphicWalker>` needs anyway; no
+    │                              # explicit "reset" call exists). New
+    │                              # pure module `panels/
+    │                              # graphicWalkerDatasets.ts` —
+    │                              # `listSelectableDatasets()` derives
+    │                              # the offered list from
+    │                              # `services/duckdb.ts`'s own
+    │                              # already-existing `listViews()`
+    │                              # (a zero-callers export since 001,
+    │                              # its FIRST real consumer), filtered to
+    │                              # views prefixed by a currently
+    │                              # *active* scenario name (excludes
+    │                              # `zoneGeometry.ts`'s own unrelated
+    │                              # `zonemap-geom__*` views without a
+    │                              # guessed regex — `"zonemap-geom"` can
+    │                              # never itself be a registered scenario
+    │                              # name) and intersected — not unioned —
+    │                              # across every scenario in scope, so
+    │                              # every offered choice is guaranteed to
+    │                              # have a view everywhere `sqlExpander.ts`'s
+    │                              # existing, unmodified `expandScenario()`
+    │                              # would need one. A SECOND, real,
+    │                              # confirmed gap surfaced during this
+    │                              # feature's own implementation (not
+    │                              # merely anticipated): view EXISTENCE
+    │                              # alone doesn't guarantee column
+    │                              # COMPATIBILITY across scenarios —
+    │                              # `expandScenario()`'s `UNION ALL` is
+    │                              # positional and throws if two
+    │                              # scenarios' own copies of a metric
+    │                              # have a different column count, a
+    │                              # real, live case in this project's own
+    │                              # fixture data (`vmt_by_home_taz` has 2
+    │                              # columns under `observed`, 3 under
+    │                              # `good_scenario` — a deliberate
+    │                              # departure `013-zonemap-panel`'s own
+    │                              # fixture generator documents for its
+    │                              # own, unrelated testing needs).
+    │                              # `filterSchemaConsistent()` (same
+    │                              # module, still pure — the caller
+    │                              # fetches columns via one
+    │                              # `information_schema.columns` query
+    │                              # per scenario in scope) closes it.
+    │                              # `GraphicWalkerPanel.tsx`'s own
+    │                              # available-datasets state became an
+    │                              # async `useEffect`+state pair rather
+    │                              # than a `useMemo` for exactly this
+    │                              # reason — real column names require a
+    │                              # real query. New UI component
+    │                              # `panels/graphicWalkerDatasetPicker.tsx`
+    │                              # (`DatasetPicker`) is the first real
+    │                              # consumer of `components/ui/
+    │                              # dropdown-menu.tsx` since both of its
+    │                              # prior consumers (ThemeToggle,
+    │                              # 020-settings-modal's original
+    │                              # Basemap tab) were superseded — that
+    │                              # file's own "zero-consumer, left in
+    │                              # place deliberately" status (see
+    │                              # `components/ui/` entry below) no
+    │                              # longer applies. A THIRD real bug
+    │                              # caught during this feature's own
+    │                              # implementation, before it ever
+    │                              # shipped: `graphicWalkerPanel.css`'s
+    │                              # existing `.graphic-walker-panel-host
+    │                              # > div` height-forcing rule (written
+    │                              # for 014, targeting `<GraphicWalker>`'s
+    │                              # own shadow-DOM host, its only direct
+    │                              # child div at the time) would have
+    │                              # ALSO matched the new picker's own
+    │                              # wrapper div once it became a second
+    │                              # direct child, stretching a small
+    │                              # button row to the panel's full
+    │                              # height — fixed by rescoping that rule
+    │                              # to a new, dedicated
+    │                              # `.graphic-walker-panel-content`
+    │                              # wrapper (flex column layout: picker
+    │                              # keeps its natural height, content
+    │                              # absorbs the rest via `flex: 1;
+    │                              # min-height: 0`) instead of every
+    │                              # direct child indiscriminately. The
+    │                              # picker is now part of every status
+    │                              # branch (loading/error/empty/ready),
+    │                              # not just the ready one — a viewer
+    │                              # whose current selection fails (e.g.
+    │                              # its scenario was deactivated
+    │                              # elsewhere, or a config error) can
+    │                              # still pick a different, working
+    │                              # dataset from the same control instead
+    │                              # of being stuck.
     ├── components/
     │   └── ui/                   # shadcn-pattern primitives (002-design-
     │                              # tokens onward): button.tsx, card.tsx,
@@ -2068,7 +2175,16 @@ APP-wftdm-dashboard/
     │                              # Root/Trigger/Content/RadioGroup/
     │                              # RadioItem exported, same "only what's
     │                              # needed" convention tooltip.tsx already
-    │                              # established). tabs.tsx
+    │                              # established). Both of ITS OWN original
+    │                              # consumers (ThemeToggle, 020-settings-
+    │                              # modal's original Basemap tab) were
+    │                              # later superseded, leaving it a real,
+    │                              # confirmed zero-consumer file for a
+    │                              # while — 028-graphic-walker-dataset-
+    │                              # picker's `DatasetPicker`
+    │                              # (`panels/graphicWalkerDatasetPicker.tsx`)
+    │                              # is its first real consumer since,
+    │                              # ending that status. tabs.tsx
     │                              # (021-basemap-catalog-redesign): gained
     │                              # `data-[orientation=vertical]:`
     │                              # Tailwind variants on `TabsList`/
@@ -2479,6 +2595,27 @@ Two real, confirmed corrections from this original sketch:
 
 Graphic Walker is a snapshot — does not share DuckDB connection or respond to
 global filters. Intentional — Explore tab is an open-ended sandbox.
+
+**`028-graphic-walker-dataset-picker`** added a new, opt-in capability
+alongside this — never a replacement, every existing config is
+unaffected: `dataset_picker: true` shows the viewer a control listing
+every dataset genuinely queryable against the active scenario(s) and lets
+them switch it, re-querying and discarding whatever chart they'd built (a
+fresh `data`/`fields` prop pair does this automatically — no explicit
+"reset" call exists). Global-filter non-reactivity is unchanged either
+way. The "queryable" list is deliberately narrower than "every view that
+exists": `panels/graphicWalkerDatasets.ts`'s `listSelectableDatasets()`
+intersects — never unions — the metric names available across every
+scenario in scope (so a choice never fails for a scenario missing it),
+excluding non-metric views like `zoneGeometry.ts`'s own
+`zonemap-geom__*` by anchoring on real, currently-active scenario names
+rather than a guessed pattern. A second pass, `filterSchemaConsistent()`,
+then also excludes a metric whose real COLUMNS differ between scenarios
+(view existence alone doesn't guarantee that) — a real, confirmed,
+reachable case in this project's own fixture data (`vmt_by_home_taz` has
+2 columns under `observed`, 3 under `good_scenario`), which would
+otherwise make `sqlExpander.ts`'s existing `$scenario.` `UNION ALL` throw
+the instant a viewer picked it.
 
 ---
 

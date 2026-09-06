@@ -120,6 +120,48 @@ layout:
           analyticType: measure
       width: 1.0
 
+  # 028-graphic-walker-dataset-picker — viewer-selectable dataset picker,
+  # opt-in via dataset_picker: true. Pinned to good_scenario (like the two
+  # main 014-era panels above), so the picker's own available-dataset list
+  # is scoped to that one scenario alone (research.md §5) — every metric
+  # generate.py publishes under good_scenario: od_flows, screenlines,
+  # summary_kpis, tour_mode_to_trip_mode, trip_destination_dist,
+  # trip_mode_share, vmt_by_home_taz.
+  row_explore_7:
+    - type: graphic-walker
+      title: Free-form Visual Analytics (Dataset Picker)
+      dataset: trip_mode_share
+      scenario: good_scenario
+      dataset_picker: true
+      width: 1.0
+
+  # No scenario: pin — the picker's own available-dataset list is the
+  # INTERSECTION across every currently active scenario (research.md §3).
+  # With both `observed` (always active) and `good_scenario` (activated via
+  # ?s=good_scenario) active, summary_kpis/vmt_by_home_taz are the only two
+  # datasets generate.py publishes under BOTH — trip_mode_share/screenlines/
+  # etc. are good_scenario-only and MUST NOT appear as a picker option (a
+  # guaranteed-to-fail $scenario. union otherwise — FR-005).
+  row_explore_8:
+    - type: graphic-walker
+      title: Free-form Visual Analytics (Dataset Picker, Multi-Scenario)
+      dataset: summary_kpis
+      dataset_picker: true
+      width: 1.0
+
+  # Deliberately broken, matching this file's existing "(intentional)"
+  # convention — pinned to a scenario that was never registered at all, so
+  # listSelectableDatasets() has nothing to intersect against and returns
+  # []. Exercises the picker's own empty/disabled-state rendering (spec.md
+  # Edge Cases) with no new scenario fixture data needed.
+  row_explore_9:
+    - type: graphic-walker
+      title: Free-form Visual Analytics (Dataset Picker, No Match) (intentional)
+      dataset: summary_kpis
+      scenario: nonexistent_scenario_zzz
+      dataset_picker: true
+      width: 1.0
+
   # 019-baseline-diff-consumption's own zonemap $baseline coverage —
   # deliberately placed HERE, not dashboard-1-summary.yaml's own
   # row_zonemap (right alongside its sibling comparison: diff panels,
