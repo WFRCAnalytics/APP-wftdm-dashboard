@@ -1,5 +1,10 @@
+import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
+import { dirname, join } from 'node:path'
 import { test, expect } from '@playwright/test'
 import type { WftdmDebugHook } from '../../src/main.tsx'
+
+const __dirname = dirname(fileURLToPath(import.meta.url))
 
 declare global {
   interface Window {
@@ -241,5 +246,66 @@ test.describe('019-baseline-diff-consumption', () => {
     const nonNullValue = await plotlyYFor(page, title, 700)
     expect(nonNullValue).not.toBeNull()
     expect(Number.isFinite(nonNullValue)).toBe(true) // a real, finite number — not Infinity/NaN
+  })
+})
+
+// 028-dashboard-branding: deployer-configurable header title/logo, sourced
+// from dashboard-config/index.json's own new object shape (yamlLoader.ts's
+// loadDashboardBranding()). tests/fixtures/dashboard-config/index.json
+// carries a real title + a light/dark data-URI logo pair (no network
+// dependency — see that file's own comment for why data: URIs specifically).
+test.describe('028-dashboard-branding', () => {
+  test('a configured logo renders in the header, using the light-mode variant by default, and sets the tab title', async ({
+    page,
+  }) => {
+    await page.goto('/')
+    await page.waitForFunction(() => window.__wftdm !== undefined, null, { timeout: 30_000 })
+
+    const logo = page.locator('.dashboard-brand-logo')
+    await expect(logo).toBeVisible()
+    expect(await logo.getAttribute('src')).toContain('023c5b') // the fixture's light-mode fill color
+    await expect(page.locator('.dashboard-brand-title')).toHaveCount(0) // logo present -> no redundant text
+
+    expect(await page.title()).toBe('Fixture Test Dashboard')
+  })
+
+  test('switching to dark mode swaps in the logoUrlDark variant', async ({ page }) => {
+    await page.goto('/')
+    await page.waitForFunction(() => window.__wftdm !== undefined, null, { timeout: 30_000 })
+
+    await page.evaluate(() => document.documentElement.classList.add('dark'))
+    const logo = page.locator('.dashboard-brand-logo')
+    await expect(async () => {
+      expect(await logo.getAttribute('src')).toContain('ffffff') // the fixture's dark-mode fill color
+    }).toPass({ timeout: 5_000 })
+  })
+
+  test('a logo that fails to load falls back to the configured title text, never a broken image', async ({
+    page,
+  }) => {
+    // Overrides just this one request's response — the real fixture file on
+    // disk (and every other test in this suite) is untouched. Reads the
+    // fixture directly from disk rather than route.fetch()-ing the live
+    // request: this app's own coi-serviceworker (index.html, loaded first)
+    // intercepts every fetch to inject cross-origin-isolation headers,
+    // which re-routing through route.fetch() collided with in practice —
+    // real, confirmed live (it returned index.html's own markup instead of
+    // the JSON body) — reading the source file directly sidesteps that
+    // entirely.
+    const fixturePath = join(__dirname, '../fixtures/dashboard-config/index.json')
+    const json = JSON.parse(readFileSync(fixturePath, 'utf-8'))
+    json.logoUrl = '/definitely-does-not-exist-logo.png'
+    delete json.logoUrlDark
+    await page.route('**/dashboard-config/index.json', async (route) => {
+      await route.fulfill({ contentType: 'application/json', body: JSON.stringify(json) })
+    })
+
+    await page.goto('/')
+    await page.waitForFunction(() => window.__wftdm !== undefined, null, { timeout: 30_000 })
+
+    // FR-004: once the <img>'s own error event fires, the component falls
+    // back to plain title text — never leaves a broken-image icon showing.
+    await expect(page.locator('.dashboard-brand-title')).toBeVisible({ timeout: 10_000 })
+    await expect(page.locator('.dashboard-brand-logo')).toHaveCount(0)
   })
 })

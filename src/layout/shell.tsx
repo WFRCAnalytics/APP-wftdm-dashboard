@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, useState } from 'react'
 import { LayoutDashboard } from 'lucide-react'
 
+import { DashboardBrand } from '@/layout/dashboardBrand'
 import { DashboardRenderer } from '@/layout/dashboardRenderer'
 import { NavBar } from '@/layout/navBar'
 import { SettingsModal } from '@/layout/settingsModal'
@@ -8,6 +9,7 @@ import { PanelEmptyState } from '@/panels/PanelEmptyState'
 import { useNavBarVisibilityMode } from '@/hooks/useNavBarVisibilityMode'
 import { useScrollDirection } from '@/hooks/useScrollDirection'
 import type { DashboardTabConfig } from '@/layout/types'
+import type { DashboardBranding } from '@/services/yamlLoader'
 
 // Top-level app shell: NavBar + the active tab's DashboardRenderer.
 // Active-tab selection is local component state, not a global store —
@@ -30,7 +32,13 @@ import type { DashboardTabConfig } from '@/layout/types'
 // real, MEASURED height (ResizeObserver-driven, not a hardcoded constant —
 // the header's actual height depends on font-size/theme/tab-count wrapping,
 // none of which this component should need to hardcode a guess about).
-export function Shell({ dashboards }: { dashboards: DashboardTabConfig[] }) {
+export function Shell({
+  dashboards,
+  branding = {},
+}: {
+  dashboards: DashboardTabConfig[]
+  branding?: DashboardBranding
+}) {
   const [activeTab, setActiveTab] = useState(dashboards[0]?.header.tab)
   const headerRef = useRef<HTMLElement>(null)
   const [headerHeight, setHeaderHeight] = useState(0)
@@ -113,11 +121,19 @@ export function Shell({ dashboards }: { dashboards: DashboardTabConfig[] }) {
         className="fixed inset-x-0 top-0 z-30 flex items-center justify-between border-b border-border bg-background px-6 py-4 transition-transform duration-300 ease-in-out"
         style={{ transform: navBarHidden ? 'translateY(-100%)' : 'translateY(0)' }}
       >
-        <NavBar
-          tabs={dashboards}
-          activeTab={active.header.tab}
-          onTabChange={setActiveTab}
-        />
+        <div className="flex min-w-0 items-center gap-4">
+          {/* 028-dashboard-branding: deployer-configurable title/logo,
+              genuinely optional — DashboardBrand itself renders nothing at
+              all when `branding` has neither field set, so an un-configured
+              deployment's header is byte-for-byte the same NavBar-only
+              layout this <header> always had. */}
+          <DashboardBrand branding={branding} />
+          <NavBar
+            tabs={dashboards}
+            activeTab={active.header.tab}
+            onTabChange={setActiveTab}
+          />
+        </div>
         {/* 020-settings-modal: ScenarioLoader + ThemeToggle (the previous
             top-right header group, 015-theme-toggle research.md §7) are
             replaced entirely by a single SettingsModal trigger (FR-001,

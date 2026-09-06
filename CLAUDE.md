@@ -72,6 +72,7 @@ manifest.yaml         per-scenario metadata
 - No `summarize-preprocessor.yaml` — join logic lives in `sql_fragments` inside `summarize.yaml`
 - Dashboard YAML configs (`dashboard-*.yaml`, `summarize.yaml`) are authored alongside the model scripts in the TDM repo (not in the dashboard repo) — same authored-vs-published split as `manifest.yaml`. A published copy of the `dashboard-*.yaml` files (WFRC's default templates ship seven) is expected in `public/dashboard-config/` in the dashboard repo, discovered at runtime via `public/dashboard-config/index.json` — the same discovery pattern as `public/scenarios/index.json` — and fetched by the browser at startup; `summarize.yaml` is post-processor-only and is never published or read by the browser.
 - `public/dashboard-config/index.json` and `public/scenarios/index.json` are discovery metadata (a list of filenames/names to fetch), not one of the three config file types above — same category as each other, not a new type (constitution Principle VII still holds: exactly three *config* file types, no more)
+- `028-dashboard-branding`: `dashboard-config/index.json` (and, additively, `demo-dashboard-config/index.json`) may ALSO carry a deployer-configurable app-wide `title`/`logoUrl`/`logoUrlDark`, alongside its existing filename-list role — `{"dashboards": [...], "title": "...", "logoUrl": "...", "logoUrlDark": "..."}` instead of the old bare array. This is a richer shape for a discovery file that already existed, not a new config file type either (same reasoning as the bullet above) — a deliberate choice over adding a fourth config file, or a build-time/env constant, since a deployer of a fresh `wftdm-dashboard init` scaffold is a planner running a CLI, not a JS developer touching `src/`. All three fields are optional; an unconfigured deployment's header renders exactly as it always did (`layout/dashboardBrand.tsx`, rendered inside `shell.tsx`'s `<header>`) — no logo shows no image (never a broken-image icon, FR-004), no title sets neither header text nor the browser tab title. `logoUrlDark` is a separate, optional field (not a boolean paired with one URL) — WFRC's own real logo assets (wired into `public/demo-dashboard-config/index.json` by default) are a dark-navy-on-transparent PNG and a white-on-transparent PNG, each illegible against the other theme's header, the same light/dark-pair convention `PlotlyPanel.tsx`'s `FALLBACK_FOREGROUND`/`FALLBACK_BORDER` already established. See `services/yamlLoader.ts`'s own `loadDashboardBranding()`/`DashboardBranding` doc comments — including a real, confirmed `loadDashboards()`/`loadDashboardBranding()` doubled-path bug found and fixed by this same feature — for the full story.
 - Parquet outputs live in `{scenario-dir}/summary/` — written by the post-processor
 - Published scenarios are manually copied into `public/scenarios/` in the dashboard repo
 - `public/scenarios/`, `public/dashboard-config/`, and `public/observed/` are ALL gitignored (`npm run dev:fixtures` destructively copies `tests/fixtures/{scenarios,dashboard-config,observed}` into them for local/CI checks — see `scripts/copy-fixtures.js`) — nothing real was ever checked in at those exact paths before `026-activitysim-demo-content`. That feature's own real, non-fixture content (a `summarize.yaml` run through the post-processor against three real ActivitySim `prototype_mtc` runs — baseline + a land-use-density variant + a transit-service variant) lives instead at a **new, separate, git-tracked root**, `public/demo-scenarios/`/`public/demo-dashboard-config/`, discovered via the same `index.json` pattern but never touched by `copy-fixtures.js` and never gitignored (`.gitignore`'s existing three entries are exact directory names, not a wildcard, so no `.gitignore` edit was needed at all). `main.ts`/`scenarioDiscovery.ts` fetch this second root additively, alongside (never instead of) the existing fixture-copy-targeted paths — see `services/scenarioDiscovery.ts`'s entry below and `specs/026-activitysim-demo-content/` for the full design record.
@@ -2153,6 +2154,30 @@ second call (confirmed by direct read before implementing). `discoverScenarios()
 similarly gained one new, additive call (`registerDemoScenarios()`, see
 `services/scenarioDiscovery.ts`'s entry above) — both existing calls in the
 snippet above are unmodified.
+
+**Correction (`028-dashboard-branding`):** the "zero code change" claim
+above was WRONG — a real, confirmed bug, found while wiring this feature's
+own demo-root branding read through the same function. `loadDashboards()`
+used to hardcode a literal `dashboard-config/` path SEGMENT onto whatever
+`baseUrl` it was given, correct only for the app's own base path
+(`import.meta.env.BASE_URL`) — 026's own second call already passed the
+FULL directory (`${BASE_URL}demo-dashboard-config/`) as `baseUrl`, so that
+hardcoded segment doubled it into a nonexistent
+`demo-dashboard-config/dashboard-config/index.json`, silently 404ing
+(the function's own existing fail-soft `if (!res.ok) return []`) and
+rendering **zero** demo dashboard tabs in every real, non-test run since
+026 shipped. Invisible to this project's own Playwright suite the whole
+time, purely because `tests/global-setup.js` deliberately blanks
+`public/demo-dashboard-config/index.json` to `[]` for every test run — an
+already-empty result either way, correct path or not. Confirmed via
+direct, live reproduction against a plain `vite` dev server (not the
+fixture-populated Playwright harness) before fixing. Fixed by moving the
+`dashboard-config/` segment into `loadDashboards()`'s own DEFAULT
+parameter value instead of hardcoding it inside the function body — a
+caller now passes the full directory it wants read, matching what 026's
+own second call already, correctly, assumed the contract to be.
+`loadDashboardBranding()` (below) shares the identical fix, having copied
+the same (buggy, at the time) shape.
 
 ---
 

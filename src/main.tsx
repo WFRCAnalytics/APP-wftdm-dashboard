@@ -8,7 +8,7 @@ import ReactDOM from 'react-dom/client'
 import '@/styles/tokens.css'
 import { initDuckDB } from './services/duckdb.ts'
 import { discoverScenarios } from './services/scenarioDiscovery.ts'
-import { loadDashboards } from './services/yamlLoader.ts'
+import { loadDashboards, loadDashboardBranding, type DashboardBranding } from './services/yamlLoader.ts'
 import { parseDashboardConfig } from './layout/types.ts'
 import { Shell } from './layout/shell.tsx'
 import { get as getFilter, set as setFilter } from './state/filterState.ts'
@@ -23,6 +23,7 @@ export type WftdmDebugHook = typeof import('./services/duckdb.ts') & {
   sqlExpander: typeof import('./services/sqlExpander.ts')
   yamlLoader: typeof import('./services/yamlLoader.ts')
   dashboards: import('./services/yamlLoader.ts').DashboardConfig[]
+  branding: import('./services/yamlLoader.ts').DashboardBranding
 }
 
 declare global {
@@ -60,6 +61,34 @@ const dashboards = [
   ...(await loadDashboards(`${import.meta.env.BASE_URL}demo-dashboard-config/`)),
 ]
 
+// Deployer-configurable app-wide branding (title/logo) — same two-root
+// read as `dashboards` above, but PRECEDENCE, not concatenation: a real
+// deployment's own public/dashboard-config/index.json (gitignored,
+// populated externally per deployment) wins per-field when it sets one,
+// falling back to the git-tracked demo root's own real branding
+// otherwise — the same "author choice, then a real default" precedence
+// shape resolveEffectiveBasemap() already establishes for basemaps, not
+// a new pattern invented here. In THIS repo's own demo/dev/CI
+// environment, public/dashboard-config/ is either empty or fixture-only
+// (gitignored, ephemeral — see CLAUDE.md's own Config file set section),
+// so the demo root's real WFRC branding (public/demo-dashboard-config/
+// index.json) is what actually shows up out of the box.
+const [primaryBranding, demoBranding] = await Promise.all([
+  loadDashboardBranding(),
+  loadDashboardBranding(`${import.meta.env.BASE_URL}demo-dashboard-config/`),
+])
+const branding: DashboardBranding = {
+  title: primaryBranding.title ?? demoBranding.title,
+  logoUrl: primaryBranding.logoUrl ?? demoBranding.logoUrl,
+  logoUrlDark: primaryBranding.logoUrlDark ?? demoBranding.logoUrlDark,
+}
+// Sets the browser tab's own title — independent of whether the header
+// renders it as visible text at all (shell.tsx only falls back to
+// showing it inline when no logo is configured, see that file's own
+// comment) — a configured title is always worth reflecting in the tab,
+// regardless of the header's own logo/text choice.
+if (branding.title) document.title = branding.title
+
 // Parse failures are per-file and fail loud, not silent — a malformed
 // dashboard-*.yaml is a config-authoring bug (contracts/
 // dashboard-config-types.md), surfaced in the console rather than
@@ -95,7 +124,7 @@ const rootEl = document.getElementById('app')
 if (rootEl) {
   ReactDOM.createRoot(rootEl).render(
     <React.StrictMode>
-      <Shell dashboards={parsedDashboards} />
+      <Shell dashboards={parsedDashboards} branding={branding} />
     </React.StrictMode>,
   )
 }
@@ -113,5 +142,6 @@ if (typeof window !== 'undefined') {
     sqlExpander,
     yamlLoader,
     dashboards,
+    branding,
   }
 }
