@@ -41,6 +41,22 @@ export function resolveObservablePlotEncoding(
   if (config.tip) options.tip = resolveTipMode(config.mark)
 
   const plotOptions: Record<string, unknown> = {}
+  // Real, confirmed visual bug: @observablehq/plot's own default rendered
+  // font-size is 10px (confirmed empirically via getComputedStyle() on a
+  // live rendered chart's own axis-tick <text> element — not merely
+  // assumed from docs), while PlotlyPanel.tsx's charts render at Plotly's
+  // own default of 12px (PlotlyPanel.tsx sets no explicit layout.font.size
+  // at all — confirmed by direct read — so 12px is Plotly's own library
+  // default, also confirmed live the same way). The two charting panel
+  // types sitting side by side with visibly different text sizes reads as
+  // an inconsistency, not an intentional design choice — matched here via
+  // Plot.plot()'s own top-level `style` option (a CSSStyleDeclaration-
+  // shaped object, confirmed against the installed package's own
+  // plot.d.ts), the documented way to override Plot's default styling,
+  // rather than fighting it after the fact with an external CSS override.
+  // `12` is Plotly's own real, live-confirmed rendered default — not a
+  // guessed pixel value in isolation.
+  plotOptions.style = { fontSize: '12px' }
   if (config.grid) plotOptions.grid = config.grid
   // docs/GRAMMAR.md documents no legend: key at all for this panel type —
   // confirmed by a full grep of both real observable-plot examples and the

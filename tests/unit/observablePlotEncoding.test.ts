@@ -66,7 +66,9 @@ describe('resolveObservablePlotEncoding', () => {
 
   it('passes grid through to plotOptions only when set, never into options', () => {
     const result = resolveObservablePlotEncoding({ ...baseConfig, grid: true }, rows)
-    expect(result.plotOptions).toEqual({ grid: true })
+    // style: {fontSize: '12px'} is always present — see the font-size-match
+    // test below for the full finding; not this test's own concern.
+    expect(result.plotOptions).toEqual({ grid: true, style: { fontSize: '12px' } })
     expect(result.options).not.toHaveProperty('grid')
   })
 
@@ -96,7 +98,25 @@ describe('resolveObservablePlotEncoding', () => {
   it('omits keys entirely for fields the author did not configure — no undefined-valued keys', () => {
     const result = resolveObservablePlotEncoding(baseConfig, rows)
     expect(Object.keys(result.options)).toEqual([])
-    expect(Object.keys(result.plotOptions)).toEqual([])
+    // style: {fontSize: '12px'} is the one unconditional plotOptions key —
+    // see the font-size-match test below for the full finding — every
+    // other key here still stays fully conditional on author config.
+    expect(Object.keys(result.plotOptions)).toEqual(['style'])
+  })
+
+  // Real, confirmed visual bug: @observablehq/plot's own default rendered
+  // font-size (10px) reads noticeably smaller than PlotlyPanel.tsx's own
+  // charts, which render at Plotly's own default (12px — PlotlyPanel.tsx
+  // sets no explicit font.size at all, confirmed by direct read, so 12px
+  // is Plotly's own real, live-confirmed rendered default, not a guessed
+  // value). Matched here via Plot.plot()'s own top-level `style` option
+  // (a CSSStyleDeclaration-shaped object, confirmed against the installed
+  // package's own plot.d.ts) — unconditional, applied to every observable-
+  // plot chart regardless of author config, so the two charting panel
+  // types never visibly disagree on text size.
+  it('always sets plotOptions.style.fontSize to match PlotlyPanel.tsx\'s own real default (12px)', () => {
+    const result = resolveObservablePlotEncoding(baseConfig, rows)
+    expect(result.plotOptions.style).toEqual({ fontSize: '12px' })
   })
 
   // 019-baseline-diff-consumption (FR-014): a real, confirmed finding —

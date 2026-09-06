@@ -520,6 +520,46 @@ test.describe('Polish - dark mode (015-theme-toggle)', () => {
     expect(expandedFill).toBe('rgb(255, 255, 255)')
   })
 
+  // A real, confirmed dark-mode bug found post-implementation, same class
+  // this project has hit and fixed multiple times already (PlotlyPanel.tsx's
+  // own paper/plot background + font.color): @observablehq/plot's tip mark
+  // (config.tip: true) fills its own box with `var(--plot-background)`, and
+  // Plot's own generated SVG unconditionally sets `--plot-background: white`
+  // via an internal, zero-specificity stylesheet rule — never reading this
+  // app's real tokens. The tip's own text uses `fill="currentColor"`, which
+  // DOES correctly track this app's real theme — so in dark mode the box
+  // stayed hard-coded white while the text correctly turned white too: an
+  // invisible white-on-white tooltip. Asserts REAL computed colors (matching
+  // this describe block's own "expanding a panel in dark mode..." test just
+  // above, not merely "no error thrown") on the two elements that actually
+  // matter for contrast — the tip's box (path) fill and its text fill —
+  // confirming they're genuinely DIFFERENT colors, not just any two color
+  // values that happen to satisfy a weaker assertion.
+  test('the tip tooltip box and text are genuinely different, legible colors in dark mode', async ({ page }) => {
+    await boot(page)
+    await page.evaluate(() => document.documentElement.classList.add('dark'))
+
+    const card = panelCard(page, 'Trip Length Frequency Distribution')
+    const dataLine = card.locator('.observable-plot-chart svg[viewBox] path[stroke]').first()
+    await expect(dataLine).toBeVisible()
+    await dataLine.hover({ force: true })
+
+    const tip = card.locator('.observable-plot-chart svg[viewBox] g[aria-label="tip"]')
+    await expect(tip).not.toBeEmpty()
+
+    const tipBoxFill = await tip.locator('path').first().evaluate((el) => getComputedStyle(el).fill)
+    const tipTextFill = await tip.locator('text').first().evaluate((el) => getComputedStyle(el).fill)
+
+    // The real, current --card/--foreground token values in dark mode
+    // (tokens.css) — not just "not equal to each other," but the SPECIFIC
+    // correct colors, so a future token-value change that accidentally
+    // reintroduces low contrast (e.g. both drifting toward the same gray)
+    // would still be caught.
+    expect(tipBoxFill).toBe('rgb(8, 27, 38)') // --card in dark mode
+    expect(tipTextFill).toBe('rgb(255, 255, 255)') // --foreground in dark mode
+    expect(tipBoxFill).not.toBe(tipTextFill)
+  })
+
   test('the multiselect/select input follows the app theme — real color-scheme, not a bare unstyled native control', async ({
     page,
   }) => {
