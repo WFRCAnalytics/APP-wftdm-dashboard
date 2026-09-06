@@ -116,12 +116,21 @@ function resolveCssColor(cssColor: string, probe: HTMLElement, cache: Map<string
 // (research.md §1: confirmed no deck.gl/MapboxOverlay capability gap —
 // a plain MapLibre GeoJSON source + data-driven fill-color paint
 // expression covers both the choropleth fill and the hover/click
-// interaction need). None of 012-webgl-context-management's interleaved-
-// mode/context-loss-detection machinery applies here: MapLibre already
-// auto-recovers its OWN native sources/layers on webglcontextlost/
-// webglcontextrestored (confirmed — CLAUDE.md's own FlowMapPanel.tsx
-// tree comment); that bespoke handling was specifically for deck.gl's
-// separate GPU resources, which this panel type has none of.
+// interaction need). None of 012-webgl-context-management's own
+// interleaved-mode machinery applies here — this panel never had a
+// deck.gl/MapboxOverlay of its own to interleave. That feature's OWN
+// bespoke WebGL context-loss detection/recovery code (once real, in
+// FlowMapPanel.tsx — a contextLost state plus webglcontextlost/
+// webglcontextrestored listeners, specifically to rebuild deck.gl's
+// separate interleaved-mode GPU resources after a lost context) was
+// later removed there entirely (a deliberate project decision — see
+// CLAUDE.md's own FlowMapPanel.tsx history entry for the full record),
+// so there is no longer any such mechanism to compare this panel
+// against either way. Worth noting for the record regardless: MapLibre
+// already auto-recovers its own native sources/layers on
+// webglcontextlost/webglcontextrestored with no application code at
+// all — the removed mechanism was never needed for THIS panel type's
+// own (deck.gl-free) rendering.
 export function ZoneMapPanel({ config }: { config: ZoneMapPanelConfig }) {
   const filterIds = extractGlobalFilterIds(config.filter)
   const filters = useFilterState(filterIds.length ? filterIds : ALL_FILTERS)

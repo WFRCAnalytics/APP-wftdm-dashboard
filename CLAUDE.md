@@ -1279,6 +1279,65 @@ APP-wftdm-dashboard/
     │   │                         # the flow lines to confirm they aren't
     │   │                         # uniformly `BLANK_STYLE`'s own fill
     │   │                         # color.
+    │   │                         #
+    │   │                         # REMOVED (later, deliberate project
+    │   │                         # decision — not a bug fix, and NOT
+    │   │                         # motivated by the separate flowmap
+    │   │                         # line-jaggedness/antialiasing
+    │   │                         # investigation happening around the
+    │   │                         # same time, confirmed explicitly
+    │   │                         # unrelated): the WebGL context-loss
+    │   │                         # RECOVERY portion of everything
+    │   │                         # described above — the `contextLost`
+    │   │                         # boolean state, both
+    │   │                         # `webglcontextlost`/
+    │   │                         # `webglcontextrestored` Map-event
+    │   │                         # listeners (and their cleanup), the
+    │   │                         # "Map context lost" banner and its
+    │   │                         # wrapping `position: relative` div (the
+    │   │                         # containerRef div returned to a plain,
+    │   │                         # unwrapped child, matching
+    │   │                         # SankeyPanel.tsx's/
+    │   │                         # ObservablePlotPanel.tsx's own shape),
+    │   │                         # and `layerRepopulateGeneration`'s OWN
+    │   │                         # context-restore-triggered call site —
+    │   │                         # all gone. `interleaved: true` itself,
+    │   │                         # and `layerRepopulateGeneration`'s
+    │   │                         # OTHER, still-real trigger (the
+    │   │                         # basemap-switch interleaved-mode
+    │   │                         # layer-wipe repopulate described
+    │   │                         # above), were UNCHANGED — that state
+    │   │                         # counter never depended on the removed
+    │   │                         # trigger for anything, confirmed
+    │   │                         # directly before removing either
+    │   │                         # (`layerRepopulateGeneration` itself
+    │   │                         # is not gone, only one of its two
+    │   │                         # callers). `ZoneMapPanel.tsx` never had
+    │   │                         # any of this (confirmed directly — it
+    │   │                         # has no deck.gl/`MapboxOverlay` of its
+    │   │                         # own to have needed it for), so no
+    │   │                         # functional change was needed there;
+    │   │                         # its own comments contrasting itself
+    │   │                         # against this mechanism were updated to
+    │   │                         # reflect the removal. The two
+    │   │                         # context-loss-specific Playwright tests
+    │   │                         # this feature added ("WebGL context
+    │   │                         # loss is reported honestly," "a pinned
+    │   │                         # basemap recovers to itself, not the
+    │   │                         # app default") were removed along with
+    │   │                         # their own `loseContext()`/
+    │   │                         # `restoreContext()` helpers — confirmed
+    │   │                         # via grep that neither helper had any
+    │   │                         # other caller. `canvasHasDrawnPixels()`
+    │   │                         # (used by both removed tests) stayed —
+    │   │                         # confirmed it's also used by other,
+    │   │                         # unrelated still-real tests. See
+    │   │                         # `specs/012-webgl-context-management/
+    │   │                         # spec.md`'s own added removal note and
+    │   │                         # `docs/PIPELINE.md`'s new flowmap
+    │   │                         # line-jaggedness entry for the related
+    │   │                         # (but explicitly not causal) investigation
+    │   │                         # that was happening at the same time.
     │   │                         # 016-fix-ugrc-dark-mode: a SIXTH real
     │   │                         # bug, this one confirmed real-hardware-
     │   │                         # only (NVIDIA Quadro RTX 4000,
@@ -1839,8 +1898,14 @@ APP-wftdm-dashboard/
     │   │                         # fill-color paint expression + native
     │   │                         # mousemove/click cover fill + hover),
     │   │                         # the ONE map-rendering panel type
-    │   │                         # outside 012's interleaved-mode/
-    │   │                         # context-loss scope entirely.
+    │   │                         # outside 012's interleaved-mode scope
+    │   │                         # entirely (012's own separate context-
+    │   │                         # loss-recovery machinery, once real in
+    │   │                         # FlowMapPanel.tsx, was itself later
+    │   │                         # removed there — see that file's own
+    │   │                         # tree entry — so there's no longer a
+    │   │                         # "context-loss scope" to be outside of
+    │   │                         # either way).
     │   │                         # Consumes panels/basemap/ (011)
     │   │                         # completely unmodified, confirming
     │   │                         # that module's own generic-across-
@@ -2261,11 +2326,9 @@ independent, individually-004-expandable panels; the latter unneeded once
 the chosen fix — `interleaved: true`, halving cost to 1 context/panel —
 already clears the real floor with margin). MapLibre's own already-
 built-in `webglcontextlost`/`webglcontextrestored` Map events (it already
-calls `preventDefault()` and rebuilds its own painter internally) now
+calls `preventDefault()` and rebuilds its own painter internally) used to
 drive a `contextLost` panel state, rendering a distinct "Map context
-lost" banner overlaid on the still-mounted map container — the container
-must never unmount while it's true, since MapLibre's automatic
-restoration rebuilds resources against the SAME canvas element. A real,
+lost" banner overlaid on the still-mounted map container. A real,
 confirmed MapLibre behavior surfaced during this feature's own empirical
 testing (matching `github.com/maplibre/maplibre-gl-js/discussions/2716`):
 `'style.load'` fires only once per `Map` instance's lifetime, never again
@@ -2279,6 +2342,24 @@ skipping the overlay repopulate for any panel that fell back to blank.
 Fixed by firing unconditionally on the FIRST `'styledata'` after each
 `setStyle()` call, no sources filter at all.
 
+**Later removed** (a deliberate project decision, not a bug fix, and
+explicitly not motivated by the separate flowmap line-jaggedness/
+antialiasing investigation happening around the same time — see
+`docs/PIPELINE.md`'s own entry on that): the `contextLost` state, both
+`webglcontextlost`/`webglcontextrestored` listeners and their cleanup,
+the "Map context lost" banner and its wrapping `position: relative` div
+(FlowMapPanel.tsx's own container returned to a plain, unwrapped child),
+and `layerRepopulateGeneration`'s context-restore-triggered call site are
+all gone from `FlowMapPanel.tsx` now. `interleaved: true` itself, and
+`layerRepopulateGeneration`'s other (basemap-switch) trigger described
+above, are unchanged — confirmed directly before removing anything that
+neither ever depended on the removed recovery code. `ZoneMapPanel.tsx`
+never had any of this to begin with (no deck.gl/`MapboxOverlay` of its
+own), so needed no functional change, only a comment update. The two
+Playwright tests that specifically exercised recovery were removed with
+it; a general-purpose pixel-readback helper (`canvasHasDrawnPixels()`)
+they'd also used stayed, since other, unrelated tests still use it.
+
 **ZoneMapPanel** — done (`013-zonemap-panel`), built exactly to this
 note's own original sketch: zone GeoParquet loaded once via DuckDB
 spatial (`panels/zoneGeometry.ts`'s module-level, deliberately
@@ -2291,8 +2372,10 @@ paint expression plus native `mousemove`/`click` events cover the
 choropleth fill and hover/click need, matching `ar-puuk/
 spatial-sql-explorer`'s own real reference implementation) — making this
 the one map-rendering panel type with a single WebGL context, entirely
-outside `012-webgl-context-management`'s interleaved-mode/context-loss
-scope. Geometry itself loads via `registerFileURL()` + plain
+outside `012-webgl-context-management`'s interleaved-mode scope (that
+feature's own separate context-loss-recovery machinery, once real in
+`FlowMapPanel.tsx`, was itself later removed — see that panel's own note
+above). Geometry itself loads via `registerFileURL()` + plain
 `read_parquet()` + `ST_GeomFromWKB()`/`ST_AsGeoJSON()` — never
 `ST_Read()`/`registerFileBuffer()`, a real, confirmed upstream
 incompatibility (`duckdb/duckdb-wasm#1791`) a scenario-independent,
@@ -2555,8 +2638,10 @@ first cross-reference this list was built from). ✅ done,
      need), matching `ar-puuk/spatial-sql-explorer`'s own real, fetched
      reference implementation — making `zonemap` the one map-rendering
      panel type with a single WebGL context, entirely outside
-     `012-webgl-context-management`'s interleaved-mode/context-loss
-     scope by design. Reuses `panels/basemap/` (011) completely
+     `012-webgl-context-management`'s interleaved-mode scope by design
+     (that feature's own context-loss-recovery machinery, once real in
+     `FlowMapPanel.tsx`, was itself later removed — see `CLAUDE.md`'s own
+     "Map panels" section). Reuses `panels/basemap/` (011) completely
      unmodified, confirming that module's own stated generic-across-
      map-panel-types design intent. New pure modules: `panels/
      zonemapColor.ts` (color-scale resolution — extends `005-table-

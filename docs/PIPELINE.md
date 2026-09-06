@@ -210,6 +210,83 @@ actual feature.
 
 ---
 
+## Known, accepted limitation: FlowMapPanel's flow lines render jagged
+
+`FlowMapPanel.tsx`'s rendered flow lines/arrows are visibly
+jagged/aliased, especially on diagonal lines. Investigated, root-caused,
+and a fix was attempted — this is a record of why it isn't applied.
+
+**Confirmed root cause** (checked in order, nothing assumed): (1) device
+pixel ratio is NOT the cause — MapLibre's own `getPixelRatio()` already
+returns the real `devicePixelRatio` automatically; nothing in this app
+overrides it. (2) WebGL context antialiasing IS the cause — MapLibre's
+`Map` class forces the underlying WebGL context's `antialias` to `false`
+unless the constructor option is explicitly set `true` (confirmed
+directly against the installed `maplibre-gl` source), and `@flowmap.gl/
+layers`' own `FlowLinesLayer` fragment shader has zero antialiasing/edge-
+smoothing logic of its own for a flow line's outer silhouette (confirmed
+by reading the shader directly) — so the line's smoothness depends
+entirely on that one context-level flag. (3) This is specifically a side
+effect of `012-webgl-context-management`'s `interleaved: true` choice:
+under interleaved mode, deck.gl renders directly into MapLibre's own
+shared canvas/context, so MapLibre's forced-off default drags deck.gl's
+rendering down with it. In non-interleaved mode, deck.gl would create its
+own separate canvas/context, which neither `@deck.gl/core` nor its
+`luma.gl` rendering engine explicitly overrides (confirmed via grep) —
+that context would have kept the browser's own native `antialias: true`
+default (per the WebGL spec, `true` is the default when a context-
+attributes object omits it).
+
+**Confirmed against a real production reference, not assumed unique to
+this project**: `simwrapper/simwrapper`'s own real, live flowmap
+implementation (`src/plugins/flowmap/FlowmapDeckMapComponent.vue` +
+`src/layers/flowmap/`, fetched and read directly) has the **identical**
+gap — it also uses `interleaved: true`, also never sets `antialias` on
+its `maplibregl.Map` constructor, and its own vendored `FlowLinesLayer`
+fragment shader is simpler than the npm package's (no edge-smoothing at
+all). The one `antialiasing: true` found anywhere in their flowmap module
+is on a `ScatterplotLayer` used for a location-highlight ring — a
+different sub-layer, using a real deck.gl capability (SDF-based circle
+antialiasing) that has no line/path equivalent. SimWrapper does not solve
+this problem; it ships with the same rendering gap.
+
+**The fix that was attempted, and why it isn't applied**: setting
+`antialias: true` on `FlowMapPanel.tsx`'s `maplibregl.Map` constructor
+does visibly fix the jaggedness. At the time this was tried, it also
+measurably degraded `012-webgl-context-management`'s own WebGL context-
+loss recovery — repeated test runs showed the recovery test's pass rate
+drop from an already-flaky ~37% (unrelated, pre-existing baseline
+flakiness, confirmed via repeated clean-baseline runs) to 0/5 with
+`antialias: true` applied, and one run's screenshot showed a genuinely
+blank canvas after context restoration, not just a flaky pixel-readback
+check. An antialias-free alternative (`setPixelRatio()` supersampling)
+was also tried and hit the identical failure, suggesting the conflict was
+with any deviation from MapLibre's default canvas configuration
+interacting with the context-loss/restore cycle, not something specific
+to the `antialias` flag itself. Investigating SimWrapper for a working
+pattern (above) found no such pattern to copy — they never attempt
+context-loss recovery at all, so they never exercise this interaction
+either way. Both experiments were fully reverted at the time; nothing
+was shipped.
+
+**Current status, now that the picture has changed**: `012`'s own
+context-loss-recovery mechanism — the thing the `antialias: true` fix
+was found to conflict with — has since been removed from
+`FlowMapPanel.tsx` entirely, as a separate, deliberate project decision
+(unrelated to this investigation — see `CLAUDE.md`'s own "Map panels"
+section and `specs/012-webgl-context-management/spec.md`'s own removal
+note for that story). That means the specific blocker this investigation
+hit — `antialias: true` degrading a recovery path — no longer has a
+recovery path to degrade. This strongly suggests `antialias: true` could
+now be applied safely, but **it has not been re-tried or re-applied as
+part of this documentation update** — that's a distinct piece of future
+work, not something to assume safe without actually re-running the same
+empirical check (repeated test runs, not a single pass/fail) against the
+current, recovery-free code. Until that re-check happens, the jagged
+lines remain a known, accepted, documented limitation, not a fixed one.
+
+---
+
 ## Configurable dashboard logo
 
 Let whoever deploys this dashboard configure which logo it displays,

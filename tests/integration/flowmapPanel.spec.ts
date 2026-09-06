@@ -1692,46 +1692,6 @@ test.describe('011-basemap-style-system — fully offline fallback (quickstart.m
   })
 })
 
-// Forces a REAL context loss via the standard WEBGL_lose_context
-// extension, not a synthetic DOM event dispatch (a raw
-// canvas.dispatchEvent(new Event('webglcontextlost')) would not
-// exercise MapLibre's real internal state — it would not actually
-// invalidate GL objects the way a genuine loss does). Reads getCanvas()
-// — the SAME canvas MapLibre and deck.gl both share under interleaved
-// mode (contracts/interleaved-overlay-survival.md), not a separate
-// deck.gl canvas (none exists to select).
-//
-// The extension object itself is obtained ONCE, before the context is
-// ever lost, and cached on `window` — found necessary empirically:
-// re-deriving it via a fresh gl.getContext('webgl2').getExtension(...)
-// call AFTER loseContext() has already run returns null (a canvas whose
-// context is currently in the "lost" state does not hand back a usable
-// extension lookup the same way), so restoreContext() must reuse the
-// SAME extension reference loseContext() already obtained, not
-// re-fetch one.
-declare global {
-  interface Window {
-    __flowmapTestLoseContextExt?: Record<string, WEBGL_lose_context>
-  }
-}
-
-async function loseContext(page: Page, title: string) {
-  await page.evaluate((t) => {
-    const map = window.__flowmapTestMaps![t]
-    const gl = map.getCanvas().getContext('webgl2') as WebGL2RenderingContext
-    const ext = gl.getExtension('WEBGL_lose_context')!
-    window.__flowmapTestLoseContextExt ??= {}
-    window.__flowmapTestLoseContextExt[t] = ext
-    ext.loseContext()
-  }, title)
-}
-
-async function restoreContext(page: Page, title: string) {
-  await page.evaluate((t) => {
-    window.__flowmapTestLoseContextExt![t].restoreContext()
-  }, title)
-}
-
 // Reads canvas.maplibregl-canvas's own alpha channel for any
 // non-fully-transparent pixel, proving the interleaved deck.gl overlay
 // actually drew something (not just technically present in
@@ -1827,133 +1787,20 @@ async function canvasCornersAreNotUniformBlankGray(page: Page, title: string): P
   }, title)
 }
 
-test.describe('012-webgl-context-management — WebGL context loss is reported honestly (quickstart.md Scenario 4)', () => {
-  test('a lost context shows a distinct status, distinguishable from a blank basemap, and recovers', async ({
-    page,
-  }) => {
-    await boot(page)
-
-    // Distinct from 011's own "unreachable basemap" fallback panel —
-    // that one shows no banner at all, just a blank canvas (SC-002).
-    // Checked FIRST, before ever forcing a context loss on FLOWMAP_TITLE
-    // below — navigating tabs unmounts/remounts whichever panel isn't on
-    // the active tab (DashboardRenderer only ever renders the active
-    // tab), which would silently invalidate a forced context-loss state
-    // on FLOWMAP_TITLE (a fresh remount starts with contextLost: false
-    // again) if this comparison ran in between instead.
-    await page.getByRole('tab', { name: 'Basemaps' }).click()
-    const unreachableContainer = panelCard(page, 'Flowmap Unreachable Basemap (intentional)').locator(
-      '.flowmap-chart',
-    )
-    await trueEventually(async () => (await unreachableContainer.getAttribute('data-render-count')) !== null)
-    await page.waitForTimeout(1000)
-    await expect(
-      panelCard(page, 'Flowmap Unreachable Basemap (intentional)').getByText(/Map context lost/i),
-    ).not.toBeVisible()
-    await page.getByRole('tab', { name: 'Summary' }).click()
-
-    const container = panelCard(page, FLOWMAP_TITLE).locator('.flowmap-chart')
-    await trueEventually(async () => (await container.getAttribute('data-render-count')) !== null)
-    await waitForBasemapApplied(page, FLOWMAP_TITLE)
-
-    const containerHandleBefore = await container.elementHandle()
-    const banner = panelCard(page, FLOWMAP_TITLE).getByText(/Map context lost/i)
-    await expect(banner).not.toBeVisible()
-
-    await loseContext(page, FLOWMAP_TITLE)
-    await expect(banner).toBeVisible()
-
-    // The container itself is STILL present in the DOM (element-handle
-    // identity) — this feature's own render branch must not have
-    // unmounted it, per data-model.md's "container must stay mounted"
-    // requirement (MapLibre's own automatic restoration rebuilds
-    // resources against the SAME canvas element, not a newly-created
-    // one).
-    const containerHandleAfterLoss = await container.elementHandle()
-    expect(
-      await page.evaluate(([a, b]) => a === b, [containerHandleBefore, containerHandleAfterLoss]),
-    ).toBe(true)
-
-    await restoreContext(page, FLOWMAP_TITLE)
-    await expect(banner).not.toBeVisible()
-
-    const overlayLayerCount = await page.evaluate((title) => {
-      const overlay = window.__flowmapTestOverlays![title] as unknown as { _props: { layers: unknown[] } }
-      return overlay._props.layers.length
-    }, FLOWMAP_TITLE)
-    expect(overlayLayerCount).toBe(1)
-
-    await trueEventually(() => canvasHasDrawnPixels(page, FLOWMAP_TITLE))
-  })
-})
-
-test.describe('012-webgl-context-management — a pinned basemap recovers to itself, not the app default (quickstart.md Scenario 5)', () => {
-  test('recovery re-applies the panel\'s own pinned preset, not the app default', async ({ page }) => {
-    await boot(page)
-    await page.getByRole('tab', { name: 'Basemaps' }).click()
-
-    // requestUrls is registered AFTER navigating to the Basemaps tab
-    // (the Summary tab's own default-theme flowmap panel legitimately
-    // fetches carto-positron during ordinary boot — unrelated to the
-    // PINNED panel this test targets — and would otherwise pollute this
-    // check) and never cleared thereafter. Recovery from a lost context
-    // does NOT re-fetch the style document at all (FR-006/research.md
-    // §6: MapLibre's own already-restored style IS the panel's already-
-    // resolved effective basemap; nothing about basemapKey/
-    // resolveEffectiveBasemap re-runs, so there is no new setStyle()
-    // call and therefore no new style-document request to wait for).
-    // The correct signal is that this request log contains voyager
-    // (from the ORIGINAL, pre-loss load) and never positron/dark-matter
-    // at any point, including after recovery — proving recovery didn't
-    // silently swap in the app's theme-paired default instead of the
-    // panel's own pin.
-    const requestUrls: string[] = []
-    page.on('request', (req) => requestUrls.push(req.url()))
-
-    const title = 'Flowmap Panel Basemap Override' // basemap: carto-voyager, per 011's own fixture
-    const container = panelCard(page, title).locator('.flowmap-chart')
-    await trueEventually(async () => (await container.getAttribute('data-render-count')) !== null)
-    await waitForBasemapApplied(page, title)
-    await trueEventually(async () => requestUrls.some((u) => u.includes('voyager-gl-style')))
-
-    // 012-webgl-context-management — a SIBLING panel on this SAME tab,
-    // "Flowmap Dark Matter Preset" (basemap: carto-dark-matter, a fixture
-    // added alongside this feature's own composeStyles() raster-layer
-    // work), legitimately fetches a dark-matter-gl-style URL exactly once
-    // during its own ordinary initial load — unrelated to THIS test's own
-    // panel or to recovery, but landing in the SAME shared, whole-page
-    // requestUrls array. Explicitly waiting for that known one-time fetch
-    // to have already happened before snapshotting "before" (in addition
-    // to the target panel's own voyager wait above) prevents a genuine
-    // race: under real parallel-worker CPU contention, that sibling's
-    // fetch was observed to sometimes still be in flight at this point,
-    // landing inside the snapshot window instead and producing a false
-    // positive (confirmed empirically — a plain array-length snapshot
-    // alone, with no such wait, intermittently failed under full-suite
-    // parallel load despite passing every isolated/repeated single-test
-    // run). The test's real concern (per the comment above) is
-    // specifically RECOVERY behavior — that losing/restoring context never
-    // re-fetches a style document at all — not "no other panel on this tab
-    // may ever legitimately use positron/dark-matter"; waiting out every
-    // sibling's own one-time load first keeps the assertion scoped to that
-    // actual intent instead of racing it.
-    await trueEventually(async () => requestUrls.some((u) => u.includes('dark-matter-gl-style')))
-    const requestCountBeforeRecovery = requestUrls.length
-
-    await loseContext(page, title)
-    await expect(panelCard(page, title).getByText(/Map context lost/i)).toBeVisible()
-    await restoreContext(page, title)
-    await expect(panelCard(page, title).getByText(/Map context lost/i)).not.toBeVisible()
-
-    // Still the SAME pinned preset after recovery.
-    await trueEventually(async () => (await getStyleSources(page, title)).length > 0)
-    await trueEventually(() => canvasHasDrawnPixels(page, title))
-    const requestsDuringRecovery = requestUrls.slice(requestCountBeforeRecovery)
-    expect(
-      requestsDuringRecovery.some((u) => u.includes('positron-gl-style') || u.includes('dark-matter-gl-style')),
-    ).toBe(false)
-  })
-})
+// 012-webgl-context-management's own two WebGL context-loss/recovery
+// tests ("WebGL context loss is reported honestly", quickstart.md
+// Scenario 4; "a pinned basemap recovers to itself, not the app
+// default", quickstart.md Scenario 5) were removed from here along with
+// the application mechanism itself (contextLost state, webglcontextlost/
+// webglcontextrestored listeners — FlowMapPanel.tsx) — a deliberate
+// project decision, not a bug fix. See CLAUDE.md's own FlowMapPanel.tsx
+// history entry for the full record. loseContext()/restoreContext()
+// (the WEBGL_lose_context-extension test helpers those two tests used)
+// were removed with them — confirmed via grep to have no other caller in
+// this file. canvasHasDrawnPixels() stayed — it's real, general-purpose
+// pixel-readback instrumentation still used by OTHER, unrelated tests
+// below (interleaved-mode style-survival, raster-composition coverage),
+// not exclusive to context-loss recovery.
 
 test.describe('012-webgl-context-management — expand/collapse never regresses a working basemap (quickstart.md Scenario 3)', () => {
   test('expanding one of six panels leaves it and every sibling correctly rendered', async ({ page }) => {

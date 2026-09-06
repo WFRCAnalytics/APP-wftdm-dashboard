@@ -122,14 +122,14 @@ export function FlowMapPanel({ config }: { config: FlowMapPanelConfig }) {
   // 012-webgl-context-management — tracks which `rows` reference the
   // exclusion warning below has already fired for. Needed because
   // layerRepopulateGeneration (added to the data-update effect's own
-  // dependency array) re-runs that effect for reasons OTHER than rows
-  // actually changing (a setStyle()-driven repopulate, a context-loss
-  // recovery) — without this guard, the SAME exclusion warning would
-  // log again on every one of those redundant re-runs, since `rows`
-  // itself (and therefore data.excludedCount) is unchanged. `rows` only
-  // gets a new array reference from the data-fetch effect's own
-  // setRows(result) call, never from a repopulate trigger, so reference
-  // equality is the correct, cheap "did the actual data change" check.
+  // dependency array) re-runs that effect for a reason OTHER than rows
+  // actually changing (a setStyle()-driven repopulate) — without this
+  // guard, the SAME exclusion warning would log again on every one of
+  // those redundant re-runs, since `rows` itself (and therefore
+  // data.excludedCount) is unchanged. `rows` only gets a new array
+  // reference from the data-fetch effect's own setRows(result) call,
+  // never from a repopulate trigger, so reference equality is the
+  // correct, cheap "did the actual data change" check.
   const warnedForRowsRef = useRef<Record<string, unknown>[] | null>(null)
   // 027-map-auto-fit-and-reset — guards the one-shot auto-fit call in the
   // data-update effect below: this effect re-runs for reasons OTHER than
@@ -159,28 +159,26 @@ export function FlowMapPanel({ config }: { config: FlowMapPanelConfig }) {
   const [mapReady, setMapReady] = useState(false)
   // 012-webgl-context-management — bumped whenever the already-existing
   // FlowmapLayer needs to be reconstructed and re-applied for a reason
-  // OTHER than rows/config/status changing: either the interleaved-mode
-  // setStyle() layer-wipe (basemap effect's style.load handler, below)
-  // or a WebGL context recovery (webglcontextrestored, below). Neither
-  // of those two call sites constructs a FlowmapLayer directly — both
-  // are long-lived closures (one fixed at first mount forever, the other
-  // fixed until the basemap effect's own next re-run) that would read
-  // stale status/rows/config if they tried (a real bug found and
-  // corrected during this feature's own plan review — contracts/
-  // interleaved-overlay-survival.md's "Why not a standalone helper
-  // function"). Bumping this counter instead routes both triggers
+  // OTHER than rows/config/status changing: the interleaved-mode
+  // setStyle() layer-wipe (basemap effect's style.load handler, below).
+  // That call site doesn't construct a FlowmapLayer directly — it's a
+  // long-lived closure (fixed until the basemap effect's own next
+  // re-run) that would read stale status/rows/config if it tried (a real
+  // bug found and corrected during this feature's own plan review —
+  // contracts/interleaved-overlay-survival.md's "Why not a standalone
+  // helper function"). Bumping this counter instead routes the trigger
   // through the data-update effect below, whose closure is guaranteed
   // fresh every time it actually runs.
+  //
+  // A second trigger used to feed this same counter — WebGL context-loss
+  // recovery (webglcontextrestored) — until that whole recovery mechanism
+  // (this counter's own second caller, a contextLost state, and the two
+  // webglcontextlost/webglcontextrestored listeners below) was deliberately
+  // REMOVED (a project decision, not a bug fix — see CLAUDE.md's own
+  // FlowMapPanel.tsx history entry for the full record). This counter and
+  // its one remaining (basemap-switch) trigger are unaffected — they never
+  // depended on the removed trigger for anything.
   const [layerRepopulateGeneration, setLayerRepopulateGeneration] = useState(0)
-  // 012-webgl-context-management — independent of `status`, not a merged
-  // enum: `status` answers "did this panel's query return data?";
-  // `contextLost` answers "is this panel's map currently able to render
-  // at all, right now, regardless of whether it has data?". Only
-  // meaningfully becomes true once a real map/overlay exists to lose its
-  // context (i.e. after `status` has already reached 'ready' at least
-  // once) — never reset by the data-fetch effect below, only by
-  // webglcontextrestored or this whole component unmounting.
-  const [contextLost, setContextLost] = useState(false)
 
   // Data fetch — identical shape to every other data-bound panel type.
   useEffect(() => {
@@ -337,41 +335,6 @@ export function FlowMapPanel({ config }: { config: FlowMapPanelConfig }) {
     window.__flowmapTestOverlays ??= {}
     window.__flowmapTestOverlays[config.title] = overlay
 
-    // 012-webgl-context-management — MapLibre's own Map class already
-    // listens for the standard canvas-level webglcontextlost/
-    // webglcontextrestored events, already calls event.preventDefault()
-    // (the one action required for the browser to ever consider
-    // restoring the context later), already aborts any in-flight frame
-    // request so no crash/hang occurs, and already rebuilds its own
-    // internal painter/GL resources on restore — then re-fires both as
-    // its own real, public Map events (confirmed directly against the
-    // installed maplibre-gl source, research.md §3). This wires up
-    // events the library already produces, not new low-level
-    // instrumentation.
-    const onContextLost = () => setContextLost(true)
-    const onContextRestored = () => {
-      setContextLost(false)
-      // MapLibre has already rebuilt ITS OWN resources by the time this
-      // fires — but deck.gl's own interleaved-mode GPU resources
-      // (buffers/programs) are a separate concern layered on top of the
-      // same now-restored context, not rebuilt by MapLibre's own
-      // recovery. Deliberately does NOT construct a FlowmapLayer or read
-      // status/rows/config directly in this closure — see the
-      // layerRepopulateGeneration comment above. setProps({ layers: [] })
-      // needs no external state (a constant empty array), so it's safe
-      // to call directly here; the actual re-construction is deferred to
-      // the data-update effect below, re-triggered by the generation
-      // bump (FR-006: MapLibre's own restored style IS the panel's
-      // already-resolved effective basemap — nothing about
-      // basemapKey/resolveEffectiveBasemap needs to re-run, since
-      // neither the panel's pin nor its tab default nor the current
-      // theme changed just because the context was lost).
-      overlayRef.current?.setProps({ layers: [] })
-      setLayerRepopulateGeneration((g) => g + 1)
-    }
-    map.on('webglcontextlost', onContextLost)
-    map.on('webglcontextrestored', onContextRestored)
-
     const observer = new ResizeObserver(() => {
       mapRef.current?.resize()
     })
@@ -390,8 +353,6 @@ export function FlowMapPanel({ config }: { config: FlowMapPanelConfig }) {
     return () => {
       window.clearTimeout(readyTimer)
       observer.disconnect()
-      map.off('webglcontextlost', onContextLost)
-      map.off('webglcontextrestored', onContextRestored)
       delete window.__flowmapTestMaps?.[config.title]
       delete window.__flowmapTestOverlays?.[config.title]
       tooltipRef.current?.destroy()
@@ -770,15 +731,18 @@ export function FlowMapPanel({ config }: { config: FlowMapPanelConfig }) {
     containerRef.current.dataset.flowCount = String(data.flows.length)
     containerRef.current.dataset.locationCount = String(data.locations.length)
     // 012-webgl-context-management — layerRepopulateGeneration added.
-    // Bumped by (a) the basemap effect's style.load handler after an
-    // interleaved-mode setStyle() wipe, and (b) webglcontextrestored —
-    // both need the FlowmapLayer reconstructed from CURRENT rows/config,
-    // which only this effect's own always-fresh closure can guarantee
-    // (contracts/interleaved-overlay-survival.md's "Why not a standalone
-    // helper function"). If status isn't 'ready' when a repopulate is
+    // Bumped by the basemap effect's style.load handler after an
+    // interleaved-mode setStyle() wipe — needs the FlowmapLayer
+    // reconstructed from CURRENT rows/config, which only this effect's
+    // own always-fresh closure can guarantee (contracts/
+    // interleaved-overlay-survival.md's "Why not a standalone helper
+    // function"). If status isn't 'ready' when a repopulate is
     // requested, the guard above already returns early — a correct
     // no-op, since this effect re-runs again anyway once status reaches
-    // 'ready' (already in this dependency array).
+    // 'ready' (already in this dependency array). (A second trigger —
+    // WebGL context-loss recovery — used to bump this same counter;
+    // removed along with the rest of that mechanism, see this file's
+    // own layerRepopulateGeneration declaration comment above.)
   }, [config, rows, status, mapReady, layerRepopulateGeneration])
 
   if (status === 'empty') {
@@ -793,35 +757,15 @@ export function FlowMapPanel({ config }: { config: FlowMapPanelConfig }) {
       {status === 'loading' && (
         <div className="animate-pulse rounded-md bg-muted" style={{ height: config.height ?? 500 }} />
       )}
-      {/* 012-webgl-context-management — the containerRef div below must
-          NEVER unmount while contextLost is true: MapLibre's own
-          automatic restoration rebuilds resources against the SAME
-          canvas element, not a newly-created one. This wrapper lets the
-          banner overlay the (currently inert but still-mounted) canvas
-          instead of replacing it, unlike the 'empty'/'error' early
-          returns above (which correctly DO omit the container — a
-          context can only be lost after a map has already been
-          successfully constructed, which only happens once status
-          reaches 'ready'). */}
-      <div style={{ position: 'relative', height: '100%', width: '100%' }}>
-        {status === 'ready' && contextLost && (
-          <div
-            style={{ position: 'absolute', inset: 0, zIndex: 1 }}
-            className="flex items-center justify-center bg-background/80"
-          >
-            <PanelErrorState message="Map context lost — too many maps are open at once. It may recover automatically; try closing other panels or reloading if not." />
-          </div>
-        )}
-        <div
-          ref={containerRef}
-          className="flowmap-chart"
-          style={{
-            width: '100%',
-            height: '100%',
-            display: status === 'ready' ? undefined : 'none',
-          }}
-        />
-      </div>
+      <div
+        ref={containerRef}
+        className="flowmap-chart"
+        style={{
+          width: '100%',
+          height: '100%',
+          display: status === 'ready' ? undefined : 'none',
+        }}
+      />
     </>
   )
 }

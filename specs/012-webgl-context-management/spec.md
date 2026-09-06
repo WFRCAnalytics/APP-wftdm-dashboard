@@ -8,6 +8,27 @@
 
 **Input**: User description: "Fix a real, confirmed bug: a dashboard tab with multiple flowmap panels can exceed the browser's concurrent WebGL context limit, silently losing context on the earliest-mounted panels (their canvases render nothing, with no visible error). Chromium's real desktop limit is 16 contexts; this project's non-interleaved MapboxOverlay setup uses 2 real WebGL contexts per flowmap panel, so the real production ceiling is ~8 simultaneous panels on one tab. Research and design, in priority order: (1) deck.gl's native View system, which may let multiple panels share one deck.gl context; (2) interleaved mode, which halves context cost per panel but reopens the setStyle()-wipes-custom-layers risk 011 already solved for non-interleaved mode, needing its own empirical proof; (3) viewport-gated mounting (IntersectionObserver), which must be proven safe against 004's persistent-DOM-node expand/collapse mechanism; (4) webglcontextlost/webglcontextrestored detection, built regardless of what else is chosen, turning today's silent failure into an honest, distinct status. Whichever combination is chosen must be proven by a real empirical test against this project's own pinned versions, not assumed safe from design alone. Out of scope: switching away from MapLibre; building ZoneMapPanel itself."
 
+---
+
+**REMOVED (later, deliberate project decision — not a bug fix):** the
+context-loss DETECTION/RECOVERY portion of this feature — item (4) above,
+and everything it produced (`FlowMapPanel.tsx`'s `contextLost` state, its
+`webglcontextlost`/`webglcontextrestored` listeners, the "Map context
+lost" banner, and `layerRepopulateGeneration`'s context-restore-triggered
+call site) — was removed entirely from `FlowMapPanel.tsx`. This was
+**explicitly not** motivated by the separate flowmap line-jaggedness/
+antialiasing investigation happening around the same time (see
+`docs/PIPELINE.md`'s own entry on that investigation for the unrelated
+finding it left on record). Item (2), interleaved mode itself, and
+`layerRepopulateGeneration`'s other (basemap-switch) trigger, are
+**unchanged** — neither ever depended on the removed recovery code. This
+document, and the rest of this spec folder, are left as-is below as the
+historical record of what this feature actually built at the time — see
+`CLAUDE.md`'s own "Map panels" section and `FlowMapPanel.tsx`'s file-tree
+entry for the fuller account of the removal itself.
+
+---
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Every configured map panel on a tab shows a working basemap (Priority: P1)
