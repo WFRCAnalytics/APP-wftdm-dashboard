@@ -309,3 +309,153 @@ test.describe('028-dashboard-branding', () => {
     await expect(page.locator('.dashboard-brand-logo')).toHaveCount(0)
   })
 })
+
+// Phase 2 of the app-wide UI/UX redesign (wftdm-design-system skill) —
+// shell/nav. Verified in BOTH themes via real getComputedStyle() reads,
+// per the skill's own non-negotiable dual-theme requirement — not visual
+// spot-checking. Fixture: dashboard-1-summary.yaml's header is
+// `{ tab: Summary, title: Model Run Summary, description: "Fixture
+// dashboard exercising valuebox and plotly panels end to end" }`;
+// dashboard-2-detail.yaml's is `{ tab: Detail, title: Detail View }` (no
+// description) — a real, already-existing pair with one description
+// present and one absent, no new fixture data needed.
+test.describe('Phase 2 — shell/nav redesign (wftdm-design-system)', () => {
+  test('the active tab\'s real header.title renders as a page-level heading; header.description renders only when present', async ({
+    page,
+  }) => {
+    await page.goto('/')
+    await page.waitForFunction(() => window.__wftdm !== undefined, null, { timeout: 30_000 })
+
+    // Summary (landing tab): both title and description are real,
+    // previously-unrendered fields (layout/types.ts's parseDashboardConfig
+    // requires header.title; header.description is optional) — confirmed
+    // via a full src/ search, before this phase, that neither had any
+    // rendering consumer anywhere in the app.
+    await expect(page.getByRole('heading', { level: 1, name: 'Model Run Summary' })).toBeVisible()
+    await expect(
+      page.getByText('Fixture dashboard exercising valuebox and plotly panels end to end'),
+    ).toBeVisible()
+
+    // Detail: title only, no description — the optional paragraph must
+    // not render as an empty node or literal "undefined".
+    await page.getByRole('tab', { name: 'Detail' }).click()
+    await expect(page.getByRole('heading', { level: 1, name: 'Detail View' })).toBeVisible()
+    await expect(page.getByText('undefined', { exact: true })).toHaveCount(0)
+  })
+
+  test('the page title uses the Page Title role\'s real computed size/weight in both light and dark', async ({
+    page,
+  }) => {
+    await page.goto('/')
+    await page.waitForFunction(() => window.__wftdm !== undefined, null, { timeout: 30_000 })
+
+    const heading = page.getByRole('heading', { level: 1, name: 'Model Run Summary' })
+    const readStyle = () =>
+      heading.evaluate((el) => {
+        const cs = getComputedStyle(el)
+        return { fontSize: cs.fontSize, fontWeight: cs.fontWeight }
+      })
+
+    // wftdm-design-system's Page Title role: text-xl (20px) font-semibold
+    // (600) — real computed values, not a class-name-string assertion.
+    let style = await readStyle()
+    expect(style.fontSize).toBe('20px')
+    expect(style.fontWeight).toBe('600')
+
+    await page.evaluate(() => document.documentElement.classList.add('dark'))
+    style = await readStyle()
+    expect(style.fontSize).toBe('20px')
+    expect(style.fontWeight).toBe('600')
+  })
+
+  test('panel titles render smaller than the page title in both themes — the correct hierarchy, not inverted', async ({
+    page,
+  }) => {
+    await page.goto('/')
+    await page.waitForFunction(() => window.__wftdm !== undefined, null, { timeout: 30_000 })
+
+    const pageTitle = page.getByRole('heading', { level: 1, name: 'Model Run Summary' })
+    const panelTitle = page.getByText('Total Households', { exact: true })
+    const readPx = (locator: typeof pageTitle) =>
+      locator.evaluate((el) => parseFloat(getComputedStyle(el).fontSize))
+
+    // A real, confirmed regression caught during this phase's own
+    // implementation (a real screenshot, not assumed): adding the page
+    // title above panel content, without also fixing CardTitle's own
+    // never-tuned shadcn default (text-2xl/24px), made every panel title
+    // render LARGER than the page title sitting above it — components/
+    // ui/card.tsx's CardTitle was fixed to the Panel Title role (16px)
+    // specifically because of this, not deferred to Phase 3.
+    for (const dark of [false, true]) {
+      if (dark) await page.evaluate(() => document.documentElement.classList.add('dark'))
+      const [pageSize, panelSize] = await Promise.all([readPx(pageTitle), readPx(panelTitle)])
+      expect(pageSize).toBeGreaterThan(panelSize)
+      expect(panelSize).toBe(16) // wftdm-design-system's Panel Title role
+    }
+  })
+
+  test('the fixed header carries a real, non-empty box-shadow in both light and dark', async ({ page }) => {
+    await page.goto('/')
+    await page.waitForFunction(() => window.__wftdm !== undefined, null, { timeout: 30_000 })
+
+    const header = page.locator('header')
+    const readShadow = () => header.evaluate((el) => getComputedStyle(el).boxShadow)
+
+    // shadow-md's real, resolved computed value — not just "not none".
+    // Confirms the header is no longer a flat border-only surface (this
+    // app's own Elevation section: a `position: fixed` bar with real page
+    // content scrolling underneath it needs a real elevation cue). "0.14"
+    // is shadow-md's own distinctive real alpha value (tokens.css), a
+    // sharper check than a color-only substring — both themes' own
+    // --shadow-color resolves to a different rgb triple, but the SAME
+    // 0.14 alpha carries through unchanged in both.
+    let shadow = await readShadow()
+    expect(shadow).not.toBe('none')
+    expect(shadow).toContain('0.14')
+
+    await page.evaluate(() => document.documentElement.classList.add('dark'))
+    shadow = await readShadow()
+    expect(shadow).not.toBe('none')
+    expect(shadow).toContain('0.14')
+    // Dark mode's own distinct mechanism — an edge-highlight ring
+    // (tokens.css's --shadow-ring: color-mix(... 12% ...)) layered
+    // underneath the same shadow-md blur, not just a darker version of
+    // the light shadow. A ring is a 1px-spread, 0-blur layer — distinct
+    // from shadow-md's own 4px-blur/12px-spread layer — so a real
+    // computed box-shadow with a ring present lists TWO layers, not one.
+    const layerCount = shadow.split(/,(?![^(]*\))/).length
+    expect(layerCount).toBeGreaterThanOrEqual(2)
+  })
+
+  test('DashboardBrand\'s text-only fallback uses the Page Title role\'s real computed size in both themes', async ({
+    page,
+  }) => {
+    // Same broken-logo route-mock technique as the 028-dashboard-branding
+    // suite above, reused directly — forces the text-fallback branch.
+    const fixturePath = join(__dirname, '../fixtures/dashboard-config/index.json')
+    const json = JSON.parse(readFileSync(fixturePath, 'utf-8'))
+    json.logoUrl = '/definitely-does-not-exist-logo.png'
+    delete json.logoUrlDark
+    await page.route('**/dashboard-config/index.json', async (route) => {
+      await route.fulfill({ contentType: 'application/json', body: JSON.stringify(json) })
+    })
+
+    await page.goto('/')
+    await page.waitForFunction(() => window.__wftdm !== undefined, null, { timeout: 30_000 })
+
+    const brandTitle = page.locator('.dashboard-brand-title')
+    await expect(brandTitle).toBeVisible({ timeout: 10_000 })
+    const readSize = () => brandTitle.evaluate((el) => getComputedStyle(el).fontSize)
+
+    // Previously text-lg (18px) — a value with no home in the design
+    // system's typography scale. Now the Page Title role (20px), the
+    // same role/size the tab-content heading above uses — this text IS a
+    // page-level heading (the app's own name, shown when no logo exists).
+    let size = await readSize()
+    expect(size).toBe('20px')
+
+    await page.evaluate(() => document.documentElement.classList.add('dark'))
+    size = await readSize()
+    expect(size).toBe('20px')
+  })
+})

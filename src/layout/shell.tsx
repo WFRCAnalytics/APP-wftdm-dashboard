@@ -118,7 +118,22 @@ export function Shell({
     <div className="min-h-screen bg-background text-foreground">
       <header
         ref={headerRef}
-        className="fixed inset-x-0 top-0 z-30 flex items-center justify-between border-b border-border bg-background px-6 py-4 transition-transform duration-300 ease-in-out"
+        // wftdm-design-system, Phase 2: this header is `position: fixed` —
+        // real page content genuinely scrolls underneath it (the
+        // paddingTop compensation above only reserves space at rest;
+        // anything the viewer scrolls past continues to pass behind this
+        // element) — yet it previously carried no elevation at all, only
+        // a flat `border-b`, so it read as flush WITH the page rather
+        // than floating above it. shadow-md is this app's own already-
+        // formalized "default resting elevation for a persistent floating
+        // surface" tier (the same tier Card/dropdown menus already use) —
+        // applied unconditionally, in both nav-bar visibility modes,
+        // since the header is a floating surface throughout the session
+        // either way (only its position, not its elevation, changes
+        // between them). border-b is kept alongside it, not replaced —
+        // mapControls.css already established this exact border+shadow
+        // pairing convention for this app's other floating chrome.
+        className="fixed inset-x-0 top-0 z-30 flex items-center justify-between border-b border-border bg-background px-6 py-4 shadow-md transition-transform duration-300 ease-in-out"
         style={{ transform: navBarHidden ? 'translateY(-100%)' : 'translateY(0)' }}
       >
         <div className="flex min-w-0 items-center gap-4">

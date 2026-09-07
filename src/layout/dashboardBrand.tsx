@@ -49,8 +49,13 @@ export function DashboardBrand({ branding }: { branding: DashboardBranding }) {
   }
 
   if (branding.title) {
+    // wftdm-design-system's own Page Title role (20px/600/tracking-tight) —
+    // this text IS a page-level heading (the app's own name, shown when no
+    // logo image exists), not an arbitrary one-off size. Previously
+    // text-lg/18px, a value with no home in the design system's typography
+    // scale at all — Phase 2's own audit found and fixed it.
     return (
-      <span className="dashboard-brand-title whitespace-nowrap font-heading text-lg font-semibold text-foreground">
+      <span className="dashboard-brand-title whitespace-nowrap font-heading text-xl font-semibold tracking-tight text-foreground">
         {branding.title}
       </span>
     )

@@ -58,6 +58,21 @@ export function DashboardRenderer({ tab }: { tab: DashboardTabConfig }) {
 
   return (
     <div className="flex flex-col gap-6 p-6">
+      {/* wftdm-design-system, Phase 2: header.title/description are real,
+          validated fields (layout/types.ts's parseDashboardConfig — title
+          is even REQUIRED) that had no rendering consumer anywhere in the
+          app before this — confirmed via a full src/ search finding zero
+          references to header.title/header.description outside types.ts
+          itself. This is the Page Title role's first real application
+          (previously "reserved for Phase 2, if needed" — it was needed).
+          Participates in the same gap-6 rhythm as the row grid below, not
+          a separately-spaced block. */}
+      <div>
+        <h1 className="font-heading text-xl font-semibold tracking-tight">{tab.header.title}</h1>
+        {tab.header.description && (
+          <p className="mt-1 font-body text-sm text-muted-foreground">{tab.header.description}</p>
+        )}
+      </div>
       {rows.map(([rowName, panels]) => (
         <div
           key={rowName}

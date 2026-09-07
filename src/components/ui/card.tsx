@@ -29,9 +29,22 @@ CardHeader.displayName = 'CardHeader'
 
 const CardTitle = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HTMLHeadingElement>>(
   ({ className, ...props }, ref) => (
+    // wftdm-design-system's Panel Title role (16px/600/tracking-tight) —
+    // fixed during Phase 2 (shell/nav), not deferred to Phase 3 as
+    // originally planned: this shadcn default (text-2xl/24px, sized for a
+    // single standalone hero card, never tuned for this app's dense
+    // multi-panel grid) was left in place through Phase 1's own research,
+    // but Phase 2's own new page-title heading (dashboardRenderer.tsx)
+    // made the resulting hierarchy inversion directly visible in a real
+    // screenshot — every panel's own CardTitle rendered LARGER than the
+    // page title sitting above it. card.tsx is shared shell-adjacent
+    // chrome (like Button/Dialog/Tabs), not an individual panel's own
+    // internals, so fixing it here doesn't cross into Phase 3's own
+    // per-panel-type scope (which still owns each panel's internal
+    // content/data/icon treatment, untouched by this change).
     <h3
       ref={ref}
-      className={cn('font-heading text-2xl font-semibold leading-none tracking-tight', className)}
+      className={cn('font-heading text-base font-semibold leading-none tracking-tight', className)}
       {...props}
     />
   ),

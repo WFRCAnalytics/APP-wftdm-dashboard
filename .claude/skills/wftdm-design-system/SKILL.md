@@ -51,8 +51,8 @@ Three font families, unchanged from `002-design-tokens` (WFRC brand choice, not 
 
 | Role | Tailwind classes | Real size / line-height | Weight | Status |
 |---|---|---|---|---|
-| **Page title** | `font-heading text-xl font-semibold tracking-tight` | 20px / 28px | 600 | **Not used anywhere yet** — reserved for Phase 2 (shell/nav), if/when the shell ever needs a page-level heading distinct from the tab strip itself. |
-| **Panel title** | `font-heading text-base font-semibold tracking-tight` | 16px / 24px | 600 | **Target value — not yet applied.** `components/ui/card.tsx`'s `CardTitle` currently renders every panel title at `text-2xl` (24px), the shadcn default for a single standalone hero card, never tuned for this app's dense multi-panel grid. Every reference checked for a comparable "small heading inside a dense grid" context lands well below 24px (Grafana's own h5 is 16px; Supabase Studio's `heading-subSection` is `text-base`/16px). **Flagged for Phase 2/3 — not changed by this skill.** |
+| **Page title** | `font-heading text-xl font-semibold tracking-tight` | 20px / 28px | 600 | **Applied, Phase 2.** Two real consumers: `layout/dashboardRenderer.tsx`'s new heading, rendering the active tab's own `header.title`/`header.description` (real, validated fields that had zero rendering consumer anywhere in the app before Phase 2 — confirmed via a full `src/` search); and `layout/dashboardBrand.tsx`'s text-only fallback (the app's own name, shown when no logo is configured) — previously an ad hoc `text-lg`/18px with no home in this scale at all. |
+| **Panel title** | `font-heading text-base font-semibold tracking-tight` | 16px / 24px | 600 | **Applied, Phase 2** (moved up from an originally-planned Phase 3 deferral). `components/ui/card.tsx`'s `CardTitle` — every panel title in the app — previously rendered at `text-2xl` (24px), the shadcn default for a single standalone hero card, never tuned for this app's dense multi-panel grid. Fixed during Phase 2, not deferred, because Phase 2's own new Page Title heading made the resulting hierarchy inversion directly visible in a real screenshot (every panel title rendering LARGER than the page title above it) — `card.tsx` is shared shell-adjacent chrome, not an individual panel's own internals, so this stayed within Phase 2's own scope boundary rather than crossing into Phase 3's per-panel-type work. |
 | **Section label** | `font-heading text-xs font-semibold uppercase tracking-wide text-muted-foreground` | 12px / 16px | 600 | Already real and correct — `layout/settings/basemapTab.tsx`'s catalog section headers. Formalized, not changed. |
 | **Body** | `font-body text-sm` | 14px / 20px | 400 | Already real and correct — `CardDescription`, most panel body copy. Matches Vercel/Geist's and Grafana's own default body size (both 14px). |
 | **Form label** | `font-body text-sm font-medium text-foreground` | 14px / 20px | 500 | Already real and correct — `layout/settings/appearanceTab.tsx`'s "Theme"/"Top Bar Behavior" labels. |
@@ -82,12 +82,34 @@ Already real, already correctly implemented in `src/styles/tokens.css` (`--shado
 | Tier | Class | Real box-shadow | Use for | Already used in |
 |---|---|---|---|---|
 | Low | `shadow-sm` | `0 1px 3px rgb(var(--shadow-color) / 0.12)` (+ dark-mode ring) | A small control resting directly on a busy surface (a map) | `panels/mapControls.css` |
-| Default | `shadow-md` | `0 4px 12px rgb(var(--shadow-color) / 0.14)` (+ dark-mode ring) | The app's default "resting" elevation — cards, dropdown menus, inline floating tooltips | `components/ui/card.tsx`, `components/ui/dropdown-menu.tsx`, `panels/mapTooltip.ts` |
+| Default | `shadow-md` | `0 4px 12px rgb(var(--shadow-color) / 0.14)` (+ dark-mode ring) | The app's default "resting" elevation — cards, dropdown menus, inline floating tooltips, and (Phase 2) the fixed shell header itself | `components/ui/card.tsx`, `components/ui/dropdown-menu.tsx`, `panels/mapTooltip.ts`, `layout/shell.tsx`'s `<header>` (Phase 2 — a `position: fixed` bar with real content scrolling underneath it had only a flat `border-b` before, no elevation cue at all) |
 | High | `shadow-lg` | `0 12px 32px rgb(var(--shadow-color) / 0.22)` (+ dark-mode ring) | The highest-elevation surfaces — modals/dialogs, Radix tooltip content | `components/ui/dialog.tsx`, `components/ui/tooltip.tsx` |
 
 **Dark mode is not just a darker shadow** — `tokens.css`'s `.dark` block replaces the drop shadow's own color mechanism with an edge-highlight ring (`--shadow-ring: 0 0 0 1px color-mix(in srgb, var(--foreground) 12%, transparent)`) layered underneath the same blur/spread values, because a plain drop shadow reads too weakly against an already-dark page. This was already correctly researched and built (`research.md §9` from `002-design-tokens`) — nothing to change, just don't accidentally regress it by hand-writing a shadow value anywhere instead of using the `shadow-*` classes.
 
 **Never write a literal `shadow-[...]` arbitrary value or an inline `boxShadow` style anywhere in this app** — confirmed via a full `src/` search that this has never happened once; keep it that way. Every shadow need fits one of the three tiers above.
+
+## Skeleton (loading placeholder) pattern
+
+Formalized in Phase 2, from a real, already-existing precedent — not invented from scratch. Before designing anything new, this app's own `layout/settings/basemapTab.tsx` was checked directly: its raster-provider loading state (`data-testid="raster-loading-skeleton"`) is
+
+```
+className="h-9 w-full animate-pulse rounded-md bg-muted"
+```
+
+— a single shimmering, theme-aware rectangle. A full `src/` search found this EXACT treatment (`animate-pulse rounded-md bg-muted`, only the height changing) already independently used, consistently, in **seven** different panel types' own inline loading states: `FlowMapPanel.tsx`, `SankeyPanel.tsx`, `PlotlyPanel.tsx`, `ValueBoxPanel.tsx`, `TablePanel.tsx`, `ZoneMapPanel.tsx`, `ObservablePlotPanel.tsx`. So the "shimmer" primitive itself was never actually inconsistent — every panel type already agrees on it. What none of them do yet is compose more than one shimmer block into something **shaped** like the real content it's standing in for, rather than one plain rectangle.
+
+**The shimmer primitive** (the one already-correct building block — reuse this exact class combination for every new shimmer element, never a variant):
+
+```
+animate-pulse rounded-{sm|md|lg} bg-muted
+```
+
+Add `border border-border` when the real element it stands in for has a border (e.g. a card), and `shadow-{sm|md|lg}` matching that real element's own elevation tier (Elevation section above) — so the transition from placeholder to real content never involves a shadow/border popping in or out.
+
+**The app-boot skeleton** (Phase 2's own new, real application): `main.tsx`'s boot sequence (`initDuckDB()` → `discoverScenarios()` → `loadDashboards()`) runs entirely before `ReactDOM.createRoot(...).render(...)` is ever called — confirmed directly, there is no React tree mounted at all during this window, so a React-rendered skeleton component isn't possible for this specific case. The placeholder lives as static markup directly in `index.html`, inside `<div id="app">`, shaped to mirror the real shell: a header bar (logo-shaped block + a row of pill-shaped tab placeholders inside a `bg-muted` rail, mirroring `TabsList`'s own real `h-10 rounded-md bg-muted p-1` shape + a settings-button-shaped square), a page-title-shaped bar, then a grid of card-shaped rectangles matching `dashboardRenderer.tsx`'s own real `gap-6 p-6` rhythm. `ReactDOM.createRoot()` (not `hydrateRoot()`) unconditionally replaces a container's existing children on first render, so this markup needs no manual cleanup — it's simply discarded the instant the real `Shell` mounts. `role="status" aria-label="Loading dashboard"` plus a `sr-only` label makes this announced to assistive tech, not just visually present.
+
+**Phase 3 requirement — not optional, logged here so it isn't lost**: each panel type's own existing inline loading state (the seven files listed above) MUST be upgraded to this same real, shaped skeleton pattern when Phase 3 touches that panel type — composing multiple shimmer blocks into that panel type's own real internal shape (e.g. a value box's own icon-circle + number-bar + label-bar, a table's own header-row + several body-rows, a chart's own axis-line + plot-area), the same way the boot skeleton composes shimmer blocks into a header+grid shape. A single plain rectangle is the CURRENT, pre-Phase-3 state for every panel type — acceptable as an interim state (it already uses the correct shimmer primitive, just not yet shaped), but Phase 3 is explicitly NOT done for a panel type until its own loading state is genuinely shaped, not left as the one-rectangle placeholder it has today.
 
 ## Iconography
 
