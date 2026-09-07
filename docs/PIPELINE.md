@@ -91,30 +91,60 @@ realistic, not a way to skip the real integration work later.
 
 ---
 
-## Charting library exploration (ECharts / Recharts / D3) — research only
+## Charting-library consolidation — deferred, not part of the current visual redesign
 
-An open question, raised with an acknowledged personal interest in D3
-directly, about whether `echarts.js` or Recharts might serve this
-project better than its two already-shipped charting panel types:
-Plotly (`003-dashboard-shell-navigation`) and Observable Plot
-(`007-observable-plot-panel`).
+An open question about whether this project's charting should eventually
+consolidate onto fewer (or one) underlying rendering engine, instead of
+the three it has today: Plotly (`003-dashboard-shell-navigation`),
+Observable Plot (`007-observable-plot-panel`), and D3 itself, already
+present via `d3-sankey`/`d3-scale-chromatic` underneath `SankeyPanel.tsx`
+(`008-sankey-panel`). Each candidate/incumbent was discussed with a
+specific, stated reason, not just general enthusiasm:
 
-Deliberately scoped as **research only** — not a rebuild commitment, and
-not close to becoming one without more. Both current libraries are
-deeply integrated: dozens of passing unit and Playwright tests each, real
-production panel types (`plotly`/`observable-plot` in
-`panels/registry.tsx`), an established per-library dark-mode/theme-token
-integration pattern (`PlotlyPanel.tsx`'s `resolveThemeLayout()`,
-`ObservablePlotPanel.tsx`'s own theming), and real `docs/GRAMMAR.md`
-grammar authors already depend on. Swapping either out is a large,
-cross-cutting change, not a drop-in library substitution.
+- **D3 / Observable** — reactivity, compositionality (building a chart
+  out of small, combinable pieces rather than one monolithic
+  config object), and the sheer breadth of chart types reachable once
+  you're working with D3's primitives directly. The candidate with the
+  most explicitly acknowledged personal interest behind it.
+- **Recharts** — SVG rendering quality specifically called out as a
+  strength (crisp output, real DOM elements rather than a canvas/WebGL
+  surface).
+- **ECharts** (`echarts.js`) — breadth of chart types out of the box,
+  the same axis Plotly/Observable Plot are being compared against.
+- **Plotly** (the incumbent for most panel types today) — reliability,
+  and an interactive legend with per-category toggling (click a legend
+  entry to show/hide that series) that's already relied on and working
+  well in production.
 
-Any actual migration proposal would need a **specific, compelling
-capability gap** in the current libraries — something Plotly or
-Observable Plot genuinely cannot do, or does noticeably worse, for a real
-calibration/validation use case this project actually has — found and
-named before being justified. "A different library might be nicer"
-is not, on its own, that bar.
+**Deliberately a large, separate, deferred architectural decision — NOT
+part of the current visual redesign in progress.** This project already
+has three charting technologies deeply embedded, each with its own
+grammar, its own test suite, and its own already-built theming/dark-mode
+integration: Plotly (`plotly` panel type, `PlotlyPanel.tsx`'s
+`resolveThemeLayout()`, dozens of passing unit/Playwright tests), Observable
+Plot (`observable-plot` panel type, `ObservablePlotPanel.tsx`'s own
+theming, its own test suite), and D3 via `d3-sankey` (`sankey` panel type,
+`panels/sankeyGraph.ts`'s layout wrapper, `panels/sankeyColor.ts`). Real
+`docs/GRAMMAR.md` grammar authors already depend on spans all three.
+Consolidating onto fewer engines — whether that means adopting one of
+D3/Observable, Recharts, or ECharts as a new common base, or something
+else — is a cross-cutting rebuild touching every chart-rendering panel
+type this app has, not a drop-in library substitution, and not something
+to scope without a **specific, compelling capability gap** named first:
+something the current three genuinely cannot do, or do noticeably worse,
+for a real calibration/validation use case this project actually has.
+"A different library might be nicer" is not, on its own, that bar.
+
+**Interim approach, actually in scope for the current visual redesign**:
+rather than replacing any underlying rendering engine, build a shared
+tooltip/legend/color **presentation layer** across the three existing
+libraries — common visual treatment (tooltip styling, legend layout and
+interaction, the color tokens/ramps each panel type resolves against)
+applied consistently on top of Plotly/Observable Plot/D3-sankey as they
+exist today. This is a step toward visual unification across panel types
+without touching any rendering engine, grammar, or test suite the three
+libraries already have — the actual consolidation question above stays
+fully deferred regardless of how this interim layer turns out.
 
 ---
 
