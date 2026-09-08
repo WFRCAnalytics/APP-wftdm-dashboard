@@ -52,18 +52,41 @@ export default defineConfig({
           // above (research.md §9).
           if (id.includes('@kanaries/graphic-walker')) return 'graphic-walker'
           // 029-shadcn-chart-panel: this codebase's first dependency on
-          // recharts — real, confirmed additions to this dependency tree
-          // (not npm's newer "latest" major, which the actual shadcn CLI
-          // install did NOT pin — research.md §6): lodash, react-smooth,
-          // recharts-scale, victory-vendor. Same "large, previously-
-          // absent library gets its own chunk" reasoning as plotly/maps/
-          // graphic-walker above, so a dashboard that never renders a
-          // `recharts` panel never pays its load cost.
+          // recharts. UPGRADED to recharts@^3.10.1 (a deliberate, later
+          // major-version upgrade from the original ^2.15.4 the shadcn CLI
+          // itself installed — see CLAUDE.md's own recorded history and
+          // research.md §13 for the full story). Recharts v3 rewrote its
+          // own dependency chain entirely, confirmed directly via
+          // `npm ls`, not assumed: `react-smooth`/`recharts-scale` are
+          // GONE (v3 dropped both), replaced by a real, new Redux-based
+          // internal state layer (`@reduxjs/toolkit`, `es-toolkit`,
+          // `decimal.js-light`) plus a `victory-vendor` version bump
+          // (^36.6.8 → ^37.0.2). `lodash` was REMOVED from this list —
+          // confirmed via `npm ls lodash` that it was never actually a
+          // recharts dependency at all (v2 or v3): it's
+          // `@kanaries/graphic-walker`'s own transitive dependency (via
+          // `react-color`/`react-resize-detector`), a pre-existing
+          // inaccuracy in this chunk rule now fixed, not something this
+          // upgrade introduced. `immer`/`react-redux`/`reselect`/
+          // `use-sync-external-store` (also real, new-to-recharts
+          // dependencies) are deliberately NOT added here either — each
+          // is also already pulled in by an unrelated, pre-existing
+          // dependency elsewhere in this tree (`@kanaries/graphic-walker`/
+          // `@kanaries/react-beautiful-dnd` for `immer`/`react-redux`/
+          // `use-sync-external-store`, `@flowmap.gl/data` for `reselect`,
+          // confirmed via `npm ls` for each) — chunking a genuinely shared
+          // dependency under the recharts-specific lazy-load boundary
+          // would force every OTHER panel type that also needs it to pay
+          // for the whole `recharts` chunk too, defeating the point of
+          // splitting by panel type. Leaving them unmatched here lets
+          // Rollup's own default chunking place them wherever they're
+          // naturally shared. Same "large, previously-absent library gets
+          // its own chunk" reasoning as plotly/maps/graphic-walker above.
           if (
             id.includes('recharts') ||
-            id.includes('/lodash/') ||
-            id.includes('react-smooth') ||
-            id.includes('recharts-scale') ||
+            id.includes('@reduxjs/toolkit') ||
+            id.includes('es-toolkit') ||
+            id.includes('decimal.js-light') ||
             id.includes('victory-vendor')
           ) {
             return 'recharts'

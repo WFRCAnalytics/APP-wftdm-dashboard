@@ -797,3 +797,178 @@ Re-verified: `npx tsc --noEmit` clean, `npm run test:unit` 308/308, all 8
 `rechartsPanel.spec.ts` tests passing (confirmed both in isolation and
 together — the same already-documented intermittent legend-click flake
 recurred once more, still not a new regression).
+
+## §13. Round 7 — a deliberate `recharts` v2→v3 upgrade
+
+**Follow-up feature, seventh round**: explicit user instruction to
+upgrade the deliberately-pinned `recharts@^2.15.4` to the current 3.x
+release — a real, informed upgrade requiring full re-verification, not a
+version bump to quietly accept.
+
+**Research first — does `npx shadcn@latest add chart` pull a v3-adapted
+component for this project?** Fetched shadcn's own real
+`ui.shadcn.com/docs/components/chart` page directly: it documents an
+"Updating to Recharts v3" section with four real migration notes — use
+`var(--chart-1)` not `hsl(var(--chart-1))` (already true of this app's
+own plain-hex tokens, nothing to change), use `ChartTooltip.defaultIndex`
+for initial tooltip state only (not used here), remove `layout` from
+`<Bar>` when the parent `<BarChart>` already defines it (never set here),
+and keep a height/`min-h-*`/`aspect-*` on `ChartContainer` (already true —
+this app's own `className="aspect-auto w-full"` fix from §7 already
+satisfies this). Fetched the CURRENT registry JSON directly
+(`ui.shadcn.com/r/styles/new-york-v4/chart.json`, raw, not
+summarized) — confirms `recharts@3.8.0` as its own pinned dependency, and
+a real, meaningfully different `chart.tsx` source (function components
+not `forwardRef`, `initialDimension`, `data-slot`, Tailwind v4 arbitrary-
+property syntax `border-(--color-border)`, and genuinely different
+`ChartTooltipContent`/`ChartLegendContent` prop TYPES built against v3's
+own real API).
+
+**A real, confirmed, load-bearing discovery, found only by actually
+running the CLI against THIS repo (not by reading docs)**: `npx
+shadcn@latest add chart --dry-run` in this project reports it would
+install `recharts@2.15.4` — NOT `3.8.0` — and `--diff` shows the
+`chart.tsx` it would write is the OLD, pre-v3, pre-this-feature's-own-
+fixes source verbatim (`item.value &&`, not `!= null`; no `Omit<
+DefaultTooltipContentProps...>` intersection at all). Root cause,
+confirmed via direct read of this repo's own `components.json`:
+`"style": "default"` — this project has always used shadcn's LEGACY style
+track. shadcn maintains (at least) two parallel style/registry trees:
+`default` (legacy — Tailwind v3, recharts@2.15.4, never upgraded to v3 at
+all) and `new-york-v4` (current — Tailwind v4, recharts@3.8.0, the one
+`ui.shadcn.com/docs/components/chart` and its "Updating to Recharts v3"
+note actually describe). **This directly answers the user's own research
+question**: re-running the CLI after this upgrade would NOT pull a
+genuinely different, v3-adapted component for this project — it would
+regress `chart.tsx` back to the old, pre-fix v2 source, and it would not
+even touch the `recharts` npm dependency version at all (that's a
+separate `package.json` edit either way, CLI or not). Switching
+`components.json` to `"style": "new-york-v4"` was considered and
+rejected — out of scope and far too broad a change (it would alter every
+existing shadcn-pattern component's own default classes project-wide,
+not just this one file).
+
+**Version chosen**: `recharts@^3.10.1` — npm's own real, current latest
+(confirmed via `npm view recharts versions`), not `new-york-v4`'s own
+pinned `3.8.0` snapshot — matching "the current 3.x release" as asked,
+not shadcn's specific registry version. Peer deps confirmed compatible
+with this app's pinned `react`/`react-dom` `^18.3.1`
+(`react: "^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0"`, unchanged shape from
+v2's own peer range) — no exact-pin workaround needed, unlike
+`014-graphic-walker-panel`'s real React-19-only conflict.
+
+**Real, confirmed dependency-chain changes** (`npm ls` run for each
+package individually, not assumed from a changelog): `react-smooth` and
+`recharts-scale` are GONE from `node_modules` entirely — v3 dropped both.
+New, recharts-exclusive additions: `@reduxjs/toolkit` (2.12.0),
+`es-toolkit` (1.52.0), `decimal.js-light` (2.5.1). `victory-vendor`
+stayed recharts-exclusive but bumped `36.6.8` → `37.3.6`. Also new to
+recharts but NOT exclusive to it — each independently already present via
+an unrelated, pre-existing dependency, confirmed via `npm ls`: `immer`
+(recharts@3 needs 11.1.18; `@kanaries/graphic-walker` already carries its
+own separate 9.0.21, no conflict), `react-redux` (8.1.3, deduped —
+`@kanaries/react-beautiful-dnd` already needed the exact same version),
+`reselect` (recharts wants 5.2.0, `@reduxjs/toolkit` wants 5.3.0 deduped;
+`@flowmap.gl/data` already needed 5.3.0), `use-sync-external-store`
+(1.6.0, deduped via `react-redux`). **A real, confirmed pre-existing
+inaccuracy surfaced, unrelated to the version itself**: `lodash`
+(4.18.1) was never actually a `recharts` dependency at all, in v2 OR
+v3 — `npm ls lodash` traces it entirely to `@kanaries/graphic-walker`'s
+own transitive chain (`react-color`, `react-resize-detector`). The
+original `vite.config.ts` `manualChunks` rule matching `/lodash/` into
+the `recharts` chunk was therefore always incidentally bundling an
+unrelated panel type's own dependency — harmless before (lodash's real
+owner, graphic-walker, already has its own chunk lodash would also land
+in), but worth fixing now rather than perpetuating. Fixed: the
+`recharts` chunk rule now matches `recharts`/`@reduxjs/toolkit`/
+`es-toolkit`/`decimal.js-light`/`victory-vendor` only — `lodash` dropped
+entirely, and `immer`/`react-redux`/`reselect`/`use-sync-external-store`
+deliberately left unmatched (each shared with another already-existing
+dependency; forcing a shared package into the recharts-specific chunk
+would make every OTHER consumer pay for the whole `recharts` chunk too).
+Verified via a real production build (`npm run build`) plus a direct
+content-marker grep of the built chunks: `@@redux/INIT` (a real, unique
+`redux`-core string) appears in BOTH the `recharts` and `graphic-walker`
+chunks — investigated as a possible duplication bug, but confirmed to be
+two structurally UNRELATED copies (`@reduxjs/toolkit`'s own nested
+`redux` dependency inside the `recharts` chunk vs. `@kanaries/
+react-beautiful-dnd`'s own separately-vendored, statically-inlined
+`redux`-shaped code inside its own published bundle, present in the
+graphic-walker chunk since long before this upgrade) — not a new
+inefficiency this upgrade introduced.
+
+**Real, necessary `chart.tsx` type fixes** — confirmed necessary (not
+optional polish) by real `npx tsc --noEmit` failures immediately after
+the dependency bump, before any fix: (1) `ChartTooltipContent`'s prop
+type gained `& Omit<RechartsPrimitive.DefaultTooltipContentProps<
+TooltipValueType, TooltipNameType>, "accessibilityLayer">` (a new local
+`TooltipNameType = number | string` alias, matching v3's new-york-v4
+source exactly, since `NameType` itself isn't re-exported from the
+package's own top-level types) — v3 restructured `DefaultTooltipContent`'s
+own exported prop shape (the recharts wiki's own "Update TooltipProps to
+TooltipContentProps for custom tooltips" breaking-change entry), and the
+old v2-shaped type no longer typechecked (`payload`/`label` "does not
+exist" TS2339 errors). (2) `ChartLegendContent` switched from
+`Pick<RechartsPrimitive.LegendProps, "payload" | "verticalAlign">` to
+`RechartsPrimitive.DefaultLegendContentProps` — v3 made the FULL
+`<Legend>` component's own `LegendProps.payload` REQUIRED (confirmed via
+the real error: "Property 'payload' is missing... required"), breaking
+every real call site in `RechartsPanel.tsx` that renders
+`<ChartLegendContent className="..." />` without passing `payload`
+explicitly (Recharts' own `<Legend content={...}>` mechanism injects it
+at runtime via `cloneElement`, invisible to static analysis either way);
+`DefaultLegendContentProps` (the content-renderer's own separate prop
+type, confirmed via direct `.d.ts` read to keep `payload` optional)
+matches the real runtime contract correctly. (3) The tooltip payload
+map's `key={item.dataKey}` became `key={index}` — v3's real `DataKey<any>`
+type now permits a function accessor, which isn't assignable to React's
+`key` prop (`TS2322`); `payload` is freshly built by Recharts on every
+render, so an index key is safe here, matching v3's own new-york-v4
+source exactly. All three ported directly from the real, fetched v3
+source — not Tailwind v4 syntax, `data-slot`, or `initialDimension`,
+still declined for the same reasons as §9.
+
+**Re-verification of all three originally-fixed bugs plus the Round 6
+tooltip-animation fix, against the real v3 runtime, both themes** (a
+temporary, throwaway Playwright spec, deleted after use — not part of the
+permanent suite):
+- Aspect-ratio/`ChartContainer` sizing: chart `<div data-chart>` measured
+  352.5px wide inside a 402.5px-wide card in BOTH themes — still fully
+  contained, not overflowing. `ChartContainer`'s own default classes
+  (this app's hand-maintained file, untouched by this round except the
+  type-only edits above) still include the `aspect-auto w-full` override.
+- Tooltip indicator: the real rendered swatch measured a genuine
+  10px×10px SOLID square (`border-style: solid`, a real filled
+  `background-color` matching the hovered series' own `--chart-N` token
+  exactly in both themes) — still `indicator="dot"`'s real default,
+  never the "three dots" `dashed` bug.
+- `ChartLegendContent` flex-wrap: the real legend wrapper's inner div
+  computed `flex-wrap: wrap` in both themes, with the full override
+  className (`"flex items-center justify-center gap-4 pt-3 flex-wrap
+  gap-x-4 gap-y-1"`) intact on the actual DOM node.
+- Curve-type distinction (Line=`monotone`, Area=`natural`): confirmed via
+  real screenshots, both themes — the line renders a smooth curve with no
+  visible overshoot past its own local min/max, the area renders a
+  smoothly-faded gradient fill with the same curve family, matching §11's
+  own distinction exactly.
+- **Round 6's `isAnimationActive={false}` tooltip-animation fix — the
+  highest-risk item to re-verify, given v3's own confirmed internal
+  rewrite to a Redux-based state layer** (a real, working concern: v3
+  dropped `react-smooth` entirely, and could plausibly have replaced
+  `TooltipBoundingBox.js`'s own CSS-transition mechanism with something
+  structurally different tied to the new state layer). Verified live: the
+  real tooltip wrapper's own computed `transitionDuration` was `0s` in
+  BOTH themes — the fix still holds under v3's real runtime, empirically
+  confirmed rather than assumed to carry over.
+
+Re-verified: `npx tsc --noEmit` clean (after the real type fixes above),
+`npm run test:unit` 308/308 (zero test-code changes needed — every
+existing assertion reads live token/DOM values, none hardcoded a
+recharts-version-specific detail), all 8 `rechartsPanel.spec.ts`
+integration tests passing unchanged, a full production build
+(`npm run build`) succeeding with the `recharts` chunk correctly isolated
+(379.55 kB / 105.60 kB gzip, a real, separate chunk — confirmed via
+direct build output, not assumed), and real before/after screenshots in
+both themes for bar/line/area confirming every originally-fixed bug and
+the Round 6 fix all still hold under the real, deliberately-upgraded v3
+runtime.

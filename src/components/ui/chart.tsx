@@ -1,10 +1,19 @@
 import * as React from "react"
 import * as RechartsPrimitive from "recharts"
+import type { TooltipValueType } from "recharts"
 
 import { cn } from "@/lib/utils"
 
 // Format: { THEME_NAME: CSS_SELECTOR }
 const THEMES = { light: "", dark: ".dark" } as const
+
+// 029-shadcn-chart-panel (recharts v2→v3 upgrade, research.md §13):
+// `NameType` itself is NOT re-exported from the `recharts` package's own
+// top-level types (only `ValueType as TooltipValueType` is, confirmed via
+// direct read of node_modules/recharts/types/index.d.ts) — this local
+// alias matches shadcn's own current (v3) new-york-v4 registry source
+// exactly, which defines the same local type for the same reason.
+type TooltipNameType = number | string
 
 export type ChartConfig = {
   [k in string]: {
@@ -105,21 +114,31 @@ const ChartTooltip = RechartsPrimitive.Tooltip
 // convention (CLAUDE.md's own recorded reasoning for this file) — both
 // are real correctness fixes shadcn's own CURRENT (Recharts v3) registry
 // source already carries (fetched and confirmed directly,
-// ui.shadcn.com/r/styles/new-york-v4/chart.json), backported here rather
-// than upgrading the installed `recharts` package itself (still
-// deliberately pinned to v2, per package.json's own note). `item.value
-// != null` (not `item.value &&`) — the old check hid a legitimate `0`
-// value's row entirely, the same "never coerce a real 0 into a hidden/
-// wrong display" discipline this app's own formatValue.ts/
+// ui.shadcn.com/r/styles/new-york-v4/chart.json), originally backported
+// here without upgrading the installed `recharts` package itself. `item.
+// value != null` (not `item.value &&`) — the old check hid a legitimate
+// `0` value's row entirely, the same "never coerce a real 0 into a
+// hidden/wrong display" discipline this app's own formatValue.ts/
 // zonemapColor.ts already hold themselves to. `item.payload?.fill` adds
 // the optional chaining v3's own source already has, for the same
-// defensive reason. Every other real difference in v3's source (Tailwind
-// v4-only syntax, a new `data-slot` attribute, `initialDimension`) is
-// NOT backported — this project stays on Tailwind v3, and this app's own
-// loading-skeleton-then-mount pattern already gives ResponsiveContainer a
-// correctly-sized parent by the time it measures, so `initialDimension`
-// would have no visible effect here (see rechartsPanel.css's own header
-// comment for the other real fix from this same investigation).
+// defensive reason.
+//
+// research.md §13 (deliberate recharts v2→v3 upgrade): the prop TYPE
+// below is now a REAL, NECESSARY port, not a style choice — v3 changed
+// `DefaultTooltipContent`'s own exported prop shape (the wiki's own
+// "Update TooltipProps to TooltipContentProps for custom tooltips"
+// breaking-change entry), and the v2-shaped type this file used
+// previously no longer typechecks against the real, installed v3 types
+// (`npx tsc --noEmit` failed with real TS2339 errors on `payload`/`label`
+// before this fix). Ported directly from shadcn's own v3 new-york-v4
+// source. Tailwind v4-only syntax (`outline-hidden`,
+// `border-(--color-border)`), the `data-slot` attribute, and
+// `initialDimension` are still NOT backported — this project stays on
+// Tailwind v3, and this app's own loading-skeleton-then-mount pattern
+// already gives ResponsiveContainer a correctly-sized parent by the time
+// it measures, so `initialDimension` has no visible effect here (see
+// rechartsPanel.css's own header comment for the other real fix from
+// this same investigation).
 const ChartTooltipContent = React.forwardRef<
   HTMLDivElement,
   React.ComponentProps<typeof RechartsPrimitive.Tooltip> &
@@ -129,7 +148,13 @@ const ChartTooltipContent = React.forwardRef<
       indicator?: "line" | "dot" | "dashed"
       nameKey?: string
       labelKey?: string
-    }
+    } & Omit<
+      RechartsPrimitive.DefaultTooltipContentProps<
+        TooltipValueType,
+        TooltipNameType
+      >,
+      "accessibilityLayer"
+    >
 >(
   (
     {
@@ -211,8 +236,18 @@ const ChartTooltipContent = React.forwardRef<
               const indicatorColor = color || item.payload?.fill || item.color
 
               return (
+                // research.md §13: `key={item.dataKey}` (this file's
+                // pre-upgrade key) no longer typechecks against v3's real
+                // `DataKey<any>` type — a dataKey can now be a function
+                // accessor, not just `string | number`, which React's own
+                // `key` prop rejects (confirmed via the real `npx tsc
+                // --noEmit` error this upgrade produced). `key={index}`
+                // matches shadcn's own v3 new-york-v4 source exactly, and
+                // is safe here: `payload` is a fresh array built fresh on
+                // every render by Recharts itself, not a list this app
+                // reorders/filters independently of it.
                 <div
-                  key={item.dataKey}
+                  key={index}
                   className={cn(
                     "flex w-full flex-wrap items-stretch gap-2 [&>svg]:h-2.5 [&>svg]:w-2.5 [&>svg]:text-muted-foreground",
                     indicator === "dot" && "items-center"
@@ -278,13 +313,24 @@ ChartTooltipContent.displayName = "ChartTooltip"
 
 const ChartLegend = RechartsPrimitive.Legend
 
+// research.md §13: switched from `Pick<RechartsPrimitive.LegendProps,
+// "payload" | "verticalAlign">` to `RechartsPrimitive.
+// DefaultLegendContentProps` — a real, necessary v3 fix, not a style
+// choice. `LegendProps` (the full `<Legend>` component's own prop type)
+// made `payload` REQUIRED in v3, which broke every real call site in this
+// app that renders `<ChartLegendContent className="..." />` without
+// passing `payload` explicitly (Recharts' own `<Legend content={...}>`
+// mechanism injects it at runtime via `cloneElement`, invisible to
+// static analysis) — confirmed via the real `npx tsc --noEmit` error this
+// upgrade produced. `DefaultLegendContentProps` (the content-renderer's
+// own, separate prop type — matching shadcn's own v3 new-york-v4 source)
+// keeps `payload` optional, exactly matching the real runtime contract.
 const ChartLegendContent = React.forwardRef<
   HTMLDivElement,
-  React.ComponentProps<"div"> &
-    Pick<RechartsPrimitive.LegendProps, "payload" | "verticalAlign"> & {
-      hideIcon?: boolean
-      nameKey?: string
-    }
+  React.ComponentProps<"div"> & {
+    hideIcon?: boolean
+    nameKey?: string
+  } & RechartsPrimitive.DefaultLegendContentProps
 >(
   (
     { className, hideIcon = false, payload, verticalAlign = "bottom", nameKey },

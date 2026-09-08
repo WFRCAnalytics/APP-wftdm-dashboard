@@ -2372,7 +2372,54 @@ APP-wftdm-dashboard/
     │                              # own tree entry above for the OTHER,
     │                              # separate real bug this same pass
     │                              # found and fixed WITHOUT touching this
-    │                              # file).
+    │                              # file). A THIRD, LATER round (the real
+    │                              # `recharts` v2→v3 dependency upgrade,
+    │                              # research.md §13) added genuinely
+    │                              # NECESSARY type-only ports, not style
+    │                              # backports: `ChartTooltipContent`'s
+    │                              # prop type gained an `& Omit<
+    │                              # RechartsPrimitive.
+    │                              # DefaultTooltipContentProps<...>,
+    │                              # "accessibilityLayer">` intersection
+    │                              # (v3 changed `DefaultTooltipContent`'s
+    │                              # own exported prop shape — the real,
+    │                              # confirmed `npx tsc --noEmit` failures
+    │                              # this upgrade produced before the
+    │                              # fix), `ChartLegendContent` switched
+    │                              # from `Pick<RechartsPrimitive.
+    │                              # LegendProps, "payload" |
+    │                              # "verticalAlign">` to
+    │                              # `RechartsPrimitive.
+    │                              # DefaultLegendContentProps` (v3 made
+    │                              # `LegendProps.payload` REQUIRED,
+    │                              # breaking every real call site that
+    │                              # renders `<ChartLegendContent
+    │                              # className="..." />` without passing
+    │                              # `payload` explicitly — Recharts' own
+    │                              # `<Legend content={...}>` injects it at
+    │                              # runtime via `cloneElement`, invisible
+    │                              # to static analysis), and the tooltip
+    │                              # payload map's `key={item.dataKey}`
+    │                              # became `key={index}` (v3's real
+    │                              # `DataKey<any>` type can now be a
+    │                              # function accessor, which React's own
+    │                              # `key` prop rejects). All three ported
+    │                              # directly from shadcn's own real v3
+    │                              # `new-york-v4` source, confirmed
+    │                              # necessary (not optional polish) by the
+    │                              # real compiler errors each one fixed.
+    │                              # `npx shadcn@latest add chart` was
+    │                              # confirmed, live, NOT to be a path to
+    │                              # any of this for this project — its own
+    │                              # `components.json` `"style": "default"`
+    │                              # resolves against shadcn's legacy,
+    │                              # never-upgraded-to-v3 registry track,
+    │                              # confirmed via a real `--dry-run` (it
+    │                              # still proposes installing
+    │                              # `recharts@2.15.4`, byte-for-byte the
+    │                              # OLD pre-fix source) — every change
+    │                              # here is a manual, independently
+    │                              # verified port, not a CLI re-fetch.
     ├── scenario/                # done (009-scenario-manager) — closes
     │   │                        # services/duckdb.ts's registerScenario()
     │   │                        # zero-callers gap, open since 001
@@ -2611,14 +2658,55 @@ already resolves to `--brand-wfrc-secondary-blue` in dark mode, so
 defeating a 5-series categorical palette. Fixed with 5 genuinely distinct
 hues instead (blue/amber-gold/teal-slate/gray/muted-purple) before this
 ever reached a real component — see `specs/029-shadcn-chart-panel/
-research.md` §1 for the full computed-contrast record. `recharts` itself
-is a NEW npm dependency (`^2.15.4` — the shadcn CLI's own pinned version,
-notably NOT npm's newer "latest" tag `3.10.1` originally researched; a
-real, confirmed version-discrepancy correction made during
-implementation), plus real transitive additions `lodash`/`react-smooth`/
-`recharts-scale`/`victory-vendor` — all four get their own `vite.config.ts`
-`manualChunks` branch (a new `recharts` chunk), same pattern as the
-existing `plotly`/`maps`/`graphic-walker` chunks.
+research.md` §1 for the full computed-contrast record.
+
+**Recharts version history (three real, confirmed states, in order —
+none of them assumed, each verified directly against installed
+`node_modules`)**: (1) originally installed at `^2.15.4` — the real
+shadcn CLI's own pinned version at the time, NOT npm's newer "latest" tag
+`3.10.1` originally researched before implementation began (a real,
+confirmed version-discrepancy correction made during that implementation).
+(2) **Deliberately upgraded to `^3.10.1`** (research.md §13) — a real,
+informed major-version upgrade, not drift: `npx shadcn@latest add chart`
+was confirmed, live, to STILL install `recharts@2.15.4` for this project
+specifically, because `components.json`'s own `"style": "default"` points
+at shadcn's legacy registry track, which was never upgraded to Recharts
+v3 at all — only their separate `new-york-v4` style/registry (Tailwind v4,
+recharts@3.8.0) was. Re-running the CLI in this repo therefore never was,
+and still isn't, a path to v3 — the upgrade here is a manual,
+independently-verified dependency bump plus a hand-ported `chart.tsx` type
+fix (below), not a CLI re-fetch. npm's own real current latest (`3.10.1`,
+newer than the `new-york-v4` registry's own pinned `3.8.0`) was installed
+instead, matching "current 3.x release," not shadcn's specific snapshot.
+Confirmed real, load-bearing dependency-chain changes via direct
+`npm ls`, not assumed: `react-smooth`/`recharts-scale` are GONE (v3
+dropped both); `@reduxjs/toolkit`, `es-toolkit`, `decimal.js-light` are
+new, recharts-exclusive additions (a genuine internal move to a
+Redux-based state layer — `recharts/lib/state/store.js`'s own real
+`legendSlice`/`chartData`/`cartesianAxis`/`rootProps` slices, confirmed by
+direct source read); `victory-vendor` bumped `^36.6.8` → `^37.0.2`;
+`immer`/`react-redux`/`reselect`/`use-sync-external-store` are ALSO real,
+new recharts dependencies but were left OUT of the `recharts`
+`vite.config.ts` chunk (see that file's own comment) because each is
+independently already pulled in by an unrelated, pre-existing dependency
+elsewhere in this tree. `lodash` was REMOVED from the chunk list
+entirely — confirmed via `npm ls lodash` that it was **never actually a
+recharts dependency at all**, in v2 or v3: it's `@kanaries/
+graphic-walker`'s own transitive dependency, a pre-existing inaccuracy in
+this project's own chunk rule now fixed (unrelated to, but surfaced by,
+this upgrade). `chart.tsx` itself needed a real, necessary type-only port
+(NOT the Tailwind v4 syntax, `data-slot`, or `initialDimension` — still
+declined, same reasoning as before): v3 changed `DefaultTooltipContent`'s
+exported prop shape and made `LegendProps.payload` required, both
+confirmed via real `npx tsc --noEmit` failures before the port and a
+clean pass after — see that file's own updated comments and research.md
+§13 for the full, line-by-line record. All three originally-fixed real
+bugs (aspect-ratio/`ChartContainer` sizing, the tooltip `indicator="dot"`
+solid-swatch fix, the `ChartLegendContent` flex-wrap override) plus the
+Round 6 tooltip-animation fix (`isAnimationActive={false}`) were
+re-verified live, in both themes, against the real v3 runtime — all four
+still hold, confirmed by direct DOM measurement/screenshot, not assumed
+to carry over.
 
 `dashboardRenderer.tsx` looks up `registry[config.type]` and renders
 `<PanelComponent config={config} />` directly — no wrapper call, no manual
@@ -2842,8 +2930,17 @@ export default defineConfig({
       if (id.includes('maplibre-gl'))         return 'maplibre'
       if (id.includes('plotly'))              return 'plotly'
       if (id.includes('graphic-walker'))      return 'graphic-walker'
-      if (id.includes('recharts') || id.includes('/lodash/') ||
-          id.includes('react-smooth') || id.includes('recharts-scale') ||
+      // recharts@^3.10.1 (upgraded from ^2.15.4 — research.md §13):
+      // react-smooth/recharts-scale are gone in v3; lodash was removed
+      // from this list entirely (it was never actually a recharts
+      // dependency — graphic-walker's own transitive one). immer/
+      // react-redux/reselect/use-sync-external-store are real, new
+      // recharts deps too but deliberately left OUT here — each is
+      // already pulled in by an unrelated, pre-existing dependency
+      // elsewhere, so leaving them unmatched lets Rollup's own default
+      // chunking place them wherever they're naturally shared.
+      if (id.includes('recharts') || id.includes('@reduxjs/toolkit') ||
+          id.includes('es-toolkit') || id.includes('decimal.js-light') ||
           id.includes('victory-vendor'))      return 'recharts'
     }}}
   },
@@ -2884,14 +2981,30 @@ export default defineConfig({
   "js-yaml": "latest",
   "maplibre-gl": "^4.7.1",
   "plotly.js-dist-min": "latest",
-  "recharts": "^2.15.4"  // 029-shadcn-chart-panel — the shadcn CLI's own
-                          // pinned version, NOT npm's newer "latest" tag
-                          // (3.10.1) originally researched (a real,
-                          // confirmed version-discrepancy correction made
-                          // during implementation). Peer deps confirmed
-                          // React ^18.0.0-compatible. Real transitive
-                          // additions: lodash, react-smooth,
-                          // recharts-scale, victory-vendor@^36.6.8.
+  "recharts": "^3.10.1"  // 029-shadcn-chart-panel, later UPGRADED from the
+                          // original ^2.15.4 the shadcn CLI itself
+                          // installed (research.md §13) — a deliberate,
+                          // informed major-version upgrade to npm's real
+                          // current latest, not version drift. Re-running
+                          // the CLI does NOT get you this version for this
+                          // project: components.json's own "style":
+                          // "default" points at shadcn's legacy registry
+                          // track, which was never upgraded to Recharts
+                          // v3 at all (only their separate "new-york-v4"
+                          // style/registry was, confirmed live). Peer deps
+                          // confirmed React ^18.0.0-compatible (unchanged
+                          // in v3). Real dependency-chain changes,
+                          // confirmed via `npm ls`: react-smooth/
+                          // recharts-scale are GONE; @reduxjs/toolkit,
+                          // es-toolkit, decimal.js-light are new
+                          // (a genuine internal move to Redux-based
+                          // state); victory-vendor bumped to ^37.0.2;
+                          // immer/react-redux/reselect/
+                          // use-sync-external-store are also new but
+                          // already shared with other, pre-existing
+                          // dependencies. lodash was NEVER actually a
+                          // recharts dependency (a pre-existing, unrelated
+                          // graphic-walker transitive dependency).
 }
 ```
 
@@ -3254,10 +3367,13 @@ first cross-reference this list was built from). ✅ done,
     identified shadcn/ui's official chart component as this app's new
     default/primary bar/line/area chart engine, and this feature is the
     first (of the five-technology charting direction PIPELINE.md records)
-    to actually get built. A NEW npm dependency (`recharts` `^2.15.4` —
-    the real shadcn CLI's own pinned version, not npm's newer "latest"
-    tag `3.10.1` originally researched, a real, confirmed correction made
-    during implementation) plus shadcn's own `components/ui/chart.tsx`,
+    to actually get built. A NEW npm dependency (`recharts`, originally
+    `^2.15.4` — the real shadcn CLI's own pinned version at the time, not
+    npm's newer "latest" tag `3.10.1` originally researched, a real,
+    confirmed correction made during implementation; later deliberately
+    upgraded to `^3.10.1` — see this file's own "Recharts version
+    history" note above and research.md §13) plus shadcn's own
+    `components/ui/chart.tsx`,
     added verbatim via the real CLI rather than hand-authored (this
     repo's one deliberate departure from its own shadcn-pattern
     convention — `specs/029-shadcn-chart-panel/research.md` §5). New

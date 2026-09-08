@@ -409,3 +409,60 @@ either way).
 
 Re-verified: `tsc` clean, 308/308 unit tests, 8/8 `rechartsPanel.spec.ts`
 tests passing (confirmed alone and together).
+
+---
+
+## Post-completion follow-up, round 7: deliberate `recharts` v2→v3 upgrade
+
+Explicit user instruction: upgrade the deliberately-pinned
+`recharts@^2.15.4` to the current 3.x release — a real, informed upgrade
+with full re-verification, not a quiet version bump. Full record in
+research.md §13. Summary:
+
+- Research first: shadcn's own docs describe a real "Updating to
+  Recharts v3" migration (4 usage-level notes, all already satisfied or
+  inapplicable here). A real, load-bearing discovery found only by
+  actually running the CLI against this repo: `npx shadcn@latest add
+  chart --dry-run` still proposes `recharts@2.15.4` and the OLD,
+  pre-fix `chart.tsx` — this project's own `components.json` (`"style":
+  "default"`) points at shadcn's legacy registry track, which was never
+  upgraded to v3 at all (only their separate `new-york-v4` track was).
+  Re-running the CLI is therefore NOT a path to v3 for this project —
+  every change here is a manual, independently-verified port.
+- Upgraded `recharts` to `^3.10.1` (npm's own real current latest, not
+  the `new-york-v4` registry's own older pinned `3.8.0`). Peer deps
+  confirmed compatible with this app's `react@^18.3.1`.
+- Real, confirmed dependency-chain changes (`npm ls`, not assumed):
+  `react-smooth`/`recharts-scale` gone; `@reduxjs/toolkit`/`es-toolkit`/
+  `decimal.js-light` new (a real internal move to Redux-based state);
+  `victory-vendor` bumped `36.6.8`→`37.3.6`; `immer`/`react-redux`/
+  `reselect`/`use-sync-external-store` also new but each already shared
+  with an unrelated, pre-existing dependency. `lodash` was found to
+  never have been a real recharts dependency at all (a pre-existing
+  graphic-walker transitive one) — removed from `vite.config.ts`'s
+  `recharts` chunk rule, which is now `recharts`/`@reduxjs/toolkit`/
+  `es-toolkit`/`decimal.js-light`/`victory-vendor` only.
+- Real, necessary `chart.tsx` type ports (confirmed by real `tsc`
+  failures before each fix, not style choices): `ChartTooltipContent`'s
+  prop type gained `& Omit<DefaultTooltipContentProps<...>,
+  "accessibilityLayer">` (v3 restructured this type); `ChartLegendContent`
+  switched from `Pick<LegendProps, "payload"|"verticalAlign">` to
+  `DefaultLegendContentProps` (v3 made `LegendProps.payload` required,
+  breaking every real call site that omits it); the tooltip payload
+  map's `key={item.dataKey}` became `key={index}` (v3's `DataKey<any>`
+  can now be a function, invalid as a React key). All three ported
+  directly from shadcn's real, fetched v3 source.
+- Re-verified all three originally-fixed bugs (aspect-ratio sizing,
+  solid-dot tooltip indicator, legend flex-wrap) PLUS round 6's tooltip-
+  animation fix against the real v3 runtime, both themes, via a
+  temporary throwaway Playwright spec (deleted after use) — all four
+  still hold, confirmed by live DOM measurement and screenshots, not
+  assumed to carry over. The animation fix was the highest-risk
+  re-check given v3's confirmed internal rewrite (react-smooth dropped
+  entirely) — `transitionDuration` still measured `0s` in both themes.
+
+Re-verified: `npx tsc --noEmit` clean, `npm run test:unit` 308/308 (zero
+test-code changes needed), 8/8 `rechartsPanel.spec.ts` tests passing
+unchanged, a full production build succeeding with the `recharts` chunk
+correctly isolated (379.55 kB / 105.60 kB gzip), and real before/after
+screenshots in both themes.
