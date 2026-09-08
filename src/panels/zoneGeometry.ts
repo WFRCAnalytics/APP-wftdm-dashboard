@@ -33,6 +33,21 @@ export function resolveGeometryUrl(boundaries: string): string {
   return `${base}geometry/${boundaries}`
 }
 
+/** 031-all-panel-demo-content: the real, permanent, git-tracked sibling
+ * root for this feature's own real MTC-sourced geometry
+ * (public/demo-geometry/, scripts/build-demo-zone-geometry.py) — kept
+ * entirely separate from resolveGeometryUrl()'s own gitignored,
+ * fixture-managed public/geometry/ path (026-activitysim-demo-content's
+ * own public/demo-scenarios/ precedent, applied here to geometry — see
+ * specs/031-all-panel-demo-content/research.md's own Research Findings
+ * and contracts/geometry-pipeline.md). Only ever consulted as a fallback
+ * (loadZoneGeometry() below) — resolveGeometryUrl() itself, and every
+ * existing fixture/production boundaries file under public/geometry/,
+ * are completely unaffected. */
+export function resolveDemoGeometryUrl(boundaries: string): string {
+  return `${base}demo-geometry/${boundaries}`
+}
+
 let spatialExtensionPromise: Promise<void> | null = null
 
 /** Runs INSTALL spatial; LOAD spatial; at most once for the life of the
@@ -99,10 +114,37 @@ export function loadZoneGeometry(boundaries: string, boundariesId: string): Prom
     // registerFileURL() already creates a view named `viewName` wrapping
     // read_parquet(url) (services/duckdb.ts's own createViewOverParquet)
     // — queried here directly, never via a second explicit
-    // read_parquet()/ST_Read() call of this module's own.
-    await registerFileURL(viewName, resolveGeometryUrl(boundaries))
+    // read_parquet()/ST_Read() call of this module's own. This is also
+    // the real call that THROWS for an unreachable URL (services/
+    // duckdb.ts's own documented behavior — the actual HTTP request
+    // only happens once read_parquet() needs the file's footer, inside
+    // this call), which is what the fallback below depends on.
+    //
+    // 031-all-panel-demo-content: try the default public/geometry/ path
+    // first (unchanged for every existing fixture/production boundaries
+    // file — this is the ONLY attempt those ever make); only on failure,
+    // retry once against public/demo-geometry/ (resolveDemoGeometryUrl())
+    // before giving up.
+    //
+    // A DIFFERENT view name for the retry — confirmed live, NOT a safe
+    // reuse as an earlier draft of this comment assumed: DuckDB-WASM's
+    // own db.registerFileURL() registers the virtual filename -> URL
+    // mapping FIRST, entirely separately from (and before) the
+    // view-creation query below that actually fails for a bad URL — so
+    // even though CREATE OR REPLACE VIEW's own query throws, the raw
+    // filename registration from the first attempt has ALREADY
+    // succeeded and persists. Retrying registerFileURL() with the SAME
+    // view name therefore hits a real, confirmed "File already
+    // registered" error from DuckDB-WASM's own API, not a clean retry.
+    let activeViewName = viewName
+    try {
+      await registerFileURL(viewName, resolveGeometryUrl(boundaries))
+    } catch {
+      activeViewName = `zonemap-geom-demo__${boundaries}`
+      await registerFileURL(activeViewName, resolveDemoGeometryUrl(boundaries))
+    }
     const rows = await query(
-      `SELECT "${boundariesId}" AS zone_id, ST_AsGeoJSON(ST_GeomFromWKB(geometry)) AS geojson FROM "${viewName}"`,
+      `SELECT "${boundariesId}" AS zone_id, ST_AsGeoJSON(ST_GeomFromWKB(geometry)) AS geojson FROM "${activeViewName}"`,
     )
     const features: ZoneFeature[] = rows.map((row) => ({
       zoneId: String(row.zone_id),

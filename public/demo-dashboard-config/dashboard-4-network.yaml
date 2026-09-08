@@ -1,0 +1,46 @@
+# 031-all-panel-demo-content — User Story 4. Real geographic choropleth of
+# the already-real trips_by_destination_zone metric, using real TAZ 1-25
+# boundary geometry sourced directly from MTC's own public FeatureServer
+# (scripts/build-demo-zone-geometry.py, specs/031-all-panel-demo-content/
+# research.md §1) — no new metric needed for this panel type; the metric
+# was already real and already published by 026-activitysim-demo-content.
+#
+# Pinned to the baseline scenario specifically (matching this repo's own
+# existing single-scenario zonemap convention, e.g. dashboard-3-transit-
+# service.yaml's own scenario: pin) — a zonemap renders one surface at a
+# time, and pinning avoids any ambiguity from multiple simultaneously
+# active scenarios each publishing a row for the same zone.
+
+header:
+  tab: Network
+  title: Network — Real Zone Geography
+
+layout:
+  # filter: { primary_purpose: work } — trips_by_destination_zone's real
+  # SQL groups by (destination_zone_id, primary_purpose), i.e. MULTIPLE
+  # rows per zone. Without this, the panel's own already-documented
+  # "one metric row per zone expected, last-seen wins" join behavior
+  # (ZoneMapPanel.tsx) picks an arbitrary single purpose's count per
+  # zone rather than a defined total — real data either way, but not a
+  # coherent story. Scoping to one real purpose (matching
+  # dashboard-3-transit-service.yaml's own established literal-filter
+  # convention, `filter: { trip_mode: WALK_LOC }`) gives a clean,
+  # well-defined choropleth instead.
+  row_zonemap:
+    - type:       zonemap
+      title:      Work Trips by Destination Zone (Baseline)
+      metric:     trips_by_destination_zone
+      scenario:   activitysim-baseline
+      filter:     { primary_purpose: work }
+      boundaries:    taz25.geoparquet
+      boundaries_id: TAZ1454
+      metric_id:     destination_zone_id
+      column:     trips
+      label:      Work Trips
+      color_scale: sequential
+      color_ramp:  YlOrRd
+      steps:       7
+      height:  500
+      width:   1.0
+      center: [-122.402, 37.787]
+      zoom:   13

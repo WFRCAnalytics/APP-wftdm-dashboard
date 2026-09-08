@@ -1,1 +1,5 @@
-["activitysim-baseline", "activitysim-density-variant", "activitysim-transit-variant"]
+[
+  "activitysim-baseline",
+  "activitysim-density-variant",
+  "activitysim-transit-variant"
+]

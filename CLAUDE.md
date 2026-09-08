@@ -3408,6 +3408,225 @@ first cross-reference this list was built from). ✅ done,
     this project's own established "confirm before concluding" discipline
     rather than being assumed innocent or silently fixed out of scope.
 
+17. ✅ (US1, US4) / 🟡 (US2, US3 — real, correct, complete but not yet
+    published) All ten panel types demonstrated with real ActivitySim
+    data — done (`031-all-panel-demo-content`). Extends `026-
+    activitysim-demo-content`'s real pipeline (same three real scenarios:
+    `activitysim-baseline`/`activitysim-density-variant`/
+    `activitysim-transit-variant`) to cover the remaining panel types
+    `026` didn't touch — `recharts`/`observable-plot` (Overview tab, a new
+    `row_mode_share_alt_engines` row bound to the already-real
+    `trip_mode_share` metric), `graphic-walker`/`markdown` (a new Explore
+    tab, `dashboard-5-explore.yaml`), and `zonemap` (a new Network tab,
+    `dashboard-4-network.yaml`). **Published** — all four are live in
+    `public/demo-dashboard-config/index.json` today.
+
+    **Real, git-tracked TAZ 1-25 boundary geometry** —
+    `public/demo-geometry/taz25.geoparquet` — sourced directly from MTC's
+    real, live TAZ1454 FeatureServer
+    (`services3.arcgis.com/i2dkYWmb4wHvYPda/arcgis/rest/services/
+    Travel_Analysis_Zones/FeatureServer`) by a new, one-off script,
+    `scripts/build-demo-zone-geometry.py` — fetches real GeoJSON for
+    `TAZ1454 IN (1..25)`, converts via native (non-WASM) DuckDB spatial
+    (`ST_Read()`/`ST_AsWKB()`), and prints (never auto-writes) a
+    ready-to-paste `zone_centroids` YAML block for `summarize.yaml`
+    — keeping that file human-authored/reviewed, same discipline as every
+    other `summarize.yaml` edit in this project. Has a `KNOWN_CENTROIDS`
+    ground-truth check (TAZ 1/6/16/25) that exits non-zero on mismatch —
+    run once, confirmed passing, not re-run automatically. A new
+    `!/public/demo-geometry/**/*.geoparquet` `.gitignore` negation was
+    added (mirroring `026`'s own `public/demo-scenarios/` negation) — this
+    is real, permanent, git-tracked content, not fixture-copy output.
+
+    **`src/panels/zoneGeometry.ts`'s `loadZoneGeometry()`** gained a
+    fallback: a `boundaries:` file that fails to resolve against the
+    normal `public/geometry/` fixture-copy path (e.g. in a real deployment
+    where no fixture was ever copied in) now retries against
+    `public/demo-geometry/` via a new `resolveDemoGeometryUrl()`. A real,
+    confirmed bug found and fixed during this feature's own
+    implementation: the first draft reused the SAME DuckDB view name for
+    the retry, on the (wrong) assumption that was safe — empirically
+    false. `registerFileURL()` registers the filename→URL mapping
+    immediately, before the view-creation query ever runs, so a failed
+    first attempt leaves that name "already registered," and the retry's
+    own `registerFileURL()` call throws `File already registered`. Fixed
+    with a distinct view name for the fallback attempt
+    (`zonemap-geom-demo__${boundaries}`) — `contracts/geometry-pipeline.md`
+    under `specs/031-all-panel-demo-content/` was corrected to match (an
+    earlier draft of that contract wrongly asserted reusing the name was
+    safe).
+
+    **`src/panels/ZoneMapPanel.tsx`** — a second real bug, found via live
+    choropleth inspection (every zone rendering as uniform "no data"
+    color despite confirmed-matching, non-null real trip counts on both
+    sides): the join from metric rows to zone features rejected any value
+    whose `typeof` wasn't `'number'`. DuckDB's `COUNT(*)`-derived columns
+    (the real `trips_by_destination_zone` metric's own `trips` column)
+    arrive over Arrow as a JS `bigint`, not `number` — silently, never a
+    thrown error, just a dropped value. Fixed: `typeof raw === 'number' ||
+    typeof raw === 'bigint' ? Number(raw) : null`. This is a **separate**
+    code path from `panels/formatValue.ts`'s own null-handling — confirmed
+    directly by reading that file before writing this comment (an earlier
+    draft of this same comment wrongly claimed they shared a reason; do
+    not repeat that claim without re-checking).
+
+    **Two new, real `summarize.yaml` metrics — written, correct, tested,
+    but PENDING PUBLICATION**: `purpose_mode_flow` (a real primary_purpose
+    × major_trip_mode flow-count, for `sankey`) and `od_flows` (real
+    origin/destination trip counts joined to the new real zone-centroid
+    lat/lon, for `flowmap`) — both added to `summarize.yaml` and covered
+    by two new, real, passing tests in `python/tests/test_pipeline.py`
+    (`test_purpose_mode_flow_sums_to_total_trips`,
+    `test_od_flows_coordinates_match_centroid_table`). A real,
+    implementation-time bug fixed along the way: DuckDB infers a bare
+    decimal literal (the `zone_centroids` VALUES table's own lat/lon) as
+    `DECIMAL`, not `DOUBLE` — caught by a real test failure
+    (`Decimal('37.2') != 37.2`), fixed with explicit `CAST(... AS
+    DOUBLE)` in the metric SQL itself (a real risk for FlowMap's browser
+    consumer, which expects a plain JS number, not just a test-comparison
+    nuisance). `public/demo-dashboard-config/dashboard-6-flows.yaml`
+    holds the real, correct `sankey`/`flowmap` panels bound to these two
+    metrics — **deliberately NOT added to `index.json`**, per this
+    feature's own real-data-availability constraint: raw ActivitySim
+    scenario directories weren't available in the implementing
+    environment to actually re-run the `wftdm-dashboard summarize` CLI
+    and publish the resulting Parquet. See that file's own header comment
+    for the full story.
+
+    **REMAINING STEP, mechanical, no design decision left to make**: once
+    raw `prototype_mtc` ActivitySim output (baseline + the density-variant
+    + transit-variant input configs, `026`'s own originals) is available
+    again, re-run `uv run wftdm-dashboard summarize` three times against
+    the now-updated `summarize.yaml` (unchanged invocation, two new
+    metrics included automatically), confirm the two new Parquet files
+    (`purpose_mode_flow.parquet`, `od_flows.parquet`) publish correctly
+    into each `public/demo-scenarios/{name}/summary/`, then add
+    `dashboard-6-flows.yaml` to `public/demo-dashboard-config/index.json`.
+
+    **MAJOR pre-existing bug found, NOT introduced by this feature, NOT
+    yet fixed**: the real `wftdm-dashboard summarize` Python CLI
+    (`python/wftdm_dashboard/postprocessor/pipeline.py`) never writes a
+    `summary/index.json` enumeration file — but
+    `services/scenarioDiscovery.ts`'s `registerSummaryFolder()` requires
+    one (fetches `{folderUrl}/index.json` to learn which Parquet
+    filenames exist) for every scenario folder, observed/published/demo
+    alike. `tests/fixtures/generate.py` writes this file explicitly (with
+    a deliberate `broken_scenario` case testing its absence) — `pipeline.py`
+    does not. This means `026`'s real, published demo scenarios have been
+    silently non-functional in an actual live browser load since that
+    feature shipped — invisible because `026`'s own verification only
+    used offline DuckDB CLI queries against the Parquet files directly,
+    never a real page load. Found here only because this feature's own
+    verification discipline required a real, live browser check of every
+    new panel. Worked around for this feature's own three real demo
+    scenarios by hand-writing their three `summary/index.json` files
+    (safe, data-only, matches each folder's real file listing exactly —
+    not a design decision, purely mechanical). `pipeline.py` itself is
+    deliberately **not** touched here (FR-014, out of scope for this
+    feature) — flagged as a real, separate, still-open bug for its own
+    follow-up feature.
+
+    **Real bugs fixed in `public/demo-dashboard-config/dashboard-5-
+    explore.yaml`'s own `graphic-walker` panel and
+    `tests/integration/demoContentAllPanels.spec.ts`** (both found via
+    live browser verification, not assumed): the panel originally had no
+    `scenario:` pin, so its `$scenario.` union tried to include `observed`
+    (always active, `pinned: true`) — which never published a
+    `trip_mode_share` view, a real `Catalog Error`. Fixed by pinning
+    `scenario: activitysim-baseline`, the same explicit-scenario
+    convention every other real demo panel in this repo already uses. The
+    test spec itself had a real, confirmed bug of its own: its
+    `beforeAll`/`afterAll` restored `public/demo-dashboard-config/
+    index.json` but not `public/demo-scenarios/index.json` — both are
+    blanked to `[]` by `tests/global-setup.js` for the whole suite run —
+    so every scenario-pinned panel this spec exercises found no matching
+    views and failed with "Couldn't load this chart/value/map," a real,
+    reproducible failure (not a hang) the first time this spec actually
+    ran end-to-end. Fixed by restoring both files together. Two more real,
+    confirmed test/strict-mode bugs from that same first real run:
+    Recharts (v3) renders each bar as `<path class="recharts-rectangle">`,
+    never a plain `<rect>` — the spec's original selector matched zero
+    elements; and two `getByText(..., {exact: false})`/`{exact: true}`
+    calls hit real Playwright strict-mode violations (the queried text
+    genuinely appears more than once — `.first()` was the fix, not a
+    locator bug).
+
+    A fourth, deeper real finding from the same verification pass, this
+    one an **app-level architectural nuance**, not a test bug alone:
+    `shell.tsx` renders `<DashboardRenderer tab={active} />` with **no
+    `key` prop**, so switching tabs never unmounts/remounts that subtree
+    — React just re-renders the same component tree with new props. This
+    spec is the first in the whole suite to load the fixture
+    `dashboard-config` AND `demo-dashboard-config` roots into the SAME
+    page at once (every prior spec exercises one root alone); when a row
+    name + panel index in the newly-active demo tab happens to coincide
+    with a row name + index already used by an earlier-mounted fixture
+    tab (here: the fixture's own landing-page `zonemap` panel, "Zone Map
+    VMT per Capita"), React reconciles them as the SAME `ZoneMapPanel`
+    component instance. Its mount-only effect (empty deps — where
+    `window.__zonemapTestMaps[config.title] = map` AND the initial
+    `center`/`zoom` camera are both set, once, from THAT FIRST mount's own
+    `config`) never re-runs on a reused instance — confirmed via three
+    rounds of live diagnostic instrumentation, each correcting the last:
+    (1) the test-only registry key stays stuck on the FIRST title that
+    instance ever mounted with, even though the DOM (heading, panel
+    title, `data-render-count`) always reflects the CORRECT, current
+    panel; (2) resolving the live map by DOM container identity instead
+    (`document.querySelector('.zonemap-chart')` matched against
+    `Object.values(window.__zonemapTestMaps).find(m => m.getContainer()
+    === container)`, in one `page.evaluate()` — an `ElementHandle`-
+    bridged version of the same idea was tried first and, for a reason
+    not worth chasing further, could not resolve the identical correct
+    pair) DID find the right map/source (`hasMap`/`isStyleLoaded`/
+    `sourceExists` all confirmed `true` on every poll attempt) — yet
+    `querySourceFeatures()` still returned nothing; (3) root cause: that
+    API only returns features MapLibre has actually tiled for the
+    CURRENT camera viewport, and this reused instance's camera is still
+    wherever the FIRST-mounted (fixture) config's own `center`/`zoom`
+    left it — this panel's real San Francisco polygons, correctly
+    `setData()`'d onto the source by its own data-update effect (which
+    DOES re-run every time, unlike the mount effect), sit outside that
+    stale viewport and are never tiled/rendered, so
+    `querySourceFeatures()` legitimately returns empty regardless of how
+    correctly the map/source were resolved. This is a real, narrow
+    consequence of the same underlying gap (a mount-effect-only side
+    effect on a reused component instance), extending from a test-only
+    instrumentation problem to a genuine (if here practically unreachable
+    outside this exact two-dashboard-root test scenario) camera-position
+    bug: a real deployment only ever loads ONE dashboard-config root, so
+    this specific collision cannot occur there today — but the general
+    mechanism (any panel whose mount effect captures per-instance state
+    from `config` and never re-syncs it) is real and would resurface the
+    moment two dashboard-config roots are ever combined for a real
+    reason. Fixed, for the test's own purposes, by reading the GeoJSON
+    source's raw, camera-independent `_data.features` directly instead of
+    the viewport-dependent `querySourceFeatures()` — the right read for
+    "did real data reach the source," which is genuinely what this
+    assertion needs; `zonemapPanel.spec.ts`'s own tests correctly keep
+    using `querySourceFeatures()`, since they never hit this camera-reuse
+    scenario (a single dashboard-config root, no cross-root panel-
+    instance reuse possible). A real,
+    still-open, low-priority follow-up worth naming: `key={tab.header.tab}`
+    on `shell.tsx`'s own `DashboardRenderer` would close this class of
+    stale-mount-effect gap generally, for any future test or app code
+    that keys a side effect by something other than DOM identity — not
+    done here, out of scope for this feature.
+
+    **Regression check, confirmed not assumed**: a targeted subset of the
+    existing suite most exposed to this feature's own `zoneGeometry.ts`/
+    `ZoneMapPanel.tsx` changes (`zonemapPanel.spec.ts`,
+    `dashboardShell.spec.ts`, `flowmapPanel.spec.ts` — 86 tests) ran
+    83/86 passing. The 3 failures (a dark-mode Plotly re-query-count
+    assertion off by exactly one query; an identical "Settings button
+    outside viewport" timeout in both `flowmapPanel.spec.ts`'s and
+    `zonemapPanel.spec.ts`'s own "manual pan survives... basemap switch"
+    test) were confirmed genuinely pre-existing and unrelated — not
+    assumed innocent: the identical 3 tests were re-run, single-worker,
+    against this feature's changes fully `git stash`ed (a clean,
+    unmodified tree), and all 3 reproduced byte-for-byte identically.
+    Real, separate, pre-existing bugs — flagged here for their own
+    future fix, out of scope for this feature.
+
 ---
 
 ## Reference implementations — copy patterns, don't re-derive

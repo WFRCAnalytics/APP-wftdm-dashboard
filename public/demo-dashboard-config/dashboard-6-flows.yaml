@@ -1,0 +1,54 @@
+# 031-all-panel-demo-content — User Story 2 (Sankey) and User Story 3
+# (FlowMap). Real, correct panel configuration against the new
+# purpose_mode_flow/od_flows metrics (summarize.yaml).
+#
+# PENDING PUBLICATION — deliberately NOT listed in
+# public/demo-dashboard-config/index.json yet. No raw ActivitySim input
+# was available in the environment this file was authored in to actually
+# run the pipeline and publish real purpose_mode_flow.parquet/
+# od_flows.parquet for the three real scenarios — this file's own panels
+# would show an empty/error state if reachable today, which this
+# feature's own FR-001 (never ship anything broken/fabricated) rules out.
+#
+# Remaining step once raw ActivitySim scenario data is available again
+# (see CLAUDE.md's own 031-all-panel-demo-content entry for the full
+# account): re-run the three real `wftdm-dashboard summarize` CLI
+# invocations against the now-updated summarize.yaml, confirm
+# purpose_mode_flow.parquet/od_flows.parquet publish correctly for all
+# three scenarios, then add "dashboard-6-flows.yaml" to index.json's
+# dashboards array. A small, mechanical step — no design decision left
+# to make.
+
+header:
+  tab: Flows
+  title: Purpose-to-Mode Flows and Origin-Destination Desire Lines
+
+layout:
+  row_sankey:
+    - type:   sankey
+      title:  Trip Purpose to Mode Flow
+      metric: purpose_mode_flow
+      height: 400
+      width:  1.0
+      source: primary_purpose
+      target: major_trip_mode
+      value:  trips
+      color_scheme: Tableau10
+
+  row_flowmap:
+    - type:        flowmap
+      title:       Trip Distribution Desire Lines
+      metric:      od_flows
+      height:      500
+      width:       1.0
+      origin:      orig_taz
+      origin_lat:  orig_lat
+      origin_lon:  orig_lon
+      destination: dest_taz
+      dest_lat:    dest_lat
+      dest_lon:    dest_lon
+      value:       trips
+      clustering:      true
+      clustering_auto: true
+      center: [-122.402, 37.787]
+      zoom:   13

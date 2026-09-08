@@ -120,6 +120,12 @@ python/wftdm_dashboard/static/
 # into public/" block above) correctly keep the blanket rule.
 !/public/demo-scenarios/**/*.parquet
 
+# 031-all-panel-demo-content: same reasoning, for the new real, permanent,
+# git-tracked TAZ 1-25 boundary geometry (public/demo-geometry/) — real
+# MTC-sourced geometry, not ephemeral fixture/model-run output. public/
+# geometry/ (fixture-copy destination) correctly keeps the blanket rule.
+!/public/demo-geometry/**/*.geoparquet
+
 # ── Dashboard YAML configs ────────────────────────────────────────────────────
 # .wfrc/ configs live in the model repo alongside scenario output, not here
 .wfrc/

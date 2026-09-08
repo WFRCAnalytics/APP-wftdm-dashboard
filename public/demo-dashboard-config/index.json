@@ -1,5 +1,11 @@
 {
-  "dashboards": ["dashboard-1-overview.yaml", "dashboard-2-destination-choice.yaml", "dashboard-3-transit-service.yaml"],
+  "dashboards": [
+    "dashboard-1-overview.yaml",
+    "dashboard-2-destination-choice.yaml",
+    "dashboard-3-transit-service.yaml",
+    "dashboard-4-network.yaml",
+    "dashboard-5-explore.yaml"
+  ],
   "title": "WFRC TDM Calibration Dashboard",
   "logoUrl": "https://raw.githubusercontent.com/WFRCAnalytics/wfrc-brand/main/_extensions/wfrc-brand/assets/logo/horizontal/WFRC_logo_horizontal_color_transparent.png",
   "logoUrlDark": "https://raw.githubusercontent.com/WFRCAnalytics/wfrc-brand/main/_extensions/wfrc-brand/assets/logo/horizontal/WFRC_logo_horizontal_white_transparent.png"

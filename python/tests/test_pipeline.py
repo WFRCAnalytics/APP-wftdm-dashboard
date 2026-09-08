@@ -147,3 +147,120 @@ def test_metric_referencing_an_undeclared_table_raises_metric_execution_error(
         run_pipeline(config, raw_activitysim_dir, output_dir)
 
     assert exc_info.value.metric_name == "bad_metric"
+
+
+# ---------------------------------------------------------------------------
+# 031-all-panel-demo-content — new Sankey/FlowMap metric SQL correctness
+# (T015, T018). Both run against `raw_activitysim_dir`'s own small,
+# independently-authored, realistically-shaped fixture (conftest.py) — NOT
+# the real 25-zone prototype_mtc data, so these tests are fully achievable
+# and meaningful without the real raw ActivitySim scenario directories
+# this feature's own real-data publication step is separately blocked on
+# (see CLAUDE.md's own 031 entry). They verify the two new metrics' SQL is
+# structurally correct against real ActivitySim-shaped columns — not a
+# substitute for eventually re-running the real pipeline.
+# ---------------------------------------------------------------------------
+
+
+def test_purpose_mode_flow_sums_to_total_trips(
+    raw_activitysim_dir, minimal_summarize_config_dict, tmp_path
+):
+    """contracts/new-metrics.md's own real-data invariant: SUM(trips) over
+    purpose_mode_flow's output equals the real total trip count for the
+    scenario — a full GROUP BY partition with no WHERE, so no row is
+    dropped or double-counted."""
+    config_dict = {
+        **minimal_summarize_config_dict,
+        "metrics": [
+            *minimal_summarize_config_dict["metrics"],
+            {
+                "name": "purpose_mode_flow",
+                "sql": (
+                    "SELECT\n"
+                    "  t.primary_purpose,\n"
+                    "  CASE t.trip_mode $mappings.major_trip_mode END AS major_trip_mode,\n"
+                    "  COUNT(*) AS trips\n"
+                    "FROM trips t\n"
+                    "GROUP BY t.primary_purpose, major_trip_mode"
+                ),
+            },
+        ],
+    }
+    config = parse_summarize_dict(config_dict)
+    output_dir = tmp_path / "scenario-out"
+
+    run_pipeline(config, raw_activitysim_dir, output_dir)
+
+    conn = duckdb.connect()
+    total_from_metric = conn.sql(
+        "SELECT SUM(trips) FROM read_parquet("
+        f"'{(output_dir / 'summary' / 'purpose_mode_flow.parquet').as_posix()}')"
+    ).fetchone()[0]
+    real_total_trips = conn.sql(
+        f"SELECT COUNT(*) FROM read_csv_auto('{(raw_activitysim_dir / 'trips.csv').as_posix()}')"
+    ).fetchone()[0]
+    conn.close()
+
+    assert real_total_trips == 4  # the fixture's own real, known row count
+    assert total_from_metric == real_total_trips
+
+
+def test_od_flows_coordinates_match_centroid_table(
+    raw_activitysim_dir, minimal_summarize_config_dict, tmp_path
+):
+    """contracts/new-metrics.md's own real-data invariant: every
+    orig_lat/orig_lon/dest_lat/dest_lon value in od_flows' output is
+    byte-identical to the matching zone_centroids row — the join is an
+    equality join on zone_id, so this holds by construction, but is worth
+    a direct assertion (this feature's own "never fabricate a coordinate"
+    constraint, made concrete and checkable for this specific metric).
+
+    Real finding from this test's own first run: a literal decimal in a
+    VALUES clause (e.g. `37.1`) is inferred by DuckDB as DECIMAL, not
+    DOUBLE — a real risk for the browser-side FlowMap consumer, which
+    expects a plain JS number, not a DECIMAL-typed Arrow value. The real
+    `od_flows` metric in summarize.yaml now CASTs both coordinate pairs to
+    DOUBLE explicitly; this test's own local SQL mirrors that fix so it
+    keeps proving the real metric's actual shape, not a stale copy of it.
+    """
+    config_dict = {
+        **minimal_summarize_config_dict,
+        "sql_fragments": {
+            **minimal_summarize_config_dict["sql_fragments"],
+            "zone_centroids": "(VALUES (10, 37.1, -122.1), (20, 37.2, -122.2))",
+        },
+        "metrics": [
+            *minimal_summarize_config_dict["metrics"],
+            {
+                "name": "od_flows",
+                "sql": (
+                    "SELECT\n"
+                    "  t.origin AS orig_taz, t.destination AS dest_taz,\n"
+                    "  CAST(c1.lat AS DOUBLE) AS orig_lat, CAST(c1.lon AS DOUBLE) AS orig_lon,\n"
+                    "  CAST(c2.lat AS DOUBLE) AS dest_lat, CAST(c2.lon AS DOUBLE) AS dest_lon,\n"
+                    "  COUNT(*) AS trips\n"
+                    "FROM trips t\n"
+                    "JOIN $sql.zone_centroids AS c1(zone_id, lat, lon) ON t.origin      = c1.zone_id\n"
+                    "JOIN $sql.zone_centroids AS c2(zone_id, lat, lon) ON t.destination = c2.zone_id\n"
+                    "GROUP BY t.origin, t.destination, c1.lat, c1.lon, c2.lat, c2.lon"
+                ),
+            },
+        ],
+    }
+    config = parse_summarize_dict(config_dict)
+    output_dir = tmp_path / "scenario-out"
+
+    run_pipeline(config, raw_activitysim_dir, output_dir)
+
+    conn = duckdb.connect()
+    rows = conn.sql(
+        "SELECT orig_taz, orig_lat, orig_lon, dest_taz, dest_lat, dest_lon FROM read_parquet("
+        f"'{(output_dir / 'summary' / 'od_flows.parquet').as_posix()}')"
+    ).fetchall()
+    conn.close()
+
+    centroid_lookup = {10: (37.1, -122.1), 20: (37.2, -122.2)}
+    assert len(rows) == 4  # the fixture's own 4 real trips, all within zones 10/20
+    for orig_taz, orig_lat, orig_lon, dest_taz, dest_lat, dest_lon in rows:
+        assert (orig_lat, orig_lon) == centroid_lookup[orig_taz]
+        assert (dest_lat, dest_lon) == centroid_lookup[dest_taz]

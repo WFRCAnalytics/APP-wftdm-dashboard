@@ -74,6 +74,54 @@ sql_fragments:
     trips t
     JOIN land_use lu ON t.destination = lu.zone_id
 
+  # 031-all-panel-demo-content: real TAZ 1-25 centroids, derived
+  # (ST_Centroid) from real MTC TAZ1454 boundary geometry — MTC's own
+  # public, official open-data FeatureServer (services3.arcgis.com/
+  # i2dkYWmb4wHvYPda/arcgis/rest/services/Travel_Analysis_Zones/
+  # FeatureServer), confirmed reachable and correspondence-verified this
+  # feature's own planning research (specs/031-all-panel-demo-content/
+  # research.md §1 — real SD/SUPERD cross-reference, real-world geography
+  # matching TAZ 1's own extreme-employment land-use signature). Produced
+  # by scripts/build-demo-zone-geometry.py, run once
+  # (2026-09-08) — never independently sourced or approximated; every
+  # value here is ST_Centroid() of the exact same real polygon published
+  # to public/demo-geometry/taz25.geoparquet.
+  # Deliberately NOT self-aliased (no "AS zc(...)" here) — od_flows below
+  # needs this fragment TWICE in one query (once for origin, once for
+  # destination), each with its own distinct alias/column names. A fixed
+  # embedded alias would collide the moment a second reference appended
+  # its own alias after it (confirmed empirically: DuckDB rejects the
+  # resulting double-aliased syntax) — the caller supplies
+  # "AS c1(zone_id, lat, lon)"/"AS c2(zone_id, lat, lon)" instead.
+  zone_centroids: |
+    (VALUES
+      (1, 37.793138, -122.398299),
+      (2, 37.792440, -122.402033),
+      (3, 37.791501, -122.405715),
+      (4, 37.789965, -122.401984),
+      (5, 37.788148, -122.406084),
+      (6, 37.788932, -122.411797),
+      (7, 37.786565, -122.411344),
+      (8, 37.783310, -122.411409),
+      (9, 37.780778, -122.417245),
+      (10, 37.776782, -122.413964),
+      (11, 37.781885, -122.407504),
+      (12, 37.786278, -122.401971),
+      (13, 37.788975, -122.398655),
+      (14, 37.790870, -122.396233),
+      (15, 37.792733, -122.393420),
+      (16, 37.787831, -122.393680),
+      (17, 37.784282, -122.390667),
+      (18, 37.778451, -122.398286),
+      (19, 37.772740, -122.405630),
+      (20, 37.775169, -122.409826),
+      (21, 37.781155, -122.402190),
+      (22, 37.796397, -122.396233),
+      (23, 37.801557, -122.400426),
+      (24, 37.795657, -122.402656),
+      (25, 37.795623, -122.406517)
+    )
+
 # ── Metrics ──────────────────────────────────────────────────────────────
 # Five metrics, each → one Parquet file in summary/{name}.parquet.
 # See data-model.md for the full column-level contract each one satisfies.
@@ -144,3 +192,67 @@ metrics:
         COUNT(*) * 1.0 / SUM(COUNT(*)) OVER () AS share
       FROM trips t
       GROUP BY t.primary_purpose
+
+  # 031-all-panel-demo-content, User Story 2 (FR-006): real trip counts by
+  # purpose x grouped mode, for the Sankey panel. Reuses two already-real,
+  # already-proven columns (trip_purpose_share already groups by
+  # primary_purpose; trip_mode_share already applies this exact
+  # $mappings.major_trip_mode expansion) — no new source/mapping needed.
+  # A full partition of `trips` with no WHERE — SUM(trips) over the whole
+  # output equals the real total trip count for the scenario
+  # (contracts/new-metrics.md's own invariant, covered by
+  # python/tests/test_pipeline.py's new test_purpose_mode_flow_sums_to_
+  # total_trips case).
+  #
+  # PENDING PUBLICATION — see CLAUDE.md's own 031-all-panel-demo-content
+  # entry: this metric's SQL is real and correct, but no raw ActivitySim
+  # input was available in the environment this was authored in to
+  # actually run the pipeline and publish real Parquet output for it yet.
+  - name: purpose_mode_flow
+    description: Real trip counts by primary purpose and grouped major trip mode (Sankey source/target)
+    sql: |
+      SELECT
+        t.primary_purpose,
+        CASE t.trip_mode $mappings.major_trip_mode END AS major_trip_mode,
+        COUNT(*) AS trips
+      FROM trips t
+      GROUP BY t.primary_purpose, major_trip_mode
+
+  # 031-all-panel-demo-content, User Story 3 (FR-009): real origin-
+  # destination trip flows with real MTC zone-centroid coordinates
+  # (zone_centroids, above) for the FlowMap panel. Every orig_lat/
+  # orig_lon/dest_lat/dest_lon value is byte-identical to the matching
+  # zone_centroids row by construction (an equality JOIN on zone_id) —
+  # contracts/new-metrics.md's own invariant.
+  #
+  # `t.origin` — NOT yet independently re-verified against a real raw
+  # final_trips.csv in the environment this was authored in (no raw
+  # ActivitySim input was available); written on the well-evidenced
+  # basis that docs/GRAMMAR.md's own od_flows worked example already
+  # references t.origin as ActivitySim's standard trip-table shape,
+  # alongside t.destination, which this file's own trips_merged fragment
+  # already confirms is real. MUST be confirmed directly against the real
+  # file before this metric is ever run for real (per this feature's own
+  # non-negotiable FR-001) — see CLAUDE.md's own 031 entry for the exact
+  # remaining step.
+  #
+  # A real trip whose origin/destination falls outside zones 1-25 is
+  # silently excluded by the inner JOINs below (not a separate filter) —
+  # SUM(trips) here may legitimately be less than the real total trip
+  # count; this MUST be checked empirically once real data is available,
+  # not assumed either way (contracts/new-metrics.md).
+  #
+  # PENDING PUBLICATION — same status as purpose_mode_flow above.
+  - name: od_flows
+    description: Real origin-destination trip flows with real MTC zone-centroid coordinates
+    sql: |
+      SELECT
+        t.origin      AS orig_taz,
+        t.destination AS dest_taz,
+        CAST(c1.lat AS DOUBLE) AS orig_lat, CAST(c1.lon AS DOUBLE) AS orig_lon,
+        CAST(c2.lat AS DOUBLE) AS dest_lat, CAST(c2.lon AS DOUBLE) AS dest_lon,
+        COUNT(*) AS trips
+      FROM trips t
+      JOIN $sql.zone_centroids AS c1(zone_id, lat, lon) ON t.origin      = c1.zone_id
+      JOIN $sql.zone_centroids AS c2(zone_id, lat, lon) ON t.destination = c2.zone_id
+      GROUP BY t.origin, t.destination, c1.lat, c1.lon, c2.lat, c2.lon

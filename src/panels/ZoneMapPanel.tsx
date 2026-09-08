@@ -646,11 +646,31 @@ export function ZoneMapPanel({ config }: { config: ZoneMapPanelConfig }) {
     // zone id if that invariant is ever violated, same fail-soft
     // tolerance every other panel type's own row-keyed lookups already
     // have, rather than crashing on a config-authoring surprise.
+    // 031-all-panel-demo-content: a real, previously-undiscovered gap
+    // found while binding this panel type to a COUNT(*)-derived column
+    // for the first time (trips_by_destination_zone.trips) — the real
+    // Parquet-stored value for this column arrives here as a JS
+    // `bigint` primitive, not `number` (confirmed live via
+    // getComputedStyle-equivalent inspection of the panel's own real
+    // GeoJSON source data: every one of 25 real zones showed
+    // `value: null` despite real, non-null, correctly-joined trip
+    // counts — `typeof raw === 'number'` was silently false for all of
+    // them). `Number(raw)` is safe for both `number` and `bigint` —
+    // real trip/tour counts never approach Number.MAX_SAFE_INTEGER.
+    // NOT the same code path ValueBoxPanel.tsx's own COUNT()-derived
+    // summary_kpis columns go through (formatValue.ts, checked directly
+    // — it has its own separate `typeof value !== 'number'` fallback,
+    // unaffected here) — this fix is scoped to this file's own
+    // zone-value join alone, not a claim that a shared root cause was
+    // fixed in one place for both panel types.
     const valueByZoneId = new Map<string, number | null>()
     for (const row of rows) {
       const zoneId = String(row[config.metric_id])
       const raw = row[valueField]
-      valueByZoneId.set(zoneId, typeof raw === 'number' ? raw : null)
+      valueByZoneId.set(
+        zoneId,
+        typeof raw === 'number' || typeof raw === 'bigint' ? Number(raw) : null,
+      )
     }
 
     // Auto-domain (FR-007): computed from the actual returned rows,
