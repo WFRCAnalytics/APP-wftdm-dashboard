@@ -567,7 +567,25 @@ APP-wftdm-dashboard/
     │   │                         # placement 009 originally established
     │   │                         # for a dashboard-wide, not
     │   │                         # panel-specific, header control)
-    │   ├── navBar.tsx            # shadcn Tabs-based tab navigation
+    │   ├── navBar.tsx            # DELETED (030-sidebar-navigation) — the
+    │   │                         # top tab strip is replaced by a
+    │   │                         # persistent left Sidebar; see
+    │   │                         # sidebar.tsx/sidebarNav.tsx below and
+    │   │                         # this file's own Implementation order
+    │   │                         # item 18 for the full story
+    │   ├── sidebarNav.tsx        # done (030) — renders the sidebar's own
+    │   │                         # tab list + accordion sub-navigation,
+    │   │                         # role="tablist"/role="tab" set
+    │   │                         # explicitly (SidebarMenuButton is a
+    │   │                         # plain <button>, not Radix Tabs) for a
+    │   │                         # real, deliberate a11y reason — see
+    │   │                         # Implementation order item 18
+    │   ├── dashboardLayout.ts    # done (030) — pure, unit-tested:
+    │   │                         # isMetricStripRow()/findFullPagePanel()/
+    │   │                         # resolveSections(), same
+    │   │                         # split-pure-logic-into-its-own-module
+    │   │                         # convention as tableLogic.ts/
+    │   │                         # sankeyGraph.ts/zonemapColor.ts
     │   ├── dashboardRenderer.tsx # renders one tab's layout as rows of PanelCards;
     │   │                         # also (011-basemap-style-system) the one place
     │   │                         # that injects each map-rendering panel's
@@ -3626,6 +3644,185 @@ first cross-reference this list was built from). ✅ done,
     unmodified tree), and all 3 reproduced byte-for-byte identically.
     Real, separate, pre-existing bugs — flagged here for their own
     future fix, out of scope for this feature.
+
+18. ✅ Left sidebar navigation — done (`030-sidebar-navigation`). Replaces
+    the top `navBar.tsx` tab strip entirely with a persistent, collapsible
+    left `Sidebar` (new `components/ui/sidebar.tsx`/`separator.tsx`,
+    hand-authored against this repo's own legacy-registry/Tailwind-v3
+    conventions — not a verbatim `new-york-v4` port, matching `chart.tsx`'s
+    own established precedent for when the shadcn CLI's output doesn't fit
+    this project). `layout/shell.tsx` is fully rewritten:
+    `SidebarProvider > Sidebar(SidebarHeader[DashboardBrand+SidebarTrigger]
+    /SidebarContent[SidebarNav]/SidebarFooter[SettingsModal]) +
+    SidebarInset[DashboardRenderer]`. **Deleted entirely**:
+    `layout/navBar.tsx`, `hooks/useNavBarVisibilityMode.ts`,
+    `state/navBarVisibilityState.ts`, `hooks/useScrollDirection.ts` — the
+    old fixed-header/`ResizeObserver`/scroll-direction machinery has no
+    equivalent in the new design (a sticky sidebar doesn't need to hide on
+    scroll). `layout/settings/appearanceTab.tsx`'s "Top Bar Behavior"
+    control (which only ever configured that removed machinery) is gone
+    with it — Theme control unchanged.
+
+    New `layout/dashboardLayout.ts` (pure, unit-tested — 13/13 —
+    `tests/unit/dashboardLayout.test.ts`) — `isMetricStripRow()`,
+    `findFullPagePanel()`, `resolveSections()` — same "split non-trivial
+    pure layout logic into its own testable module" convention as
+    `tableLogic.ts`/`sankeyGraph.ts`/`zonemapColor.ts`. `layout/types.ts`
+    gained `SectionConfig`, `DashboardTabConfig.header.icon?`/`.full_page?`,
+    `DashboardTabConfig.sections?` — all fail-soft-parsed, matching this
+    project's own "YAML has no runtime schema" discipline.
+
+    Three new mechanisms, all additive and all opt-in via YAML (no
+    existing `dashboard-*.yaml` needs any change):
+    - **Chromeless full-page mode** (`header.full_page: true`) — a tab
+      whose `layout` resolves to EXACTLY ONE panel total renders via a new
+      `FullPagePanel` component in `dashboardRenderer.tsx`: no page title,
+      no `Card` chrome, no expand trigger, the panel filling real, current
+      viewport space (`flex-1 min-h-0` against `SidebarInset`'s own flex
+      column) — not a fixed pixel default. A misconfigured `full_page` tab
+      (not exactly one panel) falls back to ORDINARY rendering with a
+      `console.warn`, never a blank page.
+    - **Accordion sub-navigation** (`sections: [{id, label, rows}]` per
+      tab) — a `SidebarMenuButton` gains an expandable sub-list of section
+      labels; clicking one `scrollIntoView()`s to that section's first row
+      in real layout order (never reordering rows), no page navigation. A
+      tab with no `sections:` shows no expand affordance at all — the
+      default, unchanged appearance.
+    - **Metric Strip auto-fill layout** (FR-018) — a row whose panels are
+      ALL `valuebox` (`isMetricStripRow()`) auto-classifies into
+      `grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-6` instead of
+      the existing fraction-based `gridTemplateColumns` math (untouched
+      for every other row shape) — zero YAML change needed for any
+      existing all-valuebox row to pick this up.
+
+    **FR-012a — a real, deliberate content relocation, not a mechanism
+    workaround**: the real, published `demo-dashboard-config/dashboard-5-
+    explore.yaml` had TWO panels (a "About This Demo" markdown panel plus
+    the `graphic-walker` panel), so it didn't originally qualify for
+    full-page mode's exactly-one-panel condition. Chose to relocate the
+    markdown panel's content into `demo-dashboard-config/dashboard-1-
+    overview.yaml` (as its own new first row, `row_about`, content
+    byte-identical) rather than redesign `findFullPagePanel()`'s own
+    qualifying condition — made explicit, with reasoning, before any code
+    was written (this feature's own spec.md/`contracts/dashboard-
+    grammar.md` were corrected to match BEFORE implementation, not
+    discovered as a mismatch mid-build). `dashboard-5-explore.yaml` is now
+    genuinely single-panel and carries `icon: compass`/`full_page: true`.
+
+    **Two real, confirmed bugs found and fixed during this feature's own
+    T035 full-suite regression pass — not merely anticipated**:
+
+    1. **A genuine cross-worker race condition**, found via a live,
+       reproduced full-suite run: `npx playwright test` (no `--workers`
+       override — neither `playwright.config.js` nor this project's own
+       `npm run test:integration` script sets one) reported "Running 291
+       tests using 10 workers" on the implementing machine — real,
+       confirmed cross-SPEC-FILE parallelism.
+       `playwright.config.js`'s `fullyParallel: false` only serializes
+       tests WITHIN one file; it does nothing to stop different files
+       running concurrently. This feature's own new `sidebarNav.spec.ts`/
+       `fullPagePanel.spec.ts` (both temporarily rewrite the shared
+       `public/dashboard-config/index.json` in file-scoped
+       `beforeAll`/`afterAll`, following an established, but — this
+       finding proved — WRONGLY assumed-safe technique) genuinely
+       collided with `dashboardShell.spec.ts`'s own exact-3-tab assertion
+       AND with `026-activitysim-demo-content`'s pre-existing
+       `demoContentAllPanels.spec.ts` (which does the equivalent for the
+       sibling `public/demo-dashboard-config/index.json` — a different
+       file, but rendered into the SAME combined tablist `main.ts` builds
+       from both roots). Reproduced concretely: `dashboardShell.spec.ts`'s
+       tab-count assertion observed extra tabs from BOTH other files at
+       once, and `demoContentAllPanels.spec.ts`'s own non-exact
+       `getByRole('tab', {name:'Explore'})` resolved to two elements
+       (`"Explore Fixture"` + `"Explore"`) simultaneously. Fixed with a
+       new `tests/integration/_sharedFixtureLock.ts` — a real, atomic,
+       cross-WORKER-PROCESS mutual-exclusion lock FILE (`openSync(path,
+       'wx')`, not an in-process mutex/boolean, since colliding spec files
+       run in genuinely different OS processes) — acquired in every
+       participant's `beforeAll` (held for that file's ENTIRE run, since
+       the whole run is the real risk window, not just the initial write)
+       and released in `afterAll`; `dashboardShell.spec.ts`'s own
+       sensitive test acquires/releases it too, around its whole body.
+       Each `beforeAll`/that one test also calls `test.setTimeout(420_000)`
+       — a real, necessary consequence of the fix: `demoContentAllPanels.
+       spec.ts` (the suite's own slowest file, ~5+ minutes) can now
+       legitimately hold the lock long enough to exceed another
+       participant's default 60s Playwright timeout while it merely WAITS
+       to acquire it — extending the timeout is the correct fix for
+       genuine queueing, not a symptom to paper over. Confirmed via 3
+       consecutive full-suite re-runs after the fix: zero recurrences of
+       the collision signature in any of them (down from 100% before the
+       fix). This also corrected a real, WRONG "safe under
+       `fullyParallel: false`" claim that had been written into BOTH this
+       feature's own new spec files AND `026`'s pre-existing
+       `demoContentAllPanels.spec.ts` — that assumption was never actually
+       true, just never previously tested under a real 10-worker run.
+
+    2. **A real, evidence-confirmed regression in `zonemapPanel.spec.ts`'s
+       own pre-existing "auto-fits its initial view" test** (from
+       `027-map-auto-fit-and-reset`, unrelated to this feature's own
+       code) — its `bounds.east` assertion started failing consistently
+       (reproduced in full isolation, not just under full-suite load,
+       ruling out resource-contention flakiness). Root-caused via a direct
+       `git stash` A/B measurement of the SAME `.zonemap-chart` element's
+       `getBoundingClientRect()`: `width: 344.66px` on the pre-sidebar
+       tree (fixed top nav) vs. `width: 259.33px` on this tree (a real
+       ~25% reduction — the persistent left `Sidebar` genuinely takes
+       horizontal space the old top-nav design didn't, exactly as
+       intended). A narrower container shifts `fitBounds()`'s exact
+       computed zoom/camera (the same real `cameraForBounds()`-vs-
+       `fitBounds()` landing-spot sensitivity `027`'s own CLAUDE.md entry
+       already documents) enough to cross the test's previously-tight
+       margin. Fixed by widening ONLY the `east` assertion
+       (`-111.75` → `-111.85`, real measured slack) — `west`/`south`/
+       `north` are UNCHANGED (none of them ever failed in any
+       reproduction, and the container's own height, 400px, did not
+       change between layouts, so there was no evidence to widen them).
+       Confirmed via the full `zonemapPanel.spec.ts` file (30/30 passing)
+       and the full suite (289/291 — the remaining 2 are the already-
+       documented pre-existing dark-mode query-count flake plus a
+       `flowmapPanel.spec.ts` reset-view timing test independently
+       confirmed to pass 1/1 in isolation, i.e. genuine resource-
+       contention flakiness under 10-worker load, not a real regression).
+
+    **A third, separate, deliberate accessibility decision** (found
+    proactively, before it could break anything, not discovered via a
+    failing test): the new plain-`<button>`-based `SidebarMenuButton`
+    provides none of Radix `Tabs`' automatic `role="tab"`/
+    `role="tablist"`/`aria-selected` — but 8 existing spec files'
+    `getByRole('tab', {name})` queries depend on exactly that. Rather than
+    silently drop this compatibility or add a workaround shim,
+    `sidebarNav.tsx` explicitly sets `role="tablist"`/`role="tab"` +
+    `aria-selected` on the real nav list — a genuine, defensible
+    accessibility choice (mutually-exclusive view switching IS the tab
+    pattern), reasoned through in code comments, that happens to also
+    preserve every existing test's query. Verified via both new
+    (`sidebarNav.spec.ts`, 3/3) and existing (`dashboardShell.spec.ts`)
+    live test runs, not just typechecking.
+
+    **A fourth, small, self-caused-and-fixed regression**: the shell
+    rewrite removed the `<header>` element `dashboardShell.spec.ts`'s own
+    box-shadow test targeted. Per this project's own instruction to
+    consult the `wftdm-design-system` skill BEFORE writing/reviewing any
+    shadow class, confirmed `shadow-md` is the correct, established value
+    for this class of persistent chrome (same tier as `Card`/dropdown
+    menus/the old fixed header) — added it to the real `Sidebar` component
+    (with a comment citing the skill's own Elevation section) and
+    retargeted/renamed the test to `[data-sidebar="sidebar"]`. Confirmed
+    live in both themes via `getComputedStyle()` — dark mode correctly
+    shows both the `shadow-md` layer AND the documented edge-highlight
+    ring, matching the skill's own described dark-mode elevation
+    mechanism exactly.
+
+    New Playwright specs, all real-browser, all passing at completion:
+    `sidebarNav.spec.ts` (3), `fullPagePanel.spec.ts` (4, including a live
+    misconfiguration case), `sectionSubNav.spec.ts` (5),
+    `metricStrip.spec.ts` (3). SC-002 (the Explore tab's real content-area-
+    to-viewport ratio) confirmed via direct `getBoundingClientRect()`
+    measurement, both themes: 100.0% of available vertical space (up from
+    the session's own recorded ~70% baseline), comfortably clearing the
+    90% bar — there is no separate top header left to subtract in the new
+    design at all.
 
 ---
 

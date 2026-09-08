@@ -789,9 +789,16 @@ page when a scenario folder is loaded.
 # dashboard-1-summary.yaml (authored in TDM repo; published to public/dashboard-config/)
 
 header:
-  tab:         Summary           # nav bar label
+  tab:         Summary           # sidebar item label
   title:       Model Run Summary # page title
   description: High-level calibration KPIs and overview charts  # optional
+  icon:        route             # optional (030-sidebar-navigation) — a lucide-react
+                                  # icon name, kebab-case, resolved the same way
+                                  # type: valuebox's own icon: field already is. Omit
+                                  # for no icon on this sidebar item — never a
+                                  # default/placeholder substitute.
+  full_page:   false              # optional (030-sidebar-navigation), default false —
+                                  # see "Chromeless full-page panel mode" below
 
 # Global sidebar filters — drive reactive updates across ALL panels on this tab
 filters:
@@ -816,6 +823,25 @@ filters:
 # Accepts a bare preset name or a composition object — see "Basemap style
 # system" under type: flowmap for the full grammar and precedence rules.
 default_basemap: carto-voyager
+
+# Optional (030-sidebar-navigation) — tab-level accordion sub-navigation.
+# While this tab is the active sidebar item, each entry below shows as an
+# expandable sub-item beneath it; clicking one scrolls the page to that
+# section's own content. Absent or empty — the default, unchanged
+# appearance for every dashboard-*.yaml today — shows no sub-nav at all.
+# `rows` names one or more of THIS tab's own `layout:` row keys (below) —
+# grouping never reorders them; row render order always stays exactly
+# `layout`'s own key order. A `rows` entry naming a row this tab doesn't
+# have is dropped with a console warning, never a crash. A `layout` row
+# not referenced by any section still renders normally — it simply has no
+# sidebar sub-nav entry pointing at it.
+sections:
+  - id:    kpis
+    label: KPIs
+    rows:  [row_kpis]
+  - id:    charts
+    label: Charts & Tables
+    rows:  [row_charts, row_tlfd]
 
 # Layout — ordered rows of panels
 layout:
@@ -913,6 +939,45 @@ layout:
       width:   1.0
 ```
 
+### Chromeless full-page panel mode (030-sidebar-navigation)
+
+`header.full_page: true` opts a tab into a chromeless, edge-to-edge render
+mode — for a tab whose whole purpose is one open-ended workspace (the
+canonical example: a `type: graphic-walker` exploration tab), not a
+multi-panel dashboard page.
+
+```yaml
+header:
+  tab:       Explore
+  title:     Explore the Demo Data
+  icon:      compass
+  full_page: true
+
+layout:
+  row_explore:
+    - type:    graphic-walker
+      title:   Free-form Visual Analytics
+      dataset: trip_mode_share
+      width:   1.0
+```
+
+Requirements and behavior:
+
+- `layout` must resolve to **exactly one panel** across all its rows for the
+  flag to take effect. Zero or two-or-more panels falls back to the
+  ordinary multi-row, card-chromed rendering below — a config-authoring
+  warning (logged to the console), never a blank or broken page.
+- When effective: no page-title block (`header.title`/`header.description`
+  are simply never rendered on this path — not blanked, just not
+  consulted), no panel `Card` border/shadow/rounded-corners/title bar, and
+  no expand-to-dialog control (the panel is already rendered at its
+  maximum useful size).
+- The single panel's own available height tracks real, current viewport
+  space — not a fixed pixel value, not a library-intrinsic default.
+- Generic across panel types at the mechanism level — any panel type may be
+  configured this way; `graphic-walker` is simply this app's own current
+  real-world example, not a requirement.
+
 ---
 
 ## Panel types reference
@@ -929,6 +994,21 @@ width:     <0.0–1.0>    # fraction of row width; panels in a row should sum to
 scenario:  <string>     # optional — query only this scenario view; omit for N-way
 scenarios: [a, b]       # optional — override global scenario list for this panel
 ```
+
+**Twelfths convention (030-sidebar-navigation, authoring guidance only — no
+runtime behavior change)**: author `width:` as a fraction of twelfths — e.g.
+`0.5` = 6/12 half-width, `0.25` = 3/12 quarter-width, `0.3333` ≈ 4/12
+third-width — so panels in DIFFERENT rows on the same tab, when authored to
+the same twelfths scheme, align their column boundaries vertically down the
+page. This is purely a naming convention for values the grid math already
+supports today; any fraction has always worked.
+
+**Metric Strip (030-sidebar-navigation, automatic — not an authored field)**:
+a row whose every panel is `type: valuebox` automatically renders as an
+auto-filling grid of minimum-width (200px) cards instead of the ordinary
+fraction-based columns above. Nothing to opt into — it's a direct,
+deterministic consequence of a row's own panel-type composition. Every other
+row composition is completely unaffected.
 
 ### `type: valuebox`
 

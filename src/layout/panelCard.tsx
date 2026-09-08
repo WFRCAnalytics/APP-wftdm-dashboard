@@ -21,7 +21,12 @@ interface PanelErrorBoundaryState {
   hasError: boolean
 }
 
-class PanelErrorBoundary extends Component<PanelErrorBoundaryProps, PanelErrorBoundaryState> {
+// Exported (030-sidebar-navigation) — the chromeless full-page render
+// path (dashboardRenderer.tsx) reuses this SAME error boundary directly,
+// per contracts/sidebar-shell.md: "the resolved single PanelConfig
+// renders via the SAME registry[config.type] lookup + PanelErrorBoundary
+// every other panel already uses." No duplicate boundary implementation.
+export class PanelErrorBoundary extends Component<PanelErrorBoundaryProps, PanelErrorBoundaryState> {
   state: PanelErrorBoundaryState = { hasError: false }
 
   static getDerivedStateFromError(): PanelErrorBoundaryState {

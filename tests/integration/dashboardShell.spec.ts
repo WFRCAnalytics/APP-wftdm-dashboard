@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import { test, expect } from '@playwright/test'
 import type { WftdmDebugHook } from '../../src/main.tsx'
+import { acquireSharedFixtureLock, releaseSharedFixtureLock } from './_sharedFixtureLock'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
@@ -21,6 +22,31 @@ test.describe('User Story 1 - An analyst navigates a real, professionally-styled
   test('the visible tab set matches discovered config, and switching tabs changes content with no reload', async ({
     page,
   }) => {
+    // 030-sidebar-navigation: this test asserts the PRISTINE, default
+    // 3-tab fixture baseline — real, reproduced full-suite evidence
+    // (T035) showed it can observe another spec file's own temporarily
+    // -injected tab(s) mid-run under Playwright's real cross-file
+    // parallelism (this project sets no `--workers` override, so the
+    // real worker count is CPU-based, not 1 — confirmed live as 10 on
+    // this machine). Every spec file that mutates
+    // public/dashboard-config/index.json or
+    // public/demo-dashboard-config/index.json holds the same shared lock
+    // for its own full run — acquiring it here too guarantees this
+    // assertion never runs concurrently with one of those mutation
+    // windows. See _sharedFixtureLock.ts's own header comment for the
+    // full finding.
+    //
+    // demoContentAllPanels.spec.ts (the suite's own slowest file, ~5+
+    // minutes) holds this same lock for its ENTIRE run — a real,
+    // reproduced full-suite run showed this test's own DEFAULT 60s
+    // Playwright test timeout can elapse while merely WAITING to acquire
+    // the lock, well before any real assertion even starts. Extending
+    // this one test's own timeout (not the suite's global default) is
+    // the correct fix — this is expected, legitimate queueing, not a
+    // hang.
+    test.setTimeout(420_000)
+    await acquireSharedFixtureLock()
+    try {
     await page.goto('/')
     await page.waitForFunction(() => window.__wftdm !== undefined, null, { timeout: 30_000 })
 
@@ -60,6 +86,9 @@ test.describe('User Story 1 - An analyst navigates a real, professionally-styled
     await expect(cardEl).toHaveClass(/border/)
     const borderStyle = await cardEl.evaluate((el) => getComputedStyle(el).borderStyle)
     expect(borderStyle).toBe('solid')
+    } finally {
+      releaseSharedFixtureLock()
+    }
   })
 })
 
@@ -394,19 +423,24 @@ test.describe('Phase 2 — shell/nav redesign (wftdm-design-system)', () => {
     }
   })
 
-  test('the fixed header carries a real, non-empty box-shadow in both light and dark', async ({ page }) => {
+  test('the sidebar carries a real, non-empty box-shadow in both light and dark', async ({ page }) => {
     await page.goto('/')
     await page.waitForFunction(() => window.__wftdm !== undefined, null, { timeout: 30_000 })
 
-    const header = page.locator('header')
+    // 030-sidebar-navigation: the old position: fixed <header> this test
+    // originally targeted no longer exists — replaced entirely by a left
+    // Sidebar (components/ui/sidebar.tsx). Retargeted to the real element;
+    // the underlying claim is unchanged (wftdm-design-system's own
+    // Elevation section: shadow-md is this app's default resting
+    // elevation for persistent, always-visible chrome — a sticky sidebar
+    // beside scrolling content is the same category the OLD fixed header
+    // was, not a deviation).
+    const header = page.locator('[data-sidebar="sidebar"]')
     const readShadow = () => header.evaluate((el) => getComputedStyle(el).boxShadow)
 
     // shadow-md's real, resolved computed value — not just "not none".
-    // Confirms the header is no longer a flat border-only surface (this
-    // app's own Elevation section: a `position: fixed` bar with real page
-    // content scrolling underneath it needs a real elevation cue). "0.14"
-    // is shadow-md's own distinctive real alpha value (tokens.css), a
-    // sharper check than a color-only substring — both themes' own
+    // "0.14" is shadow-md's own distinctive real alpha value (tokens.css),
+    // a sharper check than a color-only substring — both themes' own
     // --shadow-color resolves to a different rgb triple, but the SAME
     // 0.14 alpha carries through unchanged in both.
     let shadow = await readShadow()

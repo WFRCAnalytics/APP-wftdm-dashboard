@@ -74,6 +74,12 @@ coverage/
 playwright-report/
 test-results/
 blob-report/
+# 030-sidebar-navigation — cross-worker mutual-exclusion lock file used by
+# tests/integration/_sharedFixtureLock.ts (sidebarNav.spec.ts,
+# fullPagePanel.spec.ts, demoContentAllPanels.spec.ts,
+# dashboardShell.spec.ts's own tab-count test). Created/removed for the
+# duration of one Playwright run; never meant to be committed.
+.tmp-shared-fixture-index.lock
 
 # ── Fixture copies into public/ ───────────────────────────────────────────────
 # Made by tests/global-setup.js (removed by tests/global-teardown.js after a

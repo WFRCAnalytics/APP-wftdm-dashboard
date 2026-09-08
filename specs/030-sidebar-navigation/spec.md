@@ -470,15 +470,38 @@ boundary without having to infer it from scattered FR wording.
   trigger) — already rendered at its maximum useful size, that control
   would be redundant.
 - **FR-012**: This repository's own default demo/fixture
-  `dashboard-*.yaml` content MUST include a tab titled "Explore Data"
-  using `full_page: true` with a `graphic-walker` panel and the
-  `Compass` icon (this app's own already-established icon for the
-  graphic-walker/explore concept — reused, not independently re-chosen).
-  This is a fixture/demo-**content** requirement only — it constrains
-  what this repo's own sample `dashboard-*.yaml` files contain, never
-  the sidebar or full-page mechanism itself (FR-001–FR-011), neither of
-  which MUST reference this tab's name, title, or presence anywhere in
-  their own logic.
+  `dashboard-*.yaml` content MUST include a tab using `full_page: true`
+  with a `graphic-walker` panel and the `Compass` icon (this app's own
+  already-established icon for the graphic-walker/explore concept —
+  reused, not independently re-chosen). **Correction, made after real
+  content landed on this branch post-dating this FR's original wording
+  (see FR-012a immediately below)**: this tab is the real, already-
+  published `public/demo-dashboard-config/dashboard-5-explore.yaml`,
+  titled "Explore" (`header.tab: Explore`) — not the illustrative
+  "Explore Data" name this FR originally invented before that content
+  existed. This is a fixture/demo-**content** requirement only — it
+  constrains what this repo's own sample `dashboard-*.yaml` files
+  contain, never the sidebar or full-page mechanism itself
+  (FR-001–FR-011), neither of which MUST reference this tab's name,
+  title, or presence anywhere in their own logic.
+- **FR-012a**: The real, already-published `dashboard-5-explore.yaml`
+  currently contains TWO panels — a `markdown` "About This Demo" panel
+  (real, accurate prose about the three real ActivitySim scenarios) plus
+  the `graphic-walker` panel — and therefore does NOT currently satisfy
+  FR-008's exactly-one-panel condition for `full_page: true`. This
+  feature's implementation MUST resolve this by relocating the existing
+  "About This Demo" markdown panel's content into
+  `public/demo-dashboard-config/dashboard-1-overview.yaml` (the Overview
+  tab, which already introduces the same three real scenarios this
+  markdown content describes — a coherent, natural home for it, not an
+  arbitrary dumping ground), leaving `dashboard-5-explore.yaml` with
+  exactly one panel (`graphic-walker`) so it can be configured
+  `full_page: true` and genuinely validate FR-009/FR-010/FR-012 against
+  REAL, already-published content — not a fixture stand-in built only to
+  satisfy this FR's letter. **This MUST be resolved as its own explicit,
+  reviewable task during implementation — never silently folded into a
+  different task or left for whoever implements FR-008/FR-009 to
+  improvise.**
 
 **Accordion sub-navigation (User Story 3)**
 

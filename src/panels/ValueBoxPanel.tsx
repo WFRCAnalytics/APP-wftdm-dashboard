@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
-import type { LucideIcon } from 'lucide-react'
 import * as icons from 'lucide-react'
 
 import { query } from '@/services/duckdb'
+import { iconComponentFor } from '@/lib/iconComponentFor'
 import * as sqlExpander from '@/services/sqlExpander'
 import * as filterState from '@/state/filterState'
 import { useFilterState } from '@/hooks/useFilterState'
@@ -20,16 +20,6 @@ import type { ValueBoxPanelConfig } from '@/layout/types'
 
 const ALL_FILTERS: ['*'] = ['*'] // module-level constant — stable identity,
 // never an inline `?? ['*']` literal (that allocates a new array every render)
-
-/** Kebab-case ("person-walking") -> PascalCase ("PersonWalking") lucide-react export name. */
-function iconComponentFor(name: string): LucideIcon | undefined {
-  const pascal = name
-    .split('-')
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join('')
-  const icon = (icons as unknown as Record<string, LucideIcon>)[pascal]
-  return icon
-}
 
 // Proves config -> query -> rendered scalar (spec.md User Story 2).
 // See contracts/valuebox-panel.md.

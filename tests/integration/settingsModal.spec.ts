@@ -63,11 +63,14 @@ test.describe('User Story 1 - One place to manage dashboard-wide settings', () =
     await expect(page.getByTestId('scenario-load-list')).toHaveCount(0)
   })
 
-  test('opens a modal with all four tabs (FR-003)', async ({ page }) => {
+  test('opens a modal with all three tabs (FR-003)', async ({ page }) => {
     await boot(page)
     await page.getByRole('button', { name: 'Settings' }).click()
     await expect(page.getByRole('dialog')).toBeVisible()
-    for (const name of ['Appearance', 'Scenarios', 'Basemap', 'Documentation']) {
+    // Documentation is no longer one of this modal's tabs (post-completion
+    // correction) — it's its own standalone SidebarFooter entry now, see
+    // "User Story 5 - Documentation placeholder" below.
+    for (const name of ['Appearance', 'Scenarios', 'Basemap']) {
       await expect(page.getByRole('tab', { name })).toBeVisible()
     }
   })
@@ -152,7 +155,7 @@ test.describe('User Story 1 - One place to manage dashboard-wide settings', () =
 
     // The outer tablist's own tabs are still reachable by name with no
     // collision against the inner "System"/"Light"/"Dark" names.
-    for (const name of ['Appearance', 'Scenarios', 'Basemap', 'Documentation']) {
+    for (const name of ['Appearance', 'Scenarios', 'Basemap']) {
       await expect(dialog.getByRole('tablist', { name: 'Settings sections' }).getByRole('tab', { name })).toHaveCount(
         1,
       )
@@ -256,13 +259,13 @@ test.describe('User Story 1 - One place to manage dashboard-wide settings', () =
 })
 
 test.describe('User Story 3 - A settings modal that does not resize or rearrange itself', () => {
-  test('the modal renders at one fixed height and width across all four tabs (FR-019)', async ({ page }) => {
+  test('the modal renders at one fixed height and width across all three tabs (FR-019)', async ({ page }) => {
     await boot(page)
     await page.getByRole('button', { name: 'Settings' }).click()
     const dialog = page.getByRole('dialog')
 
     const sizes: string[] = []
-    for (const name of ['Appearance', 'Scenarios', 'Basemap', 'Documentation']) {
+    for (const name of ['Appearance', 'Scenarios', 'Basemap']) {
       await page.getByRole('tab', { name }).click()
       const box = await dialog.boundingBox()
       sizes.push(`${box!.width}x${box!.height}`)
@@ -297,13 +300,13 @@ test.describe('User Story 3 - A settings modal that does not resize or rearrange
     const dialog = page.getByRole('dialog')
 
     const widths: number[] = []
-    for (const name of ['Appearance', 'Scenarios', 'Basemap', 'Documentation']) {
+    for (const name of ['Appearance', 'Scenarios', 'Basemap']) {
       await page.getByRole('tab', { name }).click()
       const panel = dialog.locator('[role="tabpanel"]:not([hidden])')
       const box = await panel.boundingBox()
       widths.push(box!.width)
     }
-    // All four active tabpanels must occupy the SAME width — any hidden
+    // All three active tabpanels must occupy the SAME width — any hidden
     // sibling still participating in flex layout would shrink whichever
     // tab is currently active below this shared value.
     for (const w of widths) expect(Math.abs(w - widths[0])).toBeLessThan(2)
@@ -320,20 +323,18 @@ test.describe('User Story 3 - A settings modal that does not resize or rearrange
     for (const d of inactiveDisplays) expect(d).toBe('none')
   })
 
-  test('the four tab triggers stack vertically, to the left of the active content (FR-020)', async ({ page }) => {
+  test('the three tab triggers stack vertically, to the left of the active content (FR-020)', async ({ page }) => {
     await boot(page)
     await page.getByRole('button', { name: 'Settings' }).click()
 
     const appearanceBox = await page.getByRole('tab', { name: 'Appearance' }).boundingBox()
     const scenariosBox = await page.getByRole('tab', { name: 'Scenarios' }).boundingBox()
     const basemapBox = await page.getByRole('tab', { name: 'Basemap' }).boundingBox()
-    const documentationBox = await page.getByRole('tab', { name: 'Documentation' }).boundingBox()
     // Stacked vertically — each one's top strictly below the previous.
     expect(scenariosBox!.y).toBeGreaterThan(appearanceBox!.y)
     expect(basemapBox!.y).toBeGreaterThan(scenariosBox!.y)
-    expect(documentationBox!.y).toBeGreaterThan(basemapBox!.y)
-    // All four share a comparable left edge (a vertical column).
-    expect(Math.abs(appearanceBox!.x - documentationBox!.x)).toBeLessThan(2)
+    // All three share a comparable left edge (a vertical column).
+    expect(Math.abs(appearanceBox!.x - basemapBox!.x)).toBeLessThan(2)
 
     // The active tab's own content sits to the RIGHT of the tab list.
     await page.getByRole('tab', { name: 'Scenarios' }).click()
@@ -341,14 +342,21 @@ test.describe('User Story 3 - A settings modal that does not resize or rearrange
     expect(contentBox!.x).toBeGreaterThan(scenariosBox!.x + scenariosBox!.width)
   })
 
-  test('a short tab (Documentation) leaves empty space; a tall tab (Basemap) scrolls internally, without resizing the modal (FR-021)', async ({
+  test('a short tab (Appearance) leaves empty space; a tall tab (Basemap) scrolls internally, without resizing the modal (FR-021)', async ({
     page,
   }) => {
     await boot(page)
     await page.getByRole('button', { name: 'Settings' }).click()
     const dialog = page.getByRole('dialog')
 
-    await page.getByRole('tab', { name: 'Documentation' }).click()
+    // Documentation (this test's original "short tab" example) is no
+    // longer one of this modal's tabs — moved to its own standalone
+    // SidebarFooter entry (post-completion correction). Appearance is now
+    // the shortest remaining tab (a single label + one horizontal
+    // System/Light/Dark control, confirmed via direct read of
+    // appearanceTab.tsx — no scrollable content of its own), a like-for-like
+    // substitute for exercising the same FR-021 behavior this test targets.
+    await page.getByRole('tab', { name: 'Appearance' }).click()
     const shortBox = await dialog.boundingBox()
 
     await page.getByRole('tab', { name: 'Basemap' }).click()
@@ -920,13 +928,34 @@ test.describe('User Story 4 - Custom scenario label', () => {
   })
 })
 
+// Post-completion correction (explicit user request): Documentation is no
+// longer a tab inside the Settings modal — it's its own standalone
+// SidebarFooter entry (layout/documentationModal.tsx), positioned below
+// Settings, opening its own small Dialog. FR-014's own "clearly labeled
+// placeholder, no broken link" requirement is unchanged; only its
+// container/entry-point moved.
 test.describe('User Story 5 - Documentation placeholder', () => {
-  test('Documentation tab shows a clearly labeled placeholder, no broken link (FR-014)', async ({
+  test('Documentation is its own standalone control, separate from and below Settings, opening a clearly labeled placeholder with no broken link (FR-014)', async ({
     page,
   }) => {
     await boot(page)
-    await page.getByRole('button', { name: 'Settings' }).click()
-    await page.getByRole('tab', { name: 'Documentation' }).click()
+
+    // Two distinct controls, not one nested inside the other's dialog.
+    const settingsButton = page.getByRole('button', { name: 'Settings' })
+    const documentationButton = page.getByRole('button', { name: 'Documentation' })
+    await expect(settingsButton).toBeVisible()
+    await expect(documentationButton).toBeVisible()
+    const settingsBox = await settingsButton.boundingBox()
+    const documentationBox = await documentationButton.boundingBox()
+    expect(documentationBox!.y).toBeGreaterThan(settingsBox!.y)
+
+    await documentationButton.click()
+    const dialog = page.getByRole('dialog')
+    await expect(dialog).toBeVisible()
+    await expect(dialog.getByRole('heading', { name: 'Documentation' })).toBeVisible()
+    // Not the Settings modal — no Settings-only tabs leaked in alongside it.
+    await expect(dialog.getByRole('tab', { name: 'Appearance' })).toHaveCount(0)
+
     await expect(page.getByText(/not yet published/i)).toBeVisible()
     await expect(page.getByRole('link')).toHaveCount(0)
   })

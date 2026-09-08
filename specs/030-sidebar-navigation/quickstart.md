@@ -26,7 +26,7 @@ one tab with an `icon:`, one `full_page: true` tab with a single
 ```ts
 // tests/integration/sidebarNav.spec.ts
 await page.goto(BASE_URL)
-const items = page.getByRole('link', { name: /.+/ }).and(page.locator('[data-sidebar="menu-button"]'))
+const items = page.getByRole('button', { name: /.+/ }).and(page.locator('[data-sidebar="menu-button"]'))
 await expect(items).toHaveCount(EXPECTED_FIXTURE_TAB_COUNT)
 // Swap in a differently-sized fixture set (a second dashboard-config
 // index.json with e.g. 9 entries instead of 7) and re-assert the count
@@ -56,8 +56,15 @@ the manual trigger, never as a side effect of scrolling — and
 ## Scenario 3 — Explore Data renders edge-to-edge, no chrome (US2 / FR-008, FR-009, FR-011)
 
 ```ts
-await page.getByRole('link', { name: 'Explore Data' }).click()
-await expect(page.getByRole('heading', { name: 'Explore Data' })).toHaveCount(0) // no redundant page title
+// 'Explore' — the real, already-published dashboard-5-explore.yaml tab
+// name (header.tab: Explore), not the illustrative "Explore Data" name
+// this quickstart originally invented before that content existed. See
+// spec.md's FR-012/FR-012a and contracts/dashboard-grammar.md for the
+// full correction record — this scenario assumes FR-012a's own
+// markdown-relocation task is already done, so the tab is genuinely
+// single-panel and full_page: true is authored on it.
+await page.getByRole('button', { name: 'Explore' }).click()
+await expect(page.getByRole('heading', { name: 'Explore the Demo Data' })).toHaveCount(0) // no redundant page title
 await expect(page.locator('.rounded-lg.border.shadow-md')).toHaveCount(0)        // no Card chrome
 await expect(page.getByRole('button', { name: /^Expand/ })).toHaveCount(0)       // no expand-to-dialog trigger
 
@@ -86,12 +93,12 @@ this isn't still settling at the library's own fixed intrinsic default.
 ## Scenario 5 — Accordion sub-nav shows only for the active tab (US3 / FR-013–FR-017)
 
 ```ts
-await page.getByRole('link', { name: 'Person/Household Models' }).click()
-await expect(page.getByRole('link', { name: 'Auto Ownership' })).toBeVisible()
-await expect(page.getByRole('link', { name: 'Work from Home' })).toBeVisible()
+await page.getByRole('button', { name: 'Person/Household Models' }).click()
+await expect(page.getByRole('button', { name: 'Auto Ownership' })).toBeVisible()
+await expect(page.getByRole('button', { name: 'Work from Home' })).toBeVisible()
 
-await page.getByRole('link', { name: 'Tour Models' }).click()
-await expect(page.getByRole('link', { name: 'Auto Ownership' })).toHaveCount(0) // hidden, not just invisible
+await page.getByRole('button', { name: 'Tour Models' }).click()
+await expect(page.getByRole('button', { name: 'Auto Ownership' })).toHaveCount(0) // hidden, not just invisible
 ```
 
 **Done when**: switching tabs immediately removes the previous tab's own
@@ -101,7 +108,7 @@ section sub-items — no residual/duplicate entries for an inactive tab
 ## Scenario 6 — Section sub-item scrolls to its content (US3 / FR-016)
 
 ```ts
-await page.getByRole('link', { name: 'Auto Ownership' }).click()
+await page.getByRole('button', { name: 'Auto Ownership' }).click()
 await page.waitForFunction(() => {
   const el = document.getElementById('section-auto_ownership')
   const r = el?.getBoundingClientRect()
@@ -116,9 +123,9 @@ unchanged apart from a same-page anchor, if any).
 ## Scenario 7 — Collapsed sidebar shows no section sub-items (US3 / FR-017)
 
 ```ts
-await page.getByRole('link', { name: 'Person/Household Models' }).click()
+await page.getByRole('button', { name: 'Person/Household Models' }).click()
 await page.getByRole('button', { name: /collapse sidebar|toggle sidebar/i }).click()
-await expect(page.getByRole('link', { name: 'Auto Ownership' })).toHaveCount(0)
+await expect(page.getByRole('button', { name: 'Auto Ownership' })).toHaveCount(0)
 ```
 
 ## Scenario 8 — Metric Strip row layout (US4 / FR-018)

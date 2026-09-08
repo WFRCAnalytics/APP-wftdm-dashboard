@@ -1,43 +1,24 @@
 # 031-all-panel-demo-content — User Story 1. Free-form exploration of the
-# real ActivitySim demo data, plus real, accurate context about what this
-# demo content actually shows (no fabricated statistic, per this feature's
-# own non-negotiable constraint).
+# real ActivitySim demo data.
+#
+# 030-sidebar-navigation, FR-012/FR-012a: this tab is now genuinely
+# single-panel — its former "About This Demo" markdown panel relocated to
+# dashboard-1-overview.yaml (see that file's own comment) — so it
+# qualifies for the new chromeless full-page mode (FR-008 requires exactly
+# one panel across all of `layout`). `icon: compass` reuses this app's own
+# already-established icon for the graphic-walker/explore concept
+# (GraphicWalkerPanel.tsx's own empty-state icon), not independently
+# re-chosen (FR-012). This is the real, live demonstration
+# `contracts/dashboard-grammar.md`'s own corrected full-page example now
+# matches exactly.
 
 header:
   tab: Explore
   title: Explore the Demo Data
+  icon: compass
+  full_page: true
 
 layout:
-  row_about:
-    - type: markdown
-      title: About This Demo
-      width: 1.0
-      content: |
-        ## Real ActivitySim Output — Three Scenarios
-
-        Every number on every tab in this demo comes from three real runs of
-        ActivitySim's own `prototype_mtc` example — a genuine 25-zone subset
-        (TAZ 1-25) of MTC's real, full 1,454-zone Bay Area travel model
-        geography, not a synthetic test system.
-
-        - **Baseline** — the unmodified `prototype_mtc` example, run as-is.
-        - **Density Variant** — TAZ 1's employment raised ~40% before the
-          run. TAZ 1 is San Francisco's real Financial District (confirmed
-          directly against MTC's own published TAZ boundary data) —
-          already a real employment center in the baseline
-          (27,318 jobs vs. 82 residents). Raising it further produces a
-          real, measured ~37-40% increase in trips/tours destined there —
-          see the Destination Choice tab.
-        - **Transit Variant** — AM/PM `WALK_LOC` (walk-to-local-bus) travel
-          time cut 20% and wait time cut 50% before the run. Produces a
-          real, measured ~+1 percentage-point `WALK_LOC` mode-share
-          increase specifically in the AM/PM periods, with midday/evening
-          periods essentially flat as an internal control — see the
-          Transit Service tab.
-
-        Explore any real metric freely below — drag fields onto any shelf,
-        no reactive filters, a snapshot view of the underlying real data.
-
   # scenario: unset would union across every ACTIVE scenario, including
   # "observed" (always active by default, per its own pinned: true) —
   # confirmed live to break: observed's own real dataset never published
@@ -55,4 +36,3 @@ layout:
       dataset: trip_mode_share
       scenario: activitysim-baseline
       width:   1.0
-      height:  700

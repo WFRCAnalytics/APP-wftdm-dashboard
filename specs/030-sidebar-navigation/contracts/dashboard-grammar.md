@@ -25,16 +25,18 @@ header:
 
 ```yaml
 header:
-  tab:       Explore Data
-  title:     Explore Data
+  tab:       Explore
+  title:     Explore the Demo Data
   full_page: true          # NEW
 
 layout:
   row_explore:
-    - type:     graphic-walker
-      title:    Free-form Visual Analytics
-      dataset:  trip_mode_share
-      width:    1.0
+    - type:    graphic-walker
+      title:   Free-form Visual Analytics — Trip Mode Share
+      dataset: trip_mode_share
+      scenario: activitysim-baseline
+      width:   1.0
+      height:  700
 ```
 
 - A boolean flag. Optional, default `false`.
@@ -51,6 +53,26 @@ layout:
 - Generic across panel types at the mechanism level — any panel type may
   be configured this way; `graphic-walker` is this feature's own
   required, validated example (see this repo's own fixture/demo content).
+
+**This example now matches the REAL, current shape of
+`public/demo-dashboard-config/dashboard-5-explore.yaml` after FR-012a's
+own required content-relocation task, not an invented illustrative tab.**
+A real mismatch existed here for a time and is recorded for the record,
+not silently corrected away: `031-all-panel-demo-content` published this
+exact tab (`header.tab: Explore`) BEFORE this feature's own `full_page`
+grammar existed, with a SECOND panel alongside `graphic-walker` — a
+`markdown` "About This Demo" panel — which this contract's own original
+example didn't anticipate (it invented a differently-named, single-panel
+"Explore Data" tab instead, written before any real Explore content
+existed). `full_page: true` requires exactly one panel (above), so the
+real tab as originally published does NOT qualify as written. **FR-012a**
+(`spec.md`) requires relocating that markdown panel's content into
+`dashboard-1-overview.yaml` as its own explicit implementation task —
+this contract's example reflects the tab's shape AFTER that relocation,
+not before it. Do not add `full_page: true` to the real
+`dashboard-5-explore.yaml` until FR-012a's relocation task is complete —
+doing so first would silently drop the "About This Demo" content (no
+mechanism renders a second panel alongside a chromeless full-page one).
 
 ## `sections` (optional, tab-level, alongside `header`/`filters`/`layout`)
 

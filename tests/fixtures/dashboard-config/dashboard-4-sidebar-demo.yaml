@@ -1,0 +1,21 @@
+# 030-sidebar-navigation fixture content — a genuinely single-panel
+# graphic-walker tab, satisfying quickstart.md's own Prerequisites (a
+# `full_page: true` tab with one graphic-walker panel, `Compass` icon)
+# without touching dashboard-1-summary.yaml/dashboard-2-detail.yaml's own
+# already-heavily-exercised content. Also this fixture set's own vehicle
+# for `header.icon:` (T012) — the SAME tab exercises both FR-007 (icon)
+# and FR-008–FR-012 (full-page mode) since a full-page-eligible tab is
+# always single-purpose anyway.
+header:
+  tab: Explore Fixture
+  title: Explore Fixture (Full Page)
+  icon: compass
+  full_page: true
+
+layout:
+  row_explore:
+    - type: graphic-walker
+      title: Fixture Full-Page Explore
+      dataset: trip_mode_share
+      scenario: good_scenario
+      width: 1.0

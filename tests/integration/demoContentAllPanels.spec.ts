@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url'
 import { test, expect, type Page } from '@playwright/test'
 import type { WftdmDebugHook } from '../../src/main.tsx'
 import type maplibregl from 'maplibre-gl'
+import { acquireSharedFixtureLock, releaseSharedFixtureLock } from './_sharedFixtureLock'
 
 declare global {
   interface Window {
@@ -29,9 +30,23 @@ declare global {
 // beforeAll/afterAll restore BOTH files' REAL content for just this
 // file's own lifecycle, then put the blanks back — scoped to this file
 // only, no change to the shared global-setup.js/global-teardown.js
-// infrastructure itself. Safe under playwright.config.js's own
-// fullyParallel: false (spec files run sequentially, so no other file
-// observes the temporarily-restored content).
+// infrastructure itself.
+//
+// CORRECTION (030-sidebar-navigation, found via a real, reproduced
+// full-suite run): the "safe under fullyParallel: false" claim this
+// comment originally made was WRONG — that setting only serializes tests
+// WITHIN one file, never across files. A real run reported "Running 291
+// tests using 10 workers" (genuine cross-file parallelism; neither
+// playwright.config.js nor this project's own `npm run test:integration`
+// script sets `--workers`), and dashboardShell.spec.ts's/this file's own
+// non-exact `getByRole('tab', {name:'Explore'})` genuinely collided with
+// 030-sidebar-navigation's sidebarNav.spec.ts's own temporarily-injected
+// "Explore Fixture" tab (a DIFFERENT shared path,
+// public/dashboard-config/index.json, but rendered into the SAME combined
+// tablist main.ts builds from both roots) — both observed live in the
+// same reproduced run. Fixed with a real cross-worker lock
+// (_sharedFixtureLock.ts) shared by every spec file that mutates either
+// discovery path.
 //
 // A real, confirmed bug in an earlier version of this file: it restored
 // ONLY demo-dashboard-config/index.json, leaving demo-scenarios/index.json
@@ -68,7 +83,13 @@ const REAL_DEMO_SCENARIOS_INDEX = [
   'activitysim-transit-variant',
 ]
 
-test.beforeAll(() => {
+test.beforeAll(async () => {
+  // Another spec file may already hold this lock — Playwright's own
+  // default beforeAll timeout (inherited from the test timeout) can
+  // otherwise elapse while merely waiting for it. Real, legitimate
+  // queueing, not a hang.
+  test.setTimeout(420_000)
+  await acquireSharedFixtureLock()
   writeFileSync(DEMO_DASHBOARD_INDEX_PATH, JSON.stringify(REAL_DEMO_DASHBOARD_INDEX, null, 2))
   writeFileSync(DEMO_SCENARIOS_INDEX_PATH, JSON.stringify(REAL_DEMO_SCENARIOS_INDEX, null, 2))
 })
@@ -76,6 +97,7 @@ test.beforeAll(() => {
 test.afterAll(() => {
   writeFileSync(DEMO_DASHBOARD_INDEX_PATH, JSON.stringify([]))
   writeFileSync(DEMO_SCENARIOS_INDEX_PATH, JSON.stringify([]))
+  releaseSharedFixtureLock()
 })
 
 async function boot(page: Page) {
@@ -134,7 +156,19 @@ test.describe('031-all-panel-demo-content — User Story 1 (Explore: Graphic Wal
     await boot(page)
     await page.getByRole('tab', { name: 'Explore' }).click()
 
-    const card = panelCard(page, 'Free-form Visual Analytics — Trip Mode Share')
+    // 030-sidebar-navigation, FR-008/FR-012a: the Explore tab is now
+    // genuinely single-panel and renders in chromeless FULL-PAGE mode —
+    // no Card wrapper, no rendered panel-title text at all (confirmed by
+    // fullPagePanel.spec.ts's own "no page title, no Card chrome"
+    // assertion), so panelCard()'s title-text-based lookup finds nothing
+    // here (a real, confirmed regression found via a full-suite run, not
+    // a flaky timeout — reproduced 2/2 in full isolation too). Scoped
+    // instead to GraphicWalkerPanel.tsx's own stable
+    // `.graphic-walker-panel-host` class, present regardless of
+    // full-page vs. ordinary chrome — safe to assume exactly one such
+    // node exists while the Explore tab is active, since FR-008 requires
+    // full-page mode's tab to have exactly one panel.
+    const card = page.locator('.graphic-walker-panel-host')
     await expect(card).toBeVisible()
     // Real columns this metric's own SQL actually produces
     // (major_trip_mode, trips, share). This panel is pinned to a single
@@ -160,7 +194,16 @@ test.describe('031-all-panel-demo-content — User Story 1 (Explore: Graphic Wal
     page,
   }) => {
     await boot(page)
-    await page.getByRole('tab', { name: 'Explore' }).click()
+    // 030-sidebar-navigation, FR-012a: "About This Demo" was relocated
+    // from the Explore tab to the Overview tab, as a real, deliberate
+    // consequence of the Explore tab becoming genuinely single-panel to
+    // qualify for full-page mode (see dashboard-1-overview.yaml's own
+    // header comment for the full story) — a real, confirmed regression
+    // found via a full-suite run when this test still clicked 'Explore'
+    // and never found this panel there at all (reproduced 2/2 in full
+    // isolation, not a timing flake). Content/title are byte-identical,
+    // only the tab changed.
+    await page.getByRole('tab', { name: 'Overview' }).click()
 
     const card = panelCard(page, 'About This Demo')
     await expect(card).toBeVisible()

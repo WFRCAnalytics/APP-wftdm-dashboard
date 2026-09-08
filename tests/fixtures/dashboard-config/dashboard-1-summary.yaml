@@ -815,3 +815,24 @@ layout:
       y: b
       height: 350
       width: 0.33
+
+# 030-sidebar-navigation, US3: real accordion sub-navigation coverage
+# against this tab's own already-rich, already-heavily-exercised row set —
+# no new panel/metric data needed. Three sections, deliberately NOT
+# covering every row on this tab (row_sankey/row_flowmap/row_zonemap/
+# row_baseline_diff/etc. stay ungrouped) — FR-013's own "a layout row not
+# referenced by any section still renders normally, just with no sidebar
+# sub-nav entry" case needs real, live coverage too, not just the grouped
+# case. "KPIs & Charts" groups TWO rows under one section (row_kpis +
+# row_chart) — the real, multi-row-per-section vehicle; "Tables" and
+# "Explore" each group exactly one — the common single-row case.
+sections:
+  - id: kpis_and_charts
+    label: KPIs & Charts
+    rows: [row_kpis, row_chart]
+  - id: tables
+    label: Tables
+    rows: [row_table]
+  - id: explore
+    label: Explore
+    rows: [row_explore]

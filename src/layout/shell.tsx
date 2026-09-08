@@ -1,37 +1,70 @@
-import { useLayoutEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import { LayoutDashboard } from 'lucide-react'
 
 import { DashboardBrand } from '@/layout/dashboardBrand'
 import { DashboardRenderer } from '@/layout/dashboardRenderer'
-import { NavBar } from '@/layout/navBar'
+import { SidebarNav } from '@/layout/sidebarNav'
 import { SettingsModal } from '@/layout/settingsModal'
+import { DocumentationModal } from '@/layout/documentationModal'
 import { PanelEmptyState } from '@/panels/PanelEmptyState'
-import { useNavBarVisibilityMode } from '@/hooks/useNavBarVisibilityMode'
-import { useScrollDirection } from '@/hooks/useScrollDirection'
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarHeader,
+  SidebarInset,
+  SidebarMenu,
+  SidebarMenuItem,
+  SidebarProvider,
+  SidebarTrigger,
+  useSidebar,
+} from '@/components/ui/sidebar'
 import type { DashboardTabConfig } from '@/layout/types'
 import type { DashboardBranding } from '@/services/yamlLoader'
 
-// Top-level app shell: NavBar + the active tab's DashboardRenderer.
-// Active-tab selection is local component state, not a global store —
-// tab selection isn't a cross-cutting filter (constitution's no-Web-
-// Storage rule doesn't apply to transient UI state either way).
+// Real bug fix (post-completion): DashboardBrand doesn't shrink on its
+// own — a full logo <img> (up to 220px) or a whitespace-nowrap title span
+// rendered inside the collapsed 64px rail overflowed badly (SidebarHeader's
+// own p-4 padding alone consumes 32px, leaving 32px for BOTH the brand and
+// SidebarTrigger together). No compact icon-only asset exists in
+// DashboardBranding at all (logoUrl/logoUrlDark/title only) — matching
+// sidebarNav.tsx's own "no icon configured -> nothing shown" precedent,
+// hiding DashboardBrand ENTIRELY while collapsed (rather than fabricating
+// a synthetic mark) is the correct, evidence-based fix, not a compromise.
+// A separate component, not inlined directly in SidebarHeader's own JSX
+// below, because useSidebar() must be called from a component that is a
+// REACT-TREE descendant of <SidebarProvider> — Shell() itself renders
+// SidebarProvider as part of its own return value, so Shell's own function
+// body runs before that context exists and cannot call the hook directly.
+// DashboardBrand.tsx itself is deliberately left untouched/sidebar-unaware
+// (its own header comment: "shell.tsx itself has no need to know the
+// internals of [DashboardBrand]" — symmetric reasoning applies the other
+// way too, DashboardBrand has no need to know about Sidebar internals).
+function CollapsibleBrand({ branding }: { branding: DashboardBranding }) {
+  const { state } = useSidebar()
+  if (state === 'collapsed') return null
+  return (
+    <div className="min-w-0 flex-1">
+      <DashboardBrand branding={branding} />
+    </div>
+  )
+}
+
+// Top-level app shell — 030-sidebar-navigation: a left Sidebar replaces the
+// previous horizontal top-nav <header>. Active-tab selection is local
+// component state, not a global store — tab selection isn't a cross-cutting
+// filter (constitution's no-Web-Storage rule doesn't apply to transient UI
+// state either way), unchanged from before this feature.
 //
-// Nav-bar visibility mode (Settings modal's Appearance tab, state/
-// navBarVisibilityState.ts): investigated directly before building this —
-// the <header> below had NO positioning of its own before this change
-// (confirmed via direct read: no `fixed`/`sticky`/`absolute` class
-// anywhere on it, plain normal document flow, scrolling away with the
-// page like any other block element). Both modes now use
-// `position: fixed` unconditionally — 'fixed' mode and 'auto' mode differ
-// ONLY in whether a translateY offset is dynamically toggled on top of
-// that same fixed positioning, not in whether fixed positioning applies
-// at all. Since `position: fixed` removes the header from normal document
-// flow (confirmed this was NOT already compensated for anywhere — no
-// existing padding/margin on <main> relied on the header's old in-flow
-// height), <main> now gets an explicit `paddingTop` equal to the header's
-// real, MEASURED height (ResizeObserver-driven, not a hardcoded constant —
-// the header's actual height depends on font-size/theme/tab-count wrapping,
-// none of which this component should need to hardcode a guess about).
+// The ENTIRE previous ResizeObserver/headerHeight/paddingTop measurement
+// machinery is gone, not adapted (research.md §5) — that mechanism existed
+// for exactly one reason (compensating <main> for a position: fixed header
+// removed from normal document flow); SidebarProvider/Sidebar/SidebarInset
+// is an ordinary flex sibling arrangement where nothing overlaps page
+// content, so nothing needs pixel-measured compensation. Hide-on-Scroll nav
+// visibility mode (useNavBarVisibilityMode/navBarVisibilityState/
+// useScrollDirection) is also gone entirely, not adapted (FR-006) — its own
+// "Top Bar Behavior" Settings control is removed too (appearanceTab.tsx).
 export function Shell({
   dashboards,
   branding = {},
@@ -40,56 +73,6 @@ export function Shell({
   branding?: DashboardBranding
 }) {
   const [activeTab, setActiveTab] = useState(dashboards[0]?.header.tab)
-  const headerRef = useRef<HTMLElement>(null)
-  const [headerHeight, setHeaderHeight] = useState(0)
-
-  const navBarMode = useNavBarVisibilityMode()
-  // Scroll tracking is only ever attached while mode === 'auto' — in
-  // 'fixed' mode its result is never consulted, so there's no reason to
-  // pay for a real window scroll listener at all (useScrollDirection's own
-  // `enabled` gate skips attaching one entirely).
-  const scrollDirection = useScrollDirection(navBarMode === 'auto')
-  const navBarHidden = navBarMode === 'auto' && scrollDirection === 'down'
-
-  useLayoutEffect(() => {
-    const header = headerRef.current
-    if (!header) return undefined
-    // Measure synchronously up front (before ResizeObserver's own first
-    // callback, which — like a layout effect — fires before paint, but a
-    // synchronous read here removes any doubt about a one-frame flash of
-    // unpadded content behind the fixed header on first mount).
-    setHeaderHeight(header.getBoundingClientRect().height)
-    // Real bug, found live (not assumed): ResizeObserver's own
-    // `entry.contentRect.height` reports the CONTENT-box height — it
-    // excludes padding and border — whereas the synchronous measurement
-    // above uses `getBoundingClientRect()`, which reports the BORDER-box
-    // height (the header's real, full rendered height, padding/border
-    // included). The header has both (`py-4` padding, `border-b`), so
-    // `contentRect.height` under-measures it by exactly that padding+
-    // border amount (confirmed empirically: 73px border-box vs. 40px
-    // content-box on this header, a 33px shortfall — 16px+16px padding +
-    // 1px border). ResizeObserver delivers an initial callback the
-    // instant `.observe()` is called, even with no real subsequent
-    // resize, so this wrong, SMALLER value overwrote the correct one
-    // moments after mount and then stayed wrong forever (the header's
-    // real size never changes again, so no further callback ever
-    // corrects it) — a small, permanent gap between the header's real
-    // height and <main>'s compensating padding, silently letting the top
-    // ~33px of the first row of panels render underneath the header.
-    // Invisible in 'auto' mode (the header hides on scroll, so nothing
-    // is left to overlap once scrolled), but a persistent, visible
-    // overlap in 'fixed' mode, where the header never leaves. Fixed by
-    // re-measuring via the SAME getBoundingClientRect() the initial
-    // synchronous call already uses, instead of contentRect — both call
-    // sites now agree by construction, no content-vs-border-box mismatch
-    // possible.
-    const observer = new ResizeObserver((entries) => {
-      const entry = entries[0]
-      if (entry) setHeaderHeight(entry.target.getBoundingClientRect().height)
-    })
-    observer.observe(header)
-    return () => observer.disconnect()
-  }, [])
 
   if (dashboards.length === 0) {
     return (
@@ -106,60 +89,48 @@ export function Shell({
   const active = dashboards.find((d) => d.header.tab === activeTab) ?? dashboards[0]
 
   return (
-    // bg-background spans the full viewport edge to edge. Content used to
-    // be capped at mx-auto max-w-7xl (003-dashboard-shell-navigation) to
-    // avoid an "unreadable width" on wide viewports — but for a data-dense
-    // dashboard (chart/map/table grids, not prose), that tradeoff left a
-    // large, unwanted blank void down both sides on any monitor wider than
-    // ~1280px, reported directly by the user. Removed entirely: nav and
-    // the panel grid both now go full width, edge to edge. panelCard.tsx
-    // has no width logic of its own either way — it fills whatever column
-    // dashboardRenderer.tsx's grid gives it.
-    <div className="min-h-screen bg-background text-foreground">
-      <header
-        ref={headerRef}
-        // wftdm-design-system, Phase 2: this header is `position: fixed` —
-        // real page content genuinely scrolls underneath it (the
-        // paddingTop compensation above only reserves space at rest;
-        // anything the viewer scrolls past continues to pass behind this
-        // element) — yet it previously carried no elevation at all, only
-        // a flat `border-b`, so it read as flush WITH the page rather
-        // than floating above it. shadow-md is this app's own already-
-        // formalized "default resting elevation for a persistent floating
-        // surface" tier (the same tier Card/dropdown menus already use) —
-        // applied unconditionally, in both nav-bar visibility modes,
-        // since the header is a floating surface throughout the session
-        // either way (only its position, not its elevation, changes
-        // between them). border-b is kept alongside it, not replaced —
-        // mapControls.css already established this exact border+shadow
-        // pairing convention for this app's other floating chrome.
-        className="fixed inset-x-0 top-0 z-30 flex items-center justify-between border-b border-border bg-background px-6 py-4 shadow-md transition-transform duration-300 ease-in-out"
-        style={{ transform: navBarHidden ? 'translateY(-100%)' : 'translateY(0)' }}
-      >
-        <div className="flex min-w-0 items-center gap-4">
+    <SidebarProvider>
+      <Sidebar>
+        <SidebarHeader>
           {/* 028-dashboard-branding: deployer-configurable title/logo,
               genuinely optional — DashboardBrand itself renders nothing at
-              all when `branding` has neither field set, so an un-configured
-              deployment's header is byte-for-byte the same NavBar-only
-              layout this <header> always had. */}
-          <DashboardBrand branding={branding} />
-          <NavBar
-            tabs={dashboards}
-            activeTab={active.header.tab}
-            onTabChange={setActiveTab}
-          />
-        </div>
-        {/* 020-settings-modal: ScenarioLoader + ThemeToggle (the previous
-            top-right header group, 015-theme-toggle research.md §7) are
-            replaced entirely by a single SettingsModal trigger (FR-001,
-            FR-002) — not kept alongside it. */}
-        <div className="flex items-center gap-3">
-          <SettingsModal />
-        </div>
-      </header>
-      <main style={{ paddingTop: headerHeight }}>
+              all when `branding` has neither field set. min-w-0 lets it
+              truncate/shrink rather than force the header to overflow at
+              the sidebar's own fixed width. Hidden entirely while
+              collapsed (CollapsibleBrand, above) — see that component's
+              own comment. */}
+          <CollapsibleBrand branding={branding} />
+          <SidebarTrigger />
+        </SidebarHeader>
+        <SidebarContent>
+          <SidebarNav tabs={dashboards} activeTab={active.header.tab} onTabChange={setActiveTab} />
+        </SidebarContent>
+        {/* 020-settings-modal: the single dashboard-wide settings entry
+            point relocates here from the old header's top-right group
+            (FR-005) — footer-anchored, visually distinct from the primary
+            tab-item list above it, and this feature's own one legitimate,
+            deliberately hardcoded app-level exception (spec.md's Explicit
+            scope boundary point 4) — not a dashboard-*.yaml tab at all.
+            Post-completion correction (explicit user request): Documentation
+            is now its own SidebarMenuItem BELOW Settings, not a tab nested
+            inside it (see settingsModal.tsx/documentationModal.tsx's own
+            comments) — wrapped in a SidebarMenu/SidebarMenuItem pair the
+            same way the primary nav list above is, for correct list
+            semantics with two stacked items instead of one. */}
+        <SidebarFooter>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SettingsModal />
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <DocumentationModal />
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarFooter>
+      </Sidebar>
+      <SidebarInset>
         <DashboardRenderer tab={active} />
-      </main>
-    </div>
+      </SidebarInset>
+    </SidebarProvider>
   )
 }

@@ -426,8 +426,42 @@ export type PanelConfig =
   | RechartsPanelConfig
   | UnknownPanelConfig
 
+/** 030-sidebar-navigation, FR-013/data-model.md §2: one accordion
+ * sub-navigation entry — groups one or more of a tab's own existing
+ * `layout:` row names under a viewer-facing label. `id` is author-chosen
+ * (not auto-generated), matching FilterDefinition.id/
+ * ObservablePlotInputConfig.id's own existing convention — becomes the
+ * DOM scroll-to anchor (`section-${id}`, dashboardRenderer.tsx). Grouping
+ * `rows` never reorders them; row render order stays exactly `layout`'s
+ * own object-key order regardless of `sections`. */
+export interface SectionConfig {
+  id: string
+  label: string
+  rows: string[]
+}
+
 export interface DashboardTabConfig {
-  header: { tab: string; title: string; description?: string }
+  header: {
+    tab: string
+    title: string
+    description?: string
+    /** 030-sidebar-navigation, FR-007: optional `lucide-react` icon name
+     * (kebab-case), resolved via the SAME `iconComponentFor()` lookup
+     * `ValueBoxPanelConfig.icon` already uses (lib/iconComponentFor.ts).
+     * Absent → the sidebar item renders with no icon, never a default/
+     * placeholder substitute. Purely presentational — read only by
+     * sidebarNav.tsx; no query/data-layer code ever consults it. */
+    icon?: string
+    /** 030-sidebar-navigation, FR-008: opts this tab into the chromeless
+     * full-page rendering mode. Requires `layout` to resolve to exactly
+     * one panel for the flag to take effect — validated at render time by
+     * dashboardLayout.ts's findFullPagePanel(), not here (parsing stays
+     * permissive/fail-soft; a 0-or-2+-panel misconfiguration falls back to
+     * ordinary rendering with a console warning, per spec.md's Edge
+     * Cases). Default false/absent — every existing dashboard-*.yaml is
+     * unaffected. */
+    full_page?: boolean
+  }
   filters: FilterDefinition[]
   /** 011-basemap-style-system, FR-005: optional tab-level basemap
    * default, scoped exactly like header:/filters: — a built-in preset
@@ -435,6 +469,14 @@ export interface DashboardTabConfig {
    * on this tab that doesn't set its own `basemap:`. */
   default_basemap?: BasemapSelection
   layout: Record<string, PanelConfig[]>
+  /** 030-sidebar-navigation, FR-013: optional, additive, tab-level
+   * accordion sub-navigation grouping. Absent/empty → no sidebar
+   * sub-navigation for this tab (today's behavior, unchanged). Parsed
+   * permissively (Array.isArray check only) — a malformed individual
+   * entry is filtered out during resolution (dashboardLayout.ts's
+   * resolveSections()), not at parse time, matching `layout`'s own
+   * existing "parse permissively, validate contextually" split. */
+  sections?: SectionConfig[]
 }
 
 /** A bare string or a { layers: string[] } object — the only two shapes
@@ -472,6 +514,8 @@ export function parseDashboardConfig(raw: unknown, sourcePath = '(unknown source
       tab: header.tab,
       title: header.title,
       description: typeof header.description === 'string' ? header.description : undefined,
+      icon: typeof header.icon === 'string' ? header.icon : undefined,
+      full_page: typeof header.full_page === 'boolean' ? header.full_page : undefined,
     },
     filters: Array.isArray(obj.filters) ? (obj.filters as FilterDefinition[]) : [],
     default_basemap: parseBasemapSelection(obj.default_basemap),
@@ -479,5 +523,11 @@ export function parseDashboardConfig(raw: unknown, sourcePath = '(unknown source
       obj.layout && typeof obj.layout === 'object'
         ? (obj.layout as Record<string, PanelConfig[]>)
         : {},
+    // Permissive parsing only — malformed individual entries (missing
+    // id/label/rows, wrong types) are filtered out later by
+    // dashboardLayout.ts's resolveSections(), which has the context (the
+    // tab's own real row names) needed to warn usefully; this function
+    // only confirms the top-level shape is an array at all.
+    sections: Array.isArray(obj.sections) ? (obj.sections as SectionConfig[]) : undefined,
   }
 }
