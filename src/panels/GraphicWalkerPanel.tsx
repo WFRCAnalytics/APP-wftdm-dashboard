@@ -211,10 +211,44 @@ export function GraphicWalkerPanel({ config }: { config: GraphicWalkerPanelConfi
   } else if (status === 'empty') {
     content = <PanelEmptyState icon={Compass} message="No data available to explore" />
   } else if (status === 'loading') {
-    // No separate shared "loading" component — loading states are
-    // deliberately inline per panel type (constitution v2.2.0 Development
-    // Workflow), no reusable component exists to reuse here either.
-    content = <div style={{ height: config.height ?? 700 }} />
+    // wftdm-design-system skill's Skeleton composition recipe (Phase 3
+    // Batch 3) — a real, confirmed gap found auditing this panel, not
+    // merely "needs upgrading" like the other panel types: this was the
+    // ONE loading state with LESS than the pre-Phase-3 baseline every
+    // other panel type already had — a bare, entirely unstyled div, no
+    // animate-pulse/bg-muted at all. GraphicWalker's own real, stable
+    // top-level shape (a field-list sidebar beside a main chart canvas) is
+    // genuinely structural, not data-dependent, so a shaped two-pane
+    // skeleton is a safe, low-risk choice here, unlike guessing at
+    // chart-specific content this library's own internal rendering
+    // decides.
+    //
+    // A real bug caught during this fix's own screenshot verification,
+    // not shipped: an earlier draft dropped the explicit height entirely,
+    // reasoning that `.graphic-walker-panel-content > div { height: 100% }`
+    // (graphicWalkerPanel.css) would size it the same way it sizes the
+    // real ready-state <GraphicWalker> div. That's true only when
+    // config.height (or the dialog's own flex sizing) gives the ancestor
+    // chain a DEFINITE height — for a panel configured with no height: at
+    // all (this app's own most common case, confirmed via a real fixture:
+    // "Free-form Visual Analytics (Summary Tab)" sets no height field),
+    // the whole chain resolves to indeterminate/auto, and the READY
+    // state's own real GraphicWalker content still shows up correctly
+    // because it has genuine INTRINSIC size of its own (real toolbar/
+    // field-list/canvas chrome) — but this skeleton's two empty,
+    // content-less `h-full` divs have nothing to size against and
+    // silently collapsed to 0px height, confirmed live via a real
+    // screenshot showing an entirely blank card. Fixed by keeping the
+    // SAME `config.height ?? 700` fallback the original bare div already
+    // had (the one part of it that was actually correct) and adding real
+    // visual content inside it, rather than removing the height
+    // altogether.
+    content = (
+      <div className="flex gap-3" style={{ height: config.height ?? 700 }} aria-hidden="true">
+        <div className="h-full w-48 shrink-0 animate-pulse rounded-md bg-muted" />
+        <div className="h-full flex-1 animate-pulse rounded-md bg-muted" />
+      </div>
+    )
   } else {
     content = <GraphicWalker data={rows} fields={fields} themeKey="g2" appearance={colorScheme} />
   }

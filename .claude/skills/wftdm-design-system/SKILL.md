@@ -24,6 +24,7 @@ The concrete, decided visual foundation for this app's app-wide redesign. Every 
 - **Dialog text inheritance** — a real bug found live: `DialogPrimitive.Content` set `bg-card` but never paired it with a text color, and because Radix's `DialogPortal` renders into `document.body` (outside `shell.tsx`'s own `text-foreground`-setting wrapper), nothing inside a dialog actually inherited this app's token-driven text color at all — it silently fell back to the plain browser default (black), confirmed via `getComputedStyle()` reading a hardcoded black in dark mode before the fix (`components/ui/dialog.tsx`, `015-theme-toggle`). This also broke every `currentColor`-based child relocated into a dialog (Observable Plot's own axis/tick text).
 - **Native form control styling** — a bare `<select>`/`<option>` is rendered by the OS/browser itself, following the CSS `color-scheme` property, not `var(--foreground)`/any class; with no `color-scheme` declared, native controls rendered illegibly once the app went dark (`tokens.css`'s own `color-scheme: light`/`dark` declarations, `015-theme-toggle`).
 - **The WFRC blue's own dark-mode-adjusted value** — `--primary` is NOT the same hex in both themes: `:root` resolves it to `--brand-wfrc-blue` (`#023c5b`), `.dark` resolves it to the lighter `--brand-wfrc-secondary-blue` (`#52b6d5`) instead — a deliberate, already-correct swap (a dark navy blue would fail contrast against this app's own dark background), not an oversight to "fix" toward a single value.
+- **SankeyPanel's own node labels, hardcoded black by omission** — found during Phase 3 Batch 2's own audit, the same bug CLASS as Plotly/Observable Plot above but a different mechanism: `panels/SankeyPanel.tsx` builds its diagram's `<text>` elements via raw `document.createElementNS`, and never set a `fill` on them at all — confirmed live via `getComputedStyle()` reading a literal `rgb(0, 0, 0)` in dark mode (SVG's own initial/default `fill` value, per spec, when nothing in the cascade sets one). Only borderline-legible before the fix, and only by coincidence: these labels sit just outside each node's own colored rect, over the flow area, whose blended colors happened to still contrast against pure black — genuinely broken the moment a label would land over the plain dark page background instead. Fixed with `fill="currentColor"` (matching Observable Plot's own tip-mark fix exactly) — the SVG mounts in the normal light DOM with no shadow root, so it correctly inherits `shell.tsx`'s real `text-foreground` class through ordinary CSS cascade. Verified live: `rgb(21, 21, 21)` in light mode, `rgb(255, 255, 255)` in dark — both matching `--foreground`'s real per-theme value exactly.
 
 **The standard verification technique for Phase 2/3 — not visual spot-checking alone**: this app already has a real, established, automatable pattern for proving a color/contrast claim, rather than eyeballing a screenshot. `tests/unit/tokenContrast.test.ts` reads `tokens.css`'s actual custom-property values and computes real WCAG contrast ratios for every `-foreground`/base pairing, in both `:root` and `.dark`, failing loudly if either drifts. `tests/integration/graphicWalkerPanel.spec.ts`'s own theme test does the live-DOM equivalent: it calls `getComputedStyle()` against a real rendered element, asserts the exact expected `rgb(...)` value in light mode, flips `document.documentElement.classList.add('dark')`, and re-asserts the exact expected dark-mode `rgb(...)` value. **Every Phase 2/3 component change that touches color, text-on-a-surface, or a token consumed differently per theme should get this same treatment**: a real computed-style assertion in both themes (extending an existing Playwright spec, or a new one), not just "I looked at it in dark mode and it seemed fine." Dialog text inheritance above is the cautionary example of exactly what "seemed fine in light mode" misses.
 
@@ -57,9 +58,10 @@ Three font families, unchanged from `002-design-tokens` (WFRC brand choice, not 
 | **Panel title** | `font-heading text-base font-semibold tracking-tight` | 16px / 24px | 600 | **Applied, Phase 2** (moved up from an originally-planned Phase 3 deferral). `components/ui/card.tsx`'s `CardTitle` — every panel title in the app — previously rendered at `text-2xl` (24px), the shadcn default for a single standalone hero card, never tuned for this app's dense multi-panel grid. Fixed during Phase 2, not deferred, because Phase 2's own new Page Title heading made the resulting hierarchy inversion directly visible in a real screenshot (every panel title rendering LARGER than the page title above it) — `card.tsx` is shared shell-adjacent chrome, not an individual panel's own internals, so this stayed within Phase 2's own scope boundary rather than crossing into Phase 3's per-panel-type work. |
 | **Section label** | `font-heading text-xs font-semibold uppercase tracking-wide text-muted-foreground` | 12px / 16px | 600 | Already real and correct — `layout/settings/basemapTab.tsx`'s catalog section headers. Formalized, not changed. |
 | **Body** | `font-body text-sm` | 14px / 20px | 400 | Already real and correct — `CardDescription`, most panel body copy. Matches Vercel/Geist's and Grafana's own default body size (both 14px). |
-| **Form label** | `font-body text-sm font-medium text-foreground` | 14px / 20px | 500 | Already real and correct — `layout/settings/appearanceTab.tsx`'s "Theme"/"Top Bar Behavior" labels. |
+| **Form label** | `font-body text-sm font-medium text-foreground` | 14px / 20px | 500 | Already real and correct — `layout/settings/appearanceTab.tsx`'s "Theme"/"Top Bar Behavior" labels; `panels/ObservablePlotPanel.tsx`'s `PanelLocalInput` label span (Phase 3 Batch 2 — was missing `font-body font-medium`, inheriting only the wrapping row's `text-sm text-foreground` at the body-default 400 weight). |
 | **Caption / meta** | `font-body text-xs text-muted-foreground` | 12px / 16px | 400 | Already real and correct — `layout/settings/scenariosTab.tsx`'s scenario counts, status text. |
 | **Mono / technical** | `font-mono text-xs` | 12px / 16px | 400 | Already real and correct — `scenariosTab.tsx`'s scenario file-path display. |
+| **Stat / display number** | `font-heading text-3xl font-semibold` | 30px / 36px | 600 | Already real and correct, newly formalized (Phase 3 Batch 1 audit) — `panels/ValueBoxPanel.tsx`'s own large numeral. Not one of the roles above: a value box's headline number is a genuinely distinct semantic role (Grafana's own "big stat" pattern) this scale had never named, not a deviation to correct. Its own `config.unit` annotation is Caption/meta (below), not part of this role. |
 
 ## Spacing scale
 
@@ -113,6 +115,105 @@ Add `border border-border` when the real element it stands in for has a border (
 
 **Phase 3 requirement — not optional, logged here so it isn't lost**: each panel type's own existing inline loading state (the seven files listed above) MUST be upgraded to this same real, shaped skeleton pattern when Phase 3 touches that panel type — composing multiple shimmer blocks into that panel type's own real internal shape (e.g. a value box's own icon-circle + number-bar + label-bar, a table's own header-row + several body-rows, a chart's own axis-line + plot-area), the same way the boot skeleton composes shimmer blocks into a header+grid shape. A single plain rectangle is the CURRENT, pre-Phase-3 state for every panel type — acceptable as an interim state (it already uses the correct shimmer primitive, just not yet shaped), but Phase 3 is explicitly NOT done for a panel type until its own loading state is genuinely shaped, not left as the one-rectangle placeholder it has today.
 
+**Composition recipe — general enough to reuse for any panel type, not just the two below**: a shaped skeleton is nothing more than the shimmer primitive applied to several small divs, laid out with the same flex/grid classes the real content itself will use, sized to roughly the real element's own footprint. There is no shared `<Skeleton>` component in this codebase (matching this app's own established preference — the plain-rectangle version was never a shared component either, each panel type wrote its own `animate-pulse rounded-md bg-muted` line independently) — write the shimmer divs directly in each panel's own loading branch, `aria-hidden="true"` on the root (a skeleton is decorative, not content assistive tech should announce item-by-item). Two real, worked examples, done in Phase 3 Batch 1 (`029`'s Phase 3 work — `ValueBoxPanel.tsx`/`TablePanel.tsx`):
+
+```tsx
+// ValueBoxPanel.tsx — icon-circle + number-bar. The icon placeholder is
+// conditional on config.icon (already known pre-fetch, a static config
+// field) so it only appears when the real ready-state will have one.
+<div className="flex items-center gap-3" aria-hidden="true">
+  {config.icon && <div className="h-5 w-5 shrink-0 animate-pulse rounded-full bg-muted" />}
+  <div className="h-9 w-24 animate-pulse rounded-md bg-muted" />
+</div>
+```
+
+```tsx
+// TablePanel.tsx — header-row + several body-rows. Column/row counts are
+// arbitrary placeholders (the real count isn't known until the query
+// resolves); flex-1 on every cell shares the row width evenly.
+<div aria-hidden="true">
+  <div className="flex gap-4 border-b border-border px-3 py-2">
+    {[0, 1, 2, 3].map((i) => <div key={i} className="h-3 flex-1 animate-pulse rounded bg-muted" />)}
+  </div>
+  {[0, 1, 2, 3, 4].map((row) => (
+    <div key={row} className="flex gap-4 border-b border-border px-3 py-2 last:border-0">
+      {[0, 1, 2, 3].map((col) => <div key={col} className="h-4 flex-1 animate-pulse rounded bg-muted" />)}
+    </div>
+  ))}
+</div>
+```
+
+A later batch composing a chart panel's own axis-line + plot-area shape (or any other shape) should follow the same recipe — several shimmer divs, real layout classes, `aria-hidden="true"` on the root — not invent a structurally different approach.
+
+**A real, confirmed exception found in Batch 1, not overlooked**: `MarkdownPanel.tsx` is one of the seven files this requirement names, but it has NO loading state to upgrade at all — its own code comment (research.md §4 of `006-markdown-panel`) documents that `config.content` is already present at mount time with nothing to fetch, so there is no async window a skeleton would ever actually appear during. Inventing a fake, always-instantaneous loading flash to satisfy this requirement's letter would contradict the file's own real design. When a future batch reaches a panel type on this list, confirm it genuinely has a loading state before assuming this requirement applies — it did for six of the seven, not all seven.
+
+**Phase 3 Batch 2 — the axis-chart shape, and a two-column node-graph shape**: `PlotlyPanel.tsx`/`ObservablePlotPanel.tsx`/`RechartsPanel.tsx` (three genuinely different chart libraries, all covering the same bar/line/area territory) share ONE real, worked skeleton shape — varying-height bar silhouettes sitting on a static axis baseline:
+
+```tsx
+<div className="flex flex-col justify-end gap-2" style={{ height: config.height ?? 350 }} aria-hidden="true">
+  <div className="flex flex-1 items-end gap-2">
+    {[40, 70, 55, 90, 65, 80, 50].map((h, i) => (
+      <div key={i} className="flex-1 animate-pulse rounded-t-sm bg-muted" style={{ height: `${h}%` }} />
+    ))}
+  </div>
+  <div className="h-px w-full bg-border" />
+</div>
+```
+
+Deliberately the SAME shape regardless of a panel's own real mark type (bar/line/area/scatter) — a genuine curve silhouette isn't practical to fake with plain shimmer divs, and this generic bar silhouette already reads as "a chart will be here" for any of them. The height array is an arbitrary placeholder (the real shape isn't known until the query resolves) — vary it per file only if it happens to fit that file's own sizing model (`ObservablePlotPanel.tsx` uses `flex: '1 1 auto', minHeight: 0` instead of a fixed `height` on the outer div, since its real chart container must share space with `config.inputs` rows rendered above it — the inner bar-row/baseline markup is identical either way).
+
+`SankeyPanel.tsx` is structurally different enough (a two-sided node graph, not an x/y axis chart) that the same shape would be misleading — it gets its own, still-simple shape instead: two vertical columns of block placeholders (source nodes left, target nodes right), no attempt to fake the flow paths between them (a decorative placeholder doesn't need to be that literal, just recognizably "two node columns" rather than a plain rectangle):
+
+```tsx
+<div className="flex items-stretch justify-between gap-8" style={{ height: config.height ?? 350 }} aria-hidden="true">
+  <div className="flex flex-1 flex-col justify-around gap-2 py-2">
+    {[28, 20, 16, 10, 8].map((h, i) => <div key={i} className="animate-pulse rounded-sm bg-muted" style={{ height: `${h}%` }} />)}
+  </div>
+  <div className="flex flex-1 flex-col justify-around gap-2 py-2">
+    {[22, 18, 14, 10].map((h, i) => <div key={i} className="animate-pulse rounded-sm bg-muted" style={{ height: `${h}%` }} />)}
+  </div>
+</div>
+```
+
+A future map-panel batch (`FlowMapPanel.tsx`/`ZoneMapPanel.tsx`, the two remaining files on the original seven-file list) should confirm which of these two shapes — or a genuinely new one — actually fits a map's own loading structure before assuming either transfers unchanged; a basemap-tile placeholder is a different problem again from an axis chart or a node graph.
+
+**Phase 3 Batch 3 (final) — the map-silhouette shape, completing the original seven-file list**: `FlowMapPanel.tsx`/`ZoneMapPanel.tsx` needed a genuinely new shape, confirmed by the round above's own "confirm which shape fits, don't assume" instruction — neither the axis-chart nor the node-graph shape reads as a map. Both share a two-layer language: a static, non-pulsing `bg-muted` "map area" backdrop (a basemap isn't itself loading content, so it doesn't shimmer) with a few soft, `animate-pulse` `bg-border` shapes on top (an existing token distinct enough from `bg-muted` to read against it — no new color invented):
+
+```tsx
+// FlowMapPanel.tsx — flow-line + location-dot placeholders (rotated thin
+// bars + small circles), suggesting O-D desire lines.
+<div className="relative overflow-hidden rounded-md bg-muted" style={{ height: config.height ?? 500 }} aria-hidden="true">
+  <div className="absolute left-[15%] top-[30%] h-1 w-[55%] origin-left rotate-[8deg] animate-pulse rounded-full bg-border" />
+  {/* ...more lines... */}
+  <div className="absolute left-[15%] top-[30%] h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 animate-pulse rounded-full bg-border" />
+  {/* ...more dots at line endpoints... */}
+</div>
+```
+
+```tsx
+// ZoneMapPanel.tsx — scattered rounded-rect blocks suggesting irregular
+// zone polygons, the correct silhouette for a choropleth vs. a flow map.
+<div className="relative overflow-hidden rounded-md bg-muted" style={{ height: config.height ?? 450 }} aria-hidden="true">
+  <div className="absolute left-[8%] top-[15%] h-[30%] w-[25%] animate-pulse rounded-md bg-border" />
+  {/* ...more scattered blocks at varied positions/sizes... */}
+</div>
+```
+
+**`GraphicWalkerPanel.tsx` — a real, confirmed gap, not a fourth new shape**: this panel's own pre-existing loading branch was `<div style={{ height: config.height ?? 700 }} />` — no `animate-pulse`/`bg-muted` at all, LESS than the pre-Phase-3 baseline every other panel type already had. Fixed with a sidebar+canvas two-pane skeleton (GraphicWalker's own real, stable top-level shape — genuinely structural, not data-dependent, so safe to render without guessing at chart-specific content):
+
+```tsx
+<div className="flex gap-3" style={{ height: config.height ?? 700 }} aria-hidden="true">
+  <div className="h-full w-48 shrink-0 animate-pulse rounded-md bg-muted" />
+  <div className="h-full flex-1 animate-pulse rounded-md bg-muted" />
+</div>
+```
+
+**A real bug caught during this exact fix's own verification, not shipped**: an earlier draft dropped the explicit `height` entirely, reasoning that `.graphic-walker-panel-content > div { height: 100% }` (`graphicWalkerPanel.css`) would size it the same way it sizes the real ready-state `<GraphicWalker>` div. That's only true when `config.height` (or the 004 dialog's own flex sizing) gives the ancestor chain a DEFINITE height — for a panel configured with no `height:` at all (this app's own most common case — confirmed via a real fixture, "Free-form Visual Analytics (Summary Tab)," which sets no height field), the whole chain resolves to indeterminate/auto. The READY state's own real `<GraphicWalker>` content still renders correctly in that case because it has genuine INTRINSIC size of its own (real toolbar/field-list/canvas chrome) — but this skeleton's two empty, content-less `h-full` divs had nothing to size against and silently collapsed to 0px, confirmed live via a screenshot showing an entirely blank card. Fixed by keeping the explicit `config.height ?? 700` fallback the original bare div already had — the one part of it that was actually correct — and adding real visual content inside it, rather than removing the height altogether. **The general lesson for any future skeleton relying on a CSS percentage-height rule instead of an explicit fallback**: confirm the ancestor chain actually has a definite height in the panel's own most common (no-`height:`-configured) case before trusting it, the same live-screenshot discipline this whole skill already requires for color/theme claims.
+
+This completes the original seven-panel-type Skeleton requirement in full (`FlowMapPanel`/`SankeyPanel`/`PlotlyPanel`/`ValueBoxPanel`/`TablePanel`/`ZoneMapPanel`/`ObservablePlotPanel`) plus the two panel types added since (`RechartsPanel`, `GraphicWalkerPanel`) — every panel type in the app now has a genuinely shaped loading skeleton, `MarkdownPanel.tsx`'s own confirmed no-loading-state exception aside.
+
+**Map controls' own icons — audited, deliberately exempt from the Iconography tiers below, not overlooked**: `NavigationControl`'s zoom/compass icons are MapLibre's own fixed CSS background-images (not `lucide-react`/React components at all — already dark-mode-inverted via a CSS `filter`, `mapControls.css`), `ThreeDToggleControl` has no icon (a text label, "3D"/"2D"), and `ResetViewControl`'s icon is a hand-reproduced raw SVG string sized to fit MapLibre's own fixed 29×29px control-button chrome (15px, `stroke-width` 2.5 — explicitly tuned during `027-map-auto-fit-and-reset` to match that exact button size, `resetViewControl.ts`'s own comment). None of these are resizable via the `h-X w-X`/`size` forms this skill's Iconography table names — forcing them into the nearest tier (16px/20px) would either be impossible (`NavigationControl`) or would visibly break an already-deliberately-tuned fit (`ResetViewControl`) inside a third-party layout system this app doesn't control. Confirmed, not silently skipped.
+
 ## Iconography
 
 `lucide-react` is the only icon library (constitution Principle VI) — this section is about SIZE/weight consistency, not which library.
@@ -121,14 +222,14 @@ Add `border border-border` when the real element it stands in for has a border (
 |---|---|---|---|---|
 | Ultra-compact | `className="h-3 w-3"` | 12px | Tight inline controls — reorder chevrons | Already correct — `scenariosTab.tsx` |
 | **Default — use this unless you have a specific reason not to** | `className="h-4 w-4"` | 16px | Inline UI icons: buttons, triggers, form controls | Already the dominant convention — ~15 of ~20 current icon call sites already use this |
-| Decorative / semi-prominent | `className="h-5 w-5"` | 20px | A standalone, slightly-larger icon paired with a short label — e.g. a category tile | Target tier — `layout/settings/basemapTab.tsx`'s catalog tiles already use this |
-| Illustrative (state icons) | `size={28} strokeWidth={1.5}` | 28px, thinner stroke | A large icon accompanying an empty/error-state message | Target tier — `panels/PanelEmptyState.tsx` already uses this |
+| Decorative / semi-prominent | `className="h-5 w-5"` | 20px | A standalone, slightly-larger icon paired with a short label — e.g. a category tile | `layout/settings/basemapTab.tsx`'s catalog tiles; `panels/ValueBoxPanel.tsx`'s configurable icon (Phase 3 Batch 1 — was `size={24}`) |
+| Illustrative (state icons) | `size={28} strokeWidth={1.5}` | 28px, thinner stroke | A large icon accompanying an empty/error-state message | `panels/PanelEmptyState.tsx`; `panels/PanelErrorState.tsx`'s `TriangleAlert` (Phase 3 Batch 1 — was `size={18}` at the default stroke-width) |
 
 **Always prefer the `h-X w-X` Tailwind-class form over the `size`/`strokeWidth` props** for any new icon usage — it's the majority convention already and keeps icon sizing in the same utility-class system as everything else. The prop form is a legacy exception in a small number of existing files, not the pattern to copy forward.
 
-**Two concrete inconsistencies found during this skill's own research, flagged for Phase 3 (panel-by-panel) to actually fix — not fixed here**:
-- `panels/PanelErrorState.tsx`'s `TriangleAlert` renders at `size={18}` with the default stroke-width (2), sitting awkwardly between the "default" (16px) and "illustrative" (28px) tiers with none of either tier's own treatment. It should move to the Illustrative tier (`size={28} strokeWidth={1.5}`) to match `PanelEmptyState.tsx`'s sibling treatment — these two states are conceptually parallel (an alternate outcome of the same panel load) and should look parallel.
-- `panels/ValueBoxPanel.tsx`'s configurable `Icon` renders at `size={24}`, a one-off between the Decorative (20px) and Illustrative (28px) tiers. It should move to the Decorative tier (20px) to match `basemapTab.tsx`'s own tile icons, which serve the same "friendly icon next to a short label" role.
+**Two concrete inconsistencies found during this skill's own research — FIXED in Phase 3 Batch 1** (`029`'s Phase 3 work, `panels/PanelErrorState.tsx`/`panels/ValueBoxPanel.tsx`): both moved to the tiers named in the table above, matching their respective sibling treatments (`PanelEmptyState.tsx`, `basemapTab.tsx`) exactly. `ValueBoxPanel.tsx`'s icon also switched from the legacy `size` prop to the preferred `h-X w-X` class form at the same time.
+
+**A third, found in Phase 3 Batch 3**: `panels/graphicWalkerDatasetPicker.tsx`'s trailing `ChevronDown` rendered at `h-3.5 w-3.5` — not one of the four defined tiers, and with no sibling precedent anywhere else in this codebase to justify that specific size (the one other `h-3.5` usage found, `components/ui/dropdown-menu.tsx`'s `RadioItem` indicator, is a positioning-slot size for a nested `h-4 w-4` `Check` icon, not an icon-content tier itself). Moved to the Default tier (`h-4 w-4`), matching the `Database` icon right next to it in the same control — `opacity-60` kept, a de-emphasized trailing caret next to a leading content icon being a real, legitimate distinction from the icon's own size. The SAME file also had a real Typography deviation fixed alongside this: its trigger `<Button>` overrode the component's own base classes (`font-heading text-sm font-medium`, `components/ui/button.tsx`) with `font-body font-normal`, for no stated reason — every OTHER button in this app uses that base convention unmodified, arbitrary text content included; this was the one unexplained outlier, now removed.
 
 ## Color tokens
 
@@ -137,6 +238,7 @@ Add `border border-border` when the real element it stands in for has a border (
 - `accent` is confirmed to mean "interactive hover/focus/selected background" (the active tab in `navBar.tsx`'s `Tabs`, the selected tile in `basemapTab.tsx`, the focused item in `dropdown-menu.tsx`) — never a decorative brand-yellow fill. Keep using it that way; don't repurpose it for emphasis/branding elsewhere.
 - No "warning"/"info" token exists, and none is added here. This was already investigated and deliberately rejected once before (the `024-settings-modal-visual-redesign` era found no real `ScenarioStatus` value that would map to a "warning" state) — that finding still holds; nothing discovered during this redesign's own research changes it.
 - If a genuinely new semantic need for color ever surfaces, add it exactly the way `--success` was added: one new token pair, in both `:root` and `.dark`, following the existing `DEFAULT`/`foreground` shape, verified for WCAG contrast the same way `tokenContrast.test.ts` already checks every other pair — not a special case.
+- **Never use Tailwind's slash-opacity modifier (`text-muted-foreground/80`, `bg-muted/40`, etc.) against this app's own custom color tokens** — confirmed, repeatedly, across this session (`rechartsPanel.css`'s gridline/tooltip-border fix, `mapControls.css`'s own prior history, and `panels/PanelEmptyState.tsx`'s hint text, fixed in Phase 3 Batch 2) that it silently generates NO CSS at all against a plain-hex custom property (this app's tokens are plain hex, not the HSL-channel-triplet shape Tailwind's own opacity-modifier machinery expects). Use a real `color-mix(in srgb, var(--token) X%, transparent)` value instead — as a dedicated small CSS file for a repeated/structural need (`rechartsPanel.css`), or inline as a inline `style` value for one narrow, single-element usage (`PanelEmptyState.tsx`'s hint color, matching `tableLogic.ts`'s/`zonemapColor.ts`'s own established `color-mix()`-string-as-inline-style precedent) — never the broken opacity-slash syntax, regardless of which form fits.
 
 ## Charting research: shadcn/ui's official chart component (2026-09-06 addendum)
 

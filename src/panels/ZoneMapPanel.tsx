@@ -772,7 +772,24 @@ export function ZoneMapPanel({ config }: { config: ZoneMapPanelConfig }) {
   return (
     <>
       {loading && (
-        <div className="animate-pulse rounded-md bg-muted" style={{ height: config.height ?? 450 }} />
+        // wftdm-design-system skill's Skeleton composition recipe (Phase 3
+        // Batch 3) — same "muted map backdrop + bg-border shapes on top"
+        // language as FlowMapPanel.tsx's own map skeleton, but scattered
+        // rounded-rect blocks (suggesting irregular zone polygons) instead
+        // of lines+dots (flows) — a genuinely different silhouette for a
+        // choropleth vs. an O-D flow map, not the same shape reused
+        // uncritically. Pure presentation only.
+        <div
+          className="relative overflow-hidden rounded-md bg-muted"
+          style={{ height: config.height ?? 450 }}
+          aria-hidden="true"
+        >
+          <div className="absolute left-[8%] top-[15%] h-[30%] w-[25%] animate-pulse rounded-md bg-border" />
+          <div className="absolute left-[38%] top-[10%] h-[22%] w-[30%] animate-pulse rounded-md bg-border" />
+          <div className="absolute left-[15%] top-[55%] h-[28%] w-[32%] animate-pulse rounded-md bg-border" />
+          <div className="absolute left-[55%] top-[45%] h-[35%] w-[28%] animate-pulse rounded-md bg-border" />
+          <div className="absolute left-[70%] top-[12%] h-[20%] w-[22%] animate-pulse rounded-md bg-border" />
+        </div>
       )}
       {/* 015-map-controls-polish — no wrapper div/JSX button needed here
           any more: the 3D toggle is now a genuine MapLibre IControl

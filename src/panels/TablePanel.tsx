@@ -150,7 +150,30 @@ export function TablePanel({ config }: { config: TablePanelConfig }) {
   }, [config, filters, activeScenarioNames, baseline])
 
   if (status === 'loading') {
-    return <div className="h-40 animate-pulse rounded-md bg-muted" />
+    // wftdm-design-system skill's Skeleton section, Phase 3 requirement —
+    // a shaped skeleton (header-row + several body-rows), not one plain
+    // rectangle. Column/row counts are arbitrary placeholders (the real
+    // count isn't known until the query resolves) — 4 columns, 5 rows is
+    // a generic, dense-enough shape without overcommitting to a specific
+    // width. flex-1 on every cell makes each column share the row's
+    // width evenly, matching the real table's own natural full-width
+    // layout closely enough for a placeholder.
+    return (
+      <div aria-hidden="true">
+        <div className="flex gap-4 border-b border-border px-3 py-2">
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="h-3 flex-1 animate-pulse rounded bg-muted" />
+          ))}
+        </div>
+        {[0, 1, 2, 3, 4].map((row) => (
+          <div key={row} className="flex gap-4 border-b border-border px-3 py-2 last:border-0">
+            {[0, 1, 2, 3].map((col) => (
+              <div key={col} className="h-4 flex-1 animate-pulse rounded bg-muted" />
+            ))}
+          </div>
+        ))}
+      </div>
+    )
   }
   if (status === 'empty') {
     return <PanelEmptyState icon={TableIcon} message="No data for this selection" />
@@ -227,7 +250,15 @@ export function TablePanel({ config }: { config: TablePanelConfig }) {
                             : 'descending'
                           : undefined
                       }
-                      className="whitespace-nowrap px-3 py-2 text-left font-heading text-xs font-medium uppercase tracking-wide text-muted-foreground"
+                      // wftdm-design-system skill's Typography scale —
+                      // this is structurally the Section label role
+                      // (font-heading text-xs uppercase tracking-wide
+                      // text-muted-foreground, 600 weight), just never
+                      // named as such. Was font-medium (500) — the one
+                      // real deviation found auditing this file: every
+                      // other property already matched Section label
+                      // exactly.
+                      className="whitespace-nowrap px-3 py-2 text-left font-heading text-xs font-semibold uppercase tracking-wide text-muted-foreground"
                     >
                       {/* A real <button>, not a click handler on the <th>
                           itself — matches how the pagination

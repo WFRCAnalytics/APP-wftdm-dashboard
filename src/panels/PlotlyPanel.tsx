@@ -219,10 +219,25 @@ export function PlotlyPanel({ config }: { config: PlotlyPanelConfig }) {
   return (
     <>
       {status === 'loading' && (
+        // wftdm-design-system skill's Skeleton composition recipe (Phase 3
+        // Batch 1) — a shaped skeleton (varying-height bars sitting on an
+        // axis baseline), not one plain rectangle. Bar heights are
+        // arbitrary placeholders (the real shape isn't known until the
+        // query resolves and resolveTraces() runs) — a generic bar
+        // silhouette reads as "a chart will be here" regardless of
+        // whether the real trace ends up bar/scatter/line.
         <div
-          className="animate-pulse rounded-md bg-muted"
+          className="flex flex-col justify-end gap-2"
           style={{ height: config.height ?? 350 }}
-        />
+          aria-hidden="true"
+        >
+          <div className="flex flex-1 items-end gap-2">
+            {[40, 70, 55, 90, 65, 80, 50].map((h, i) => (
+              <div key={i} className="flex-1 animate-pulse rounded-t-sm bg-muted" style={{ height: `${h}%` }} />
+            ))}
+          </div>
+          <div className="h-px w-full bg-border" />
+        </div>
       )}
       <div
         ref={containerRef}

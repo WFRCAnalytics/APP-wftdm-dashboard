@@ -755,7 +755,27 @@ export function FlowMapPanel({ config }: { config: FlowMapPanelConfig }) {
   return (
     <>
       {status === 'loading' && (
-        <div className="animate-pulse rounded-md bg-muted" style={{ height: config.height ?? 500 }} />
+        // wftdm-design-system skill's Skeleton composition recipe (Phase 3
+        // Batch 3) — a map silhouette, not a bar-chart/node-column shape,
+        // which would misrepresent what's coming. A static, muted "map
+        // area" backdrop (bg-muted, no pulse of its own — a basemap isn't
+        // itself "loading content") with a few soft, shimmering flow-line
+        // + location-dot placeholders on top (bg-border — an existing
+        // token distinct enough from bg-muted to read against it, no new
+        // color invented). Pure presentation only — no WebGL/map-instance/
+        // lifecycle code touched.
+        <div
+          className="relative overflow-hidden rounded-md bg-muted"
+          style={{ height: config.height ?? 500 }}
+          aria-hidden="true"
+        >
+          <div className="absolute left-[15%] top-[30%] h-1 w-[55%] origin-left rotate-[8deg] animate-pulse rounded-full bg-border" />
+          <div className="absolute left-[30%] top-[55%] h-1 w-[40%] origin-left -rotate-[12deg] animate-pulse rounded-full bg-border" />
+          <div className="absolute left-[12%] top-[70%] h-1 w-[60%] origin-left rotate-[4deg] animate-pulse rounded-full bg-border" />
+          <div className="absolute left-[15%] top-[30%] h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 animate-pulse rounded-full bg-border" />
+          <div className="absolute left-[70%] top-[38%] h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 animate-pulse rounded-full bg-border" />
+          <div className="absolute left-[72%] top-[86%] h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 animate-pulse rounded-full bg-border" />
+        </div>
       )}
       <div
         ref={containerRef}

@@ -151,7 +151,25 @@ export function RechartsPanel({ config }: { config: RechartsPanelConfig }) {
   }, [config, filters, activeScenarioNames, baseline])
 
   if (status === 'loading') {
-    return <div className="animate-pulse rounded-md bg-muted" style={{ height: config.height ?? 350 }} />
+    // wftdm-design-system skill's Skeleton composition recipe (Phase 3
+    // Batch 1/2) — same shaped bar-silhouette-on-a-baseline skeleton as
+    // PlotlyPanel.tsx/ObservablePlotPanel.tsx, this panel type's own
+    // closest siblings in what they render (bar/line/area, all axis-
+    // based charts). Deliberately the SAME shape regardless of this
+    // panel's own config.chart_type — a real curve/line silhouette isn't
+    // practical to fake with plain shimmer divs, and a generic bar
+    // silhouette already reads as "a chart will be here" for any of the
+    // three supported types.
+    return (
+      <div className="flex flex-col justify-end gap-2" style={{ height: config.height ?? 350 }} aria-hidden="true">
+        <div className="flex flex-1 items-end gap-2">
+          {[40, 70, 55, 90, 65, 80, 50].map((h, i) => (
+            <div key={i} className="flex-1 animate-pulse rounded-t-sm bg-muted" style={{ height: `${h}%` }} />
+          ))}
+        </div>
+        <div className="h-px w-full bg-border" />
+      </div>
+    )
   }
   if (status === 'empty') {
     return <PanelEmptyState icon={ChartNoAxesColumn} message="No data for this selection" />

@@ -80,7 +80,18 @@ export function ValueBoxPanel({ config }: { config: ValueBoxPanelConfig }) {
   }, [config, filters, activeScenarioNames])
 
   if (state === 'loading') {
-    return <div className="h-16 animate-pulse rounded-md bg-muted" />
+    // wftdm-design-system skill's Skeleton section, Phase 3 requirement —
+    // a shaped skeleton (icon-circle + number-bar), not one plain
+    // rectangle. config.icon is already known at loading time (it's a
+    // static config field, not fetched), so the icon placeholder only
+    // renders when this panel will actually have one — matching the real
+    // ready-state's own `{Icon && ...}` conditional exactly.
+    return (
+      <div className="flex items-center gap-3" aria-hidden="true">
+        {config.icon && <div className="h-5 w-5 shrink-0 animate-pulse rounded-full bg-muted" />}
+        <div className="h-9 w-24 animate-pulse rounded-md bg-muted" />
+      </div>
+    )
   }
   if (state === 'empty') {
     const Icon = (config.icon ? iconComponentFor(config.icon) : undefined) ?? icons.Ban
@@ -94,11 +105,28 @@ export function ValueBoxPanel({ config }: { config: ValueBoxPanelConfig }) {
 
   return (
     <div className="flex items-center gap-3">
-      {Icon && <Icon className="text-muted-foreground" size={24} aria-hidden="true" />}
+      {/* wftdm-design-system skill's Iconography table — Decorative tier
+          (h-5 w-5, 20px), matching basemapTab.tsx's own tile icons. Was
+          size={24}, a one-off between the Decorative (20px) and
+          Illustrative (28px) tiers; also switched to the preferred
+          h-X w-X Tailwind-class form over the legacy size prop. */}
+      {Icon && <Icon className="h-5 w-5 text-muted-foreground" aria-hidden="true" />}
       <div>
         <div className="font-heading text-3xl font-semibold">
           {formatValue(value, config.format)}
-          {config.unit && <span className="ml-1 text-sm text-muted-foreground">{config.unit}</span>}
+          {/* wftdm-design-system skill's Typography scale — Caption/meta
+              role (font-body text-xs text-muted-foreground, 400 weight).
+              Explicit font-body/font-normal are required, not redundant:
+              this span sits inside the number's own font-heading
+              text-3xl font-semibold div, and font-family/font-weight both
+              inherit through a text-size override — without these, the
+              unit would render in Inter at 600 weight, not Poppins at
+              400. */}
+          {config.unit && (
+            <span className="ml-1 font-body text-xs font-normal text-muted-foreground">
+              {config.unit}
+            </span>
+          )}
         </div>
       </div>
     </div>

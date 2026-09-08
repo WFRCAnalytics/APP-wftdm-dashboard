@@ -40,9 +40,18 @@ DOMPurify.addHook('afterSanitizeAttributes', (node) => {
 // unstyled default output).
 const MARKDOWN_CONTENT_CLASSNAME = [
   'font-body text-sm leading-relaxed',
-  '[&_h1]:font-heading [&_h1]:text-xl [&_h1]:font-semibold [&_h1]:mb-2 [&_h1]:mt-4',
+  // wftdm-design-system skill's Typography scale: h1 matches the Page
+  // title role (20px/600, `tracking-tight`) and h3 matches the Panel
+  // title role (16px/600, `tracking-tight`) exactly except for the
+  // missing tracking-tight this audit added to both. h2 (18px) has no
+  // corresponding row in the skill's own scale at all — the skill only
+  // defines two heading-ish sizes (20px/16px), leaving no exact-fit value
+  // for a 3-level h1/h2/h3 prose ladder's middle rung; 18px is kept as
+  // the reasonable midpoint between the two real, defined sizes on either
+  // side of it, not a scale violation to "fix."
+  '[&_h1]:font-heading [&_h1]:text-xl [&_h1]:font-semibold [&_h1]:tracking-tight [&_h1]:mb-2 [&_h1]:mt-4',
   '[&_h2]:font-heading [&_h2]:text-lg [&_h2]:font-semibold [&_h2]:mb-2 [&_h2]:mt-4',
-  '[&_h3]:font-heading [&_h3]:text-base [&_h3]:font-semibold [&_h3]:mb-2 [&_h3]:mt-3',
+  '[&_h3]:font-heading [&_h3]:text-base [&_h3]:font-semibold [&_h3]:tracking-tight [&_h3]:mb-2 [&_h3]:mt-3',
   '[&_p]:mb-3 [&_p:last-child]:mb-0',
   '[&_ul]:mb-3 [&_ul]:list-disc [&_ul]:pl-5',
   '[&_ol]:mb-3 [&_ol]:list-decimal [&_ol]:pl-5',
@@ -62,6 +71,14 @@ const MARKDOWN_CONTENT_CLASSNAME = [
 // $scenario/$filters data binding (FR-001), and config.content is
 // already present on the parsed config object at mount time — nothing
 // to fetch or wait for (research.md §4).
+//
+// Phase 3 (app-wide UI/UX redesign) skeleton-loading note: the
+// wftdm-design-system skill's Skeleton section asks every panel type's
+// own loading state to become a real, shaped skeleton. This panel has no
+// loading state to upgrade — confirmed above, not overlooked — since
+// there is genuinely no async work between mount and content being
+// ready. Inventing a fake, always-instantaneous "loading" flash here
+// would contradict this file's own design rather than improve it.
 export function MarkdownPanel({ config }: { config: MarkdownPanelConfig }) {
   const html = useMemo(() => {
     const trimmed = config.content?.trim()

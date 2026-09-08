@@ -150,6 +150,25 @@ function renderSvg(
     text.setAttribute('dy', '0.35em')
     text.setAttribute('text-anchor', node.side === 'source' ? 'start' : 'end')
     text.setAttribute('font-size', '12')
+    // wftdm-design-system skill audit (Phase 3 Batch 2) — a real,
+    // confirmed dark-mode bug, the same class this project has hit
+    // before (Plotly's hardcoded backgrounds, Observable Plot's tip
+    // fill): raw SVG's own initial `fill` value is black, and nothing
+    // here or in any stylesheet ever set one — confirmed live,
+    // getComputedStyle() read a literal `rgb(0, 0, 0)` in dark mode.
+    // Currently borderline-legible only by coincidence (these labels sit
+    // just outside each node's own colored rect, over the flow area,
+    // whose blended colors happen to still contrast against pure black
+    // today) — genuinely broken the moment a label lands over the plain
+    // dark page background instead. `currentColor` matches Observable
+    // Plot's own tip-mark fix (this file's own PlotlyPanel.tsx/
+    // ObservablePlotPanel.tsx sibling precedent): this SVG mounts in the
+    // normal light DOM (no shadow root), so it inherits shell.tsx's own
+    // real `text-foreground` class through ordinary CSS cascade, no
+    // getComputedStyle()-and-set-inline resolution needed the way a CSS
+    // custom property (PlotlyPanel's font.color, ObservablePlotPanel's
+    // --plot-background) would.
+    text.setAttribute('fill', 'currentColor')
     text.textContent = node.label
     nodesGroup.appendChild(text)
   }
@@ -308,7 +327,28 @@ export function SankeyPanel({ config }: { config: SankeyPanelConfig }) {
   return (
     <>
       {status === 'loading' && (
-        <div className="animate-pulse rounded-md bg-muted" style={{ height: config.height ?? 350 }} />
+        // wftdm-design-system skill's Skeleton composition recipe (Phase 3
+        // Batch 1) — a shaped skeleton matching a Sankey's own real
+        // structure: two node-columns (source left, target right), each a
+        // vertical stack of block placeholders. Column/block counts are
+        // arbitrary placeholders (the real node count isn't known until
+        // buildFlowGraph() runs) — this is deliberately NOT an attempt at
+        // faking the flow paths between them (a decorative loading
+        // placeholder doesn't need to be that literal), just the two-
+        // sided node structure a Sankey diagram is instantly recognizable
+        // by, which a plain rectangle never suggested at all.
+        <div className="flex items-stretch justify-between gap-8" style={{ height: config.height ?? 350 }} aria-hidden="true">
+          <div className="flex flex-1 flex-col justify-around gap-2 py-2">
+            {[28, 20, 16, 10, 8].map((h, i) => (
+              <div key={i} className="animate-pulse rounded-sm bg-muted" style={{ height: `${h}%` }} />
+            ))}
+          </div>
+          <div className="flex flex-1 flex-col justify-around gap-2 py-2">
+            {[22, 18, 14, 10].map((h, i) => (
+              <div key={i} className="animate-pulse rounded-sm bg-muted" style={{ height: `${h}%` }} />
+            ))}
+          </div>
+        </div>
       )}
       <div
         ref={containerRef}

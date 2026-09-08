@@ -44,15 +44,27 @@ export function DatasetPicker({
     <div className="mb-2">
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button
-            variant="outline"
-            size="sm"
-            aria-label="Choose dataset to explore"
-            className="gap-2 font-body font-normal"
-          >
+          {/* wftdm-design-system skill audit (Phase 3 Batch 3): two real
+              deviations found, both fixed.
+              (1) `font-body font-normal` overrode Button's own base
+              classes (font-heading text-sm font-medium — components/ui/
+              button.tsx) with no stated reason — every OTHER button in
+              this app (Settings trigger, basemapTab.tsx's own tiles, etc.)
+              uses that default unmodified, arbitrary content included;
+              this was the one unexplained outlier. Removed, letting it
+              inherit the same established control convention.
+              (2) `ChevronDown h-3.5 w-3.5` didn't match any Iconography
+              tier (12/16/20/28px) and had no sibling precedent elsewhere
+              in this codebase to justify it — moved to the Default tier
+              (h-4 w-4), matching the `Database` icon right next to it in
+              the same control. `opacity-60` kept — a de-emphasized
+              trailing caret next to a leading content icon is a real,
+              common, legitimate distinction (secondary vs. primary icon),
+              not itself a scale violation. */}
+          <Button variant="outline" size="sm" aria-label="Choose dataset to explore" className="gap-2">
             <Database className="h-4 w-4" />
             {current}
-            <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+            <ChevronDown className="h-4 w-4 opacity-60" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start">
