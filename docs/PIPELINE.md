@@ -135,6 +135,65 @@ something the current three genuinely cannot do, or do noticeably worse,
 for a real calibration/validation use case this project actually has.
 "A different library might be nicer" is not, on its own, that bar.
 
+**Real research since logged, still no decision or plan**: shadcn/ui's own
+official chart component (a themed Recharts wrapper) was researched
+directly — real source, real chart-type coverage, real legend-interactivity
+behavior — as one candidate this deferred decision would eventually need to
+weigh. Honest finding: meaningful overlap exists for the Plotly/Observable
+Plot portion of this app's charting (bar/line/scatter), but two real gaps
+remain unresolved — Sankey sits outside shadcn's own showcased chart types
+entirely, and its own `ChartLegendContent` ships with no click-to-toggle
+legend behavior at all (a real, closed-without-a-fix upstream issue,
+`shadcn-ui/ui#4188`), unlike Plotly's own zero-effort default. Full detail:
+the `wftdm-design-system` skill's own "Charting research" section and
+`references/research.md`. This is additional research feeding the same
+still-fully-deferred decision above — not a change to the deferral itself,
+and not a migration plan.
+
+**Stated future direction (2026-09-06, after the shadcn/Recharts research
+above) — five total chart technologies, tiered by role, not a single
+consolidated replacement**. This is a real decision about where charting is
+headed, superseding the earlier "should we consolidate onto ONE engine at
+all" framing above with a more concrete shape — still not part of the
+current visual redesign's own three phases, and only one of the five tiers
+below is actually scoped to be built next:
+
+1. **shadcn/Recharts** — the new default/primary engine for whichever chart
+   types it covers (per the research above: bar/line/scatter-shaped charts,
+   matching most of this app's real, current Plotly/Observable Plot
+   grammar). **This is the first of the five to actually get built, as its
+   own separate feature** — not a sub-task of the current redesign's
+   Phase 1/2/3, and not scoped by this note itself; a real feature still
+   needs its own `/speckit-specify` treatment when picked up.
+2. **Observable Plot** — kept, not replaced — as a secondary/extension
+   engine for cases shadcn's Recharts doesn't cover.
+3. **Plotly** — kept, not replaced — as a secondary/extension engine for
+   the same reason, explicitly INCLUDING Plotly's own interactive
+   per-category legend toggle (click a legend entry to show/hide that
+   series). The user has explicitly accepted losing that specific
+   capability for any NEW chart built on shadcn/Recharts, rather than
+   requiring shadcn's own `ChartLegendContent` to replicate it (the real,
+   confirmed gap the research above already found) — a chart that
+   genuinely needs that interaction stays a Plotly chart, it doesn't force
+   shadcn's own component to grow the capability it doesn't have.
+4. **A custom D3-composition framework** — explicitly **NOT YET SCOPED**.
+   No decision has been made about which specific chart types it would
+   cover or what its actual bounds are. Nothing should be designed for
+   this yet — it's a named future idea, not a spec-ready direction.
+5. **ECharts** — also explicitly **NOT YET SCOPED**, same status as (4).
+
+Tiers 1-3 are the real, current shape (shadcn/Recharts as the new default,
+Observable Plot/Plotly kept deliberately as named fallbacks rather than
+targets for removal); tiers 4-5 are acknowledged future possibilities with
+zero design work done or authorized. Sankey's own real gap (found in the
+shadcn research above) is not solved by this five-technology direction
+either — it isn't covered by shadcn/Recharts, isn't Observable Plot's or
+Plotly's own territory today, and isn't assigned to the unscoped D3-
+composition/ECharts ideas by this note — it stays exactly where the
+research above left it, an open question the eventual first shadcn/Recharts
+feature will need to either accept (Sankey stays `d3-sankey`-based,
+untouched) or explicitly take on, not something this note resolves.
+
 **Interim approach, actually in scope for the current visual redesign**:
 rather than replacing any underlying rendering engine, build a shared
 tooltip/legend/color **presentation layer** across the three existing

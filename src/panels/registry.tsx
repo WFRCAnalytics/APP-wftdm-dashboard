@@ -5,6 +5,7 @@ import { GraphicWalkerPanel } from '@/panels/GraphicWalkerPanel'
 import { MarkdownPanel } from '@/panels/MarkdownPanel'
 import { ObservablePlotPanel } from '@/panels/ObservablePlotPanel'
 import { PlotlyPanel } from '@/panels/PlotlyPanel'
+import { RechartsPanel } from '@/panels/RechartsPanel'
 import { SankeyPanel } from '@/panels/SankeyPanel'
 import { TablePanel } from '@/panels/TablePanel'
 import { ValueBoxPanel } from '@/panels/ValueBoxPanel'
@@ -31,6 +32,7 @@ export const registry: Record<string, ComponentType<PanelProps<any>>> = {
   table: TablePanel,
   markdown: MarkdownPanel,
   'observable-plot': ObservablePlotPanel,
+  recharts: RechartsPanel,
   sankey: SankeyPanel,
   flowmap: FlowMapPanel,
   zonemap: ZoneMapPanel,

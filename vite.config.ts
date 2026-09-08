@@ -51,6 +51,23 @@ export default defineConfig({
           // plotly/maplibre-gl were each in when they got their own chunk
           // above (research.md §9).
           if (id.includes('@kanaries/graphic-walker')) return 'graphic-walker'
+          // 029-shadcn-chart-panel: this codebase's first dependency on
+          // recharts — real, confirmed additions to this dependency tree
+          // (not npm's newer "latest" major, which the actual shadcn CLI
+          // install did NOT pin — research.md §6): lodash, react-smooth,
+          // recharts-scale, victory-vendor. Same "large, previously-
+          // absent library gets its own chunk" reasoning as plotly/maps/
+          // graphic-walker above, so a dashboard that never renders a
+          // `recharts` panel never pays its load cost.
+          if (
+            id.includes('recharts') ||
+            id.includes('/lodash/') ||
+            id.includes('react-smooth') ||
+            id.includes('recharts-scale') ||
+            id.includes('victory-vendor')
+          ) {
+            return 'recharts'
+          }
         },
       },
     },

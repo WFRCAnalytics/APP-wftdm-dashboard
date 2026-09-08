@@ -5,7 +5,23 @@ specified, weighted as instructed (primary references weighted heavily;
 secondary references used narrowly; GeoLibre treated as one weak data point,
 flagged as likely AI-generated/vibecoded).
 
-## PRIMARY references
+**Reweighting note (post-Phase-1 refinement, same day)**: the "PRIMARY
+references" grouping below records Phase 1's own original, as-researched
+weighting — Supabase Studio/Vercel-Geist/shadcn/gropaul-dash treated as
+roughly co-equal. That was refined afterward, explicitly: **shadcn/ui is
+this skill's actual primary reference**, not one of several — this app
+already shares its exact component/token architecture, making it the most
+directly authoritative source by construction, not just one strong data
+point among equals. Supabase Studio is a secondary source from that point
+on, drawn from specifically where its own pattern genuinely improves on
+shadcn's (its 12-step gray scale, its `heading-*`/`text-*` semantic naming
+convention), not a co-equal pillar. This file's own historical structure
+below is left as originally written — an accurate record of what Phase 1
+itself actually researched and how it was weighted at the time — rather
+than silently rewritten; the SKILL.md's own "Provenance" section carries
+the corrected, current weighting going forward.
+
+## PRIMARY references (as originally weighted — see reweighting note above)
 
 ### Supabase Studio (open source)
 

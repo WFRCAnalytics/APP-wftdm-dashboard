@@ -129,3 +129,61 @@ describe('token contrast (WCAG 2.1 AA)', () => {
     },
   )
 })
+
+// 029-shadcn-chart-panel: --chart-1..--chart-5 are graphical FILL colors
+// (a chart bar/line/area), not text — the relevant WCAG criterion is the
+// non-text/graphical-object minimum (3:1, WCAG 1.4.11), a deliberately
+// lower bar than the 4.5:1 text-pair check above. Kept as its own,
+// clearly-separate describe block rather than folded into PAIRINGS above,
+// so this file stays honest about which criterion actually applies to
+// which kind of token — never conflating a fill color with a text pair.
+// Expected ratios are research.md §11's own verified numbers (REVISED,
+// round 5 — Observable Plot's own real schemeObservable10 categorical
+// hues, lightness-adjusted only where needed to clear this exact 3:1
+// bar; superseded the prior shadcn-derived palette on the user's own
+// explicit direction to use Observable Plot's own scheme as the color
+// source instead).
+const WCAG_NON_TEXT_MIN_CONTRAST = 3.0
+
+const CHART_TOKENS: Array<{ name: string; expectedLight: number; expectedDark: number }> = [
+  { name: 'chart-1', expectedLight: 6.4, expectedDark: 4.39 },
+  { name: 'chart-2', expectedLight: 3.43, expectedDark: 9.18 },
+  { name: 'chart-3', expectedLight: 4.76, expectedDark: 6.54 },
+  { name: 'chart-4', expectedLight: 5.1, expectedDark: 5.85 },
+  { name: 'chart-5', expectedLight: 4.85, expectedDark: 4.72 },
+]
+
+describe('chart-color contrast (WCAG 2.1 non-text minimum, 3:1)', () => {
+  const css = readFileSync(TOKENS_CSS_PATH, 'utf-8')
+  const rootMap = parseDeclarations(extractBlock(css, ':root'))
+  const darkMap = { ...rootMap, ...parseDeclarations(extractBlock(css, '.dark')) }
+
+  it.each(CHART_TOKENS)(
+    '--$name vs --background meets the non-text minimum in light mode (>=3:1)',
+    ({ name, expectedLight }) => {
+      const ratio = contrastRatio(resolveColor(rootMap, name), resolveColor(rootMap, 'background'))
+      expect(ratio).toBeGreaterThanOrEqual(WCAG_NON_TEXT_MIN_CONTRAST)
+      expect(ratio).toBeCloseTo(expectedLight, 1)
+    },
+  )
+
+  it.each(CHART_TOKENS)(
+    '--$name vs --background meets the non-text minimum in dark mode (>=3:1)',
+    ({ name, expectedDark }) => {
+      const ratio = contrastRatio(resolveColor(darkMap, name), resolveColor(darkMap, 'background'))
+      expect(ratio).toBeGreaterThanOrEqual(WCAG_NON_TEXT_MIN_CONTRAST)
+      expect(ratio).toBeCloseTo(expectedDark, 1)
+    },
+  )
+
+  it('all five chart tokens are pairwise-distinct within each theme (no two series render identically)', () => {
+    // A real, confirmed bug caught during this feature's own implementation
+    // (research.md §1): an earlier draft gave --chart-1 and --chart-2 the
+    // SAME dark-mode value. This test exists specifically so that class of
+    // regression fails loudly, not just a "does it look different" glance.
+    for (const map of [rootMap, darkMap]) {
+      const resolved = CHART_TOKENS.map((t) => resolveColor(map, t.name))
+      expect(new Set(resolved).size).toBe(resolved.length)
+    }
+  })
+})

@@ -1012,6 +1012,63 @@ the chart reactively. Inputs render as controls inside the panel card.
 
 Also accepts `comparison:`/`compare_on:` (019-baseline-diff-consumption) — see "Scenario comparison / diff mode" under `type: zonemap` below, the shared grammar all four comparison-capable panel types use identically. A row whose `diff_value` is `NULL` (the zero-baseline percent-diff case) is cleanly omitted from the rendered marks, never coerced to `0`.
 
+### `type: recharts` (029-shadcn-chart-panel)
+
+shadcn/ui's official chart component — a themed layer over Recharts using
+this app's own CSS custom-property token system (`--chart-1`..`--chart-5`,
+verified WFRC-brand-consistent, WCAG-checked in both themes). This is the
+new **default/primary** engine for bar/line/area charts going forward —
+use `type: plotly` or `type: observable-plot` instead only when you need
+something this panel type doesn't do (see "Explicitly out of scope"
+below).
+
+```yaml
+- type:       recharts
+  title:      Mode Share by Purpose
+  metric:     trip_mode_share
+  chart_type: bar            # 'bar' | 'line' | 'area'
+  x:          purpose
+  y:          share
+  series:     mode           # optional — omit for a single-series chart
+  stacked:    false          # optional, default false
+  scenario:   good_scenario  # optional, same meaning as every other type
+  filter:     purpose        # optional, same $ref/inline-map grammar
+  comparison: side_by_side   # optional, same grammar as plotly/table/observable-plot
+  height:     350
+  width:      1.0
+```
+
+`series` (optional) pivots tidy query rows into one Recharts series per
+distinct value — omit it for a single-series chart bound directly to `y`.
+Colors cycle `--chart-1`..`--chart-5` in first-seen (query result) order,
+wrapping past the fifth distinct series value. `stacked: true` sets a
+shared `stackId` across every series, stacking bar/area marks instead of
+grouping them side by side. Tooltips and (when more than one series is
+present) a legend render automatically with zero extra author
+configuration (US3) — real, on-brand, theme-correct in both light and
+dark mode with no `tip:`/`legend:` key needed, unlike `type: observable-
+plot`'s own explicit `tip: true`.
+
+Also accepts `comparison:`/`compare_on:` (019-baseline-diff-consumption)
+— see "Scenario comparison / diff mode" under `type: zonemap` below, the
+same shared grammar every other comparison-capable panel type uses.
+
+**What this panel type does NOT do** — use `type: plotly` or `type:
+observable-plot` instead for these:
+
+- Sankey diagrams — use `type: sankey`. `chart_type` has no `'sankey'`
+  option at all; this is enforced by the type union itself.
+- Interactive per-category legend click-to-toggle-trace-visibility —
+  shadcn's shipped `ChartLegendContent` wires up no click handler, despite
+  Recharts' own `Legend` exposing a real `onClick` prop (a real, closed
+  upstream request, `shadcn-ui/ui#4188`). `type: plotly`'s own legend
+  already does this and is unaffected — keep using it where this
+  capability matters.
+- `pie`/`radar`/`radial` charts — not in the `chart_type` union in this
+  version, even though shadcn's own component supports them.
+- Panel-local reactive `inputs:` (Observable Plot's own capability) — not
+  part of this panel type's grammar.
+
 ### `type: table`
 
 Sortable, paginated data table. Supports inline column expressions and color scales.

@@ -195,6 +195,43 @@ export interface SankeyPanelConfig extends DataBoundPanelConfigBase {
 }
 
 /**
+ * The tenth panel type — 029-shadcn-chart-panel. Extends
+ * DataBoundPanelConfigBase + ComparisonCapablePanelConfig exactly like
+ * PlotlyPanelConfig/TablePanelConfig/ObservablePlotPanelConfig already
+ * do (spec.md Assumptions — reuses the shared comparison/compare_on
+ * mechanism rather than inventing a fourth one). x/y/series are
+ * author-configurable field-mapping keys naming literal columns already
+ * present in the queried result set — never $metric.<column>-prefixed —
+ * matching ObservablePlotPanelConfig's own x/y/fill/stroke precedent
+ * (research.md §2), not PlotlyTraceConfig's older $metric.-prefixed
+ * convention. `series` is deliberately NOT named `fill`/`stroke`
+ * (Observable Plot's own vocabulary for a single SVG visual channel) —
+ * Recharts' own real API has no equivalent single-channel concept; a
+ * Recharts chart is composed of one <Bar>/<Line>/<Area> element PER
+ * series, each needing its own literal dataKey. `series` names the
+ * SOURCE COLUMN whose distinct values become those separate elements;
+ * panels/rechartsEncoding.ts's encodeRechartsData() is what actually
+ * pivots tidy rows into that one-dataKey-per-distinct-value shape
+ * (data-model.md §3).
+ */
+export interface RechartsPanelConfig
+  extends DataBoundPanelConfigBase,
+    ComparisonCapablePanelConfig {
+  type: 'recharts'
+  /** bar/line/area only in this first version — pie/radar/radial are a
+   * deliberate, explicit non-goal (spec.md FR-004): no dashboard
+   * anywhere in this project authors one today. */
+  chart_type: 'bar' | 'line' | 'area'
+  x: string
+  y: string
+  series?: string
+  /** For chart_type: bar/area with `series` set — whether multiple
+   * series stack on top of each other (true) or render side-by-side/
+   * overlaid (false, default). Meaningless with no `series` configured. */
+  stacked?: boolean
+}
+
+/**
  * The seventh panel type, and the first to render a real map —
  * 010-flowmap-panel. Extends DataBoundPanelConfigBase like every other
  * data-bound panel type; docs/GRAMMAR.md's type: flowmap grammar always
@@ -386,6 +423,7 @@ export type PanelConfig =
   | FlowMapPanelConfig
   | ZoneMapPanelConfig
   | GraphicWalkerPanelConfig
+  | RechartsPanelConfig
   | UnknownPanelConfig
 
 export interface DashboardTabConfig {

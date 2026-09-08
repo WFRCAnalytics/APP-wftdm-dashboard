@@ -694,3 +694,124 @@ layout:
       dataset: trip_mode_share
       scenario: good_scenario
       width: 1.0
+
+  # 029-shadcn-chart-panel — the tenth panel type. Reuses trip_mode_share/
+  # trip_destination_dist verbatim (no new Parquet fixture data needed,
+  # tasks.md T016/T017) — same fixture-reuse discipline every prior
+  # panel-type feature's own additions to this file have followed. No
+  # title here shares a prefix with any pre-existing panel title in this
+  # file (checked against the full list before choosing these).
+  row_recharts:
+    # T016/T009: primary US1 vehicle — multi-series bar, one series per
+    # distinct `mode` value, colored from --chart-1..--chart-5 in
+    # first-seen order (rechartsEncoding.ts).
+    - type: recharts
+      title: Recharts Mode Breakdown (Bar)
+      chart_type: bar
+      metric: trip_mode_share
+      scenario: good_scenario
+      x: purpose
+      y: share
+      series: mode
+      height: 350
+      width: 0.34
+
+    # T017/T010: same data-binding pattern, chart_type: line only —
+    # exercises MARK_COMPONENTS' Line branch specifically. Pinned to
+    # purpose: HBW via a literal (non-`$filters.`) filter value — without
+    # it, `series: mode` would still leave two DISTINCT purposes sharing
+    # the same distance_bin/mode key, so rechartsEncoding.ts's own
+    # last-write-wins pivot would silently collapse them. Scoping to one
+    # purpose keeps every (distance_bin, mode) combination unique, so the
+    # rendered line points are unambiguous and hand-verifiable.
+    - type: recharts
+      title: Recharts Trip Length Frequency (Line)
+      chart_type: line
+      metric: trip_destination_dist
+      scenario: good_scenario
+      x: distance_bin
+      y: trips
+      series: mode
+      filter:
+        purpose: HBW
+      height: 350
+      width: 0.33
+
+    # T017/T010: single-series case (no `series` configured) — the
+    # rechartsEncoding.ts branch that synthesizes one chart-1-colored key
+    # from the `y` field name itself. Pinned to purpose: HBW / mode: SOV
+    # (both literal filters) so exactly one row exists per distance_bin —
+    # the no-series branch never dedupes by x itself, so leaving purpose/
+    # mode unscoped would render multiple points at the same x position.
+    - type: recharts
+      title: Recharts Trip Length Frequency (Area)
+      chart_type: area
+      metric: trip_destination_dist
+      scenario: good_scenario
+      x: distance_bin
+      y: trips
+      filter:
+        purpose: HBW
+        mode: SOV
+      height: 350
+      width: 0.33
+
+  # 029-shadcn-chart-panel — deliberately its OWN row, separate from
+  # row_recharts above: this file's established convention (row_table/
+  # row_markdown/row_observable_plot are each their own row too) keeps a
+  # row's total panel count reasonable, and here it also fixes a real,
+  # confirmed layout bug found post-implementation (see RechartsPanel.tsx's
+  # own comment on `aspect-auto w-full`) — six panels sharing ONE grid row
+  # diluted the primary bar/line/area trio above to a much narrower column
+  # share than intended, which (once that layout bug was fixed and charts
+  # actually respected their real column width) made this trio's own
+  # multi-series legend wrap onto extra lines and, in
+  # rechartsPanel.spec.ts's own legend-click test, occasionally land
+  # outside the default test viewport. Splitting the row gives both rows
+  # their own full-width 3-way split instead of one diluted 6-way split.
+  row_recharts_edge_cases:
+    # T017/T011: deliberately invalid chart_type (not bar/line/area) —
+    # exercises the real, surfaced configuration error spec.md's Edge
+    # Cases requires (never a silent blank panel or an unintended
+    # fallback chart type).
+    - type: recharts
+      title: Recharts Invalid Chart Type (intentional)
+      chart_type: pie
+      metric: trip_mode_share
+      scenario: good_scenario
+      x: purpose
+      y: share
+      height: 350
+      width: 0.34
+
+    # T012: a literal, non-`$filters.`/`$inputs.` filter value that
+    # matches no row in trip_mode_share.purpose — a genuine, deterministic
+    # zero-row result at initial load (sqlExpander.ts only substitutes
+    # `$filters.`/`$inputs.` placeholders; a plain literal like this one
+    # passes through unchanged into the WHERE clause). Exercises the
+    # shared PanelEmptyState, same convention as every other data-bound
+    # panel type's own empty-result coverage.
+    - type: recharts
+      title: Recharts Empty Result (intentional)
+      chart_type: bar
+      metric: trip_mode_share
+      scenario: good_scenario
+      x: purpose
+      y: share
+      filter:
+        purpose: NonexistentPurpose
+      height: 350
+      width: 0.33
+
+    # T012: deliberately broken — points at a metric no scenario
+    # publishes. Same convention as every other panel type's own "Broken
+    # Panel (intentional)" entries.
+    - type: recharts
+      title: Recharts Broken Panel (intentional)
+      chart_type: bar
+      metric: nonexistent_recharts_metric
+      scenario: good_scenario
+      x: a
+      y: b
+      height: 350
+      width: 0.33

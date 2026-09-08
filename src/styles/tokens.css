@@ -46,6 +46,46 @@
      real values, not a hardcoded copy). */
   --success: #15803d;
   --success-foreground: #ffffff;
+  /* 029-shadcn-chart-panel, ROUND 5 REVISION: five categorical series-
+     color tokens for the `recharts` panel type's shadcn ChartConfig.
+     Two earlier palettes preceded this one — a muted WFRC-brand-derived
+     set (navy/amber/teal-slate/gray/purple), then shadcn's own real
+     default --chart-1..5 (fetched from ui.shadcn.com/docs/theming) —
+     both superseded here on the user's own explicit, direct request to
+     use Observable Plot's own real categorical scheme as the color
+     source instead (research.md §11 has the full record). These 5 hues
+     (blue/gold/coral/green/purple) are drawn from `schemeObservable10`
+     — Observable Plot's own real, current default 10-color categorical
+     scheme, confirmed directly from this project's own already-
+     installed `d3-scale-chromatic` package source
+     (`node_modules/d3-scale-chromatic/src/categorical/observable10.js`,
+     no network fetch needed — the SAME real npm package this project's
+     own SankeyPanel.tsx already depends on for its Tableau10 option).
+     Verified directly, not assumed: 6 of the 10 real Observable10 colors
+     fail this project's own 3:1 non-text minimum against a pure-white
+     light-mode --background (as low as 1.91:1) — Observable's own
+     scheme is tuned for its notebook's own off-white/gray canvas, not
+     an arbitrary embedding app's literal white. The 5 chosen here
+     (skipping teal/pink/light-blue/brown/gray as too visually close to
+     an already-chosen neighbor) are lightness-adjusted via CSS relative
+     color syntax (`oklch(from <hex> calc(l * factor) c h)`, verified via
+     a real browser canvas render) — hue and chroma held exactly fixed,
+     only lightness scaled, to clear 3:1 with real margin. Dark-mode
+     values keep 4 of the 5 real Observable10 hex values completely
+     UNCHANGED (they already clear 3:1 comfortably against this app's
+     dark --background); only chart-1 (blue) is lightened slightly for a
+     safer margin, matching every other token's own established `oklch(from
+     ...)` adjustment discipline. Same deliberate, one-time, user-
+     directed exception to wftdm-design-system's own Brand Identity rule
+     as the prior revision — scoped to these 5 data-series tokens only;
+     --primary/--accent remain WFRC blue/yellow, untouched. All ten
+     values verified >=3.43:1 against their own theme's --background AND
+     pairwise-distinct within each theme (tests/unit/tokenContrast.test.ts). */
+  --chart-1: #3358be;
+  --chart-2: #ba7f00;
+  --chart-3: #cc4330;
+  --chart-4: #008029;
+  --chart-5: #914edc;
   --border: #d8d5d2;
   --input: var(--border);
   --ring: var(--primary);
@@ -143,6 +183,21 @@ body {
   /* Same literal values as :root — see that block's own comment. */
   --success: #15803d;
   --success-foreground: #ffffff;
+  /* See :root's own comment for the full story — the SAME 5 real
+     Observable10 hues as light mode (blue/gold/coral/green/purple), not
+     a different 5-hue set — Observable's own real scheme already reads
+     well against a dark background at its own native lightness. 4 of
+     the 5 real Observable10 hex values are kept completely UNCHANGED
+     (gold `#efb118`/coral `#ff725c`/green `#3ca951`/purple `#a463f2`,
+     verified 4.72:1-9.18:1 against this app's own dark --background);
+     only chart-1 (blue) is lightened slightly (`oklch(from #4269d0
+     calc(l * 1.1) c h)`) for a safer margin, matching every other
+     token's own established `oklch(from ...)` adjustment discipline. */
+  --chart-1: #517ae3;
+  --chart-2: #efb118;
+  --chart-3: #ff725c;
+  --chart-4: #3ca951;
+  --chart-5: #a463f2;
   --border: #23394a;
   --input: var(--border);
   --ring: var(--primary);

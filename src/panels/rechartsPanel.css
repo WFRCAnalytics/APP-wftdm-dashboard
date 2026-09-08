@@ -1,0 +1,33 @@
+/* Real bug fix, found live via direct DOM/computed-style inspection (not
+ * assumed): two of shadcn's own real chart.tsx classes rely on Tailwind's
+ * slash-opacity-modifier syntax against this app's own custom color
+ * tokens (`stroke-border/50`, `border-border/50`) — the same class of
+ * silent-no-CSS-generated limitation this project has hit before against
+ * its own plain-hex tokens.css (mapControls.css's `bg-muted/40`/
+ * `bg-background/80` history, scenariosTab.tsx's redesign notes,
+ * CLAUDE.md's own recorded finding). Confirmed directly, live: a
+ * CartesianGrid line's real computed stroke was `rgb(204, 204, 204)`
+ * (`#ccc`, Recharts' own hardcoded default, never overridden at all) and
+ * the tooltip surface's real computed border-color was `rgb(229, 231,
+ * 235)` (Tailwind's own default gray-200 fallback) — neither ever
+ * resolved to this app's real `--border` token (`#d8d5d2` light /
+ * `#23394a` dark) in either theme. `chart.tsx` itself is left untouched
+ * (per this project's own "keep the CLI-sourced file pristine"
+ * convention) — these are real CSS overrides, loaded after it, using the
+ * SAME `color-mix()`-for-a-token-opacity-blend technique
+ * `tableLogic.ts`'s cell-shading and `zonemapColor.ts`'s choropleth fill
+ * already establish as this project's own working alternative.
+ */
+
+.recharts-cartesian-grid-horizontal line,
+.recharts-cartesian-grid-vertical line {
+  stroke: color-mix(in srgb, var(--border) 50%, transparent);
+}
+
+/* Same root cause, the tooltip surface's own border. Scoped to this
+ * panel type's own tooltip only (`.recharts-tooltip-wrapper`, Recharts'
+ * own real wrapper class) — never a page-wide `.rounded-lg` selector,
+ * which would also catch unrelated cards/dialogs. */
+.recharts-tooltip-wrapper > div {
+  border-color: color-mix(in srgb, var(--border) 50%, transparent);
+}

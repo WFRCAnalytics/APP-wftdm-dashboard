@@ -2166,6 +2166,131 @@ APP-wftdm-dashboard/
     │                              # still pick a different, working
     │                              # dataset from the same control instead
     │                              # of being stuck.
+    ├── RechartsPanel.tsx          # done (029-shadcn-chart-panel) — the
+    │                              # tenth panel type, and this app's new
+    │                              # default/primary bar/line/area chart
+    │                              # engine (shadcn/ui's own official
+    │                              # chart component — a themed layer over
+    │                              # Recharts, confirmed via direct source
+    │                              # read NOT a wrapper). A fully
+    │                              # declarative React component, unlike
+    │                              # PlotlyPanel.tsx — Recharts (via
+    │                              # shadcn's ChartContainer/
+    │                              # ResponsiveContainer) re-renders on
+    │                              # ordinary prop changes, no imperative
+    │                              # Plotly.react()/ResizeObserver dance,
+    │                              # and every color resolves from a CSS
+    │                              # custom property so a theme flip
+    │                              # repaints for free through the
+    │                              # ordinary cascade, no re-render of
+    │                              # this component needed at all. Reuses
+    │                              # buildPanelQuery()/buildComparisonDiffQuery()/
+    │                              # sqlExpander.expand() completely
+    │                              # UNMODIFIED (this panel type needed
+    │                              # zero changes to shared query code) —
+    │                              # the same data-fetch effect shape
+    │                              # every other data-bound panel type
+    │                              # already uses. A real TypeScript
+    │                              # finding during implementation:
+    │                              # Recharts' own `Bar`/`Area` class
+    │                              # components (a `getDerivedStateFromProps`
+    │                              # static requiring a concrete `dataKey`
+    │                              # prop) aren't structurally assignable
+    │                              # to React's own `ElementType` when
+    │                              # stored in a shared
+    │                              # `Record<string, ElementType>` for
+    │                              # dynamic-per-`chart_type` JSX-tag
+    │                              # selection — fixed with
+    │                              # `Record<string, any>`, the same
+    │                              # deliberate, narrowly-scoped escape
+    │                              # hatch `panels/registry.tsx`'s own
+    │                              # value type already uses for the
+    │                              # identical "type resolved dynamically
+    │                              # at render time from a config value"
+    │                              # reason. Also validates `chart_type`
+    │                              # at RUNTIME, independent of the TS
+    │                              # union — YAML has no schema
+    │                              # validation at runtime (this project's
+    │                              # own non-negotiable) — so an
+    │                              # unsupported value (e.g. `pie`) fails
+    │                              # fast with a specific, surfaced error
+    │                              # message before any query even fires,
+    │                              # never a silent blank panel.
+    ├── rechartsEncoding.ts        # pure, DOM-free tidy-rows-to-Recharts'-
+    │                              # own-wide-row-shape pivot + ChartConfig
+    │                              # builder, split out of RechartsPanel.tsx
+    │                              # same reason as plotlyTraces.ts/
+    │                              # sankeyGraph.ts/flowmapData.ts/
+    │                              # observablePlotEncoding.ts. Cycles
+    │                              # --chart-1..--chart-5 in first-seen
+    │                              # (query result) order, wrapping past
+    │                              # the fifth distinct series value; a
+    │                              # missing x/series combination is left
+    │                              # `undefined`, never coerced to `0`.
+    ├── rechartsPanel.css          # post-completion polish pass — two
+    │                              # real, confirmed theme-integration
+    │                              # bugs found via live DOM measurement:
+    │                              # `chart.tsx`'s own default className
+    │                              # relies on Tailwind slash-opacity
+    │                              # modifiers (`stroke-border/50`,
+    │                              # `border-border/50`) against this
+    │                              # project's plain-hex tokens — the
+    │                              # exact same silent-no-CSS-generated
+    │                              # limitation `mapControls.css`'s own
+    │                              # history already recorded, confirmed
+    │                              # to still apply here too (a
+    │                              # gridline's real computed stroke was
+    │                              # Recharts' own hardcoded `#ccc`, the
+    │                              # tooltip's own border was Tailwind's
+    │                              # generic gray-200 — neither the real
+    │                              # `--border` token, in either theme).
+    │                              # Fixed with real `color-mix()` rules,
+    │                              # matching `tableLogic.ts`'s/
+    │                              # `zonemapColor.ts`'s own established
+    │                              # alternative — `chart.tsx` itself
+    │                              # stays untouched for this fix, kept
+    │                              # pristine per this directory's own
+    │                              # convention (see `components/ui/`
+    │                              # entry below for the two SEPARATE,
+    │                              # deliberate exceptions this same pass
+    │                              # made to that convention). Also this
+    │                              # pass, in `tokens.css`: `--chart-1`..
+    │                              # `--chart-5` were REPLACED, TWICE —
+    │                              # first with shadcn's own real default
+    │                              # categorical palette (fetched from
+    │                              # `ui.shadcn.com/docs/theming`, oklch→
+    │                              # hex via a real canvas render — a
+    │                              # `getComputedStyle()` read does NOT
+    │                              # resolve `oklch()` in current
+    │                              # Chromium, confirmed live), then
+    │                              # SUPERSEDED (round 5, same day) by
+    │                              # Observable Plot's own real
+    │                              # `schemeObservable10` — read directly
+    │                              # from this project's own already-
+    │                              # installed `d3-scale-chromatic`
+    │                              # package (the same real dependency
+    │                              # `SankeyPanel.tsx` already uses for
+    │                              # Tableau10, no new dependency added),
+    │                              # on the user's own explicit,
+    │                              # sequential requests both times. Each
+    │                              # time, values failing this project's
+    │                              # own 3:1 non-text contrast minimum
+    │                              # (a real, confirmed gap in BOTH
+    │                              # reference schemes, each tuned for
+    │                              # its own site's background, not an
+    │                              # arbitrary embedding app's literal
+    │                              # white) were lightness-adjusted only
+    │                              # (same hue/chroma, via CSS relative
+    │                              # color syntax) to clear it. A
+    │                              # deliberate, user-directed, one-time
+    │                              # exception to this app's own Brand
+    │                              # Identity rule — scoped to these 5
+    │                              # categorical data-series tokens only,
+    │                              # `--primary`/`--accent`/every other
+    │                              # brand token untouched (see
+    │                              # `wftdm-design-system` skill's own
+    │                              # Brand Identity section for the full
+    │                              # exception note).
     ├── components/
     │   └── ui/                   # shadcn-pattern primitives (002-design-
     │                              # tokens onward): button.tsx, card.tsx,
@@ -2199,7 +2324,55 @@ APP-wftdm-dashboard/
     │                              # never sets `orientation`, so Radix's
     │                              # own default ("horizontal") still
     │                              # applies and none of the new variants
-    │                              # match.
+    │                              # match. chart.tsx (029-shadcn-chart-
+    │                              # panel, NEW): the one file in this
+    │                              # directory NOT hand-authored against
+    │                              # this project's own shadcn-pattern
+    │                              # convention — added verbatim via the
+    │                              # real shadcn CLI (`npx shadcn@latest
+    │                              # add chart`), a deliberate departure
+    │                              # (research.md §5) since this
+    │                              # component's own value IS being
+    │                              # shadcn's real, current, maintained
+    │                              # source. Exports `ChartContainer`/
+    │                              # `ChartTooltip`/`ChartTooltipContent`/
+    │                              # `ChartLegend`/`ChartLegendContent`/
+    │                              # `ChartStyle`/`ChartConfig`. The CLI's
+    │                              # own per-file overwrite prompt (`card.tsx
+    │                              # already exists`) has no non-interactive
+    │                              # skip via `-y` alone — required piping
+    │                              # `echo "n" | npx shadcn@latest add
+    │                              # chart -y` to decline overwriting
+    │                              # card.tsx (confirmed preserved, still
+    │                              # carries the app-wide UI/UX redesign's
+    │                              # own Phase 2 `text-base` `CardTitle`
+    │                              # fix, commit 138c75d) while still
+    │                              # creating this file. Two later,
+    │                              # deliberate, DOCUMENTED exceptions to
+    │                              # its own "keep pristine" rule (a
+    │                              # polish-pass round, real bugs
+    │                              # backported directly from shadcn's own
+    │                              # CURRENT (v3) registry source, fetched
+    │                              # and diffed line-by-line, not
+    │                              # style preferences): `item.value !=
+    │                              # null` (was `item.value &&`, which hid
+    │                              # a legitimate `0` tooltip value
+    │                              # entirely) and `item.payload?.fill`
+    │                              # (optional chaining). Every OTHER real
+    │                              # v3 difference (Tailwind v4-only
+    │                              # syntax, a new `data-slot` attribute,
+    │                              # a new `initialDimension` prop) was
+    │                              # considered and explicitly NOT
+    │                              # adopted — this project stays on
+    │                              # Tailwind v3, and this app's own
+    │                              # loading-skeleton-then-mount pattern
+    │                              # already avoids the 0×0-first-paint
+    │                              # flash `initialDimension` exists to
+    │                              # prevent (see `panels/rechartsPanel.css`'s
+    │                              # own tree entry above for the OTHER,
+    │                              # separate real bug this same pass
+    │                              # found and fixed WITHOUT touching this
+    │                              # file).
     ├── scenario/                # done (009-scenario-manager) — closes
     │   │                        # services/duckdb.ts's registerScenario()
     │   │                        # zero-callers gap, open since 001
@@ -2409,8 +2582,43 @@ export const registry: Record<string, ComponentType<PanelProps>> = {
   'sankey':           SankeyPanel,
   'graphic-walker':   GraphicWalkerPanel,
   'markdown':         MarkdownPanel,
+  'recharts':         RechartsPanel,
 }
 ```
+
+`recharts` (029-shadcn-chart-panel) is the tenth panel type and this app's
+new default/primary engine for bar/line/area charts — shadcn/ui's own
+official chart component (a themed layer over Recharts, confirmed via
+direct source read NOT a wrapper — `panels/RechartsPanel.tsx`, new
+`components/ui/chart.tsx` added via the shadcn CLI, new `panels/
+rechartsEncoding.ts` pure tidy-to-wide pivot module). `plotly`/
+`observable-plot`/`sankey` are unmodified and remain fully supported for
+what this new type deliberately doesn't cover: Sankey diagrams, and
+Plotly's own interactive per-category legend click-to-toggle (shadcn's
+shipped `ChartLegendContent` wires up no click handler at all —
+`shadcn-ui/ui#4188`, a real, closed upstream request — accepted as a
+deliberate gap for new `recharts` charts, not something to build here).
+`chart_type: 'bar' | 'line' | 'area'` only in this version — no `pie`/
+`radar`/`radial`, even though shadcn's own component supports them. New
+`--chart-1`..`--chart-5` tokens (`src/styles/tokens.css`) — verified
+pairwise-distinct and ≥3:1 (WCAG 1.4.11 non-text minimum) against
+`--background` in both themes (`tokenContrast.test.ts`'s own new
+describe block). A real, caught-before-shipping design flaw: an initial
+draft reused `SankeyPanel.tsx`'s own `FALLBACK_TOKEN_VARS` sequence
+directly (`--primary`, `--brand-wfrc-secondary-blue`, ...) — `--primary`
+already resolves to `--brand-wfrc-secondary-blue` in dark mode, so
+`--chart-1`/`--chart-2` would have rendered IDENTICALLY in dark mode,
+defeating a 5-series categorical palette. Fixed with 5 genuinely distinct
+hues instead (blue/amber-gold/teal-slate/gray/muted-purple) before this
+ever reached a real component — see `specs/029-shadcn-chart-panel/
+research.md` §1 for the full computed-contrast record. `recharts` itself
+is a NEW npm dependency (`^2.15.4` — the shadcn CLI's own pinned version,
+notably NOT npm's newer "latest" tag `3.10.1` originally researched; a
+real, confirmed version-discrepancy correction made during
+implementation), plus real transitive additions `lodash`/`react-smooth`/
+`recharts-scale`/`victory-vendor` — all four get their own `vite.config.ts`
+`manualChunks` branch (a new `recharts` chunk), same pattern as the
+existing `plotly`/`maps`/`graphic-walker` chunks.
 
 `dashboardRenderer.tsx` looks up `registry[config.type]` and renders
 `<PanelComponent config={config} />` directly — no wrapper call, no manual
@@ -2634,6 +2842,9 @@ export default defineConfig({
       if (id.includes('maplibre-gl'))         return 'maplibre'
       if (id.includes('plotly'))              return 'plotly'
       if (id.includes('graphic-walker'))      return 'graphic-walker'
+      if (id.includes('recharts') || id.includes('/lodash/') ||
+          id.includes('react-smooth') || id.includes('recharts-scale') ||
+          id.includes('victory-vendor'))      return 'recharts'
     }}}
   },
   server: { headers: {                 // dev only
@@ -2672,7 +2883,15 @@ export default defineConfig({
   "apache-arrow": "^18.0.0",
   "js-yaml": "latest",
   "maplibre-gl": "^4.7.1",
-  "plotly.js-dist-min": "latest"
+  "plotly.js-dist-min": "latest",
+  "recharts": "^2.15.4"  // 029-shadcn-chart-panel — the shadcn CLI's own
+                          // pinned version, NOT npm's newer "latest" tag
+                          // (3.10.1) originally researched (a real,
+                          // confirmed version-discrepancy correction made
+                          // during implementation). Peer deps confirmed
+                          // React ^18.0.0-compatible. Real transitive
+                          // additions: lodash, react-smooth,
+                          // recharts-scale, victory-vendor@^36.6.8.
 }
 ```
 
@@ -3029,6 +3248,49 @@ first cross-reference this list was built from). ✅ done,
     with a retry-with-backoff wrapper, while blanking two small files never
     failed once. Full suite re-confirmed passing (230/230) after the fix.
     See `specs/026-activitysim-demo-content/` for the full design record.
+16. ✅ `RechartsPanel` — done (`029-shadcn-chart-panel`). Not part of this
+    list when originally written either — the app-wide UI/UX redesign's
+    own shadcn/Recharts chart research (logged in `docs/PIPELINE.md`)
+    identified shadcn/ui's official chart component as this app's new
+    default/primary bar/line/area chart engine, and this feature is the
+    first (of the five-technology charting direction PIPELINE.md records)
+    to actually get built. A NEW npm dependency (`recharts` `^2.15.4` —
+    the real shadcn CLI's own pinned version, not npm's newer "latest"
+    tag `3.10.1` originally researched, a real, confirmed correction made
+    during implementation) plus shadcn's own `components/ui/chart.tsx`,
+    added verbatim via the real CLI rather than hand-authored (this
+    repo's one deliberate departure from its own shadcn-pattern
+    convention — `specs/029-shadcn-chart-panel/research.md` §5). New
+    `--chart-1`..`--chart-5` tokens, WFRC-brand-consistent and
+    WCAG-verified in both themes — including a real, caught-before-
+    shipping design flaw (an initial draft would have rendered
+    `--chart-1`/`--chart-2` identically in dark mode, since `--primary`
+    already resolves to `--brand-wfrc-secondary-blue` there; fixed with 5
+    genuinely distinct hues before any real component ever used them).
+    `plotly`/`observable-plot`/`sankey` needed and got ZERO changes — the
+    same `buildPanelQuery()`/`sqlExpander.expand()` shared query code
+    every other data-bound panel type already uses, confirmed unmodified
+    both by direct read and by the full existing Vitest/Playwright suite
+    passing unchanged, plus a dedicated regression test confirming the
+    one existing capability this new panel type deliberately does NOT
+    replicate (Plotly's own legend click-to-toggle) still works exactly
+    as before. One real regression WAS found and fixed during this
+    feature's own final full-suite confirmation pass, not merely
+    anticipated: a new fixture panel's title
+    (`"Recharts Mode Share by Purpose (Bar)"`) contained
+    `markdownPanel.spec.ts`'s own pre-existing non-exact
+    `getByText('Mode Share by Purpose')` query as a literal substring,
+    causing a strict-mode collision — renamed to `"Recharts Mode
+    Breakdown (Bar)"` after grepping the whole `tests/integration/` tree
+    for other possible collisions first (the same title-collision
+    discipline every prior panel-type feature's own fixture additions
+    have required since 007). Several other full-suite failures observed
+    during this same pass were investigated individually (re-run in
+    isolation, and — for the two that still reproduced alone — directly
+    compared via `git stash` against the unmodified fixture file) and
+    confirmed genuinely pre-existing, unrelated to this feature, matching
+    this project's own established "confirm before concluding" discipline
+    rather than being assumed innocent or silently fixed out of scope.
 
 ---
 
