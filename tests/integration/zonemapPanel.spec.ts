@@ -266,9 +266,12 @@ test.describe('User Story 1 - Author renders a zone-level metric as a choropleth
     // identical) CSS serialization (`color(srgb ...)`) than a bare
     // var() reference (`rgb(...)`) does, so the two are not
     // string-comparable even though they render the same pixel.
+    // 033-shadcn-default-theme: zonemapColor.ts's sequential anchor moved
+    // from the deleted --brand-wfrc-blue to --primary (data-model.md §3) —
+    // this live-browser-resolved expectation follows the same fix.
     const expectedColor = await resolveCssColorInBrowser(
       page,
-      'color-mix(in srgb, var(--brand-wfrc-blue) 0%, var(--muted))',
+      'color-mix(in srgb, var(--primary) 0%, var(--muted))',
     )
     expect(zone100?.fillColor).toBe(expectedColor)
   })
@@ -740,7 +743,9 @@ test.describe('014-map-navigation-controls — NavigationControl zoom/compass ge
       const icon = el.querySelector('.maplibregl-ctrl-icon') as HTMLElement
       return { groupBg: getComputedStyle(group).backgroundColor, iconFilter: getComputedStyle(icon).filter }
     })
-    expect(styles.groupBg).toBe('rgb(8, 27, 38)') // --card/--background in dark mode
+    // 033-shadcn-default-theme: dark --card is now #171717, not the old
+    // WFRC-brand value (which happened to also equal old --background).
+    expect(styles.groupBg).toBe('rgb(23, 23, 23)') // --card in dark mode
     expect(styles.iconFilter).toBe('invert(1)')
 
     // A second, separate real bug found live after the above: the
@@ -750,7 +755,12 @@ test.describe('014-map-navigation-controls — NavigationControl zoom/compass ge
     // button+button inter-button border) — read back as too bright/white
     // against the now-dark group background.
     const dividerColor = await zoomOut.evaluate((el) => getComputedStyle(el).borderTopColor)
-    expect(dividerColor).toBe('rgb(35, 57, 74)') // --border in dark mode
+    // 033-shadcn-default-theme: dark --border is now a real, translucent
+    // shadcn value (#f5ffff1a, i.e. oklch(1 0 0 / 10%) — 10% white) rather
+    // than an opaque WFRC-brand hex — confirmed via a real headless-
+    // Chromium round-trip that this is exactly how it computes, not
+    // guessed from the hex alone.
+    expect(dividerColor).toBe('rgba(245, 255, 255, 0.1)') // --border in dark mode
   })
 })
 
@@ -903,11 +913,14 @@ test.describe('014-map-navigation-controls — the 3D fill-extrusion toggle', ()
         groupBg: getComputedStyle(group).backgroundColor,
       }
     })
-    // The real, dark-mode token values (tokens.css .dark block) — white
-    // text (--foreground) on dark navy (--card/--background), not
+    // The real, dark-mode token values (tokens.css .dark block) — light
+    // text (--foreground) on the dark --card group background, not
     // MapLibre's own hardcoded white staying stuck underneath it.
-    expect(styles.text).toBe('rgb(255, 255, 255)')
-    expect(styles.groupBg).toBe('rgb(8, 27, 38)')
+    // 033-shadcn-default-theme: --foreground dark is now #fafafa and
+    // --card dark is now #171717 — no longer the old WFRC-brand values
+    // (which happened to share one literal for --card/--background).
+    expect(styles.text).toBe('rgb(250, 250, 250)')
+    expect(styles.groupBg).toBe('rgb(23, 23, 23)')
   })
 })
 

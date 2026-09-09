@@ -110,8 +110,11 @@ export function ValueBoxPanel({ config }: { config: ValueBoxPanelConfig }) {
               this span sits inside the number's own font-heading
               text-3xl font-semibold div, and font-family/font-weight both
               inherit through a text-size override — without these, the
-              unit would render in Inter at 600 weight, not Poppins at
-              400. */}
+              unit would render in the heading role's own font at 600
+              weight, not the body role's font at 400 (033-shadcn-default-
+              theme: heading and body now resolve to the SAME font family,
+              so weight is the only thing distinguishing them — making
+              this override even more load-bearing, not less). */}
           {config.unit && (
             <span className="ml-1 font-body text-xs font-normal text-muted-foreground">
               {config.unit}

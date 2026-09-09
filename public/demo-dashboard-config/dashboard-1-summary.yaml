@@ -8,6 +8,7 @@
 header:
   tab: Summary
   title: Summary
+  icon: layout-dashboard
 
 layout:
   # scenario: activitysim-baseline pinned explicitly on every valuebox —

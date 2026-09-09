@@ -13,6 +13,16 @@ export default {
         background: 'var(--background)',
         foreground: 'var(--foreground)',
         card: { DEFAULT: 'var(--card)', foreground: 'var(--card-foreground)' },
+        // 033-shadcn-default-theme: --popover is a new token this feature
+        // adds (data-model.md §1) — shadcn's own Dialog/DropdownMenu
+        // internals reference it in the real, current new-york-v4 source;
+        // this app's own dialog.tsx/dropdown-menu.tsx currently reuse
+        // --card instead, confirmed unaffected either way since --card
+        // and --popover resolve to the same real value in both themes,
+        // but exposed here for parity with the real registry source and
+        // for the new form-input primitives (e.g. Select's own popover
+        // content) that reference it directly.
+        popover: { DEFAULT: 'var(--popover)', foreground: 'var(--popover-foreground)' },
         primary: { DEFAULT: 'var(--primary)', foreground: 'var(--primary-foreground)' },
         secondary: { DEFAULT: 'var(--secondary)', foreground: 'var(--secondary-foreground)' },
         muted: { DEFAULT: 'var(--muted)', foreground: 'var(--muted-foreground)' },
@@ -41,6 +51,20 @@ export default {
         border: 'var(--border)',
         input: 'var(--input)',
         ring: 'var(--ring)',
+        // 033-shadcn-default-theme: the sidebar's own real, dedicated
+        // token set (data-model.md §1) — sidebar.tsx now references these
+        // directly instead of reusing the app's main tokens (data-model.md
+        // §4).
+        sidebar: {
+          DEFAULT: 'var(--sidebar)',
+          foreground: 'var(--sidebar-foreground)',
+          primary: 'var(--sidebar-primary)',
+          'primary-foreground': 'var(--sidebar-primary-foreground)',
+          accent: 'var(--sidebar-accent)',
+          'accent-foreground': 'var(--sidebar-accent-foreground)',
+          border: 'var(--sidebar-border)',
+          ring: 'var(--sidebar-ring)',
+        },
       },
       borderRadius: {
         lg: 'var(--radius)',

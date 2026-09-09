@@ -57,7 +57,10 @@ describe('resolveZoneFillColor', () => {
   it('matches tableLogic.ts cellColor()\'s exact sequential formula when color_ramp is omitted', () => {
     // domain [0, 10], value 5 -> t = 0.5, strength = 0.5 * 40 = 20
     const color = resolveZoneFillColor(5, 'sequential', undefined, [0, 10], undefined)
-    expect(color).toBe('color-mix(in srgb, var(--brand-wfrc-blue) 20%, var(--muted))')
+    // 033-shadcn-default-theme: zonemapColor.ts's sequential/diverging
+    // anchor moved from the deleted --brand-wfrc-blue to --primary,
+    // mirroring tableLogic.ts's own identical fix (data-model.md §3).
+    expect(color).toBe('color-mix(in srgb, var(--primary) 20%, var(--muted))')
   })
 
   it('matches tableLogic.ts cellColor()\'s exact diverging formula, zero-anchored, when color_ramp is omitted', () => {
@@ -78,7 +81,7 @@ describe('resolveZoneFillColor', () => {
 
     const negative = resolveZoneFillColor(-5, 'diverging', undefined, [-10, 30], undefined)
     // value -5 < 0: t = -5/-10 = 0.5, strength = 20
-    expect(negative).toBe('color-mix(in srgb, var(--brand-wfrc-blue) 20%, var(--muted))')
+    expect(negative).toBe('color-mix(in srgb, var(--primary) 20%, var(--muted))')
   })
 
   it('clamps out-of-domain values to the nearest extreme, matching tableLogic.ts', () => {

@@ -1,9 +1,17 @@
 import { fileURLToPath, URL } from 'node:url'
 import { defineConfig } from 'vite'
+import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
   base: '/APP-wftdm-dashboard/', // GitHub Pages
   // base: '/wftdm-dashboard/',  // wfrc.utah.gov subdirectory
+  // 033-shadcn-default-theme: the real, official Tailwind v4 Vite plugin —
+  // replaces the previous PostCSS-plugin-based v3 setup (postcss.config.js,
+  // deleted) entirely. tokens.css's own `@config "../../tailwind.config.js"`
+  // directive (research.md §3/§4's confirmed, empirically-trialed bridge)
+  // is what lets tailwind.config.js itself stay a plain, unmodified JS file
+  // under this plugin — no CSS-native `@theme` rewrite needed.
+  plugins: [tailwindcss()],
   worker: { format: 'es' }, // REQUIRED for DuckDB-WASM
   optimizeDeps: { exclude: ['@duckdb/duckdb-wasm'] }, // REQUIRED
   resolve: {

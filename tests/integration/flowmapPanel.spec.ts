@@ -520,7 +520,13 @@ test.describe('014-map-navigation-controls — NavigationControl zoom/compass ge
       const icon = el.querySelector('.maplibregl-ctrl-icon') as HTMLElement
       return { groupBg: getComputedStyle(group).backgroundColor, iconFilter: getComputedStyle(icon).filter }
     })
-    expect(styles.groupBg).toBe('rgb(8, 27, 38)') // --card/--background in dark mode
+    // 033-shadcn-default-theme: mapControls.css's own `.maplibregl-ctrl-
+    // group { background: var(--card) !important; }` — confirmed directly
+    // — dark --card is now #171717, not the old WFRC-brand #081b26 (both
+    // old --card and --background happened to share one literal value;
+    // the new theme's --card/--background are genuinely different, so
+    // this is specifically --card, not --background).
+    expect(styles.groupBg).toBe('rgb(23, 23, 23)') // --card in dark mode
     expect(styles.iconFilter).toBe('invert(1)')
 
     // A second, separate real bug found live after the above: the
@@ -530,7 +536,12 @@ test.describe('014-map-navigation-controls — NavigationControl zoom/compass ge
     // button+button inter-button border) — read back as too bright/white
     // against the now-dark group background.
     const dividerColor = await zoomOut.evaluate((el) => getComputedStyle(el).borderTopColor)
-    expect(dividerColor).toBe('rgb(35, 57, 74)') // --border in dark mode
+    // 033-shadcn-default-theme: dark --border is now a real, translucent
+    // shadcn value (#f5ffff1a, i.e. oklch(1 0 0 / 10%) — 10% white) rather
+    // than an opaque WFRC-brand hex — confirmed via a real headless-
+    // Chromium round-trip that this is exactly how it computes, not
+    // guessed from the hex alone.
+    expect(dividerColor).toBe('rgba(245, 255, 255, 0.1)') // --border in dark mode
   })
 })
 
@@ -1628,11 +1639,22 @@ test.describe('016-fix-ugrc-dark-mode — US1/US2: both UGRC panels get an injec
       const icon = el.querySelector('.maplibregl-ctrl-icon') as HTMLElement
       return { groupBg: getComputedStyle(group).backgroundColor, iconFilter: getComputedStyle(icon).filter }
     })
-    expect(styles.groupBg).toBe('rgb(8, 27, 38)') // --card/--background in dark mode
+    // 033-shadcn-default-theme: mapControls.css's own `.maplibregl-ctrl-
+    // group { background: var(--card) !important; }` — confirmed directly
+    // — dark --card is now #171717, not the old WFRC-brand #081b26 (both
+    // old --card and --background happened to share one literal value;
+    // the new theme's --card/--background are genuinely different, so
+    // this is specifically --card, not --background).
+    expect(styles.groupBg).toBe('rgb(23, 23, 23)') // --card in dark mode
     expect(styles.iconFilter).toBe('invert(1)')
 
     const dividerColor = await zoomOut.evaluate((el) => getComputedStyle(el).borderTopColor)
-    expect(dividerColor).toBe('rgb(35, 57, 74)') // --border in dark mode
+    // 033-shadcn-default-theme: dark --border is now a real, translucent
+    // shadcn value (#f5ffff1a, i.e. oklch(1 0 0 / 10%) — 10% white) rather
+    // than an opaque WFRC-brand hex — confirmed via a real headless-
+    // Chromium round-trip that this is exactly how it computes, not
+    // guessed from the hex alone.
+    expect(dividerColor).toBe('rgba(245, 255, 255, 0.1)') // --border in dark mode
   })
 })
 

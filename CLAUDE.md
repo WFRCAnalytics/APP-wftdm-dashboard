@@ -2381,8 +2381,16 @@ APP-wftdm-dashboard/
     │                              # syntax, a new `data-slot` attribute,
     │                              # a new `initialDimension` prop) was
     │                              # considered and explicitly NOT
-    │                              # adopted — this project stays on
-    │                              # Tailwind v3, and this app's own
+    │                              # adopted at the time — this project
+    │                              # stayed on Tailwind v3 THEN (later
+    │                              # migrated to v4 by
+    │                              # 033-shadcn-default-theme — see this
+    │                              # file's own Implementation order item
+    │                              # 20 for the real, confirmed migration
+    │                              # decision; this file (chart.tsx) was
+    │                              # not touched by that migration, kept
+    │                              # pristine per its own convention), and
+    │                              # this app's own
     │                              # loading-skeleton-then-mount pattern
     │                              # already avoids the 0×0-first-paint
     │                              # flash `initialDimension` exists to
@@ -4010,6 +4018,225 @@ first cross-reference this list was built from). ✅ done,
     above already recorded (`Expected: 79, Received: 80`), not a new
     regression. `demoContentAllPanels.spec.ts` (fully rewritten) — 7/7
     passing, including the new all-ten-panel-types coverage assertion.
+
+20. ✅ Full shadcn/ui default-theme adoption (colors, typography, complete
+    form-input primitive set) — done (`033-shadcn-default-theme`). A
+    user-directed, EXPLICIT, DELIBERATE policy reversal of this project's
+    own prior WFRC-blue-anchored token system — full adoption of
+    shadcn/ui's own real, current default theme instead, WFRC branding
+    intended to be REAPPLIED later as its own separate, future feature
+    (see the `wftdm-design-system` skill's own new suspension notice,
+    added directly by this feature — the "never dilute the WFRC blue"
+    rule is not deleted, just marked suspended with a clear pointer back
+    to this feature and forward to whatever re-branding feature comes
+    next).
+
+    **The real, current shadcn preset behind "new-york"/neutral is
+    called "Nova"** (`baseColor: "neutral"`, Geist font, Lucide icons) —
+    confirmed by fetching the real, current `packages/shadcn/src/preset/
+    defaults.ts` directly, not assumed from memory or from the
+    "default"/"new-york" naming this project's own prior features used.
+    Every real color/typography value in `tokens.css` was converted from
+    shadcn's own real, fetched `oklch()` source via a genuine Canvas 2D
+    round-trip (`getComputedStyle()` in this project's pinned Playwright/
+    Chromium version returns `oklch()` colors UNPARSED — a real,
+    confirmed gotcha; the round-trip forces real sRGB resolution) — the
+    resulting hex values land exactly on Tailwind's own published Neutral
+    palette steps, an independent cross-check that the conversion was
+    correct.
+
+    **A real, confirmed Tailwind v3→v4 migration** — the single highest-
+    stakes decision this feature made, resolved via genuine, hands-on
+    empirical trial (not migration-guide reading alone), per the user's
+    own explicit instruction. This repo's `components.json` was
+    confirmed pinned to shadcn's LEGACY `"default"` style; the real,
+    current neutral/zinc default output is on the NEWER `new-york-v4`
+    registry track, which uses Tailwind v4-only syntax
+    (`has-[>svg]:`/`aria-invalid:`/named container queries/opacity-
+    modifiers-on-custom-tokens) confirmed via direct compilation attempt
+    to produce ZERO CSS under this project's real, then-installed
+    Tailwind v3.4.15 — the same class of registry-track mismatch that had
+    already forced hand-porting for both `components/ui/chart.tsx` (029)
+    and `components/ui/sidebar.tsx` (030), now at much larger scale. A
+    real, isolated scratch-directory trial (copying the project's actual
+    `components.json`/`tailwind.config.js`/`tokens.css`, running the real
+    shadcn CLI against three different `style` values) proved Tailwind
+    v4's own real `@config "./tailwind.config.js";` backward-compatibility
+    bridge compiles this project's EXISTING, UNMODIFIED
+    `tailwind.config.js` with zero errors and byte-identical utility
+    output — presented to the user via `AskUserQuestion` as three real,
+    evidence-grounded options; the user selected **migrate to Tailwind
+    v4 via the `@config` bridge**, confirmed and executed. `tailwind.
+    config.js` itself was NOT rewritten into CSS-native `@theme` syntax —
+    keeping it as plain JS behind `@config` was the whole point of this
+    path over a full config migration. `@tailwindcss/vite` (the official
+    Vite-native v4 plugin) replaces `postcss.config.js`/`autoprefixer`/
+    `postcss` entirely (all three removed, confirmed via grep first that
+    nothing else referenced them). `components.json`'s `style` is now
+    `"new-york-v4"`.
+
+    A genuine, POSITIVE side effect of this migration, found during
+    re-verification, not planned: Tailwind v3 + this project's plain-hex
+    (not `hsl(var(--x))`-wrapped) token convention meant every opacity-
+    modifier utility (`bg-primary/90`, `bg-background/80`, `border-
+    border/50`) silently generated ZERO CSS — a real, previously-
+    documented limitation (`024-settings-modal-visual-redesign`'s own
+    CLAUDE.md entry). Tailwind v4 handles this correctly via real
+    `color-mix()` rules regardless of the underlying token's format —
+    confirmed directly in the real compiled CSS output
+    (`color-mix(in oklab,var(--primary) 90%,transparent)`, wrapped in a
+    `@supports (color:color-mix(in lab,red,red))` progressive-enhancement
+    block with a solid-color fallback). Every one of this app's existing
+    opacity-modifier usages (in `button.tsx`, `dialog.tsx`, `chart.tsx`)
+    now genuinely renders translucent for the first time, with zero code
+    change required.
+
+    **New token groups**: `--popover`/`--popover-foreground` (parity with
+    shadcn's real current source; this app's own `dialog.tsx`/`dropdown-
+    menu.tsx` still reuse `--card` directly, confirmed harmless since the
+    two resolve identically in both themes) and the full `--sidebar-*`
+    family (8 tokens) — `components/ui/sidebar.tsx` (030) previously had
+    no dedicated sidebar token set of its own to consume at all, reusing
+    the app's main `--background`/`--border`/etc. directly; this feature
+    gave it real, dedicated tokens for the first time
+    (`bg-sidebar`/`text-sidebar-foreground`/`border-sidebar-border` on
+    the `<aside>`, `bg-sidebar-accent`/`ring-sidebar-ring` on
+    `SidebarMenuButton`/`SidebarTrigger` — `SidebarProvider`'s own
+    outermost app-wide wrapper deliberately stays on the main
+    `--background`/`--foreground` tokens, since it wraps the whole app,
+    not just the sidebar surface). The real shadcn dark-mode
+    `--sidebar-primary` is a genuine, confirmed non-neutral Blue-600
+    accent (`#1447e6`) — the one real colored token anywhere in this
+    otherwise fully-neutral default theme, not an authoring error.
+    `--chart-1..5`/`--success`/`--success-foreground` are UNCHANGED —
+    confirmed, explicitly, non-brand-derived (Observable Plot's own
+    `schemeObservable10`, `029-shadcn-chart-panel`'s own prior, separate,
+    on-record exception) and out of this feature's scope from the start.
+
+    **Typography**: Geist for both `font-body` AND `font-heading` (Nova
+    has no separate heading face at all) plus Geist Mono for `font-mono`,
+    replacing the prior Poppins/Inter/Fira Code WFRC brand typefaces —
+    loaded via real, self-hosted `@fontsource-variable/geist(-mono)`
+    side-effecting imports (confirmed genuinely open-source/SIL-licensed
+    and self-hostable before adopting). A real, confirmed finding: the
+    old `src/lib/loadBrandFonts.ts` Google-Fonts-CDN mechanism this
+    replaces was NEVER actually called from `src/main.tsx` at all — its
+    only real call site was the throwaway `002-design-tokens` demo page
+    (`src/demo/DesignTokenDemo.tsx`/`src/demo/main.tsx`, `demo.html`) —
+    so the real, production dashboard app never loaded the old WFRC
+    typefaces in the first place, despite `tokens.css` naming them. Wiring
+    the new imports into `src/main.tsx` is therefore genuinely the FIRST
+    time real font loading reaches the production boot sequence, not a
+    like-for-like swap. `src/lib/loadBrandFonts.ts` is deleted entirely
+    (`git rm`, confirmed no dedicated test existed for it).
+
+    **Seven new form-input primitives** — `label.tsx`/`input.tsx`/
+    `textarea.tsx`/`checkbox.tsx`/`switch.tsx`/`radio-group.tsx`/
+    `select.tsx` — this app's first real gap-check of `components/ui/`
+    found none of these existed at all. Each fetched directly from
+    shadcn's real, current `new-york-v4` registry source, then adapted to
+    this project's own established Radix-wrapping convention (confirmed
+    by reading `dialog.tsx` first): `React.forwardRef` +
+    `React.ElementRef`/`ComponentPropsWithoutRef` (not the real source's
+    own ref-less `React.ComponentProps` shape), namespaced
+    `@radix-ui/react-x` package imports (not the unified `radix-ui`
+    meta-package the real source uses — confirmed this project's own
+    existing convention first, via `package.json`), `@/lib/utils` `cn`,
+    single quotes, no `"use client"`. `data-slot` attributes ARE kept
+    (real-source fidelity, no existing project convention against them).
+    A new dependency, `tw-animate-css` (the real, current Tailwind-v4-
+    native replacement for `tailwindcss-animate`, which this project
+    never had at all) — needed for `select.tsx`'s own real open/close
+    transition classes to actually render as anything but instant;
+    wired via one new `@import "tw-animate-css";` in `tokens.css`,
+    scoped to `Select` only (existing `Dialog`/`DropdownMenu` deliberately
+    NOT retrofitted with animation classes they never had before). New
+    Radix packages: `@radix-ui/react-label`/`-checkbox`/`-switch`/
+    `-radio-group`/`-select`. Verified via a real, extended
+    `DesignTokenDemo.tsx`/`demo.html` "Form Inputs" section (a genuinely
+    interactive form, not a static render) plus a new
+    `tests/integration/formInputPrimitives.spec.ts` (7/7 passing) —
+    real typed-value/toggled-state/selected-option assertions for every
+    primitive, in both themes.
+
+    **Real WFRC-brand-name references fixed** (FR-008 scope,
+    distinguished explicitly from `RechartsPanel`'s own separate,
+    correctly-out-of-scope `--chart-1..5`, per the user's own explicit
+    disambiguation instruction): `tableLogic.ts`'s/`zonemapColor.ts`'s
+    `cellColor()`/choropleth-fill anchor (`var(--brand-wfrc-blue)` →
+    `var(--primary)`, 2 call sites each). `SankeyPanel.tsx`'s
+    `FALLBACK_TOKEN_VARS`/`FALLBACK_HEX_COLORS` — a REAL, DOCUMENTED
+    DEVIATION from this feature's own plan: the plan's own suggested
+    replacement sequence (`--secondary`/`--accent`/...) would have
+    produced two LITERALLY IDENTICAL fallback colors (`--secondary` and
+    `--accent` both resolve to `#f5f5f5` in the new light theme),
+    defeating the whole categorical-distinction purpose — caught by
+    reasoning through the real new token values before writing any code,
+    not via a test failure. Fixed with `--chart-1..4` instead (this app's
+    own already-verified-distinct, already-accessible categorical
+    palette, explicitly non-brand-derived).
+
+    **A real, confirmed accessibility regression found and fixed during
+    re-verification** (`components/ui/button.tsx`'s `destructive`
+    variant): the OLD code used `text-destructive-foreground` on
+    `bg-destructive`. Confirmed directly by fetching shadcn's real,
+    current `button.tsx`/`badge.tsx`/`alert.tsx` sources that NONE of
+    them actually pair these two tokens as text-on-background (Button/
+    Badge use literal `text-white`; Alert pairs `text-destructive` with
+    the unrelated `bg-card`) — and that shadcn's own real dark-mode
+    `--destructive-foreground`/`--destructive` pair resolves to a mere
+    1.66:1 contrast ratio, nowhere near legible. Fixed to match the real
+    source exactly: `'bg-destructive text-white hover:bg-destructive/90
+    dark:bg-destructive/60'`. `tests/unit/tokenContrast.test.ts`'s own
+    `PAIRINGS` list was updated to match — `destructive-foreground/
+    destructive` removed entirely (no real invariant left to protect,
+    once nothing in this app renders that pairing), with the finding
+    documented in a block comment rather than silently dropped. A
+    SEPARATE, disclosed (not fixed — out of scope, WFRC-specific
+    contrast tuning deferred) real finding from the same pass:
+    `muted-foreground/muted` resolves to a genuine 4.35:1 in light mode —
+    just under WCAG AA's 4.5:1 floor, a well-known real characteristic of
+    shadcn's own current default theme, pulled into its own dedicated,
+    non-floor-enforcing test rather than left as a permanently-red
+    assertion or silently patched.
+
+    **Dark-mode fix re-verification** (all six of this project's own
+    previously-proven fixes — Plotly transparent backgrounds, Observable
+    Plot tooltip contrast, Sankey `currentColor` labels, map-control
+    `invert(1)` icons, native form-control `color-scheme`, Dialog text-
+    color inheritance): re-verified by RUNNING the existing real
+    Playwright specs that originally proved each one, not by writing new
+    ones. Found exactly the predictable class of fallout — 8 stale
+    HARDCODED literal `rgb(...)` expected values across 4 spec files
+    (`dashboardShell.spec.ts`/`observablePlotPanel.spec.ts`/
+    `flowmapPanel.spec.ts`/`zonemapPanel.spec.ts`), comparing against the
+    RETIRED WFRC-brand dark values instead of the new real shadcn ones —
+    never a broken mechanism; every `currentColor`/`invert(1)`/
+    `color-scheme`/explicit-text-color fix itself needed and got ZERO
+    code changes. One real, useful disambiguation surfaced by this pass:
+    the OLD theme's `--card` and `--background` dark values happened to
+    be textually IDENTICAL, so several tests' own "--card/--background"
+    comments were genuinely ambiguous about which token a given assertion
+    was really checking — resolved by reading `panels/mapControls.css`'s
+    own real `.maplibregl-ctrl-group { background: var(--card) !important; }`
+    rule directly (it's `--card`, not `--background`) rather than
+    guessing. Also caught 2 stale dark-mode `--border` divider-color
+    checks expecting the old OPAQUE hex — the new real shadcn dark
+    `--border` is a genuinely TRANSLUCENT value (`#f5ffff1a`, i.e.
+    `oklch(1 0 0 / 10%)`) that Chromium's `getComputedStyle()` reports as
+    `rgba(245, 255, 255, 0.1)`, confirmed via a real headless-Chromium
+    round-trip rather than computed by hand from the hex alone.
+
+    Full regression confirmation: `npm run typecheck` clean; `npm run
+    test:unit` 386/386 passing (up from 321 at feature start — T009's new
+    hex-value-snapshot describe block, T021's new typography-token test
+    file, plus the dark-mode-fix test-literal updates); `npm run build`
+    clean, no new warnings; the FULL `tests/integration/` Playwright
+    suite (298 tests) — 296 passing, the 2 failures each independently
+    re-run in isolation and confirmed pre-existing, unrelated flakiness
+    (the already-documented flowmap-tooltip-hover flake, and a
+    `027-map-auto-fit-and-reset` reset-button-disabled-before-load timing
+    race under full-suite load — neither touched by this feature).
 
 ---
 

@@ -25,6 +25,44 @@ import type { GraphicWalkerPanelConfig } from '@/layout/types'
 // (services/sqlExpander.ts).
 const NOOP_FILTER_STATE = { get: () => undefined }
 
+// Real, confirmed bug found live on the Explore tab (a genuine, reported
+// GraphicWalker crash, "Computation service" error) — the SAME root cause
+// already found and fixed once for ZoneMapPanel.tsx's own choropleth-value
+// join (031-all-panel-demo-content): Arrow's own `queryArrow()` returns any
+// 64-bit integer column (DuckDB's real, confirmed on-disk BIGINT type for
+// `trip_mode_share.trips` — a COUNT(*)-derived aggregate — and, more
+// severely, for EVERY numeric column in `person_household_profile`, 10 of
+// its 14 real columns) as a genuine JS `bigint` primitive, never `number`.
+// `table.toJSON()` does NOT convert this — confirmed directly against the
+// real Parquet schema via `DESCRIBE SELECT * FROM read_parquet(...)`, not
+// assumed. GraphicWalker's own internal computation engine does ordinary
+// arithmetic/comparison across whatever numeric-looking columns it's
+// handed (sorting, binning, aggregating for its own chart rendering) —
+// JavaScript throws a real `TypeError` the instant a `bigint` is mixed
+// with a `number` in most operators, which is exactly what "Computation
+// service" errors out on. Same fix technique as ZoneMapPanel.tsx's own
+// `typeof raw === 'number' || typeof raw === 'bigint' ? Number(raw) :
+// null` — reused here, not reinvented, applied across every column of
+// every row (this panel hands GraphicWalker the WHOLE row, unlike
+// ZoneMapPanel's single known value field) since real trip/person/
+// household counts never approach Number.MAX_SAFE_INTEGER.
+//
+// This is a generic, cross-cutting DuckDB-WASM/Arrow behavior — not
+// specific to this panel type (ZoneMapPanel.tsx already hit the identical
+// root cause independently). Worth a shared conversion in the query layer
+// itself (services/duckdb.ts's queryArrow(), or a small shared helper) if
+// a third panel type ever hits this same class of bug — not done here,
+// since fixing this real, reported crash is the immediate priority and a
+// third occurrence hasn't actually happened yet.
+function convertBigIntsToNumbers(row: Record<string, unknown>): Record<string, unknown> {
+  const converted: Record<string, unknown> = {}
+  for (const key in row) {
+    const value = row[key]
+    converted[key] = typeof value === 'bigint' ? Number(value) : value
+  }
+  return converted
+}
+
 // The ninth and last originally-listed panel type — see
 // contracts/graphic-walker-panel.md and specs/014-graphic-walker-panel/
 // research.md. Structurally closer to MarkdownPanel.tsx's "no reactive
@@ -168,7 +206,7 @@ export function GraphicWalkerPanel({ config }: { config: GraphicWalkerPanelConfi
     queryArrow(sql)
       .then((table) => {
         if (cancelled) return
-        const nextRows = table.toArray().map((r) => r.toJSON())
+        const nextRows = table.toArray().map((r) => convertBigIntsToNumbers(r.toJSON()))
         if (nextRows.length === 0) {
           setStatus('empty')
           return

@@ -502,7 +502,12 @@ test.describe('Polish - dark mode (015-theme-toggle)', () => {
       .locator('.observable-plot-chart svg[viewBox] text')
       .first()
       .evaluate((el) => getComputedStyle(el).fill)
-    expect(inlineFill).toBe('rgb(255, 255, 255)')
+    // 033-shadcn-default-theme: --foreground dark is now #fafafa, not the
+    // old WFRC-brand #ffffff (same real value applies to --card-foreground
+    // too — they resolve identically in this theme, so the dialog title
+    // check below needs the same new value regardless of which of the two
+    // it technically inherits from).
+    expect(inlineFill).toBe('rgb(250, 250, 250)')
 
     await expandTrigger(page, 'Observable Plot Mode Share (Bar)').click()
     const dialog = page.getByRole('dialog')
@@ -511,13 +516,13 @@ test.describe('Polish - dark mode (015-theme-toggle)', () => {
     const dialogTitleColor = await dialog
       .getByRole('heading', { name: 'Observable Plot Mode Share (Bar)' })
       .evaluate((el) => getComputedStyle(el).color)
-    expect(dialogTitleColor).toBe('rgb(255, 255, 255)')
+    expect(dialogTitleColor).toBe('rgb(250, 250, 250)')
 
     const expandedFill = await dialog
       .locator('.observable-plot-chart svg[viewBox] text')
       .first()
       .evaluate((el) => getComputedStyle(el).fill)
-    expect(expandedFill).toBe('rgb(255, 255, 255)')
+    expect(expandedFill).toBe('rgb(250, 250, 250)')
   })
 
   // A real, confirmed dark-mode bug found post-implementation, same class
@@ -555,8 +560,10 @@ test.describe('Polish - dark mode (015-theme-toggle)', () => {
     // correct colors, so a future token-value change that accidentally
     // reintroduces low contrast (e.g. both drifting toward the same gray)
     // would still be caught.
-    expect(tipBoxFill).toBe('rgb(8, 27, 38)') // --card in dark mode
-    expect(tipTextFill).toBe('rgb(255, 255, 255)') // --foreground in dark mode
+    // 033-shadcn-default-theme: dark --card is now #171717 and
+    // --foreground is now #fafafa — no longer the old WFRC-brand values.
+    expect(tipBoxFill).toBe('rgb(23, 23, 23)') // --card in dark mode
+    expect(tipTextFill).toBe('rgb(250, 250, 250)') // --foreground in dark mode
     expect(tipBoxFill).not.toBe(tipTextFill)
   })
 
@@ -575,9 +582,17 @@ test.describe('Polish - dark mode (015-theme-toggle)', () => {
       background: getComputedStyle(el).backgroundColor,
       color: getComputedStyle(el).color,
     }))
+    // 033-shadcn-default-theme: dark --background is now #0a0a0a and
+    // --foreground is now #fafafa — no longer the old WFRC-brand values
+    // (which happened to make --background/--card share one literal;
+    // the new theme's are genuinely different, confirmed real, not a
+    // native-browser-default coincidence: a bare <select> with no app CSS
+    // renders Chromium's own UA default of rgb(59, 59, 59), verified
+    // directly — this element's explicit `bg-background`/`text-foreground`
+    // classes are what's actually being asserted here).
     expect(styles.colorScheme).toBe('dark')
-    expect(styles.background).toBe('rgb(8, 27, 38)') // --background in dark mode
-    expect(styles.color).toBe('rgb(255, 255, 255)') // --foreground in dark mode
+    expect(styles.background).toBe('rgb(10, 10, 10)') // --background in dark mode
+    expect(styles.color).toBe('rgb(250, 250, 250)') // --foreground in dark mode
   })
 })
 

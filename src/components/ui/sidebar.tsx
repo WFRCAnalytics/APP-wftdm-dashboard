@@ -131,7 +131,13 @@ export function Sidebar({ children, className }: { children: React.ReactNode; cl
         // this sidebar replaces) — a sticky, always-visible nav surface
         // sitting beside scrolling content is the same category of thing,
         // not a deviation requiring a new one-off value.
-        'sticky top-0 flex h-screen shrink-0 flex-col border-r border-border bg-card shadow-md transition-[width] duration-200 ease-linear',
+        // 033-shadcn-default-theme: now uses the real, dedicated
+        // --sidebar/--sidebar-foreground/--sidebar-border tokens
+        // (data-model.md §1/§4) instead of reusing the app's main
+        // --card/--border/(inherited)--foreground — this app's own
+        // sidebar.tsx previously had no dedicated sidebar token set at
+        // all to reuse (research.md §2's own grep finding).
+        'sticky top-0 flex h-screen shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground shadow-md transition-[width] duration-200 ease-linear',
         state === 'expanded' ? SIDEBAR_WIDTH_EXPANDED : SIDEBAR_WIDTH_COLLAPSED,
         className,
       )}
@@ -204,8 +210,17 @@ export const SidebarMenuButton = React.forwardRef<HTMLButtonElement, SidebarMenu
         data-sidebar="menu-button"
         data-active={isActive || undefined}
         className={cn(
-          'flex w-full items-center gap-3 overflow-hidden rounded-md px-2.5 py-2 text-left font-heading text-sm font-medium transition-colors hover:bg-muted hover:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-          isActive && 'bg-accent text-accent-foreground hover:bg-accent hover:text-accent-foreground',
+          // 033-shadcn-default-theme: hover/active/focus-ring states now
+          // reference the real, dedicated --sidebar-accent/-ring tokens
+          // (data-model.md §1/§4) instead of the app's main --muted/
+          // --accent/--ring — this menu button lives inside <Sidebar>'s
+          // own --sidebar/--sidebar-foreground surface (above), and
+          // sidebar-scoped hover/active states are what shadcn's own real
+          // SidebarMenuButton source uses too (confirmed via research.md
+          // §2's own grep of the real registry source).
+          'flex w-full items-center gap-3 overflow-hidden rounded-md px-2.5 py-2 text-left font-heading text-sm font-medium transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring',
+          isActive &&
+            'bg-sidebar-accent text-sidebar-accent-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
           state === 'collapsed' && 'justify-center px-0',
           className,
         )}
@@ -226,7 +241,13 @@ export function SidebarTrigger({ className }: { className?: string }) {
       aria-label="Toggle sidebar"
       onClick={toggleSidebar}
       className={cn(
-        'inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+        // 033-shadcn-default-theme: same sidebar-scoped token swap as
+        // SidebarMenuButton above — this trigger lives inside the
+        // --sidebar surface too (rendered in SidebarHeader, per
+        // shell.tsx), so its hover/focus states should track
+        // --sidebar-accent/--sidebar-ring, not the app's main --muted/
+        // --foreground/--ring.
+        'inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring',
         className,
       )}
     >

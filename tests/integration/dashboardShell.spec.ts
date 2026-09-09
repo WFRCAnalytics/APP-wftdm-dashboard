@@ -187,7 +187,9 @@ test.describe('User Story 3 - An analyst sees a real, filter-reactive chart', ()
       .locator('.js-plotly-plot .xtick text')
       .first()
       .evaluate((el) => getComputedStyle(el).fill)
-    expect(tickFill).toBe('rgb(255, 255, 255)') // --foreground in dark mode
+    // 033-shadcn-default-theme: --foreground dark is now #fafafa, not the
+    // old WFRC-brand #ffffff.
+    expect(tickFill).toBe('rgb(250, 250, 250)') // --foreground in dark mode
 
     // A theme flip must not re-query DuckDB-WASM — only colors change.
     // A short settle wait first: if a (bugged) re-query DID fire, it needs

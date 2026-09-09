@@ -30,6 +30,41 @@ The concrete, decided visual foundation for this app's app-wide redesign. Every 
 
 ## Brand Identity
 
+> **⚠️ SUSPENDED for `033-shadcn-default-theme` — READ THIS FIRST.**
+>
+> Everything below this notice, through the end of this section, describes
+> the rule as it stood BEFORE `033-shadcn-default-theme` and as it will
+> apply AGAIN once a future, separate re-branding feature restores it. It
+> does **not** describe the app's current, real color values.
+>
+> On the user's own explicit, direct instruction (not a silent drift, not
+> an oversight, not this skill's own judgment call), `033-shadcn-default-
+> theme` deliberately REPLACED every WFRC brand color token in
+> `tokens.css` — `--brand-wfrc-blue`/`-secondary-blue`/`-yellow`/`-gray`,
+> `--brand-white`/`-black`/`-background-dark`, and everything downstream
+> that resolved through them (`--primary`, `--accent`, `--background`/
+> `--foreground`, `tableLogic.ts`'s/`zonemapColor.ts`'s cell-shading/
+> choropleth anchors, `SankeyPanel.tsx`'s categorical fallback) — with
+> shadcn/ui's own real, current default theme (the "Nova" preset:
+> `neutral`/zinc palette, near-black `--primary`, no colored accent at
+> all in light mode). The stated goal of that feature was full adoption
+> of shadcn's own defaults, explicitly including color, with WFRC-specific
+> branding intended to be REAPPLIED later as its own distinct, separate
+> pass — not abandoned. See `specs/033-shadcn-default-theme/spec.md`'s own
+> "EXPLICIT, DELIBERATE POLICY REVERSAL" note and `research.md`/
+> `data-model.md` §1 for the full real token-value migration this caused.
+>
+> **What this means in practice, right now**: the "never dilute it" rule
+> below is not currently being followed, on purpose, and that is
+> correct — not a violation to flag or quietly work around. Do not "fix"
+> `tokens.css` back toward WFRC blue/yellow to satisfy this section's own
+> older text; do not cite this section as a reason to revert any of
+> `033`'s real, shipped token values. The rule RESUMES governing real
+> work the moment a future, separate re-branding feature reinstates WFRC
+> color values — at which point this suspension notice itself should be
+> removed (not the rule text below it, which stays as the standing policy
+> both before and after this suspension window).
+
 This redesign's own explicit goal — feel like a polished, professional SaaS product — must NOT come at the cost of WFRC's own visual identity. The two goals are not in tension if handled correctly: polish is spacing/typography/shadow/consistency (everything else in this skill); brand identity is color, and color is being deliberately held separate.
 
 **The full real set of WFRC brand tokens** (`tokens.css` — confirmed directly, not assumed to be just the one blue):
@@ -50,7 +85,20 @@ This redesign's own explicit goal — feel like a polished, professional SaaS pr
 
 ## Typography scale
 
-Three font families, unchanged from `002-design-tokens` (WFRC brand choice, not up for revision here): `font-body` (Poppins), `font-heading` (Inter), `font-mono` (Fira Code). **Exactly three font weights project-wide: 400 (regular), 500 (medium), 600 (semibold) — never 700/bold.** This isn't a new rule invented for this skill: `CardTitle` already uses `font-semibold` and form labels already use `font-medium`; Vercel/Geist and Linear independently converge on the identical "no more than 3 weights, skip bold, communicate emphasis through size/spacing instead" discipline (see `references/research.md`). Formalizing it here just makes it official and prevents `font-bold` creeping in later.
+> **Note (`033-shadcn-default-theme`)**: the specific typeface names in the
+> next sentence are now STALE — a real, confirmed factual change, not
+> covered by the Brand Identity suspension notice above (that notice is
+> color-only; this is a separate, additive correction). `033` replaced
+> Poppins/Inter/Fira Code with shadcn's own real current font stack (Geist
+> for both `font-body` AND `font-heading` — the "Nova" preset has no
+> separate heading face at all — Geist Mono for `font-mono`; see
+> `specs/033-shadcn-default-theme/data-model.md` §2). The Tailwind-facing
+> class names (`font-body`/`font-heading`/`font-mono`) and every rule in
+> the table below (which role gets which size/weight/status) are
+> UNCHANGED — only the underlying typeface each class resolves to is
+> different now.
+
+Three font families, unchanged from `002-design-tokens` in ROLE (body/heading/mono) though not, as of `033-shadcn-default-theme`, in specific typeface (see the note above) — originally the WFRC brand choice: `font-body` (Poppins), `font-heading` (Inter), `font-mono` (Fira Code). **Exactly three font weights project-wide: 400 (regular), 500 (medium), 600 (semibold) — never 700/bold.** This isn't a new rule invented for this skill: `CardTitle` already uses `font-semibold` and form labels already use `font-medium`; Vercel/Geist and Linear independently converge on the identical "no more than 3 weights, skip bold, communicate emphasis through size/spacing instead" discipline (see `references/research.md`). Formalizing it here just makes it official and prevents `font-bold` creeping in later.
 
 | Role | Tailwind classes | Real size / line-height | Weight | Status |
 |---|---|---|---|---|

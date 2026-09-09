@@ -39,7 +39,12 @@ const REAL_TABLEAU10 = [
   '#9c755f',
   '#bab0ab',
 ]
-const FALLBACK_TOKEN_HEX = ['#023c5b', '#52b6d5', '#f8b93e', '#7f7a76']
+// 033-shadcn-default-theme: SankeyPanel.tsx's own token-derived fallback
+// moved from WFRC brand tokens to --chart-1..4 (research.md §7's
+// disambiguation from RechartsPanel's separate, still out-of-scope
+// palette) — these are tokens.css's real LIGHT-mode --chart-1..4 hex
+// values (Playwright's default colorScheme is 'light', unset here).
+const FALLBACK_TOKEN_HEX = ['#3358be', '#ba7f00', '#cc4330', '#008029']
 
 async function boot(page: Page) {
   await page.goto('/')

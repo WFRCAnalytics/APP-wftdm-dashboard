@@ -114,19 +114,23 @@ describe('cellColor', () => {
     expect(cellColor('SOV', 'diverging', [-0.5, 0.5])).toBeUndefined()
   })
 
-  it('sequential: low values blend toward --muted, high values toward --brand-wfrc-blue', () => {
+  it('sequential: low values blend toward --muted, high values toward --primary', () => {
+    // 033-shadcn-default-theme: cellColor()'s sequential anchor moved from
+    // the deleted --brand-wfrc-blue to --primary (tableLogic.ts's own
+    // updated comment/data-model.md §3) — this test now asserts the new
+    // token name, not the old brand-specific one.
     const low = cellColor(0, 'sequential', [0, 100])!
     const high = cellColor(100, 'sequential', [0, 100])!
-    expect(low).toContain('--brand-wfrc-blue')
-    expect(low).toMatch(/var\(--brand-wfrc-blue\) 0%/)
-    expect(high).toMatch(/var\(--brand-wfrc-blue\) 40%/) // MAX_COLOR_STRENGTH
+    expect(low).toContain('--primary')
+    expect(low).toMatch(/var\(--primary\) 0%/)
+    expect(high).toMatch(/var\(--primary\) 40%/) // MAX_COLOR_STRENGTH
   })
 
-  it('diverging, symmetric domain: negative extreme is --brand-wfrc-blue, positive extreme is --destructive, 0 is neutral', () => {
+  it('diverging, symmetric domain: negative extreme is --primary, positive extreme is --destructive, 0 is neutral', () => {
     const negative = cellColor(-0.5, 'diverging', [-0.5, 0.5])!
     const positive = cellColor(0.5, 'diverging', [-0.5, 0.5])!
     const zero = cellColor(0, 'diverging', [-0.5, 0.5])!
-    expect(negative).toContain('--brand-wfrc-blue')
+    expect(negative).toContain('--primary')
     expect(positive).toContain('--destructive')
     // 0% strength either direction — reads as pure --muted either way.
     expect(zero).toMatch(/ 0%, var\(--muted\)/)
@@ -136,7 +140,7 @@ describe('cellColor', () => {
     // Domain [-0.1, 0.9] — geometric center is 0.4, not 0. If the
     // implementation used the domain center as its midpoint, evaluating
     // at exactly 0 would NOT read as the neutral (0% strength) color —
-    // it would read as partway toward --brand-wfrc-blue (0 is below the
+    // it would read as partway toward --primary (0 is below the
     // 0.4 center). research.md §4's decision is that 0 itself must
     // always be the neutral point, regardless of where it falls within
     // an asymmetric domain.

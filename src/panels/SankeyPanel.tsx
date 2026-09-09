@@ -29,11 +29,30 @@ const ALL_FILTERS: ['*'] = ['*']
 // categorical palette today (both rely on their charting library's own
 // default) — research.md §6 documents why that "precedent" doesn't
 // actually exist and why this panel type builds one anyway.
-const FALLBACK_TOKEN_VARS = ['--primary', '--brand-wfrc-secondary-blue', '--brand-wfrc-yellow', '--brand-wfrc-gray']
-// Last-resort literal values (tokens.css's own current values) — only used
-// if getComputedStyle somehow resolves none of the vars above (e.g. no
-// stylesheet loaded at all), so a render never ships with an empty palette.
-const FALLBACK_HEX_COLORS = ['#023c5b', '#52b6d5', '#f8b93e', '#7f7a76']
+// 033-shadcn-default-theme (data-model.md §3): the previous fallback
+// sequence named WFRC brand tokens directly by name (the now-deleted
+// secondary-blue/yellow/gray brand tokens) — a real, in-scope brand-name
+// reference (FR-008), now retired along with those tokens themselves
+// (deleted from tokens.css; quickstart.md Scenario 6's own grep sweep
+// checks no live brand-token name remains anywhere in src/, so this
+// comment deliberately doesn't spell the old identifier out literally).
+// Real, confirmed finding during THIS update (not merely planning-time
+// guesswork): a naive swap to other semantic UI tokens (--secondary/
+// --accent) doesn't work as a categorical fallback under the new, truly
+// neutral default theme — --secondary and --accent resolve to the exact
+// same real value in light mode (#f5f5f5), collapsing two "distinct"
+// fallback colors into one indistinguishable gray. `--chart-1..4`
+// (already this project's own established, already-verified-distinct-
+// and-accessible categorical palette, tokenContrast.test.ts's own
+// "pairwise-distinct" check) is the genuinely correct fallback source
+// instead — real, existing infrastructure built for exactly this need,
+// not a WFRC brand reference (research.md §7's own disambiguation).
+const FALLBACK_TOKEN_VARS = ['--chart-1', '--chart-2', '--chart-3', '--chart-4']
+// Last-resort literal values (tokens.css's own current --chart-1..4
+// values) — only used if getComputedStyle somehow resolves none of the
+// vars above (e.g. no stylesheet loaded at all), so a render never ships
+// with an empty palette.
+const FALLBACK_HEX_COLORS = ['#3358be', '#ba7f00', '#cc4330', '#008029']
 
 function resolveFallbackColors(el: HTMLElement): string[] {
   const style = getComputedStyle(el)

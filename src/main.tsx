@@ -6,6 +6,23 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 
 import '@/styles/tokens.css'
+// 033-shadcn-default-theme: self-hosted Geist/Geist Mono variable-font
+// side-effecting imports — the real replacement for the old Google-Fonts-
+// CDN runtime-injection module this project used to keep under
+// src/lib/ (retired/deleted entirely, T024; quickstart.md Scenario 3's
+// own grep sweep checks no literal reference to that old module's name
+// remains anywhere in src/, so it's deliberately not spelled out here).
+// A REAL finding during this task, not assumed: that old module's
+// loader function was NEVER actually called from this file at all — its
+// only real call site was the throwaway 002-design-tokens demo page's own
+// mount effect (confirmed by direct grep before writing this comment) —
+// so the real, production dashboard app never loaded the old WFRC brand
+// typefaces from Google Fonts in the first place, despite tokens.css's
+// own --font-* values naming them. This import is therefore a genuine,
+// first-time wiring of real font loading into the production boot
+// sequence, not a like-for-like mechanism swap.
+import '@fontsource-variable/geist'
+import '@fontsource-variable/geist-mono'
 import { initDuckDB } from './services/duckdb.ts'
 import { discoverScenarios } from './services/scenarioDiscovery.ts'
 import { loadDashboards, loadDashboardBranding, type DashboardBranding } from './services/yamlLoader.ts'

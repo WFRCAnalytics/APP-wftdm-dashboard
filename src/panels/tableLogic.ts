@@ -103,10 +103,16 @@ function clamp01(t: number): number {
  * color (clamp01 below).
  *
  * Token reuse is deliberately column-scoped, not globally consistent:
- * --brand-wfrc-blue means "high magnitude" in a sequential column and
+ * --primary means "high magnitude" in a sequential column and
  * "below-zero deviation" in a diverging column — an accepted tradeoff
  * (research.md §4), never actually ambiguous since a reader only ever
  * interprets one column's cells against that column's own scale.
+ * 033-shadcn-default-theme: previously anchored on the now-deleted WFRC
+ * blue brand token directly (a real, in-scope brand-name reference,
+ * FR-008) — now --primary, which the new default theme resolves to a real black/
+ * near-white pair (light mode) or light-gray/dark pair (dark mode),
+ * producing a genuine, meaningful sequential ramp in both themes with no
+ * special-casing needed.
  */
 // 019-baseline-diff-consumption: a dedicated, visibly-distinct color for
 // a "not computable" value (e.g. a diff_value whose zero-baseline
@@ -137,7 +143,7 @@ export function cellColor(
     const span = domainMax - domainMin
     const t = span === 0 ? 0 : clamp01((value - domainMin) / span)
     const strength = t * MAX_COLOR_STRENGTH
-    return `color-mix(in srgb, var(--brand-wfrc-blue) ${strength}%, var(--muted))`
+    return `color-mix(in srgb, var(--primary) ${strength}%, var(--muted))`
   }
 
   // diverging — midpoint fixed at 0, not (domainMin + domainMax) / 2.
@@ -148,5 +154,5 @@ export function cellColor(
   }
   const t = domainMin === 0 ? (value < 0 ? 1 : 0) : clamp01(value / domainMin)
   const strength = t * MAX_COLOR_STRENGTH
-  return `color-mix(in srgb, var(--brand-wfrc-blue) ${strength}%, var(--muted))`
+  return `color-mix(in srgb, var(--primary) ${strength}%, var(--muted))`
 }

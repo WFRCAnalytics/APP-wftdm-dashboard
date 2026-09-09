@@ -80,7 +80,7 @@ function tokenDerivedColor(value: number, colorScale: ColorScale, domain: [numbe
     const span = domainMax - domainMin
     const t = span === 0 ? 0 : clamp01((value - domainMin) / span)
     const strength = t * MAX_COLOR_STRENGTH
-    return `color-mix(in srgb, var(--brand-wfrc-blue) ${strength}%, var(--muted))`
+    return `color-mix(in srgb, var(--primary) ${strength}%, var(--muted))`
   }
 
   // diverging — midpoint fixed at literal 0, not (domainMin + domainMax) / 2.
@@ -91,7 +91,7 @@ function tokenDerivedColor(value: number, colorScale: ColorScale, domain: [numbe
   }
   const t = domainMin === 0 ? (value < 0 ? 1 : 0) : clamp01(value / domainMin)
   const strength = t * MAX_COLOR_STRENGTH
-  return `color-mix(in srgb, var(--brand-wfrc-blue) ${strength}%, var(--muted))`
+  return `color-mix(in srgb, var(--primary) ${strength}%, var(--muted))`
 }
 
 /** Maps `value` onto a recognized ramp's own [0,1] interpolator domain,
