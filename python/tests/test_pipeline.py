@@ -264,3 +264,265 @@ def test_od_flows_coordinates_match_centroid_table(
     for orig_taz, orig_lat, orig_lon, dest_taz, dest_lat, dest_lon in rows:
         assert (orig_lat, orig_lon) == centroid_lookup[orig_taz]
         assert (dest_lat, dest_lon) == centroid_lookup[dest_taz]
+
+
+# ---------------------------------------------------------------------------
+# 032-six-tab-demo-content — real-data invariants for the new metrics'
+# distinct SQL SHAPES (haversine distance, tour_category filtering, the new
+# person_type mapping, and a household-aggregate join into land_use) — one
+# representative test per shape, not all 28 new metrics individually. The
+# real end-to-end `wftdm-dashboard summarize` CLI run against the real
+# three-scenario ActivitySim output (this feature's own T026) already
+# validated every one of the 28 new metrics' real-data invariants directly
+# (grouped counts summing to real population counts, zero NULL distances,
+# etc. — recorded in tasks.md's own T026 notes) — stronger evidence for
+# those specific metrics than a synthetic fixture could provide. These
+# tests instead guard the underlying SQL PATTERNS every one of those
+# metrics reuses, with their own small, self-contained raw directories
+# (not the shared `raw_activitysim_dir` fixture, which has no
+# tours/land_use/accessibility tables) — so a future regression in any of
+# these shared patterns is caught here regardless of which specific metric
+# next uses them.
+# ---------------------------------------------------------------------------
+
+
+def _write_csv(path, text):
+    path.write_text(text, encoding="utf-8")
+
+
+def test_haversine_distance_never_null_and_survives_a_same_zone_trip(tmp_path):
+    """contracts/summarize-metrics.md's shared haversine formula, including
+    its real, confirmed LEAST/GREATEST clamp fix: a same-zone trip
+    (origin == destination) makes the naive acos() argument evaluate
+    fractionally ABOVE 1.0 due to floating-point rounding, which DuckDB's
+    acos() rejects outright ("ACOS is undefined outside [-1,1]") rather
+    than clamping — found via a real CLI run against real baseline data,
+    not assumed. This test reproduces that exact same-zone case directly."""
+    raw_dir = tmp_path / "raw"
+    raw_dir.mkdir()
+    _write_csv(
+        raw_dir / "trips.csv",
+        "trip_id,origin,destination\n1,10,20\n2,10,10\n",  # trip 2 is same-zone
+    )
+
+    config_dict = {
+        "version": 2,
+        "sources": {"trips": "trips.csv"},
+        "sql_fragments": {
+            "zone_centroids": "(VALUES (10, 37.1, -122.1), (20, 37.2, -122.2))",
+        },
+        "metrics": [
+            {
+                "name": "trip_distance",
+                "sql": (
+                    "SELECT trip_id, 3959 * acos(\n"
+                    "  LEAST(1.0, GREATEST(-1.0,\n"
+                    "    cos(radians(c1.lat)) * cos(radians(c2.lat)) * cos(radians(c2.lon) - radians(c1.lon))\n"
+                    "    + sin(radians(c1.lat)) * sin(radians(c2.lat))\n"
+                    "  ))\n"
+                    ") AS distance_miles\n"
+                    "FROM trips t\n"
+                    "JOIN $sql.zone_centroids AS c1(zone_id, lat, lon) ON t.origin      = c1.zone_id\n"
+                    "JOIN $sql.zone_centroids AS c2(zone_id, lat, lon) ON t.destination = c2.zone_id"
+                ),
+            },
+        ],
+    }
+    config = parse_summarize_dict(config_dict)
+    output_dir = tmp_path / "scenario-out"
+
+    run_pipeline(config, raw_dir, output_dir)
+
+    conn = duckdb.connect()
+    rows = conn.sql(
+        "SELECT trip_id, distance_miles FROM read_parquet("
+        f"'{(output_dir / 'summary' / 'trip_distance.parquet').as_posix()}') ORDER BY trip_id"
+    ).fetchall()
+    conn.close()
+
+    assert len(rows) == 2
+    assert rows[0][1] is not None and rows[0][1] > 0  # real cross-zone distance
+    assert rows[1][1] == pytest.approx(0.0, abs=1e-6)  # same-zone: real zero distance, not NULL/crash
+
+
+def test_tour_category_filter_only_counts_matching_real_tours(tmp_path):
+    """The shared pattern every Tour Models metric uses (`WHERE
+    tour_category = '...'`) only counts the real matching subset — no
+    cross-category leakage."""
+    raw_dir = tmp_path / "raw"
+    raw_dir.mkdir()
+    _write_csv(
+        raw_dir / "tours.csv",
+        "tour_id,tour_category,primary_purpose,start,end,duration\n"
+        "1,mandatory,work,7,17,10\n"
+        "2,mandatory,work,8,16,8\n"
+        "3,non_mandatory,shopping,10,11,1\n"
+        "4,joint,social,18,20,2\n"
+        "5,atwork,eat,12,13,1\n",
+    )
+    config_dict = {
+        "version": 2,
+        "sources": {"tours": "tours.csv"},
+        "metrics": [
+            {
+                "name": "mandatory_tour_scheduling",
+                "sql": (
+                    "SELECT primary_purpose, start, \"end\", duration, COUNT(*) AS tours\n"
+                    "FROM tours\n"
+                    "WHERE tour_category = 'mandatory'\n"
+                    "GROUP BY primary_purpose, start, \"end\", duration"
+                ),
+            },
+        ],
+    }
+    config = parse_summarize_dict(config_dict)
+    output_dir = tmp_path / "scenario-out"
+
+    run_pipeline(config, raw_dir, output_dir)
+
+    conn = duckdb.connect()
+    total_tours = conn.sql(
+        "SELECT SUM(tours) FROM read_parquet("
+        f"'{(output_dir / 'summary' / 'mandatory_tour_scheduling.parquet').as_posix()}')"
+    ).fetchone()[0]
+    conn.close()
+
+    assert total_tours == 2  # only the 2 real 'mandatory' rows — not all 5
+
+
+def test_person_type_mapping_covers_all_8_real_ptype_values(tmp_path):
+    """data-model.md §2's new `mappings.person_type` — all 8 real
+    ActivitySim ptype values (1-8, including the real 8th value this
+    feature's own audit found: pre-school child) map to a real label, no
+    unmapped/NULL fallthrough."""
+    raw_dir = tmp_path / "raw"
+    raw_dir.mkdir()
+    _write_csv(
+        raw_dir / "persons.csv",
+        "person_id,ptype\n" + "\n".join(f"{i},{i}" for i in range(1, 9)) + "\n",
+    )
+    config_dict = {
+        "version": 2,
+        "sources": {"persons": "persons.csv"},
+        "mappings": {
+            "person_type": {
+                1: "Full-time worker",
+                2: "Part-time worker",
+                3: "University student",
+                4: "Non-worker",
+                5: "Retired",
+                6: "Driving-age student",
+                7: "Non-driving student",
+                8: "Pre-school child",
+            },
+        },
+        "metrics": [
+            {
+                "name": "cdap_summary",
+                "sql": (
+                    "SELECT person_id, CASE ptype $mappings.person_type END AS person_type\n"
+                    "FROM persons"
+                ),
+            },
+        ],
+    }
+    config = parse_summarize_dict(config_dict)
+    output_dir = tmp_path / "scenario-out"
+
+    run_pipeline(config, raw_dir, output_dir)
+
+    conn = duckdb.connect()
+    rows = conn.sql(
+        "SELECT person_id, person_type FROM read_parquet("
+        f"'{(output_dir / 'summary' / 'cdap_summary.parquet').as_posix()}') ORDER BY person_id"
+    ).fetchall()
+    conn.close()
+
+    assert len(rows) == 8
+    assert all(label is not None for _, label in rows)  # no unmapped ptype falls through as NULL
+    assert rows[7] == (8, "Pre-school child")  # the real 8th value this feature's own audit found
+
+
+def test_land_use_summary_household_aggregates_join_by_zone_not_globally(tmp_path):
+    """land_use_summary's real household-aggregate join (avg income, avg
+    auto ownership) must be scoped PER ZONE via `home_zone_id`, not a
+    single global average silently applied to every zone."""
+    raw_dir = tmp_path / "raw"
+    raw_dir.mkdir()
+    _write_csv(raw_dir / "land_use.csv", "zone_id,DISTRICT\n1,A\n2,B\n")
+    _write_csv(
+        raw_dir / "households.csv",
+        "household_id,home_zone_id,income,auto_ownership\n"
+        "1,1,10000,0\n2,1,30000,2\n3,2,90000,3\n",
+    )
+    config_dict = {
+        "version": 2,
+        "sources": {"land_use": "land_use.csv", "households": "households.csv"},
+        "metrics": [
+            {
+                "name": "land_use_summary",
+                "sql": (
+                    "SELECT lu.zone_id, lu.DISTRICT, h_agg.avg_income, h_agg.avg_auto_ownership\n"
+                    "FROM land_use lu\n"
+                    "LEFT JOIN (\n"
+                    "  SELECT home_zone_id, AVG(income) AS avg_income,\n"
+                    "    AVG(auto_ownership) AS avg_auto_ownership\n"
+                    "  FROM households GROUP BY home_zone_id\n"
+                    ") h_agg ON lu.zone_id = h_agg.home_zone_id"
+                ),
+            },
+        ],
+    }
+    config = parse_summarize_dict(config_dict)
+    output_dir = tmp_path / "scenario-out"
+
+    run_pipeline(config, raw_dir, output_dir)
+
+    conn = duckdb.connect()
+    rows = conn.sql(
+        "SELECT zone_id, avg_income, avg_auto_ownership FROM read_parquet("
+        f"'{(output_dir / 'summary' / 'land_use_summary.parquet').as_posix()}') ORDER BY zone_id"
+    ).fetchall()
+    conn.close()
+
+    assert rows[0] == (1, 20000.0, 1.0)  # zone 1's own real 2-household average
+    assert rows[1] == (2, 90000.0, 3.0)  # zone 2's own real single-household value
+
+
+def test_person_household_profile_is_deliberately_ungrouped_one_row_per_person(tmp_path):
+    """contracts/summarize-metrics.md's own singular exception: this is
+    the one new metric that must NOT aggregate — real row count must equal
+    the real total person count, exactly."""
+    raw_dir = tmp_path / "raw"
+    raw_dir.mkdir()
+    _write_csv(
+        raw_dir / "persons.csv",
+        "person_id,household_id\n1,1\n2,1\n3,2\n4,3\n5,3\n",
+    )
+    config_dict = {
+        "version": 2,
+        "sources": {"persons": "persons.csv"},
+        "metrics": [
+            {
+                "name": "person_household_profile",
+                "sql": "SELECT person_id, household_id FROM persons",
+            },
+        ],
+    }
+    config = parse_summarize_dict(config_dict)
+    output_dir = tmp_path / "scenario-out"
+
+    run_pipeline(config, raw_dir, output_dir)
+
+    conn = duckdb.connect()
+    row_count = conn.sql(
+        "SELECT COUNT(*) FROM read_parquet("
+        f"'{(output_dir / 'summary' / 'person_household_profile.parquet').as_posix()}')"
+    ).fetchone()[0]
+    real_person_count = conn.sql(
+        f"SELECT COUNT(*) FROM read_csv_auto('{(raw_dir / 'persons.csv').as_posix()}')"
+    ).fetchone()[0]
+    conn.close()
+
+    assert real_person_count == 5  # the fixture's own real, known row count
+    assert row_count == real_person_count

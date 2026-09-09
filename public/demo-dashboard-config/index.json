@@ -1,9 +1,11 @@
 {
   "dashboards": [
-    "dashboard-1-overview.yaml",
-    "dashboard-2-destination-choice.yaml",
-    "dashboard-3-transit-service.yaml",
-    "dashboard-4-network.yaml",
+    "dashboard-1-summary.yaml",
+    "dashboard-2-person-household.yaml",
+    "dashboard-3-tour-models.yaml",
+    "dashboard-4-mode-choice.yaml",
+    "dashboard-5-trip-models.yaml",
+    "dashboard-6-network.yaml",
     "dashboard-5-explore.yaml"
   ],
   "title": "WFRC TDM Calibration Dashboard",

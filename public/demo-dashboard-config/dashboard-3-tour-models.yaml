@@ -1,0 +1,250 @@
+# 032-six-tab-demo-content — Tour Models tab. Sections match
+# docs/CALIBRATION-SUMMARIES.md's own "Tour Models Tab" submodel
+# headings exactly, in the same order that document lists them. All 13
+# submodels here are real, confirmed computable (data-model.md §1) — no
+# gaps on this tab. Every panel pinned to activitysim-baseline (same
+# reasoning as dashboard-2-person-household.yaml's own header comment).
+
+header:
+  tab: "Tour Models"
+  title: Tour Models
+  icon: route
+
+sections:
+  - id: mandatory-tour-frequency
+    label: "Mandatory Tour Frequency"
+    rows: [row_mandatory_tour_freq]
+  - id: mandatory-tour-scheduling
+    label: "Mandatory Tour Scheduling"
+    rows: [row_mandatory_tour_scheduling]
+  - id: joint-tour-frequency
+    label: "Joint Tour Frequency and Composition"
+    rows: [row_joint_tour_freq]
+  - id: joint-tour-participation
+    label: "Joint Tour Participation"
+    rows: [row_joint_tour_participation]
+  - id: joint-tour-destination
+    label: "Joint Tour Destination"
+    rows: [row_joint_tour_destination]
+  - id: joint-tour-scheduling
+    label: "Joint Tour Scheduling"
+    rows: [row_joint_tour_scheduling]
+  - id: non-mandatory-tour-frequency
+    label: "Non-Mandatory Tour Frequency"
+    rows: [row_non_mandatory_tour_freq]
+  - id: non-mandatory-tour-destination
+    label: "Non-Mandatory Tour Destination"
+    rows: [row_non_mandatory_tour_destination]
+  - id: non-mandatory-tour-scheduling
+    label: "Non-Mandatory Tour Scheduling"
+    rows: [row_non_mandatory_tour_scheduling]
+  - id: atwork-subtour-frequency
+    label: "At-Work Subtour Frequency"
+    rows: [row_atwork_subtour_freq]
+  - id: atwork-subtour-destination
+    label: "At-Work Subtour Destination"
+    rows: [row_atwork_subtour_destination]
+  - id: atwork-subtour-scheduling
+    label: "At-Work Subtour Scheduling"
+    rows: [row_atwork_subtour_scheduling]
+  - id: stop-frequency
+    label: "Stop Frequency"
+    rows: [row_stop_frequency]
+
+layout:
+  row_mandatory_tour_freq:
+    - type:       table
+      title:      "Mandatory Tour Frequency by Person Type"
+      metric:     mandatory_tour_freq_summary
+      scenario:   activitysim-baseline
+      sort:       { column: persons, order: desc }
+      pagination: 20
+      searchable: true
+      columns:
+        - { field: mandatory_tour_frequency, label: "Frequency" }
+        - { field: person_type,              label: "Person Type" }
+        - { field: persons,                  label: "Persons", format: ",.0f" }
+      width: 1.0
+
+  # Real, confirmed fix during live verification: mandatory_tour_scheduling
+  # groups by (primary_purpose, start, end, duration) together — even
+  # filtered to one purpose, a plotly bar keyed on `start` alone gets many
+  # thin, scattered bars (one per distinct end/duration combo sharing that
+  # start hour), never a clean single bar per hour. A table is the
+  # genuinely correct fit for this real joint distribution (FR-012) —
+  # not a chart type forced to look clean at the cost of hiding real
+  # detail.
+  row_mandatory_tour_scheduling:
+    - type:       table
+      title:      "Mandatory Tour Start/End/Duration (Work Tours)"
+      metric:     mandatory_tour_scheduling
+      scenario:   activitysim-baseline
+      filter:     { primary_purpose: work }
+      sort:       { column: tours, order: desc }
+      pagination: 20
+      columns:
+        - { field: start,    label: "Start Hour" }
+        - { field: end,      label: "End Hour" }
+        - { field: duration, label: "Duration (hrs)" }
+        - { field: tours,    label: "Tours", format: ",.0f" }
+      width: 1.0
+
+  row_joint_tour_freq:
+    - type:       table
+      title:      "Joint Tour Frequency and Composition"
+      metric:     joint_tour_freq_summary
+      scenario:   activitysim-baseline
+      sort:       { column: households, order: desc }
+      pagination: 20
+      searchable: true
+      columns:
+        - { field: joint_tour_frequency, label: "Frequency / Composition" }
+        - { field: num_hh_joint_tours,   label: "# Joint Tours" }
+        - { field: households,           label: "Households", format: ",.0f" }
+      width: 1.0
+
+  # Real participant counts — not a literal per-eligible-person binary
+  # choice table (data-model.md §1's own partial-computability caveat).
+  row_joint_tour_participation:
+    - type:       table
+      title:      "Joint Tour Participation (real participant counts)"
+      metric:     joint_tour_participation_summary
+      scenario:   activitysim-baseline
+      sort:       { column: tours, order: desc }
+      pagination: 20
+      columns:
+        - { field: primary_purpose,          label: "Purpose" }
+        - { field: number_of_participants,   label: "Participants" }
+        - { field: tours,                    label: "Tours", format: ",.0f" }
+      width: 1.0
+      description: >
+        Real participant counts per real joint tour — ActivitySim's own
+        output records the realized participant list, not a literal
+        per-eligible-person participate/not-participate binary choice.
+
+  row_joint_tour_destination:
+    - type:    observable-plot
+      title:   "Joint Tour Destination Distance"
+      metric:  joint_tour_destination_summary
+      scenario: activitysim-baseline
+      mark:    barY
+      x:       distance_bin
+      y:       tours
+      fill:    primary_purpose
+      tip:     true
+      grid:    true
+      height:  400
+      width:   1.0
+
+  row_joint_tour_scheduling:
+    - type:       table
+      title:      "Joint Tour Scheduling"
+      metric:     joint_tour_scheduling
+      scenario:   activitysim-baseline
+      sort:       { column: tours, order: desc }
+      pagination: 20
+      columns:
+        - { field: primary_purpose, label: "Purpose" }
+        - { field: start,           label: "Start Hour" }
+        - { field: end,             label: "End Hour" }
+        - { field: duration,        label: "Duration (hrs)" }
+        - { field: tours,           label: "Tours", format: ",.0f" }
+      width: 1.0
+
+  row_non_mandatory_tour_freq:
+    - type:    plotly
+      title:   "Non-Mandatory Tour Frequency by Purpose"
+      metric:  non_mandatory_tour_freq_summary
+      scenario: activitysim-baseline
+      height:  400
+      width:   1.0
+      traces:
+        - type: bar
+          x:    $metric.purpose
+          y:    $metric.tours
+      layout:
+        xaxis: { title: "Purpose" }
+        yaxis: { title: "Tours" }
+
+  row_non_mandatory_tour_destination:
+    - type:    observable-plot
+      title:   "Non-Mandatory Tour Destination Distance"
+      metric:  non_mandatory_tour_destination_summary
+      scenario: activitysim-baseline
+      mark:    barY
+      x:       distance_bin
+      y:       tours
+      fill:    primary_purpose
+      tip:     true
+      grid:    true
+      height:  400
+      width:   1.0
+
+  row_non_mandatory_tour_scheduling:
+    - type:       table
+      title:      "Non-Mandatory Tour Scheduling"
+      metric:     non_mandatory_tour_scheduling
+      scenario:   activitysim-baseline
+      sort:       { column: tours, order: desc }
+      pagination: 20
+      columns:
+        - { field: primary_purpose, label: "Purpose" }
+        - { field: start,           label: "Start Hour" }
+        - { field: end,             label: "End Hour" }
+        - { field: duration,        label: "Duration (hrs)" }
+        - { field: tours,           label: "Tours", format: ",.0f" }
+      width: 1.0
+
+  row_atwork_subtour_freq:
+    - type:       table
+      title:      "At-Work Subtour Frequency (parent work tours)"
+      metric:     atwork_subtour_freq_summary
+      scenario:   activitysim-baseline
+      sort:       { column: parent_work_tours, order: desc }
+      pagination: 20
+      columns:
+        - { field: atwork_subtour_frequency, label: "Subtour Frequency" }
+        - { field: parent_work_tours,        label: "Parent Work Tours", format: ",.0f" }
+      width: 1.0
+
+  row_atwork_subtour_destination:
+    - type:       table
+      title:      "At-Work Subtour Destination Distance"
+      metric:     atwork_subtour_destination_summary
+      scenario:   activitysim-baseline
+      sort:       { column: tours, order: desc }
+      pagination: 20
+      columns:
+        - { field: primary_purpose,     label: "Purpose" }
+        - { field: distance_bin,        label: "Distance (mi)" }
+        - { field: avg_distance_miles,  label: "Avg. Distance (mi)", format: ",.2f" }
+        - { field: tours,               label: "Tours", format: ",.0f" }
+      width: 1.0
+
+  row_atwork_subtour_scheduling:
+    - type:       table
+      title:      "At-Work Subtour Scheduling"
+      metric:     atwork_subtour_scheduling
+      scenario:   activitysim-baseline
+      sort:       { column: tours, order: desc }
+      pagination: 20
+      columns:
+        - { field: primary_purpose, label: "Purpose" }
+        - { field: start,           label: "Start Hour" }
+        - { field: end,             label: "End Hour" }
+        - { field: tours,           label: "Tours", format: ",.0f" }
+      width: 1.0
+
+  row_stop_frequency:
+    - type:       table
+      title:      "Stop Frequency by Tour Purpose"
+      metric:     stop_frequency_summary
+      scenario:   activitysim-baseline
+      sort:       { column: tours, order: desc }
+      pagination: 20
+      searchable: true
+      columns:
+        - { field: primary_purpose,  label: "Tour Purpose" }
+        - { field: stop_frequency,   label: "Stop Frequency (out_in)" }
+        - { field: tours,            label: "Tours", format: ",.0f" }
+      width: 1.0

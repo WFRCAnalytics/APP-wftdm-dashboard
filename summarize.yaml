@@ -23,6 +23,11 @@ sources:
   tours:      final_tours.csv
   trips:      final_trips.csv
   land_use:   final_land_use.csv
+  # 032-six-tab-demo-content: two new real sources, confirmed present in
+  # every real scenario's output/ directory (research.md §2) — needed for
+  # Joint Tour Participation and Accessibility respectively.
+  joint_tour_participants: final_joint_tour_participants.csv
+  accessibility:           final_accessibility.csv
 
 # ── Mappings ─────────────────────────────────────────────────────────────
 # Real ActivitySim mode names (confirmed against configs/tour_mode_choice.csv
@@ -52,6 +57,23 @@ mappings:
     TNC_SINGLE:     Ride Hail
     TNC_SHARED:     Ride Hail
 
+  # 032-six-tab-demo-content: real, standard ActivitySim person-type codes
+  # (persons.ptype, confirmed real values 1-8 in every scenario's real
+  # output — research.md §2). 1-7 match docs/CALIBRATION-SUMMARIES.md's
+  # own already-documented "Person type" segmentation list exactly; 8
+  # (pre-school child) was found missing from that list during this
+  # feature's own audit and is added to both the doc (see
+  # contracts/calibration-summaries-corrections.md) and here.
+  person_type:
+    1: Full-time worker
+    2: Part-time worker
+    3: University student
+    4: Non-worker
+    5: Retired
+    6: Driving-age student
+    7: Non-driving student
+    8: Pre-school child
+
 # ── Bins ─────────────────────────────────────────────────────────────────
 # time_of_day_period buckets `depart` (an integer hour-of-day column on
 # trips) into ActivitySim's own real EA/AM/MD/PM/EV periods, per this
@@ -66,6 +88,31 @@ bins:
     type:   manual_breaks
     breaks: [0, 5, 9, 14, 18, 24]
     labels: [EA, AM, MD, PM, EV]
+
+  # 032-six-tab-demo-content: real household income (households.income),
+  # boundaries matching docs/CALIBRATION-SUMMARIES.md's own already-
+  # documented "Income group" segmentation definition exactly.
+  income_group:
+    column: income
+    type:   manual_breaks
+    breaks: [0, 25000, 50000, 75000, 100000, 99999999]
+    labels: [Very Low, Low, Medium, High, Very High]
+
+  # 032-six-tab-demo-content: shared half-mile distance bucketing for
+  # every distance-based summary in this feature (School/Workplace/Joint/
+  # Non-Mandatory/At-Work Subtour/Trip Destination) — matching
+  # docs/CALIBRATION-SUMMARIES.md's own "Distance bin" segmentation
+  # definition (0.5-mile intervals, lower = 0). Every metric using this
+  # bin aliases its own real distance value (whether a precomputed real
+  # column like distance_to_work, or a computed real haversine distance
+  # between two real zone centroids — contracts/summarize-metrics.md) as
+  # `distance_miles` in an inner SELECT/CTE, specifically so this ONE bin
+  # definition can be reused everywhere rather than one per metric.
+  distance_bin_half_mile:
+    column:   distance_miles
+    type:     spaced_intervals
+    interval: 0.5
+    lower:    0
 
 # ── SQL Fragments ────────────────────────────────────────────────────────
 
@@ -122,6 +169,31 @@ sql_fragments:
       (25, 37.795623, -122.406517)
     )
 
+# 032-six-tab-demo-content (research.md §4, contracts/summarize-
+# metrics.md): the shared real-distance formula every distance-dependent
+# metric below reuses verbatim — a plain haversine expression over two
+# real zone_centroids references (the same c1/c2 alias convention
+# od_flows below already established), in real miles. This is a
+# straight-line distance between two real zone centroids, NOT a modeled
+# network/path distance (this pipeline has no traffic-assignment step —
+# research.md §2) — every panel that displays a value computed this way
+# says so explicitly in its own description, per research.md §4:
+#
+#   3959 * acos(
+#     LEAST(1.0, GREATEST(-1.0,
+#       cos(radians(c1.lat)) * cos(radians(c2.lat)) * cos(radians(c2.lon) - radians(c1.lon))
+#       + sin(radians(c1.lat)) * sin(radians(c2.lat))
+#     ))
+#   ) AS distance_miles
+#
+# The LEAST/GREATEST clamp is load-bearing, not defensive style: found via
+# a real, reproducible failure running this formula against real data —
+# a same-zone trip (origin == destination) makes the acos() argument
+# evaluate to a floating-point value fractionally ABOVE 1.0 (e.g.
+# 1.0000000000000002), and DuckDB's acos() throws ("ACOS is undefined
+# outside [-1,1]") rather than silently clamping, unlike some other SQL
+# engines' equivalent functions.
+
 # ── Metrics ──────────────────────────────────────────────────────────────
 # Five metrics, each → one Parquet file in summary/{name}.parquet.
 # See data-model.md for the full column-level contract each one satisfies.
@@ -139,7 +211,23 @@ metrics:
         (SELECT COUNT(DISTINCT tour_id)      FROM tours)      AS total_tours,
         (SELECT AVG(mode_choice_logsum)      FROM trips)      AS avg_trip_mode_choice_logsum,
         (SELECT COUNT(DISTINCT trip_id) FROM trips) * 1.0
-          / (SELECT COUNT(DISTINCT household_id) FROM households) AS trips_per_household
+          / (SELECT COUNT(DISTINCT household_id) FROM households) AS trips_per_household,
+        -- 032-six-tab-demo-content: real total VMT — a straight-line
+        -- distance proxy summed across every real trip (research.md §4/
+        -- contracts/summarize-metrics.md's shared haversine formula;
+        -- this pipeline has no network-assignment step, so no real
+        -- modeled-path VMT exists to report instead).
+        (SELECT SUM(d.distance_miles) FROM (
+          SELECT 3959 * acos(
+            LEAST(1.0, GREATEST(-1.0,
+              cos(radians(c1.lat)) * cos(radians(c2.lat)) * cos(radians(c2.lon) - radians(c1.lon))
+              + sin(radians(c1.lat)) * sin(radians(c2.lat))
+            ))
+          ) AS distance_miles
+          FROM trips t
+          JOIN $sql.zone_centroids AS c1(zone_id, lat, lon) ON t.origin      = c1.zone_id
+          JOIN $sql.zone_centroids AS c2(zone_id, lat, lon) ON t.destination = c2.zone_id
+        ) d) AS total_vmt
 
   # FR-002(a): trips/tours by destination zone — makes the density
   # variant's real TAZ 1 destination-choice pull visible (User Story 1),
@@ -256,3 +344,518 @@ metrics:
       JOIN $sql.zone_centroids AS c1(zone_id, lat, lon) ON t.origin      = c1.zone_id
       JOIN $sql.zone_centroids AS c2(zone_id, lat, lon) ON t.destination = c2.zone_id
       GROUP BY t.origin, t.destination, c1.lat, c1.lon, c2.lat, c2.lon
+
+  # ── 032-six-tab-demo-content ─────────────────────────────────────────
+  # 27 new metrics, one per genuinely computable submodel summary from
+  # the real audit in specs/032-six-tab-demo-content/data-model.md §1.
+  # Every real gap found by that audit (Work from Home, Telecommute
+  # Frequency, Transit Pass Subsidy, Transit Pass Ownership, Screenline
+  # Volumes vs Observed AADT, VMT by Facility Type) has NO metric here —
+  # per FR-009, reported in docs/CALIBRATION-SUMMARIES.md instead of
+  # built. See contracts/summarize-metrics.md for the shared shape rules.
+
+  # Summary tab — real average trip distance by purpose.
+  - name: trip_distance_by_purpose
+    description: Real average straight-line trip distance (miles) by primary purpose
+    sql: |
+      WITH d AS (
+        SELECT
+          t.primary_purpose,
+          3959 * acos(
+            LEAST(1.0, GREATEST(-1.0,
+              cos(radians(c1.lat)) * cos(radians(c2.lat)) * cos(radians(c2.lon) - radians(c1.lon))
+              + sin(radians(c1.lat)) * sin(radians(c2.lat))
+            ))
+          ) AS distance_miles
+        FROM trips t
+        JOIN $sql.zone_centroids AS c1(zone_id, lat, lon) ON t.origin      = c1.zone_id
+        JOIN $sql.zone_centroids AS c2(zone_id, lat, lon) ON t.destination = c2.zone_id
+      )
+      SELECT
+        primary_purpose,
+        AVG(distance_miles) AS avg_distance_miles,
+        COUNT(*) AS trips
+      FROM d
+      GROUP BY primary_purpose
+
+  # Person/Household Models tab — Auto Ownership ★
+  - name: auto_ownership_summary
+    description: Real household auto ownership by household size, income group, workers, and home district
+    sql: |
+      SELECT
+        h.auto_ownership,
+        h.hhsize,
+        $bins.income_group AS income_group,
+        h.num_workers,
+        lu.DISTRICT AS home_district,
+        COUNT(*) AS households
+      FROM households h
+      JOIN land_use lu ON h.home_zone_id = lu.zone_id
+      GROUP BY h.auto_ownership, h.hhsize, income_group, h.num_workers, lu.DISTRICT
+
+  # Person/Household Models tab — School Location
+  - name: school_location_summary
+    description: Real school-location distance distribution by school segment
+    sql: |
+      SELECT
+        school_segment,
+        $bins.distance_bin_half_mile AS distance_bin,
+        AVG(distance_miles) AS avg_distance_miles,
+        COUNT(*) AS students
+      FROM (
+        SELECT school_segment, distance_to_school AS distance_miles
+        FROM persons
+        WHERE is_student AND school_zone_id IS NOT NULL
+      ) s
+      GROUP BY school_segment, distance_bin
+
+  # Person/Household Models tab — Workplace Location ★
+  - name: workplace_location_summary
+    description: Real workplace-location distance distribution
+    sql: |
+      SELECT
+        $bins.distance_bin_half_mile AS distance_bin,
+        AVG(distance_miles) AS avg_distance_miles,
+        COUNT(*) AS workers
+      FROM (
+        SELECT distance_to_work AS distance_miles
+        FROM persons
+        WHERE is_worker AND workplace_zone_id IS NOT NULL
+      ) w
+      GROUP BY distance_bin
+
+  # Person/Household Models tab (+ Network tab) — Workplace Location ★
+  # county-to-county / district-to-district home-workplace flow.
+  - name: workplace_od_flows
+    description: Real home-district to workplace-district worker flows
+    sql: |
+      SELECT
+        lu_home.DISTRICT AS home_district,
+        lu_work.DISTRICT AS work_district,
+        COUNT(*) AS workers
+      FROM persons p
+      JOIN households h ON p.household_id = h.household_id
+      JOIN land_use lu_home ON h.home_zone_id     = lu_home.zone_id
+      JOIN land_use lu_work ON p.workplace_zone_id = lu_work.zone_id
+      WHERE p.is_worker AND p.workplace_zone_id IS NOT NULL
+      GROUP BY lu_home.DISTRICT, lu_work.DISTRICT
+
+  # Person/Household Models tab — CDAP
+  - name: cdap_summary
+    description: Real CDAP activity pattern by person type, auto sufficiency, and household size
+    sql: |
+      SELECT
+        p.cdap_activity,
+        CASE p.ptype $mappings.person_type END AS person_type,
+        CASE
+          WHEN h.auto_ownership = 0 THEN 'Zero Autos'
+          WHEN h.auto_ownership < h.num_workers THEN 'Autos < Workers'
+          ELSE 'Autos >= Workers'
+        END AS auto_sufficiency,
+        h.hhsize,
+        COUNT(*) AS persons
+      FROM persons p
+      JOIN households h ON p.household_id = h.household_id
+      GROUP BY p.cdap_activity, person_type, auto_sufficiency, h.hhsize
+
+  # Person/Household Models tab — open-ended exploration dataset
+  # (graphic-walker, FR-013/US3). Deliberately ungrouped — one real row
+  # per person (contracts/summarize-metrics.md's own singular exception
+  # to the "every metric is grouped" rule).
+  - name: person_household_profile
+    description: Real one-row-per-person profile for open-ended exploration
+    sql: |
+      SELECT
+        p.person_id,
+        h.household_id,
+        h.auto_ownership,
+        h.hhsize,
+        $bins.income_group AS income_group,
+        CASE p.ptype $mappings.person_type END AS person_type,
+        p.sex,
+        p.age,
+        lu.DISTRICT AS home_district,
+        p.workplace_zone_id,
+        p.school_zone_id,
+        p.cdap_activity,
+        p.mandatory_tour_frequency,
+        h.num_workers
+      FROM persons p
+      JOIN households h ON p.household_id = h.household_id
+      JOIN land_use lu ON h.home_zone_id = lu.zone_id
+
+  # Tour Models tab — Mandatory Tour Frequency
+  - name: mandatory_tour_freq_summary
+    description: Real mandatory tour frequency by person type
+    sql: |
+      SELECT
+        p.mandatory_tour_frequency,
+        CASE p.ptype $mappings.person_type END AS person_type,
+        COUNT(*) AS persons
+      FROM persons p
+      WHERE p.mandatory_tour_frequency IS NOT NULL AND p.mandatory_tour_frequency != ''
+      GROUP BY p.mandatory_tour_frequency, person_type
+
+  # Tour Models tab — Mandatory Tour Scheduling
+  - name: mandatory_tour_scheduling
+    description: Real mandatory tour start/end/duration by purpose
+    sql: |
+      SELECT
+        primary_purpose,
+        start,
+        "end",
+        duration,
+        COUNT(*) AS tours
+      FROM tours
+      WHERE tour_category = 'mandatory'
+      GROUP BY primary_purpose, start, "end", duration
+
+  # Tour Models tab — Joint Tour Frequency and Composition
+  - name: joint_tour_freq_summary
+    description: Real joint tour frequency/composition by household
+    sql: |
+      SELECT
+        joint_tour_frequency,
+        num_hh_joint_tours,
+        COUNT(*) AS households
+      FROM households
+      WHERE joint_tour_frequency IS NOT NULL AND joint_tour_frequency != ''
+      GROUP BY joint_tour_frequency, num_hh_joint_tours
+
+  # Tour Models tab — Joint Tour Participation. Real participant counts,
+  # not a literal per-eligible-person binary choice (data-model.md §1's
+  # own documented partial-computability caveat).
+  - name: joint_tour_participation_summary
+    description: Real joint tour participant counts by purpose (participant-count level, not a per-eligible-person binary)
+    sql: |
+      SELECT
+        t.primary_purpose,
+        t.number_of_participants,
+        COUNT(DISTINCT t.tour_id) AS tours
+      FROM tours t
+      WHERE t.tour_category = 'joint'
+      GROUP BY t.primary_purpose, t.number_of_participants
+
+  # Tour Models tab — Joint Tour Destination
+  - name: joint_tour_destination_summary
+    description: Real joint tour destination distance distribution by purpose
+    sql: |
+      WITH d AS (
+        SELECT
+          t.primary_purpose,
+          3959 * acos(
+            LEAST(1.0, GREATEST(-1.0,
+              cos(radians(c1.lat)) * cos(radians(c2.lat)) * cos(radians(c2.lon) - radians(c1.lon))
+              + sin(radians(c1.lat)) * sin(radians(c2.lat))
+            ))
+          ) AS distance_miles
+        FROM tours t
+        JOIN $sql.zone_centroids AS c1(zone_id, lat, lon) ON t.origin      = c1.zone_id
+        JOIN $sql.zone_centroids AS c2(zone_id, lat, lon) ON t.destination = c2.zone_id
+        WHERE t.tour_category = 'joint'
+      )
+      SELECT
+        primary_purpose,
+        $bins.distance_bin_half_mile AS distance_bin,
+        AVG(distance_miles) AS avg_distance_miles,
+        COUNT(*) AS tours
+      FROM d
+      GROUP BY primary_purpose, distance_bin
+
+  # Tour Models tab — Joint Tour Scheduling
+  - name: joint_tour_scheduling
+    description: Real joint tour start/end/duration by purpose
+    sql: |
+      SELECT
+        primary_purpose,
+        start,
+        "end",
+        duration,
+        COUNT(*) AS tours
+      FROM tours
+      WHERE tour_category = 'joint'
+      GROUP BY primary_purpose, start, "end", duration
+
+  # Tour Models tab — Non-Mandatory Tour Frequency. Real per-purpose tour
+  # counts already tallied onto each person by ActivitySim itself
+  # (num_escort_tours etc.) — unpivoted via UNION ALL.
+  - name: non_mandatory_tour_freq_summary
+    description: Real non-mandatory tour frequency by purpose
+    sql: |
+      SELECT 'escort' AS purpose, SUM(num_escort_tours) AS tours FROM persons
+      UNION ALL SELECT 'eat out', SUM(num_eatout_tours) FROM persons
+      UNION ALL SELECT 'shopping', SUM(num_shop_tours) FROM persons
+      UNION ALL SELECT 'maintenance', SUM(num_maint_tours) FROM persons
+      UNION ALL SELECT 'discretionary', SUM(num_discr_tours) FROM persons
+      UNION ALL SELECT 'social', SUM(num_social_tours) FROM persons
+
+  # Tour Models tab — Non-Mandatory Tour Destination
+  - name: non_mandatory_tour_destination_summary
+    description: Real non-mandatory tour destination distance distribution by purpose
+    sql: |
+      WITH d AS (
+        SELECT
+          t.primary_purpose,
+          3959 * acos(
+            LEAST(1.0, GREATEST(-1.0,
+              cos(radians(c1.lat)) * cos(radians(c2.lat)) * cos(radians(c2.lon) - radians(c1.lon))
+              + sin(radians(c1.lat)) * sin(radians(c2.lat))
+            ))
+          ) AS distance_miles
+        FROM tours t
+        JOIN $sql.zone_centroids AS c1(zone_id, lat, lon) ON t.origin      = c1.zone_id
+        JOIN $sql.zone_centroids AS c2(zone_id, lat, lon) ON t.destination = c2.zone_id
+        WHERE t.tour_category = 'non_mandatory'
+      )
+      SELECT
+        primary_purpose,
+        $bins.distance_bin_half_mile AS distance_bin,
+        AVG(distance_miles) AS avg_distance_miles,
+        COUNT(*) AS tours
+      FROM d
+      GROUP BY primary_purpose, distance_bin
+
+  # Tour Models tab — Non-Mandatory Tour Scheduling
+  - name: non_mandatory_tour_scheduling
+    description: Real non-mandatory tour start/end/duration by purpose
+    sql: |
+      SELECT
+        primary_purpose,
+        start,
+        "end",
+        duration,
+        COUNT(*) AS tours
+      FROM tours
+      WHERE tour_category = 'non_mandatory'
+      GROUP BY primary_purpose, start, "end", duration
+
+  # Tour Models tab — At-Work Subtour Frequency. Real column lives on the
+  # real PARENT work tour, not the subtour itself.
+  - name: atwork_subtour_freq_summary
+    description: Real at-work subtour frequency, on parent work tours
+    sql: |
+      SELECT
+        atwork_subtour_frequency,
+        COUNT(*) AS parent_work_tours
+      FROM tours
+      WHERE primary_purpose = 'work'
+        AND tour_category = 'mandatory'
+        AND atwork_subtour_frequency IS NOT NULL
+        AND atwork_subtour_frequency != ''
+      GROUP BY atwork_subtour_frequency
+
+  # Tour Models tab — At-Work Subtour Destination
+  - name: atwork_subtour_destination_summary
+    description: Real at-work subtour destination distance distribution by purpose
+    sql: |
+      WITH d AS (
+        SELECT
+          t.primary_purpose,
+          3959 * acos(
+            LEAST(1.0, GREATEST(-1.0,
+              cos(radians(c1.lat)) * cos(radians(c2.lat)) * cos(radians(c2.lon) - radians(c1.lon))
+              + sin(radians(c1.lat)) * sin(radians(c2.lat))
+            ))
+          ) AS distance_miles
+        FROM tours t
+        JOIN $sql.zone_centroids AS c1(zone_id, lat, lon) ON t.origin      = c1.zone_id
+        JOIN $sql.zone_centroids AS c2(zone_id, lat, lon) ON t.destination = c2.zone_id
+        WHERE t.tour_category = 'atwork'
+      )
+      SELECT
+        primary_purpose,
+        $bins.distance_bin_half_mile AS distance_bin,
+        AVG(distance_miles) AS avg_distance_miles,
+        COUNT(*) AS tours
+      FROM d
+      GROUP BY primary_purpose, distance_bin
+
+  # Tour Models tab — At-Work Subtour Scheduling
+  - name: atwork_subtour_scheduling
+    description: Real at-work subtour start/end by purpose
+    sql: |
+      SELECT
+        primary_purpose,
+        start,
+        "end",
+        COUNT(*) AS tours
+      FROM tours
+      WHERE tour_category = 'atwork'
+      GROUP BY primary_purpose, start, "end"
+
+  # Tour Models tab — Stop Frequency
+  - name: stop_frequency_summary
+    description: Real outbound/inbound stop frequency codes by tour purpose
+    sql: |
+      SELECT
+        primary_purpose,
+        stop_frequency,
+        COUNT(*) AS tours
+      FROM tours
+      GROUP BY primary_purpose, stop_frequency
+
+  # Mode Choice tab — Tour Mode Choice ★
+  - name: tour_mode_share_summary
+    description: Real tour mode share by purpose, auto sufficiency, person type, sex, income group
+    sql: |
+      SELECT
+        t.primary_purpose,
+        t.tour_mode,
+        CASE
+          WHEN h.auto_ownership = 0 THEN 'Zero Autos'
+          WHEN h.auto_ownership < h.num_workers THEN 'Autos < Workers'
+          ELSE 'Autos >= Workers'
+        END AS auto_sufficiency,
+        CASE p.ptype $mappings.person_type END AS person_type,
+        p.sex,
+        $bins.income_group AS income_group,
+        COUNT(*) AS tours
+      FROM tours t
+      JOIN households h ON t.household_id = h.household_id
+      JOIN persons p ON t.person_id = p.person_id
+      GROUP BY t.primary_purpose, t.tour_mode, auto_sufficiency, person_type, p.sex, income_group
+
+  # Mode Choice tab — At-Work Subtour Mode Choice
+  - name: atwork_subtour_mode_summary
+    description: Real at-work subtour mode share by purpose
+    sql: |
+      SELECT
+        primary_purpose,
+        tour_mode,
+        COUNT(*) AS tours
+      FROM tours
+      WHERE tour_category = 'atwork'
+      GROUP BY primary_purpose, tour_mode
+
+  # Trip Models tab — Trip Destination ★
+  - name: trip_destination_summary
+    description: Real trip destination distance distribution by purpose
+    sql: |
+      WITH d AS (
+        SELECT
+          t.primary_purpose,
+          3959 * acos(
+            LEAST(1.0, GREATEST(-1.0,
+              cos(radians(c1.lat)) * cos(radians(c2.lat)) * cos(radians(c2.lon) - radians(c1.lon))
+              + sin(radians(c1.lat)) * sin(radians(c2.lat))
+            ))
+          ) AS distance_miles
+        FROM trips t
+        JOIN $sql.zone_centroids AS c1(zone_id, lat, lon) ON t.origin      = c1.zone_id
+        JOIN $sql.zone_centroids AS c2(zone_id, lat, lon) ON t.destination = c2.zone_id
+      )
+      SELECT
+        primary_purpose,
+        $bins.distance_bin_half_mile AS distance_bin,
+        AVG(distance_miles) AS avg_distance_miles,
+        COUNT(*) AS trips
+      FROM d
+      GROUP BY primary_purpose, distance_bin
+
+  # Trip Models tab — Trip Scheduling ★ (hourly + aggregate period, both
+  # in one table).
+  - name: trip_scheduling
+    description: Real trip departure hour and time-of-day period by purpose
+    sql: |
+      SELECT
+        primary_purpose,
+        depart AS depart_hour,
+        $bins.time_of_day_period AS time_of_day_period,
+        COUNT(*) AS trips
+      FROM trips
+      GROUP BY primary_purpose, depart_hour, time_of_day_period
+
+  # Trip Models tab — Zone Trip Ends by Mode (spatial rollup, not a
+  # discrete submodel — data-model.md §1).
+  - name: trip_ends_by_zone_mode
+    description: Real trip production/attraction ends by zone, district, and grouped mode
+    sql: |
+      WITH ends AS (
+        SELECT origin      AS zone_id, 'production' AS trip_end, trip_mode FROM trips
+        UNION ALL
+        SELECT destination AS zone_id, 'attraction' AS trip_end, trip_mode FROM trips
+      )
+      SELECT
+        e.zone_id,
+        lu.DISTRICT AS district,
+        e.trip_end,
+        CASE e.trip_mode $mappings.major_trip_mode END AS major_trip_mode,
+        COUNT(*) AS trips
+      FROM ends e
+      JOIN land_use lu ON e.zone_id = lu.zone_id
+      GROUP BY e.zone_id, lu.DISTRICT, e.trip_end, major_trip_mode
+
+  # Network tab — Land Use / Socioeconomics (input data, not modeled).
+  - name: land_use_summary
+    description: Real zone-level land use plus household aggregates (income, auto ownership)
+    sql: |
+      SELECT
+        lu.zone_id,
+        lu.DISTRICT,
+        lu.SD,
+        lu.TOTHH,
+        lu.TOTPOP,
+        lu.TOTEMP,
+        lu.RETEMPN,
+        lu.FPSEMPN,
+        lu.HEREMPN,
+        lu.OTHEMPN,
+        lu.AGREMPN,
+        lu.MWTEMPN,
+        lu.area_type,
+        lu.HSENROLL,
+        lu.COLLFTE,
+        lu.COLLPTE,
+        h_agg.avg_income,
+        h_agg.avg_auto_ownership,
+        h_agg.households
+      FROM land_use lu
+      LEFT JOIN (
+        SELECT
+          home_zone_id,
+          AVG(income) AS avg_income,
+          AVG(auto_ownership) AS avg_auto_ownership,
+          COUNT(*) AS households
+        FROM households
+        GROUP BY home_zone_id
+      ) h_agg ON lu.zone_id = h_agg.home_zone_id
+
+  # Network tab — Accessibility (real ActivitySim accessibility component
+  # output, passed through unmodified).
+  - name: accessibility_summary
+    description: Real zone-level auto/transit accessibility to jobs and households
+    sql: |
+      SELECT
+        zone_id,
+        auPkRetail, auPkTotal, auOpRetail, auOpTotal,
+        trPkRetail, trPkTotal, trOpRetail, trOpTotal,
+        nmRetail, nmTotal
+      FROM accessibility
+
+  # Network tab — VMT by Home TAZ (real straight-line distance proxy,
+  # research.md §4 — no network-assignment step exists in this pipeline).
+  - name: vmt_by_home_taz
+    description: Real total trip distance (straight-line proxy) summed by home zone/district
+    sql: |
+      WITH trip_d AS (
+        SELECT
+          t.household_id,
+          3959 * acos(
+            LEAST(1.0, GREATEST(-1.0,
+              cos(radians(c1.lat)) * cos(radians(c2.lat)) * cos(radians(c2.lon) - radians(c1.lon))
+              + sin(radians(c1.lat)) * sin(radians(c2.lat))
+            ))
+          ) AS distance_miles
+        FROM trips t
+        JOIN $sql.zone_centroids AS c1(zone_id, lat, lon) ON t.origin      = c1.zone_id
+        JOIN $sql.zone_centroids AS c2(zone_id, lat, lon) ON t.destination = c2.zone_id
+      )
+      SELECT
+        h.home_zone_id,
+        lu.DISTRICT AS home_district,
+        SUM(td.distance_miles) AS total_vmt,
+        COUNT(*) AS trips
+      FROM trip_d td
+      JOIN households h ON td.household_id = h.household_id
+      JOIN land_use lu ON h.home_zone_id = lu.zone_id
+      GROUP BY h.home_zone_id, lu.DISTRICT

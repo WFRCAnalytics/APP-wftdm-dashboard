@@ -1,0 +1,99 @@
+# 032-six-tab-demo-content — Summary tab (Level 1 / landing page).
+# Replaces the old dashboard-1-overview.yaml entirely (FR-001 — content
+# not preserved). Real KPIs + charts from docs/CALIBRATION-SUMMARIES.md's
+# own "Level 1 — High-Level Summary" table. No sections: this tab is a
+# single flat KPI + chart page, matching this project's own established
+# Summary-tab convention (CLAUDE.md's Navigation model).
+
+header:
+  tab: Summary
+  title: Summary
+
+layout:
+  # scenario: activitysim-baseline pinned explicitly on every valuebox —
+  # a real, confirmed bug found via live browser verification: with no
+  # scenario/scenarios field, these panels default to a $scenario union
+  # across every ACTIVE scenario, including "observed" (always active,
+  # pinned: true) — but no public/observed/ content exists in this real
+  # checkout (it's gitignored, fixture-populated-only per CLAUDE.md), so
+  # "observed" registers with no matching summary_kpis view and the union
+  # throws a real Catalog Error. Same root cause, same fix, already
+  # documented once in this repo's own history
+  # (dashboard-5-explore.yaml's own header comment) — pinning to one real
+  # scenario avoids this class of mismatch entirely, matching every other
+  # real demo panel's own established convention.
+  row_kpis:
+    - type:   valuebox
+      title:  Households
+      metric: summary_kpis
+      scenario: activitysim-baseline
+      column: total_households
+      format: "{:,.0f}"
+      icon:   home
+      width:  0.2
+
+    - type:   valuebox
+      title:  Persons
+      metric: summary_kpis
+      scenario: activitysim-baseline
+      column: total_persons
+      format: "{:,.0f}"
+      icon:   users
+      width:  0.2
+
+    - type:   valuebox
+      title:  Tours
+      metric: summary_kpis
+      scenario: activitysim-baseline
+      column: total_tours
+      format: "{:,.0f}"
+      icon:   route
+      width:  0.2
+
+    - type:   valuebox
+      title:  Trips
+      metric: summary_kpis
+      scenario: activitysim-baseline
+      column: total_trips
+      format: "{:,.0f}"
+      icon:   map-pin
+      width:  0.2
+
+    - type:   valuebox
+      title:  Total VMT
+      metric: summary_kpis
+      scenario: activitysim-baseline
+      column: total_vmt
+      format: "{:,.0f} mi"
+      icon:   gauge
+      width:  0.2
+
+  # Real total trips by mode (recharts) and real average trip distance by
+  # purpose (plotly) — both ★ Level-1 summaries, all three real scenarios.
+  row_charts:
+    - type:       recharts
+      title:      Total Trips by Mode
+      metric:     trip_mode_share
+      chart_type: bar
+      x:          major_trip_mode
+      y:          share
+      series:     scenario
+      scenarios: [activitysim-baseline, activitysim-density-variant, activitysim-transit-variant]
+      height:     400
+      width:      0.5
+
+    - type:    plotly
+      title:   Average Trip Distance by Purpose
+      metric:  trip_distance_by_purpose
+      height:  400
+      width:   0.5
+      scenarios: [activitysim-baseline, activitysim-density-variant, activitysim-transit-variant]
+      traces:
+        - type: bar
+          x:    $metric.primary_purpose
+          y:    $metric.avg_distance_miles
+          name: $scenario
+      layout:
+        xaxis: { title: "Purpose" }
+        yaxis: { title: "Average Distance (straight-line miles)" }
+        showlegend: true

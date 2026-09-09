@@ -1,0 +1,173 @@
+# 032-six-tab-demo-content — Person/Household Models tab. Sections match
+# docs/CALIBRATION-SUMMARIES.md's own "Person / Household Models Tab"
+# submodel headings exactly (contracts/dashboard-tab-structure.md), in
+# the same order that document lists them. Four real, confirmed gaps
+# (Work from Home★, Transit Pass Subsidy, Transit Pass Ownership,
+# Telecommute Frequency★) each get their own section with a real
+# markdown panel stating the specific reason — data-model.md §1, FR-009.
+#
+# Every panel here is pinned to a single real scenario
+# (activitysim-baseline) rather than comparing all three — this tab
+# demonstrates real data AVAILABILITY and panel-type breadth across the
+# full submodel list, not the two headline causal stories (those already
+# have their own real, multi-scenario comparison panels on the Summary/
+# Mode Choice/Network tabs, unaffected by this choice).
+
+header:
+  tab: "Person/Household Models"
+  title: Person / Household Models
+  icon: users
+
+sections:
+  - id: auto-ownership
+    label: "Auto Ownership"
+    rows: [row_auto_ownership]
+  - id: work-from-home
+    label: "Work from Home"
+    rows: [row_work_from_home_gap]
+  - id: school-location
+    label: "School Location"
+    rows: [row_school_location]
+  - id: workplace-location
+    label: "Workplace Location"
+    rows: [row_workplace_location]
+  - id: transit-pass-subsidy
+    label: "Transit Pass Subsidy"
+    rows: [row_transit_pass_subsidy_gap]
+  - id: transit-pass-ownership
+    label: "Transit Pass Ownership"
+    rows: [row_transit_pass_ownership_gap]
+  - id: telecommute-frequency
+    label: "Telecommute Frequency"
+    rows: [row_telecommute_gap]
+  - id: cdap
+    label: "CDAP"
+    rows: [row_cdap]
+  - id: explore
+    label: "Explore Person/Household Data"
+    rows: [row_explore]
+
+layout:
+  row_auto_ownership:
+    - type:       table
+      title:      "Auto Ownership by Household Segment"
+      metric:     auto_ownership_summary
+      scenario:   activitysim-baseline
+      sort:       { column: households, order: desc }
+      pagination: 20
+      searchable: true
+      columns:
+        - { field: auto_ownership, label: "Autos Owned" }
+        - { field: hhsize,         label: "HH Size" }
+        - { field: income_group,   label: "Income Group" }
+        - { field: num_workers,    label: "Workers" }
+        - { field: home_district,  label: "Home District" }
+        - { field: households,     label: "Households", format: ",.0f" }
+      width: 1.0
+
+  row_work_from_home_gap:
+    - type:  markdown
+      title: "Work from Home — not available in this demo"
+      width: 1.0
+      content: |
+        ActivitySim's `work_from_home` component is not enabled in this
+        project's real `prototype_mtc` configuration — it's absent from
+        `configs/settings.yaml`'s `models:` list, so no real data exists
+        for this submodel. See `docs/CALIBRATION-SUMMARIES.md`.
+
+  row_school_location:
+    - type:    observable-plot
+      title:   "School Location Distance Distribution"
+      metric:  school_location_summary
+      scenario: activitysim-baseline
+      mark:    barY
+      x:       distance_bin
+      y:       students
+      fill:    school_segment
+      tip:     true
+      grid:    true
+      height:  400
+      width:   1.0
+
+  row_workplace_location:
+    - type:    observable-plot
+      title:   "Workplace Location Distance Distribution"
+      metric:  workplace_location_summary
+      scenario: activitysim-baseline
+      mark:    barY
+      x:       distance_bin
+      y:       workers
+      tip:     true
+      grid:    true
+      height:  400
+      width:   0.5
+
+    - type:       table
+      title:      "Home-Workplace District Flows"
+      metric:     workplace_od_flows
+      scenario:   activitysim-baseline
+      sort:       { column: workers, order: desc }
+      pagination: 15
+      searchable: true
+      columns:
+        - { field: home_district, label: "Home District" }
+        - { field: work_district, label: "Workplace District" }
+        - { field: workers,       label: "Workers", format: ",.0f" }
+      width: 0.5
+
+  row_transit_pass_subsidy_gap:
+    - type:  markdown
+      title: "Transit Pass Subsidy — not available in this demo"
+      width: 1.0
+      content: |
+        ActivitySim's `transit_pass_subsidy` component is not enabled in
+        this project's real `prototype_mtc` configuration — it's absent
+        from `configs/settings.yaml`'s `models:` list, so no real data
+        exists for this submodel. See `docs/CALIBRATION-SUMMARIES.md`.
+
+  row_transit_pass_ownership_gap:
+    - type:  markdown
+      title: "Transit Pass Ownership — not available in this demo"
+      width: 1.0
+      content: |
+        ActivitySim's `transit_pass_ownership` component is not enabled
+        in this project's real `prototype_mtc` configuration — it's
+        absent from `configs/settings.yaml`'s `models:` list, so no real
+        data exists for this submodel. See `docs/CALIBRATION-SUMMARIES.md`.
+
+  row_telecommute_gap:
+    - type:  markdown
+      title: "Telecommute Frequency — not available in this demo"
+      width: 1.0
+      content: |
+        ActivitySim's `telecommute_frequency` component is not enabled in
+        this project's real `prototype_mtc` configuration — it's absent
+        from `configs/settings.yaml`'s `models:` list, so no real data
+        exists for this submodel. See `docs/CALIBRATION-SUMMARIES.md`.
+
+  row_cdap:
+    - type:       table
+      title:      "CDAP Activity Pattern by Segment"
+      metric:     cdap_summary
+      scenario:   activitysim-baseline
+      sort:       { column: persons, order: desc }
+      pagination: 20
+      searchable: true
+      columns:
+        - { field: cdap_activity,    label: "Activity Pattern" }
+        - { field: person_type,      label: "Person Type" }
+        - { field: auto_sufficiency, label: "Auto Sufficiency" }
+        - { field: hhsize,           label: "HH Size" }
+        - { field: persons,          label: "Persons", format: ",.0f" }
+      width: 1.0
+
+  # Not a documented CALIBRATION-SUMMARIES.md submodel — an open-ended
+  # exploration sandbox over a real, rich person/household dataset
+  # (FR-013, research.md §7). dataset_picker omitted (single fixed
+  # dataset is sufficient here; 028's own opt-in capability, not needed).
+  row_explore:
+    - type:    graphic-walker
+      title:   "Explore: Person/Household Profile"
+      dataset: person_household_profile
+      scenario: activitysim-baseline
+      width:   1.0

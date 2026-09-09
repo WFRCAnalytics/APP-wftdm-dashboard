@@ -72,7 +72,24 @@ export function Shell({
   dashboards: DashboardTabConfig[]
   branding?: DashboardBranding
 }) {
-  const [activeTab, setActiveTab] = useState(dashboards[0]?.header.tab)
+  // Real, confirmed bug fix (post-completion, found via 032-six-tab-demo-
+  // content's own live test run): active tab was tracked by NAME
+  // (`header.tab`), resolved back to a tab object via `dashboards.find()`.
+  // `main.ts`'s boot sequence always concatenates TWO dashboard-config
+  // roots (a deployer's own `dashboard-config/` plus this repo's own
+  // `demo-dashboard-config/`) into one array — if both roots happen to
+  // name their own landing tab "Summary" (this app's own canonical,
+  // encouraged convention, `CLAUDE.md`'s own default 7-tab example),
+  // `.find()` always resolves to the FIRST match regardless of which of
+  // the two same-named sidebar buttons was actually clicked, while BOTH
+  // buttons render as "selected" simultaneously (`SidebarNav`'s own
+  // `isActive` comparison has the identical name-based ambiguity) — a
+  // real, reachable defect in any real deployment carrying both a
+  // deployer `dashboard-config/` and this repo's own demo content, not
+  // merely a test-harness coincidence. Fixed by tracking the ARRAY INDEX
+  // instead — stable, always unique, and array order never changes after
+  // boot (`dashboards` is a fixed prop for this component's lifetime).
+  const [activeIndex, setActiveIndex] = useState(0)
 
   if (dashboards.length === 0) {
     return (
@@ -86,7 +103,7 @@ export function Shell({
     )
   }
 
-  const active = dashboards.find((d) => d.header.tab === activeTab) ?? dashboards[0]
+  const active = dashboards[activeIndex] ?? dashboards[0]
 
   return (
     <SidebarProvider>
@@ -103,7 +120,7 @@ export function Shell({
           <SidebarTrigger />
         </SidebarHeader>
         <SidebarContent>
-          <SidebarNav tabs={dashboards} activeTab={active.header.tab} onTabChange={setActiveTab} />
+          <SidebarNav tabs={dashboards} activeIndex={activeIndex} onTabChange={setActiveIndex} />
         </SidebarContent>
         {/* 020-settings-modal: the single dashboard-wide settings entry
             point relocates here from the old header's top-right group

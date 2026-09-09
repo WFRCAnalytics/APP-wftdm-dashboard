@@ -10,11 +10,17 @@ import type { DashboardTabConfig } from '@/layout/types'
 // sub-navigation sections.
 export interface SidebarNavProps {
   tabs: DashboardTabConfig[]
-  activeTab: string
-  onTabChange: (tab: string) => void
+  // Real bug fix (post-completion, shell.tsx's own comment has the full
+  // story): identity by ARRAY INDEX, not by `header.tab` name — two tabs
+  // from different concatenated dashboard-config roots can legitimately
+  // share the same display name (e.g. both named "Summary"), which broke
+  // both this component's own `isActive` highlighting (both would light
+  // up) and shell.tsx's `.find()`-by-name content resolution.
+  activeIndex: number
+  onTabChange: (index: number) => void
 }
 
-export function SidebarNav({ tabs, activeTab, onTabChange }: SidebarNavProps) {
+export function SidebarNav({ tabs, activeIndex, onTabChange }: SidebarNavProps) {
   // FR-017: no tab's section sub-items render at all while the sidebar is
   // collapsed to its icon-only rail — consistent with every primary item
   // also losing its text label in that state.
@@ -39,19 +45,19 @@ export function SidebarNav({ tabs, activeTab, onTabChange }: SidebarNavProps) {
           array shell.tsx already holds, in array order — no tab name,
           count, or order hardcoded anywhere here (FR-003), provably the
           same mechanism navBar.tsx's own {tabs.map(...)} already used. */}
-      {tabs.map((tab) => {
-        const isActive = tab.header.tab === activeTab
+      {tabs.map((tab, index) => {
+        const isActive = index === activeIndex
         const Icon = tab.header.icon ? iconComponentFor(tab.header.icon) : undefined
         const sections = isActive && state === 'expanded' ? resolveSections(tab) : []
 
         return (
-          <SidebarMenuItem key={tab.header.tab}>
+          <SidebarMenuItem key={`${tab.header.tab}-${index}`}>
             <SidebarMenuButton
               role="tab"
               aria-selected={isActive}
               isActive={isActive}
               aria-expanded={sections.length > 0 ? true : undefined}
-              onClick={() => onTabChange(tab.header.tab)}
+              onClick={() => onTabChange(index)}
             >
               {Icon && <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />}
               {/* No icon configured → no icon rendered at all (never a

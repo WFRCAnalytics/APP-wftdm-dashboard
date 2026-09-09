@@ -3824,6 +3824,193 @@ first cross-reference this list was built from). ✅ done,
     90% bar — there is no separate top header left to subtract in the new
     design at all.
 
+19. ✅ Six-tab comprehensive demo content — done (`032-six-tab-demo-
+    content`). Replaces the narrower three-tab causal-story demo
+    (`Overview`/`Destination Choice`/`Transit Service`, all `026`-era, all
+    deleted with no content preserved per this feature's own explicit
+    instruction) with the full six-tab ActivitySim calibration outline
+    `docs/CALIBRATION-SUMMARIES.md` already documented: Summary,
+    Person/Household Models, Tour Models, Mode Choice, Trip Models,
+    Network — using `030-sidebar-navigation`'s own real `sections:`
+    accordion mechanism, one section per real submodel heading, in that
+    document's own order. The Explore tab (`dashboard-5-explore.yaml`) is
+    untouched — deliberately kept at its existing filename despite landing
+    7th (last) in the new tab order, since `index.json`'s array order, not
+    any filename's numeric prefix, controls real display order.
+    `dashboard-4-network.yaml` (`031`'s narrower Network tab) was renamed
+    to `dashboard-6-network.yaml` and fully rewritten; `dashboard-6-
+    flows.yaml` (`031`'s own unpublished Sankey/FlowMap staging file) is
+    dissolved, its two panels re-authored fresh into `dashboard-4-mode-
+    choice.yaml`/`dashboard-6-network.yaml` — `purpose_mode_flow`/
+    `od_flows` are real, now-published metrics for the first time.
+
+    **The three real ActivitySim scenarios were REUSED, not re-run** — the
+    exact real raw output (baseline, TAZ-1 density-variant, transit-
+    variant) this session had already produced and verified once was still
+    present on disk; re-running would have risked landing on different
+    real stochastic draws for zero benefit over output already directly
+    re-confirmed. Both causal edits were re-verified directly against that
+    real data before use: TAZ 1 employment +40.0% in the density-variant's
+    real `final_land_use.csv` (`TOTEMP` 27,318→38,245, etc., matching the
+    edit exactly); real WALK_LOC AM/PM trip-mode share increase in the
+    transit-variant (19.55%→20.56% AM, 19.34%→20.52% PM, a real, direct
+    aggregation of `final_trips.csv`, not assumed carried over). All three
+    scenarios' `final_checkpoints.csv` have identical real row counts (33),
+    confirming full completion.
+
+    **A full, real, column-level computability audit** — checked directly
+    against the real, installed `configs/settings.yaml` `models:` list and
+    real CSV headers/values, not assumed from `docs/CALIBRATION-
+    SUMMARIES.md`'s own prose (already once found to contain an
+    illustrative-only naming convention, per `026`) — found 34 of 40
+    documented submodel summaries genuinely computable, one
+    partially-computable (Joint Tour Participation: real participant
+    counts exist, not a literal per-eligible-person binary choice table),
+    and 6 real, confirmed gaps, two of them Level-1/starred: **Work from
+    Home**, **Telecommute Frequency**, Transit Pass Subsidy, Transit Pass
+    Ownership, Screenline Volumes vs Observed AADT, VMT by Facility Type —
+    the first four because their real ActivitySim components are absent
+    from this project's real `configs/settings.yaml` `models:` list
+    entirely (confirmed directly, not merely inferred from a missing
+    column); the last two because this pipeline has no traffic-assignment
+    step anywhere (`write_trip_matrices` produces real zone-to-zone trip
+    *demand*, never assigned link volumes) and no real observed-AADT
+    dataset exists for this synthetic 25-zone system. Each of the 6 gets
+    its own real `markdown` gap-note panel in the live dashboard stating
+    its specific real reason (never an empty or fabricated panel standing
+    in for it) — `docs/CALIBRATION-SUMMARIES.md` itself is corrected to
+    match, plus two smaller, incidentally-found doc inaccuracies: the
+    "Person type" segmentation list was missing the real 8th ActivitySim
+    `ptype` value (pre-school child, confirmed present in real output,
+    range 1-8), and the "Geography" segmentation note overstated real
+    coverage — this pipeline's real `land_use` output has only `zone_id`/
+    `DISTRICT`/`SD`, not the documented four-level small/medium/large/
+    super-district set.
+
+    **28 new `summarize.yaml` metrics** (one per genuinely computable
+    summary the audit found, `specs/032-six-tab-demo-content/data-
+    model.md` §3), plus two new segmentation mechanisms using only
+    existing, unmodified `$mappings`/`$bins` grammar (`mappings.
+    person_type`, `bins.income_group` — plus a shared `bins.
+    distance_bin_half_mile` reused by every distance-based metric via a
+    consistent `distance_miles`-aliasing convention) and two new
+    `sources:` entries (`joint_tour_participants`, `accessibility` — both
+    real, already-present `final_*.csv` files `026`'s original
+    `summarize.yaml` never needed). Every tour-scoped metric filters by
+    the real, confirmed-exhaustive `tour_category` values (`mandatory`/
+    `non_mandatory`/`joint`/`atwork`). Distance-dependent metrics with no
+    precomputed real column (only `persons.distance_to_school`/
+    `distance_to_work` are precomputed real values; everything else —
+    Joint/Non-Mandatory/At-Work Subtour Destination, Trip Destination, VMT
+    by Home TAZ — has none) use a real, honest straight-line-distance proxy
+    between real zone centroids (a plain haversine expression over two
+    `$sql.zone_centroids` references, the same `c1`/`c2` alias convention
+    `od_flows` already established) — disclosed as a straight-line proxy,
+    never presented as a modeled network distance, in both the relevant
+    panels' own descriptions and the corrected doc. Confirmed, before
+    writing a single distance metric, that this model's real zone system
+    is EXACTLY the 25 zones `031`'s own `taz25.geoparquet`/
+    `zone_centroids` already cover (both `final_land_use.csv`'s real zone
+    rows and the real distinct set of zones touched by real trip origins/
+    destinations are precisely `{1..25}`) — no geometry work was needed.
+
+    **A real, confirmed bug found and fixed via the real CLI itself**,
+    before any dashboard content was authored: the naive haversine formula
+    throws DuckDB's `ACOS is undefined outside [-1,1]` for a same-zone
+    (origin == destination) trip — floating-point rounding pushes the
+    argument fractionally above 1.0, and DuckDB's `acos()` rejects this
+    outright rather than clamping. Fixed with a `LEAST(1.0, GREATEST(-1.0,
+    ...))` clamp, applied everywhere the formula appears; documented
+    inline as load-bearing, not defensive style. Real total VMT for the
+    baseline scenario (a new `summary_kpis.total_vmt` scalar column) came
+    out to 15,212 straight-line miles across 23,583 real trips — directly
+    spot-checked, not merely trusted.
+
+    **Two more real bugs found via live browser verification** (a real,
+    running `npm run dev` session, not offline queries alone — this
+    feature's own real `SC-006` requirement): (1) every `valuebox` panel
+    bound to `summary_kpis` with no `scenario`/`scenarios` pin defaulted to
+    a `$scenario` union including the always-active `observed` pinned
+    scenario, which has no real `public/observed/` content in a plain
+    checkout (gitignored, fixture-populated-only) and therefore no
+    matching view — a real Catalog Error, fixed by pinning `scenario:
+    activitysim-baseline` on every affected valuebox (found via a
+    systematic PyYAML scan of every panel across all six files, not just
+    the ones that visibly broke — this project's own established
+    discipline of confirming a class of bug is fully fixed, not just its
+    first visible symptom). (2) `dashboard-3-tour-models.yaml`'s original
+    "Mandatory Tour Scheduling" panel was `plotly` keyed on `start` alone,
+    but `mandatory_tour_scheduling` groups by `(primary_purpose, start,
+    end, duration)` together — even filtered to one purpose, this produces
+    many thin, scattered bars per start hour rather than one clean bar per
+    hour; switched to `table` (the genuinely correct real fit per FR-012,
+    not a chart type forced to look clean by hiding real detail).
+
+    **A real, confirmed, deployment-relevant application bug** — not
+    merely a test-locator issue — was found and fixed while getting
+    `tests/integration/demoContentAllPanels.spec.ts` (fully rewritten, not
+    merely extended — every `031`-era test referenced deleted content) to
+    pass: `main.ts`'s boot sequence always concatenates a deployer's own
+    `dashboard-config/` root with this repo's own `demo-dashboard-config/`
+    root into ONE tab array, in every real environment (dev, prod, test),
+    unconditionally. This feature's new "Summary" tab name (matching
+    `CALIBRATION-SUMMARIES.md`'s own real heading, and this app's own
+    canonical example landing-tab name from `CLAUDE.md`'s own Navigation
+    model section) collided with the test fixture root's own landing tab,
+    ALSO named "Summary" — and `src/layout/shell.tsx`'s `dashboards.
+    find((d) => d.header.tab === activeTab)` always resolved to the FIRST
+    same-named match regardless of which sidebar button was actually
+    clicked, while `src/layout/sidebarNav.tsx`'s own name-based `isActive`
+    comparison lit up BOTH same-named buttons simultaneously. Confirmed via
+    a live Playwright accessibility-tree snapshot: the sidebar correctly
+    showed the 2nd "Summary" tab as `[selected]`, but `<main>` still
+    rendered the FIRST (fixture) tab's real content. This is a real,
+    reachable defect for any actual deployment where a deployer's own real
+    `dashboard-config/` landing tab is ALSO named "Summary" (this app's own
+    encouraged convention) — not a test-only coincidence — so it was fixed
+    at the root, not worked around in a test: both files now track the
+    active tab by array INDEX instead of display name (`shell.tsx`'s
+    `activeIndex` state, `sidebarNav.tsx`'s `activeIndex`/
+    `onTabChange(index)` props, its own `key` also switched from the name
+    to `${name}-${index}`) — always unique regardless of how many tabs
+    share a display name. A real, deliberate, documented deviation from
+    this feature's own plan.md Constitution Check ("no file under `src/`
+    changes") — justified by this project's own extensive, standing
+    discipline of fixing a real, confirmed bug found during otherwise-
+    in-scope work rather than leaving it or working around it in a test.
+    Confirmed via direct grep that neither file has any other consumer
+    that would be affected.
+
+    **All ten registered panel types** are used at least once across the
+    six tabs, each chosen for a genuine real data-shape fit, confirmed by
+    a direct PyYAML scan (not merely eyeballed): `valuebox`×6, `plotly`×4,
+    `observable-plot`×5, `table`×18, `markdown`×5, `sankey`×1, `flowmap`×1,
+    `zonemap`×2, `graphic-walker`×1 (a new `person_household_profile`
+    dataset — one real row per person, deliberately the one new metric
+    that does NOT aggregate — built specifically for this open-ended
+    exploration panel, on the Person/Household Models tab), `recharts`×2.
+
+    Verification: `uv run pytest python/tests/` 64/64 passing (was 59/59
+    before this feature — 5 new representative tests cover the distinct
+    real SQL shapes all 28 new metrics reuse: the haversine clamp fix
+    including a same-zone-trip case, `tour_category` filtering, the new
+    8-value `person_type` mapping, `land_use_summary`'s per-zone household
+    aggregate join, and `person_household_profile`'s deliberate
+    ungrouped-row exception — the real end-to-end CLI run against real
+    ActivitySim data already validated all 28 metrics' own real invariants
+    more strongly than any synthetic fixture could, for the metrics it
+    covers). `npm run typecheck` clean; `npm run test:unit` 321/321
+    passing, unaffected by the `shell.tsx`/`sidebarNav.tsx` fix (neither
+    file has a direct unit-test consumer). A targeted Playwright regression
+    subset — expanded, once the real shell/nav bug was found, to include
+    every 030-era shell/nav spec, not just the originally-planned zonemap/
+    flowmap/dashboardShell set — ran 29/30 plus 30/30 (zonemap/flowmap)
+    passing; the one failure is the SAME already-documented, pre-existing
+    dark-mode Plotly re-query-count flake `030`'s and `031`'s own entries
+    above already recorded (`Expected: 79, Received: 80`), not a new
+    regression. `demoContentAllPanels.spec.ts` (fully rewritten) — 7/7
+    passing, including the new all-ten-panel-types coverage assertion.
+
 ---
 
 ## Reference implementations — copy patterns, don't re-derive

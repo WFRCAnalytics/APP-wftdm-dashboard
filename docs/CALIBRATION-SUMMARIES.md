@@ -41,6 +41,14 @@ Covers household- and person-level submodels in ActivitySim sequence order.
 
 ### **Work from Home** ★
 
+> **Not computable from this project's real `prototype_mtc` configuration**
+> (`032-six-tab-demo-content`, confirmed via direct audit against the real
+> `configs/settings.yaml`) — the `work_from_home` component is absent from
+> its `models:` list, so no real output exists for this submodel. Enabling
+> it would require locating or authoring this component's own additional
+> model-spec assets, which `prototype_mtc`'s example bundle does not ship —
+> out of scope for that feature.
+
 - **Chooser:** Persons (workers)
 - **Alternatives:** work at home, work away from home
 - **Segmented by:** income group, age, sex, geography
@@ -67,6 +75,11 @@ Covers household- and person-level submodels in ActivitySim sequence order.
 
 ### Transit Pass Subsidy
 
+> **Not computable from this project's real `prototype_mtc` configuration**
+> (`032-six-tab-demo-content`) — the `transit_pass_subsidy` component is
+> absent from the real `configs/settings.yaml`'s `models:` list; no such
+> column exists anywhere in real output.
+
 - **Chooser:** Persons
 - **Alternatives:** subsidy, no subsidy
 - **Segmented by:** person type
@@ -74,12 +87,23 @@ Covers household- and person-level submodels in ActivitySim sequence order.
 
 ### Transit Pass Ownership
 
+> **Not computable from this project's real `prototype_mtc` configuration**
+> (`032-six-tab-demo-content`) — same real reason as Transit Pass Subsidy
+> above: the `transit_pass_ownership` component is absent from
+> `configs/settings.yaml`'s `models:` list.
+
 - **Chooser:** Persons
 - **Alternatives:** pass, no pass
 - **Segmented by:** person type, income, auto sufficiency (zero autos, autos < workers, autos ≥ workers)
 - **Parquet:** `transit_pass_ownership.parquet`
 
 ### **Telecommute Frequency** ★
+
+> **Not computable from this project's real `prototype_mtc` configuration**
+> (`032-six-tab-demo-content`, confirmed via direct audit) — the
+> `telecommute_frequency` component is absent from the real
+> `configs/settings.yaml`'s `models:` list, so no real output exists for
+> this submodel.
 
 - **Chooser:** Persons (workers)
 - **Alternatives:** 1 day, 2 days, 3 days, 4+ days
@@ -289,6 +313,17 @@ tables/charts with a map view of where mode splits differ geographically
 Highway assignment validation. Observed data joined at query time from
 `observed_counts.parquet`.
 
+> **Screenline volumes vs observed AADT** and **VMT by facility type** are
+> **not computable from this project's real `prototype_mtc` configuration**
+> (`032-six-tab-demo-content`, confirmed via direct audit) — this pipeline
+> has no traffic-assignment step at all: ActivitySim's own
+> `write_trip_matrices` output is real zone-to-zone trip **demand**, never
+> assigned link volumes, and no real observed-AADT dataset exists for this
+> synthetic 25-zone system either. Both rows below stay documented as the
+> general grammar's own design (a real deployer running a full network
+> assignment could populate them), but neither is present in the live demo
+> dashboard.
+
 | Metric | Parquet file | Observed source |
 |---|---|---|
 | Screenline volumes vs observed AADT | `screenlines.parquet` | `observed_counts.parquet` |
@@ -408,10 +443,14 @@ These segmentations appear across multiple submodels and are defined once in
 | **Income group** | Very Low (<$25k), Low ($25k–$50k), Medium ($50k–$75k), High ($75k–$100k), Very High (>$100k) |
 | **Auto sufficiency** | Zero Autos / Autos < Workers / Autos ≥ Workers |
 | **Geography** | Four levels, all joined from zone lookup via home TAZ: TAZ, small district, medium district, large district, super district (county) |
-| **Person type** | Full-time worker, part-time worker, university student, driving-age student, non-driving student, retired, non-worker |
+| **Person type** | Full-time worker, part-time worker, university student, driving-age student, non-driving student, retired, non-worker, pre-school child |
 | **School segment** | Elementary, high school, college/university |
 | **Major mode** | SOV, HOV, Transit, Non-Motorized, Ride Hail |
 | **Time period** | EA (early AM), AM, MD (midday), PM, EV (evening) |
 | **Distance bin** | 0.5-mile intervals (spaced_intervals, lower = 0) |
 
 > **Geography segmentation:** Four levels are available for all geography-segmented submodels — TAZ, small district, medium district, large district, and super district (county). All four are joined from the zone lookup table via the home TAZ ID and available as columns in `trips_merged`, `tours_merged`, and `persons_merged`. The zone lookup table (`land_use.parquet` or a dedicated `zones.parquet`) must include columns `taz_id`, `small_district`, `medium_district`, `large_district`, `super_district` for this to work. For most calibration summaries, **super district (county)** is the appropriate geography level — TAZ-level segmentation is typically too granular for mode choice or auto ownership summaries and is reserved for spatial map panels.
+>
+> **Real-data correction (`032-six-tab-demo-content`):** this project's own real `prototype_mtc` zone lookup output (`final_land_use.csv`) provides only `zone_id` (TAZ), `DISTRICT`, and `SD`/`county_id` — not the four-level `small_district`/`medium_district`/`large_district`/`super_district` set described above. Every geography-segmented summary in the live demo dashboard uses `zone_id` and `DISTRICT` only (`SD` is treated as the closest real equivalent of "super district" wherever a coarser rollup is used). The four-level model above stays documented as the general grammar's own design — a real deployer's own `zones.parquet` MAY provide all four — but this demo's own real data does not exercise the finer three.
+>
+> **Real-data correction, person type (`032-six-tab-demo-content`):** this project's own real `prototype_mtc` output confirms an 8th real ActivitySim `ptype` value beyond the 7 listed above — pre-school child (`ptype` 8) — now added to the table. All 8 map to `summarize.yaml`'s own `mappings.person_type` (`ptype` 1 through 8 respectively).
