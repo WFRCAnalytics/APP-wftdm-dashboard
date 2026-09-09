@@ -51,6 +51,15 @@ export interface Scenario {
   // makes FR-010's "display-only, never a substitute for the real name"
   // guarantee hold with zero enforcement code needed (research.md §4).
   label?: string
+  // 035-scenario-label-color: an optional viewer-chosen color override,
+  // in-memory/session-only like `label` above (never read by any query/
+  // view-resolution path either) — but consumed more widely: every chart
+  // panel type that renders scenario as a color dimension resolves its
+  // effective color as colorOverride ?? color (the manifest-sourced field
+  // above) via hooks/useScenarioDisplay.ts, not this field read directly.
+  // Lives on this same object so unregister() discards it for free, the
+  // same behavior `label` already gets with no special-cased cleanup.
+  colorOverride?: string
 }
 
 export interface ScenarioMetadata {
@@ -125,6 +134,7 @@ export function register(name: string, metadata: ScenarioMetadata): void {
     path: metadata.path,
     order: nextOrder++,
     label: undefined,
+    colorOverride: undefined,
   })
   notify()
 }
@@ -286,5 +296,33 @@ export function clearLabel(name: string): void {
     throw new Error(`appState.clearLabel: "${name}" was never registered`)
   }
   entry.label = undefined
+  notify()
+}
+
+/**
+ * 035-scenario-label-color (FR-009): assigns a viewer-chosen color
+ * override for this scenario's display, for the current session only —
+ * mirrors setLabel()'s own look-up/throw/mutate/notify() shape exactly.
+ * Takes precedence over the manifest-sourced `color` field at every
+ * consumer reached through hooks/useScenarioDisplay.ts (FR-011).
+ */
+export function setColorOverride(name: string, color: string): void {
+  const entry = scenarios.get(name)
+  if (!entry) {
+    throw new Error(`appState.setColorOverride: "${name}" was never registered`)
+  }
+  entry.colorOverride = color
+  notify()
+}
+
+/** 035-scenario-label-color: clears a scenario's color override back to
+ * `undefined` — its effective color reverts to the manifest `color` field
+ * (or that panel type's own default cycling if that's also absent). */
+export function clearColorOverride(name: string): void {
+  const entry = scenarios.get(name)
+  if (!entry) {
+    throw new Error(`appState.clearColorOverride: "${name}" was never registered`)
+  }
+  entry.colorOverride = undefined
   notify()
 }

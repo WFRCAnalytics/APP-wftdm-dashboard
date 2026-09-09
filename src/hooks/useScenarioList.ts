@@ -52,6 +52,15 @@ export function useScenarioList(): Scenario[] {
           s.name !== p.name ||
           s.order !== p.order ||
           s.label !== p.label ||
+          // 035-scenario-label-color: a real, confirmed gap found while
+          // wiring up the new swatch control — this comparison omitted
+          // colorOverride entirely, meaning appState.setColorOverride()
+          // would notify() but this hook's own memoized snapshot saw no
+          // "relevant field changed" and returned the STALE cached
+          // scenario object, so the swatch's own `value` never reflected
+          // the color it had just been set to. Same class of bug this
+          // file's own header comment already documents for label/order.
+          s.colorOverride !== p.colorOverride ||
           s.status !== p.status ||
           s.path !== p.path ||
           s.pinned !== p.pinned ||

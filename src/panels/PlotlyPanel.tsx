@@ -9,6 +9,7 @@ import { useFilterState } from '@/hooks/useFilterState'
 import { useActiveScenarios } from '@/hooks/useActiveScenarios'
 import { useBaseline } from '@/hooks/useBaseline'
 import { useColorScheme } from '@/hooks/useColorScheme'
+import { useScenarioDisplay } from '@/hooks/useScenarioDisplay'
 import {
   buildComparisonDiffQuery,
   buildPanelQuery,
@@ -73,6 +74,12 @@ export function PlotlyPanel({ config }: { config: PlotlyPanelConfig }) {
   // reactively re-triggers the fetch for a panel that uses it (FR-016).
   const baseline = useBaseline()
   const colorScheme = useColorScheme()
+  // 035-scenario-label-color (FR-005/FR-012): reactive scenario
+  // label/color map — see the dedicated re-render effect below, which
+  // mirrors the theme-only effect's own "re-derive from cached data, no
+  // new query" pattern exactly (a label/color change is never a reason
+  // to hit DuckDB-WASM again).
+  const scenarioDisplay = useScenarioDisplay()
   const containerRef = useRef<HTMLDivElement>(null)
   const [status, setStatus] = useState<'loading' | 'ready' | 'empty' | 'error'>('loading')
 
@@ -82,6 +89,11 @@ export function PlotlyPanel({ config }: { config: PlotlyPanelConfig }) {
   // the underlying data hasn't changed.
   const lastTracesRef = useRef<Partial<Plotly.PlotData>[] | null>(null)
   const lastBarmodeRef = useRef<Plotly.Layout['barmode'] | undefined>(undefined)
+  // 035-scenario-label-color: the raw, last-fetched rows — needed
+  // separately from lastTracesRef so the scenario-display-only effect
+  // below can re-run resolveTraces() with a NEW scenarioDisplay against
+  // the SAME already-fetched data, without a new query.
+  const lastRowsRef = useRef<Record<string, unknown>[] | null>(null)
 
   // Data fetch + Plotly.react() — re-runs on config/filters change. Never
   // purges here; react() diffs against the existing plot (docs/SPEC.md's
@@ -131,7 +143,8 @@ export function PlotlyPanel({ config }: { config: PlotlyPanelConfig }) {
           setStatus('empty')
           return
         }
-        const traces = config.traces.flatMap((trace) => resolveTraces(trace, rows))
+        lastRowsRef.current = rows
+        const traces = config.traces.flatMap((trace) => resolveTraces(trace, rows, scenarioDisplay))
         // docs/GRAMMAR.md declares barmode per-trace (traces[].barmode),
         // but Plotly.js itself expects it at the layout level
         // (layout.barmode), not on individual trace data objects — lifted
@@ -181,6 +194,30 @@ export function PlotlyPanel({ config }: { config: PlotlyPanelConfig }) {
     // meant to re-trigger this effect on their own (that's the fetch
     // effect's job above)
   }, [colorScheme, status])
+
+  // 035-scenario-label-color (FR-005/FR-012): scenario label/color-only
+  // re-render — re-derives traces from the SAME cached rows (lastRowsRef)
+  // with the new scenarioDisplay, no new query. Mirrors the theme-only
+  // effect above exactly (same status === 'ready' guard, same
+  // resolveThemeLayout()/barmode reuse), one hop earlier in the pipeline
+  // (re-running resolveTraces() itself, not just re-applying layout to
+  // already-resolved traces — a label/color change affects trace.name/
+  // trace.marker.color, which lastTracesRef alone can't recompute).
+  useEffect(() => {
+    if (status !== 'ready' || !containerRef.current || !lastRowsRef.current) return
+    const traces = config.traces.flatMap((trace) => resolveTraces(trace, lastRowsRef.current!, scenarioDisplay))
+    lastTracesRef.current = traces
+    const layout: Partial<Plotly.Layout> = {
+      autosize: true,
+      ...resolveThemeLayout(containerRef.current, colorScheme),
+      ...(config.layout ?? {}),
+      ...(lastBarmodeRef.current ? { barmode: lastBarmodeRef.current } : {}),
+    }
+    Plotly.react(containerRef.current, traces, layout, { responsive: true })
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deliberately
+    // scoped to scenarioDisplay/status only, same reasoning as the
+    // theme-only effect above
+  }, [scenarioDisplay, status])
 
   // ResizeObserver, not just Plotly's own `responsive: true` (which only
   // reacts to window resize events): Plotly.react() above runs while this

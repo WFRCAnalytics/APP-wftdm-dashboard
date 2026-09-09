@@ -8,6 +8,7 @@ import * as filterState from '@/state/filterState'
 import { useFilterState } from '@/hooks/useFilterState'
 import { useActiveScenarios } from '@/hooks/useActiveScenarios'
 import { useBaseline } from '@/hooks/useBaseline'
+import { useScenarioDisplay } from '@/hooks/useScenarioDisplay'
 import { useColorScheme } from '@/hooks/useColorScheme'
 import {
   buildComparisonDiffQuery,
@@ -109,6 +110,12 @@ export function ObservablePlotPanel({ config }: { config: ObservablePlotPanelCon
   // exclusion of colorScheme from its query-triggering dependency array (a
   // theme flip is never a reason to hit DuckDB-WASM again).
   const colorScheme = useColorScheme()
+  // 035-scenario-label-color (FR-005/FR-012): reactive scenario
+  // label/color map — included in the redraw effect's own dependency
+  // array below (not the fetch effect's), so a label/color change alone
+  // re-derives from the SAME cached `rows` state with no new query,
+  // mirroring PlotlyPanel.tsx's own dedicated re-render effect.
+  const scenarioDisplay = useScenarioDisplay()
 
   const containerRef = useRef<HTMLDivElement>(null)
   const plotElementRef = useRef<Element | null>(null)
@@ -259,7 +266,7 @@ export function ObservablePlotPanel({ config }: { config: ObservablePlotPanelCon
       lastWidth = width
       lastHeight = height
 
-      const { markName, data, options, plotOptions } = resolveObservablePlotEncoding(config, rows)
+      const { markName, data, options, plotOptions } = resolveObservablePlotEncoding(config, rows, scenarioDisplay)
       const mark = (Plot as unknown as Record<string, (d: unknown, o: unknown) => unknown>)[markName]
       if (typeof mark !== 'function') {
         setStatus('error')
@@ -392,8 +399,10 @@ export function ObservablePlotPanel({ config }: { config: ObservablePlotPanelCon
     // it here correctly forces one fresh render() call per theme change
     // (to reapply the dark-mode tip-tooltip fix above), never a
     // no-op-skipped one, and never a loop (colorScheme itself doesn't
-    // change as a result of rendering).
-  }, [config, rows, status, colorScheme])
+    // change as a result of rendering). scenarioDisplay (035-scenario-
+    // label-color) added the same way — a label/color-only change forces
+    // a fresh render() call against the same cached `rows`, no new query.
+  }, [config, rows, status, colorScheme, scenarioDisplay])
 
   // Unmount-only teardown — deliberately a second effect, empty deps.
   useEffect(() => {

@@ -274,6 +274,39 @@ export function ScenariosTab() {
                       copied). Behavior of every control below is
                       UNCHANGED from the prior round. */}
                   <div className="flex shrink-0 items-center gap-0.5">
+                    {/* 035-scenario-label-color (FR-009/FR-010): a native
+                        color-picker swatch, sized to match this cluster's
+                        existing h-6 w-6 icon buttons rather than
+                        components/ui/input.tsx's full-width text-input
+                        chrome (research.md §6). value reflects the
+                        CURRENTLY EFFECTIVE color — the override if set,
+                        else the manifest color, else a neutral black
+                        placeholder for a genuinely colorless scenario.
+                        Fully store-driven, same as the label input above:
+                        no local draft state. */}
+                    <input
+                      type="color"
+                      data-testid={`scenario-color-swatch-${s.name}`}
+                      className="h-6 w-6 shrink-0 cursor-pointer rounded border border-input bg-transparent p-0"
+                      value={s.colorOverride ?? s.color ?? '#000000'}
+                      aria-label={`Color for ${s.name}`}
+                      onChange={(e) => appState.setColorOverride(s.name, e.target.value)}
+                    />
+                    {/* Only shown once an override is actually set — never
+                        a disabled/inert button (matching this row's own
+                        established "visibly present only when relevant"
+                        convention, e.g. the remove button below). */}
+                    {s.colorOverride && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6"
+                        onClick={() => appState.clearColorOverride(s.name)}
+                        aria-label={`Clear color override for ${s.name}`}
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
                     {/* 020-settings-modal (US3, FR-007): move up/down — a
                         purely display-order concern
                         (appState.moveScenario()), completely independent

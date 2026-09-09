@@ -320,13 +320,35 @@ def _sql_literal(v):
 def write_manifest(dest: Path, **fields) -> None:
     # Hand-formatted YAML (no PyYAML dependency needed for this small,
     # flat, scalar-only shape) — values are plain strings/bools/etc.
+    #
+    # 035-scenario-label-color: a REAL, confirmed bug found and fixed here
+    # — string values were written completely UNQUOTED
+    # (f"{key}: {rendered}"), which is fine for a plain word like
+    # "observed" but silently corrupts any value starting with `#`
+    # (`color: #4e79a7`): YAML treats a `#` preceded by whitespace as a
+    # COMMENT start, not literal text, so every one of this generator's
+    # own `color:` fields has ALWAYS parsed to `null`, never the real hex
+    # value, since write_manifest() was first written. Invisible until
+    # this feature, because `Scenario.color` had zero real rendering
+    # consumers before it (spec.md's own research finding) — nothing ever
+    # read the (silently null) value closely enough to notice. The real,
+    # PRODUCTION manifest writer (python/wftdm_dashboard/postprocessor/
+    # manifest.py) is UNAFFECTED — confirmed directly via a live
+    # `yaml.dump({'color': '#4e79a7'})` call, genuine PyYAML already
+    # quotes this correctly (`color: '#4e79a7'`); this bug is confined to
+    # this test-fixture generator's own hand-rolled writer. Fixed by
+    # double-quoting every string value uniformly, matching PyYAML's own
+    # safe default — every current string field (scenario_name,
+    # display_name, color, notes) is a plain sentence/word/hex code with
+    # no embedded quote or newline, so plain double-quoting needs no
+    # escaping logic.
     dest.parent.mkdir(parents=True, exist_ok=True)
     lines = []
     for key, value in fields.items():
         if isinstance(value, bool):
             rendered = "true" if value else "false"
         elif isinstance(value, str):
-            rendered = value
+            rendered = f'"{value}"'
         else:
             rendered = str(value)
         lines.append(f"{key}: {rendered}")

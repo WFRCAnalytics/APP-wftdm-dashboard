@@ -4393,6 +4393,169 @@ first cross-reference this list was built from). ✅ done,
     different absolute count only because of this feature's own added
     fixture queries).
 
+22. ✅ Scenario label propagation & color override — done
+    (`035-scenario-label-color`). Two independent, presentation-only
+    additions to how scenario identity renders.
+
+    **Part A** propagates `020-settings-modal`'s existing `Scenario.label`
+    field to every real place a scenario name becomes human-facing display
+    text — a full source audit (not assumed) found exactly four such
+    surfaces: `plotly` trace legend names (`panels/plotlyTraces.ts`'s
+    `resolveTraces()`, when a trace's `color`/`name` resolves to the bare
+    `$scenario` placeholder), `recharts` `chartConfig[key].label`
+    (`panels/rechartsEncoding.ts`'s `encodeRechartsData()`, when `series
+    === 'scenario'`), `observable-plot`'s row-driven legend/axis text
+    (structurally different from the other two — Observable Plot reads
+    legend text directly from each row's own cell value, with no separate
+    trace-name/config-label indirection layer, so
+    `panels/observablePlotEncoding.ts`'s `resolveObservablePlotEncoding()`
+    builds a fresh, label-substituted row COPY rather than substituting a
+    separate field), and `table` cell values in a `scenario`-keyed column
+    (`TablePanel.tsx`'s existing cell-render branch — the column HEADER
+    stays the literal field name `"scenario"`, never a scenario name, so
+    it's unaffected either way). Confirmed, not assumed, that `sankey`/
+    `flowmap`/`zonemap`/`graphic-walker`'s dataset picker (028)/
+    `valuebox`'s `baseline_trend` badge (034) have NO scenario-name-as-
+    display-text surface at all today — none of them were touched.
+    Grouping/filtering/query-resolution always keys off the real name;
+    `label ?? name` substitution happens only to the final, already-
+    resolved value shown to the viewer (FR-002/FR-003) — zero change to
+    `services/sqlExpander.ts` or `panels/panelQuery.ts`.
+
+    **Part B** — a real, significant corrected premise found during
+    research, before any code was written: `Scenario.color` (sourced from
+    `manifest.yaml`) had ZERO real rendering consumers anywhere in this
+    codebase. `docs/GRAMMAR.md`'s own "the panel colors by scenario" line
+    refers to `plotlyTraces.ts`'s generic per-trace default-palette
+    cycling (no explicit `marker.color` set at all), completely unrelated
+    to the manifest field. This feature is therefore the FIRST real wiring
+    of a per-scenario color to a rendered pixel — treated as the correct,
+    complete reading of the original request (a viewer overriding "that
+    scenario's own displayed color" needs a real baseline to override),
+    not scope creep. Manifest color is now the real default at the same
+    three chart-type surfaces Part A's own audit found (`table` has no
+    per-scenario color dimension, so it's Part-B-out-of-scope);
+    `plotlyTraces.ts` sets `marker.color` only when a color actually
+    resolves (Plotly's own default cycling still applies otherwise, never
+    an explicit `undefined`); `rechartsEncoding.ts` falls back to the
+    existing `--chart-${n}` token cycling; `observablePlotEncoding.ts` hit
+    a genuine, confirmed API constraint the other two don't share —
+    Observable Plot's own color `range` is all-or-nothing (an explicit
+    array replaces its built-in default cycling for the WHOLE scale, with
+    no way to mix "my color" and "your default" within one scale), so
+    `domain`/`range` are only set when EVERY distinct scenario in that
+    panel's own result resolves to a color; even one unresolved falls the
+    WHOLE panel back to Plot's own default, unchanged (research.md §4).
+
+    **A real, significant, pre-existing bug found and fixed while
+    implementing Part B** — not introduced by this feature, and confirmed
+    before writing any fix: `services/scenarioDiscovery.ts` (the
+    registration path for `public/observed/`/`public/scenarios/*`/
+    `public/demo-scenarios/*` — the vast majority of real scenario
+    loading) never fetched `manifest.yaml` at all, for any of its three
+    registration functions. Only `scenario/scenarioManager.ts`'s separate
+    LOCAL-folder-loading path ever read `manifest?.color` into
+    `appState.register()`. This means `Scenario.color` has been
+    `undefined` for every normally-discovered scenario since the field was
+    introduced (`025-python-postprocessor`) — invisible until now because,
+    per the Part B finding above, nothing ever consumed the field closely
+    enough to notice. Fixed with a new `fetchScenarioManifest()` helper in
+    `scenarioDiscovery.ts`, reusing `services/yamlLoader.ts`'s existing,
+    previously-zero-caller `loadManifest()` and a newly-extracted
+    `scenario/manifestReader.ts#manifestFromObject()` (pulled out of that
+    file's own existing handle-based `readManifest()`, so the handle-based
+    local-folder path and the new URL-fetch-based discovery path share ONE
+    field-extraction implementation, not two independently-maintained
+    copies) — called before each of the three `appState.register()` sites,
+    fail-soft like every other step in that file.
+
+    **A second, downstream bug the first one's fix surfaced**: once
+    manifest fetching was wired up, colors still resolved to `undefined`
+    in a live browser test. Root cause: `tests/fixtures/generate.py`'s own
+    hand-rolled `write_manifest()` (a deliberate non-PyYAML shortcut for
+    "this small, flat, scalar-only shape") wrote every string field
+    completely UNQUOTED — `color: #4e79a7` — which YAML parses as a
+    comment start (an unquoted `#` preceded by whitespace), not literal
+    text, so this generator's own `color:` field has ALWAYS silently
+    parsed to `null`. Confirmed directly, live, that the REAL production
+    manifest writer (`python/wftdm_dashboard/postprocessor/manifest.py`,
+    genuine PyYAML `yaml.dump()`) already quotes this correctly and was
+    never affected — this bug was confined entirely to the test-fixture
+    generator. Fixed by double-quoting every string value there;
+    `tests/fixtures/observed/manifest.yaml`/`.../good_scenario/
+    manifest.yaml`/etc. regenerated via `uv run python tests/fixtures/
+    generate.py`.
+
+    **A third, related reactivity bug found while building the new
+    Scenarios-tab color swatch**: `hooks/useScenarioList.ts`'s own
+    change-detection comparison (the memoized snapshot `ScenariosTab`
+    re-renders from) checked `label`/`order`/`status`/`path`/`pinned`/
+    `active`/`source` but not the new `colorOverride` field — so
+    `appState.setColorOverride()` correctly updated the store and called
+    `notify()`, but this hook's own snapshot saw no relevant field change
+    and returned the STALE cached scenario, meaning the swatch's own
+    displayed value never reflected the color it had just been set to.
+    Fixed by adding `colorOverride` to that comparison — the exact same
+    class of bug that file's own header comment already documents finding
+    and fixing for `label`/`order` during `020-settings-modal`.
+
+    **Shared infrastructure** (`panels/scenarioDisplay.ts`, new, pure,
+    dependency-free like `panels/expandablePanelTypes.ts` — Vitest-
+    importable with no store/React dependency; `hooks/
+    useScenarioDisplay.ts`, new, mirrors `hooks/useActiveScenarios.ts`'s
+    own memoized-`useSyncExternalStore` shape exactly): one
+    `ScenarioDisplayMap` (name → `{label?, color?}`, `color` already
+    resolved as `colorOverride ?? manifest color` — FR-007/FR-008/FR-011's
+    precedence computed in exactly one place) threaded as a new, optional
+    trailing parameter into all three extended pure encoding/trace-
+    resolution functions. `PlotlyPanel.tsx` needed a genuinely new
+    dedicated re-render effect (`lastRowsRef` cache + a scenario-display-
+    only effect mirroring its own existing theme-only-re-render effect —
+    this panel type's data-fetch is imperative, `Plotly.react()` inside a
+    `.then()`) so a label/color change alone never triggers a new DuckDB
+    query (FR-005/FR-012); `RechartsPanel.tsx` needed nothing beyond the
+    hook call (fully declarative — `encodeRechartsData()` is called
+    directly in the render body from `rows` state); `ObservablePlotPanel.tsx`
+    added `scenarioDisplay` to its own already-existing redraw effect's
+    dependency array (`rows` was already React state there too).
+    `state/appState.ts` gained `colorOverride?: string` plus
+    `setColorOverride()`/`clearColorOverride()`, mirroring `label`/
+    `setLabel()`/`clearLabel()`'s exact shape (including the same
+    `unregister()`-discards-it-for-free behavior, no special-cased
+    cleanup) — added directly to the SAME per-scenario state object, not a
+    new module (a real, confirmed correction to the feature request's own
+    cited precedent: `state/navBarVisibilityState.ts` was deleted by
+    `030-sidebar-navigation` and no longer exists; `state/appState.ts`
+    itself, right next to `label`, is the applicable one).
+
+    New Scenarios-tab control: a bare native `<input type="color">`
+    swatch (`h-6 w-6`, matching the row's existing icon-button sizing —
+    deliberately NOT `components/ui/input.tsx`, whose full-width text-input
+    chrome is the wrong shape here) in the same trailing actions cluster
+    as the existing baseline star/reorder/remove controls, plus a
+    conditional `X`-icon clear button shown only once an override is set.
+
+    Full regression confirmation: `npm run typecheck` clean; `npm run
+    test:unit` 426/426 passing (up from 403 — `tests/unit/
+    scenarioDisplay.test.ts` new, 6 tests; `plotlyTraces.test.ts`/
+    `rechartsEncoding.test.ts`/`observablePlotEncoding.test.ts` extended,
+    17 new cases across the three); `npm run build` clean, no new
+    warnings. The FULL `tests/integration/` Playwright suite: 306 passed,
+    18 failed on the first full-suite run, spread across 10 files. Every
+    failure investigated individually — 17 of 18 passed cleanly on
+    isolated re-run (including this feature's own new tests and every
+    directly-touched file: `observablePlotPanel.spec.ts`,
+    `settingsModal.spec.ts` full file 41/41, `scenarioManager.spec.ts`).
+    The 18th — `flowmapPanel.spec.ts`'s deck.gl hover-tooltip test, this
+    project's own already-documented real-hardware-timing-sensitive flake
+    (`033`/`034`'s own CLAUDE.md entries) — failed twice in a row on first
+    isolated re-run, so it got a rigorous 3-run-each comparison rather than
+    being dismissed on one data point: this branch passed 2/3, a clean
+    `git stash`'d tree passed 0/3 in the same session — conclusively
+    pre-existing and uncorrelated with this feature (`FlowMapPanel.tsx`/
+    `flowmapData.ts`/`mapTooltip.ts` are untouched by any of this
+    feature's changes). Zero real regressions found.
+
 ---
 
 ## Reference implementations — copy patterns, don't re-derive

@@ -54,15 +54,22 @@ export async function readManifest(
   if (typeof raw !== 'object' || raw === null) {
     return { status: 'invalid', message: 'manifest.yaml did not parse to an object' }
   }
-  const obj = raw as Record<string, unknown>
+  return { status: 'ok', manifest: manifestFromObject(raw as Record<string, unknown>) }
+}
+
+/**
+ * 035-scenario-label-color: extracted from readManifest()'s own inline
+ * object literal so services/scenarioDiscovery.ts's separate, URL-fetch-
+ * based manifest read (a real, confirmed gap this feature found — see
+ * that file's own header comment) can share the exact same field
+ * extraction, rather than an independent, potentially-diverging copy.
+ */
+export function manifestFromObject(obj: Record<string, unknown>): ParsedManifest {
   return {
-    status: 'ok',
-    manifest: {
-      scenarioName: typeof obj.scenario_name === 'string' ? obj.scenario_name : undefined,
-      runDate: asDateString(obj.run_date),
-      color: typeof obj.color === 'string' ? obj.color : undefined,
-      notes: typeof obj.notes === 'string' ? obj.notes : undefined,
-    },
+    scenarioName: typeof obj.scenario_name === 'string' ? obj.scenario_name : undefined,
+    runDate: asDateString(obj.run_date),
+    color: typeof obj.color === 'string' ? obj.color : undefined,
+    notes: typeof obj.notes === 'string' ? obj.notes : undefined,
   }
 }
 

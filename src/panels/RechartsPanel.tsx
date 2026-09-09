@@ -10,6 +10,7 @@ import * as filterState from '@/state/filterState'
 import { useFilterState } from '@/hooks/useFilterState'
 import { useActiveScenarios } from '@/hooks/useActiveScenarios'
 import { useBaseline } from '@/hooks/useBaseline'
+import { useScenarioDisplay } from '@/hooks/useScenarioDisplay'
 import {
   buildComparisonDiffQuery,
   buildPanelQuery,
@@ -95,6 +96,13 @@ export function RechartsPanel({ config }: { config: RechartsPanelConfig }) {
   const filters = useFilterState(filterIds.length ? filterIds : ALL_FILTERS)
   const activeScenarioNames = useActiveScenarios()
   const baseline = useBaseline()
+  // 035-scenario-label-color (FR-005/FR-012): this panel type is fully
+  // declarative (CLAUDE.md's own note) — encodeRechartsData() is called
+  // directly in the render body below, using `rows` React state, so a
+  // scenarioDisplay change alone (no new query) already triggers an
+  // ordinary re-render and re-derivation with no extra effect needed,
+  // unlike PlotlyPanel.tsx's own imperative Plotly.react() call.
+  const scenarioDisplay = useScenarioDisplay()
   const [status, setStatus] = useState<'loading' | 'ready' | 'empty' | 'error'>('loading')
   const [errorMessage, setErrorMessage] = useState("Couldn't load this chart")
   const [rows, setRows] = useState<Record<string, unknown>[]>([])
@@ -178,7 +186,7 @@ export function RechartsPanel({ config }: { config: RechartsPanelConfig }) {
     return <PanelErrorState message={errorMessage} />
   }
 
-  const { data, chartConfig, seriesKeys } = encodeRechartsData(rows, config)
+  const { data, chartConfig, seriesKeys } = encodeRechartsData(rows, config, scenarioDisplay)
   const ChartComponent = CHART_COMPONENTS[config.chart_type]
   const MarkComponent = MARK_COMPONENTS[config.chart_type]
   const isMultiSeries = seriesKeys.length > 1

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { encodeRechartsData } from '../../src/panels/rechartsEncoding.ts'
+import type { ScenarioDisplayMap } from '../../src/panels/scenarioDisplay.ts'
 
 // 029-shadcn-chart-panel — see
 // specs/029-shadcn-chart-panel/data-model.md §2/§3 and
@@ -68,5 +69,52 @@ describe('rechartsEncoding.encodeRechartsData', () => {
     ]
     const result = encodeRechartsData(rows, { x: 'purpose', y: 'share', series: 'mode' })
     expect(result.seriesKeys).toEqual(['Transit', 'SOV', 'HOV']) // not alphabetical
+  })
+})
+
+// 035-scenario-label-color
+describe('rechartsEncoding.encodeRechartsData — scenario label/color resolution (Part A/Part B)', () => {
+  const rows = [
+    { purpose: 'HBW', share: 0.62, scenario: 'observed' },
+    { purpose: 'HBW', share: 0.58, scenario: 'good_scenario' },
+  ]
+
+  it('a labeled scenario entry resolves chartConfig[key].label to the label', () => {
+    const display: ScenarioDisplayMap = new Map([['good_scenario', { label: 'Preferred Alternative' }]])
+    const result = encodeRechartsData(rows, { x: 'purpose', y: 'share', series: 'scenario' }, display)
+    expect(result.chartConfig.good_scenario.label).toBe('Preferred Alternative')
+    expect(result.chartConfig.observed.label).toBe('observed') // unlabeled, unchanged
+    // The pivoted-row column key itself is unchanged (real name) — Recharts'
+    // own dataKey must match it.
+    expect(result.seriesKeys).toEqual(['observed', 'good_scenario'])
+  })
+
+  it('series: "mode" (non-scenario) is unaffected by a populated scenarioDisplay map', () => {
+    const modeRows = [
+      { purpose: 'HBW', mode: 'SOV', share: 0.62 },
+      { purpose: 'HBW', mode: 'HOV', share: 0.18 },
+    ]
+    const display: ScenarioDisplayMap = new Map([['SOV', { label: 'Should Not Apply', color: '#ff0000' }]])
+    const result = encodeRechartsData(modeRows, { x: 'purpose', y: 'share', series: 'mode' }, display)
+    expect(result.chartConfig.SOV.label).toBe('SOV')
+    expect(result.chartConfig.SOV.color).toBe('var(--chart-1)')
+  })
+
+  it('no 3rd argument at all behaves identically to today (backward-compat)', () => {
+    const result = encodeRechartsData(rows, { x: 'purpose', y: 'share', series: 'scenario' })
+    expect(result.chartConfig.good_scenario.label).toBe('good_scenario')
+    expect(result.chartConfig.good_scenario.color).toBe('var(--chart-2)')
+  })
+
+  it('a resolved color is used in chartConfig[key].color', () => {
+    const display: ScenarioDisplayMap = new Map([['good_scenario', { color: '#4e79a7' }]])
+    const result = encodeRechartsData(rows, { x: 'purpose', y: 'share', series: 'scenario' }, display)
+    expect(result.chartConfig.good_scenario.color).toBe('#4e79a7')
+  })
+
+  it('a scenario with no resolved color falls back to the existing token-cycling default', () => {
+    const display: ScenarioDisplayMap = new Map([['good_scenario', { label: 'Preferred Alternative' }]])
+    const result = encodeRechartsData(rows, { x: 'purpose', y: 'share', series: 'scenario' }, display)
+    expect(result.chartConfig.observed.color).toBe('var(--chart-1)')
   })
 })

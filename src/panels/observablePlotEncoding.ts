@@ -9,6 +9,7 @@
 // reason for being split out of PlotlyPanel.tsx. Only ObservablePlotPanel.tsx
 // itself ever calls Plot[markName](data, options).
 import type { ObservablePlotPanelConfig } from '@/layout/types'
+import { resolveScenarioColor, resolveScenarioLabel, type ScenarioDisplayMap } from '@/panels/scenarioDisplay'
 
 export interface ResolvedObservablePlotEncoding {
   markName: string
@@ -30,6 +31,10 @@ export interface ResolvedObservablePlotEncoding {
 export function resolveObservablePlotEncoding(
   config: ObservablePlotPanelConfig,
   rows: Record<string, unknown>[],
+  // 035-scenario-label-color: optional — every existing call site with no
+  // 3rd argument behaves identically to before this feature. Only applied
+  // when fill/stroke is literally 'scenario'.
+  scenarioDisplay?: ScenarioDisplayMap,
 ): ResolvedObservablePlotEncoding {
   const options: Record<string, unknown> = {}
   if (config.x) options.x = config.x
@@ -89,7 +94,48 @@ export function resolveObservablePlotEncoding(
   // supports, not a behavior this app merely hopes each mark honors on
   // its own.
   const yField = config.y
-  const data = yField ? rows.filter((row) => row[yField] !== null) : rows
+  const filteredRows = yField ? rows.filter((row) => row[yField] !== null) : rows
+
+  // 035-scenario-label-color: unlike plotly/recharts, Observable Plot
+  // reads legend/axis/facet text DIRECTLY from each row's own cell value
+  // — there is no separate "trace name"/"chart config label" field to
+  // substitute into instead (research.md §5). Safe under FR-002/FR-003:
+  // by this point the SQL query has already completed and nothing
+  // downstream of this function re-joins/re-filters by the real name — a
+  // fresh row copy is built here (filteredRows itself, and the ORIGINAL
+  // `rows` passed in, are never mutated).
+  const isScenarioColor = (config.fill === 'scenario' || config.stroke === 'scenario') && scenarioDisplay !== undefined
+  const data = isScenarioColor
+    ? filteredRows.map((row) => ({ ...row, scenario: resolveScenarioLabel(String(row.scenario), scenarioDisplay) }))
+    : filteredRows
+
+  if (isScenarioColor) {
+    // Observable Plot's own color scale is all-or-nothing: an explicit
+    // `range` array replaces Plot's built-in default categorical cycling
+    // for the WHOLE scale, with no way to mix "use my resolved color for
+    // category A" and "fall back to your own default cycle color for
+    // category B" (research.md §4). So domain/range are only set when
+    // EVERY distinct real scenario present resolves to a color — 1 unresolved
+    // scenario means neither is set, and the WHOLE panel falls back to
+    // Plot's own existing default cycling, unchanged from today (FR-008).
+    const distinctRealNames: string[] = []
+    const seen = new Set<string>()
+    for (const row of filteredRows) {
+      const realName = String(row.scenario)
+      if (!seen.has(realName)) {
+        seen.add(realName)
+        distinctRealNames.push(realName)
+      }
+    }
+    const resolvedColors = distinctRealNames.map((name) => resolveScenarioColor(name, scenarioDisplay))
+    if (distinctRealNames.length > 0 && resolvedColors.every((c) => c !== undefined)) {
+      plotOptions.color = {
+        ...(typeof plotOptions.color === 'object' ? plotOptions.color : {}),
+        domain: distinctRealNames.map((name) => resolveScenarioLabel(name, scenarioDisplay)),
+        range: resolvedColors,
+      }
+    }
+  }
 
   return { markName: config.mark, data, options, plotOptions }
 }

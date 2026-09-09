@@ -928,6 +928,72 @@ test.describe('User Story 4 - Custom scenario label', () => {
   })
 })
 
+// 035-scenario-label-color (US2) — the new per-row color swatch control,
+// same trailing-actions-cluster placement/sizing convention as the
+// existing baseline star/reorder buttons above (research.md §6).
+test.describe('User Story 2 (035-scenario-label-color) - Custom scenario color', () => {
+  function colorSwatch(page: Page, name: string) {
+    return page.getByTestId(`scenario-color-swatch-${name}`)
+  }
+
+  test('the swatch previews the current effective color, before any override (FR-007)', async ({ page }) => {
+    await boot(page)
+    await page.getByRole('button', { name: 'Settings' }).click()
+    await page.getByRole('tab', { name: 'Scenarios' }).click()
+
+    // Real, fixture manifest colors (tests/fixtures/scenarios/good_scenario/
+    // manifest.yaml, tests/fixtures/observed/manifest.yaml).
+    await expect(colorSwatch(page, 'good_scenario')).toHaveValue('#4e79a7')
+    await expect(colorSwatch(page, 'observed')).toHaveValue('#666666')
+    // No "clear override" control yet — nothing is overridden.
+    await expect(page.getByRole('button', { name: 'Clear color override for good_scenario' })).toHaveCount(0)
+  })
+
+  test('picking a color calls through to appState.setColorOverride, and a clear control appears (FR-009/FR-010)', async ({
+    page,
+  }) => {
+    await boot(page)
+    await page.getByRole('button', { name: 'Settings' }).click()
+    await page.getByRole('tab', { name: 'Scenarios' }).click()
+
+    const swatch = colorSwatch(page, 'good_scenario')
+    // Playwright's own fill() uses the native value setter + a real
+    // 'input' event — unlike a manual el.value + dispatchEvent(), this
+    // correctly triggers React's own synthetic onChange for a controlled
+    // input (a real, confirmed finding from this test's own first run:
+    // the manual approach updated the DOM value but never called through
+    // to React's handler at all).
+    await swatch.fill('#ff0000')
+    await expect(swatch).toHaveValue('#ff0000')
+    const entry = await page.evaluate(() => window.__wftdm!.appState.get('good_scenario'))
+    expect(entry?.colorOverride).toBe('#ff0000')
+    expect(entry?.color).toBe('#4e79a7') // the manifest color itself is untouched
+
+    const clearButton = page.getByRole('button', { name: 'Clear color override for good_scenario' })
+    await expect(clearButton).toBeVisible()
+    await clearButton.click()
+    await expect(swatch).toHaveValue('#4e79a7') // reverts to the manifest color
+    expect((await page.evaluate(() => window.__wftdm!.appState.get('good_scenario')))?.colorOverride).toBeUndefined()
+    await expect(clearButton).toHaveCount(0)
+  })
+
+  test('a color override is gone after reload (FR-013)', async ({ page }) => {
+    await boot(page)
+    await page.evaluate(() => window.__wftdm!.appState.setColorOverride('good_scenario', '#ff0000'))
+
+    await page.reload()
+    await page.waitForFunction(() => window.__wftdm !== undefined, null, { timeout: 30_000 })
+    await page.waitForFunction(
+      () => window.__wftdm!.appState.get('good_scenario')?.status !== 'registering',
+      null,
+      { timeout: 30_000 },
+    )
+    await page.getByRole('button', { name: 'Settings' }).click()
+    await page.getByRole('tab', { name: 'Scenarios' }).click()
+    await expect(colorSwatch(page, 'good_scenario')).toHaveValue('#4e79a7')
+  })
+})
+
 // Post-completion correction (explicit user request): Documentation is no
 // longer a tab inside the Settings modal — it's its own standalone
 // SidebarFooter entry (layout/documentationModal.tsx), positioned below

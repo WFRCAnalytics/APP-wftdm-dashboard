@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import { resolveObservablePlotEncoding } from '@/panels/observablePlotEncoding'
 import type { ObservablePlotPanelConfig } from '@/layout/types'
+import type { ScenarioDisplayMap } from '@/panels/scenarioDisplay'
 
 const baseConfig: ObservablePlotPanelConfig = {
   type: 'observable-plot',
@@ -153,5 +154,68 @@ describe('resolveObservablePlotEncoding', () => {
       const result = resolveObservablePlotEncoding({ ...baseConfig, y: 'diff_value' }, rowsWithZero)
       expect(result.data).toEqual([{ taz_id: 100, diff_value: 0 }]) // real 0 kept, null dropped
     })
+  })
+})
+
+// 035-scenario-label-color
+describe('resolveObservablePlotEncoding — scenario label/color resolution (Part A/Part B)', () => {
+  const scenarioRows = [
+    { purpose: 'HBW', share: 0.62, scenario: 'observed' },
+    { purpose: 'HBW', share: 0.58, scenario: 'good_scenario' },
+  ]
+
+  it('fill: scenario — a labeled scenario\'s row cell is replaced by the label, original rows untouched', () => {
+    const display: ScenarioDisplayMap = new Map([['good_scenario', { label: 'Preferred Alternative' }]])
+    const originalCopy = JSON.parse(JSON.stringify(scenarioRows))
+    const result = resolveObservablePlotEncoding(
+      { ...baseConfig, fill: 'scenario' },
+      scenarioRows,
+      display,
+    )
+    expect(result.data).toEqual([
+      { purpose: 'HBW', share: 0.62, scenario: 'observed' },
+      { purpose: 'HBW', share: 0.58, scenario: 'Preferred Alternative' },
+    ])
+    // The ORIGINAL rows array is never mutated.
+    expect(scenarioRows).toEqual(originalCopy)
+  })
+
+  it('stroke: scenario resolves the same way as fill: scenario', () => {
+    const display: ScenarioDisplayMap = new Map([['good_scenario', { label: 'Preferred Alternative' }]])
+    const result = resolveObservablePlotEncoding({ ...baseConfig, stroke: 'scenario' }, scenarioRows, display)
+    expect(result.data.find((r) => r.purpose === 'HBW' && r.share === 0.58)?.scenario).toBe(
+      'Preferred Alternative',
+    )
+  })
+
+  it('a non-scenario fill is unaffected by a populated scenarioDisplay map', () => {
+    const display: ScenarioDisplayMap = new Map([['SOV', { label: 'Should Not Apply' }]])
+    const result = resolveObservablePlotEncoding({ ...baseConfig, fill: 'mode' }, rows, display)
+    expect(result.data).toBe(rows)
+  })
+
+  it('no 3rd argument at all behaves identically to today (backward-compat)', () => {
+    const result = resolveObservablePlotEncoding({ ...baseConfig, fill: 'scenario' }, scenarioRows)
+    expect(result.data).toBe(scenarioRows)
+    expect(result.plotOptions.color).toEqual({ legend: true })
+  })
+
+  it('every distinct scenario resolving to a color produces a matched domain/range pair', () => {
+    const display: ScenarioDisplayMap = new Map([
+      ['observed', { color: '#666666' }],
+      ['good_scenario', { color: '#4e79a7', label: 'Preferred Alternative' }],
+    ])
+    const result = resolveObservablePlotEncoding({ ...baseConfig, fill: 'scenario' }, scenarioRows, display)
+    expect(result.plotOptions.color).toEqual({
+      legend: true,
+      domain: ['observed', 'Preferred Alternative'],
+      range: ['#666666', '#4e79a7'],
+    })
+  })
+
+  it('even one unresolved scenario leaves domain/range unset for the whole panel', () => {
+    const display: ScenarioDisplayMap = new Map([['observed', { color: '#666666' }]]) // good_scenario has no color
+    const result = resolveObservablePlotEncoding({ ...baseConfig, fill: 'scenario' }, scenarioRows, display)
+    expect(result.plotOptions.color).toEqual({ legend: true })
   })
 })

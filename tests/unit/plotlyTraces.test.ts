@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import { resolveColumnName, resolveTraces } from '@/panels/plotlyTraces'
 import type { PlotlyTraceConfig } from '@/layout/types'
+import type { ScenarioDisplayMap } from '@/panels/scenarioDisplay'
 
 describe('resolveColumnName', () => {
   it('resolves $metric.<column> to the column name', () => {
@@ -102,5 +103,74 @@ describe('resolveTraces', () => {
     expect(result).toHaveLength(1)
     expect(result[0].name).toBe('Mode Share')
     expect(result[0].x).toEqual(['HBW'])
+  })
+})
+
+// 035-scenario-label-color
+describe('resolveTraces — scenario label/color resolution (Part A/Part B)', () => {
+  const multiScenarioRows = [
+    { purpose: 'HBW', share: 0.62, scenario: 'observed' },
+    { purpose: 'HBW', share: 0.58, scenario: 'good_scenario' },
+  ]
+  const trace: PlotlyTraceConfig = {
+    type: 'bar',
+    x: '$metric.purpose',
+    y: '$metric.share',
+    name: '$scenario',
+  }
+
+  it('a labeled scenario\'s trace name resolves to the label, not the real name', () => {
+    const display: ScenarioDisplayMap = new Map([['good_scenario', { label: 'Preferred Alternative' }]])
+    const result = resolveTraces(trace, multiScenarioRows, display)
+    const names = result.map((t) => t.name).sort()
+    expect(names).toEqual(['Preferred Alternative', 'observed'])
+    // Filtering/grouping still used the real name — the labeled trace's
+    // own x/y data is correctly this row's, not lost or duplicated.
+    const labeled = result.find((t) => t.name === 'Preferred Alternative')
+    expect(labeled?.y).toEqual([0.58])
+  })
+
+  it('an unlabeled scenario\'s trace name is unchanged', () => {
+    const display: ScenarioDisplayMap = new Map([['good_scenario', { label: 'Preferred Alternative' }]])
+    const result = resolveTraces(trace, multiScenarioRows, display)
+    expect(result.find((t) => t.name === 'observed')).toBeDefined()
+  })
+
+  it('no 3rd argument at all behaves identically to today (backward-compat)', () => {
+    const result = resolveTraces(trace, multiScenarioRows)
+    expect(result.map((t) => t.name).sort()).toEqual(['good_scenario', 'observed'])
+    expect(result.every((t) => t.marker === undefined)).toBe(true)
+  })
+
+  it('a split on a non-scenario column is unaffected by a populated scenarioDisplay map', () => {
+    const rows = [
+      { mode: 'SOV', share: 0.62, scenario: 'observed' },
+      { mode: 'HOV', share: 0.18, scenario: 'observed' },
+    ]
+    const modeTrace: PlotlyTraceConfig = {
+      type: 'bar',
+      x: '$metric.mode',
+      y: '$metric.share',
+      color: '$metric.mode',
+    }
+    const display: ScenarioDisplayMap = new Map([['observed', { label: 'Should Not Apply', color: '#ff0000' }]])
+    const result = resolveTraces(modeTrace, rows, display)
+    expect(result.map((t) => t.name).sort()).toEqual(['HOV', 'SOV'])
+    expect(result.every((t) => t.marker === undefined)).toBe(true)
+  })
+
+  it('a scenario with a resolved color sets marker.color', () => {
+    const display: ScenarioDisplayMap = new Map([['good_scenario', { color: '#4e79a7' }]])
+    const result = resolveTraces(trace, multiScenarioRows, display)
+    const goodTrace = result.find((t) => t.name === 'good_scenario')
+    expect(goodTrace?.marker).toEqual({ color: '#4e79a7' })
+  })
+
+  it('a scenario with no resolved color leaves marker.color unset — key absent, not undefined', () => {
+    const display: ScenarioDisplayMap = new Map([['good_scenario', { label: 'Preferred Alternative' }]])
+    const result = resolveTraces(trace, multiScenarioRows, display)
+    const observedTrace = result.find((t) => t.name === 'observed')
+    expect(observedTrace).toBeDefined()
+    expect('marker' in observedTrace!).toBe(false)
   })
 })

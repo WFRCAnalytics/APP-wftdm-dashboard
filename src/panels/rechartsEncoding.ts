@@ -1,5 +1,6 @@
 import type { ChartConfig } from '@/components/ui/chart'
 import type { RechartsPanelConfig } from '@/layout/types'
+import { resolveScenarioColor, resolveScenarioLabel, type ScenarioDisplayMap } from '@/panels/scenarioDisplay'
 
 // 029-shadcn-chart-panel — pure, DOM-free transform: tidy SQL rows (this
 // app's own universal query-result shape, one row per x/series
@@ -29,6 +30,13 @@ export interface EncodedRechartsData {
 export function encodeRechartsData(
   rows: readonly Record<string, unknown>[],
   config: Pick<RechartsPanelConfig, 'x' | 'y' | 'series'>,
+  // 035-scenario-label-color: optional — every existing call site with no
+  // 3rd argument behaves identically to before this feature. Only applied
+  // when config.series is literally 'scenario' (the column
+  // services/sqlExpander.ts's $scenario.<metric> union always produces —
+  // recharts/observable-plot's own x/y/series are literal column names,
+  // not $-prefixed placeholders, unlike plotly's traces).
+  scenarioDisplay?: ScenarioDisplayMap,
 ): EncodedRechartsData {
   const { x, y, series } = config
 
@@ -70,10 +78,23 @@ export function encodeRechartsData(
     wideRow[seriesValue] = row[y] as number
   }
 
+  // 035-scenario-label-color: the pivoted-row column key (`key`, the real
+  // scenario name when isScenarioSplit) is UNCHANGED — Recharts' own
+  // `dataKey` must match the actual column key in `data`, so only the
+  // ChartConfig's own display-only `label`/`color` fields (read by
+  // shadcn's ChartTooltipContent/ChartLegendContent, never by Recharts'
+  // own data binding) are substituted (FR-002/FR-003).
+  const isScenarioSplit = config.series === 'scenario' && scenarioDisplay !== undefined
   const chartConfig: ChartConfig = {}
   seriesKeys.forEach((key, index) => {
     const tokenNumber = (index % CHART_TOKEN_COUNT) + 1
-    chartConfig[key] = { label: key, color: `var(--chart-${tokenNumber})` }
+    const resolvedColor = isScenarioSplit ? resolveScenarioColor(key, scenarioDisplay) : undefined
+    chartConfig[key] = {
+      label: isScenarioSplit ? resolveScenarioLabel(key, scenarioDisplay) : key,
+      // FR-008: falls back to the existing token-cycling default when no
+      // color resolves (an unresolved scenario, or a non-scenario split).
+      color: resolvedColor ?? `var(--chart-${tokenNumber})`,
+    }
   })
 
   return { data: [...rowsByX.values()], chartConfig, seriesKeys }

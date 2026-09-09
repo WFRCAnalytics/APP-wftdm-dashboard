@@ -1,5 +1,5 @@
-scenario_name: observed
-display_name: Observed Data
-color: #666666
-notes: Fixture stand-in for observed validation data
+scenario_name: "observed"
+display_name: "Observed Data"
+color: "#666666"
+notes: "Fixture stand-in for observed validation data"
 pinned: true

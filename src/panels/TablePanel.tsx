@@ -6,6 +6,8 @@ import * as sqlExpander from '@/services/sqlExpander'
 import * as filterState from '@/state/filterState'
 import { useFilterState } from '@/hooks/useFilterState'
 import { useActiveScenarios } from '@/hooks/useActiveScenarios'
+import { useScenarioDisplay } from '@/hooks/useScenarioDisplay'
+import { resolveScenarioLabel } from '@/panels/scenarioDisplay'
 import { useBaseline } from '@/hooks/useBaseline'
 import {
   buildComparisonDiffQuery,
@@ -50,6 +52,10 @@ export function TablePanel({ config }: { config: TablePanelConfig }) {
   // set below) — FR-008 requires exactly this: local UI state MUST survive
   // a scenario-activation-triggered refetch.
   const activeScenarioNames = useActiveScenarios()
+  // 035-scenario-label-color (FR-001/FR-005): a `scenario`-keyed column's
+  // CELL values (not its header — see resolveColumns()'s own field/label
+  // split, unaffected) resolve through label ?? name below.
+  const scenarioDisplay = useScenarioDisplay()
   // 019-baseline-diff-consumption: only consulted when config.comparison
   // references the '$baseline' sentinel — included in the fetch effect's
   // own dependency array below regardless, so a live baseline change
@@ -294,7 +300,11 @@ export function TablePanel({ config }: { config: TablePanelConfig }) {
                           style={background ? { backgroundColor: background } : undefined}
                           className="whitespace-nowrap px-3 py-2"
                         >
-                          {column.format ? formatValue(value, column.format) : String(value ?? '')}
+                          {column.field === 'scenario'
+                            ? resolveScenarioLabel(String(value), scenarioDisplay)
+                            : column.format
+                              ? formatValue(value, column.format)
+                              : String(value ?? '')}
                         </td>
                       )
                     })}

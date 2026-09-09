@@ -932,6 +932,63 @@ layout:
       height: 350
       width: 0.33
 
+  # 035-scenario-label-color — real scenario-split panels across all four
+  # affected panel types, no new Parquet needed: summary_kpis is the ONLY
+  # metric with matching columns published under BOTH `good_scenario` AND
+  # `observed` (vmt_by_home_taz is also published by both, but with a
+  # real, already-documented column-count MISMATCH — 2 vs 3 columns — that
+  # would make its own $scenario.<metric> UNION ALL throw; confirmed via
+  # generate.py directly, not assumed). summary_kpis itself has 2 rows per
+  # scenario (purpose_count 24/25, avg_trip_distance 6.4/6.1) — a real,
+  # if small, x/y shape once unioned across two scenarios (4 rows total),
+  # not the purely-scalar shape a first read of the fixture might suggest.
+  # No `scenario:`/`scenarios:` pin on any panel below — the bare
+  # $scenario union spans every currently active scenario, which
+  # scenarioLabelDisplay.spec.ts/scenarioColorOverride.spec.ts activate
+  # explicitly (good_scenario + observed) before asserting against these.
+  row_scenario_display:
+    - type: plotly
+      title: Scenario Split (Plotly)
+      metric: summary_kpis
+      height: 300
+      traces:
+        - type: bar
+          x: $metric.purpose_count
+          y: $metric.avg_trip_distance
+          name: $scenario
+      width: 0.25
+
+    - type: recharts
+      title: Scenario Split (Recharts)
+      chart_type: bar
+      metric: summary_kpis
+      x: purpose_count
+      y: avg_trip_distance
+      series: scenario
+      height: 300
+      width: 0.25
+
+    - type: observable-plot
+      title: Scenario Split (Observable Plot)
+      metric: summary_kpis
+      mark: barY
+      x: purpose_count
+      y: avg_trip_distance
+      fill: scenario
+      height: 300
+      width: 0.25
+
+    # No `columns:` override — auto-derives one column per row key,
+    # including the literal `scenario` column the $scenario union adds
+    # (contracts/scenario-display-resolution.md's read-path §1.4: the
+    # CELLS in this column are the real substitution surface, never the
+    # column HEADER, which stays the literal text "scenario").
+    - type: table
+      title: Scenario Split (Table)
+      metric: summary_kpis
+      height: 300
+      width: 0.25
+
 # 030-sidebar-navigation, US3: real accordion sub-navigation coverage
 # against this tab's own already-rich, already-heavily-exercised row set —
 # no new panel/metric data needed. Three sections, deliberately NOT

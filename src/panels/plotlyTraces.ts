@@ -10,6 +10,7 @@
 import type * as Plotly from 'plotly.js-dist-min'
 
 import type { PlotlyTraceConfig } from '@/layout/types'
+import { resolveScenarioLabel, resolveScenarioColor, type ScenarioDisplayMap } from '@/panels/scenarioDisplay'
 
 /** $metric.<column> -> that column's real name; the bare $scenario sentinel
  * -> 'scenario' (the column buildPanelQuery's $scenario.<metric> union adds
@@ -55,6 +56,14 @@ function resolveField(field: string | undefined, rows: Record<string, unknown>[]
 export function resolveTraces(
   trace: PlotlyTraceConfig,
   rows: Record<string, unknown>[],
+  // 035-scenario-label-color: optional — every existing call site with no
+  // 3rd argument behaves identically to before this feature. Only applied
+  // when the split column is literally 'scenario' (the column
+  // services/sqlExpander.ts's $scenario.<metric> union always produces,
+  // per resolveColumnName('$scenario') above) — a split on any other
+  // column (e.g. $metric.mode) is completely unaffected regardless of
+  // whether scenarioDisplay is populated.
+  scenarioDisplay?: ScenarioDisplayMap,
 ): Partial<Plotly.PlotData>[] {
   const colorColumn = resolveColumnName(trace.color)
   const nameColumn = resolveColumnName(trace.name)
@@ -81,12 +90,25 @@ export function resolveTraces(
     ]
   }
 
+  const isScenarioSplit = splitColumn === 'scenario' && scenarioDisplay !== undefined
   const categories = [...new Set(rows.map((r) => String(r[splitColumn])))]
   return categories.map((category) => {
+    // Grouping/filtering always uses the real category value (the real
+    // scenario name, when isScenarioSplit) — never the resolved label
+    // (FR-002/FR-003: label substitution happens only to the final `name`
+    // presented to the viewer, below, after this filter has already run).
     const categoryRows = rows.filter((r) => String(r[splitColumn]) === category)
     return {
       ...base,
-      name: category,
+      name: isScenarioSplit ? resolveScenarioLabel(category, scenarioDisplay) : category,
+      // 035-scenario-label-color (Part B): marker.color is set ONLY when
+      // a real color resolves — an explicit `undefined` is never assigned
+      // in its place, so Plotly's own default per-trace palette cycling
+      // still applies exactly as it does today for an unresolved scenario
+      // (FR-008) or a non-scenario split (isScenarioSplit === false).
+      ...(isScenarioSplit && resolveScenarioColor(category, scenarioDisplay) !== undefined
+        ? { marker: { color: resolveScenarioColor(category, scenarioDisplay) } }
+        : {}),
       x: xColumn ? categoryRows.map((r) => r[xColumn] as Plotly.Datum) : undefined,
       y: yColumn ? categoryRows.map((r) => r[yColumn] as Plotly.Datum) : undefined,
       text: textColumn ? (categoryRows.map((r) => r[textColumn]) as string[]) : undefined,

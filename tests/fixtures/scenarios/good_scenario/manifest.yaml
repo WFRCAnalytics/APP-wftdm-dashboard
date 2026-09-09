@@ -1,4 +1,4 @@
-scenario_name: good_scenario
-display_name: Good Fixture Scenario
-color: #4e79a7
-notes: Fixture scenario with valid, complete data
+scenario_name: "good_scenario"
+display_name: "Good Fixture Scenario"
+color: "#4e79a7"
+notes: "Fixture scenario with valid, complete data"
