@@ -37,6 +37,116 @@ layout:
       format: "{:,.0f}"
       icon: route
       width: 0.5
+      # 034-metric-panel-redesign, Part A addendum (FR-023): explicit
+      # per-panel override — a valuebox panel normally has NO expand
+      # control by default (see "Total Households" above, unchanged),
+      # but this one opts back in. panelExpand.spec.ts's own override
+      # test relies on this fixture specifically.
+      expandable: true
+
+  # 034-metric-panel-redesign (US3/US4) — sparkline/baseline_trend fixture
+  # panels. All pinned to `scenario: good_scenario` explicitly — `observed`
+  # never publishes trip_mode_share at all (only summary_kpis/
+  # vmt_by_home_taz — generate.py's own real file list), so an unpinned
+  # $scenario union would throw a real Catalog Error the instant a
+  # sparkline queried it, matching this project's own established
+  # single-scenario-pin convention.
+  row_valuebox_trends:
+    - type: valuebox
+      title: ValueBox Mode Share Sparkline
+      metric: summary_kpis
+      scenario: good_scenario
+      column: total_trips
+      format: "{:,.0f}"
+      sparkline:
+        metric: trip_mode_share
+        x: mode
+        y: share
+      width: 0.33
+
+    # Deliberately broken sparkline metric — proves a sparkline failure
+    # never blocks the panel's own primary scalar value (FR-013).
+    - type: valuebox
+      title: ValueBox Sparkline Broken (intentional)
+      metric: summary_kpis
+      scenario: good_scenario
+      column: total_households
+      format: "{:,.0f}"
+      sparkline:
+        metric: nonexistent_sparkline_metric
+        x: a
+        y: b
+      width: 0.33
+
+    # Real, hand-verifiable nonzero baseline diff. A real, confirmed
+    # fixture constraint (not an oversight): generate.py's own
+    # SUMMARY_KPIS_ROWS is written VERBATIM for both `observed` and
+    # `good_scenario` — every real column is IDENTICAL between them in
+    # this fixture set, so a same-column diff (e.g. total_households -
+    # total_households) is always exactly 0 regardless of which two
+    # scenarios are compared, which would make this test indistinguishable
+    # from the deliberate "no change" fixture below. `expr` deliberately
+    # compares two DIFFERENT real columns instead (a.total_trips -
+    # b.total_persons = 9200 - 3800 = 5400, hand-verified against
+    # generate.py's own SUMMARY_KPIS_ROWS/COLUMNS directly) — a
+    # semantically arbitrary combination, but a genuine, deterministic,
+    # non-zero SQL computation proving the real a/b-scenario-view
+    # resolution and cross-join mechanism work correctly end-to-end, which
+    # is what this test actually needs to prove.
+    - type: valuebox
+      title: ValueBox Baseline Trend
+      metric: summary_kpis
+      scenario: good_scenario
+      column: total_households
+      format: "{:,.0f}"
+      baseline_trend:
+        expr: "a.total_trips - b.total_persons"
+        format: "{:,.0f}"
+      width: 0.34
+
+    # baseline_trend configured with NO scenario: pinned — the real,
+    # documented configuration-error case (research.md §3: a value box's
+    # "current" side is always its pinned scenario; there is no
+    # unambiguous comparison without one).
+    - type: valuebox
+      title: ValueBox Baseline Trend No Scenario (intentional)
+      metric: summary_kpis
+      column: total_households
+      format: "{:,.0f}"
+      baseline_trend:
+        expr: "a.total_households - b.total_households"
+      width: 0.33
+
+    # The resolved baseline scenario IS this panel's own scenario — the
+    # "comparing baseline against itself" edge case (spec.md Edge Cases).
+    # A real per-column diff (not the cross-column trick above) is exactly
+    # right here — the SAME view aliased twice always self-diffs to 0.
+    - type: valuebox
+      title: ValueBox Baseline Trend Self (intentional)
+      metric: summary_kpis
+      scenario: observed
+      column: total_households
+      format: "{:,.0f}"
+      baseline_trend:
+        expr: "a.total_households - b.total_households"
+      width: 0.33
+
+    # Both trend modes configured together (spec.md Edge Cases) — proves
+    # neither crowds out the primary value or the other.
+    - type: valuebox
+      title: ValueBox Both Trends
+      metric: summary_kpis
+      scenario: good_scenario
+      column: total_trips
+      format: "{:,.0f}"
+      sparkline:
+        metric: trip_mode_share
+        x: mode
+        y: share
+      baseline_trend:
+        expr: "a.total_trips - b.total_persons"
+        format: "{:,.0f}"
+      width: 0.34
 
   row_chart:
     - type: plotly
@@ -87,6 +197,12 @@ layout:
         - { field: pct_error, label: "% Error", format: "{:.1%}",
             color_scale: diverging, domain: [-0.5, 0.5] }
       width: 1.0
+      # 034-metric-panel-redesign, Part A addendum (FR-023): explicit
+      # per-panel override — a table panel normally HAS an expand
+      # control by default, but this one opts out. panelExpand.spec.ts's
+      # own override test relies on this fixture specifically; no other
+      # test in that file references "Screenline Validation".
+      expandable: false
 
     # No columns: config (derived from the query result's own shape) and
     # searchable — the vehicle for the cross-page search test: row L025

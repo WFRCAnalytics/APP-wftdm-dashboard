@@ -4,6 +4,8 @@ import {
   buildComparisonDiffQuery,
   buildGraphicWalkerQuery,
   buildPanelQuery,
+  buildSparklineQuery,
+  buildValueBoxBaselineTrendQuery,
   isComparisonDiff,
   resolveActiveScenarios,
   resolveComparisonScenarioName,
@@ -375,5 +377,71 @@ describe('buildGraphicWalkerQuery', () => {
     const sql = buildGraphicWalkerQuery(graphicWalkerConfig)
     expect(sql).not.toContain('$filters')
     expect(sql).not.toContain('$inputs')
+  })
+})
+
+// 034-metric-panel-redesign — data-model.md §5, research.md §2.
+describe('buildSparklineQuery', () => {
+  it('delegates to buildPanelQuery() with a synthetic object carrying sparkline.metric, no column key — SELECT *', () => {
+    const sql = buildSparklineQuery(
+      { filter: undefined, scenario: 'activitysim-baseline', scenarios: undefined },
+      { metric: 'trip_mode_share', x: 'major_trip_mode', y: 'trips' },
+      {},
+    )
+    expect(sql).toBe('SELECT * FROM "activitysim-baseline__trip_mode_share"')
+  })
+
+  it('uses the SAME filter the panel\'s own primary value resolves through, not the sparkline\'s own dataset name', () => {
+    const sql = buildSparklineQuery(
+      { filter: '$filters.purpose', scenario: undefined, scenarios: undefined },
+      { metric: 'trip_mode_share', x: 'major_trip_mode', y: 'trips' },
+      {},
+    )
+    expect(sql).toContain('AND "purpose" = \'$filters.purpose\'')
+  })
+
+  it('unions over $scenario.<sparkline metric> when no scenario is pinned, same as any other panel query', () => {
+    const sql = buildSparklineQuery(
+      { filter: undefined, scenario: undefined, scenarios: undefined },
+      { metric: 'trip_mode_share', x: 'major_trip_mode', y: 'trips' },
+      {},
+    )
+    expect(sql).toBe('SELECT * FROM ($scenario.trip_mode_share)')
+  })
+})
+
+// 034-metric-panel-redesign — data-model.md §5, research.md §3.
+describe('buildValueBoxBaselineTrendQuery', () => {
+  it('produces the exact documented SELECT/cross-join shape', () => {
+    const sql = buildValueBoxBaselineTrendQuery(
+      'summary_kpis',
+      'auto_share',
+      'activitysim-baseline',
+      'activitysim-density-variant',
+      '(a.auto_share - b.auto_share) / NULLIF(b.auto_share, 0)',
+    )
+    expect(sql).toBe(
+      [
+        'SELECT a."auto_share" AS current_value, b."auto_share" AS baseline_value, ((a.auto_share - b.auto_share) / NULLIF(b.auto_share, 0)) AS diff_value',
+        'FROM "activitysim-baseline__summary_kpis" a, "activitysim-density-variant__summary_kpis" b',
+      ].join('\n'),
+    )
+  })
+
+  it('interpolates expr verbatim — plain string substitution only, never eval()\'d', () => {
+    const sql = buildValueBoxBaselineTrendQuery('m', 'c', 'x', 'y', 'a.c * 2')
+    expect(sql).toContain('(a.c * 2) AS diff_value')
+  })
+
+  it('is a real, independent sibling to buildComparisonDiffQuery() — never calls it, never requires compare_on', () => {
+    // No compare_on/join-key argument exists on this function's own
+    // signature at all (research.md §3's own resolution to the real
+    // structural gap: a scalar metric has no per-row identity column to
+    // join on) — a plain comma cross join, correct because both sides
+    // are guaranteed exactly one row.
+    const sql = buildValueBoxBaselineTrendQuery('m', 'c', 'x', 'y', 'a.c')
+    expect(sql).toContain('FROM "x__m" a, "y__m" b')
+    expect(sql).not.toContain('JOIN')
+    expect(sql).not.toContain(' ON ')
   })
 })

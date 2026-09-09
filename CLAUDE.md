@@ -4238,6 +4238,161 @@ first cross-reference this list was built from). ✅ done,
     `027-map-auto-fit-and-reset` reset-button-disabled-before-load timing
     race under full-suite load — neither touched by this feature).
 
+21. ✅ Metric-panel redesign — scoped expand-ability, shadcn-inspired
+    value-box redesign, sparkline + baseline-diff trend indicators — done
+    (`034-metric-panel-redesign`). Three independent parts, one feature.
+
+    **Part A — expand-ability is now scoped per panel TYPE, with a
+    per-panel author override.** The generic 004 expand-to-dialog
+    mechanism (`usePanelExpandHost()`) used to apply to every panel type
+    unconditionally; it now applies only to `table`/`markdown`/`plotly`/
+    `observable-plot`/`sankey`/`recharts`/`flowmap`/`zonemap` by default —
+    `valuebox` and ordinary (non-`dataset_picker`, non-full-page)
+    `graphic-walker` panels no longer show an Expand control at all,
+    since neither benefits from more working room the way a chart/table/
+    map does. The default list lives in a new, deliberately
+    dependency-free module, `panels/expandablePanelTypes.ts`
+    (`EXPANDABLE_PANEL_TYPES`) — NOT co-located in `panels/registry.tsx`,
+    a real, confirmed Vitest constraint: `registry.tsx` eagerly imports
+    all ten real panel components, and importing it (even indirectly)
+    from a plain-Node unit test fails on `FlowMapPanel.tsx`'s own
+    `@flowmap.gl/layers` dependency ("directory import is not supported
+    resolving ES modules").
+
+    **A mid-implementation design change** (the user's own explicit
+    instruction, after Part A's hardcoded-Set version was already
+    partially built) added a genuine author override on top of that
+    default: `PanelConfigBase` gained a new optional `expandable?:
+    boolean` field, and `layout/panelCard.tsx` resolves expand-ability as
+    `config.expandable ?? EXPANDABLE_PANEL_TYPES.has(config.type)` —
+    deliberately `??`, not `||`, so an explicit `expandable: false`
+    override is never confused with "unset." `usePanelExpandHost()` stays
+    fully UNCONDITIONAL (React's own rules-of-hooks requirement) even for
+    a panel that ends up non-expandable — its returned `trigger`/`body`
+    elements are simply never placed in the returned JSX, which is safe:
+    an unplaced React element is inert, never mounted, never a second
+    instance of anything. `docs/GRAMMAR.md` documents the new field and
+    its default table.
+
+    **Part B — `ValueBoxPanel.tsx`'s visual redesign**, researched
+    directly against shadcn's real, current dashboard example
+    (`apps/v4/app/(app)/examples/dashboard/components/section-cards.tsx`,
+    fetched from the same registry `033-shadcn-default-theme` used —
+    never assumed from memory). A real, confirmed correction to this
+    part's own original premise, found before writing any redesign code:
+    `ValueBoxPanel.tsx` never rendered its own title/label at all —
+    `panelCard.tsx`'s shared `CardHeader`/`CardTitle` already renders
+    `config.title` above `CardContent` for every panel type generically,
+    already visually smaller/lighter than the value itself. The label
+    was therefore already "above the value" by construction; the one
+    genuinely new change was adding `tabular-nums` to the value's own
+    className (shadcn's real reference uses it for exactly this reason —
+    digit alignment across re-renders). No shared chrome was forked or
+    duplicated. A real, confirmed test-authoring finding along the way:
+    the label and value resolve to the IDENTICAL color in both themes
+    (both inherit `text-card-foreground` from the shared `Card` ancestor,
+    neither sets its own color) — distinguished by size/weight only; the
+    redesign deliberately did NOT fork `CardTitle`'s color per panel type
+    to manufacture a difference the requirement never actually demanded.
+
+    **Part C — two new, independently-configurable, OPTIONAL trend
+    indicators** on `ValueBoxPanelConfig`:
+    - `sparkline: { metric, x, y, chart_type? }` — a small embedded
+      Recharts chart showing the metric's OWN distribution across a
+      category, via a genuinely new, independent query (own `idle`/
+      `loading`/`ready`/`empty`/`error` state, never blocking or being
+      blocked by the panel's own primary scalar value). New
+      `panelQuery.ts` export `buildSparklineQuery()` — a thin,
+      purely-additive delegation to the EXISTING, unmodified
+      `buildPanelQuery()` via a synthetic config object. New
+      `panels/valueBoxSparkline.tsx` reuses `rechartsEncoding.ts`'s
+      existing `encodeRechartsData()` unmodified, rendering bare
+      Recharts primitives (`BarChart`/`LineChart` + `Bar`/`Line` inside a
+      plain `ResponsiveContainer`) — deliberately NOT the full
+      `ChartContainer` chrome from `components/ui/chart.tsx` (no
+      axes/legend/tooltip needed at sparkline scale).
+    - `baseline_trend: { expr, format? }` — a directional badge (Badge +
+      `TrendingUp`/`TrendingDown`/`Minus` from `lucide-react`) comparing
+      the panel's own scalar value against the resolved `$baseline`
+      scenario, reusing `useBaseline()`/`resolveComparisonScenarioName()`
+      completely UNMODIFIED (018/019/021's own baseline-diff machinery —
+      per this feature's own explicit scope exclusion, none of that code
+      was touched). A real, confirmed grammar gap closed by a NEW,
+      SEPARATE sibling function rather than modifying anything existing:
+      `buildComparisonDiffQuery()` requires a `compare_on` JOIN key,
+      which a scalar (`summary_kpis`, one row per scenario) metric has
+      none of — `buildValueBoxBaselineTrendQuery()` uses a plain comma
+      cross join (`FROM a, b`) instead, evaluating the author's own
+      `expr` (e.g. `a.total_trips - b.total_persons`) directly. A
+      same-scenario "baseline resolves to the panel's own scenario"
+      case is handled as its own distinct `Minus`/neutral state, never a
+      misleading up/down arrow on a guaranteed-zero diff. New
+      `components/ui/badge.tsx` — adapted from shadcn's real, current
+      `new-york-v4` source (`default`/`secondary`/`destructive`/`outline`
+      variants only), following `button.tsx`'s own established
+      non-Radix, `cva`-based, `forwardRef` convention. Deliberately NO
+      color-coded up-is-good/down-is-bad semantics — this app has no
+      per-metric "which direction is desirable" metadata (VMT decreasing
+      is good; trip count decreasing might not be) — directionality is
+      conveyed by icon only, using the neutral `outline` badge variant.
+
+    **Real fixture-data constraint found and worked around during
+    testing**: `tests/fixtures/generate.py`'s own `SUMMARY_KPIS_ROWS` is
+    written IDENTICALLY for `observed` and `good_scenario` — any
+    same-column diff between them is always exactly 0, and no existing
+    `comparison: diff` fixture panel uses a scalar metric+column at all
+    (every one uses `vmt_by_home_taz`, multi-row) to cross-check against.
+    Resolved by hand-verifying a deliberate, real, non-zero CROSS-column
+    expression instead (`a.total_trips - b.total_persons = 9200 - 3800 =
+    5400`, documented inline in the new fixture row's own header
+    comment) — proves the real scenario-view resolution and cross-join
+    mechanism correctly, which is what the test actually needs, without
+    forcing a misleading same-column comparison the fixture data can't
+    support.
+
+    **A real regression found and fixed during the Polish-phase full
+    Playwright run** (not merely anticipated): `dashboardShell.spec.ts`'s
+    pre-existing "a value-box panel displays a number matching its
+    underlying fixture data" test became a strict-mode violation once
+    this feature's own new fixture panels (`row_valuebox_trends`,
+    `tests/fixtures/dashboard-config/dashboard-1-summary.yaml`) also
+    legitimately display the same real values ("1,500"/"9,200") —
+    fixed with `.first()` on both assertions.
+
+    **A real, EXPECTED consequence of Part A's own default-scope change**,
+    also found and fixed during the same full-suite run:
+    `graphicWalkerPanel.spec.ts`'s pre-existing User Story 3 tests
+    specifically exercised the 004 expand mechanism against a
+    `graphic-walker` panel — no longer expandable by default. Fixed via
+    the SAME per-panel override this feature built for exactly this
+    purpose: `dashboard-2-detail.yaml`'s "Free-form Visual Analytics"
+    fixture panel gained `expandable: true`, restoring that real
+    expand-mechanism coverage rather than discarding it; a separate,
+    now-inapplicable expand-button assertion in the unrelated
+    SC-005 "all nine panel types render" test was removed instead (that
+    test's own purpose is panel-type rendering, not expand-ability, so no
+    override was warranted there).
+
+    Full regression confirmation: `npm run typecheck` clean; `npm run
+    test:unit` 403/403 passing (up from 386 — T004's new
+    `panelRegistry.test.ts`, 11 tests, plus 6 new `panelQuery.test.ts`
+    cases for the two new query-builder functions); `npm run build`
+    clean, no new warnings beyond this project's existing, already-
+    documented ones. The full `tests/integration/` Playwright suite
+    across two complete runs: 1 real regression found and fixed (the
+    dashboardShell fixture collision above), 3 real, expected,
+    correctly-caused failures from Part A's own design fixed via the
+    per-panel override (the graphic-walker cases above), and 9 further
+    failures spread across both runs — no two runs failing the same set,
+    the signature of genuine multi-worker resource-contention flakiness —
+    each individually re-run in isolation and confirmed passing alone
+    (the dark-mode Plotly "no re-query" flake additionally cross-checked
+    against a clean `git stash`'d tree, reproducing there too:
+    Expected 79/Received 80 on main vs. this branch's Expected
+    103/Received 104 — same pre-existing off-by-one-query flake, a
+    different absolute count only because of this feature's own added
+    fixture queries).
+
 ---
 
 ## Reference implementations — copy patterns, don't re-derive

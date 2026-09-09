@@ -26,6 +26,15 @@ export interface PanelConfigBase {
   title: string
   height?: number
   width?: number
+  // 034-metric-panel-redesign, Part A addendum (spec.md FR-023–FR-025):
+  // an explicit per-panel override of PanelCard's expand-to-dialog
+  // affordance, taking precedence over EXPANDABLE_PANEL_TYPES' own
+  // per-panel-TYPE default (panels/expandablePanelTypes.ts) in either
+  // direction. `undefined` (the case for every dashboard-*.yaml file
+  // that predates this field) falls through to that type-level default —
+  // resolved via `??`, not `||`, specifically so an explicit `false`
+  // (a real, meaningful override) is never confused with "unset."
+  expandable?: boolean
 }
 
 // Fields only a *querying* panel type needs. Everything that reads
@@ -54,6 +63,22 @@ export interface DataBoundPanelConfigBase extends PanelConfigBase {
   scenarios?: string[]
 }
 
+// 034-metric-panel-redesign: two new, independent, optional trend-
+// indicator modes (data-model.md §2) — a value-box panel may configure
+// one, both, or neither; neither field changes the meaning of any
+// existing ValueBoxPanelConfig field.
+export interface ValueBoxSparklineConfig {
+  metric: string // a DIFFERENT, already-grouped metric than the panel's own scalar `metric`
+  x: string // category column
+  y: string // value column
+  chart_type?: 'bar' | 'line' // default 'bar'
+}
+
+export interface ValueBoxBaselineTrendConfig {
+  expr: string // free-form SQL expr, `a`/`b` aliases — same convention as ComparisonDiff.expr
+  format?: string // defaults to the panel's own `format`
+}
+
 export interface ValueBoxPanelConfig extends DataBoundPanelConfigBase {
   type: 'valuebox'
   column: string
@@ -63,6 +88,8 @@ export interface ValueBoxPanelConfig extends DataBoundPanelConfigBase {
   observed?: number
   threshold_warn?: number
   threshold_fail?: number
+  sparkline?: ValueBoxSparklineConfig
+  baseline_trend?: ValueBoxBaselineTrendConfig
 }
 
 export interface PlotlyTraceConfig {

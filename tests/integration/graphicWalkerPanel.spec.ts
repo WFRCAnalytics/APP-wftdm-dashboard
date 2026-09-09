@@ -333,7 +333,14 @@ test.describe('Polish & cross-cutting', () => {
     const gwCard = panelCard(page, 'Free-form Visual Analytics (Summary Tab)') // graphic-walker
     await gwCard.waitFor({ state: 'visible', timeout: 15000 })
     await expect(gwCard.getByText('Field List', { exact: true })).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Expand Free-form Visual Analytics (Summary Tab)' })).toBeVisible()
+    // 034-metric-panel-redesign (Part A): graphic-walker panels are no
+    // longer expandable by DEFAULT (FR-002) — this panel has no
+    // `expandable: true` override, so no Expand trigger renders. SC-005
+    // itself is about all panel types rendering without error, not about
+    // expand-ability specifically (the Detail tab's "Free-form Visual
+    // Analytics" panel, which DOES opt back in via the override, already
+    // covers the expand-to-dialog mechanism for this panel type in User
+    // Story 3 below).
   })
 
   test('a global sidebar filter change elsewhere triggers no additional graphic-walker query', async ({

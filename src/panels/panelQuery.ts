@@ -10,6 +10,7 @@ import type {
   ComparisonDiff,
   DataBoundPanelConfigBase,
   GraphicWalkerPanelConfig,
+  ValueBoxSparklineConfig,
 } from '@/layout/types'
 
 const FILTERS_REF_RE = /^\$filters\.([A-Za-z0-9_]+)$/
@@ -297,3 +298,66 @@ export function buildGraphicWalkerQuery(config: GraphicWalkerPanelConfig): strin
  * import it rather than each defining their own equivalent empty object.
  */
 export const EMPTY_SUMMARIZE_CONFIG: DashboardConfig = { raw: {}, sourcePath: '' }
+
+/**
+ * 034-metric-panel-redesign — builds the bare SQL template for a
+ * value-box panel's optional sparkline mode (data-model.md §5,
+ * research.md §2). Delegates to the EXISTING, unmodified
+ * buildPanelQuery() with a synthetic DataBoundPanelConfigBase-shaped
+ * object — `sparkline.metric` in place of the panel's own scalar
+ * `metric`, sharing the SAME filter/scenario/scenarios the panel's own
+ * primary value already resolves through (a global filter narrowing the
+ * headline number must also narrow what the mini-chart shows). Carries
+ * no `column` key, so buildPanelQuery()'s own existing `'column' in
+ * config` branch falls through to `SELECT *` — the correct multi-row
+ * shape a grouped breakdown needs, with ZERO change to that function.
+ */
+export function buildSparklineQuery(
+  config: Pick<DataBoundPanelConfigBase, 'filter' | 'scenario' | 'scenarios'>,
+  sparkline: ValueBoxSparklineConfig,
+  filters: Record<FilterId, FilterValue>,
+): string {
+  return buildPanelQuery(
+    {
+      // `title` is required by DataBoundPanelConfigBase but never read by
+      // buildPanelQuery() itself (confirmed by direct read) — a
+      // placeholder value only, not a real title anything renders.
+      title: sparkline.metric,
+      metric: sparkline.metric,
+      filter: config.filter,
+      scenario: config.scenario,
+      scenarios: config.scenarios,
+    },
+    filters,
+  )
+}
+
+/**
+ * 034-metric-panel-redesign — builds the bare SQL template for a
+ * value-box panel's optional baseline_trend mode (data-model.md §5,
+ * research.md §3). A real, deliberate SIBLING to buildComparisonDiffQuery()
+ * above, not a modification to it or a call through it — that function's
+ * own JOIN-on-compare_on shape has no equivalent for a scalar,
+ * single-row-per-scenario metric (a value box's own typical data shape),
+ * which has no per-row identity column to join on at all. Reuses the
+ * SAME free-form `expr` convention (interpolated verbatim, never eval()'d
+ * — constitution Principle III) and the same literal view-name-prefix
+ * convention `config.scenario`/buildComparisonDiffQuery() already use —
+ * only the JOIN itself differs, replaced by a plain comma cross join,
+ * correct here specifically because both `currentScenario`/
+ * `baselineScenario` sides are guaranteed exactly one row.
+ */
+export function buildValueBoxBaselineTrendQuery(
+  metric: string,
+  column: string,
+  currentScenario: string,
+  baselineScenario: string,
+  expr: string,
+): string {
+  const aView = `"${currentScenario}__${metric}"`
+  const bView = `"${baselineScenario}__${metric}"`
+  return [
+    `SELECT a."${column}" AS current_value, b."${column}" AS baseline_value, (${expr}) AS diff_value`,
+    `FROM ${aView} a, ${bView} b`,
+  ].join('\n')
+}

@@ -61,6 +61,14 @@ layout:
       dataset: trip_mode_share
       scenario: good_scenario
       width: 1.0
+      # 034-metric-panel-redesign (Part A): graphic-walker is no longer
+      # expandable by DEFAULT (FR-002) — this panel's own User Story 3
+      # coverage below (graphicWalkerPanel.spec.ts) specifically exercises
+      # the 004 expand-to-dialog mechanism against an in-progress
+      # GraphicWalker chart, so it opts back in via the new per-panel
+      # override (FR-023) rather than being rewritten to drop that
+      # coverage.
+      expandable: true
 
   # A second instance, deliberately bound to a different dataset — US2's
   # own "no cross-contamination between two panel instances" coverage

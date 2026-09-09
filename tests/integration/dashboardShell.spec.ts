@@ -101,10 +101,16 @@ test.describe('User Story 2 - An analyst sees a real number, computed from real 
 
     // SC-002: matches tests/fixtures/generate.py's SUMMARY_KPIS_ROWS
     // (total_households: 1500, total_trips: 9200, both rows).
+    // 034-metric-panel-redesign added several more real value-box panels
+    // to this same fixture tab (row_valuebox_trends) that legitimately
+    // display the SAME real values — `.first()` acknowledges that real,
+    // expected multiplicity rather than asserting a uniqueness this test
+    // was never actually about (it only ever needed to prove the value
+    // renders SOMEWHERE, not that it renders exactly once).
     await expect(page.getByText('Total Households')).toBeVisible()
-    await expect(page.getByText('1,500')).toBeVisible()
+    await expect(page.getByText('1,500').first()).toBeVisible()
     await expect(page.getByText('Total Trips')).toBeVisible()
-    await expect(page.getByText('9,200')).toBeVisible()
+    await expect(page.getByText('9,200').first()).toBeVisible()
   })
 })
 

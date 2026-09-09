@@ -26,30 +26,63 @@ function panelCard(page: Page, title: string) {
 }
 
 test.describe('User Story 1 - Expand a panel to a large view', () => {
-  test('expand trigger opens a dialog showing the same content, for a valuebox and a plotly panel', async ({
+  test('expand trigger opens a dialog showing the same content, for a plotly panel; a valuebox panel has no expand trigger at all', async ({
     page,
   }) => {
     await boot(page)
 
-    // valuebox
-    await expandTrigger(page, 'Total Households').click()
-    let dialog = page.getByRole('dialog')
-    await expect(dialog).toBeVisible()
-    await expect(dialog.getByText('Total Households')).toBeVisible()
-    await expect(dialog.getByText('1,500')).toBeVisible()
-    await dialog.getByRole('button', { name: 'Close' }).click()
-    await expect(dialog).not.toBeVisible()
+    // 034-metric-panel-redesign (FR-001): valuebox panels no longer get an
+    // expand trigger at all — confirmed directly, not assumed, before this
+    // test's own plotly assertion below (which used to also cover
+    // valuebox in the same test, prior to that scope-down).
+    await expect(expandTrigger(page, 'Total Households')).toHaveCount(0)
 
-    // plotly
+    // plotly — unaffected by 034-metric-panel-redesign.
     await expandTrigger(page, 'Mode Share by Purpose').click()
-    dialog = page.getByRole('dialog')
+    const dialog = page.getByRole('dialog')
     await expect(dialog).toBeVisible()
     await expect(dialog.locator('.js-plotly-plot')).toBeVisible()
   })
 
+  test('an explicit expandable: true/false override wins over its panel type\'s own default, in both directions', async ({
+    page,
+  }) => {
+    // 034-metric-panel-redesign, Part A addendum (FR-023–FR-025) —
+    // contracts/panel-expand-scoping.md's own override section.
+    await boot(page)
+
+    // "Total Trips" (valuebox, expandable: true in the fixture) opts IN,
+    // even though valuebox's own type-level default is no control at all
+    // — "Total Households" (the SAME panel type, right next to it, no
+    // override configured) still correctly has none, proving this is a
+    // genuinely per-PANEL override, not an accidental type-wide change.
+    await expect(expandTrigger(page, 'Total Households')).toHaveCount(0)
+    await expandTrigger(page, 'Total Trips').click()
+    const valueboxDialog = page.getByRole('dialog')
+    await expect(valueboxDialog).toBeVisible()
+    await expect(valueboxDialog.getByText('Total Trips')).toBeVisible()
+    await valueboxDialog.getByRole('button', { name: 'Close' }).click()
+    await expect(valueboxDialog).not.toBeVisible()
+
+    // "Screenline Validation" (table, expandable: false in the fixture)
+    // opts OUT, even though table's own type-level default is a control
+    // — "Screenline Validation (Raw)" (the SAME panel type, no override
+    // configured) still correctly has one, same proof in the other
+    // direction. `exact: true` here (not the shared expandTrigger()
+    // helper, which doesn't set it) — a real, confirmed necessity found
+    // live: Playwright's getByRole `name` matches by substring by
+    // default, so the un-exact helper's own query for "Screenline
+    // Validation" also matches "Expand Screenline Validation (Raw)"'s
+    // button, since the former is a literal prefix of the latter.
+    await expect(
+      page.getByRole('button', { name: 'Expand Screenline Validation', exact: true }),
+    ).toHaveCount(0)
+    await expect(expandTrigger(page, 'Screenline Validation (Raw)')).toHaveCount(1)
+  })
+
   test('Escape closes the dialog and returns focus to the trigger', async ({ page }) => {
     await boot(page)
-    const trigger = expandTrigger(page, 'Total Households')
+    const trigger = expandTrigger(page, 'Mode Share by Purpose')
     await trigger.click()
     const dialog = page.getByRole('dialog')
     await expect(dialog).toBeVisible()
@@ -61,7 +94,7 @@ test.describe('User Story 1 - Expand a panel to a large view', () => {
 
   test('clicking outside the dialog closes it and returns focus to the trigger', async ({ page }) => {
     await boot(page)
-    const trigger = expandTrigger(page, 'Total Households')
+    const trigger = expandTrigger(page, 'Mode Share by Purpose')
     await trigger.click()
     const dialog = page.getByRole('dialog')
     await expect(dialog).toBeVisible()
@@ -87,7 +120,7 @@ test.describe('User Story 1 - Expand a panel to a large view', () => {
     page,
   }) => {
     await boot(page)
-    const trigger = expandTrigger(page, 'Total Households')
+    const trigger = expandTrigger(page, 'Mode Share by Purpose')
     await trigger.click()
     const dialog = page.getByRole('dialog')
     await expect(dialog).toBeVisible()
@@ -99,7 +132,7 @@ test.describe('User Story 1 - Expand a panel to a large view', () => {
 
   test('Tab/Shift+Tab cycles focus only within the open dialog', async ({ page }) => {
     await boot(page)
-    await expandTrigger(page, 'Total Households').click()
+    await expandTrigger(page, 'Mode Share by Purpose').click()
     const dialog = page.getByRole('dialog')
     await expect(dialog).toBeVisible()
 
@@ -204,7 +237,7 @@ test.describe('User Story 1 - Expand a panel to a large view', () => {
     // the fact." This test verifies both halves: blocked while open,
     // works normally once closed.
     await boot(page)
-    await expandTrigger(page, 'Total Households').click()
+    await expandTrigger(page, 'Mode Share by Purpose').click()
     const dialog = page.getByRole('dialog')
     await expect(dialog).toBeVisible()
 
@@ -221,7 +254,7 @@ test.describe('User Story 1 - Expand a panel to a large view', () => {
     // query for the card behind the dialog would find nothing by design,
     // not because the card is actually gone. A raw CSS locator (bypassing
     // accessibility-tree filtering) confirms it's still there.
-    await expect(page.locator('h3', { hasText: 'Total Households' })).toBeVisible()
+    await expect(page.locator('h3', { hasText: 'Mode Share by Purpose' })).toBeVisible()
 
     await page.keyboard.press('Escape')
     await expect(dialog).not.toBeVisible()
@@ -235,18 +268,23 @@ test.describe('User Story 2 - Return to the dashboard without losing panel state
     page,
   }) => {
     await boot(page)
-    await expect(page.getByText('1,500')).toBeVisible() // already loaded
+    // 034-metric-panel-redesign: swapped from the "Total Households"
+    // valuebox fixture (no longer expandable by default) to the file's
+    // own existing "Mode Share by Purpose" plotly fixture — a rendered
+    // chart is this panel type's own "already loaded" signal, matching
+    // how this file's other plotly-fixture tests already check it.
+    await expect(panelCard(page, 'Mode Share by Purpose').locator('.js-plotly-plot')).toBeVisible()
 
-    await expandTrigger(page, 'Total Households').click()
+    await expandTrigger(page, 'Mode Share by Purpose').click()
     const dialog = page.getByRole('dialog')
     await expect(dialog).toBeVisible()
     await expect(dialog.locator('.animate-pulse')).toHaveCount(0)
-    await expect(dialog.getByText('1,500')).toBeVisible()
+    await expect(dialog.locator('.js-plotly-plot')).toBeVisible()
 
     await dialog.getByRole('button', { name: 'Close' }).click()
     await expect(dialog).not.toBeVisible()
     await expect(page.locator('.animate-pulse')).toHaveCount(0)
-    await expect(page.getByText('1,500')).toBeVisible()
+    await expect(panelCard(page, 'Mode Share by Purpose').locator('.js-plotly-plot')).toBeVisible()
   })
 
   test('expanding and collapsing a panel never triggers an additional data query', async ({
@@ -263,7 +301,8 @@ test.describe('User Story 2 - Return to the dashboard without losing panel state
     // __debugQueryLog, added for this test) proves the real guarantee
     // (FR-008) directly, regardless of timing.
     await boot(page)
-    await expect(page.getByText('1,500')).toBeVisible()
+    // 034-metric-panel-redesign: same fixture swap as the test above.
+    await expect(panelCard(page, 'Mode Share by Purpose').locator('.js-plotly-plot')).toBeVisible()
 
     const countFor = (needle: string) =>
       page.evaluate(
@@ -271,30 +310,42 @@ test.describe('User Story 2 - Return to the dashboard without losing panel state
         needle,
       )
 
-    const before = await countFor('total_households')
+    const before = await countFor('trip_mode_share')
     expect(before).toBeGreaterThan(0) // sanity: the panel really did query at least once
 
-    await expandTrigger(page, 'Total Households').click()
+    await expandTrigger(page, 'Mode Share by Purpose').click()
     const dialog = page.getByRole('dialog')
     await expect(dialog).toBeVisible()
-    await expect(dialog.getByText('1,500')).toBeVisible()
+    await expect(dialog.locator('.js-plotly-plot')).toBeVisible()
 
     await dialog.getByRole('button', { name: 'Close' }).click()
     await expect(dialog).not.toBeVisible()
 
-    const after = await countFor('total_households')
+    const after = await countFor('trip_mode_share')
     expect(after).toBe(before) // no additional query across the whole round trip
   })
 
   test('a panel in its error state shows the same error state when expanded', async ({ page }) => {
     await boot(page)
-    await page.getByRole('tab', { name: 'Detail' }).click()
-    await expect(page.getByText("Couldn't load this value")).toBeVisible()
+    // 034-metric-panel-redesign: swapped from "Broken Panel (intentional)"
+    // (a valuebox, dashboard-2-detail.yaml — no longer expandable by
+    // default) to "Observable Plot Broken Panel (intentional)" (this
+    // fixture set's own real broken observable-plot panel), already on
+    // the landing/Summary tab — no tab navigation needed. Error text is
+    // this panel type's own real PanelErrorState message, confirmed via
+    // direct read of ObservablePlotPanel.tsx — NOT unique on this tab
+    // though (PlotlyPanel.tsx/RechartsPanel.tsx share the identical
+    // "Couldn't load this chart" string, and this same tab has its own
+    // "Recharts Broken Panel (intentional)" fixture), so scoped to this
+    // panel's own card specifically, not a page-wide text search.
+    await expect(
+      panelCard(page, 'Observable Plot Broken Panel (intentional)').getByText("Couldn't load this chart"),
+    ).toBeVisible()
 
-    await expandTrigger(page, 'Broken Panel (intentional)').click()
+    await expandTrigger(page, 'Observable Plot Broken Panel (intentional)').click()
     const dialog = page.getByRole('dialog')
     await expect(dialog).toBeVisible()
-    await expect(dialog.getByText("Couldn't load this value")).toBeVisible()
+    await expect(dialog.getByText("Couldn't load this chart")).toBeVisible()
   })
 
   test('a panel in its empty state shows the same empty state when expanded', async ({ page }) => {

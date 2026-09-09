@@ -993,7 +993,24 @@ height:    <pixels>     # default: 350
 width:     <0.0–1.0>    # fraction of row width; panels in a row should sum to 1.0
 scenario:  <string>     # optional — query only this scenario view; omit for N-way
 scenarios: [a, b]       # optional — override global scenario list for this panel
+expandable: <bool>      # optional (034-metric-panel-redesign) — overrides this
+                        # panel's own expand-to-dialog affordance; omit to use its
+                        # type's own default (see below)
 ```
+
+**`expandable:` (034-metric-panel-redesign)** — every panel type gets an
+expand-to-dialog control by DEFAULT, except `type: valuebox` and an ordinary
+(non-full-page-Explore) `type: graphic-walker`, which default to none — a
+value box has nothing more to show at a larger size, and a full-page Explore
+panel already bypasses this mechanism entirely on its own dedicated render
+path. Set `expandable: true`/`expandable: false` on any single panel to
+override its own type's default in either direction — e.g. opt one specific
+`valuebox` panel back in, or opt one specific `table` panel out — with no
+effect on any other panel of the same type. Omit it entirely (every
+`dashboard-*.yaml` file authored before this field existed) to keep the
+type's own default unchanged. Has no effect on a panel rendered via the
+chromeless full-page Explore mode (below) — that path has no expand
+mechanism to turn on or off.
 
 **Twelfths convention (030-sidebar-navigation, authoring guidance only — no
 runtime behavior change)**: author `width:` as a fraction of twelfths — e.g.
