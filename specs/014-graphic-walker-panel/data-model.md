@@ -8,12 +8,12 @@ Phase 1 output for `014-graphic-walker-panel`.
 /**
  * The ninth panel type, and the last originally-listed one —
  * 014-graphic-walker-panel. Extends PanelConfigBase directly, NOT
- * DataBoundPanelConfigBase — docs/GRAMMAR.md's type: graphic-walker
+ * DataBoundPanelConfigBase — project-docs/GRAMMAR.md's type: graphic-walker
  * grammar has no `metric:` key at all (its dataset-binding key is named
  * `dataset`, a different name with the same role), the same structural
  * reason MarkdownPanelConfig also extends PanelConfigBase directly
  * (research.md §1). scenario/fields are this feature's own additions,
- * beyond docs/GRAMMAR.md's documented example, both optional and both
+ * beyond project-docs/GRAMMAR.md's documented example, both optional and both
  * reusing this project's existing config vocabulary rather than
  * inventing new syntax (spec.md FR-004/FR-007).
  */
@@ -27,7 +27,7 @@ export interface GraphicWalkerFieldOverride {
 export interface GraphicWalkerPanelConfig extends PanelConfigBase {
   type: 'graphic-walker'
   dataset: string
-  limit?: number // default 100000, per docs/GRAMMAR.md's own example
+  limit?: number // default 100000, per project-docs/GRAMMAR.md's own example
   scenario?: string // optional — pins to one scenario's view; omit for
   // the existing multi-scenario $scenario. union (research.md §6)
   fields?: GraphicWalkerFieldOverride[] // optional — overrides specific

@@ -77,9 +77,9 @@ fixture data rich enough to exercise all three stories' Playwright coverage.
       deferred" — `sankey` is no longer one of those once this type exists,
       per data-model.md's own note)
 - [X] T003 [P] Add a new fixture table to `tests/fixtures/generate.py`,
-      mirroring `docs/GRAMMAR.md`'s own sankey worked example
+      mirroring `project-docs/GRAMMAR.md`'s own sankey worked example
       (`tour_mode`/`trip_mode`/`trips` columns, metric name
-      `tour_mode_to_trip_mode` matching `docs/GRAMMAR.md`'s
+      `tour_mode_to_trip_mode` matching `project-docs/GRAMMAR.md`'s
       `sql_fragments` example) — `TOUR_MODE_TO_TRIP_MODE_COLUMNS =
       ["tour_mode", "trip_mode", "trips", "purpose"]`,
       `TOUR_MODE_TO_TRIP_MODE_ROWS`, a small hard-coded set that MUST
@@ -224,7 +224,7 @@ real link between two distinct nodes, not an excluded one.
 - [X] T012 [P] [US1] Implement `src/panels/sankeyColor.ts` per
       contracts/sankey-panel.md: pure — `resolveNamedColorScheme(colorScheme)`
       mapping a small set of well-known `d3-scale-chromatic` categorical
-      scheme names (at minimum `Tableau10`, per `docs/GRAMMAR.md`'s one
+      scheme names (at minimum `Tableau10`, per `project-docs/GRAMMAR.md`'s one
       documented example) to their real color arrays, `undefined` for an
       omitted/unrecognized name. Depends on T002
 - [X] T013 [US1] Implement `SankeyPanel.tsx`'s data-fetch effect per
@@ -369,7 +369,7 @@ US1 already built.
 *No new implementation tasks* — covered by T011-T015 above (see Note).
 
 **Checkpoint**: All three user stories are independently functional and
-verified together — the full `docs/GRAMMAR.md` `type: sankey` grammar this
+verified together — the full `project-docs/GRAMMAR.md` `type: sankey` grammar this
 feature scoped itself to is implemented end to end, correctly, and
 consistently with every other panel type. This completes the originally-
 listed six-panel-type set.

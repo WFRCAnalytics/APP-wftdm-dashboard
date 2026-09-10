@@ -17,7 +17,7 @@ resolution module (research.md §4/§6).
 | Field | Type | Notes |
 |---|---|---|
 | `metric` | `string` | Unchanged |
-| `filter` | `string \| Record<string, string> \| undefined` | **Widened.** Was `string?`. `docs/GRAMMAR.md`'s common-keys table always documented both the bare `$ref` string form and an `inline` map form (research.md §1) — `observable-plot` is simply the first panel type to use the map form. `ValueBoxPanelConfig`/`PlotlyPanelConfig`/`TablePanelConfig` are unaffected in practice (they only ever author the string form), but must still typecheck against the widened union — a checkpoint task verifies this before `ObservablePlotPanelConfig` is added, mirroring 006-markdown-panel's `PanelConfigBase`-split checkpoint |
+| `filter` | `string \| Record<string, string> \| undefined` | **Widened.** Was `string?`. `project-docs/GRAMMAR.md`'s common-keys table always documented both the bare `$ref` string form and an `inline` map form (research.md §1) — `observable-plot` is simply the first panel type to use the map form. `ValueBoxPanelConfig`/`PlotlyPanelConfig`/`TablePanelConfig` are unaffected in practice (they only ever author the string form), but must still typecheck against the widened union — a checkpoint task verifies this before `ObservablePlotPanelConfig` is added, mirroring 006-markdown-panel's `PanelConfigBase`-split checkpoint |
 | `scenario` | `string?` | Unchanged |
 | `scenarios` | `string[]?` | Unchanged |
 
@@ -25,7 +25,7 @@ resolution module (research.md §4/§6).
 
 ## `ObservablePlotInputConfig` (new)
 
-One entry in an `observable-plot` panel's `inputs:` list — `docs/GRAMMAR.md`'s
+One entry in an `observable-plot` panel's `inputs:` list — `project-docs/GRAMMAR.md`'s
 documented shape, verbatim:
 
 | Field | Type | Notes |
@@ -63,7 +63,7 @@ input.
 `DataBoundPanelConfigBase`'s common fields (`title`, `width`, `height`,
 `metric`, `filter`, `scenario`, `scenarios`) apply unchanged — `filter` here
 is where `$inputs.<id>` placeholders actually appear, per
-`docs/GRAMMAR.md`'s own examples (a map value, never `x`/`y`/etc.).
+`project-docs/GRAMMAR.md`'s own examples (a map value, never `x`/`y`/etc.).
 
 **Union update**: `layout/types.ts`'s `PanelConfig` becomes
 `ValueBoxPanelConfig | PlotlyPanelConfig | TablePanelConfig |
@@ -83,7 +83,7 @@ The pure, DOM-free output `observablePlotEncoding.ts` hands to
 | `markName` | `string` | Copied from `config.mark` verbatim — the component looks up `Plot[markName]`, throwing into the shared error state (via a caught exception, same as an unresolvable metric) if it's not a real export |
 | `data` | `Record<string, unknown>[]` | The queried rows, passed through unchanged |
 | `options` | `Record<string, unknown>` | `{x, y, fill, stroke, fx: facet_x, fy: facet_y, tip}` — only the keys actually present on `config`, so Plot's own per-mark defaults apply to anything the author omitted. `tip` is NOT `config.tip` copied verbatim — it's `resolveTipMode(config.mark)`'s result: `"x"` for `barY`, `true` (Plot's `"xy"` default) for every other mark, a mark-aware correction found necessary post-implementation (research.md §4's correction, a real hover bug) — `@observablehq/plot`'s own `tip: true` shorthand isn't mark-shape-aware and creates "dead spots" on bar marks otherwise |
-| `plotOptions` | `Record<string, unknown>` | Top-level `Plot.plot()` options distinct from the mark's own: `{grid}` when `config.grid` is set; `{color: {legend: true}}` when `config.fill` or `config.stroke` is set — not `config`-driven, a mark-aware internal default found necessary post-implementation (research.md's second correction, a real legend bug) since `docs/GRAMMAR.md` documents no `legend:` key and Plot's own `color: {legend: true}` isn't automatic; plus the caller-supplied `width`/`height` measured from the container at render time (research.md §5 — not part of `config` at all, since Plot itself has no automatic container awareness) |
+| `plotOptions` | `Record<string, unknown>` | Top-level `Plot.plot()` options distinct from the mark's own: `{grid}` when `config.grid` is set; `{color: {legend: true}}` when `config.fill` or `config.stroke` is set — not `config`-driven, a mark-aware internal default found necessary post-implementation (research.md's second correction, a real legend bug) since `project-docs/GRAMMAR.md` documents no `legend:` key and Plot's own `color: {legend: true}` isn't automatic; plus the caller-supplied `width`/`height` measured from the container at render time (research.md §5 — not part of `config` at all, since Plot itself has no automatic container awareness) |
 
 ---
 

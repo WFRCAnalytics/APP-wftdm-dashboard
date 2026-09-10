@@ -142,7 +142,7 @@ Single project — `src/`, `tests/` at repository root (plan.md's own Project St
 - [X] T035 [P] Run `npm run typecheck` — zero errors across every new/modified file.
 - [X] T036 [P] Run the full Vitest suite (`npx vitest run`) — zero regressions in every existing unit test file, confirming `zonemapColor.test.ts` (T005) and `zoneGeometry.test.ts` (T007) now pass.
 - [X] T037 [P] Run the full Playwright suite (`npx playwright test`) — zero regressions in every existing integration spec alongside the new `zonemapPanel.spec.ts`.
-- [X] T038 Extend `docs/ARCHITECTURE.md`'s existing parquet-extension "no internet required" caveat to name the `spatial` extension too (FR-014, research.md §2) — real text drafted against the actual current wording of that caveat, not a duplicate paragraph.
+- [X] T038 Extend `project-docs/ARCHITECTURE.md`'s existing parquet-extension "no internet required" caveat to name the `spatial` extension too (FR-014, research.md §2) — real text drafted against the actual current wording of that caveat, not a duplicate paragraph.
 - [ ] T039 Run quickstart.md's manual verification steps 1–10 against a real browser session. **Not performed by the implementing agent** (no real browser to click through manually) — left unchecked honestly rather than marked done on an equivalence claim, matching `009-scenario-manager`'s/`010-flowmap-panel`'s own precedent for this exact situation. Every automated equivalent (T009–T034) does pass.
 - [X] T040 Update `CLAUDE.md`'s Implementation Order — mark `ZoneMapPanel` done in item 9's per-type list (currently "❌ not started"), noting this completes the originally-listed eight-panel-type set (`graphic-walker`, item 10, remains the one built-in panel type still not started).
 
@@ -204,7 +204,7 @@ Task: "Implement zoneGeometry.ts (T008)"
 3. Add US2 → validate independently (no new code, only new guarantees verified — filter reactivity, basemap inheritance, resize, relocation survival).
 4. Add US3 → adds real new implementation (`comparison: diff`'s query builder) → validate independently.
 5. Add US4 → validate independently (registry consistency, the eighth-panel-type mixed-tab guarantee).
-6. Polish → typecheck/full suites/`docs/ARCHITECTURE.md` caveat/manual quickstart/`CLAUDE.md` audit.
+6. Polish → typecheck/full suites/`project-docs/ARCHITECTURE.md` caveat/manual quickstart/`CLAUDE.md` audit.
 
 Unlike `010-flowmap-panel`, where every user story past US1 was pure verification, this feature's US3 adds real, separable new implementation (`comparison: diff`) — `ZoneMapPanel.tsx`'s own T015 deliberately ships the `side_by_side` path only, with the `diff` path wired in afterward (T029), so US1's MVP scope stays exactly "render one metric as a choropleth," matching spec.md's own explicit statement that `comparison: diff` "is not required for the panel type to exist at all."
 

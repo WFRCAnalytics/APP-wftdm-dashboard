@@ -7,7 +7,7 @@ describe('APP_DEFAULT', () => {
   it('resolves to openfreemap-positron unless a deployer changes it (T002/FR-016)', () => {
     // Moved from 'carto-voyager': a muted, keyless, low-cost style is the
     // right app-wide fallback for every unconfigured flowmap/zonemap panel
-    // (docs/BASEMAP-PICKER-PROPOSAL.md §2/§3). carto-* presets stay
+    // (project-docs/BASEMAP-PICKER-PROPOSAL.md §2/§3). carto-* presets stay
     // available for explicit per-panel/per-tab pins.
     expect(APP_DEFAULT).toBe('openfreemap-positron')
   })

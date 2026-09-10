@@ -95,5 +95,5 @@ feature threads `appState.getBaseline()` through to one of these call sites
 ## Non-goals (explicitly unaffected by this contract)
 
 - `panels/panelQuery.ts`'s `buildComparisonDiffQuery()` (013-zonemap-panel's `comparison: diff`) — zero changes.
-- `docs/GRAMMAR.md`'s panel-type grammar (`plotly`/`table`/`observable-plot`/`zonemap`/etc.) — zero changes.
+- `project-docs/GRAMMAR.md`'s panel-type grammar (`plotly`/`table`/`observable-plot`/`zonemap`/etc.) — zero changes.
 - No `dashboard-*.yaml` key is added to let an author supply `baselineScenario` to any panel's query build — that wiring is the next, separate feature.

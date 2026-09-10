@@ -52,7 +52,7 @@ only an override. Direct audit of every real reference to `.color` across
 opposite: `Scenario.color` (populated from `manifest.yaml` by
 `scenario/manifestReader.ts` → `scenario/scenarioManager.ts` →
 `state/appState.ts`'s `register()`) has **zero real rendering consumers
-anywhere in the current codebase.** The one place `docs/GRAMMAR.md` says
+anywhere in the current codebase.** The one place `project-docs/GRAMMAR.md` says
 "the panel colors by scenario" (the multi-scenario overlaid-series section)
 refers to `plotlyTraces.ts`'s own confirmed behavior of setting no explicit
 `marker.color` at all on a scenario-split trace, letting Plotly's own

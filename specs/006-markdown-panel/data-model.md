@@ -46,7 +46,7 @@ already declared/used every field this layer now carries).
 
 | Field | Type | Notes |
 |---|---|---|
-| `content` | `string?` | Literal inline markdown text (`docs/GRAMMAR.md`'s documented grammar — a YAML block scalar, not a file reference). Optional at the type level because a missing/empty/whitespace-only value is a defined, non-crashing state (FR-006), not a parse error |
+| `content` | `string?` | Literal inline markdown text (`project-docs/GRAMMAR.md`'s documented grammar — a YAML block scalar, not a file reference). Optional at the type level because a missing/empty/whitespace-only value is a defined, non-crashing state (FR-006), not a parse error |
 
 No `metric`/`filter`/`scenario`/`scenarios` — this panel type has no
 query (FR-001/FR-007). `PanelConfigBase`'s common fields (`title`,

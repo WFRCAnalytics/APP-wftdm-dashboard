@@ -28,7 +28,7 @@ Single-project web frontend, additive to `001-data-state-layer`'s and
 
 - [X] T001 Add `plotly.js-dist-min` to `package.json`; run `npm install`
 - [X] T002 [P] Write `tests/fixtures/dashboard-shell-config.yaml` — a real,
-  `docs/GRAMMAR.md`-shaped `dashboard-*.yaml` with `header`, one `filters`
+  `project-docs/GRAMMAR.md`-shaped `dashboard-*.yaml` with `header`, one `filters`
   entry (`purpose`), and a `layout` with at least one `valuebox` row bound
   to `summary_kpis.total_households` and one `plotly` row bound to
   `trip_mode_share` with `filter: $filters.purpose` (research.md §1) —
@@ -51,7 +51,7 @@ presentation pieces every user story depends on.
 - [X] T004 Write `src/layout/types.ts` per
   `contracts/dashboard-config-types.md` — `FilterDefinition`,
   `PanelConfigBase` (including `scenario`/`scenarios`, both real per
-  `docs/GRAMMAR.md`), `ValueBoxPanelConfig`, `PlotlyTraceConfig`,
+  `project-docs/GRAMMAR.md`), `ValueBoxPanelConfig`, `PlotlyTraceConfig`,
   `PlotlyPanelConfig`, the `PanelConfig` union, `DashboardTabConfig`, and
   `parseDashboardConfig()` (throws on missing `header.tab`/`header.title`,
   defaults `filters`/`layout` safely)
@@ -171,7 +171,7 @@ real, navigable dashboard with one real, correct panel.
 
 **Goal**: `PlotlyPanel` proves the fuller pipeline — SQL expansion,
 `$metric.col`/bare-`$scenario` trace resolution, and filter reactivity via
-`docs/SPEC.md`'s corrected two-effect pattern.
+`project-docs/SPEC.md`'s corrected two-effect pattern.
 
 **Independent Test**: Configure a chart panel whose query includes a
 `$filters.x` placeholder, load the dashboard, change that filter's value,
@@ -183,7 +183,7 @@ confirm the chart redraws in place (not torn down and rebuilt).
   `contracts/plotly-panel.md` — same query chain as `ValueBoxPanel`
   (T015's pattern); `resolveTrace()` resolving each `PlotlyTraceConfig`'s
   `$metric.<column>` references and the bare `$scenario` sentinel against
-  the query result (research.md §3) — this is `docs/SPEC.md`'s own
+  the query result (research.md §3) — this is `project-docs/SPEC.md`'s own
   dashboard-config example implemented exactly as written, not literal
   column names; two-effect split — data fetch + `Plotly.react()` (no
   purge, `[config, filters]` deps) and a separate unmount-only

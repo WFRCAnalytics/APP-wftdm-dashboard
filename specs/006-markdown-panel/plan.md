@@ -10,7 +10,7 @@ Add the fourth panel type — `markdown` — to the registry, following
 `ValueBoxPanel`/`PlotlyPanel`/`TablePanel`'s established shape (a function
 component receiving a single `config` prop, registered in
 `panels/registry.tsx`) but *not* the query-chain part of that pattern:
-`docs/GRAMMAR.md`'s real `type: markdown` grammar (`content:` — a literal
+`project-docs/GRAMMAR.md`'s real `type: markdown` grammar (`content:` — a literal
 inline markdown string, `title`, `width`) confirms this panel type has no
 `metric`/`$scenario`/`$filters` data binding at all, so `MarkdownPanel.tsx`
 has no `useFilterState`, no `services/duckdb.ts` import, and no
@@ -31,7 +31,7 @@ this session).
 **Language/Version**: TypeScript (ES2022 target), same as `001`-`005`
 
 **Primary Dependencies**: Two new runtime dependencies — `marked` (GFM
-markdown → HTML, `docs/SPEC.md`'s own pinned choice for this panel type)
+markdown → HTML, `project-docs/SPEC.md`'s own pinned choice for this panel type)
 and `dompurify` (HTML sanitization; marked.js's own docs are explicit it
 does not sanitize output, and DOMPurify is the standard pairing — research
 confirmed, not assumed, §2/§3). Both ship their own TypeScript types
@@ -103,12 +103,12 @@ spec.md's own stated boundary).
 
 | Principle | Check | Status |
 |---|---|---|
-| I. TypeScript Throughout, React Permitted When Needed | New/modified files are `.tsx`/`.ts`; React already adopted — fourth, ordinary consumer of the established panel pattern (component-shape part), deliberately not the query-chain part, per docs/GRAMMAR.md's real grammar | PASS |
+| I. TypeScript Throughout, React Permitted When Needed | New/modified files are `.tsx`/`.ts`; React already adopted — fourth, ordinary consumer of the established panel pattern (component-shape part), deliberately not the query-chain part, per project-docs/GRAMMAR.md's real grammar | PASS |
 | II. DuckDB-WASM off the main thread, one shared instance | Not touched — `MarkdownPanel.tsx` has no `services/duckdb.ts` import at all (FR-007), the only panel type of which that's true | PASS |
 | III. No `eval()` | `MarkdownPanel.tsx` builds no SQL and calls no dynamic code execution — `marked.parse()`/`DOMPurify.sanitize()` are library calls over a config string, not `eval()` or an equivalent | PASS |
 | IV. YAML parsed at runtime | `content:` is parsed from `dashboard-*.yaml` at runtime via the existing `layout/types.ts` seam (extended, not replaced) — no build-time baking | PASS |
 | V. Parquet-only browser I/O | N/A — no new data I/O path; this panel type has no data I/O of any kind | PASS (N/A) |
-| VI. Fixed Technology Choices | `marked`/`dompurify` are new dependencies, but both are `docs/SPEC.md`'s own pinned choice (`markdown \| marked.js`) plus the documented standard pairing for sanitizing marked.js output — not a deviation requiring a constitution amendment, since Principle VI's fixed-choices list doesn't enumerate panel-rendering libraries (Plotly.js/Observable Plot/Graphic Walker aren't listed there either) | PASS |
+| VI. Fixed Technology Choices | `marked`/`dompurify` are new dependencies, but both are `project-docs/SPEC.md`'s own pinned choice (`markdown \| marked.js`) plus the documented standard pairing for sanitizing marked.js output — not a deviation requiring a constitution amendment, since Principle VI's fixed-choices list doesn't enumerate panel-rendering libraries (Plotly.js/Observable Plot/Graphic Walker aren't listed there either) | PASS |
 | VII. Minimal, Fixed Config File Set | No new config file type; `content:` is a new *key* within the existing `dashboard-*.yaml` type's already-documented `type: markdown` grammar, not a new file | PASS |
 | VIII. Reuse Proven Reference Implementations | N/A — none of the four named reference repos cover markdown rendering; this principle's named scope doesn't reach this feature | PASS (N/A) |
 | IX. Fixed Python/JS Source Split | No Python package code touched; all new files under `src/` | PASS |

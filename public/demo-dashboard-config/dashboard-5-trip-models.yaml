@@ -1,5 +1,5 @@
 # 032-six-tab-demo-content — Trip Models tab. Sections match
-# docs/CALIBRATION-SUMMARIES.md's own "Trip Models Tab" submodel
+# project-docs/CALIBRATION-SUMMARIES.md's own "Trip Models Tab" submodel
 # headings exactly. Zone Trip Ends by Mode uses a zonemap — the natural
 # fit for a spatial rollup (research.md §7).
 

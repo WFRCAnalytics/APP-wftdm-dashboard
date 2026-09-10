@@ -1,5 +1,5 @@
 # Fixture dashboard-*.yaml for 003-dashboard-shell-navigation's Playwright
-# suite (research.md §1) — real docs/GRAMMAR.md-shaped grammar, bound to
+# suite (research.md §1) — real project-docs/GRAMMAR.md-shaped grammar, bound to
 # tests/fixtures/generate.py's existing Parquet columns (summary_kpis:
 # total_households/total_persons/total_trips/purpose_count/
 # avg_trip_distance; trip_mode_share: purpose/mode/share). Copied to
@@ -182,7 +182,7 @@ layout:
           barmode: group
       width: 1.0
 
-  # 005-table-panel: docs/GRAMMAR.md's own type: table example
+  # 005-table-panel: project-docs/GRAMMAR.md's own type: table example
   # (screenline validation) reused directly, bound to generate.py's
   # SCREENLINES_ROWS (30 rows — exceeds the default page size of 20, so
   # pagination and cross-page search are meaningfully exercised, not just
@@ -237,7 +237,7 @@ layout:
       scenarios: [good_scenario]
       width: 1.0
 
-  # 006-markdown-panel: docs/GRAMMAR.md's own type: markdown grammar
+  # 006-markdown-panel: project-docs/GRAMMAR.md's own type: markdown grammar
   # (a literal content: block, no metric/scenario/filter at all). Four
   # panels, each exercising a distinct, non-overlapping property rather
   # than one panel trying to cover everything — same convention as
@@ -308,7 +308,7 @@ layout:
       content: "   "
       width: 1.0
 
-  # 007-observable-plot-panel: docs/GRAMMAR.md's own type: observable-plot
+  # 007-observable-plot-panel: project-docs/GRAMMAR.md's own type: observable-plot
   # grammar, including panel-local `inputs:` (real, documented grammar —
   # spec.md's Grammar findings, research.md §2/§3/§9). Six panels, each
   # exercising a distinct, non-overlapping property — same convention as
@@ -322,7 +322,7 @@ layout:
     # to the existing global purpose filter — no inputs: at all, proving
     # the static query-render pipeline works before any panel-local input
     # exists (spec.md's own reasoning for scoping US1 independently of US2).
-    # tip: true — real, documented grammar (docs/GRAMMAR.md's common
+    # tip: true — real, documented grammar (project-docs/GRAMMAR.md's common
     # encoding channels), not mark-restricted; exercises the barY-specific
     # tip-mode handling in observablePlotEncoding.ts (a real hover bug
     # found post-implementation: barY's dead-spot caveat, resolved
@@ -341,7 +341,7 @@ layout:
       height: 350
       width: 1.0
 
-    # Reuses docs/GRAMMAR.md's own Trip Length Frequency Distribution
+    # Reuses project-docs/GRAMMAR.md's own Trip Length Frequency Distribution
     # example verbatim, including tip: true and grid: true — an earlier
     # version of this fixture silently dropped both, which is why hover
     # tooltips never actually worked on any observable-plot panel despite
@@ -453,7 +453,7 @@ layout:
       width: 1.0
 
   # 008-sankey-panel — the sixth and final originally-listed panel type.
-  # tour_mode_to_trip_mode is docs/GRAMMAR.md's own worked sankey example's
+  # tour_mode_to_trip_mode is project-docs/GRAMMAR.md's own worked sankey example's
   # metric name; source/target/value map to its tour_mode/trip_mode/trips
   # columns verbatim (Grammar findings #1/#2). No title here shares a
   # prefix with any pre-existing panel title in this file (checked against
@@ -508,7 +508,7 @@ layout:
 
   # 010-flowmap-panel — the seventh and final originally-listed panel
   # type, and this codebase's first real map. od_flows is the corrected
-  # docs/GRAMMAR.md type: flowmap worked example's metric name;
+  # project-docs/GRAMMAR.md type: flowmap worked example's metric name;
   # origin/origin_lat/origin_lon/destination/dest_lat/dest_lon/value map
   # to its orig_taz/orig_lat/orig_lon/dest_taz/dest_lat/dest_lon/trips
   # columns verbatim (spec.md's own Grammar findings #2). No title here

@@ -175,7 +175,7 @@ const ALL_FILTERS: ['*'] = ['*']
 
 // Default view state when a panel's config omits center/zoom — roughly
 // the Wasatch Front, matching both real reference apps' own default
-// centering (research.md; docs/GRAMMAR.md's own worked example uses the
+// centering (research.md; project-docs/GRAMMAR.md's own worked example uses the
 // same coordinates).
 const DEFAULT_CENTER: [number, number] = [-111.89, 40.76]
 const DEFAULT_ZOOM = 9
@@ -184,7 +184,7 @@ const DEFAULT_ZOOM = 9
 // network request of any kind (constitution Principle II's no-CDN
 // discipline, established for DuckDB-WASM specifically but the same
 // reasoning applies here: `wftdm-dashboard here` must not require
-// internet access). NOT a real basemap — docs/GRAMMAR.md's type: flowmap
+// internet access). NOT a real basemap — project-docs/GRAMMAR.md's type: flowmap
 // grammar has no style:/basemap: key at all today, so there is no
 // author-facing way to configure a real tile source yet; that remains a
 // genuinely open, unresolved question (a self-hosted style/tile approach
@@ -201,7 +201,7 @@ const BLANK_STYLE: maplibregl.StyleSpecification = {
 // contracts/flowmap-panel.md and research.md. Genuinely different from
 // every prior panel type in two ways: (1) the maplibregl.Map/
 // MapboxOverlay instances are imperative, mount-lifetime objects (a ref,
-// never React-rendered output — docs/SPEC.md's own create-once/
+// never React-rendered output — project-docs/SPEC.md's own create-once/
 // setProps()-on-update/map.remove()-on-destroy shape), not rebuilt
 // per-render the way PlotlyPanel/SankeyPanel/ObservablePlotPanel each
 // rebuild their own chart on data change; (2) it must survive 004's
@@ -420,7 +420,7 @@ no-CDN discipline (established for DuckDB-WASM specifically, but the
 same "`wftdm-dashboard here` must not require internet access"
 reasoning applies to any external network dependency this app adds).
 **Real basemap tiles remain a genuinely open, unresolved question**
-beyond this feature's scope: `docs/GRAMMAR.md`'s `type: flowmap` grammar
+beyond this feature's scope: `project-docs/GRAMMAR.md`'s `type: flowmap` grammar
 has no `style:`/`basemap:` key at all, so there is no author-facing way
 to configure a real tile source yet, and settling that (self-hosted
 style/tile approach vs. a documented grammar addition) is future work,

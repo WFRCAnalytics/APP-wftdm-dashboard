@@ -35,18 +35,18 @@
   the "Grammar findings" discipline every panel-type feature (005-008) has
   required doesn't literally apply (there is no new `dashboard-*.yaml`
   grammar being added), so it was replaced here with an equivalent
-  "Documented behavior findings" section verifying `docs/ARCHITECTURE.md`,
-  `docs/SPEC.md`, and the real current implementations of
+  "Documented behavior findings" section verifying `project-docs/ARCHITECTURE.md`,
+  `project-docs/SPEC.md`, and the real current implementations of
   `services/duckdb.ts`, `services/yamlLoader.ts`, `state/appState.ts`, and
   `services/scenarioDiscovery.ts` before any requirement was written.
 - `showDirectoryPicker()`, `FileSystemDirectoryHandle`, and
   `registerScenario()` appear in the spec's Requirements/Key Entities
   sections because they are the literal, already-existing, already-named
-  API surface this feature's requirements bind to (per `docs/ARCHITECTURE.md`/
-  `docs/SPEC.md`'s own documented API names) — not a new implementation
+  API surface this feature's requirements bind to (per `project-docs/ARCHITECTURE.md`/
+  `project-docs/SPEC.md`'s own documented API names) — not a new implementation
   choice being introduced here. This mirrors how prior panel-type specs
   named `d3-sankey`/`Plotly.react()`/etc. directly when the technology
-  choice was already fixed by `docs/SPEC.md` rather than being decided by
+  choice was already fixed by `project-docs/SPEC.md` rather than being decided by
   the spec itself.
 - Three implementation-shaped questions were deliberately deferred to
   planning rather than raised as [NEEDS CLARIFICATION], because each has a

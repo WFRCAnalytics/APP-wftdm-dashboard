@@ -17,7 +17,7 @@ import { interpolateRdBu, interpolateYlOrRd } from 'd3-scale-chromatic'
 
 export type ColorScale = 'sequential' | 'diverging'
 
-// docs/GRAMMAR.md's own type: zonemap worked examples name exactly these
+// project-docs/GRAMMAR.md's own type: zonemap worked examples name exactly these
 // two ramps — a small, deliberately non-exhaustive lookup, same
 // discipline sankeyColor.ts's own NAMED_SCHEMES already established
 // (research.md §6 of 008-sankey-panel: "no enumerated allow-list beyond
@@ -175,7 +175,7 @@ export function resolveZoneFillColor(
   steps: number | undefined,
 ): string {
   if (value === null) return NO_DATA_COLOR
-  // No documented default in docs/GRAMMAR.md for an entirely omitted
+  // No documented default in project-docs/GRAMMAR.md for an entirely omitted
   // color_scale — 'sequential' is this implementation's own reasonable
   // default (a choropleth needs SOME fill; every fixture/worked example
   // sets this key explicitly, so this branch is a defensive default, not

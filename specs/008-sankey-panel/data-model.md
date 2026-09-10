@@ -18,7 +18,7 @@ node-link graph `d3-sankey` needs and runs its layout computation.
 | `source` | `string` | Literal column name (from the queried result set) supplying each row's flow origin — **not** `$metric.`-prefixed (Grammar findings #2, research.md's confirmation). Author-configurable, mirroring `TableColumnConfig.field`. |
 | `target` | `string` | Literal column name supplying each row's flow destination. |
 | `value` | `string` | Literal column name supplying each row's flow magnitude. |
-| `color_scheme` | `string?` | Named categorical color scheme (`docs/GRAMMAR.md`'s one example: `Tableau10`) resolved against a small internal name→`d3-scale-chromatic` export lookup (research.md §6). Omitted, or an unrecognized name, both fall through to the same token-derived default palette — never a hard error, since this is a cosmetic key (FR-005, FR-006's error-state reservation is for structural/query problems only). |
+| `color_scheme` | `string?` | Named categorical color scheme (`project-docs/GRAMMAR.md`'s one example: `Tableau10`) resolved against a small internal name→`d3-scale-chromatic` export lookup (research.md §6). Omitted, or an unrecognized name, both fall through to the same token-derived default palette — never a hard error, since this is a cosmetic key (FR-005, FR-006's error-state reservation is for structural/query problems only). |
 
 `DataBoundPanelConfigBase`'s common fields (`title`, `width`, `height`,
 `metric`, `filter`, `scenario`, `scenarios`) apply unchanged (Grammar

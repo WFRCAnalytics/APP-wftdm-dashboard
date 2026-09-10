@@ -55,7 +55,7 @@ const FALLBACK_CARD = { light: '#ffffff', dark: '#081b26' } as const
 
 /** Which view an input's own options/bounds query (and the panel's own
  * metric query) resolves to — config.scenario (singular) if set, else the
- * first currently active scenario (research.md §9: docs/GRAMMAR.md's
+ * first currently active scenario (research.md §9: project-docs/GRAMMAR.md's
  * inputs: shape has no separate source:, so there is exactly one metric
  * per panel to draw options from; picking any one active scenario is a
  * deliberate simplification, not expected to differ across scenarios of
@@ -490,7 +490,7 @@ export function ObservablePlotPanel({ config }: { config: ObservablePlotPanelCon
 
 /**
  * Panel-local reactive input control — select/multiselect/range,
- * corresponding to docs/GRAMMAR.md's inputs: grammar. Options/bounds are
+ * corresponding to project-docs/GRAMMAR.md's inputs: grammar. Options/bounds are
  * fetched once per (view, config.column, config.type) — never re-fetched
  * on this input's own or a sibling input's value changing, and
  * deliberately NOT filtered by any of the panel's own filter: bindings

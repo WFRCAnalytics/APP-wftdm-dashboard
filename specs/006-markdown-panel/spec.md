@@ -6,7 +6,7 @@
 
 **Status**: Draft
 
-**Input**: User description: "Add a fourth panel type — markdown — to the registry, following the same pattern as ValueBoxPanel/PlotlyPanel/TablePanel and inheriting 004's expand-to-dialog mechanism automatically (no per-type wiring). Renders static/authored prose content via marked.js, per docs/SPEC.md's Panel types table. Grammar resolved from docs/GRAMMAR.md's `type: markdown` example: a literal `content:` block of raw markdown text, no `metric:`/`$scenario`/`$filters` placeholder substitution — pure static text, no data binding. Rendered markdown must be sanitized against XSS (marked.js + DOMPurify). Uses 002-design-tokens' typography (font-heading for headings, font-body for prose)."
+**Input**: User description: "Add a fourth panel type — markdown — to the registry, following the same pattern as ValueBoxPanel/PlotlyPanel/TablePanel and inheriting 004's expand-to-dialog mechanism automatically (no per-type wiring). Renders static/authored prose content via marked.js, per project-docs/SPEC.md's Panel types table. Grammar resolved from project-docs/GRAMMAR.md's `type: markdown` example: a literal `content:` block of raw markdown text, no `metric:`/`$scenario`/`$filters` placeholder substitution — pure static text, no data binding. Rendered markdown must be sanitized against XSS (marked.js + DOMPurify). Uses 002-design-tokens' typography (font-heading for headings, font-body for prose)."
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -213,7 +213,7 @@ rather than throwing.
 ## Assumptions
 
 - `content:` is always a literal inline markdown string in the
-  `dashboard-*.yaml` file (docs/GRAMMAR.md's documented example) — not a
+  `dashboard-*.yaml` file (project-docs/GRAMMAR.md's documented example) — not a
   reference/path to an external file. No external-file-reference grammar
   exists today for this or any other panel type.
 - This panel type has no data binding — no `$metric.`/`$scenario`/

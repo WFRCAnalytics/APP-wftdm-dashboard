@@ -80,7 +80,7 @@ one shared connection), this pipeline processes exactly one scenario's raw
 data per run, in its own fresh connection — so a source named `trips` in
 `summarize.yaml` becomes a view literally named `trips`, with no prefix.
 This is required, not just simpler: every metric's SQL in the real
-`docs/GRAMMAR.md` grammar already references sources this way
+`project-docs/GRAMMAR.md` grammar already references sources this way
 unprefixed (`FROM trips t`, `FROM tours t`, `$sql.trips_merged`'s own body
 also referencing bare `trips`/`persons`/`households`/`zones`) — a prefixed
 scheme would break every existing documented example.
@@ -99,12 +99,12 @@ with no intermediate materialization into Python at all.
 targeting byte-for-byte the same SQL shapes already implemented and
 documented in `services/sqlExpander.ts`'s `expandMappings`/`expandBins`/
 `expandSqlFragment` (read directly from that file this session, not
-assumed from `docs/GRAMMAR.md`'s prose alone):
+assumed from `project-docs/GRAMMAR.md`'s prose alone):
 
 - `$mappings.<name>` → `WHEN '<raw>' THEN '<target>'` lines only, one per
   entry, **no trailing `ELSE`** — confirmed directly against
   `sqlExpander.ts`'s real `expandMappings()` body, which emits no `ELSE`
-  clause. (`docs/GRAMMAR.md`'s own "How placeholders expand" worked example
+  clause. (`project-docs/GRAMMAR.md`'s own "How placeholders expand" worked example
   shows an `ELSE 'Other'` line — that line is the author's own addition to
   the surrounding `CASE` block in that illustration, not something
   `expandMappings()` itself generates. Python's version matches the real
@@ -123,12 +123,12 @@ assumed from `docs/GRAMMAR.md`'s prose alone):
 - `$sql.<name>` → the fragment's literal text, substituted verbatim (no
   reinterpretation).
 
-**Rationale**: `summarize.yaml`'s own header comment (`docs/GRAMMAR.md`)
+**Rationale**: `summarize.yaml`'s own header comment (`project-docs/GRAMMAR.md`)
 states "The same SQL dialect runs unchanged in DuckDB-WASM in the browser"
 — the *SQL* is portable, but the *expansion mechanism* that produces it is
 necessarily two independent implementations (Python here, TypeScript in the
 browser), since `summarize.yaml` (Python-only, per Principle VII/
-`docs/GRAMMAR.md`'s own "never published, never read by the browser") and
+`project-docs/GRAMMAR.md`'s own "never published, never read by the browser") and
 `dashboard-*.yaml` (browser-only) are different files serving different
 placeholder sets that only partially overlap (both use `$mappings`/`$bins`/
 `$sql`; only `dashboard-*.yaml` uses `$filters`/`$scenario`/`$inputs`/
@@ -155,7 +155,7 @@ knowing what colors sibling scenarios already use (this pipeline processes
 one scenario folder per run and has no visibility into
 `public/scenarios/`'s other already-published manifests).
 
-**Rationale**: `docs/GRAMMAR.md`'s own worked `manifest.yaml` example uses
+**Rationale**: `project-docs/GRAMMAR.md`'s own worked `manifest.yaml` example uses
 `color: "#4e79a7"` — exactly Tableau 10's first color (case aside) —
 confirming this is the actual intended source palette, not a guess.
 Hashing the scenario name (rather than, say, always picking the first
@@ -204,7 +204,7 @@ column names confirmed for real in this session directly against
 ActivitySim's own current example configuration
 (`github.com/ActivitySim/activitysim`, `develop` branch,
 `prototype_mtc/configs/settings.yaml`) and the column names already relied
-on throughout `docs/GRAMMAR.md`'s own metric SQL (`household_id`,
+on throughout `project-docs/GRAMMAR.md`'s own metric SQL (`household_id`,
 `person_id`, `home_zone_id`, `auto_ownership`, `income`, `primary_purpose`,
 `trip_mode`, `tour_mode`, `tour_purpose`, `tour_category`, `origin`,
 `destination`, `depart`, `arrive`, `start_time`, `end_time`,
@@ -217,13 +217,13 @@ household/person/tour/trip models).
 fixture realism doesn't change what code gets written, only what proves it
 works against something resembling a real run rather than an arbitrary toy
 schema. Confirming these are ActivitySim's real column names (not simply
-copying `docs/GRAMMAR.md`'s example verbatim without checking) also
+copying `project-docs/GRAMMAR.md`'s example verbatim without checking) also
 surfaces, for the record, one likely naming mismatch worth flagging for
 whoever authors a *real* `summarize.yaml` against a *real* ActivitySim run
-later: `docs/GRAMMAR.md`'s `auto_ownership` metric SQL aliases
+later: `project-docs/GRAMMAR.md`'s `auto_ownership` metric SQL aliases
 `h.num_persons AS household_size`, but ActivitySim's own households table
 uses `hhsize`, not `num_persons`, for that column. This is a
-`docs/GRAMMAR.md` example-accuracy question, not something this feature's
+`project-docs/GRAMMAR.md` example-accuracy question, not something this feature's
 generic engine needs to special-case — a real `summarize.yaml` author
 writes `h.hhsize AS household_size` themselves; the engine doesn't know or
 care what the real column is named. Noted here so it isn't silently lost,
@@ -249,7 +249,7 @@ replacement is correct by construction, not by diffing.
 
 **Alternatives considered**: Tracking a manifest of previously-written
 filenames and deleting only the difference — rejected as needless
-complexity; `summary/` is described in `docs/GRAMMAR.md` itself as "written
+complexity; `summary/` is described in `project-docs/GRAMMAR.md` itself as "written
 by the post-processor" (i.e., wholly owned output, never a place a modeler
 hand-edits a file into), so full replacement carries no risk of destroying
 anything the tool doesn't itself own.

@@ -134,7 +134,7 @@ test.describe('User Story 1 - Author renders a metric as a reactive Observable P
   })
 
   // A second real visual bug found post-implementation, same category as
-  // the tip bug above: docs/GRAMMAR.md documents no legend: key at all
+  // the tip bug above: project-docs/GRAMMAR.md documents no legend: key at all
   // for this panel type, and @observablehq/plot's color: {legend: true}
   // (confirmed a top-level Plot.plot() option) is NOT automatic — a
   // fill/stroke channel with no explicit legend option shows no legend.

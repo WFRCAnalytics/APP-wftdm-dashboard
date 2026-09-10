@@ -45,7 +45,7 @@ cites `specs/026-activitysim-demo-content/research.md`).
 | `trips` | integer | Real trip count for this purpose × mode combination |
 
 **Relationships**: consumed by a `sankey` panel's `source: primary_purpose`
-/ `target: major_trip_mode` / `value: trips` (matching `docs/GRAMMAR.md`'s
+/ `target: major_trip_mode` / `value: trips` (matching `project-docs/GRAMMAR.md`'s
 existing `type: sankey` grammar exactly — no new panel-config field).
 
 **Validation rule**: `SUM(trips)` across every row MUST equal the real
@@ -67,7 +67,7 @@ clause).
 **Relationships**: consumed by a `flowmap` panel — `origin: orig_taz`,
 `origin_lat: orig_lat`, `origin_lon: orig_lon`, `destination: dest_taz`,
 `dest_lat: dest_lat`, `dest_lon: dest_lon`, `value: trips` — the exact,
-unmodified `type: flowmap` grammar contract (`docs/GRAMMAR.md`), plain
+unmodified `type: flowmap` grammar contract (`project-docs/GRAMMAR.md`), plain
 columns already present on the row, no browser-side geometry join.
 
 **Validation rule**: every `orig_taz`/`dest_taz` value MUST have a
@@ -98,7 +98,7 @@ Research Findings, restated here as the entity relationship it implies).
 **Scenario independence**: this file is published exactly once, shared
 identically across all three real scenarios — the same
 `boundaries`-is-scenario-independent contract every existing `zonemap`
-panel already relies on (`docs/GRAMMAR.md`).
+panel already relies on (`project-docs/GRAMMAR.md`).
 
 ## 5. `zoneGeometry.ts::resolveGeometryUrl()` — extended contract
 

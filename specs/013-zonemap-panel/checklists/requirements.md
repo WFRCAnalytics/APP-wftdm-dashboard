@@ -48,8 +48,8 @@
 - `maplibregl.Map`/`MapboxOverlay`/`ST_Read`/GeoJSON/`color-mix()`-style
   technology names appear in Requirements/Key Entities because they are
   the literal, already-fixed API surface this feature's requirements
-  bind to (`docs/SPEC.md`'s own documented "ZoneMapPanel wiring"
-  snippet, `docs/GRAMMAR.md`'s own `type: zonemap` grammar,
+  bind to (`project-docs/SPEC.md`'s own documented "ZoneMapPanel wiring"
+  snippet, `project-docs/GRAMMAR.md`'s own `type: zonemap` grammar,
   `tableLogic.ts`'s already-shipped color convention) — not a new
   implementation choice introduced by this spec, matching every prior
   panel-type spec's own precedent (`010-flowmap-panel`'s checklist notes

@@ -6,17 +6,17 @@
 
 **Status**: Draft
 
-**Input**: User description: "Add a fifth panel type — observable-plot — to the registry, following the same pattern as ValueBoxPanel/PlotlyPanel/TablePanel/MarkdownPanel and inheriting 004's expand-to-dialog mechanism automatically. Uses @observablehq/plot. Reuse PlotlyPanel's proven pattern where it genuinely applies (query/fetch chain, loading/empty/error states); research whether Observable Plot needs its own resize treatment rather than assuming PlotlyPanel's ResizeObserver fix transfers unchanged. Confirm, against docs/GRAMMAR.md, whether `type: observable-plot` uses the same `$metric.<column>` convention PlotlyPanel resolves or something else, and whether panel-local reactive input widgets (`$inputs.x` or similar) are real, documented grammar or just an illustrative example — if real, scope this as a materially bigger feature than 'swap Plotly for Observable Plot,' not silently included or excluded."
+**Input**: User description: "Add a fifth panel type — observable-plot — to the registry, following the same pattern as ValueBoxPanel/PlotlyPanel/TablePanel/MarkdownPanel and inheriting 004's expand-to-dialog mechanism automatically. Uses @observablehq/plot. Reuse PlotlyPanel's proven pattern where it genuinely applies (query/fetch chain, loading/empty/error states); research whether Observable Plot needs its own resize treatment rather than assuming PlotlyPanel's ResizeObserver fix transfers unchanged. Confirm, against project-docs/GRAMMAR.md, whether `type: observable-plot` uses the same `$metric.<column>` convention PlotlyPanel resolves or something else, and whether panel-local reactive input widgets (`$inputs.x` or similar) are real, documented grammar or just an illustrative example — if real, scope this as a materially bigger feature than 'swap Plotly for Observable Plot,' not silently included or excluded."
 
 ## Grammar findings (pre-spec verification)
 
-Verified directly against `docs/GRAMMAR.md` and `docs/SPEC.md` before writing this
+Verified directly against `project-docs/GRAMMAR.md` and `project-docs/SPEC.md` before writing this
 spec, per this project's established discipline (005/006 required the same):
 
 1. **`type: observable-plot` is a real, fully-specified panel type**, appearing in
-   three separate places in `docs/GRAMMAR.md` (a worked example at line ~880, the
+   three separate places in `project-docs/GRAMMAR.md` (a worked example at line ~880, the
    canonical panel-type reference at line ~970, and the top-level dashboard example
-   at line ~308) plus `docs/SPEC.md`'s Panel types table, which describes it as
+   at line ~308) plus `project-docs/SPEC.md`'s Panel types table, which describes it as
    "For panels with reactive filter inputs" — not a hypothetical or aspirational
    entry.
 2. **Chart encodings (`mark`, `x`, `y`, `fill`, `stroke`, `facet_x`, `facet_y`) are
@@ -28,14 +28,14 @@ spec, per this project's established discipline (005/006 required the same):
    columns the SQL query returns, no placeholder substitution needed for those
    fields specifically.
 3. **`$inputs.<id>` is real, documented grammar — not an illustrative-only
-   example.** `docs/GRAMMAR.md`'s placeholder reference table lists it explicitly
+   example.** `project-docs/GRAMMAR.md`'s placeholder reference table lists it explicitly
    ("`$inputs.x` | dashboard panel `filter:` | Current panel-level input value"),
    and it appears as working grammar in two separate full examples (the Trip
    Length Frequency Distribution panel and the Mode Share by Income Group panel),
    plus the top-level dashboard example. Panel-local reactive input widgets
    (`inputs:` — an array of `{id, label, type: select|multiselect|range, column,
    default}`) are therefore **in scope for this feature**, not a hypothetical
-   deferred to a future feature. `docs/SPEC.md`'s one-line description of this
+   deferred to a future feature. `project-docs/SPEC.md`'s one-line description of this
    panel type ("For panels with reactive filter inputs") is not incidental
    color — it is this panel type's entire reason for existing as a distinct type
    from `plotly`, so a version of this feature that omits panel-local inputs would
@@ -118,7 +118,7 @@ not affect any other panel on the tab, including other `observable-plot`
 panels.
 
 **Why this priority**: This is the capability that makes `type: observable-plot`
-distinct from `type: plotly` per `docs/SPEC.md`'s own description ("for panels
+distinct from `type: plotly` per `project-docs/SPEC.md`'s own description ("for panels
 with reactive filter inputs") — real, documented grammar (see Grammar findings
 above), not a stretch goal. It is scoped as P2 rather than folded into User
 Story 1 because it is independently testable and buildable on top of a working
@@ -281,7 +281,7 @@ not new end-user-visible capability.
 - **SC-001**: An `observable-plot` panel's rendered marks match the values a
   direct SQL query against the same fixture data would return, for every mark
   type exercised by the fixture (at minimum `barY` and `lineY`, per
-  `docs/GRAMMAR.md`'s own worked examples).
+  `project-docs/GRAMMAR.md`'s own worked examples).
 - **SC-002**: Changing the bound global filter, or a panel-local input, updates
   the affected chart's rendered output without a full page reload and without
   any other panel or filter re-rendering unnecessarily.

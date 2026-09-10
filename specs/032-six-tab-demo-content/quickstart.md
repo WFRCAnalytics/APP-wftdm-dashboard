@@ -46,7 +46,7 @@ ever became false).
 
 ```powershell
 # Manual spot-check: pick 10 random submodel headings from
-# docs/CALIBRATION-SUMMARIES.md and, for each, open the live dashboard
+# project-docs/CALIBRATION-SUMMARIES.md and, for each, open the live dashboard
 # tab/section it belongs to.
 npm run dev
 ```
@@ -95,7 +95,7 @@ longer exist anywhere; `dashboard-5-explore.yaml`'s content is
 byte-identical to before this feature (`git diff` shows no changes to
 that file).
 
-## Scenario 6 — `docs/CALIBRATION-SUMMARIES.md` matches the live dashboard (SC-005)
+## Scenario 6 — `project-docs/CALIBRATION-SUMMARIES.md` matches the live dashboard (SC-005)
 
 Manual review against `contracts/calibration-summaries-corrections.md` —
 confirm all three corrections were applied and no other text in the

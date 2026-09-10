@@ -4,7 +4,7 @@
 
 ## §1. `compare_on`'s exact YAML shape: always `string[]`, never a flexible singular-or-list union
 
-**Finding**: Surveyed every existing multi-value field in this app's grammar (`docs/GRAMMAR.md`) — `scenarios: [a, b]`, `traces: [...]`, `columns: [...]`, `inputs: [...]` — every one is **always** an array, never a "bare value OR array" polymorphic union. Where this project wants a genuine singular/plural distinction, it uses two *differently-named* fields instead (`scenario` singular vs. `scenarios` plural on `DataBoundPanelConfigBase` itself) rather than one field accepting either shape.
+**Finding**: Surveyed every existing multi-value field in this app's grammar (`project-docs/GRAMMAR.md`) — `scenarios: [a, b]`, `traces: [...]`, `columns: [...]`, `inputs: [...]` — every one is **always** an array, never a "bare value OR array" polymorphic union. Where this project wants a genuine singular/plural distinction, it uses two *differently-named* fields instead (`scenario` singular vs. `scenarios` plural on `DataBoundPanelConfigBase` itself) rather than one field accepting either shape.
 
 **Decision**: `compare_on: string[]`, always an array, even for the common single-column case (`compare_on: [taz_id]`).
 

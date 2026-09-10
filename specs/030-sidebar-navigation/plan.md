@@ -166,7 +166,7 @@ tests/
 **Structure Decision**: Single-project web app, existing `src/` tree — no
 new top-level directory. This feature is a shell/layout-layer change
 (`layout/`, `components/ui/`, `panels/GraphicWalkerPanel.tsx` if needed,
-`docs/GRAMMAR.md`), following the exact same file-organization convention
+`project-docs/GRAMMAR.md`), following the exact same file-organization convention
 every prior panel/shell feature in this project's history has used
 (`003-dashboard-shell-navigation`, `020-settings-modal`,
 `021-basemap-catalog-redesign`).

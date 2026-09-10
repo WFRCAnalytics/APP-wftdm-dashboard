@@ -5,13 +5,13 @@ import { registerScenario, unregisterScenario } from '@/services/duckdb'
 import * as appState from '@/state/appState'
 import { readManifest } from '@/scenario/manifestReader'
 
-/** WEB vs LOCAL deployment mode (docs/SPEC.md) — research.md §5. */
+/** WEB vs LOCAL deployment mode (project-docs/SPEC.md) — research.md §5. */
 export function isLocalDeployment(): boolean {
   return window.location.hostname === 'localhost'
 }
 
 /**
- * Chrome/Edge only (docs/ARCHITECTURE.md) — feature-detected, not
+ * Chrome/Edge only (project-docs/ARCHITECTURE.md) — feature-detected, not
  * assumed. Used by layout/settings/scenariosTab.tsx's (020-settings-modal;
  * relocated from the former scenarioLoader.tsx) disabled/tooltip branch.
  */

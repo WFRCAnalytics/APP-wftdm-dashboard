@@ -89,7 +89,7 @@ existing panel type.
   *charting* dependency, not a UI-primitive-framework choice, and doesn't
   touch the fixed MapLibre/Vite/no-Web-Storage constraints at all. Adding
   it is exactly the kind of additive charting-technology decision
-  `docs/PIPELINE.md`'s own "five total chart technologies" note already
+  `project-docs/PIPELINE.md`'s own "five total chart technologies" note already
   anticipated and named as the first to actually be built.
 - **Principle VII (minimal, fixed config file set)**: PASS — no new
   config file; `type: recharts` is a new panel-type value inside the

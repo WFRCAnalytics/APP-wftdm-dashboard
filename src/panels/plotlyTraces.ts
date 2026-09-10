@@ -32,7 +32,7 @@ function resolveField(field: string | undefined, rows: Record<string, unknown>[]
 /**
  * Resolves one PlotlyTraceConfig against a query result into one or more
  * real Plotly traces. $metric.<column>/bare-$scenario resolution (research.md
- * §3) is docs/SPEC.md's own dashboard-config example implemented exactly as
+ * §3) is project-docs/SPEC.md's own dashboard-config example implemented exactly as
  * written, not literal column names.
  *
  * A `color` key, OR a `name` key that resolves to a column (most commonly
@@ -40,7 +40,7 @@ function resolveField(field: string | undefined, rows: Record<string, unknown>[]
  * case the whole $scenario.<metric> union mechanism exists for), splits
  * the config's one trace into one real Plotly trace per distinct value of
  * that column (grouped bar/line-per-category is the common case,
- * docs/GRAMMAR.md's own `color: $metric.mode` example). `color` wins when
+ * project-docs/GRAMMAR.md's own `color: $metric.mode` example). `color` wins when
  * both are set — the more specific request. `name` alone still must
  * trigger the split when color is absent: a placeholder-resolved name is
  * inherently one value per row (an array), never a valid scalar legend

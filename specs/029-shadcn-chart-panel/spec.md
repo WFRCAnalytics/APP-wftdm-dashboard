@@ -12,13 +12,13 @@
 
 Confirmed directly against this codebase and against shadcn/ui's/Recharts'
 own real, current source before writing requirements below — this is the
-first feature to actually build what `docs/PIPELINE.md`'s own "five total
+first feature to actually build what `project-docs/PIPELINE.md`'s own "five total
 chart technologies" note and the `wftdm-design-system` skill's own
 "Charting research" section already researched; nothing here re-derives
 those findings, only applies them:
 
 - **Naming precedent, confirmed against every existing panel type's own
-  `type:` value** (`docs/GRAMMAR.md`): chart-rendering panel types name the
+  `type:` value** (`project-docs/GRAMMAR.md`): chart-rendering panel types name the
   underlying rendering LIBRARY directly (`plotly`, `observable-plot`), not
   a generic word or the theming layer on top of it. Following that same
   precedent, this feature's new panel type is named `type: recharts` — not

@@ -11,7 +11,7 @@ not assumed, per this project's established discipline (005-table-panel,
 **Decision**: Widen `DataBoundPanelConfigBase.filter` from `string | undefined`
 to `string | Record<string, string> | undefined`, and rewrite
 `panelQuery.ts`'s `buildPanelQuery` to accept either shape. This is not new
-grammar invented for this feature — `docs/GRAMMAR.md`'s own common-keys table
+grammar invented for this feature — `project-docs/GRAMMAR.md`'s own common-keys table
 (the block every panel type shares) already documents `filter: <inline |
 $ref>`, i.e. two forms were always allowed; `valuebox`/`plotly`/`table` simply
 never happened to exercise the `inline` (map) form in any example so far.
@@ -36,7 +36,7 @@ $inputs.income_filter` — column `income_category`, placeholder id
 `income_filter`, deliberately different strings). A version of this feature
 that left `buildPanelQuery` untouched and had `ObservablePlotPanel.tsx` do its
 own separate SQL-templating for the map form would fork `WHERE`-clause
-construction into two divergent code paths for what is, per `docs/GRAMMAR.md`,
+construction into two divergent code paths for what is, per `project-docs/GRAMMAR.md`,
 one documented key with two literal forms — worse for review, and a second
 place Principle III's "string replacement only, never eval()" discipline would
 need auditing instead of one.
@@ -78,12 +78,12 @@ mismatch `layout/types.ts`'s existing doc comments warn against introducing.
 fifth parameter to `expand()`: `inputState?: FilterStateLike`. The existing
 'all'-value line-drop pass (currently `$filters.`-only) is extended to also
 recognize `$inputs.` lines, for consistency with its structurally closest
-sibling in `docs/GRAMMAR.md`'s own SQL placeholder reference table — even
+sibling in `project-docs/GRAMMAR.md`'s own SQL placeholder reference table — even
 though no worked `inputs:` example currently declares an `all_option`, nothing
 in the grammar forbids one, and the cost of covering it is one regex
 alternation, not a parallel code path.
 
-**Reasoning**: `docs/GRAMMAR.md`'s SQL placeholder reference table lists
+**Reasoning**: `project-docs/GRAMMAR.md`'s SQL placeholder reference table lists
 `$inputs.x` in exactly the same table, at exactly the same level, as
 `$filters.x`/`$scenario.x`/`$metric.col` — it is not a special or lesser case
 of an existing kind, it is a sibling placeholder kind this project's one
@@ -167,7 +167,7 @@ no cross-component read requirement `useState` fails to satisfy.
 directly off each queried row — no `$metric.<column>` placeholder
 substitution is applied to these fields, unlike `PlotlyPanel`'s trace axes.
 
-**Reasoning**: Directly verified against `docs/GRAMMAR.md`'s two full
+**Reasoning**: Directly verified against `project-docs/GRAMMAR.md`'s two full
 `type: observable-plot` examples — `x: distance_bin`, `y: trips`, `stroke:
 purpose`, and separately `x: income_category`, `y: share`, `fill: mode` — none
 prefixed with `$metric.`, in explicit contrast to the immediately preceding
@@ -187,7 +187,7 @@ being split out of its component — see §6), resolves an
 data: Record<string, unknown>[], options: Record<string, unknown>}` object —
 `x`/`y`/`fill`/`stroke`/`facet_x`→`fx`/`facet_y`→`fy`/`tip`/`grid` copied
 through as Plot channel/option keys (renamed only where Plot's own option name
-differs from `docs/GRAMMAR.md`'s config key, e.g. `facet_x` → `fx`). It never
+differs from `project-docs/GRAMMAR.md`'s config key, e.g. `facet_x` → `fx`). It never
 constructs marks or calls `Plot.plot()` itself — see §6 for why.
 
 **Alternatives considered**: none seriously — this is a direct reading of
@@ -208,12 +208,12 @@ technically configured but practically unusable — hovering most of a
 visible bar would show nothing, the same user-visible symptom as "tooltips
 don't work" at all. `observablePlotEncoding.ts`'s `resolveTipMode()`
 resolves this internally: `barY` → `"x"`, every other mark (today: `lineY`,
-whose own `docs/GRAMMAR.md` example already uses plain `tip: true`
+whose own `project-docs/GRAMMAR.md` example already uses plain `tip: true`
 successfully) → the `"xy"` default — a mark-aware runtime decision, not a
-new author-facing grammar key (`docs/GRAMMAR.md`'s `tip:` stays a plain
+new author-facing grammar key (`project-docs/GRAMMAR.md`'s `tip:` stays a plain
 boolean). The *separate*, more basic cause of the bug — this feature's own
 fixture never set `tip: true` anywhere at all, despite the "Trip Length
-Frequency Distribution" panel being authored as reusing `docs/GRAMMAR.md`'s
+Frequency Distribution" panel being authored as reusing `project-docs/GRAMMAR.md`'s
 worked example "almost verbatim" — was a fixture-authoring omission, not a
 design gap; confirmed via a byte-identical container `innerHTML` before/
 after hover on the un-fixed fixture (no tip DOM node was ever created,
@@ -221,7 +221,7 @@ ruling out a CSS-clipping explanation before concluding "never rendered").
 
 **Second correction, same investigation category, found via a separate
 manual visual check**: fill/stroke-encoded charts never showed a color
-legend either. `docs/GRAMMAR.md` documents no `legend:` key at all for this
+legend either. `project-docs/GRAMMAR.md` documents no `legend:` key at all for this
 panel type — confirmed by grepping the whole file, not just the
 observable-plot section, and re-reading both worked examples key-by-key
 (a genuine completeness pass, not a spot check: nothing else documented for
@@ -391,7 +391,7 @@ helper covers this; still plain string templating, no `eval()`) for
 metric resolves to** — `config.scenario` (singular) if set, otherwise the
 first entry of `resolveActiveScenarios(config, activeScenarios)` — reusing
 `panelQuery.ts`'s existing scenario-resolution logic rather than inventing a
-second one, since `docs/GRAMMAR.md`'s `inputs:` shape has no separate
+second one, since `project-docs/GRAMMAR.md`'s `inputs:` shape has no separate
 `source:` field (unlike `FilterDefinition`, which does) — there is exactly
 one metric per panel to draw options from.
 
@@ -414,7 +414,7 @@ sibling-input change). This is a deliberate simplification versus a
 richer, filter-consistent-with-current-selections option list (e.g.
 narrowing `income_filter`'s choices to only those that would produce
 non-empty results given the current `purpose` filter) — nothing in
-`docs/GRAMMAR.md`'s documented grammar or spec.md's requirements calls for
+`project-docs/GRAMMAR.md`'s documented grammar or spec.md's requirements calls for
 that richer behavior, and it would reintroduce exactly the same
 self-referential-narrowing risk for *other* filters/inputs that this
 decision avoids for the input's own binding.
@@ -474,7 +474,7 @@ bad `$filters.<id>` default.
 
 | # | Question | Resolution |
 |---|---|---|
-| 1 | `filter:` shape for observable-plot | Common-key union type (`string \| Record<string,string>`), confirmed via `docs/GRAMMAR.md`'s own common-keys table; `buildPanelQuery` normalizes both forms |
+| 1 | `filter:` shape for observable-plot | Common-key union type (`string \| Record<string,string>`), confirmed via `project-docs/GRAMMAR.md`'s own common-keys table; `buildPanelQuery` normalizes both forms |
 | 2 | `$inputs.<id>` resolution | Extends `sqlExpander.ts`'s existing placeholder dispatch, mirroring `$filters.<id>`, via a new optional `inputState` param |
 | 3 | Panel-local input state storage | Component-local `useState`, not `state/filterState.ts` — isolated by construction, persists across 004's expand transition for free |
 | 4 | Chart encoding placeholder convention | Bare column names, confirmed NOT `$metric.`-prefixed — `plotlyTraces.ts` logic does not transfer |

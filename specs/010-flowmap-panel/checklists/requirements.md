@@ -31,7 +31,7 @@
 
 ## Notes
 
-- This feature required a live correction to `docs/GRAMMAR.md`'s `type:
+- This feature required a live correction to `project-docs/GRAMMAR.md`'s `type:
   flowmap` grammar itself (removing `boundaries`/`boundaries_id`, which
   implied a live GeoParquet/DuckDB-spatial join neither real reference
   app actually uses) — made and confirmed with the user *before* this
@@ -39,7 +39,7 @@
   grammar is what this spec's Grammar findings section verifies against.
 - `d3-sankey`/`Plotly.react()`-style technology names appear in
   Requirements/Key Entities because they are the literal, already-fixed
-  API surface this feature's requirements bind to (`docs/SPEC.md`'s own
+  API surface this feature's requirements bind to (`project-docs/SPEC.md`'s own
   documented `MapboxOverlay`/`FlowmapLayer`/`setProps()`/`map.remove()`
   wiring) — not a new implementation choice being introduced by this
   spec, matching every prior panel-type spec's own precedent for citing

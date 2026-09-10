@@ -150,6 +150,10 @@ profile_default/
 ipython_config.py
 
 # ── Documentation builds ──────────────────────────────────────────────────────
+# NOTE: docs/ is currently the COMMITTED GitHub Pages build output of the demo
+# dashboard (`npm run build:pages`), NOT a documentation source tree — so it is
+# deliberately NOT ignored. Reference docs live in project-docs/. Once the real
+# dashboard deploys from WFRC's own server, docs/ reverts to a docs source tree.
 docs/_build/
 /site
 

@@ -32,7 +32,7 @@ const ALL_FILTERS: ['*'] = ['*']
 
 // Default view state when a panel's config omits center/zoom — roughly
 // the Wasatch Front, matching both real reference apps' own default
-// centering (research.md; docs/GRAMMAR.md's own worked example uses the
+// centering (research.md; project-docs/GRAMMAR.md's own worked example uses the
 // same coordinates). Exported (021-basemap-catalog-redesign) so
 // layout/settings/basemapTab.tsx's own shared preview map can reuse the
 // EXACT same values directly rather than redefining an equivalent pair —
@@ -84,7 +84,7 @@ declare global {
 // contracts/flowmap-panel.md and research.md. Genuinely different from
 // every prior panel type in two ways: (1) the maplibregl.Map/
 // MapboxOverlay instances are imperative, mount-lifetime objects (a ref,
-// never React-rendered output — docs/SPEC.md's own create-once/
+// never React-rendered output — project-docs/SPEC.md's own create-once/
 // setProps()-on-update/map.remove()-on-destroy shape), not rebuilt
 // per-render the way PlotlyPanel/SankeyPanel/ObservablePlotPanel each
 // rebuild their own chart on data change; (2) it must survive 004's

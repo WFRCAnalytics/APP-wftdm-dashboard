@@ -32,7 +32,7 @@
   least one row with a non-positive mapped value (to exercise the
   `excludedCount`/`console.warn` path, research.md §5). Reusing this
   project's existing `tour_mode_to_trip_mode`-shaped fixture data
-  (`docs/GRAMMAR.md`'s own worked example) is the natural fit — check
+  (`project-docs/GRAMMAR.md`'s own worked example) is the natural fit — check
   `tests/fixtures/generate.py`/`dashboard-config/dashboard-1-summary.yaml`
   for what to add (tasks.md's concern, not decided here).
 

@@ -506,4 +506,4 @@ column on the left with tab content to its right.
   (018/019/020-baseline-scenario-designation and
   019-baseline-diff-consumption) at all.
 - AI/API-token integration remains out of scope, tracked separately per
-  `docs/PIPELINE.md`, as stated in the feature description.
+  `project-docs/PIPELINE.md`, as stated in the feature description.

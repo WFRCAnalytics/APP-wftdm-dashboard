@@ -6,7 +6,7 @@ No application database — "entities" here are the TypeScript shapes this
 feature defines to give `dashboard-*.yaml`'s previously-opaque `raw: unknown`
 real structure, plus the registry/query concepts the panel pattern
 introduces. Values and field names are drawn directly from
-`docs/GRAMMAR.md`'s already-documented grammar — this file does not invent
+`project-docs/GRAMMAR.md`'s already-documented grammar — this file does not invent
 new YAML syntax, only the TypeScript types that parse it.
 
 ---
@@ -19,7 +19,7 @@ Parsed from one `dashboard-*.yaml` file's `raw` content
 
 | Field | Type | Notes |
 |---|---|---|
-| `header` | `{ tab: string; title: string; description?: string }` | `tab` is the nav-bar label (`docs/GRAMMAR.md` `header.tab`) |
+| `header` | `{ tab: string; title: string; description?: string }` | `tab` is the nav-bar label (`project-docs/GRAMMAR.md` `header.tab`) |
 | `filters` | `FilterDefinition[]` | Global sidebar filters for this tab; may be empty |
 | `layout` | `Record<string, PanelConfig[]>` | Keyed by row name (e.g. `row_kpis`); each row is an ordered list of panels |
 
@@ -33,7 +33,7 @@ missing — every other field has a safe default (`filters: []`,
 
 ## FilterDefinition
 
-One entry in a tab's `filters` array (`docs/GRAMMAR.md`'s `filters:` key).
+One entry in a tab's `filters` array (`project-docs/GRAMMAR.md`'s `filters:` key).
 
 | Field | Type | Notes |
 |---|---|---|
@@ -53,7 +53,7 @@ feature does not introduce a second filter-identity concept.
 
 ## PanelConfig (discriminated union on `type`)
 
-Common fields (`docs/GRAMMAR.md`'s "All panels share these common keys"),
+Common fields (`project-docs/GRAMMAR.md`'s "All panels share these common keys"),
 plus one variant per panel type this feature implements.
 
 ### Common fields

@@ -26,7 +26,7 @@ Generalize `013-zonemap-panel`'s existing `buildComparisonDiffQuery()` (currentl
 
 **Constraints**: MUST NOT modify `013-zonemap-panel`'s existing hardcoded-`a`/`b` `comparison: diff` behavior for any panel that doesn't reference `$baseline` (FR-005/SC-004). MUST NOT route `comparison: diff` queries through `sqlExpander.expand()` for the first time (spec Grammar finding #2 — `$baseline` resolution happens in the caller, not via a new placeholder-regex path).
 
-**Scale/Scope**: `layout/types.ts` (new mixin + 3 panel configs updated), `panels/panelQuery.ts` (generalized query-builder + new `$baseline` resolver, both shared), `panels/PlotlyPanel.tsx`/`plotlyTraces.ts`, `panels/TablePanel.tsx`/`tableLogic.ts`/`formatValue.ts`, `panels/ObservablePlotPanel.tsx`/`observablePlotEncoding.ts`, `panels/ZoneMapPanel.tsx` (migrated onto the generalized builder, behavior unchanged), `docs/GRAMMAR.md`. No new files.
+**Scale/Scope**: `layout/types.ts` (new mixin + 3 panel configs updated), `panels/panelQuery.ts` (generalized query-builder + new `$baseline` resolver, both shared), `panels/PlotlyPanel.tsx`/`plotlyTraces.ts`, `panels/TablePanel.tsx`/`tableLogic.ts`/`formatValue.ts`, `panels/ObservablePlotPanel.tsx`/`observablePlotEncoding.ts`, `panels/ZoneMapPanel.tsx` (migrated onto the generalized builder, behavior unchanged), `project-docs/GRAMMAR.md`. No new files.
 
 ## Constitution Check
 

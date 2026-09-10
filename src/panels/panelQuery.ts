@@ -1,5 +1,5 @@
 // Turns a panel config into a bare SQL template — $scenario.<metric> and
-// $filters.<id> placeholders only, per docs/GRAMMAR.md's SQL placeholder
+// $filters.<id> placeholders only, per project-docs/GRAMMAR.md's SQL placeholder
 // reference table (panel queries never use $mappings/$bins/$sql — those
 // are summarize.yaml-only, already baked into the Parquet by the offline
 // post-processor). Does NOT expand placeholders itself — hand the result
@@ -38,7 +38,7 @@ function isMultiselectInputPlaceholder(
 }
 
 /**
- * Normalizes config.filter (either documented shape — docs/GRAMMAR.md's
+ * Normalizes config.filter (either documented shape — project-docs/GRAMMAR.md's
  * common-keys table: "filter: <inline | $ref>") into a list of
  * [column, placeholderString] pairs, ready to become one
  * `AND "<column>" = '<placeholder>'` line each.
@@ -96,7 +96,7 @@ export function buildPanelQuery(
   //
   // 013-zonemap-panel: a real, confirmed bug found via Playwright, not
   // caught by typecheck or any unit test — ZoneMapPanelConfig ALSO has a
-  // top-level `column` field (docs/GRAMMAR.md's own real grammar names
+  // top-level `column` field (project-docs/GRAMMAR.md's own real grammar names
   // it exactly that, the choropleth's fill column), which this check
   // originally couldn't distinguish from ValueBoxPanelConfig's `column`
   // (a single scalar to display). The single-column SELECT this branch
@@ -115,7 +115,7 @@ export function buildPanelQuery(
     return `${selectClause} FROM ${source}`
   }
 
-  // Each placeholder must sit alone on its own line (docs/GRAMMAR.md) for
+  // Each placeholder must sit alone on its own line (project-docs/GRAMMAR.md) for
   // sqlExpander.ts's `all`-sentinel line-omission to work correctly.
   //
   // A multiselect-type $inputs.<id> reference gets an IN (...) shape

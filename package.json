@@ -7,7 +7,9 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
+    "build:pages": "tsc --noEmit && vite build --outDir docs --emptyOutDir",
     "preview": "vite preview",
+    "preview:pages": "vite preview --outDir docs",
     "postinstall": "node scripts/postinstall.js",
     "typecheck": "tsc --noEmit",
     "test:unit": "vitest run",

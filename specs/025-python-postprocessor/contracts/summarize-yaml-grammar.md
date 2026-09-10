@@ -1,22 +1,22 @@
 # Contract: `summarize.yaml` grammar conformance
 
 This feature does not define a new grammar — it is an *implementation* of
-the grammar `docs/GRAMMAR.md` already documents under "`summarize.yaml`"
+the grammar `project-docs/GRAMMAR.md` already documents under "`summarize.yaml`"
 (lines ~121–722 as read this session) and "SQL placeholder reference"
 (`$mappings.x`, `$bins.x`, `$sql.x` rows only — `$filters`/`$scenario`/
 `$inputs`/`$baseline` belong to `dashboard-*.yaml` and are explicitly out of
 this pipeline's scope, since `summarize.yaml` is never read by the browser).
 
 **The contract is**: given any `summarize.yaml` that conforms to
-`docs/GRAMMAR.md`'s documented grammar, this pipeline MUST parse it without
+`project-docs/GRAMMAR.md`'s documented grammar, this pipeline MUST parse it without
 error and produce correct output for every metric, for arbitrarily-named
 sources/mappings/bins/fragments/metrics (FR-007's genericity requirement).
-`docs/GRAMMAR.md` itself is the authoritative grammar reference — this
+`project-docs/GRAMMAR.md` itself is the authoritative grammar reference — this
 document does not duplicate it, only points at the specific sections a
 conforming implementation must satisfy, plus records the one confirmed gap
 in that document's own worked example:
 
-- **Confirmed gap in `docs/GRAMMAR.md`'s own example** (not a contract this
+- **Confirmed gap in `project-docs/GRAMMAR.md`'s own example** (not a contract this
   pipeline needs to bridge, recorded here so it isn't lost): the example
   `screenlines`/`vmt_by_facility`/`vmt_by_home_taz` metrics reference
   `assignment` and `observed_counts` tables that never appear under the
@@ -33,7 +33,7 @@ For the three placeholder kinds `summarize.yaml` uses (`$mappings.x`,
 and semantics to what `services/sqlExpander.ts`'s `expandMappings()`/
 `expandBins()`/`expandSqlFragment()` produce for the same input — confirmed
 directly against that file's real source this session, not assumed from
-`docs/GRAMMAR.md`'s prose alone (research.md §4 records the one place the
+`project-docs/GRAMMAR.md`'s prose alone (research.md §4 records the one place the
 doc's own illustration and the real code diverge: no `ELSE` clause is
 emitted by `$mappings.x` itself).
 

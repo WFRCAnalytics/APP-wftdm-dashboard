@@ -58,7 +58,7 @@ export function useFilterState(ids: FilterId[] | ['*']): Record<FilterId, Filter
   expression as `ids`, **when** the component re-renders for an unrelated
   reason, **then** the `??` fallback must resolve to the *same* `['*']`
   reference each time (a module-level constant, not an inline literal) —
-  per `docs/SPEC.md`'s Panel contract note; `useFilterState` itself cannot
+  per `project-docs/SPEC.md`'s Panel contract note; `useFilterState` itself cannot
   fix an unstable `ids` argument its caller passes in.
 
 ## Non-goals for this feature

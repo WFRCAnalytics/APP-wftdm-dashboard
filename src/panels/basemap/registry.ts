@@ -80,7 +80,7 @@ const BUILT_IN_PRESETS: Record<BasemapPresetName, BuiltInPreset> = {
 // ~90-100 for Liberty/Bright) at this app's actual zoom levels, and
 // OpenFreeMap is a genuinely keyless, no-account service — no exposure to
 // CARTO's announced-but-undated plan to extend its API-key requirement from
-// its raster endpoints to its vector ones (docs/BASEMAP-PICKER-PROPOSAL.md
+// its raster endpoints to its vector ones (project-docs/BASEMAP-PICKER-PROPOSAL.md
 // §2/§3). carto-voyager/-positron/-dark-matter remain fully supported
 // PRESETS an author can still pin per-panel/per-tab; only the app-wide
 // fallback default moved.

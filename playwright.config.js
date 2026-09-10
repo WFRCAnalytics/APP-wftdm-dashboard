@@ -14,7 +14,7 @@ export default defineConfig({
   globalTeardown: './tests/global-teardown.js',
   use: {
     // 127.0.0.1, not 'localhost' — 009-scenario-manager's
-    // isLocalDeployment() correctly implements docs/SPEC.md's own
+    // isLocalDeployment() correctly implements project-docs/SPEC.md's own
     // documented `hostname === 'localhost'` LOCAL/WEB deployment check
     // (gating the "Load Local Scenario" control to WEB mode only), and
     // this dev server is a test harness, not the wftdm-dashboard

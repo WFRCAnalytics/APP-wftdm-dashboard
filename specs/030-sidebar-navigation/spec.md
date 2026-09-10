@@ -6,15 +6,15 @@
 
 **Status**: Draft
 
-**Input**: User description: "Replace the current horizontal top-nav-with-tabs shell with a left sidebar (shadcn/ui's real Sidebar component, collapsible=\"icon\" mode) — Option B from docs/UX-REDESIGN-PROPOSAL.md, following its reconciliation-ledger findings exactly. Six primary items follow the ActivitySim submodel sequence from docs/CALIBRATION-SUMMARIES.md (Summary, Person/Household Models, Tour Models, Mode Choice, Trip Models, Network); a seventh, 'Explore Data', is a dedicated full-page destination for GraphicWalkerPanel rather than a panel competing for space in a multi-panel tab — this requires a new chromeless full-page panel rendering mode (dashboardRenderer.tsx + panelCard.tsx) and a real height-resolution fix in GraphicWalkerPanel.tsx, both confirmed this session as genuine gaps, not config tweaks. Each of the six ActivitySim-outline tabs shows its own sections as expandable sidebar accordion items, but only while that tab is active. Hide-on-Scroll nav mode is dropped entirely (not adapted). DashboardBrand relocates into the sidebar header; Settings relocates into the sidebar footer. The proposal's §4 content-grid/Metric-Strip conventions are in scope. Brand color is untouched."
+**Input**: User description: "Replace the current horizontal top-nav-with-tabs shell with a left sidebar (shadcn/ui's real Sidebar component, collapsible=\"icon\" mode) — Option B from project-docs/UX-REDESIGN-PROPOSAL.md, following its reconciliation-ledger findings exactly. Six primary items follow the ActivitySim submodel sequence from project-docs/CALIBRATION-SUMMARIES.md (Summary, Person/Household Models, Tour Models, Mode Choice, Trip Models, Network); a seventh, 'Explore Data', is a dedicated full-page destination for GraphicWalkerPanel rather than a panel competing for space in a multi-panel tab — this requires a new chromeless full-page panel rendering mode (dashboardRenderer.tsx + panelCard.tsx) and a real height-resolution fix in GraphicWalkerPanel.tsx, both confirmed this session as genuine gaps, not config tweaks. Each of the six ActivitySim-outline tabs shows its own sections as expandable sidebar accordion items, but only while that tab is active. Hide-on-Scroll nav mode is dropped entirely (not adapted). DashboardBrand relocates into the sidebar header; Settings relocates into the sidebar footer. The proposal's §4 content-grid/Metric-Strip conventions are in scope. Brand color is untouched."
 
 ## Research Findings (grounding this spec)
 
-Confirmed directly against this codebase, `docs/CALIBRATION-SUMMARIES.md`,
-`docs/GRAMMAR.md`, and the installed `lucide-react` package before writing
+Confirmed directly against this codebase, `project-docs/CALIBRATION-SUMMARIES.md`,
+`project-docs/GRAMMAR.md`, and the installed `lucide-react` package before writing
 any requirement below — nothing here is re-derived speculation:
 
-- **The six-tab count is confirmed correct against `docs/CALIBRATION-SUMMARIES.md`
+- **The six-tab count is confirmed correct against `project-docs/CALIBRATION-SUMMARIES.md`
   directly, re-read in full for this spec.** Its own section headings are,
   in order: "Level 1 — High-Level Summary (Summary Tab — Landing Page)",
   "Person / Household Models Tab", "Tour Models Tab", "Mode Choice Tab",
@@ -41,7 +41,7 @@ any requirement below — nothing here is re-derived speculation:
   does `Object.entries(tab.layout).map(([rowName, panels]) => ...)` — the
   JS object key a YAML author writes (e.g. `row_kpis`) is used ONLY as a
   React list `key` prop; it is never rendered as visible text anywhere.
-  `docs/GRAMMAR.md`'s own row grammar (`layout: { <row_name>: [panels...] }`)
+  `project-docs/GRAMMAR.md`'s own row grammar (`layout: { <row_name>: [panels...] }`)
   has no `heading:`/`label:` field of any kind. This confirms the required
   research finding plainly: the accordion sub-navigation this feature
   needs cannot be built by reusing anything that already exists — a real,
@@ -60,7 +60,7 @@ any requirement below — nothing here is re-derived speculation:
   bug-fix comment. The page needed to scroll (922px of content in a
   900px viewport) while simultaneously leaving dead space below the
   panel — the worst of both outcomes, not a close call. See
-  `docs/UX-REDESIGN-PROPOSAL.md` (this session, same date) for the full
+  `project-docs/UX-REDESIGN-PROPOSAL.md` (this session, same date) for the full
   proposal this measurement grounds, and its own §7 reconciliation
   ledger for the Hide-on-Scroll and `DashboardBrand` findings this spec
   carries forward without re-deriving.
@@ -530,7 +530,7 @@ boundary without having to infer it from scattered FR wording.
   out as an auto-filling grid of minimum-width cards (a "Metric Strip"),
   distinct from the plain equal-fraction column division every other
   row composition uses.
-- **FR-019**: `docs/GRAMMAR.md` MUST document a named twelfths-based
+- **FR-019**: `project-docs/GRAMMAR.md` MUST document a named twelfths-based
   convention for the existing `width:` field, so panel-width fractions
   authored as twelfths align consistently across different rows on the
   same tab. This MUST require no change to `dashboardRenderer.tsx`'s
@@ -611,13 +611,13 @@ boundary without having to infer it from scattered FR wording.
   and/or `public/demo-dashboard-config/`) enough to exercise all four
   user stories end-to-end with real, representative panels per section.
   It does **not** author WFRC's actual production `dashboard-*.yaml`
-  templates covering every one of `docs/CALIBRATION-SUMMARIES.md`'s 36
+  templates covering every one of `project-docs/CALIBRATION-SUMMARIES.md`'s 36
   named Parquet files/metrics — per `CLAUDE.md`'s own already-established
   authored-vs-published split, those files are authored alongside model
   scripts in the separate TDM repo, outside this repo's control.
 - **Network tab's section boundaries are an authoring decision, not a
   mechanism decision**: because that tab's own content in
-  `docs/CALIBRATION-SUMMARIES.md` is a mixed table-plus-prose format
+  `project-docs/CALIBRATION-SUMMARIES.md` is a mixed table-plus-prose format
   (unlike the other five tabs' clean, parallel `###` headings), this
   feature does not prescribe its exact section split — the `sections:`
   grammar (FR-013) is general enough for whoever authors that tab's real

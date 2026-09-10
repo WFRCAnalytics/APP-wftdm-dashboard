@@ -1,6 +1,6 @@
 """Parses summarize.yaml into typed structures.
 
-Grammar matches docs/GRAMMAR.md's already-documented `summarize.yaml`
+Grammar matches project-docs/GRAMMAR.md's already-documented `summarize.yaml`
 section exactly (sources/mappings/bins/sql_fragments/metrics) — this module
 introduces no new YAML key or file type (constitution Principle VII).
 

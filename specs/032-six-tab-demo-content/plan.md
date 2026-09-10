@@ -10,7 +10,7 @@
 
 Replace the demo dashboard's current narrow three-tab structure (Overview,
 Destination Choice, Transit Service) with the full six-tab ActivitySim
-calibration outline `docs/CALIBRATION-SUMMARIES.md` already documents
+calibration outline `project-docs/CALIBRATION-SUMMARIES.md` already documents
 (Summary, Person/Household Models, Tour Models, Mode Choice, Trip Models,
 Network), backed entirely by real ActivitySim output from the same three
 scenarios (baseline, TAZ-1 density variant, transit-service variant)
@@ -23,7 +23,7 @@ two Level-1/starred ones — Work from Home, Telecommute Frequency) are
 real, confirmed gaps because their ActivitySim components never ran in
 this configuration. Explore (`dashboard-5-explore.yaml`) is untouched.
 Every one of the ten registered panel types is used at least once,
-chosen for genuine data-shape fit (`research.md` §7). `docs/CALIBRATION-
+chosen for genuine data-shape fit (`research.md` §7). `project-docs/CALIBRATION-
 SUMMARIES.md` itself is corrected to reflect the 6 real gaps and two
 smaller, incidentally-found documentation inaccuracies (`research.md`
 §8/`contracts/calibration-summaries-corrections.md`).
@@ -40,13 +40,13 @@ smaller, incidentally-found documentation inaccuracies (`research.md`
 
 **Target Platform**: Same as the rest of this project — static web app (GitHub Pages / self-hosted) + offline Python CLI. No new platform surface.
 
-**Project Type**: Web application content/config authoring — no new source module, only `summarize.yaml` metric additions, `dashboard-*.yaml` authoring, `docs/CALIBRATION-SUMMARIES.md` corrections, and republished Parquet output.
+**Project Type**: Web application content/config authoring — no new source module, only `summarize.yaml` metric additions, `dashboard-*.yaml` authoring, `project-docs/CALIBRATION-SUMMARIES.md` corrections, and republished Parquet output.
 
 **Performance Goals**: Unchanged from the existing demo dashboard — Summary tab's value boxes still load first from the smallest real Parquet file, other panels load progressively (`CLAUDE.md`'s Boot sequence).
 
 **Constraints**: Zero fabricated/placeholder/synthetic data anywhere (spec.md's Hard Constraint); no new post-processor engine code (FR-010); Explore tab untouched byte-for-byte (FR-004); every new metric expressed through existing `$mappings`/`$bins`/`$sql_fragments` grammar only.
 
-**Scale/Scope**: 6 dashboard YAML files (5 new/rewritten + `index.json` update), ~27 new `summarize.yaml` metrics + 2 new segmentation mechanisms (`data-model.md` §2-§3), 3 corrections to `docs/CALIBRATION-SUMMARIES.md`, 3 real scenario re-publications (existing CLI, unmodified invocation shape).
+**Scale/Scope**: 6 dashboard YAML files (5 new/rewritten + `index.json` update), ~27 new `summarize.yaml` metrics + 2 new segmentation mechanisms (`data-model.md` §2-§3), 3 corrections to `project-docs/CALIBRATION-SUMMARIES.md`, 3 real scenario re-publications (existing CLI, unmodified invocation shape).
 
 ## Constitution Check
 
@@ -97,7 +97,7 @@ affected:
 
 ```text
 summarize.yaml                              # +2 mappings/bins entries, +27 metrics
-docs/CALIBRATION-SUMMARIES.md               # 3 corrections (contracts/calibration-summaries-corrections.md)
+project-docs/CALIBRATION-SUMMARIES.md               # 3 corrections (contracts/calibration-summaries-corrections.md)
 
 public/demo-dashboard-config/
 ├── index.json                              # rewritten: 6 new/renamed tabs + unchanged Explore entry

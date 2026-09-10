@@ -34,7 +34,7 @@
 - One item added after an initial pass: FR-006's `color_scale`/`domain`
   visual mapping (which colors, brand-derived or new tokens, diverging
   midpoint placement) is genuinely undecided — checked directly against
-  `docs/CALIBRATION-SUMMARIES.md`/`docs/GRAMMAR.md`/`002-design-tokens`'s
+  `project-docs/CALIBRATION-SUMMARIES.md`/`project-docs/GRAMMAR.md`/`002-design-tokens`'s
   actual token set and confirmed nothing already answers it. Not a
   [NEEDS CLARIFICATION] marker (there's no ambiguous *user-facing
   requirement* here — FR-006 itself is unambiguous: color mapping
@@ -45,11 +45,11 @@
 - All items pass on first pass. Two real scope questions this feature's
   own input flagged as needing research rather than assumption
   (`columns:` config, `searchable: true`) were resolved directly against
-  `docs/GRAMMAR.md`'s actual documented grammar plus one clarifying
+  `project-docs/GRAMMAR.md`'s actual documented grammar plus one clarifying
   exchange with the user — not left as [NEEDS CLARIFICATION] markers,
   since both had a definite, sourced answer rather than genuine ambiguity
   once checked. The one remaining underspecified item found during that
-  same research (`docs/GRAMMAR.md`'s "inline column expressions" prose,
+  same research (`project-docs/GRAMMAR.md`'s "inline column expressions" prose,
   which has no defined syntax anywhere) is captured as an explicit
   Assumption/scope boundary rather than a clarification marker, since
   there's nothing to clarify — no syntax exists to ask "which one did you

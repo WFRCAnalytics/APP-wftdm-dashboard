@@ -4,7 +4,7 @@ This feature's "data model" is the shape of five metric outputs plus the
 config/discovery entities that produce and surface them — there is no
 application database or new runtime entity type. Real column names are used
 throughout (per research.md, confirmed against actual generated
-`final_*.csv` output — never `docs/GRAMMAR.md`'s illustrative examples).
+`final_*.csv` output — never `project-docs/GRAMMAR.md`'s illustrative examples).
 
 ## Config entities
 
@@ -17,7 +17,7 @@ throughout (per research.md, confirmed against actual generated
 | `sources.persons` | `final_persons.csv` |
 | `sources.households` | `final_households.csv` |
 | `sources.land_use` | `final_land_use.csv` |
-| `mappings.major_trip_mode` | Groups ActivitySim's real 19 `trip_mode`/`tour_mode` values (`DRIVEALONEFREE`, `WALK_LOC`, `WALK_LRF`, `WALK`, `BIKE`, `TAXI`, `TNC_SINGLE`, …) into `SOV`/`HOV`/`Transit`/`Non-Motorized`/`Ride Hail` — same category scheme `docs/GRAMMAR.md`'s existing worked example already uses (that example's *mapping values* are real ActivitySim mode names; only its unrelated table/column names were found non-real). |
+| `mappings.major_trip_mode` | Groups ActivitySim's real 19 `trip_mode`/`tour_mode` values (`DRIVEALONEFREE`, `WALK_LOC`, `WALK_LRF`, `WALK`, `BIKE`, `TAXI`, `TNC_SINGLE`, …) into `SOV`/`HOV`/`Transit`/`Non-Motorized`/`Ride Hail` — same category scheme `project-docs/GRAMMAR.md`'s existing worked example already uses (that example's *mapping values* are real ActivitySim mode names; only its unrelated table/column names were found non-real). |
 | `bins.time_of_day_period` | `manual_breaks` on `depart`, `breaks: [0,5,9,14,18,24]`, `labels: [EA,AM,MD,PM,EV]` (research.md #2) |
 | `sql_fragments.trips_merged` | `trips t JOIN land_use lu ON t.destination = lu.zone_id` (no `tours` join needed — `trips` already carries its own real `primary_purpose`/`tour_id` columns directly, confirmed against `final_trips.csv`'s real header) |
 | `metrics` | 5 entries — see "Metric outputs" below |

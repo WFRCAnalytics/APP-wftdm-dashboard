@@ -74,7 +74,7 @@ describe('resolveObservablePlotEncoding', () => {
   })
 
   // A real legend bug found post-implementation, same category as the tip
-  // fix above: docs/GRAMMAR.md has no legend: key at all, and
+  // fix above: project-docs/GRAMMAR.md has no legend: key at all, and
   // @observablehq/plot's color: {legend: true} is confirmed a top-level
   // plot() option that is NOT automatic — a fill/stroke channel with no
   // explicit legend option shows no legend. Defaults to showing one

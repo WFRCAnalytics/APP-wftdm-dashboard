@@ -59,7 +59,7 @@ call.
 
 **Performance Goals**: A basemap style swap (theme toggle) completes with the flow-line overlay continuously visible — no target framerate/latency number specified in spec.md (SC-002 is a correctness, not performance, criterion); no new goal introduced here.
 
-**Constraints**: `wftdm-dashboard here` must remain usable with zero built-in-preset network reachability (spec.md's offline edge case) — every source category falls back to the existing zero-network `BLANK_STYLE` uniformly (FR-010). No new external CDN dependency may be *required* (built-in presets are reachable-when-online conveniences, exactly like the existing DuckDB-WASM parquet-extension caveat `docs/ARCHITECTURE.md` already documents honestly rather than overstates).
+**Constraints**: `wftdm-dashboard here` must remain usable with zero built-in-preset network reachability (spec.md's offline edge case) — every source category falls back to the existing zero-network `BLANK_STYLE` uniformly (FR-010). No new external CDN dependency may be *required* (built-in presets are reachable-when-online conveniences, exactly like the existing DuckDB-WASM parquet-extension caveat `project-docs/ARCHITECTURE.md` already documents honestly rather than overstates).
 
 **Scale/Scope**: One new panel-facing config surface (`basemap:` on `FlowMapPanelConfig`, `default_basemap:` on `DashboardTabConfig`) consumed today by the one existing map panel type (`flowmap`); designed for a future `zonemap` to adopt unchanged, not built here (spec.md's own explicit exclusion).
 

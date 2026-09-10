@@ -144,7 +144,7 @@ FROM/JOIN clause" contract `trips_merged` already establishes and
 already provides. No new Python code, no new grammar concept.
 
 **`t.origin` — confirmed real during this planning pass, not left as an
-open assumption**: `docs/GRAMMAR.md`'s own `od_flows` worked example
+open assumption**: `project-docs/GRAMMAR.md`'s own `od_flows` worked example
 (pre-existing, corrected during `010-flowmap-panel` against two real
 WFRC reference apps) already references `t.origin`/`t.destination`
 together as ActivitySim's own standard trip-table shape; combined with
@@ -170,7 +170,7 @@ this session, fact.
   together — these three are thematically related (all spatial/flow
   concepts) and share no existing tab.
 - A new `dashboard-5-explore.yaml` tab holds one `graphic-walker` panel
-  (bound to `trip_mode_share`, matching `docs/GRAMMAR.md`'s own
+  (bound to `trip_mode_share`, matching `project-docs/GRAMMAR.md`'s own
   established "Explore tab" framing) and one `markdown` panel with real,
   accurate prose describing the three real scenarios and what this demo
   content actually shows (User Story 1's FR-005).

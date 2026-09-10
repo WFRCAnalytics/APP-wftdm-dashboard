@@ -1,0 +1,190 @@
+# 032-six-tab-demo-content — Person/Household Models tab. Sections match
+# project-docs/CALIBRATION-SUMMARIES.md's own "Person / Household Models Tab"
+# submodel headings exactly (contracts/dashboard-tab-structure.md), in
+# the same order that document lists them. Four real, confirmed gaps
+# (Work from Home★, Transit Pass Subsidy, Transit Pass Ownership,
+# Telecommute Frequency★) each get their own section with a real
+# markdown panel stating the specific reason — data-model.md §1, FR-009.
+#
+# 038-all-loaded-scenarios: the tables and the graphic-walker panel are
+# UNPINNED — a `$scenario` union adds a `scenario` discriminator column /
+# field and they read as a real per-scenario comparison, responding to
+# the Scenarios-tab Switch. The two observable-plot panels whose `fill`
+# channel is already committed to a real categorical breakdown
+# (school_segment / — one gains `fill: scenario`) stay as-is or gain the
+# scenario channel per that panel's own note. No panel here needs a pin
+# for correctness any more (an empty `observed` no longer poisons a
+# union — a `failed` scenario is never auto-active).
+
+header:
+  tab: "Person/Household Models"
+  title: Person / Household Models
+  icon: users
+
+sections:
+  - id: auto-ownership
+    label: "Auto Ownership"
+    rows: [row_auto_ownership]
+  - id: work-from-home
+    label: "Work from Home"
+    rows: [row_work_from_home_gap]
+  - id: school-location
+    label: "School Location"
+    rows: [row_school_location]
+  - id: workplace-location
+    label: "Workplace Location"
+    rows: [row_workplace_location]
+  - id: transit-pass-subsidy
+    label: "Transit Pass Subsidy"
+    rows: [row_transit_pass_subsidy_gap]
+  - id: transit-pass-ownership
+    label: "Transit Pass Ownership"
+    rows: [row_transit_pass_ownership_gap]
+  - id: telecommute-frequency
+    label: "Telecommute Frequency"
+    rows: [row_telecommute_gap]
+  - id: cdap
+    label: "CDAP"
+    rows: [row_cdap]
+  - id: explore
+    label: "Explore Person/Household Data"
+    rows: [row_explore]
+
+layout:
+  row_auto_ownership:
+    - type:       table
+      title:      "Auto Ownership by Household Segment"
+      metric:     auto_ownership_summary
+      sort:       { column: households, order: desc }
+      pagination: 20
+      searchable: true
+      columns:
+        # 038-all-loaded-scenarios: unpinned — the $scenario union adds this
+        # discriminator column so the table reads as a per-scenario comparison.
+        - { field: scenario, label: "Scenario" }
+        - { field: auto_ownership, label: "Autos Owned" }
+        - { field: hhsize,         label: "HH Size" }
+        - { field: income_group,   label: "Income Group" }
+        - { field: num_workers,    label: "Workers" }
+        - { field: home_district,  label: "Home District" }
+        - { field: households,     label: "Households", format: ",.0f" }
+      width: 1.0
+
+  row_work_from_home_gap:
+    - type:  markdown
+      title: "Work from Home — not available in this demo"
+      width: 1.0
+      content: |
+        ActivitySim's `work_from_home` component is not enabled in this
+        project's real `prototype_mtc` configuration — it's absent from
+        `configs/settings.yaml`'s `models:` list, so no real data exists
+        for this submodel. See `project-docs/CALIBRATION-SUMMARIES.md`.
+
+  row_school_location:
+    - type:    observable-plot
+      title:   "School Location Distance Distribution"
+      metric:  school_location_summary
+      # 038: stays pinned to the baseline scenario — the `fill` channel is
+      # already committed to the school-segment breakdown (K-8 / 9-12 /
+      # university), which is the analytical point of this distribution.
+      # A multi-scenario version would need faceting (out of 038 scope).
+      scenario: activitysim-baseline
+      description: "Baseline scenario, broken out by school segment. Compare runs on the tables and other charts via the Scenarios tab."
+      mark:    barY
+      x:       distance_bin
+      y:       students
+      fill:    school_segment
+      tip:     true
+      grid:    true
+      height:  400
+      width:   1.0
+
+  row_workplace_location:
+    - type:    observable-plot
+      title:   "Workplace Location Distance Distribution"
+      metric:  workplace_location_summary
+      # 038: unpinned + `fill: scenario` — its colour channel was free, so
+      # it becomes a real per-scenario comparison of the distance profile.
+      mark:    barY
+      x:       distance_bin
+      y:       workers
+      fill:    scenario
+      tip:     true
+      grid:    true
+      height:  400
+      width:   0.5
+
+    - type:       table
+      title:      "Home-Workplace District Flows"
+      metric:     workplace_od_flows
+      sort:       { column: workers, order: desc }
+      pagination: 15
+      searchable: true
+      columns:
+        # 038-all-loaded-scenarios: unpinned — the $scenario union adds this
+        # discriminator column so the table reads as a per-scenario comparison.
+        - { field: scenario, label: "Scenario" }
+        - { field: home_district, label: "Home District" }
+        - { field: work_district, label: "Workplace District" }
+        - { field: workers,       label: "Workers", format: ",.0f" }
+      width: 0.5
+
+  row_transit_pass_subsidy_gap:
+    - type:  markdown
+      title: "Transit Pass Subsidy — not available in this demo"
+      width: 1.0
+      content: |
+        ActivitySim's `transit_pass_subsidy` component is not enabled in
+        this project's real `prototype_mtc` configuration — it's absent
+        from `configs/settings.yaml`'s `models:` list, so no real data
+        exists for this submodel. See `project-docs/CALIBRATION-SUMMARIES.md`.
+
+  row_transit_pass_ownership_gap:
+    - type:  markdown
+      title: "Transit Pass Ownership — not available in this demo"
+      width: 1.0
+      content: |
+        ActivitySim's `transit_pass_ownership` component is not enabled
+        in this project's real `prototype_mtc` configuration — it's
+        absent from `configs/settings.yaml`'s `models:` list, so no real
+        data exists for this submodel. See `project-docs/CALIBRATION-SUMMARIES.md`.
+
+  row_telecommute_gap:
+    - type:  markdown
+      title: "Telecommute Frequency — not available in this demo"
+      width: 1.0
+      content: |
+        ActivitySim's `telecommute_frequency` component is not enabled in
+        this project's real `prototype_mtc` configuration — it's absent
+        from `configs/settings.yaml`'s `models:` list, so no real data
+        exists for this submodel. See `project-docs/CALIBRATION-SUMMARIES.md`.
+
+  row_cdap:
+    - type:       table
+      title:      "CDAP Activity Pattern by Segment"
+      metric:     cdap_summary
+      sort:       { column: persons, order: desc }
+      pagination: 20
+      searchable: true
+      columns:
+        # 038-all-loaded-scenarios: unpinned — the $scenario union adds this
+        # discriminator column so the table reads as a per-scenario comparison.
+        - { field: scenario, label: "Scenario" }
+        - { field: cdap_activity,    label: "Activity Pattern" }
+        - { field: person_type,      label: "Person Type" }
+        - { field: auto_sufficiency, label: "Auto Sufficiency" }
+        - { field: hhsize,           label: "HH Size" }
+        - { field: persons,          label: "Persons", format: ",.0f" }
+      width: 1.0
+
+  # Not a documented CALIBRATION-SUMMARIES.md submodel — an open-ended
+  # exploration sandbox over a real, rich person/household dataset
+  # (FR-013, research.md §7). dataset_picker omitted (single fixed
+  # dataset is sufficient here; 028's own opt-in capability, not needed).
+  row_explore:
+    - type:    graphic-walker
+      title:   "Explore: Person/Household Profile"
+      dataset: person_household_profile
+      # 038: unpinned — 028's $scenario union adds a `scenario` field the
+      # viewer can pivot/filter on across every active run.
+      width:   1.0

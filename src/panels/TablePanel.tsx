@@ -27,7 +27,7 @@ import type { TablePanelConfig } from '@/layout/types'
 const ALL_FILTERS: ['*'] = ['*'] // module-level constant — stable identity,
 // never an inline `?? ['*']` literal (that allocates a new array every render)
 
-const DEFAULT_PAGE_SIZE = 20 // docs/GRAMMAR.md's own example value for
+const DEFAULT_PAGE_SIZE = 20 // project-docs/GRAMMAR.md's own example value for
 // `pagination:` — spec.md's Assumptions.
 
 type SortState = { column: string; direction: 'asc' | 'desc' } | null
@@ -39,7 +39,7 @@ function initialSort(config: TablePanelConfig): SortState {
 // The third panel type — see contracts/table-panel.md and
 // specs/005-table-panel/research.md. Sort/pagination/search are all
 // plain client-side operations over the one already-fetched `rows` array
-// (FR-012) — no table library, per docs/SPEC.md's own "plain DOM"
+// (FR-012) — no table library, per project-docs/SPEC.md's own "plain DOM"
 // description (research.md §1).
 export function TablePanel({ config }: { config: TablePanelConfig }) {
   // extractGlobalFilterIds (panelQuery.ts) — see ValueBoxPanel.tsx's own

@@ -1,5 +1,5 @@
 # 032-six-tab-demo-content — Tour Models tab. Sections match
-# docs/CALIBRATION-SUMMARIES.md's own "Tour Models Tab" submodel
+# project-docs/CALIBRATION-SUMMARIES.md's own "Tour Models Tab" submodel
 # headings exactly, in the same order that document lists them. All 13
 # submodels here are real, confirmed computable (data-model.md §1) — no
 # gaps on this tab. 038-all-loaded-scenarios: the tables are UNPINNED

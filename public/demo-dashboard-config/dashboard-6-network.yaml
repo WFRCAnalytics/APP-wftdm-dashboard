@@ -2,7 +2,7 @@
 # §6) — supersedes 031's narrower single-zonemap-panel content entirely
 # (this file was `dashboard-4-network.yaml` before this feature; renamed
 # to its real position, 6th of six). Sections match
-# docs/CALIBRATION-SUMMARIES.md's own "Network Tab" breakdown. Two real,
+# project-docs/CALIBRATION-SUMMARIES.md's own "Network Tab" breakdown. Two real,
 # confirmed gaps (Screenline Volumes vs Observed AADT, VMT by Facility
 # Type) share one markdown gap-note section — this pipeline has no
 # traffic-assignment step at all (data-model.md §1). Folds in the real
@@ -45,7 +45,7 @@ layout:
         assigned link volumes, and no real observed-AADT dataset exists
         for this synthetic 25-zone system. Neither **Screenline Volumes
         vs Observed AADT** nor **VMT by Facility Type** is computable
-        from this project's real data. See `docs/CALIBRATION-SUMMARIES.md`.
+        from this project's real data. See `project-docs/CALIBRATION-SUMMARIES.md`.
 
   row_vmt_by_home_taz:
     - type:   valuebox

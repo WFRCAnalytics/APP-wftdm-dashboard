@@ -77,7 +77,7 @@ uv tool install git+https://github.com/WFRCAnalytics/APP-wftdm-dashboard
 # Run from any scenario output folder
 wftdm-dashboard serve    # starts file server, use with hosted web app
 wftdm-dashboard here     # starts file server + local copy of app (intended for no internet;
-                         # see docs/ARCHITECTURE.md for one known, confirmed exception)
+                         # see project-docs/ARCHITECTURE.md for one known, confirmed exception)
 wftdm-dashboard init --scenario-dir <path>   # scaffold default configs for a new scenario
 ```
 
@@ -105,11 +105,11 @@ wftdm-dashboard init --scenario-dir Scenarios/2027-RTP-BaseYear
 ```
 `init` copies from the package's bundled `templates/`: a default `summarize.yaml`
 pre-filled with the standard WFRC segmentations (income group, auto sufficiency, the
-four geography levels, person type, etc. — see `docs/CALIBRATION-SUMMARIES.md`) and
+four geography levels, person type, etc. — see `project-docs/CALIBRATION-SUMMARIES.md`) and
 the seven default `dashboard-*.yaml` files matching the Navigation model in
-`docs/SPEC.md`. It's a one-time scaffold, not a synced resource — once these files
+`project-docs/SPEC.md`. It's a one-time scaffold, not a synced resource — once these files
 exist, editing them is a plain YAML edit with zero package involvement (see
-`docs/ARCHITECTURE.md`).
+`project-docs/ARCHITECTURE.md`).
 
 ```bash
 uv run summarize.py --config summarize.yaml --scenario-dir Scenarios/2027-RTP-BaseYear
@@ -121,7 +121,7 @@ uv run summarize.py --config summarize.yaml --scenario-dir Scenarios/2027-RTP-Ba
    - `Scenarios/2027-RTP-BaseYear/summary/` → `APP-wftdm-dashboard/public/scenarios/2027-rtp-baseyear/summary/`
    - `Scenarios/2027-RTP-BaseYear/manifest.yaml` → `APP-wftdm-dashboard/public/scenarios/2027-rtp-baseyear/manifest.yaml`
 2. Add `"2027-rtp-baseyear"` to `public/scenarios/index.json` in the dashboard repo
-3. Commit and push → GitHub Actions deploys automatically
+3. Commit and push; then `npm run build:pages` and commit `docs/` to deploy (see the GitHub Pages deploy section below)
 
 **To publish dashboard layout changes to the web app:** `dashboard-*.yaml` files are
 authored alongside the model scripts in the TDM repo, not per-scenario — publish them
@@ -132,7 +132,7 @@ once, not per scenario run:
 2. Update `public/dashboard-config/index.json` in the dashboard repo to list exactly
    the filenames now present, in display order — same step as
    `public/scenarios/index.json`, just for tabs instead of scenarios
-3. Commit and push → GitHub Actions deploys automatically
+3. Commit and push; then `npm run build:pages` and commit `docs/` to deploy (see the GitHub Pages deploy section below)
 
 The tab set is discovered from `index.json` at runtime, not hardcoded in the app —
 adding, removing, or reordering a tab is purely an `index.json` + file edit.
@@ -154,7 +154,7 @@ scripts in the TDM repo — not authored in this repository. Three file types:
 | `manifest.yaml` | Scenario name, engine, run date, display color | `public/scenarios/{name}/` (per scenario) |
 | `summarize.yaml` | Post-processor config | never published — post-processor-only, not read by the browser |
 
-See `docs/grammar.md` for the full YAML grammar reference.
+See `project-docs/GRAMMAR.md` for the full YAML grammar reference.
 
 ---
 
@@ -184,13 +184,28 @@ npm run dev
 Requires Chrome or Edge for local development (cross-origin isolation headers).
 
 ```bash
-npm run build       # production build → dist/
-npm run preview     # preview built app locally
+npm run build       # production build → dist/  (feeds the Python package embed)
+npm run build:pages # production build → docs/  (the GitHub Pages demo output)
+npm run preview     # preview the dist/ build locally
 ```
 
-### GitHub Actions deploy
-Push to `main` → automatically builds and deploys to GitHub Pages via
-`.github/workflows/deploy.yml`.
+### GitHub Pages deploy (manual local build — no CI)
+
+The demo dashboard at `wfrcanalytics.github.io/APP-wftdm-dashboard/` is
+deployed by building locally and committing the output — there is **no
+GitHub Actions workflow**:
+
+1. `npm run build:pages` — builds the app into `docs/` with base path
+   `/APP-wftdm-dashboard/` (`docs/.nojekyll` is emitted so Jekyll leaves
+   it alone).
+2. Commit the updated `docs/` and push to `main`.
+3. GitHub Pages is set to **Deploy from a branch → `main` → `/docs`**, so
+   the push publishes it.
+
+`docs/` therefore currently contains the **built demo app, not
+documentation** — the reference docs live in `project-docs/`. Once the
+real dashboard deploys from WFRC's own server, `docs/` reverts to a
+documentation source tree.
 
 ---
 
@@ -200,11 +215,17 @@ Push to `main` → automatically builds and deploys to GitHub Pages via
 APP-wftdm-dashboard/
 ├── CLAUDE.md                   ← Claude Code specification (AI coding agent)
 ├── README.md
-├── docs/
+├── project-docs/               ← internal reference docs
 │   ├── ARCHITECTURE.md         ← Design decisions and rationale
 │   ├── SPEC.md                 ← Implementation specification
-│   ├── grammar.md              ← Full YAML grammar reference
-│   └── CALIBRATION-SUMMARIES.md ← Metric inventory by submodel
+│   ├── GRAMMAR.md              ← Full YAML grammar reference
+│   ├── PIPELINE.md
+│   ├── CALIBRATION-SUMMARIES.md ← Metric inventory by submodel
+│   ├── UX-REDESIGN-PROPOSAL.md
+│   └── BASEMAP-PICKER-PROPOSAL.md
+├── docs/                       ← ⚠ committed GitHub Pages BUILD OUTPUT of the
+│                                 demo app (`npm run build:pages`), not docs.
+│                                 Reverts to a docs tree post-WFRC-server deploy.
 ├── public/
 │   ├── coi-serviceworker.js    ← Enables SharedArrayBuffer on GitHub Pages
 │   ├── observed/               ← Observed validation data (always pre-loaded, deselectable)

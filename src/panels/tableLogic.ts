@@ -98,7 +98,7 @@ function clamp01(t: number): number {
  * numeric — a color scale needs a number to place on it). Diverging
  * scales anchor their midpoint at literal 0, not the domain's geometric
  * center (research.md §4) — verified with an asymmetric domain in
- * tableLogic.test.ts, not only the symmetric domains docs/GRAMMAR.md
+ * tableLogic.test.ts, not only the symmetric domains project-docs/GRAMMAR.md
  * happens to show. Values outside domain clamp to the nearest extreme's
  * color (clamp01 below).
  *

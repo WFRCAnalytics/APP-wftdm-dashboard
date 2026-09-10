@@ -208,7 +208,7 @@ export const registry: Record<string, ComponentType<PanelProps<any>>> = {
 }
 ```
 
-## `docs/ARCHITECTURE.md` (MODIFIED — additive)
+## `project-docs/ARCHITECTURE.md` (MODIFIED — additive)
 
 Extends the existing parquet-extension "no internet required" caveat (found during `010`) to name the `spatial` extension too, per FR-014/research.md §2 — real text drafted at implementation time against the actual final wording of the existing caveat paragraph, not duplicated here.
 

@@ -387,7 +387,7 @@ export function BasemapTab() {
             (1) 021's own research.md already named ArcGIS's real
             BasemapGallery widget as the closest comparable pattern for
             this exact problem — a flat grid of tiles, not an accordion,
-            not a dropdown; (2) `gropaul/dash` (docs/PIPELINE.md's own
+            not a dropdown; (2) `gropaul/dash` (project-docs/PIPELINE.md's own
             on-record inspiration note) solves the adjacent "pick one view
             mode from several" problem with a real, installed
             `view-mode-picker.tsx`, fetched and read directly: a

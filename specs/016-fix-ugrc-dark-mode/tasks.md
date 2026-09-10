@@ -94,7 +94,7 @@ record.
 #### If T005 recorded `no-fix-possible`:
 
 - [ ] T006 [US1] Document the confirmed external cause (flag or OS filter, per T003/T004's evidence) in `specs/016-fix-ugrc-dark-mode/diagnostic-results.md` as the closing finding — no source file changes, since no code-level fix exists (research.md §4); this satisfies SC-003 (root cause documented with cited evidence) even though SC-001 cannot be met by a code change
-- [ ] T007 [US1] Add a short caveat to `docs/ARCHITECTURE.md`, alongside its existing DuckDB-WASM/parquet-extension and spatial-extension network-fetch caveats, noting that these two UGRC panels can render incorrectly in dark mode under \[the confirmed external mechanism from T006], with a pointer to `specs/016-fix-ugrc-dark-mode/diagnostic-results.md` for the full finding — matching this repo's own established convention of recording confirmed, out-of-scope external limitations in that file rather than leaving them undocumented
+- [ ] T007 [US1] Add a short caveat to `project-docs/ARCHITECTURE.md`, alongside its existing DuckDB-WASM/parquet-extension and spatial-extension network-fetch caveats, noting that these two UGRC panels can render incorrectly in dark mode under \[the confirmed external mechanism from T006], with a pointer to `specs/016-fix-ugrc-dark-mode/diagnostic-results.md` for the full finding — matching this repo's own established convention of recording confirmed, out-of-scope external limitations in that file rather than leaving them undocumented
 
 #### If T005 recorded `branch-c-panel-fallback`:
 

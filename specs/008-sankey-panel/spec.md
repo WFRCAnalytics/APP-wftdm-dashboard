@@ -6,16 +6,16 @@
 
 **Status**: Draft
 
-**Input**: User description: "Add the sixth and final originally-listed panel type — sankey — to the registry, following the same pattern as ValueBoxPanel/PlotlyPanel/TablePanel/MarkdownPanel/ObservablePlotPanel and inheriting 004's expand-to-dialog mechanism automatically. Check docs/GRAMMAR.md's actual `type: sankey` section before assuming its shape — source/target/value column mapping, placeholder-substitution style, and color_scheme's real documented behavior. Uses d3-sankey (SPEC.md's pinned choice) — research current version and its d3 dependency situation against what 007 already pulled in. Rows-to-graph transform (unique nodes from source/target values, links with computed flow values) plus d3-sankey's layout computation should be a pure, DOM-free module, Vitest-testable without a real DOM, mirroring plotlyTraces.ts/tableLogic.ts/observablePlotEncoding.ts. Reuse the query/fetch chain, loading/empty/error states, and inline skeleton convention where genuinely applicable; research whether d3-sankey's rendered SVG has the same resize-on-container-change gap Plotly/Observable Plot both had, rather than assuming either fix transfers unchanged. Uses 002-design-tokens' existing tokens for node/link coloring where the grammar allows it. Does not include panel-local reactive inputs or any capability beyond rendering a sankey diagram from query results."
+**Input**: User description: "Add the sixth and final originally-listed panel type — sankey — to the registry, following the same pattern as ValueBoxPanel/PlotlyPanel/TablePanel/MarkdownPanel/ObservablePlotPanel and inheriting 004's expand-to-dialog mechanism automatically. Check project-docs/GRAMMAR.md's actual `type: sankey` section before assuming its shape — source/target/value column mapping, placeholder-substitution style, and color_scheme's real documented behavior. Uses d3-sankey (SPEC.md's pinned choice) — research current version and its d3 dependency situation against what 007 already pulled in. Rows-to-graph transform (unique nodes from source/target values, links with computed flow values) plus d3-sankey's layout computation should be a pure, DOM-free module, Vitest-testable without a real DOM, mirroring plotlyTraces.ts/tableLogic.ts/observablePlotEncoding.ts. Reuse the query/fetch chain, loading/empty/error states, and inline skeleton convention where genuinely applicable; research whether d3-sankey's rendered SVG has the same resize-on-container-change gap Plotly/Observable Plot both had, rather than assuming either fix transfers unchanged. Uses 002-design-tokens' existing tokens for node/link coloring where the grammar allows it. Does not include panel-local reactive inputs or any capability beyond rendering a sankey diagram from query results."
 
 ## Grammar findings (pre-spec verification)
 
-Verified directly against `docs/GRAMMAR.md` and `docs/SPEC.md` before writing this
+Verified directly against `project-docs/GRAMMAR.md` and `project-docs/SPEC.md` before writing this
 spec, per this project's established discipline (005/006/007 each required the same):
 
 1. **`type: sankey` is a real, documented panel type**, with one full worked
-   example in `docs/GRAMMAR.md`'s panel-type reference (`### type: sankey`, line
-   ~1076-1089) plus `docs/SPEC.md`'s Panel types table (`sankey | d3-sankey |
+   example in `project-docs/GRAMMAR.md`'s panel-type reference (`### type: sankey`, line
+   ~1076-1089) plus `project-docs/SPEC.md`'s Panel types table (`sankey | d3-sankey |
    Mode shift / tour-to-trip consistency`, line 168) — not hypothetical. A
    `summarize.yaml` `sql_fragments` example (`tour_mode_to_trip_mode`, line
    ~617-621, commented "Tour-to-trip mode consistency (Sankey source)") shows
@@ -34,7 +34,7 @@ spec, per this project's established discipline (005/006/007 each required the s
    source/target/value instead of x/y/columns.
 3. **`color_scheme: Tableau10` is sankey's own dedicated key — a genuinely
    different concept from `color_scale`/`color_ramp`.** `color_scale`/
-   `color_ramp` (`docs/GRAMMAR.md` line ~1055-1073, used with a `domain:`
+   `color_ramp` (`project-docs/GRAMMAR.md` line ~1055-1073, used with a `domain:`
    range) configure a **continuous** sequential/diverging ramp for zonemap's
    numeric diff/value coloring. `color_scheme` names a **categorical**
    color scheme by string identifier for discrete node/link categories —
@@ -44,7 +44,7 @@ spec, per this project's established discipline (005/006/007 each required the s
    supported set (and how it composes with 002-design-tokens' own palette)
    is a planning-phase question, not assumed here.
 4. **Sankey inherits the same common keys every data-bound panel type
-   gets** — `docs/GRAMMAR.md`'s "All panels share these common keys" block
+   gets** — `project-docs/GRAMMAR.md`'s "All panels share these common keys" block
    (line ~906-917: `type/title/metric/filter/height/width/scenario/
    scenarios`) applies here too, even though the one worked example doesn't
    happen to show `filter:` in use — the same situation several of
@@ -66,7 +66,7 @@ sized proportionally to the flow value — letting an analyst see at a glance
 where mode consistency breaks down between the tour and trip levels.
 
 **Why this priority**: This is the core, and only, reason this panel type
-exists (`docs/SPEC.md`: "Mode shift / tour-to-trip consistency") — without it
+exists (`project-docs/SPEC.md`: "Mode shift / tour-to-trip consistency") — without it
 there is nothing to test or ship.
 
 **Independent Test**: Can be fully tested by loading a dashboard tab with one

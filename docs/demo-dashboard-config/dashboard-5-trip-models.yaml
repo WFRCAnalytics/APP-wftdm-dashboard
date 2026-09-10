@@ -1,0 +1,106 @@
+# 032-six-tab-demo-content — Trip Models tab. Sections match
+# project-docs/CALIBRATION-SUMMARIES.md's own "Trip Models Tab" submodel
+# headings exactly. Zone Trip Ends by Mode uses a zonemap — the natural
+# fit for a spatial rollup (research.md §7).
+
+header:
+  tab: "Trip Models"
+  title: Trip Models
+  icon: map-pin
+
+sections:
+  - id: trip-purpose
+    label: "Trip Purpose"
+    rows: [row_trip_purpose]
+  - id: trip-destination
+    label: "Trip Destination"
+    rows: [row_trip_destination]
+  - id: trip-scheduling
+    label: "Trip Scheduling"
+    rows: [row_trip_scheduling]
+  - id: zone-trip-ends
+    label: "Zone Trip Ends by Mode"
+    rows: [row_zone_trip_ends]
+
+layout:
+  # Already real, already published (026) — reused unmodified.
+  row_trip_purpose:
+    - type:       table
+      title:      "Trip Purpose Breakdown"
+      metric:     trip_purpose_share
+      sort:       { column: trips, order: desc }
+      pagination: 20
+      columns:
+        # 038-all-loaded-scenarios: unpinned — the $scenario union adds this
+        # discriminator column so the table reads as a per-scenario comparison.
+        - { field: scenario, label: "Scenario" }
+        - { field: primary_purpose, label: "Purpose" }
+        - { field: trips,           label: "Trips", format: ",.0f" }
+        - { field: share,           label: "Share", format: ".1%" }
+      width: 1.0
+
+  row_trip_destination:
+    - type:    observable-plot
+      title:   "Trip Destination Distance Distribution"
+      metric:  trip_destination_summary
+      # 038: stays pinned — `fill` is committed to the trip-purpose
+      # breakdown (out-of-scope faceting needed for multi-scenario).
+      scenario: activitysim-baseline
+      description: "Baseline scenario, broken out by trip purpose. Compare runs on the purpose and departure-hour panels via the Scenarios tab."
+      mark:    barY
+      x:       distance_bin
+      y:       trips
+      fill:    primary_purpose
+      tip:     true
+      grid:    true
+      height:  450
+      width:   1.0
+
+  # Filtered to work trips specifically — a clean, single-purpose
+  # departure-hour histogram.
+  row_trip_scheduling:
+    - type:    plotly
+      title:   "Trip Departure Hour (Work Trips)"
+      metric:  trip_scheduling
+      # 038: unpinned + `name: $scenario` — one bar group per scenario.
+      filter:  { primary_purpose: work }
+      height:  400
+      width:   1.0
+      traces:
+        - type: bar
+          x:    $metric.depart_hour
+          y:    $metric.trips
+          name: $scenario
+      layout:
+        xaxis: { title: "Departure Hour" }
+        yaxis: { title: "Trips" }
+        barmode: group
+        showlegend: true
+
+  # Spatial rollup — real production/attraction trip ends by zone,
+  # filtered to one clean, well-defined choropleth (attraction end, SOV
+  # mode), matching this repo's own established zonemap filter
+  # convention (dashboard-6-network.yaml's own "Work Trips by Destination
+  # Zone" panel).
+  row_zone_trip_ends:
+    - type:       zonemap
+      title:      "SOV Trip Attractions by Zone"
+      metric:     trip_ends_by_zone_mode
+      # 038: stays pinned — a choropleth colours one value per zone, so it
+      # shows one scenario per draw. Multi-scenario map comparison is a
+      # separate ($baseline / comparison: diff) view.
+      scenario:   activitysim-baseline
+      description: "Baseline scenario. A choropleth shows one run at a time."
+      filter:     { trip_end: attraction, major_trip_mode: SOV }
+      boundaries:    taz25.geoparquet
+      boundaries_id: TAZ1454
+      metric_id:     zone_id
+      column:     trips
+      label:      "SOV Attractions"
+      color_scale: sequential
+      color_ramp:  YlOrRd
+      steps:       7
+      height:  500
+      width:   1.0
+      center: [-122.402, 37.787]
+      zoom:   13

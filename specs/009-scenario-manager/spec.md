@@ -10,18 +10,18 @@
 
 ## Documented behavior findings (pre-spec verification)
 
-Verified directly against `docs/ARCHITECTURE.md`, `docs/SPEC.md`, and the real
+Verified directly against `project-docs/ARCHITECTURE.md`, `project-docs/SPEC.md`, and the real
 `src/services/duckdb.ts` / `src/services/yamlLoader.ts` / `src/state/appState.ts` /
 `src/services/scenarioDiscovery.ts` / `src/main.tsx` before writing this spec,
 same discipline every panel-type feature since 005 has required — applied
 here to a data/state-layer feature instead:
 
 1. **The folder-picker trigger is a WEB-deployment-mode capability, not a
-   universal one.** `docs/ARCHITECTURE.md`'s "Hosted web app" paragraph says
+   universal one.** `project-docs/ARCHITECTURE.md`'s "Hosted web app" paragraph says
    "Analysts can additionally load local scenario folders via
    `showDirectoryPicker()` (Chrome/Edge)" — this sentence sits specifically
    under the hosted-web-app deployment mode, not the `wftdm-dashboard
-   serve`/`here` modes. `docs/SPEC.md`'s deployment-detection snippet is
+   serve`/`here` modes. `project-docs/SPEC.md`'s deployment-detection snippet is
    explicit that the two modes use two different loading mechanisms
    entirely: `LOCAL` (`hostname === 'localhost'`) uses `registerFileURL()`
    against a local Python file server; `WEB` (hosted) uses
@@ -33,7 +33,7 @@ here to a data/state-layer feature instead:
 2. **No `LOCAL`/`WEB` deployment-mode detection exists anywhere in the
    codebase yet.** Confirmed by direct search — `src/main.tsx` and
    `src/services/scenarioDiscovery.ts` contain no `hostname`/`localhost`
-   check at all. `docs/SPEC.md`'s deployment-detection snippet is
+   check at all. `project-docs/SPEC.md`'s deployment-detection snippet is
    documented intent, not yet-built code. This feature is the first to
    need it, and must add the check itself (a small, self-contained
    `hostname === 'localhost'` test) rather than assuming it already exists
@@ -132,7 +132,7 @@ implements `showDirectoryPicker()`. The "Load Local Scenario" control is
 visibly present but disabled, with an explanation — not a silent no-op,
 not a thrown exception, not a control that looks clickable but does nothing.
 
-**Why this priority**: `docs/ARCHITECTURE.md` documents this as a
+**Why this priority**: `project-docs/ARCHITECTURE.md` documents this as a
 Chrome/Edge-only capability; every other feature in this project treats a
 known browser-support boundary as something to surface clearly, not paper
 over (e.g. `MarkdownPanel`'s sanitization, `SankeyPanel`'s error state).
@@ -391,7 +391,7 @@ other remains untouched.
   consistent with constitution Principle VI (no Web Storage) and the File
   System Access API's own handle model; the analyst must re-pick after a
   reload (see Edge Cases).
-- The `wftdm-dashboard serve`/`here` local-server mode (`docs/SPEC.md`'s
+- The `wftdm-dashboard serve`/`here` local-server mode (`project-docs/SPEC.md`'s
   `LOCAL` branch) is unaffected and out of scope — this feature is the
   `WEB`/`showDirectoryPicker()` path only, per the feature description's
   own explicit scoping.

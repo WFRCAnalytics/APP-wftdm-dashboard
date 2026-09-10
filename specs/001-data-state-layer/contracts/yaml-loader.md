@@ -30,7 +30,7 @@ module or in `main.js`** — the count and names of tabs are whatever
 `index.json` lists, mirroring `public/scenarios/index.json`'s pattern
 exactly (see `contracts/scenario-discovery.md`). "Seven tabs" is what WFRC's
 default templates (`python/wftdm_dashboard/templates/`, see
-`docs/ARCHITECTURE.md`) happen to ship, not a constant this code assumes.
+`project-docs/ARCHITECTURE.md`) happen to ship, not a constant this code assumes.
 
 For each filename in the list, `loadConfig()` runs inside its own isolated
 failure boundary: a 404 or parse failure is skipped, never thrown — mirroring

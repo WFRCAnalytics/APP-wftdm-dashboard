@@ -13,11 +13,11 @@ remaining originally-listed capability from this project's own roadmap
 
 ## Research findings this spec relies on
 
-Resolved directly from `docs/GRAMMAR.md`'s existing `type: graphic-walker`
+Resolved directly from `project-docs/GRAMMAR.md`'s existing `type: graphic-walker`
 section and from the real, current `@kanaries/graphic-walker` package
 (npm registry + its own GitHub repo), not assumed:
 
-1. **Grammar shape — not a special construct.** `docs/GRAMMAR.md` already
+1. **Grammar shape — not a special construct.** `project-docs/GRAMMAR.md` already
    documents `type: graphic-walker` as an *ordinary* panel entry using the
    exact same row/panel grid grammar every other panel type uses
    (`type`, `title`, plus this type's own `dataset`, `limit`, `height`,
@@ -28,9 +28,9 @@ section and from the real, current `@kanaries/graphic-walker` package
    a `dashboard-*.yaml` file whose only row holds one `graphic-walker`
    panel at `width: 1.0` — not a different kind of tab the app needs to
    special-case.
-2. **Snapshot model, confirmed in two places.** Both `docs/GRAMMAR.md`
+2. **Snapshot model, confirmed in two places.** Both `project-docs/GRAMMAR.md`
    ("Snapshot model: does not share DuckDB connection or respond to
-   global sidebar filters") and `docs/ARCHITECTURE.md` ("GW holds its own
+   global sidebar filters") and `project-docs/ARCHITECTURE.md` ("GW holds its own
    data copy, does not respond to global sidebar filters — intentional,
    Explore is an open-ended context") independently confirm: one query at
    mount time, no live re-querying, no reaction to the sidebar filter
@@ -39,7 +39,7 @@ section and from the real, current `@kanaries/graphic-walker` package
    `@kanaries/graphic-walker`, Apache-2.0 licensed, latest published
    version `0.5.2`. It ships its own React component (`GraphicWalker`)
    and DOM-mount helpers (`embedGraphicWalker` et al., confirmed present
-   in `docs/ARCHITECTURE.md`'s own sketch) usable with no server backend —
+   in `project-docs/ARCHITECTURE.md`'s own sketch) usable with no server backend —
    a plain `data` prop (flat array of row objects) plus a `fields` prop
    (`IMutField[]`: `fid`, `name`, `semanticType`, `analyticType`).
 4. **A real, confirmed version-compatibility constraint.** Checked the
@@ -234,7 +234,7 @@ card.
 - **FR-003**: A `graphic-walker` panel's config MUST accept `dataset:`
   (which view to query), `limit:` (row cap, default 100000), `height:`
   (default 700), and `width:` (row-fraction, following this project's
-  existing panel-width convention) — matching `docs/GRAMMAR.md`'s already-
+  existing panel-width convention) — matching `project-docs/GRAMMAR.md`'s already-
   documented config surface for this type.
 - **FR-004**: A `graphic-walker` panel's config MAY optionally include
   `scenario:` to pin the panel to one specific loaded scenario's view;

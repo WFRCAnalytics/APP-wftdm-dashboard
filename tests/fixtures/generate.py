@@ -20,7 +20,7 @@ import duckdb
 
 FIXTURES_DIR = Path(__file__).parent
 
-# Column shape borrowed from docs/CALIBRATION-SUMMARIES.md's summary_kpis.parquet
+# Column shape borrowed from project-docs/CALIBRATION-SUMMARIES.md's summary_kpis.parquet
 # and trip_mode_share.parquet entries — values are made up, not modeled output.
 SUMMARY_KPIS_ROWS = [
     (1500, 3800, 9200, 24, 6.4),
@@ -42,7 +42,7 @@ TRIP_MODE_SHARE_ROWS = [
 ]
 TRIP_MODE_SHARE_COLUMNS = ["purpose", "mode", "share"]
 
-# 005-table-panel: docs/GRAMMAR.md's own `type: table` example is a
+# 005-table-panel: project-docs/GRAMMAR.md's own `type: table` example is a
 # screenline validation table (link_id/facility_type/observed/modeled/
 # pct_error) — reused here rather than inventing a different shape.
 # 30 rows: enough to exceed the default page size (20) so pagination and
@@ -69,7 +69,7 @@ def _screenline_rows():
 SCREENLINES_ROWS = _screenline_rows()
 SCREENLINES_COLUMNS = ["link_id", "facility_type", "observed", "modeled", "pct_error"]
 
-# 007-observable-plot-panel: mirrors docs/GRAMMAR.md's own Trip Length
+# 007-observable-plot-panel: mirrors project-docs/GRAMMAR.md's own Trip Length
 # Frequency Distribution worked example (distance_bin/trips/purpose/mode) —
 # reused directly rather than inventing a different shape, same convention
 # as SCREENLINES_ROWS above. distance_bin is a small integer bin index
@@ -93,7 +93,7 @@ def _trip_destination_dist_rows():
 TRIP_DESTINATION_DIST_ROWS = _trip_destination_dist_rows()
 TRIP_DESTINATION_DIST_COLUMNS = ["distance_bin", "trips", "purpose", "mode"]
 
-# 008-sankey-panel: mirrors docs/GRAMMAR.md's own sankey worked example
+# 008-sankey-panel: mirrors project-docs/GRAMMAR.md's own sankey worked example
 # (tour_mode/trip_mode/trips, metric name tour_mode_to_trip_mode matching
 # its sql_fragments example) — reused directly, same convention as
 # SCREENLINES_ROWS/TRIP_DESTINATION_DIST_ROWS above. Deliberately covers,
@@ -130,7 +130,7 @@ TOUR_MODE_TO_TRIP_MODE_ROWS = [
 ]
 TOUR_MODE_TO_TRIP_MODE_COLUMNS = ["tour_mode", "trip_mode", "trips", "purpose"]
 
-# 010-flowmap-panel: mirrors docs/GRAMMAR.md's own corrected flowmap
+# 010-flowmap-panel: mirrors project-docs/GRAMMAR.md's own corrected flowmap
 # worked example (orig_taz/orig_lat/orig_lon/dest_taz/dest_lat/dest_lon/
 # trips — the boundaries/boundaries_id keys this grammar originally had
 # were removed this session; see that file's own inline correction note)
@@ -210,7 +210,7 @@ ZONE_BOUNDARY_ROWS = _zone_boundary_rows()
 ZONE_BOUNDARY_ID_COLUMN = "TAZ_ID"
 
 # vmt_by_home_taz-shaped metric table (matches summarize.yaml's own real
-# vmt_by_home_taz metric — docs/GRAMMAR.md's type: zonemap worked
+# vmt_by_home_taz metric — project-docs/GRAMMAR.md's type: zonemap worked
 # example) — with one deliberate departure from that real metric's own
 # minimal SQL: a synthetic `purpose` column, added ONLY so this fixture
 # can exercise filter reactivity (spec.md User Story 2, Acceptance
@@ -276,9 +276,9 @@ def write_geoparquet(con, dest: Path, id_column: str, rows: list[tuple]) -> None
     registerFileBuffer() (research.md §3's own confirmed duckdb-wasm#1791
     finding). Requires the DuckDB spatial extension — INSTALL fetches it
     once from the local cache after the first real run (same one-time
-    network dependency this feature's own docs/ARCHITECTURE.md caveat
+    network dependency this feature's own project-docs/ARCHITECTURE.md caveat
     documents for the browser side, here on the Python/offline side of
-    the post-processor pipeline instead, per docs/SPEC.md's own
+    the post-processor pipeline instead, per project-docs/SPEC.md's own
     "Convert geometry via DuckDB spatial... or GeoPandas -> GeoParquet"
     step).
     """

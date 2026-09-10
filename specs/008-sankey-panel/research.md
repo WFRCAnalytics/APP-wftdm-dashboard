@@ -27,7 +27,7 @@ information for either import without the DefinitelyTyped packages. Both
 - `d3-sankey`'s latest published version is **0.12.3**, published
   **2019-09-02** (npm registry, `dist-tags.latest` + `time`) — confirmed via
   the full version list (43 versions, 0.1.0 → 0.12.3, nothing newer). This
-  is the only real `d3-sankey` package on npm and is what `docs/SPEC.md`
+  is the only real `d3-sankey` package on npm and is what `project-docs/SPEC.md`
   pins ("sankey | d3-sankey"); there is no newer/actively-maintained
   alternative to prefer instead.
 - `d3-sankey@0.12.3`'s own declared dependencies are **`d3-array: "1 - 2"`**
@@ -145,7 +145,7 @@ request to decide (and give real reasoning for) whether that exclusion
 should stay silent. Working through the actual reasoning surfaced that the
 premise itself was wrong, not just under-specified:
 
-- This panel type's two documented use cases (`docs/SPEC.md`: "Mode shift /
+- This panel type's two documented use cases (`project-docs/SPEC.md`: "Mode shift /
   tour-to-trip consistency") are both structurally **the same category
   compared across two columns** (tour mode vs. trip mode; mode before vs.
   after a shift). The "no change" row — `source == target` — is not an edge
@@ -166,7 +166,7 @@ premise itself was wrong, not just under-specified:
 - Namespacing by side resolves both at once: every link flows from a
   source-side node to a target-side node by construction, which is
   structurally a bipartite DAG for this panel type's documented (two-column,
-  single-hop) grammar — `docs/GRAMMAR.md` shows no chained/multi-hop sankey
+  single-hop) grammar — `project-docs/GRAMMAR.md` shows no chained/multi-hop sankey
   example, so there is no author-facing way to configure something deeper
   than one hop. A cyclic graph becomes unreachable through valid
   configuration, not merely unlikely.

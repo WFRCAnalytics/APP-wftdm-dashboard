@@ -3,7 +3,7 @@
 ## `FlowMapPanelConfig` (new — `src/layout/types.ts`)
 
 Extends `DataBoundPanelConfigBase` (like every prior data-bound panel
-type) — `docs/GRAMMAR.md`'s `type: flowmap` grammar always queries a
+type) — `project-docs/GRAMMAR.md`'s `type: flowmap` grammar always queries a
 metric. Field-mapping keys are author-configurable, naming literal
 columns in the queried result set — not `$metric.`-prefixed
 placeholders (research.md §1 of spec.md's own Grammar findings, mirroring
@@ -104,6 +104,6 @@ mapReady: boolean                 — true once the map-creation effect
 
 The `maplibregl.Map`/`MapboxOverlay` instances themselves are held in
 refs (`useRef`), not React state — their lifecycle is imperative
-(FR-006), matching `docs/SPEC.md`'s own documented create-once/
+(FR-006), matching `project-docs/SPEC.md`'s own documented create-once/
 `setProps()`-on-update/`map.remove()`-on-destroy shape, not a
 React-owned render output the way every prior panel type's DOM/SVG is.

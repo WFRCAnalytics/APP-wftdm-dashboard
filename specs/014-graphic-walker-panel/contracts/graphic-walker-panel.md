@@ -11,7 +11,7 @@ viewer-driven, third-party exploration UI, structurally closer to
 
 **Renders `<GraphicWalker>` as ordinary JSX, NOT `embedGraphicWalker`.**
 The original draft of this contract used `embedGraphicWalker` (matching
-`CLAUDE.md`'s/`docs/ARCHITECTURE.md`'s own pre-existing sketch); reversed
+`CLAUDE.md`'s/`project-docs/ARCHITECTURE.md`'s own pre-existing sketch); reversed
 post-completion, a real bug found by reading `embedGraphicWalker`'s own
 installed source directly
 (`node_modules/@kanaries/graphic-walker/dist/vanilla.js`): it calls

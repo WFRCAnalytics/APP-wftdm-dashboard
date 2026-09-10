@@ -18,7 +18,7 @@ import type { GraphicWalkerPanelConfig } from '@/layout/types'
 
 // This panel's own query never emits a $filters./$inputs. placeholder
 // (FR-005 — no global-filter reactivity, this project's "snapshot model"
-// for graphic-walker, docs/GRAMMAR.md/docs/ARCHITECTURE.md), so
+// for graphic-walker, project-docs/GRAMMAR.md/project-docs/ARCHITECTURE.md), so
 // sqlExpander.expand()'s FilterStateLike argument is never actually
 // consulted for this caller. A trivial stub, not a real store — same
 // duck-typed contract every other expand() caller already relies on

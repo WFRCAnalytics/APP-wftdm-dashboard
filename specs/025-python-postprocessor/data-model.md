@@ -1,6 +1,6 @@
 # Phase 1 Data Model: Python Post-Processor — ActivitySim CSV to Parquet Pipeline
 
-All entities below are parsed from `summarize.yaml` (per `docs/GRAMMAR.md`'s
+All entities below are parsed from `summarize.yaml` (per `project-docs/GRAMMAR.md`'s
 already-documented grammar) or are pipeline-internal representations built
 from it — no entity here introduces a new YAML key or file type
 (constitution Principle VII).
@@ -99,7 +99,7 @@ whole feature exists to produce.
 ## `Manifest`
 
 The generated `manifest.yaml` content — field names and defaults match
-`docs/GRAMMAR.md`'s already-documented `manifest.yaml` grammar exactly, no
+`project-docs/GRAMMAR.md`'s already-documented `manifest.yaml` grammar exactly, no
 new fields introduced.
 
 | Field | Type | Default when not supplied |

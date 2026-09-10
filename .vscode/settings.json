@@ -25,7 +25,7 @@
   },
   "yaml.schemas": {
     // Associate dashboard YAML files with our grammar schema (future)
-    "./docs/grammar.md": [
+    "./project-docs/GRAMMAR.md": [
       ".wfrc/dashboard-*.yaml",
       ".wfrc/summarize.yaml",
       ".wfrc/manifest.yaml"

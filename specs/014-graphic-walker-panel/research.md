@@ -10,7 +10,7 @@ implementation-agnostic).
 
 ## §1. Grammar shape and config surface
 
-`docs/GRAMMAR.md`'s `type: graphic-walker` section (confirmed, full text
+`project-docs/GRAMMAR.md`'s `type: graphic-walker` section (confirmed, full text
 read) documents exactly:
 
 ```yaml
@@ -88,7 +88,7 @@ version choice preemptively without cause.
 
 **This section's original conclusion was wrong and has been reversed.**
 The original plan used `embedGraphicWalker` (matching `CLAUDE.md`'s/
-`docs/ARCHITECTURE.md`'s own pre-existing sketch, "no React ownership
+`project-docs/ARCHITECTURE.md`'s own pre-existing sketch, "no React ownership
 required"). Post-completion, asked directly whether `embedGraphicWalker`
 exposes any disposal/cleanup handle, its real, unminified installed
 source was read directly (`node_modules/@kanaries/graphic-walker/dist/
@@ -139,7 +139,7 @@ ownership required... GW bundles its own React tree") the wrong
 tradeoff for this specific app: that framing is true and fine for a
 consumer with no React tree of its own to nest into, but this app
 already has one, and nesting into it is what makes correct disposal
-possible at all — `CLAUDE.md`'s/`docs/ARCHITECTURE.md`'s own
+possible at all — `CLAUDE.md`'s/`project-docs/ARCHITECTURE.md`'s own
 pre-existing sketch predates this finding and has been corrected to
 match.
 
@@ -271,7 +271,7 @@ subtree it relocates.
 `tests/fixtures/generate.py` already writes a `trip_mode_share.parquet`
 table into the `good` scenario fixture (confirmed: `write_parquet(...,
 good_summary / "trip_mode_share.parquet", ...)`), the exact same dataset
-name `docs/GRAMMAR.md`'s own worked example already uses. Unlike
+name `project-docs/GRAMMAR.md`'s own worked example already uses. Unlike
 `013-zonemap-panel` (this project's first-ever geometry fixture need),
 this feature needs **no new fixture file and no `generate.py` change** —
 the integration test panel binds `dataset: trip_mode_share` directly

@@ -64,7 +64,7 @@ export function inferFields(
 // isUtf8/isDictionary, and any other type not explicitly handled above,
 // all fall through to the nominal/dimension default — there is no
 // separate isBool branch, since nominal/dimension is already its correct
-// mapping too (docs/GRAMMAR.md's own field-schema grammar draws no
+// mapping too (project-docs/GRAMMAR.md's own field-schema grammar draws no
 // distinction between a boolean flag and any other low-cardinality
 // categorical column).
 function inferTypesFromArrow(type: unknown): Pick<InferredField, 'semanticType' | 'analyticType'> {

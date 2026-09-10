@@ -202,7 +202,7 @@ export type LoadResult =
   | { outcome: 'cancelled' }
   | { outcome: 'failed'; name: string; reason: unknown }
 
-/** WEB vs LOCAL deployment mode (docs/SPEC.md) — research.md §5. */
+/** WEB vs LOCAL deployment mode (project-docs/SPEC.md) — research.md §5. */
 export function isLocalDeployment(): boolean {
   return window.location.hostname === 'localhost'
 }

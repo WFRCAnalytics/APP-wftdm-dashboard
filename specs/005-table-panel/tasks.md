@@ -40,7 +40,7 @@ Project Structure — additive to `001`-`004`.
 ## Phase 1: Setup
 
 **No tasks** — this feature adds no new dependency (research.md §1:
-`docs/SPEC.md`'s own "plain DOM" description for `type: table` is taken
+`project-docs/SPEC.md`'s own "plain DOM" description for `type: table` is taken
 directly, no table library added) and needs no project scaffolding beyond
 what `001`-`004` already established.
 
@@ -87,7 +87,7 @@ data rich enough for all four stories' Playwright coverage.
 `ValueBoxPanel.tsx` unaffected, fixture data ready. Nothing table-specific
 renders yet.
 
-**Done**: T005's fixture reuses `docs/GRAMMAR.md`'s own `type: table`
+**Done**: T005's fixture reuses `project-docs/GRAMMAR.md`'s own `type: table`
 example verbatim (screenline validation — `link_id`/`facility_type`/
 `observed`/`modeled`/`pct_error`), 30 generated rows
 (`tests/fixtures/generate.py`'s `SCREENLINES_ROWS`), added to
@@ -288,7 +288,7 @@ pagination controls correctly reach the remaining rows.
       Depends on T026
 
 **Checkpoint**: User Stories 1-3 hold together — a sortable, paginated
-table matching `docs/SPEC.md`'s own description of `type: table` in full.
+table matching `project-docs/SPEC.md`'s own description of `type: table` in full.
 
 ---
 
@@ -342,7 +342,7 @@ it appears in the filtered, re-paginated results.
       (which means "the query itself returned nothing"). Depends on T039
 
 **Checkpoint**: All four user stories are independently functional and
-verified together — the full `docs/GRAMMAR.md` `type: table` grammar this
+verified together — the full `project-docs/GRAMMAR.md` `type: table` grammar this
 feature scoped itself to is implemented end to end.
 
 ---
@@ -456,7 +456,7 @@ Task: "Register table: TablePanel in src/panels/registry.tsx"
 4. This alone is a demoable, mergeable increment — a correctly-styled,
    correctly-columned, correctly-colored table panel exists, even before
    any interactivity is added. US2-US4 each add one more piece of
-   `docs/SPEC.md`'s "Sortable, paginated" (plus the confirmed-in-scope
+   `project-docs/SPEC.md`'s "Sortable, paginated" (plus the confirmed-in-scope
    `searchable`) description on top.
 
 ### Incremental Delivery
@@ -465,7 +465,7 @@ Task: "Register table: TablePanel in src/panels/registry.tsx"
 2. Add US1 → test independently → demoable MVP (a real, styled table).
 3. Add US2 → test independently → sortable.
 4. Add US3 → test independently → paginated — now matches
-   `docs/SPEC.md`'s literal description in full.
+   `project-docs/SPEC.md`'s literal description in full.
 5. Add US4 → test independently → searchable, the one piece of grammar
    this feature's own research confirmed in scope beyond that literal
    description.

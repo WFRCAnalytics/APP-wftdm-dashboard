@@ -22,7 +22,7 @@
   `005`/`006`'s already-published columns — no new fixture table needed for
   this one), reactive to the existing global `purpose` filter; and a second
   panel exercising `mark: lineY` plus a panel-local `inputs:` control,
-  mirroring `docs/GRAMMAR.md`'s own Trip Length Frequency Distribution
+  mirroring `project-docs/GRAMMAR.md`'s own Trip Length Frequency Distribution
   example closely enough to need one small new fixture table
   (`trip_destination_dist`: `distance_bin`/`trips`/`purpose`/`mode`) — check
   `tests/fixtures/generate.py`/`dashboard-config/dashboard-1-summary.yaml`

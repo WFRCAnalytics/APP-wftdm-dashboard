@@ -33,7 +33,7 @@
 
 - Items marked incomplete require spec updates before `/speckit-clarify` or `/speckit-plan`.
 - A "Grammar findings (pre-spec verification)" section precedes User Scenarios,
-  matching the discipline established by 005/006/007 — confirms `docs/GRAMMAR.md`'s
+  matching the discipline established by 005/006/007 — confirms `project-docs/GRAMMAR.md`'s
   actual `type: sankey` shape (author-configurable `source`/`target`/`value`
   column mapping, `color_scheme` as a distinct concept from `color_scale`/
   `color_ramp`, common-key inheritance, no `inputs:`) before any requirement was

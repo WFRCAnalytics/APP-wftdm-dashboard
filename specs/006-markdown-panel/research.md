@@ -46,11 +46,11 @@ plausible (in which case a clean split earns its cost regardless of exact
 headcount). Checked both documented sources for the full panel-type
 roster before deciding:
 
-- `docs/SPEC.md`'s Panel types table — the authoritative, exhaustive list:
+- `project-docs/SPEC.md`'s Panel types table — the authoritative, exhaustive list:
   `plotly`, `observable-plot`, `table`, `valuebox`, `flowmap`, `zonemap`,
   `sankey`, `graphic-walker`, `markdown`. Of these nine, `markdown` is the
   only one with zero query. `graphic-walker` looks close (its own
-  `docs/GRAMMAR.md` example is a "snapshot" that doesn't respond to
+  `project-docs/GRAMMAR.md` example is a "snapshot" that doesn't respond to
   filters after load) but it still issues one real DuckDB query at mount
   (`SELECT * FROM ${scenario}__${dataset} LIMIT ...`, per
   `CLAUDE.md`'s own Graphic Walker panel snippet) — it's filter-inert, not
@@ -405,7 +405,7 @@ available, and the hook-based one was chosen:
   This unconditionally sets both attributes on *every* `<a>` DOMPurify
   produces, regardless of what the author did or didn't write in
   `content:` — closing the actual common case (plain markdown links,
-  which is what `docs/GRAMMAR.md`'s own examples show), not just the edge
+  which is what `project-docs/GRAMMAR.md`'s own examples show), not just the edge
   case of a hand-authored raw `<a target>`. Because the hook runs after
   DOMPurify's own sanitization of that element, setting `target`/`rel`
   here is not re-exposed to the allow-list check that stripped `target`
@@ -465,7 +465,7 @@ clicking a citation, not a per-link authoring choice.
 
 | # | Decision |
 |---|---|
-| 1 | `PanelConfigBase` split into a common `{title, width, height}` layer and a new `DataBoundPanelConfigBase` (`metric`/`filter`/`scenario`/`scenarios`) that `ValueBoxPanelConfig`/`PlotlyPanelConfig`/`TablePanelConfig` re-parent onto; `MarkdownPanelConfig` extends the plain common base. Justified independent of how many query-less types exist today (only `markdown`, confirmed against `docs/SPEC.md`'s full 9-type roster and `CLAUDE.md`'s file tree) — a required-in-spirit field on a type that structurally can't use it is a modeling smell regardless of cardinality, and the split costs one `extends` clause per existing type |
+| 1 | `PanelConfigBase` split into a common `{title, width, height}` layer and a new `DataBoundPanelConfigBase` (`metric`/`filter`/`scenario`/`scenarios`) that `ValueBoxPanelConfig`/`PlotlyPanelConfig`/`TablePanelConfig` re-parent onto; `MarkdownPanelConfig` extends the plain common base. Justified independent of how many query-less types exist today (only `markdown`, confirmed against `project-docs/SPEC.md`'s full 9-type roster and `CLAUDE.md`'s file tree) — a required-in-spirit field on a type that structurally can't use it is a modeling smell regardless of cardinality, and the split costs one `extends` clause per existing type |
 | 2 | marked.js's own `_getDefaults()` sets `gfm: true` by default — GFM (including table syntax) renders with no explicit `{ gfm: true }` config |
 | 3 | DOMPurify's default `ALLOWED_TAGS` (`src/tags.ts`'s `html` export) includes the full GFM table tag set (`table`/`thead`/`tbody`/`tr`/`th`/`td`/`caption`/`colgroup`/`col`); its default attribute allow-list excludes all `on*` handlers and neutralizes `javascript:` URLs — no custom DOMPurify config needed for either "tables survive" or "scripts/handlers don't" |
 | 4 | No loading/ready/error state machine — `config.content` is synchronously available at mount (already-parsed `dashboard-*.yaml` object graph); only two presentations exist (empty state, rendered content); render-time throws are caught by `panelCard.tsx`'s existing generic `PanelErrorBoundary`, not a new component-local mechanism |

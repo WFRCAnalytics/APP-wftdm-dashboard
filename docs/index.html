@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WFRC TDM Calibration Dashboard</title>
+    <!-- MUST BE FIRST: enables cross-origin isolation (SharedArrayBuffer / threaded DuckDB-WASM) where headers allow it -->
+    <script src="/APP-wftdm-dashboard/coi-serviceworker.js"></script>
+    <script type="module" crossorigin src="/APP-wftdm-dashboard/assets/index-DrfS1K0z.js"></script>
+    <link rel="modulepreload" crossorigin href="/APP-wftdm-dashboard/assets/duckdb-Bjlci3X6.js">
+    <link rel="modulepreload" crossorigin href="/APP-wftdm-dashboard/assets/maps-BZX65nnX.js">
+    <link rel="modulepreload" crossorigin href="/APP-wftdm-dashboard/assets/graphic-walker-BSWmEbzG.js">
+    <link rel="modulepreload" crossorigin href="/APP-wftdm-dashboard/assets/duckdb-pTQxYg8N.js">
+    <link rel="modulepreload" crossorigin href="/APP-wftdm-dashboard/assets/yamlLoader-C_Bx5KFm.js">
+    <link rel="modulepreload" crossorigin href="/APP-wftdm-dashboard/assets/appState-WIyZNnAn.js">
+    <link rel="modulepreload" crossorigin href="/APP-wftdm-dashboard/assets/plotly-S7ITiP4s.js">
+    <link rel="modulepreload" crossorigin href="/APP-wftdm-dashboard/assets/recharts-D4iClOIx.js">
+    <link rel="modulepreload" crossorigin href="/APP-wftdm-dashboard/assets/sqlExpander-Bv6wpbkr.js">
+    <link rel="modulepreload" crossorigin href="/APP-wftdm-dashboard/assets/filterState-BHyA5v1Z.js">
+    <link rel="stylesheet" crossorigin href="/APP-wftdm-dashboard/assets/maps-BQlc4wYO.css">
+    <link rel="stylesheet" crossorigin href="/APP-wftdm-dashboard/assets/recharts-VLBWd-WN.css">
+    <link rel="stylesheet" crossorigin href="/APP-wftdm-dashboard/assets/index-Dx0f1GT_.css">
+  </head>
+  <body>
+    <div id="app">
+      <!-- wftdm-design-system, Phase 2: main.tsx's own boot sequence
+           (initDuckDB -> discoverScenarios -> loadDashboards, all real
+           WASM-init/network work) runs entirely BEFORE ReactDOM ever
+           calls createRoot(...).render(...) on this div — confirmed
+           directly (main.tsx has zero React rendering before that
+           await chain resolves). Until now that meant a genuinely blank
+           page for the whole boot duration; this static markup replaces
+           that blank gap with a real, SHAPED placeholder mirroring the
+           actual header+panel-grid layout, not a spinner.
+
+           This needs no cleanup code of its own: ReactDOM.createRoot()
+           (not hydrateRoot()) unconditionally replaces a container's
+           existing children on first render — confirmed against main.tsx's
+           own `ReactDOM.createRoot(rootEl).render(...)` call — so this
+           entire block is discarded automatically the instant the real
+           Shell mounts, with no manual teardown needed.
+
+           Colors resolve through the SAME tokens.css custom properties as
+           the rest of the app (Vite injects that stylesheet into <head>
+           at build time since main.tsx imports it, and the dark-mode class
+           toggle is main.tsx's own first executable statement, before this
+           markup's very first paint) — no separate light/dark handling
+           needed here; it inherits whichever theme the rest of the app
+           would already be in. Every shimmer block reuses this app's own
+           already-established `animate-pulse rounded-md bg-muted`
+           treatment (layout/settings/basemapTab.tsx's raster-loading-
+           skeleton, and every panel type's own inline loading state) — see
+           the design-system skill's own "Skeleton" section for the full,
+           formalized pattern this composes. -->
+      <div role="status" aria-label="Loading dashboard" class="min-h-screen bg-background text-foreground">
+        <span class="sr-only">Loading dashboard…</span>
+        <header class="fixed inset-x-0 top-0 z-30 flex items-center justify-between border-b border-border bg-background px-6 py-4 shadow-md">
+          <div class="flex min-w-0 items-center gap-4">
+            <div class="h-7 w-32 animate-pulse rounded-md bg-muted"></div>
+            <div class="flex h-10 items-center gap-1 rounded-md bg-muted p-1">
+              <div class="h-8 w-16 animate-pulse rounded-sm bg-muted"></div>
+              <div class="h-8 w-20 animate-pulse rounded-sm bg-muted"></div>
+              <div class="h-8 w-16 animate-pulse rounded-sm bg-muted"></div>
+            </div>
+          </div>
+          <div class="h-9 w-9 animate-pulse rounded-md bg-muted"></div>
+        </header>
+        <main style="padding-top: 73px">
+          <div class="flex flex-col gap-6 p-6">
+            <div class="h-7 w-56 animate-pulse rounded-md bg-muted"></div>
+            <div class="grid gap-6" style="grid-template-columns: repeat(3, 1fr)">
+              <div class="h-32 animate-pulse rounded-lg border border-border bg-muted shadow-md"></div>
+              <div class="h-32 animate-pulse rounded-lg border border-border bg-muted shadow-md"></div>
+              <div class="h-32 animate-pulse rounded-lg border border-border bg-muted shadow-md"></div>
+            </div>
+            <div class="grid gap-6" style="grid-template-columns: repeat(2, 1fr)">
+              <div class="h-64 animate-pulse rounded-lg border border-border bg-muted shadow-md"></div>
+              <div class="h-64 animate-pulse rounded-lg border border-border bg-muted shadow-md"></div>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+  </body>
+</html>

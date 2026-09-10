@@ -118,7 +118,7 @@ Real `tailwind.config.ts` fetched directly from `gropaul/dash-ui`:
 **Convergence finding**: three of the four primary references (this app
 itself, gropaul/dash, and shadcn's own dashboard example, which dash-ui's
 own component references were already partly modeled on per
-`docs/PIPELINE.md`'s prior note) all sit on the literal same shadcn/Radix
+`project-docs/PIPELINE.md`'s prior note) all sit on the literal same shadcn/Radix
 token architecture. This strongly validates NOT reinventing the token
 foundation — the redesign's job is refining scale VALUES within the
 existing architecture, not replacing the architecture itself.
@@ -218,7 +218,7 @@ lean, use progressive disclosure with a `references/` directory" guidance
 which is designed for skills with variable per-invocation output (a
 PDF-extraction skill, a docx-builder) needing triggering-accuracy tuning
 across many prompts. This skill is closer to a static reference document
-(this project's own `docs/GRAMMAR.md` already sets that precedent) than a
+(this project's own `project-docs/GRAMMAR.md` already sets that precedent) than a
 task-execution skill, so that loop wasn't run. Available to actually run
 (evals, description-triggering optimization) next session once the plugin
 is active, if further iteration is wanted.

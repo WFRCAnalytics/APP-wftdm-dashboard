@@ -5,7 +5,7 @@ import { PanelErrorState } from '@/panels/PanelErrorState'
 import { findFullPagePanel, isMetricStripRow, resolveSections } from '@/layout/dashboardLayout'
 import { isMapRenderingPanel, type DashboardTabConfig, type PanelConfig } from '@/layout/types'
 
-// Renders one active tab's layout (docs/GRAMMAR.md: named rows, each a
+// Renders one active tab's layout (project-docs/GRAMMAR.md: named rows, each a
 // flat list of panels) as ordered rows of PanelCards, each sized by its
 // width fraction (0.0-1.0) within its own row.
 //

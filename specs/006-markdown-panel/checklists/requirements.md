@@ -31,14 +31,14 @@
 
 ## Notes
 
-- All items pass on first validation pass. `docs/GRAMMAR.md`'s `type: markdown`
-  example and `docs/SPEC.md`'s Panel types table were both read before
+- All items pass on first validation pass. `project-docs/GRAMMAR.md`'s `type: markdown`
+  example and `project-docs/SPEC.md`'s Panel types table were both read before
   writing the spec, so the grammar/data-binding/library questions the
   feature request raised are resolved as Assumptions rather than left as
   `[NEEDS CLARIFICATION]` markers — none of them meet the "no reasonable
-  default exists" bar for a clarification marker (docs/GRAMMAR.md's own
+  default exists" bar for a clarification marker (project-docs/GRAMMAR.md's own
   example settles the `content:`-is-literal-inline-text question;
-  docs/SPEC.md's Panel types table settles the marked.js choice; the
+  project-docs/SPEC.md's Panel types table settles the marked.js choice; the
   marked.js-does-not-sanitize-by-default fact is documented by marked.js
   itself, not ambiguous).
 - A few implementation-adjacent decisions are deliberately deferred to

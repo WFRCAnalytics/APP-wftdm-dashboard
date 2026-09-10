@@ -7,7 +7,7 @@
 // it never resolves the token values themselves.
 import { schemeTableau10, schemeObservable10, schemeCategory10, schemeSet3 } from 'd3-scale-chromatic'
 
-// docs/GRAMMAR.md documents only Tableau10 as a worked example, with no
+// project-docs/GRAMMAR.md documents only Tableau10 as a worked example, with no
 // enumerated allow-list beyond it (research.md §6) — supporting this small
 // set of other well-known d3-scale-chromatic categorical scheme names (not
 // every export — sequential/diverging schemes don't apply to discrete

@@ -41,7 +41,7 @@
   requirements stay behavioral.
 - No [NEEDS CLARIFICATION] markers were needed — every open question
   identified during drafting had a reasonable default groundable in
-  already-confirmed project research (docs/GRAMMAR.md's own documented
+  already-confirmed project research (project-docs/GRAMMAR.md's own documented
   grammar, ActivitySim's own real current output format, this project's
   own existing pyproject.toml/CLAUDE.md conventions); see the Assumptions
   section for each one and its rationale.

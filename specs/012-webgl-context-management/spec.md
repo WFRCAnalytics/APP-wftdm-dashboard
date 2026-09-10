@@ -18,7 +18,7 @@ lost" banner, and `layerRepopulateGeneration`'s context-restore-triggered
 call site) — was removed entirely from `FlowMapPanel.tsx`. This was
 **explicitly not** motivated by the separate flowmap line-jaggedness/
 antialiasing investigation happening around the same time (see
-`docs/PIPELINE.md`'s own entry on that investigation for the unrelated
+`project-docs/PIPELINE.md`'s own entry on that investigation for the unrelated
 finding it left on record). Item (2), interleaved mode itself, and
 `layerRepopulateGeneration`'s other (basemap-switch) trigger, are
 **unchanged** — neither ever depended on the removed recovery code. This

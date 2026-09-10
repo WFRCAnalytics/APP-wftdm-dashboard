@@ -8,7 +8,7 @@
 
 Build the first real code in `python/wftdm_dashboard/`: a generic engine that
 parses a `summarize.yaml` (the grammar already documented in
-`docs/GRAMMAR.md`), loads whatever CSV/Parquet `sources:` it names, expands
+`project-docs/GRAMMAR.md`), loads whatever CSV/Parquet `sources:` it names, expands
 `$mappings`/`$bins`/`$sql` placeholders into literal DuckDB SQL, runs each
 `metrics:` entry, and writes one Parquet file per metric to
 `{output}/summary/{name}.parquet` — plus an auto-generated `manifest.yaml` —
@@ -61,7 +61,7 @@ package import
 `summarize.yaml` metric counts in the dozens (the documented example lists
 ~25); no multi-scenario batch mode in this feature (a modeler re-runs the
 command once per scenario, matching the project's existing one-scenario-
-folder-at-a-time publish workflow in `docs/GRAMMAR.md`)
+folder-at-a-time publish workflow in `project-docs/GRAMMAR.md`)
 
 ## Constitution Check
 
@@ -75,7 +75,7 @@ folder-at-a-time publish workflow in `docs/GRAMMAR.md`)
 | IV. YAML Parsed at Runtime | **Yes** | `summarize.yaml` is parsed at pipeline-run time (`PyYAML`, new dependency) — never pre-processed or baked in at any build step; this is a runtime CLI tool, not a build artifact |
 | V. Parquet-Only Browser Data I/O | N/A (offline side) | This principle scopes the *browser*. This feature is precisely the offline conversion step the principle's own rationale names ("Any conversion from those formats happens offline in the Python post-processor before results are published") |
 | VI. Fixed Technology Choices | **Yes** | No Mapbox/Webpack/Web Storage/non-Tailwind UI touched (none apply — this is a backend CLI tool with no UI). No new charting/mapping library introduced |
-| VII. Minimal, Fixed Config File Set | **Yes** | Reads the existing `summarize.yaml` grammar verbatim, per `docs/GRAMMAR.md` — no new config file type is introduced; writes `manifest.yaml`, an existing documented output, not a new file type |
+| VII. Minimal, Fixed Config File Set | **Yes** | Reads the existing `summarize.yaml` grammar verbatim, per `project-docs/GRAMMAR.md` — no new config file type is introduced; writes `manifest.yaml`, an existing documented output, not a new file type |
 | VIII. Reuse Proven Reference Implementations | N/A | None of the named reference repos (DuckDB-WASM/Arrow wiring, MapLibre/flowmap.gl, spatial-SQL/GeoParquet, Vite/coi-serviceworker) apply to a server-side Python CSV→Parquet pipeline |
 | IX. Fixed Python/JS Source Split | **Yes** | All new code lives under `python/wftdm_dashboard/`; nothing is added to `src/`; `src/wftdm_dashboard/` is not recreated |
 
@@ -121,7 +121,7 @@ python/wftdm_dashboard/
     ├── config.py               # parse summarize.yaml -> typed
     │                           # SummarizeConfig (sources/mappings/bins/
     │                           # sql_fragments/metrics), matching
-    │                           # docs/GRAMMAR.md's documented grammar
+    │                           # project-docs/GRAMMAR.md's documented grammar
     ├── expand.py                # $mappings.x / $bins.x / $sql.x ->
     │                           # literal SQL text, one function per
     │                           # placeholder kind - Python-side

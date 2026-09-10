@@ -1,0 +1,7 @@
+scenario_name: activitysim-transit-variant
+display_name: 'ActivitySim: AM/PM Transit Service Increase'
+engine: activitysim
+run_date: '2026-09-08'
+color: '#FF9DA7'
+pinned: false
+notes: AM/PM WLK_LOC_WLK_TOTIVT x0.80, WLK_LOC_WLK_IWAIT x0.50

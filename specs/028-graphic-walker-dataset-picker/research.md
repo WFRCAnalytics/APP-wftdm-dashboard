@@ -257,7 +257,7 @@ package for a control this codebase has already solved twice with the one
 it has. Visual detail (exact placement above the embedded `<GraphicWalker>`
 view, spacing, truncation for long metric names) is implementation-phase
 work, informed by this project's own established practice of grounding a
-picker/list UI in a concrete reference (`docs/PIPELINE.md`'s
+picker/list UI in a concrete reference (`project-docs/PIPELINE.md`'s
 `gropaul/dash` precedent) rather than iterating blind — deferred to
 `/speckit-tasks` and the actual component implementation, not decided here.
 

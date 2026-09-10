@@ -36,10 +36,10 @@ writing any requirement below — nothing here is re-derived speculation:
   computed, already keyed by `destination_zone_id`) is directly usable as
   `zonemap`'s `column:`/`metric_id:` binding once real boundary geometry
   exists — confirmed by comparing its own real schema against
-  `docs/GRAMMAR.md`'s `type: zonemap` grammar (`metric_id:`/`column:`
+  `project-docs/GRAMMAR.md`'s `type: zonemap` grammar (`metric_id:`/`column:`
   bind to exactly this shape).
 - **`FlowMap` needs one new metric — a real origin/destination trip-count
-  aggregation — joined to real centroid coordinates.** `docs/GRAMMAR.md`'s
+  aggregation — joined to real centroid coordinates.** `project-docs/GRAMMAR.md`'s
   `type: flowmap` grammar (corrected during `010-flowmap-panel`, per its
   own documented research) reads `origin_lat`/`origin_lon`/`dest_lat`/
   `dest_lon` as plain columns already present on each metric row — no
@@ -47,7 +47,7 @@ writing any requirement below — nothing here is re-derived speculation:
   sources already carry real `origin`/`destination` zone-id columns
   (`destination` confirmed directly — the real, current `summarize.yaml`
   already joins on `t.destination = lu.zone_id`; `origin`'s presence is
-  ActivitySim's own standard trip-table shape, per `docs/GRAMMAR.md`'s
+  ActivitySim's own standard trip-table shape, per `project-docs/GRAMMAR.md`'s
   existing `od_flows` worked example referencing `t.origin`, but MUST be
   re-confirmed directly against the real `final_trips.csv` schema during
   planning, not assumed final here).
@@ -310,7 +310,7 @@ metric.
   ActivitySim output from the three existing real scenarios, or (b)
   real, cited MTC geographic data — with the specific source named
   in the metric/data's own documentation, matching this project's
-  existing `summarize.yaml`/`docs/CALIBRATION-SUMMARIES.md` citation
+  existing `summarize.yaml`/`project-docs/CALIBRATION-SUMMARIES.md` citation
   discipline.
 
 **Panel types needing no new metric (User Story 1)**
@@ -342,7 +342,7 @@ metric.
 - **FR-009**: `summarize.yaml` MUST gain exactly one new metric
   aggregating real trip counts by origin/destination zone, with each
   row's origin/destination coordinates resolved from the FR-008 centroid
-  lookup — matching `docs/GRAMMAR.md`'s existing `type: flowmap` grammar
+  lookup — matching `project-docs/GRAMMAR.md`'s existing `type: flowmap` grammar
   contract (plain lat/lon columns already present on the row, no live
   geometry join in the browser).
 - **FR-009a**: `dashboard-*.yaml` content MUST include a `flowmap` panel
@@ -418,7 +418,7 @@ metric.
 ## Assumptions
 
 - **`origin` is a real column on ActivitySim's `final_trips.csv`,
-  consistent with `docs/GRAMMAR.md`'s existing `od_flows` worked example
+  consistent with `project-docs/GRAMMAR.md`'s existing `od_flows` worked example
   — to be directly re-confirmed against the real file during planning,
   not assumed permanently settled by this spec.** If it turns out
   missing or differently named, FR-001's stop-and-report rule governs,

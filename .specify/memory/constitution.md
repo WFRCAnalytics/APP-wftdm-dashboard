@@ -465,7 +465,7 @@ Pinned peer dependency versions (must stay mutually compatible):
 
 ## Development Workflow
 
-`docs/ARCHITECTURE.md` and `docs/SPEC.md` MUST be read before writing any code
+`project-docs/ARCHITECTURE.md` and `project-docs/SPEC.md` MUST be read before writing any code
 against this repository. The navigation model is fixed: the Summary tab
 (`dashboard-1-summary.yaml`) renders on scenario load, reading first from
 `summary_kpis.parquet`, with other tabs and charts loading progressively as
@@ -485,7 +485,7 @@ React.)*
 ## Governance
 
 This constitution supersedes ad hoc practice for the areas it covers. `CLAUDE.md`
-and `docs/ARCHITECTURE.md`/`docs/SPEC.md` carry the day-to-day implementation
+and `project-docs/ARCHITECTURE.md`/`project-docs/SPEC.md` carry the day-to-day implementation
 detail and reference patterns; where any of them conflicts with a principle
 here, this constitution's non-negotiables govern and the conflicting document
 MUST be corrected.

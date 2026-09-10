@@ -6,7 +6,7 @@
 
 **Status**: Draft
 
-**Input**: User description: "Regenerate real ActivitySim demo content into a comprehensive six-tab structure, using every panel type — delete the current narrower demo-dashboard-config tabs (Overview, Destination Choice, Transit Service) entirely and replace them with the full six-tab ActivitySim-outline structure documented in docs/CALIBRATION-SUMMARIES.md (Summary, Person/Household Models, Tour Models, Mode Choice, Trip Models, Network), using the sidebar's accordion sub-navigation to mirror CALIBRATION-SUMMARIES.md's own submodel breakdown per tab. The Explore tab is unrelated and must be left exactly as-is. Zero fabricated/placeholder/synthetic data anywhere — every number must trace to real ActivitySim output, re-run from the same three proven scenarios (baseline, TAZ-1 employment-density variant, AM/PM transit-service variant). Audit CALIBRATION-SUMMARIES.md's full submodel list against the fresh real output's actual column availability before assuming anything is computable. Author every genuinely computable summary as a summarize.yaml metric, author the six-tab dashboard content using every one of the ten panel types at least once wherever it naturally fits the data shape, re-run the real post-processor CLI and publish, update index.json, and correct CALIBRATION-SUMMARIES.md itself if the audit found anything not actually computable. Fold in the already-written-but-unpublished purpose_mode_flow/od_flows metrics if the audit confirms they're still valid rather than re-deriving them from scratch."
+**Input**: User description: "Regenerate real ActivitySim demo content into a comprehensive six-tab structure, using every panel type — delete the current narrower demo-dashboard-config tabs (Overview, Destination Choice, Transit Service) entirely and replace them with the full six-tab ActivitySim-outline structure documented in project-docs/CALIBRATION-SUMMARIES.md (Summary, Person/Household Models, Tour Models, Mode Choice, Trip Models, Network), using the sidebar's accordion sub-navigation to mirror CALIBRATION-SUMMARIES.md's own submodel breakdown per tab. The Explore tab is unrelated and must be left exactly as-is. Zero fabricated/placeholder/synthetic data anywhere — every number must trace to real ActivitySim output, re-run from the same three proven scenarios (baseline, TAZ-1 employment-density variant, AM/PM transit-service variant). Audit CALIBRATION-SUMMARIES.md's full submodel list against the fresh real output's actual column availability before assuming anything is computable. Author every genuinely computable summary as a summarize.yaml metric, author the six-tab dashboard content using every one of the ten panel types at least once wherever it naturally fits the data shape, re-run the real post-processor CLI and publish, update index.json, and correct CALIBRATION-SUMMARIES.md itself if the audit found anything not actually computable. Fold in the already-written-but-unpublished purpose_mode_flow/od_flows metrics if the audit confirms they're still valid rather than re-deriving them from scratch."
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -14,7 +14,7 @@
 
 An analyst opens the public WFRC TDM Calibration Dashboard demo expecting to
 see the same six-tab outline the project's own calibration reference
-document (`docs/CALIBRATION-SUMMARIES.md`) already describes — Summary,
+document (`project-docs/CALIBRATION-SUMMARIES.md`) already describes — Summary,
 Person/Household Models, Tour Models, Mode Choice, Trip Models, and
 Network — instead of the current, narrower three-tab causal-story demo
 (Overview, Destination Choice, Transit Service). Each tab's sidebar
@@ -127,7 +127,7 @@ instance's data shape genuinely suited to its chosen panel type.
 
 ### User Story 4 - Corrected reference documentation (Priority: P3)
 
-After this feature ships, `docs/CALIBRATION-SUMMARIES.md` accurately
+After this feature ships, `project-docs/CALIBRATION-SUMMARIES.md` accurately
 reflects exactly what's real and available in the live dashboard versus
 what's genuinely not computable from `prototype_mtc`'s real output, so a
 future reader never chases a summary that was never actually built.
@@ -235,7 +235,7 @@ carries an explicit "not computable — reason" note.
 - **FR-015**: System MUST update `public/demo-dashboard-config/index.json`
   to list exactly the new six dashboard files plus the unchanged Explore
   file, removing the three deleted tabs' entries.
-- **FR-016**: System MUST update `docs/CALIBRATION-SUMMARIES.md` to
+- **FR-016**: System MUST update `project-docs/CALIBRATION-SUMMARIES.md` to
   correct any documented summary the audit found not computable, so the
   document never describes something that was never actually built.
 - **FR-017**: System MUST confirm, before finalizing dashboard content,

@@ -11,7 +11,7 @@
 Add the ninth panel type — `graphic-walker` — to `panels/registry.tsx`,
 closing out this project's originally-listed panel-type roadmap
 (CLAUDE.md's Implementation order, item 10). Confirmed directly against
-`docs/GRAMMAR.md`'s already-documented grammar (not assumed): this is an
+`project-docs/GRAMMAR.md`'s already-documented grammar (not assumed): this is an
 *ordinary* panel entry (`dataset`/`limit`/`height`/`width`), not a
 special "Explore tab" construct — "Explore tab" is purely an authoring
 convention (one full-width panel in its own dashboard file), so no
@@ -31,7 +31,7 @@ a dependency of this package at all, confirmed).
 
 The panel is a genuine snapshot: one query at mount, no reaction to
 global sidebar filters, no persisted viewer state — all three already
-documented in `docs/GRAMMAR.md`/`docs/ARCHITECTURE.md` before this
+documented in `project-docs/GRAMMAR.md`/`project-docs/ARCHITECTURE.md` before this
 feature began, confirmed rather than re-derived. Reuses the existing
 `services/duckdb.ts` connection, the existing `sqlExpander.ts`
 `$scenario.` UNION-ALL mechanism (via a new, small `buildGraphicWalkerQuery()`
@@ -73,7 +73,7 @@ other panel type.
 structure — no new top-level directory, unlike `013`'s `public/geometry/`).
 
 **Performance Goals**: No new goal beyond this app's existing baseline.
-`limit:` (default 100000, per `docs/GRAMMAR.md`'s own documented example)
+`limit:` (default 100000, per `project-docs/GRAMMAR.md`'s own documented example)
 already bounds the one-time query's row count; SC-003 asks only that
 this stay comparable to any other panel type loading a similarly-sized
 table, not a new performance target.
@@ -156,7 +156,7 @@ project's own established precedent of surfacing a planning-time
 correction rather than shipping it silently: an earlier draft of this
 plan considered extending `GraphicWalkerPanelConfig` from
 `DataBoundPanelConfigBase` (matching every data-bound panel type since
-`005`) — checked against `docs/GRAMMAR.md`'s actual documented example
+`005`) — checked against `project-docs/GRAMMAR.md`'s actual documented example
 and found wrong, since that base type requires a `metric` field this
 grammar never uses (its own dataset-binding key is `dataset`); corrected
 to extend `PanelConfigBase` directly instead, the same structural choice

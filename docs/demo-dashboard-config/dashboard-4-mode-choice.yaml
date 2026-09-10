@@ -1,0 +1,98 @@
+# 032-six-tab-demo-content — Mode Choice tab. Sections match
+# project-docs/CALIBRATION-SUMMARIES.md's own "Mode Choice Tab" submodel
+# headings exactly. Folds in the real purpose_mode_flow Sankey panel
+# from the now-dissolved dashboard-6-flows.yaml (research.md §6, FR-011)
+# under Trip Mode Choice, alongside the already-real, already-published
+# trip_mode_share/mode_share_by_period metrics.
+
+header:
+  tab: "Mode Choice"
+  title: Mode Choice
+  icon: shuffle
+
+sections:
+  - id: tour-mode-choice
+    label: "Tour Mode Choice"
+    rows: [row_tour_mode_choice]
+  - id: atwork-subtour-mode-choice
+    label: "At-Work Subtour Mode Choice"
+    rows: [row_atwork_subtour_mode]
+  - id: trip-mode-choice
+    label: "Trip Mode Choice"
+    rows: [row_trip_mode_flow, row_trip_mode_by_period]
+
+layout:
+  row_tour_mode_choice:
+    - type:       table
+      title:      "Tour Mode Share by Segment"
+      metric:     tour_mode_share_summary
+      sort:       { column: tours, order: desc }
+      pagination: 25
+      searchable: true
+      columns:
+        # 038-all-loaded-scenarios: unpinned — the $scenario union adds this
+        # discriminator column so the table reads as a per-scenario comparison.
+        - { field: scenario, label: "Scenario" }
+        - { field: primary_purpose,   label: "Tour Purpose" }
+        - { field: tour_mode,         label: "Mode" }
+        - { field: auto_sufficiency,  label: "Auto Sufficiency" }
+        - { field: person_type,       label: "Person Type" }
+        - { field: sex,               label: "Sex" }
+        - { field: income_group,      label: "Income Group" }
+        - { field: tours,             label: "Tours", format: ",.0f" }
+      width: 1.0
+
+  row_atwork_subtour_mode:
+    - type:       recharts
+      title:      "At-Work Subtour Mode Share by Purpose"
+      metric:     atwork_subtour_mode_summary
+      # 038: stays pinned — `series` is committed to the mode split, and
+      # recharts has no faceting for a second dimension. Scope stated
+      # below; the other Mode Choice panels compare scenarios.
+      scenario:   activitysim-baseline
+      description: "Baseline scenario, split by mode. Compare runs on the other Mode Choice panels via the Scenarios tab."
+      chart_type: bar
+      x:          primary_purpose
+      y:          tours
+      series:     tour_mode
+      height:     400
+      width:      1.0
+
+  # Real trip counts flowing from purpose to grouped mode — the same
+  # metric/panel dashboard-6-flows.yaml (031, dissolved) already authored
+  # correctly; re-created here, now actually publishable (FR-011).
+  row_trip_mode_flow:
+    - type:   sankey
+      title:  "Trip Purpose to Mode Flow"
+      metric: purpose_mode_flow
+      # 038: unpinned. A Sankey has no per-scenario split — the $scenario
+      # union sums flows across the active scenarios, so this reads as a
+      # COMBINED purpose→mode flow that still responds to the Switch
+      # (toggle down to one scenario to see that run alone).
+      description: "Combined flow across all active scenarios. Toggle scenarios on the Scenarios tab to isolate one run."
+      height: 400
+      width:  1.0
+      source: primary_purpose
+      target: major_trip_mode
+      value:  trips
+      color_scheme: Tableau10
+
+  row_trip_mode_by_period:
+    - type:    plotly
+      title:   "Trip Mode Share by Time-of-Day Period (WALK_LOC)"
+      metric:  mode_share_by_period
+      height:  400
+      width:   1.0
+      # 038: unpinned (was an explicit 3-scenario list) — the dynamic
+      # $scenario union already splits per scenario via `name: $scenario`
+      # below, and now responds to the Scenarios-tab Switch.
+      filter:  { trip_mode: WALK_LOC }
+      traces:
+        - type: bar
+          x:    $metric.time_of_day_period
+          y:    $metric.share
+          name: $scenario
+      layout:
+        xaxis: { title: "Time of Day Period" }
+        yaxis: { title: "WALK_LOC Share of Trips", tickformat: ".1%" }
+        showlegend: true

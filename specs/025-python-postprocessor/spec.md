@@ -207,7 +207,7 @@ polish needed to verify this.
 - **FR-001**: The pipeline MUST parse a `summarize.yaml` file into its four
   documented sections — `sources`, `mappings`, `bins`, `sql_fragments` — plus
   a `metrics` list, matching the grammar already documented in
-  `docs/GRAMMAR.md`, with no new top-level section invented.
+  `project-docs/GRAMMAR.md`, with no new top-level section invented.
 - **FR-002**: For each entry under `sources:`, the pipeline MUST load the
   named file (resolved relative to a caller-supplied raw-data directory)
   into a queryable table, selecting how to read it purely from the file's
@@ -221,7 +221,7 @@ polish needed to verify this.
   according to that bin's declared `type`, supporting all four documented
   types (`manual_breaks`, `quantiles`, `spaced_intervals`, `equal_intervals`)
   with the same bucket semantics already specified for each type in
-  `docs/GRAMMAR.md`.
+  `project-docs/GRAMMAR.md`.
 - **FR-005**: The pipeline MUST expand every `$sql.<name>` reference to the
   literal text of that fragment from `sql_fragments:`, substituted verbatim
   (no re-interpretation of its contents).
@@ -275,7 +275,7 @@ polish needed to verify this.
   `.sql`) whose expanded result becomes exactly one output Parquet file.
 - **Scenario output**: the folder this pipeline produces — a `summary/`
   subfolder of one Parquet file per metric, plus a generated
-  `manifest.yaml` — matching the shape `docs/GRAMMAR.md` already documents
+  `manifest.yaml` — matching the shape `project-docs/GRAMMAR.md` already documents
   as what the dashboard frontend expects to find in a scenario folder.
 
 ## Success Criteria *(mandatory)*
@@ -311,11 +311,11 @@ polish needed to verify this.
   `persons`, `tours`, `trips`, `land_use`, `accessibility`, `checkpoints`,
   `joint_tour_participants`), never Parquet natively. This pipeline reads
   whichever filename a modeler's own `sources:` entry names (matching
-  `docs/GRAMMAR.md`'s own example, which shows plain names like
+  `project-docs/GRAMMAR.md`'s own example, which shows plain names like
   `trips.csv` with no enforced prefix) — it does not assume or require
   ActivitySim's `final_` prefix convention specifically.
 - **OMX skim and geometry conversion are separate, upstream concerns**:
-  `docs/GRAMMAR.md`'s own `sources:` section already documents skims and
+  `project-docs/GRAMMAR.md`'s own `sources:` section already documents skims and
   zone geometry as arriving pre-converted to Parquet/GeoParquet by their
   own separate conversion paths ("OMX skims: converted via DuckDB h5db
   extension"; "Geometry: converted to GeoParquet via DuckDB spatial or
@@ -326,7 +326,7 @@ polish needed to verify this.
 - **CLI shape**: implemented as a new subcommand of the existing
   `wftdm-dashboard` CLI (`wftdm-dashboard summarize ...`), joining the
   already-documented `serve`/`here`/`init` subcommands in one discoverable
-  entry point, rather than a separate standalone script. `docs/GRAMMAR.md`
+  entry point, rather than a separate standalone script. `project-docs/GRAMMAR.md`
   currently says summarize.yaml "runs via `uv run summarize.py`" — that
   line will need a documentation correction once this ships; it is not a
   functional requirement of this feature.

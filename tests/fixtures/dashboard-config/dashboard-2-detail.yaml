@@ -37,7 +37,7 @@ layout:
       width: 0.5
 
   # 014-graphic-walker-panel — the ninth and last originally-listed panel
-  # type. Bound to trip_mode_share, the same dataset name docs/GRAMMAR.md's
+  # type. Bound to trip_mode_share, the same dataset name project-docs/GRAMMAR.md's
   # own worked example already uses, and a table generate.py already
   # writes into the "good" scenario — no fixture data changes needed
   # (research.md §8). `scenario: good_scenario` pinned on the two main

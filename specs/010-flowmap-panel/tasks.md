@@ -52,7 +52,7 @@ Project Structure (no new top-level directory).
 - [X] T003 [P] Add an `od_flows`-shaped fixture table to
       `tests/fixtures/generate.py` with `orig_taz`/`orig_lat`/`orig_lon`/
       `dest_taz`/`dest_lat`/`dest_lon`/`trips` columns (the corrected
-      `docs/GRAMMAR.md` grammar), including: a duplicate (origin,
+      `project-docs/GRAMMAR.md` grammar), including: a duplicate (origin,
       destination) pair (summing coverage), a non-positive `trips` row,
       and a row with a missing/null coordinate (exclusion coverage) —
       mirroring `008-sankey-panel`'s own fixture-design discipline.
@@ -444,7 +444,7 @@ own "Map panels" pinned-versions list.
    2026-08-30) — every panel type, every deployment mode, not introduced
    by this feature. Confirmed against DuckDB's own docs that a real fix
    exists (`SET custom_extension_repository` to a self-hosted mirror) but
-   isn't implemented. `docs/ARCHITECTURE.md`'s, `CLAUDE.md`'s, and
+   isn't implemented. `project-docs/ARCHITECTURE.md`'s, `CLAUDE.md`'s, and
    `README.md`'s "no internet required" claims for `wftdm-dashboard here`
    were all overstated by exactly this gap and have been corrected with
    an honest caveat rather than left as-is.

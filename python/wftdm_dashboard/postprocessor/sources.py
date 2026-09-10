@@ -5,7 +5,7 @@ Mirrors services/duckdb.ts's own createViewOverParquet() pattern (research.md
 Unlike the browser side, this pipeline processes exactly one scenario's raw
 data per run in its own fresh connection, so a source is registered
 *unprefixed* — a source named `trips` becomes a view literally named
-`trips`, matching every real metric SQL in docs/GRAMMAR.md, which already
+`trips`, matching every real metric SQL in project-docs/GRAMMAR.md, which already
 references sources this way (`FROM trips t`).
 """
 

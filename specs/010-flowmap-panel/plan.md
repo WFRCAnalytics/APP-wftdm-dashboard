@@ -21,7 +21,7 @@ summed flows, applying `008`'s own real link-key-bug lesson as a
 precedent to avoid rather than relearn. `FlowMapPanel.tsx` creates the
 map/overlay exactly once on mount, updates via `overlay.setProps()` on
 data/filter change, and tears down via `map.remove()` on unmount — per
-`docs/SPEC.md`'s own documented wiring. Resize handling follows the real,
+`project-docs/SPEC.md`'s own documented wiring. Resize handling follows the real,
 production `APP-Commute-Explorer` reference app's own explicit
 `ResizeObserver` pattern rather than relying solely on MapLibre's native
 auto-resize (research.md §2); whether the map survives 004's
@@ -51,7 +51,7 @@ dependencies — verified, not assumed, and not separately pinned.
 existing query pipeline; no new persisted data or config file type
 (constitution Principle VII). Zone-centroid resolution is entirely an
 offline post-processor concern this feature never touches (spec.md
-Grammar findings #3; `docs/CALIBRATION-SUMMARIES.md` flags the future
+Grammar findings #3; `project-docs/CALIBRATION-SUMMARIES.md` flags the future
 obligation).
 
 **Testing**: Vitest (`panels/flowmapData.ts`'s `buildFlowmapData` —
@@ -167,7 +167,7 @@ code or tests, not a constitutional concern. Principle VIII (Reuse Proven
 Reference Implementations) is now genuinely exercised for the first time
 among the panel-type features, not merely N/A — `APP-Commute-Explorer`'s
 own `FlowLayer.jsx`/`MapView.jsx` were fetched and read directly, both
-for the `docs/GRAMMAR.md` correction and this plan's own resize/
+for the `project-docs/GRAMMAR.md` correction and this plan's own resize/
 relocation research, and their proven patterns (explicit `ResizeObserver`
 handling, `locMap`-style id-keyed location dedup) carried directly into
 `flowmapData.ts`/`FlowMapPanel.tsx` rather than being re-derived.

@@ -79,7 +79,7 @@ export interface FlowMapPanelConfig extends DataBoundPanelConfigBase {
   basemap?: BasemapSelection            // NEW (FR-004)
   /** Set only by dashboardRenderer.tsx as it constructs each row — never
    * authored in YAML directly (no `_`-prefixed key exists in
-   * docs/GRAMMAR.md and none is being added; this is an internal
+   * project-docs/GRAMMAR.md and none is being added; this is an internal
    * plumbing field, not a new grammar surface). Carries the tab's
    * default_basemap down to the one place resolveEffectiveBasemap is
    * actually called (FlowMapPanel itself), without breaking the "single

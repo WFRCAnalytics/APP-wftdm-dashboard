@@ -162,7 +162,7 @@ per-scenario problem).
 ## §5. Deployment-mode detection
 
 **Decision**: a small exported `isLocalDeployment(): boolean` function
-(`window.location.hostname === 'localhost'`, per `docs/SPEC.md`'s own
+(`window.location.hostname === 'localhost'`, per `project-docs/SPEC.md`'s own
 documented check) lives in `src/scenario/scenarioManager.ts` — the only
 consumer is this feature's own UI-visibility gate (FR-001), and no other
 module needs it yet, so it doesn't warrant a separate file. If a future

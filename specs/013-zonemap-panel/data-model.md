@@ -2,7 +2,7 @@
 
 ## `ZoneMapPanelConfig` (new — `src/layout/types.ts`)
 
-Extends **both** `DataBoundPanelConfigBase` (like every prior data-bound panel type — `docs/GRAMMAR.md`'s `type: zonemap` grammar always queries a metric) **and** the already-generic `MapRenderingPanelConfig` (`011-basemap-style-system`'s own interface, whose doc comment already anticipates this exact type: "today just `FlowMapPanelConfig`; a future `ZoneMapPanelConfig` extends this same interface unchanged"). Field-mapping keys (`boundaries_id`, `metric_id`, `column`) are author-configurable, naming literal columns already present in the geometry/queried result — not `$metric.`-prefixed placeholders (spec.md Grammar findings #3), the same convention `SankeyPanelConfig`/`FlowMapPanelConfig` already use.
+Extends **both** `DataBoundPanelConfigBase` (like every prior data-bound panel type — `project-docs/GRAMMAR.md`'s `type: zonemap` grammar always queries a metric) **and** the already-generic `MapRenderingPanelConfig` (`011-basemap-style-system`'s own interface, whose doc comment already anticipates this exact type: "today just `FlowMapPanelConfig`; a future `ZoneMapPanelConfig` extends this same interface unchanged"). Field-mapping keys (`boundaries_id`, `metric_id`, `column`) are author-configurable, naming literal columns already present in the geometry/queried result — not `$metric.`-prefixed placeholders (spec.md Grammar findings #3), the same convention `SankeyPanelConfig`/`FlowMapPanelConfig` already use.
 
 ```ts
 export interface ComparisonDiff {

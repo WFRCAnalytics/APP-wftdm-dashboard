@@ -16,7 +16,7 @@ declare global {
 // (Summary/Person-Household Models/Tour Models/Mode Choice/Trip Models/
 // Network). Every old test referencing a deleted tab name or panel title
 // is replaced with an equivalent real assertion against the new structure.
-// The Explore tab (dashboard-5-explore.yaml) is untouched by that feature
+// The Explore tab (dashboard-7-explore.yaml) is untouched by that feature
 // and is exercised here only by the six-tab structure test, confirming it
 // still exists and its content is unaffected.
 //
@@ -44,7 +44,7 @@ const REAL_DEMO_DASHBOARD_INDEX = {
     'dashboard-4-mode-choice.yaml',
     'dashboard-5-trip-models.yaml',
     'dashboard-6-network.yaml',
-    'dashboard-5-explore.yaml',
+    'dashboard-7-explore.yaml',
   ],
   title: 'WFRC TDM Calibration Dashboard',
   logoUrl:

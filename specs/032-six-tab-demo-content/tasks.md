@@ -20,7 +20,7 @@ description: "Task list for regenerating real ActivitySim demo content into a co
 
 ## Path Conventions
 
-Single project (existing repo structure) — no new top-level directory. All content changes land in `summarize.yaml`, `public/demo-dashboard-config/`, `public/demo-scenarios/`, `docs/CALIBRATION-SUMMARIES.md`, `python/tests/`, and `tests/integration/`.
+Single project (existing repo structure) — no new top-level directory. All content changes land in `summarize.yaml`, `public/demo-dashboard-config/`, `public/demo-scenarios/`, `project-docs/CALIBRATION-SUMMARIES.md`, `python/tests/`, and `tests/integration/`.
 
 ---
 
@@ -127,15 +127,15 @@ Single project (existing repo structure) — no new top-level directory. All con
 
 ## Phase 6: User Story 4 - Corrected reference documentation (Priority: P3)
 
-**Goal**: `docs/CALIBRATION-SUMMARIES.md` accurately reflects the live dashboard — every computable summary matches, every real gap is explicitly marked.
+**Goal**: `project-docs/CALIBRATION-SUMMARIES.md` accurately reflects the live dashboard — every computable summary matches, every real gap is explicitly marked.
 
-**Independent Test**: Read `docs/CALIBRATION-SUMMARIES.md` after this feature ships; every entry either matches a real, present dashboard panel, or carries an explicit "not computable — reason" note.
+**Independent Test**: Read `project-docs/CALIBRATION-SUMMARIES.md` after this feature ships; every entry either matches a real, present dashboard panel, or carries an explicit "not computable — reason" note.
 
 **Depends on**: Phase 4 (the audit results being final).
 
 ### Implementation for User Story 4
 
-- [X] T032 [US4] Apply all three corrections from `contracts/calibration-summaries-corrections.md` to `docs/CALIBRATION-SUMMARIES.md` — **DONE**: 6 real gaps each get a blockquote note with their specific real reason (Work from Home★, Telecommute Frequency★, Transit Pass Subsidy, Transit Pass Ownership, and a combined Screenline Volumes vs Observed AADT/VMT by Facility Type note in the Network Tab section); "Person type" now lists the real 8th `ptype` value (pre-school child); "Geography segmentation" gained a real-data-correction blockquote stating this pipeline's real TAZ/DISTRICT/SD-only coverage.
+- [X] T032 [US4] Apply all three corrections from `contracts/calibration-summaries-corrections.md` to `project-docs/CALIBRATION-SUMMARIES.md` — **DONE**: 6 real gaps each get a blockquote note with their specific real reason (Work from Home★, Telecommute Frequency★, Transit Pass Subsidy, Transit Pass Ownership, and a combined Screenline Volumes vs Observed AADT/VMT by Facility Type note in the Network Tab section); "Person type" now lists the real 8th `ptype` value (pre-school child); "Geography segmentation" gained a real-data-correction blockquote stating this pipeline's real TAZ/DISTRICT/SD-only coverage.
 - [X] T033 [US4] Manual spot-check: pick 10 random `CALIBRATION-SUMMARIES.md` entries and confirm each matches the live dashboard exactly (SC-005) — **DONE**. Spot-checked: Auto Ownership★, Work from Home★ (gap, absent from dashboard), School Location, CDAP, Trip Mode Choice★, Trip Destination★, Screenline Volumes vs Observed AADT (gap, absent), Land Use/Socioeconomics, Accessibility, Zone Trip Ends by Mode — all 10 consistent between the doc and the live six-tab dashboard, zero mismatches.
 
 **Checkpoint**: Reference documentation matches reality exactly.

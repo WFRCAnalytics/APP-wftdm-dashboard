@@ -61,5 +61,5 @@
 ## Non-goals
 
 - No change to `buildComparisonDiffQuery()`, `compare_on`, or the `ComparisonDiff`/`ComparisonCapablePanelConfig` types (`panelQuery.ts`/`layout/types.ts`) — `ValueBoxPanelConfig` does not mix in `ComparisonCapablePanelConfig`; `baseline_trend` is its own, separate, smaller shape (research.md §3).
-- No multi-scenario "one column per scenario" rendering (`docs/GRAMMAR.md`'s stale, unimplemented note) — out of scope, unrelated pre-existing gap (research.md §5).
+- No multi-scenario "one column per scenario" rendering (`project-docs/GRAMMAR.md`'s stale, unimplemented note) — out of scope, unrelated pre-existing gap (research.md §5).
 - No new global filter/input binding for either trend mode beyond what the panel's own existing `filter`/`scenario`/`scenarios` fields already provide.

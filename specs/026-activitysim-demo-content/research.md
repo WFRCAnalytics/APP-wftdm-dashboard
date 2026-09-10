@@ -4,7 +4,7 @@ All items below were resolved directly against real, installed source (this
 project's own `python/wftdm_dashboard/postprocessor/expand.py`,
 `services/scenarioDiscovery.ts`, `services/yamlLoader.ts`) or real generated
 data from this session's earlier ActivitySim runs — not assumed from
-`docs/GRAMMAR.md`'s prose alone, which was independently confirmed to contain
+`project-docs/GRAMMAR.md`'s prose alone, which was independently confirmed to contain
 at least one illustrative-only (non-ActivitySim) column-naming convention
 (spec.md Research Finding #3).
 
@@ -14,7 +14,7 @@ at least one illustrative-only (non-ActivitySim) column-naming convention
 `final_*.csv` filenames ActivitySim actually writes — `final_households.csv`,
 `final_persons.csv`, `final_tours.csv`, `final_trips.csv`,
 `final_land_use.csv` — not the shorter `households.csv`-style names
-`docs/GRAMMAR.md`'s own worked example uses.
+`project-docs/GRAMMAR.md`'s own worked example uses.
 
 **Rationale**: `contracts/cli.md` (025-python-postprocessor) confirms
 `sources:` paths are relative to `--input`, and `--input` is pointed directly
@@ -25,7 +25,7 @@ this session). Renaming or copying them to shorter names before running the
 CLI would be an unnecessary extra step with no benefit — the CLI takes any
 real filename.
 
-**Alternatives considered**: Symlinking/copying to `docs/GRAMMAR.md`-style
+**Alternatives considered**: Symlinking/copying to `project-docs/GRAMMAR.md`-style
 short names for cosmetic consistency with the doc's example — rejected as
 pure busywork; the doc's own example names are already confirmed illustrative
 in Research Finding #3, so there is no consistency worth preserving.
@@ -41,7 +41,7 @@ generated SQL is `WHEN col < breaks[i+1] THEN labels[i]` for `i` in
 `breaks[1..len(labels)-1]` are ever actually used in the generated SQL;
 `breaks[0]` (and any entry beyond `breaks[len(labels)-1]`) is purely
 documentary. Confirming this against real code — rather than trusting
-`docs/GRAMMAR.md`'s two worked examples, which use inconsistent
+`project-docs/GRAMMAR.md`'s two worked examples, which use inconsistent
 breaks-vs-labels lengths relative to each other — resolved which entries are
 load-bearing before authoring this feature's own bin. The four load-bearing
 boundaries (5, 9, 14, 18) are taken directly from this session's own

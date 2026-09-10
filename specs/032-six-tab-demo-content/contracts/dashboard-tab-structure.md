@@ -62,13 +62,13 @@ layout:
         content: |
           ActivitySim's `work_from_home` component is not enabled in this
           project's real `prototype_mtc` configuration, so no real data
-          exists for this submodel. See `docs/CALIBRATION-SUMMARIES.md`.
+          exists for this submodel. See `project-docs/CALIBRATION-SUMMARIES.md`.
 ```
 
 ## Section-to-submodel mapping rule
 
 Every `sections:` entry's `label` MUST be the exact submodel heading text
-`docs/CALIBRATION-SUMMARIES.md` uses for that tab (e.g. "Auto Ownership",
+`project-docs/CALIBRATION-SUMMARIES.md` uses for that tab (e.g. "Auto Ownership",
 not "Auto Ownership Model" or "Vehicle Availability") — `spec.md` FR-003's
 own literal requirement, verifiable by a direct text diff between the two
 documents' heading lists.
@@ -85,7 +85,7 @@ that explains why.)
 ## Panel-to-metric binding
 
 Every panel's `dataset:` (or `metric:`/`x`/`y`/`value` fields, per each
-panel type's own existing grammar in `docs/GRAMMAR.md`) MUST reference
+panel type's own existing grammar in `project-docs/GRAMMAR.md`) MUST reference
 one of: an existing, already-real metric name, or one of the new metric
 names in `data-model.md` §3 — never a literal inline value. This is the
 mechanical, checkable form of FR-008's "no fabricated/placeholder value"

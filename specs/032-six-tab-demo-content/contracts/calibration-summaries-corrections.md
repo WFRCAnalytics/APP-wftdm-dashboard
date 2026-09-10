@@ -1,4 +1,4 @@
-# Contract: `docs/CALIBRATION-SUMMARIES.md` Corrections
+# Contract: `project-docs/CALIBRATION-SUMMARIES.md` Corrections
 
 Three real corrections, all traced to `research.md` §2/§8. Applied as
 direct edits to the existing document — no restructuring of its existing

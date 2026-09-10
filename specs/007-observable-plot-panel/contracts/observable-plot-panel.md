@@ -30,7 +30,7 @@ export interface ResolvedObservablePlotEncoding {
 /**
  * x/y/fill/stroke/facet_x/facet_y are literal column names — NOT
  * $metric.<column>-prefixed (research.md §4, confirmed against
- * docs/GRAMMAR.md's own observable-plot examples, in explicit contrast to
+ * project-docs/GRAMMAR.md's own observable-plot examples, in explicit contrast to
  * type: plotly's traces). Only keys actually present on `config` are
  * copied through, so Plot's own per-mark defaults apply to anything the
  * author omitted.
@@ -82,7 +82,7 @@ const ALL_FILTERS: ['*'] = ['*']
 
 /** Which view an input's own options query (and the panel's own metric
  * query) resolves to — config.scenario (singular) if set, else the first
- * currently active scenario (research.md §9: docs/GRAMMAR.md's `inputs:`
+ * currently active scenario (research.md §9: project-docs/GRAMMAR.md's `inputs:`
  * shape has no separate `source:`, so there is exactly one metric per
  * panel to draw options from; picking any one active scenario is a
  * deliberate simplification, not expected to differ across scenarios of
@@ -533,7 +533,7 @@ render at the correct size (FR-007), not `usePanelExpandHost` itself.
   `zonemap`/`graphic-walker` remain deferred, unchanged from prior
   panel-type features' stated boundaries.
 - No `all_option`/"select all" semantics for panel-local `inputs:` —
-  `docs/GRAMMAR.md`'s documented `inputs:` shape has no such field
+  `project-docs/GRAMMAR.md`'s documented `inputs:` shape has no such field
   (data-model.md's `ObservablePlotInputConfig`); the `$inputs.` line-drop
   extension in `sqlExpander.ts` exists for consistency with `$filters.`'s
   existing treatment, not because any current grammar/fixture exercises it.

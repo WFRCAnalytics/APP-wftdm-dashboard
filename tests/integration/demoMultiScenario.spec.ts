@@ -32,7 +32,7 @@ const REAL_DEMO_DASHBOARD_INDEX = {
     'dashboard-4-mode-choice.yaml',
     'dashboard-5-trip-models.yaml',
     'dashboard-6-network.yaml',
-    'dashboard-5-explore.yaml',
+    'dashboard-7-explore.yaml',
   ],
 }
 const REAL_DEMO_SCENARIOS_INDEX = [

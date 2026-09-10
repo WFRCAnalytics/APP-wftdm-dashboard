@@ -213,7 +213,7 @@ test.describe('User Story 1 - Analyst loads a local scenario folder from the hos
 
     // "Total Households"/"Total Trips" (row_kpis) are unpinned — no
     // scenario:/scenarios: key — so their query unions across every
-    // active scenario via $scenario (docs/SPEC.md).
+    // active scenario via $scenario (project-docs/SPEC.md).
     await expect(panelCard(page, 'Total Households')).toBeVisible()
 
     await loadAndWait(page, 't016_local')
@@ -447,7 +447,7 @@ test.describe('User Story 2 - Unsupported browser sees a clear, non-broken contr
     // Deliberately bypasses playwright.config.js's configured baseURL
     // (127.0.0.1 — see that file's own comment on why it's distinct from
     // 'localhost') to exercise isLocalDeployment()'s real
-    // hostname === 'localhost' check (docs/SPEC.md) against an actual
+    // hostname === 'localhost' check (project-docs/SPEC.md) against an actual
     // 'localhost' navigation, not a simulated one — the same dev server,
     // reached by its other bound-interface hostname.
     await page.goto('http://localhost:5199/APP-wftdm-dashboard/')

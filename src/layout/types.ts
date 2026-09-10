@@ -42,7 +42,7 @@ export interface PanelConfigBase {
 // (006-markdown-panel, research.md §1).
 export interface DataBoundPanelConfigBase extends PanelConfigBase {
   metric: string
-  // Two documented forms (docs/GRAMMAR.md's common-keys table: "filter:
+  // Two documented forms (project-docs/GRAMMAR.md's common-keys table: "filter:
   // <inline | $ref>"), not a bolt-on for this feature — valuebox/plotly/
   // table only ever exercised the bare $ref string form until
   // 007-observable-plot-panel, whose own filter: examples are the first to
@@ -57,7 +57,7 @@ export interface DataBoundPanelConfigBase extends PanelConfigBase {
   // bypassing the $scenario.x union entirely. scenarios (plural):
   // override which subset of the globally-active scenarios this panel
   // unions over (still uses $scenario.x). Both real, distinct, documented
-  // grammar (docs/GRAMMAR.md) — resolution behavior for each lives in
+  // grammar (project-docs/GRAMMAR.md) — resolution behavior for each lives in
   // panels/panelQuery.ts, not here (this file is parsing only).
   scenario?: string
   scenarios?: string[]
@@ -116,7 +116,7 @@ export interface PlotlyPanelConfig
   reference_lines?: unknown[]
 }
 
-/** One entry in a `table` panel's `columns:` list (docs/GRAMMAR.md).
+/** One entry in a `table` panel's `columns:` list (project-docs/GRAMMAR.md).
  * 005-table-panel, data-model.md's TableColumnConfig. */
 export interface TableColumnConfig {
   field: string
@@ -141,7 +141,7 @@ export interface TablePanelConfig
 
 /**
  * The fourth panel type — no metric/filter/scenario/scenarios at all
- * (docs/GRAMMAR.md's type: markdown grammar has no data binding;
+ * (project-docs/GRAMMAR.md's type: markdown grammar has no data binding;
  * 006-markdown-panel, data-model.md). `content` is optional at the type
  * level because a missing/empty/whitespace-only value is a defined,
  * non-crashing empty state (FR-006), not a parse error.
@@ -170,7 +170,7 @@ export interface ObservablePlotInputConfig {
 
 /**
  * The fifth panel type — extends DataBoundPanelConfigBase (unlike
- * MarkdownPanelConfig): docs/GRAMMAR.md's type: observable-plot grammar
+ * MarkdownPanelConfig): project-docs/GRAMMAR.md's type: observable-plot grammar
  * always queries a metric (007-observable-plot-panel, research.md §7).
  * x/y/fill/stroke/facet_x/facet_y are literal column names from the
  * queried result set — NOT $metric.<column>-prefixed like
@@ -201,7 +201,7 @@ export interface ObservablePlotPanelConfig
 
 /**
  * The sixth and final originally-listed panel type — extends
- * DataBoundPanelConfigBase (like ObservablePlotPanelConfig): docs/GRAMMAR.md's
+ * DataBoundPanelConfigBase (like ObservablePlotPanelConfig): project-docs/GRAMMAR.md's
  * type: sankey grammar always queries a metric (008-sankey-panel,
  * data-model.md). source/target/value are author-configurable field-mapping
  * keys naming literal columns in the queried result set — NOT
@@ -261,7 +261,7 @@ export interface RechartsPanelConfig
 /**
  * The seventh panel type, and the first to render a real map —
  * 010-flowmap-panel. Extends DataBoundPanelConfigBase like every other
- * data-bound panel type; docs/GRAMMAR.md's type: flowmap grammar always
+ * data-bound panel type; project-docs/GRAMMAR.md's type: flowmap grammar always
  * queries a metric. origin/origin_lat/origin_lon/destination/dest_lat/
  * dest_lon/value are author-configurable field-mapping keys naming
  * literal columns already present in the queried result set — the same
@@ -293,7 +293,7 @@ export interface FlowMapPanelConfig extends DataBoundPanelConfigBase {
    * override — a built-in preset name or a custom composition. */
   basemap?: BasemapSelection
   /** Set only by dashboardRenderer.tsx as it constructs each row — never
-   * authored in YAML directly (no such key exists in docs/GRAMMAR.md's
+   * authored in YAML directly (no such key exists in project-docs/GRAMMAR.md's
    * panel-level grammar and none is being added there). Carries the
    * tab's default_basemap down to the one place resolveEffectiveBasemap
    * is actually called (FlowMapPanel itself), without adding a second
@@ -303,7 +303,7 @@ export interface FlowMapPanelConfig extends DataBoundPanelConfigBase {
 
 /**
  * The eighth and final originally-listed panel type — 013-zonemap-panel.
- * Extends DataBoundPanelConfigBase (docs/GRAMMAR.md's type: zonemap
+ * Extends DataBoundPanelConfigBase (project-docs/GRAMMAR.md's type: zonemap
  * grammar always queries a metric) AND MapRenderingPanelConfig below
  * (that interface's own doc comment already anticipated this exact type
  * unchanged). boundaries_id/metric_id/column are author-configurable
@@ -374,13 +374,13 @@ export interface ZoneMapPanelConfig
 /**
  * The ninth and last originally-listed panel type — 014-graphic-walker-panel.
  * Extends PanelConfigBase directly, NOT DataBoundPanelConfigBase — that base
- * type requires a `metric` field, but docs/GRAMMAR.md's type: graphic-walker
+ * type requires a `metric` field, but project-docs/GRAMMAR.md's type: graphic-walker
  * grammar has no `metric:` key at all (its own dataset-binding key is named
  * `dataset`, a different name with the same role) — the same structural
  * reason MarkdownPanelConfig also extends PanelConfigBase directly
  * (data-model.md §1, research.md §1; caught and corrected during
  * /speckit-plan from an earlier draft that assumed DataBoundPanelConfigBase).
- * scenario/fields are this feature's own additions beyond docs/GRAMMAR.md's
+ * scenario/fields are this feature's own additions beyond project-docs/GRAMMAR.md's
  * documented example, both optional and both reusing this project's
  * existing config vocabulary (research.md §1).
  */
@@ -394,7 +394,7 @@ export interface GraphicWalkerFieldOverride {
 export interface GraphicWalkerPanelConfig extends PanelConfigBase {
   type: 'graphic-walker'
   dataset: string
-  limit?: number // default 100000, per docs/GRAMMAR.md's own example
+  limit?: number // default 100000, per project-docs/GRAMMAR.md's own example
   scenario?: string // optional — pins to one scenario's view; omit for
   // the existing multi-scenario $scenario. union (research.md §6)
   fields?: GraphicWalkerFieldOverride[] // optional — overrides specific

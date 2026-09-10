@@ -92,7 +92,7 @@ before planning began:**
 
 - Initial research checked shadcn's own official `ui.shadcn.com` registry
   (no color-picker item) and this project's own established design-
-  reference repo, `gropaul/dash-ui` (`docs/PIPELINE.md`'s on-record
+  reference repo, `gropaul/dash-ui` (`project-docs/PIPELINE.md`'s on-record
   inspiration source — checked directly via its real GitHub file tree,
   confirmed no color-picker file). Both checks were real, but incomplete —
   they missed a third-party registry the user then pointed to directly:

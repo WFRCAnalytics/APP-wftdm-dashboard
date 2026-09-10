@@ -22,7 +22,7 @@ Verified directly against each real package's published `package.json`
   peer requirement), so they resolve transitively via the
   already-pinned `@deck.gl/core`. No new explicit pin needed.
 - **`@deck.gl/mapbox@9.0.0`**'s real exports confirm `MapboxOverlay` +
-  `MapboxOverlayProps` exist exactly as `docs/SPEC.md`'s wiring snippet
+  `MapboxOverlayProps` exist exactly as `project-docs/SPEC.md`'s wiring snippet
   uses them; its own `peerDependencies` (`@deck.gl/core`, `@luma.gl/core`
   `^9.0.0`) are likewise already satisfied. No `maplibre-gl` peer
   dependency is declared on `@deck.gl/mapbox` itself — it's generically
@@ -132,11 +132,11 @@ line is missing from the map.
 
 Confirmed directly against the real, published `FlowmapLayerProps` type
 (`unpkg.com/@flowmap.gl/layers@9.3.0/dist/FlowmapLayer.d.ts`), not
-assumed from `docs/SPEC.md`'s illustrative snippet alone (whose
+assumed from `project-docs/SPEC.md`'s illustrative snippet alone (whose
 `getLocationLat`/`getFlowOriginId`/etc. accessor names are correct, but
 which doesn't show the boolean/numeric option props at all):
 
-| `docs/GRAMMAR.md` key | Real `FlowmapLayerProps` field |
+| `project-docs/GRAMMAR.md` key | Real `FlowmapLayerProps` field |
 |---|---|
 | `clustering` | `clusteringEnabled: boolean` |
 | `clustering_auto` | `clusteringAuto: boolean` |
@@ -153,7 +153,7 @@ have.
 ## §7. Color
 
 `FlowmapLayerProps` does have a real `colorScheme?: string | string[]`
-prop — but `docs/GRAMMAR.md`'s `type: flowmap` grammar has no
+prop — but `project-docs/GRAMMAR.md`'s `type: flowmap` grammar has no
 corresponding author-facing key (Grammar findings #5, spec.md). Decision
 unchanged from the spec's own Assumption: this prop is left unset,
 letting flowmap.gl's own internal default apply — the same honestly-
@@ -212,14 +212,14 @@ fix exists (`SET custom_extension_repository` redirecting to a
 same-origin, locally bundled mirror of the extension `.wasm` file,
 mirroring `services/duckdb.ts`'s existing self-hosting of the DuckDB-WASM
 engine binaries themselves) but is not implemented — out of scope for
-this feature to build. `docs/ARCHITECTURE.md`'s own "no internet
+this feature to build. `project-docs/ARCHITECTURE.md`'s own "no internet
 required" claim for `wftdm-dashboard here` was overstated by exactly
 this gap and has been corrected with the same finding, not left silently
 inconsistent with what this research file already knew.
 every external request the page happens to make.
 
 **Real basemap tiles are explicitly out of this feature's scope, not
-silently assumed away**: `docs/GRAMMAR.md`'s `type: flowmap` grammar has
+silently assumed away**: `project-docs/GRAMMAR.md`'s `type: flowmap` grammar has
 no `style:`/`basemap:` key at all — there is no author-facing way to
 configure a real tile source today. Both real reference apps use their
 own external tile providers (CARTO GL vector tiles, AGRC hillshade) with
@@ -233,7 +233,7 @@ first.
 
 ## §10. `MapboxOverlay` non-interleaved mode
 
-Confirmed via `docs/SPEC.md`'s own wiring snippet
+Confirmed via `project-docs/SPEC.md`'s own wiring snippet
 (`new MapboxOverlay({ interleaved: false, layers: [] })`) — non-
 interleaved mode renders deck.gl layers in their own canvas, composited
 above the MapLibre canvas, rather than interleaved into MapLibre's own

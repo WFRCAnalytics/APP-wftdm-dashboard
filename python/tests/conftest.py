@@ -39,7 +39,7 @@ def raw_activitysim_dir(tmp_path):
     """Writes a tiny, realistically-shaped raw ActivitySim output directory.
 
     Returns the directory Path. `zones.parquet` is written as *already*
-    Parquet, matching docs/GRAMMAR.md's own documented `sources:` shape
+    Parquet, matching project-docs/GRAMMAR.md's own documented `sources:` shape
     (some sources arrive pre-converted, not every source is CSV).
     """
     raw_dir = tmp_path / "raw"

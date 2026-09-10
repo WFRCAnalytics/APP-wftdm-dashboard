@@ -7,7 +7,7 @@
 ## 1. Test fixture gap — resolution
 
 **Decision**: Add a new fixture, `tests/fixtures/dashboard-shell-config.yaml`
-— a real, `docs/GRAMMAR.md`-shaped `dashboard-*.yaml` with `header`, one
+— a real, `project-docs/GRAMMAR.md`-shaped `dashboard-*.yaml` with `header`, one
 `filters` entry, and a `layout` containing at least two tabs' worth of rows
 (one `valuebox` row, one `plotly` row) — rather than extending
 `all-placeholders-config.yaml`.
@@ -52,7 +52,7 @@ FilterValue>): string` — constructs a bare SQL template using only
 `$scenario.<metric>` and `$filters.<id>` placeholders, then hands that
 template to `sqlExpander.ts`'s existing `expand()` unchanged.
 
-**Rationale**: Reading `docs/GRAMMAR.md`'s own SQL placeholder reference
+**Rationale**: Reading `project-docs/GRAMMAR.md`'s own SQL placeholder reference
 table settles this precisely: `$mappings.x`/`$bins.x`/`$sql.x` are scoped to
 *`summarize.yaml`'s* metric SQL (the offline post-processor, before Parquet
 is written) — a dashboard panel's `filter:`/trace config only ever uses
@@ -75,7 +75,7 @@ SELECT "total_trips" FROM ($scenario.summary_kpis)
 ```
 For a `plotly` panel (`metric: trip_mode_share`, `filter:
 $filters.purpose`), the template adds a `WHERE` clause on its own line, per
-`docs/GRAMMAR.md`'s documented `$filters.x`-must-sit-alone-on-its-own-line
+`project-docs/GRAMMAR.md`'s documented `$filters.x`-must-sit-alone-on-its-own-line
 rule for correct `all`-sentinel omission:
 ```sql
 SELECT * FROM ($scenario.trip_mode_share) t
@@ -110,7 +110,7 @@ resolved entirely in JS after the query returns — not a `sqlExpander.ts`
 placeholder kind. `PlotlyPanel` reads a trace's `x`/`y`/`color`/etc. keys,
 and for any value matching `$metric.<column>`, maps it to
 `rows.map(r => r[column])`; a bare `$scenario` value (as in
-`docs/GRAMMAR.md`'s `name: $scenario` example) maps to the query result's
+`project-docs/GRAMMAR.md`'s `name: $scenario` example) maps to the query result's
 own `scenario` column (added by `panelQuery.ts`'s `$scenario.<metric>`
 template, which already labels each unioned row with its source scenario
 name — see `sqlExpander.ts`'s existing `expandScenario`).
@@ -201,7 +201,7 @@ rendering tests that Playwright can't cover end-to-end.
 
 **Decision**: `panels/registry.tsx` is exactly the `Record<string,
 ComponentType<PanelProps>>` the constitution's v2.2.0 amendment and
-`docs/SPEC.md` already specify — `{ valuebox: ValueBoxPanel, plotly:
+`project-docs/SPEC.md` already specify — `{ valuebox: ValueBoxPanel, plotly:
 PlotlyPanel }` for this feature. `panelCard.tsx` (shadcn `Card`) is the
 single place that (a) looks up a panel's component from the registry by
 `config.type`, (b) renders a title (`config.title`, `font-heading` per
@@ -228,7 +228,7 @@ pattern itself is built on.
 ## 7. Value-box icons (`lucide-react`)
 
 **Decision**: `ValueBoxPanel.tsx` resolves `config.icon` (a kebab-case
-string, e.g. `"car"`, `"person-walking"`, per `docs/GRAMMAR.md`) to a
+string, e.g. `"car"`, `"person-walking"`, per `project-docs/GRAMMAR.md`) to a
 `lucide-react` icon component via `lucide-react`'s own dynamic icon lookup
 (its exported icon map, keyed by PascalCase name derived from the kebab
 string), falling back to rendering no icon if the name doesn't resolve —

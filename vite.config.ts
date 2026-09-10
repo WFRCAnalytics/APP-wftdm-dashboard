@@ -3,8 +3,13 @@ import { defineConfig } from 'vite'
 import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
-  base: '/APP-wftdm-dashboard/', // GitHub Pages
-  // base: '/wftdm-dashboard/',  // wfrc.utah.gov subdirectory
+  // GitHub Pages *project* page for WFRCAnalytics/APP-wftdm-dashboard —
+  // served at https://wfrcanalytics.github.io/APP-wftdm-dashboard/, so every
+  // asset URL must be prefixed with the repo name or it 404s once deployed.
+  // Keep this EXACTLY equal to "/<repo-name>/". Used by both `npm run build`
+  // and `npm run build:pages`.
+  base: '/APP-wftdm-dashboard/',
+  // base: '/wftdm-dashboard/',  // if/when served from wfrc.utah.gov/wftdm-dashboard/ instead
   // 033-shadcn-default-theme: the real, official Tailwind v4 Vite plugin —
   // replaces the previous PostCSS-plugin-based v3 setup (postcss.config.js,
   // deleted) entirely. tokens.css's own `@config "../../tailwind.config.js"`
@@ -22,6 +27,17 @@ export default defineConfig({
   },
   build: {
     target: 'esnext',
+    // outDir is left at Vite's default ('dist/') here on purpose:
+    // `npm run build` feeds the Python package (`make build` copies dist/
+    // into python/wftdm_dashboard/static/). The GitHub Pages build is a
+    // SEPARATE target — `npm run build:pages` overrides outDir to `docs/`
+    // (+ --emptyOutDir) so the built demo app can be committed straight
+    // into docs/ and served by GitHub Pages ("deploy from a branch",
+    // /docs folder). No CI/Actions — the built output is committed by
+    // hand. NOTE: while this is in place, docs/ holds the BUILT DASHBOARD,
+    // not documentation (reference docs moved to project-docs/). Once the
+    // real dashboard deploys from WFRC's own server, docs/ reverts to
+    // housing the Python-package / YAML-authoring documentation.
     // demo.html (002-design-tokens) is intentionally NOT listed as a
     // rollupOptions.input entry — Vite's default build only bundles
     // index.html, so the throwaway demo page stays out of the production

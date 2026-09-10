@@ -1,6 +1,6 @@
 # 032-six-tab-demo-content — Summary tab (Level 1 / landing page).
 # Replaces the old dashboard-1-overview.yaml entirely (FR-001 — content
-# not preserved). Real KPIs + charts from docs/CALIBRATION-SUMMARIES.md's
+# not preserved). Real KPIs + charts from project-docs/CALIBRATION-SUMMARIES.md's
 # own "Level 1 — High-Level Summary" table. No sections: this tab is a
 # single flat KPI + chart page, matching this project's own established
 # Summary-tab convention (CLAUDE.md's Navigation model).

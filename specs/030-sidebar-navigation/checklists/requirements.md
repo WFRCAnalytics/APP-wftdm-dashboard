@@ -36,7 +36,7 @@
   full-page trigger mechanism, the "Documentation" icon inconsistency in
   the original request, the content-authoring scope boundary) had a
   reasonable, evidence-grounded default available — either from this
-  session's own already-completed research (`docs/UX-REDESIGN-PROPOSAL.md`,
+  session's own already-completed research (`project-docs/UX-REDESIGN-PROPOSAL.md`,
   the live full-page measurement) or from this project's own already-
   established architecture (`CLAUDE.md`'s runtime tab-discovery
   non-negotiable, the authored-vs-published config split) — and each is

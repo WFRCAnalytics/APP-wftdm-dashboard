@@ -5,7 +5,7 @@ All items below were resolved directly against real, installed source
 `FlowMapPanel.tsx`/`ZoneMapPanel.tsx`/`flowmapData.ts`/`zoneGeometry.ts`/
 `zonemap3dControl.ts`/`resolveEffectiveBasemap.ts`) or a real, live fetch of
 constitution Principle VIII's mandate-tier reference repositories — not
-assumed from memory or from `docs/GRAMMAR.md`-style prose.
+assumed from memory or from `project-docs/GRAMMAR.md`-style prose.
 
 ## 1. `maplibre-gl@4.7.1`'s real `fitBounds()`/`LngLatBounds` API surface
 

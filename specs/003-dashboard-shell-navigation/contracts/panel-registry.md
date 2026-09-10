@@ -121,5 +121,5 @@ export function PanelErrorState({ message }: { message: string }) {
 
 - No drag-to-reorder, resize, or panel-add/remove UI — layout is entirely
   config-driven, read-only from the UI's perspective.
-- No nested/recursive layout (rows of rows) — `docs/GRAMMAR.md`'s `layout`
+- No nested/recursive layout (rows of rows) — `project-docs/GRAMMAR.md`'s `layout`
   is one level of named rows, each a flat list of panels.

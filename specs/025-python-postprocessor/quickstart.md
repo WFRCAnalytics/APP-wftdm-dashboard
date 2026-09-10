@@ -38,7 +38,7 @@ Fixture shape (built by `conftest.py`, in a `tmp_path`):
   (any type), one `sql_fragments:` entry joining trips/persons/households/
   zones, and 2–3 `metrics:` entries exercising all three placeholder kinds
   together (mirroring the real `trip_mode_share`/`summary_kpis` shape from
-  `docs/GRAMMAR.md`, at fixture scale).
+  `project-docs/GRAMMAR.md`, at fixture scale).
 
 Expected:
 - Running the pipeline function against this fixture produces one

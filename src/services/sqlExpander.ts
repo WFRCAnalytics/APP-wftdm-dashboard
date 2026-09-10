@@ -165,7 +165,7 @@ function expandBins(config: DashboardConfig, name: string): string {
       return `CASE\n    ${clauses.join('\n    ')}\n    ELSE '${lastLabel}'\n  END`
     }
     case 'quantiles': {
-      // Field is `bins` (the quantile count), per docs/GRAMMAR.md's
+      // Field is `bins` (the quantile count), per project-docs/GRAMMAR.md's
       // documented syntax (`type: quantiles` / `bins: 5`) — not `n`.
       const { column, bins = 4 } = bin
       return `NTILE(${bins}) OVER (ORDER BY "${column}")`

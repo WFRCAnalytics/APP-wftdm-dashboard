@@ -10,7 +10,7 @@ Add the fifth panel type — `observable-plot` — to the registry, following
 `ValueBoxPanel`/`PlotlyPanel`/`TablePanel`/`MarkdownPanel`'s established
 component shape (a function component receiving a single `config` prop,
 registered in `panels/registry.tsx`) and, unlike `MarkdownPanel`, the full
-query-chain part of that pattern too — `docs/GRAMMAR.md`'s real
+query-chain part of that pattern too — `project-docs/GRAMMAR.md`'s real
 `type: observable-plot` grammar always queries a `metric` (research.md §7).
 Two grammar findings, verified rather than assumed (per this project's
 established discipline), shape the design: chart encodings (`x`/`y`/`fill`/
@@ -32,7 +32,7 @@ triggers (a full replot-and-swap, not a cheap resize call) does not
 **Language/Version**: TypeScript (ES2022 target), same as `001`-`006`
 
 **Primary Dependencies**: One new runtime dependency — `@observablehq/plot`
-(`^0.6.17`, `docs/SPEC.md`'s own pinned choice for this panel type). Pulls in
+(`^0.6.17`, `project-docs/SPEC.md`'s own pinned choice for this panel type). Pulls in
 `d3` (`^7.9.0`) as its own transitive dependency; no peer dependencies listed
 (confirmed against the real npm registry metadata, unlike the deck.gl/
 flowmap.gl/maplibre-gl trio's pinned-peer-version requirement). Ships its own
@@ -149,7 +149,7 @@ in alongside Plotly.
 | III. No `eval()` | `buildPanelQuery`'s rewrite and `sqlExpander.ts`'s new `inputs` placeholder kind both remain plain string templating/replacement — no dynamic code execution introduced for either the widened `filter:` shape or the new placeholder kind (research.md §1/§2) | PASS |
 | IV. YAML parsed at runtime | `mark`/`x`/`y`/`fill`/`stroke`/`facet_x`/`facet_y`/`tip`/`grid`/`inputs` are parsed from `dashboard-*.yaml` at runtime via the existing `layout/types.ts` seam (extended, not replaced) — no build-time baking | PASS |
 | V. Parquet-only browser I/O | Panel queries the same `scenario__metric`/`observed__metric` Parquet-backed views every other data-bound panel type already queries — no new data I/O path | PASS |
-| VI. Fixed Technology Choices | `@observablehq/plot` is `docs/SPEC.md`'s and the constitution's own Technology Stack Reference's pinned choice for "reactive filter inputs" charts — not a deviation requiring amendment | PASS |
+| VI. Fixed Technology Choices | `@observablehq/plot` is `project-docs/SPEC.md`'s and the constitution's own Technology Stack Reference's pinned choice for "reactive filter inputs" charts — not a deviation requiring amendment | PASS |
 | VII. Minimal, Fixed Config File Set | No new config file type; `mark`/`inputs`/etc. are new *keys* within the existing `dashboard-*.yaml` type's already-documented `type: observable-plot` grammar, not a new file | PASS |
 | VIII. Reuse Proven Reference Implementations | N/A — none of the four named reference repos cover Observable Plot rendering; this principle's named scope doesn't reach this feature | PASS (N/A) |
 | IX. Fixed Python/JS Source Split | No Python package code touched; all new files under `src/` | PASS |

@@ -11,12 +11,12 @@ pattern `ValueBoxPanel`/`PlotlyPanel` already established (`003`): a
 function component receiving a single `config` prop, `useFilterState` for
 filter values, a direct `services/duckdb.ts` import for querying, and the
 shared `PanelEmptyState`/`PanelErrorState` components for non-happy-path
-states. `docs/SPEC.md`'s own description ("table | plain DOM | Sortable,
+states. `project-docs/SPEC.md`'s own description ("table | plain DOM | Sortable,
 paginated") settles the technology question up front — no table library is
 added; sort/search/pagination are plain client-side array operations over
 an already-fetched result set, matching this project's demonstrated bias
 against adding a dependency for something directly expressible with what's
-already there. `docs/GRAMMAR.md`'s actual `type: table` grammar
+already there. `project-docs/GRAMMAR.md`'s actual `type: table` grammar
 (`columns`, `sort`, `pagination`, `searchable`) is real, existing, and
 followed exactly — not the "derive everything, no config" framing the
 feature's own initial description assumed before that grammar was checked
@@ -36,7 +36,7 @@ a fixed-at-`0` diverging midpoint (not the domain's geometric center).
 components, `003`'s panel registry and query chain
 (`panelQuery.ts`/`sqlExpander.ts`/`services/duckdb.ts`), `004`'s
 `panelCard.tsx`/`panelExpandHost.tsx` (consumed automatically, not
-modified). `docs/SPEC.md`'s own "table | plain DOM" description is taken
+modified). `project-docs/SPEC.md`'s own "table | plain DOM" description is taken
 as the deciding signal against adding a table library (e.g. TanStack
 Table) — research.md §1 confirms this rather than assuming it.
 
@@ -109,7 +109,7 @@ beyond `table` itself (`flowmap`/`zonemap`/`sankey`/`markdown`/
 | III. No `eval()` | `TablePanel.tsx` builds no SQL of its own — `panelQuery.ts`'s existing `SELECT *` branch (unmodified) already covers it; sort/search/pagination are plain in-memory array operations, not SQL construction of any kind | PASS |
 | IV. YAML parsed at runtime | `columns`/`sort`/`pagination`/`searchable` are parsed from `dashboard-*.yaml` at runtime via the existing `layout/types.ts` parsing seam (extended, not replaced) — no build-time baking | PASS |
 | V. Parquet-only browser I/O | Not applicable — no new data I/O path; queries the same already-registered views every other panel type queries | PASS (N/A) |
-| VI. Fixed Technology Choices | No new UI library — `docs/SPEC.md`'s own "plain DOM" description for `type: table` is honored directly (research.md §1); styling uses the existing Tailwind/token set, no new CSS framework | PASS |
+| VI. Fixed Technology Choices | No new UI library — `project-docs/SPEC.md`'s own "plain DOM" description for `type: table` is honored directly (research.md §1); styling uses the existing Tailwind/token set, no new CSS framework | PASS |
 | VII. Minimal, Fixed Config File Set | No new config file type; `columns`/`sort`/`pagination`/`searchable` are new *keys* within the existing `dashboard-*.yaml` type's already-documented `type: table` grammar, not a new file | PASS |
 | VIII. Reuse Proven Reference Implementations | N/A — none of the four named reference repos (DuckDB-WASM/Arrow, MapLibre+flowmap.gl/deck.gl, spatial-SQL/GeoParquet, Vite+coi-serviceworker) cover data tables; this principle's named scope doesn't reach this feature | PASS (N/A) |
 | IX. Fixed Python/JS Source Split | No Python package code touched; all new files under `src/` | PASS |

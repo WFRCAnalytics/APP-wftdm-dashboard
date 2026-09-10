@@ -1,4 +1,4 @@
-"""Generates manifest.yaml — the per-scenario metadata docs/GRAMMAR.md
+"""Generates manifest.yaml — the per-scenario metadata project-docs/GRAMMAR.md
 already documents (constitution Principle VII: an existing config file
 type, not a new one this feature introduces).
 """
@@ -14,7 +14,7 @@ import yaml
 
 
 # The standard "Tableau 10" categorical palette — confirmed against
-# docs/GRAMMAR.md's own worked manifest.yaml example, whose `color:
+# project-docs/GRAMMAR.md's own worked manifest.yaml example, whose `color:
 # "#4e79a7"` is exactly this palette's first entry (research.md §5).
 TABLEAU10 = (
     "#4E79A7",

@@ -44,7 +44,7 @@ DOMPurify.addHook('afterSanitizeAttributes', (node) => {
 // The fourth panel type — see contracts/markdown-panel.md and
 // specs/006-markdown-panel/research.md. Deliberately has no
 // useFilterState, no services/duckdb.ts import, and no loading/error
-// state: docs/GRAMMAR.md's type: markdown grammar has no metric/
+// state: project-docs/GRAMMAR.md's type: markdown grammar has no metric/
 // $scenario/$filters data binding (FR-001), and config.content is
 // already present on the parsed config object at mount time — nothing
 // to fetch or wait for (research.md §4).

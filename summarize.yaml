@@ -2,7 +2,7 @@
 #
 # Authored against ActivitySim's real, confirmed prototype_mtc output shape
 # (specs/026-activitysim-demo-content/research.md), not the illustrative
-# column names in docs/GRAMMAR.md's own worked example. Run unmodified,
+# column names in project-docs/GRAMMAR.md's own worked example. Run unmodified,
 # three times, once per real raw ActivitySim output directory (baseline,
 # density-variant, transit-variant) — see
 # specs/026-activitysim-demo-content/contracts/discovery.md for the exact
@@ -59,7 +59,7 @@ mappings:
 
   # 032-six-tab-demo-content: real, standard ActivitySim person-type codes
   # (persons.ptype, confirmed real values 1-8 in every scenario's real
-  # output — research.md §2). 1-7 match docs/CALIBRATION-SUMMARIES.md's
+  # output — research.md §2). 1-7 match project-docs/CALIBRATION-SUMMARIES.md's
   # own already-documented "Person type" segmentation list exactly; 8
   # (pre-school child) was found missing from that list during this
   # feature's own audit and is added to both the doc (see
@@ -90,7 +90,7 @@ bins:
     labels: [EA, AM, MD, PM, EV]
 
   # 032-six-tab-demo-content: real household income (households.income),
-  # boundaries matching docs/CALIBRATION-SUMMARIES.md's own already-
+  # boundaries matching project-docs/CALIBRATION-SUMMARIES.md's own already-
   # documented "Income group" segmentation definition exactly.
   income_group:
     column: income
@@ -101,7 +101,7 @@ bins:
   # 032-six-tab-demo-content: shared half-mile distance bucketing for
   # every distance-based summary in this feature (School/Workplace/Joint/
   # Non-Mandatory/At-Work Subtour/Trip Destination) — matching
-  # docs/CALIBRATION-SUMMARIES.md's own "Distance bin" segmentation
+  # project-docs/CALIBRATION-SUMMARIES.md's own "Distance bin" segmentation
   # definition (0.5-mile intervals, lower = 0). Every metric using this
   # bin aliases its own real distance value (whether a precomputed real
   # column like distance_to_work, or a computed real haversine distance
@@ -316,7 +316,7 @@ metrics:
   # `t.origin` — NOT yet independently re-verified against a real raw
   # final_trips.csv in the environment this was authored in (no raw
   # ActivitySim input was available); written on the well-evidenced
-  # basis that docs/GRAMMAR.md's own od_flows worked example already
+  # basis that project-docs/GRAMMAR.md's own od_flows worked example already
   # references t.origin as ActivitySim's standard trip-table shape,
   # alongside t.destination, which this file's own trips_merged fragment
   # already confirms is real. MUST be confirmed directly against the real
@@ -351,7 +351,7 @@ metrics:
   # Every real gap found by that audit (Work from Home, Telecommute
   # Frequency, Transit Pass Subsidy, Transit Pass Ownership, Screenline
   # Volumes vs Observed AADT, VMT by Facility Type) has NO metric here —
-  # per FR-009, reported in docs/CALIBRATION-SUMMARIES.md instead of
+  # per FR-009, reported in project-docs/CALIBRATION-SUMMARIES.md instead of
   # built. See contracts/summarize-metrics.md for the shared shape rules.
 
   # Summary tab — real average trip distance by purpose.

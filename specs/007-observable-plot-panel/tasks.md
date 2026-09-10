@@ -70,7 +70,7 @@ enough to exercise all three stories' Playwright coverage.
 - [x] T002 Widen `DataBoundPanelConfigBase.filter` in `src/layout/types.ts`
       from `string | undefined` to `string | Record<string, string> |
       undefined`, per data-model.md/research.md §1. This is not new grammar —
-      `docs/GRAMMAR.md`'s common-keys table already documented both the bare
+      `project-docs/GRAMMAR.md`'s common-keys table already documented both the bare
       `$ref` string form and an `inline` map form for `filter:`;
       `observable-plot` is simply the first panel type to use the map form.
       No other field on `DataBoundPanelConfigBase` changes
@@ -137,7 +137,7 @@ enough to exercise all three stories' Playwright coverage.
       data-model.md; add `ObservablePlotPanelConfig` to the `PanelConfig`
       union. Depends on T004 and T007 (both checkpoints must be clean first)
 - [x] T009 [P] Add a new fixture table to `tests/fixtures/generate.py`,
-      mirroring `docs/GRAMMAR.md`'s own Trip Length Frequency Distribution
+      mirroring `project-docs/GRAMMAR.md`'s own Trip Length Frequency Distribution
       worked example: `TRIP_DESTINATION_DIST_COLUMNS = ["distance_bin",
       "trips", "purpose", "mode"]`, `TRIP_DESTINATION_DIST_ROWS` — a small
       hard-coded set spanning `purpose` in `{HBW, NHB}`, `mode` in `{SOV,
@@ -165,7 +165,7 @@ enough to exercise all three stories' Playwright coverage.
          trip_destination_dist`, `scenario: good_scenario`, `inputs: [{id:
          mode_select, label: Mode, type: select, column: mode, default:
          SOV}]`, `filter: { purpose: $filters.purpose, mode:
-         $inputs.mode_select }` — reuses `docs/GRAMMAR.md`'s own example
+         $inputs.mode_select }` — reuses `project-docs/GRAMMAR.md`'s own example
          almost verbatim; second mark type + `select` input coverage.
       3. **"Mode Share by Purpose (Multiselect Filter)"** — `mark: barY`, `x:
          purpose`, `y: share`, `metric: trip_mode_share`, `scenario:
@@ -433,7 +433,7 @@ what US1 already built.
 *No new implementation tasks* — covered by T017-T020 above (see Note).
 
 **Checkpoint**: All three user stories are independently functional and
-verified together — the full `docs/GRAMMAR.md` `type: observable-plot`
+verified together — the full `project-docs/GRAMMAR.md` `type: observable-plot`
 grammar this feature scoped itself to (including panel-local reactive
 inputs) is implemented end to end, correctly, and consistently with every
 other panel type.
@@ -557,7 +557,7 @@ Task: "Register 'observable-plot': ObservablePlotPanel in src/panels/registry.ts
 3. Add US2 → test independently → panel-local `select`/`multiselect`/`range`
    inputs, isolated per panel instance, including under a real `id`
    collision — the capability that actually distinguishes this panel type
-   per `docs/SPEC.md`'s own description.
+   per `project-docs/SPEC.md`'s own description.
 4. Add US3 → test independently (no new code) → confirmed consistent with
    the rest of the panel registry.
 5. Polish → full quickstart pass, full-suite regression check (Playwright
@@ -607,7 +607,7 @@ checkpoints.
 contracts anticipated:**
 
 1. **Multiselect "any of" semantics needed a real design addition, not
-   covered in planning.** `docs/GRAMMAR.md`'s equality-shaped `filter:`
+   covered in planning.** `project-docs/GRAMMAR.md`'s equality-shaped `filter:`
    binding (`AND "col" = '$inputs.id'`) cannot express "matches any
    selected value." Fixed by teaching `buildPanelQuery` to detect a
    multiselect-typed `$inputs.<id>` reference (via the same `'inputs' in
@@ -675,7 +675,7 @@ contracts anticipated:**
    - **Confirmed cause #1**: `tests/fixtures/dashboard-config/
      dashboard-1-summary.yaml` never set `tip: true` on any panel — the
      "Trip Length Frequency Distribution" panel was authored as reusing
-     `docs/GRAMMAR.md`'s own worked example "almost verbatim," but
+     `project-docs/GRAMMAR.md`'s own worked example "almost verbatim," but
      silently dropped that example's `tip: true`/`grid: true`. Verified
      empirically, not just by code inspection: hovering the current
      (pre-fix) chart produced a byte-identical container `innerHTML`
@@ -693,13 +693,13 @@ contracts anticipated:**
      left `barY` panels technically configured but practically unusable —
      the same user-visible symptom, not actually fixed.
    - **Fix**: restored `tip: true`/`grid: true` on the `lineY` fixture
-     panel (matching `docs/GRAMMAR.md` faithfully) and added `tip: true`
+     panel (matching `project-docs/GRAMMAR.md` faithfully) and added `tip: true`
      to the `barY` fixture panel too, to exercise both mark types.
      `observablePlotEncoding.ts` gained `resolveTipMode()`: `barY` (the
      one bar-shaped mark this app supports) resolves `tip: true` to
      `"x"`; every other mark keeps the `"xy"` default — resolved
      internally, not by inventing new author-facing grammar
-     `docs/GRAMMAR.md` doesn't document.
+     `project-docs/GRAMMAR.md` doesn't document.
    - **New coverage**: 2 real Playwright tests hover an actual chart
      element (`.hover()`, not a synthetic DOM query) and assert the
      `<g aria-label="tip">` element — empty before hover — becomes
@@ -710,7 +710,7 @@ contracts anticipated:**
 9. **Second real visual bug, same category as #8** — no color legend
    ever rendered on a fill/stroke-encoded `observable-plot` chart,
    caught by a manual visual check:
-   - **Investigated before fixing, per instruction**: `docs/GRAMMAR.md`
+   - **Investigated before fixing, per instruction**: `project-docs/GRAMMAR.md`
      documents no `legend:` key at all for this panel type (confirmed by
      grepping the whole file, not just the observable-plot section) —
      confirmed against Plot's real docs that `color: {legend: true}` is

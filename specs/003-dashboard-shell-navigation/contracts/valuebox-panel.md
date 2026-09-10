@@ -48,7 +48,7 @@ Scoresheet`, research.md §8) — not bespoke to this panel type.
 `ValueBoxSkeleton` has no Scoresheet precedent to port (research.md §8
 found none) — a simple `animate-pulse` placeholder (Tailwind's built-in
 utility, no new token). Formatting (`config.format`, a Python-style format
-string per `docs/GRAMMAR.md`), the optional `icon` (research.md §7), and
+string per `project-docs/GRAMMAR.md`), the optional `icon` (research.md §7), and
 `observed`/`threshold_warn`/`threshold_fail` coloring are `ValueBoxDisplay`'s
 concern — presentation detail, not part of this contract's Given/When/Then
 (covered by implementation tasks, not re-derived here).
@@ -73,7 +73,7 @@ concern — presentation detail, not part of this contract's Given/When/Then
 
 ## Non-goals for this feature
 
-- No multi-scenario side-by-side column display (`docs/GRAMMAR.md`'s
+- No multi-scenario side-by-side column display (`project-docs/GRAMMAR.md`'s
   "Multi-scenario: auto renders one column per loaded scenario" note) —
   this feature's fixture and stories exercise single-scenario display;
   multi-scenario comparison layout is a future enhancement to this same

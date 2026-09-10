@@ -9,7 +9,7 @@
 **Decision**: Hand-roll the table (`<table>` markup, plain React state for
 sort/search/pagination) — no `@tanstack/react-table` or similar added.
 
-**Rationale**: `docs/SPEC.md`'s own Panel types table already answers
+**Rationale**: `project-docs/SPEC.md`'s own Panel types table already answers
 this: `table | plain DOM | Sortable, paginated`. Every other row in that
 same table names the actual rendering library used (`plotly` → Plotly.js,
 `flowmap` → flowmap.gl + MapLibre, `graphic-walker` → Graphic Walker) —
@@ -51,7 +51,7 @@ search by design).
 imported by both `ValueBoxPanel.tsx` and the new `TablePanel.tsx` (via
 `tableLogic.ts`).
 
-**Rationale**: `docs/GRAMMAR.md`'s `columns[].format` field uses the exact
+**Rationale**: `project-docs/GRAMMAR.md`'s `columns[].format` field uses the exact
 same format-string convention `ValueBoxPanelConfig.format` already uses
 (`",.0f"`, `"+.1%"` — the same shapes `ValueBoxPanel.tsx`'s existing
 regex already handles). Defining a second, separate copy of the same
@@ -131,10 +131,10 @@ Keeping `TablePanel.tsx` itself thin (state + wiring only) mirrors
 This is the one substantive open question spec.md carried into planning
 rather than leaving for implementation to improvise. Checked directly
 (not assumed) before deciding, per spec.md's own "Flagged for
-`/speckit-plan`" note: neither `docs/CALIBRATION-SUMMARIES.md` nor
+`/speckit-plan`" note: neither `project-docs/CALIBRATION-SUMMARIES.md` nor
 `002-design-tokens`'s actual shipped token set (`src/styles/tokens.css`)
 establishes any existing sequential/diverging convention.
-`docs/GRAMMAR.md`'s own `zonemap` example is the only other place
+`project-docs/GRAMMAR.md`'s own `zonemap` example is the only other place
 `color_scale` appears, and it names generic ColorBrewer ramps
 (`YlOrRd`/`RdBu`) via a separate `color_ramp` field — a field `type:
 table`'s own documented example does **not** include, meaning table's
@@ -176,7 +176,7 @@ ramp name.
   center.** For a calibration/validation dashboard specifically, `0`
   (zero error, zero deviation) is the value that's actually meaningful as
   "good" — not whatever number happens to sit in the middle of a given
-  `domain`. Every diverging `domain` example in `docs/GRAMMAR.md` today
+  `domain`. Every diverging `domain` example in `project-docs/GRAMMAR.md` today
   (`[-0.1, 0.1]`, `[-0.5, 0.5]`, `[-5, 5]`) happens to be symmetric around
   zero, so this choice changes nothing for any of them — but a future,
   deliberately asymmetric domain (spec.md's own edge case, e.g. `[-0.1,
@@ -239,7 +239,7 @@ functions, no DOM) — `tests/unit/tableLogic.test.ts` covers column
 resolution (with/without `columns:` config), numeric-vs-string sort
 correctness, search-against-rendered-values, and the color-scale mapping
 (including the fixed-`0`-midpoint decision, tested with an asymmetric
-domain specifically, not only the symmetric ones `docs/GRAMMAR.md`
+domain specifically, not only the symmetric ones `project-docs/GRAMMAR.md`
 happens to show). Playwright for everything that renders —
 `tests/integration/tablePanel.spec.ts`, extending
 `dashboardShell.spec.ts`/`panelExpand.spec.ts`'s existing real-browser/
@@ -259,7 +259,7 @@ library.
 
 | # | Decision |
 |---|---|
-| 1 | No new table library — `docs/SPEC.md`'s "plain DOM" is taken as the deciding signal; sort/search/pagination are plain array operations over an already-fetched result set |
+| 1 | No new table library — `project-docs/SPEC.md`'s "plain DOM" is taken as the deciding signal; sort/search/pagination are plain array operations over an already-fetched result set |
 | 2 | `formatValue` extracted from `ValueBoxPanel.tsx` into a new shared `panels/formatValue.ts`, imported by both panel types — no duplicated format-string parser |
 | 3 | New pure module `panels/tableLogic.ts` (column resolution, sort, search-filter, color mapping) — mirrors `003`'s `plotlyTraces.ts` split, keeps `TablePanel.tsx` itself thin and the algorithmic logic independently Vitest-tested |
 | 4 | `color_scale` reuses existing brand tokens only (`--brand-wfrc-blue` for sequential-high and diverging-negative, `--destructive` for diverging-positive, `--muted` for both scales' neutral/low end) — zero new colors; diverging midpoint is fixed at `0`, not the domain's geometric center; cell backgrounds use a capped `color-mix()` blend so text stays legible at every point on the scale |

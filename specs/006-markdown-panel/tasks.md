@@ -42,7 +42,7 @@ Project Structure — additive to `001`-`005`.
 ## Phase 1: Setup
 
 **Purpose**: This feature's only new dependencies — unlike `005` (which
-added none), `markdown`'s grammar (`docs/SPEC.md`'s own pinned choice) needs
+added none), `markdown`'s grammar (`project-docs/SPEC.md`'s own pinned choice) needs
 two new runtime libraries before anything else can be built.
 
 - [x] T001 Add `marked` (^18.0.11) and `dompurify` (^3.4.14) to
@@ -276,7 +276,7 @@ already built.
 *No new implementation tasks* — covered by T011/T013 above (see Note).
 
 **Checkpoint**: All three user stories are independently functional and
-verified together — the full `docs/GRAMMAR.md` `type: markdown` grammar
+verified together — the full `project-docs/GRAMMAR.md` `type: markdown` grammar
 this feature scoped itself to is implemented end to end, safely, and
 consistently with every other panel type.
 

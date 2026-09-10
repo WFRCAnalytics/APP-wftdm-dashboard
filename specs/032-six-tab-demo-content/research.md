@@ -2,7 +2,7 @@
 
 All findings below were resolved directly against real, already-existing
 artifacts from this same session — not assumed, and not re-derived from
-`docs/GRAMMAR.md`/`CLAUDE.md` prose alone.
+`project-docs/GRAMMAR.md`/`CLAUDE.md` prose alone.
 
 ## 1. The three real ActivitySim runs already exist in this session — reused, not re-run
 
@@ -61,7 +61,7 @@ on disk and already directly re-confirmed above).
 
 ## 2. Real submodel computability audit — methodology and headline findings
 
-**Decision**: Audited every submodel `docs/CALIBRATION-SUMMARIES.md`
+**Decision**: Audited every submodel `project-docs/CALIBRATION-SUMMARIES.md`
 documents against three real, directly-inspected sources: (a) the real
 `configs/settings.yaml` `models:` list (which submodels actually ran at
 all), (b) real CSV column headers from `final_households.csv`/
@@ -113,7 +113,7 @@ complete, per-submodel table. Headline results:
   non-worker — 7 categories) omits the real 8th ActivitySim `ptype` value
   actually present in this output (pre-school child, `ptype` 8, confirmed
   via direct value inspection: `ptype` ranges 1-8 in real `final_persons.csv`).
-  Corrected in the same `docs/CALIBRATION-SUMMARIES.md` update this feature
+  Corrected in the same `project-docs/CALIBRATION-SUMMARIES.md` update this feature
   already makes for the 6 real gaps above.
 
 **Rationale for auditing this way, not by category assumption**: this
@@ -284,7 +284,7 @@ for the Trip Purpose breakdown) — reuse across tabs is expected and fine;
 FR-013 only requires *at least one* real instance of each type somewhere
 in the six tabs, which this table already satisfies for all ten.
 
-## 8. `docs/CALIBRATION-SUMMARIES.md` corrections needed (FR-016)
+## 8. `project-docs/CALIBRATION-SUMMARIES.md` corrections needed (FR-016)
 
 **Decision**: Three real corrections, all traced directly to §2's audit:
 

@@ -72,7 +72,7 @@ constitution Principle II)
 **Scale/Scope**: Observed dataset + a small number of published scenarios
 (single digits to low tens, per current WFRC workflow); each scenario's
 `summary/*.parquet` files individually well under 100MB (per
-`docs/ARCHITECTURE.md`'s WASM-threading note)
+`project-docs/ARCHITECTURE.md`'s WASM-threading note)
 
 ## Constitution Check
 

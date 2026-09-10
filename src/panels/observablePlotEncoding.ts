@@ -21,7 +21,7 @@ export interface ResolvedObservablePlotEncoding {
 /**
  * x/y/fill/stroke/facet_x/facet_y are literal column names — NOT
  * $metric.<column>-prefixed (research.md §4, confirmed against
- * docs/GRAMMAR.md's own observable-plot examples, in explicit contrast to
+ * project-docs/GRAMMAR.md's own observable-plot examples, in explicit contrast to
  * type: plotly's traces, whose x/y ARE $metric.-prefixed). Only keys
  * actually present on `config` are copied through, so Plot's own per-mark
  * defaults apply to anything the author omitted — no key is ever set to
@@ -63,7 +63,7 @@ export function resolveObservablePlotEncoding(
   // guessed pixel value in isolation.
   plotOptions.style = { fontSize: '12px' }
   if (config.grid) plotOptions.grid = config.grid
-  // docs/GRAMMAR.md documents no legend: key at all for this panel type —
+  // project-docs/GRAMMAR.md documents no legend: key at all for this panel type —
   // confirmed by a full grep of both real observable-plot examples and the
   // rest of the file (a real, third potential gap checked for, not
   // assumed absent). @observablehq/plot's own color: {legend: true} is
@@ -141,7 +141,7 @@ export function resolveObservablePlotEncoding(
 }
 
 /**
- * `config.tip: true` (docs/GRAMMAR.md's only documented value — a plain
+ * `config.tip: true` (project-docs/GRAMMAR.md's only documented value — a plain
  * boolean, not an orientation string) does NOT resolve to identical
  * runtime behavior across mark types. Confirmed directly against
  * @observablehq/plot's real source (src/mark.js's `maybeTip`): the
@@ -154,7 +154,7 @@ export function resolveObservablePlotEncoding(
  * tooltip for most of its visible area reads as "the tooltip doesn't
  * work," not a deliberate precision feature — the same symptom
  * `config.tip` exists to prevent, so this app resolves it internally
- * rather than exposing yet another author-facing key `docs/GRAMMAR.md`
+ * rather than exposing yet another author-facing key `project-docs/GRAMMAR.md`
  * doesn't document. `barY` — the one bar-shaped mark this app currently
  * supports, x holding the discrete category, y the continuous value —
  * gets `"x"` (any hover position within a bar's column triggers it,

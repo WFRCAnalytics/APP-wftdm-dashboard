@@ -102,7 +102,7 @@ description: "Task list for 028-graphic-walker-dataset-picker"
 
 ### Implementation for User Story 3
 
-- [X] T021 [US3] Document `dataset_picker` in `docs/GRAMMAR.md`'s `type: graphic-walker` section, alongside the existing `dataset:`/`scenario:`/`fields:` keys.
+- [X] T021 [US3] Document `dataset_picker` in `project-docs/GRAMMAR.md`'s `type: graphic-walker` section, alongside the existing `dataset:`/`scenario:`/`fields:` keys.
 
 **Checkpoint**: All three user stories are independently functional together.
 

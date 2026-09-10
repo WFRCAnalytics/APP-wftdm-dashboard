@@ -1,5 +1,5 @@
 # 032-six-tab-demo-content — Mode Choice tab. Sections match
-# docs/CALIBRATION-SUMMARIES.md's own "Mode Choice Tab" submodel
+# project-docs/CALIBRATION-SUMMARIES.md's own "Mode Choice Tab" submodel
 # headings exactly. Folds in the real purpose_mode_flow Sankey panel
 # from the now-dissolved dashboard-6-flows.yaml (research.md §6, FR-011)
 # under Trip Mode Choice, alongside the already-real, already-published

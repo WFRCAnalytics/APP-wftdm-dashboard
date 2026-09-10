@@ -75,7 +75,7 @@ export function manifestFromObject(obj: Record<string, unknown>): ParsedManifest
 
 /**
  * js-yaml's default schema parses an unquoted `run_date: 2026-06-15` value
- * (docs/SPEC.md's/CLAUDE.md's own manifest.yaml examples are written
+ * (project-docs/SPEC.md's/CLAUDE.md's own manifest.yaml examples are written
  * exactly this way, unquoted) as a native JS Date, not a string — found by
  * this feature's own manifestReader.test.ts against that real example
  * shape, not assumed. YAML 1.1 date-only timestamps are defined as UTC

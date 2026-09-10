@@ -39,7 +39,7 @@ All findings below are verified directly against the real, current source files 
 
 ## §4. Placeholder syntax and expansion shape
 
-**Finding**: `docs/GRAMMAR.md`'s existing "SQL placeholder reference" table names five kinds — `$mappings.x`, `$bins.x`, `$sql.x`, `$filters.x`, `$scenario.x`, `$inputs.x` (six, with `$inputs.x` — the table is slightly stale, missing `$inputs.x`'s own row, unrelated to this feature) — all following the same `$<kind>.<name>` shape. `sqlExpander.ts`'s `PLACEHOLDER_RE` is a single regex alternation matching exactly those kind names.
+**Finding**: `project-docs/GRAMMAR.md`'s existing "SQL placeholder reference" table names five kinds — `$mappings.x`, `$bins.x`, `$sql.x`, `$filters.x`, `$scenario.x`, `$inputs.x` (six, with `$inputs.x` — the table is slightly stale, missing `$inputs.x`'s own row, unrelated to this feature) — all following the same `$<kind>.<name>` shape. `sqlExpander.ts`'s `PLACEHOLDER_RE` is a single regex alternation matching exactly those kind names.
 
 **Decision**: `$baseline.<metric>` — matches the established `$<kind>.<name>` convention exactly, and reads naturally in context (`FROM $baseline.trip_mode_share` is legible next to `FROM $scenario.trip_mode_share`).
 

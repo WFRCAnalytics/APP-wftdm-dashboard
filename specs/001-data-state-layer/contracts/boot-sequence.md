@@ -19,9 +19,9 @@ pattern `scenarioDiscovery.js` already uses for
 `public/scenarios/index.json` — fetch the index, then fetch whatever
 filenames it lists, each resolved under `public/dashboard-config/` (a third
 fixed publish location parallel to `public/observed/` and
-`public/scenarios/`; see `docs/SPEC.md` and README.md's publish workflow).
+`public/scenarios/`; see `project-docs/SPEC.md` and README.md's publish workflow).
 **This module has no hardcoded filename list or count** — "seven tabs" is
-just what WFRC's default templates ship (`docs/ARCHITECTURE.md`), not
+just what WFRC's default templates ship (`project-docs/ARCHITECTURE.md`), not
 something `loadDashboards()` or `main.js` assumes. See
 `contracts/yaml-loader.md` for the full contract.
 

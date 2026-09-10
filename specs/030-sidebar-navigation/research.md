@@ -89,7 +89,7 @@ might use):
   `@radix-ui/react-dialog` beyond what's already installed — scoped out,
   not just deferred.** See §4 below for the full reasoning; the short
   version is that this repo has no established mobile/responsive
-  precedent anywhere (`docs/ARCHITECTURE.md`/`docs/SPEC.md` never name it
+  precedent anywhere (`project-docs/ARCHITECTURE.md`/`project-docs/SPEC.md` never name it
   as a goal) and the existing icon-collapsed state already serves the
   narrow-viewport case without a second, structurally different overlay
   interaction.
@@ -152,8 +152,8 @@ automatically applies the SAME icon-collapsed state the manual toggle
 already produces (a plain CSS/`matchMedia`-driven default, not a second,
 different interaction). No `Sheet`/off-canvas-overlay component is built.
 
-**Rationale**: this project's own architecture docs (`docs/ARCHITECTURE.md`,
-`docs/SPEC.md`) never name mobile/responsive support as a goal anywhere —
+**Rationale**: this project's own architecture docs (`project-docs/ARCHITECTURE.md`,
+`project-docs/SPEC.md`) never name mobile/responsive support as a goal anywhere —
 this is a desk-based calibration-analyst tool, not a consumer app with an
 established mobile audience. Building a genuinely different third
 interaction mode (a full-screen slide-over) for a scenario this project
@@ -279,7 +279,7 @@ stance) supports it natively.
 
 ## §9. Twelfths-grid convention (FR-019) is documentation-only — zero runtime change
 
-**Decision**: `docs/GRAMMAR.md` gains a documented convention ("author
+**Decision**: `project-docs/GRAMMAR.md` gains a documented convention ("author
 `width:` as a fraction of twelfths — e.g. `0.5` = 6/12 half-width,
 `0.25` = 3/12 quarter-width — so panels sharing a twelfths-based fraction
 scheme align across different rows on the same tab"). No change to
@@ -305,7 +305,7 @@ PanelConfig[]): boolean` — true when `panels.length > 0 && panels.every(p
 => p.type === 'valuebox')`. `dashboardRenderer.tsx` branches on this per
 row: `true` → `grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-6`
 (the 200px minimum and `gap-6` anchor both taken directly from
-`docs/UX-REDESIGN-PROPOSAL.md`'s own §4/§1 research — Vercel/Grafana/
+`project-docs/UX-REDESIGN-PROPOSAL.md`'s own §4/§1 research — Vercel/Grafana/
 Stripe convergence on a 200-280px card minimum, and this app's own
 already-established `gap-6`/24px spacing anchor); `false` → the existing
 fraction-based `gridTemplateColumns` unchanged.

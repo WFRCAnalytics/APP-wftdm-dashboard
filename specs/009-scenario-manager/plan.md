@@ -22,7 +22,7 @@ behavior), and calls the already-existing `registerScenario()` +
 doc comments have described since `001`. A new `layout/scenarioLoader.tsx`
 hosts the trigger and a minimal loaded-scenario list near the tab bar,
 gated on a new `isLocalDeployment()` check (WEB mode only, per
-`docs/SPEC.md`'s documented LOCAL/WEB split). The one genuinely new
+`project-docs/SPEC.md`'s documented LOCAL/WEB split). The one genuinely new
 architectural piece: `appState.ts` gains a small pub/sub mechanism
 (mirroring `filterState.ts`'s already-proven, already-consumed pattern),
 consumed via a new `useActiveScenarios()` hook, so that activating a local
@@ -39,7 +39,7 @@ components) — same as every feature since `003`.
 
 **Primary Dependencies**: None new. Uses the browser's native
 `showDirectoryPicker()`/`FileSystemDirectoryHandle` API (Chrome/Edge only,
-per `docs/ARCHITECTURE.md`) and the already-installed `js-yaml` (via a
+per `project-docs/ARCHITECTURE.md`) and the already-installed `js-yaml` (via a
 newly factored-out `yamlLoader.ts` export, research.md §4). No new
 `package.json` entry.
 

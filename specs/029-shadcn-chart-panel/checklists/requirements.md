@@ -35,13 +35,13 @@
   same convention already used by `028-graphic-walker-dataset-picker`'s own
   spec — this feature builds directly on real, already-confirmed findings
   from this session's own prior shadcn/Recharts research (logged in
-  `docs/PIPELINE.md` and the `wftdm-design-system` skill), so those facts
+  `project-docs/PIPELINE.md` and the `wftdm-design-system` skill), so those facts
   are carried forward and cited, not re-derived or re-investigated.
 - Every design question the original request raised (panel type name,
   grammar field shape, which chart types to support first, whether to
   reuse `buildPanelQuery()`, whether the new dependency already exists)
   had a single, well-supported answer once checked directly against this
-  app's own `layout/types.ts`/`panelQuery.ts`/`docs/GRAMMAR.md`/
+  app's own `layout/types.ts`/`panelQuery.ts`/`project-docs/GRAMMAR.md`/
   `node_modules` — no [NEEDS CLARIFICATION] marker was needed. The exact
   chart-color token values and exact grammar field names are deliberately
   left to `/speckit-plan` (design-system consultation, and a small

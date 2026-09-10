@@ -788,7 +788,7 @@ test.describe('User Story 1 - Sectioned basemap catalog with stage-then-Apply', 
     await trueEventually(async () => (await card.locator('.flowmap-chart').getAttribute('data-render-count')) !== null)
     // The app-default tier resolves first, before any viewer pick exists.
     // APP_DEFAULT is 'openfreemap-positron' (registry.ts) — moved from
-    // 'carto-voyager', docs/BASEMAP-PICKER-PROPOSAL.md §2/§3.
+    // 'carto-voyager', project-docs/BASEMAP-PICKER-PROPOSAL.md §2/§3.
     await trueEventually(async () => requestUrls.some((u) => u.includes('tiles.openfreemap.org/styles/positron')))
 
     await page.getByRole('button', { name: 'Settings' }).click()

@@ -276,7 +276,7 @@ test.describe('User Story 1 - Author renders an O-D metric as a flow map', () =>
     // changed — this exact panel (no basemap: config) now loads a real
     // basemap by design (FR-007). The app default moved from
     // 'carto-voyager' to 'openfreemap-positron' (registry.ts APP_DEFAULT,
-    // docs/BASEMAP-PICKER-PROPOSAL.md §2/§3), and every request that
+    // project-docs/BASEMAP-PICKER-PROPOSAL.md §2/§3), and every request that
     // style makes — style JSON, vector tiles, the ne2_shaded relief
     // raster, sprites, fonts — is served from tiles.openfreemap.org
     // (confirmed directly). What's still worth asserting: this panel
@@ -1047,7 +1047,7 @@ test.describe('011-basemap-style-system — US1: default basemap renders (quicks
     // 021-basemap-catalog-redesign: the app-default tier is one static
     // value, never theme-paired. Moved from 'carto-voyager' to
     // 'openfreemap-positron' (registry.ts APP_DEFAULT) —
-    // docs/BASEMAP-PICKER-PROPOSAL.md §2/§3.
+    // project-docs/BASEMAP-PICKER-PROPOSAL.md §2/§3.
     await trueEventually(async () => requestUrls.some((u) => u.includes('tiles.openfreemap.org/styles/positron')))
     expect(await getStyleSources(page, FLOWMAP_TITLE)).not.toEqual([])
   })
@@ -1135,7 +1135,7 @@ test.describe('011-basemap-style-system — US1: setStyle()/MapboxOverlay empiri
     await trueEventually(async () => (await container.getAttribute('data-render-count')) !== null)
     await waitForBasemapApplied(page, FLOWMAP_TITLE)
     // The unconfigured panel resolves to APP_DEFAULT, now 'openfreemap-positron'
-    // (registry.ts; moved from 'carto-voyager', docs/BASEMAP-PICKER-PROPOSAL.md).
+    // (registry.ts; moved from 'carto-voyager', project-docs/BASEMAP-PICKER-PROPOSAL.md).
     await trueEventually(async () => requestUrls.some((u) => u.includes('tiles.openfreemap.org/styles/positron')))
 
     const baseHandleBefore = await baseCanvas.elementHandle()
@@ -1684,7 +1684,7 @@ test.describe('011-basemap-style-system — fully offline fallback (quickstart.m
   }) => {
     // Route-blocks every real built-in-preset/raster-catalog/composition
     // host this feature can reach — the wftdm-dashboard here/no-internet
-    // case (docs/ARCHITECTURE.md). Deliberately does NOT block
+    // case (project-docs/ARCHITECTURE.md). Deliberately does NOT block
     // 127.0.0.1:5199 (the app's own dev server) or DuckDB-WASM's own
     // extensions.duckdb.org dependency, same scoping discipline as this
     // file's existing "every map-host request..." test.

@@ -4,7 +4,7 @@
 
 Status legend: **✅** computable now · **⚠** partially computable (caveat
 noted) · **❌** not computable (real, confirmed gap — reported in
-`docs/CALIBRATION-SUMMARIES.md`, not built). Evidence is the real source
+`project-docs/CALIBRATION-SUMMARIES.md`, not built). Evidence is the real source
 checked directly (`research.md` §1-§2).
 
 ### Summary Tab

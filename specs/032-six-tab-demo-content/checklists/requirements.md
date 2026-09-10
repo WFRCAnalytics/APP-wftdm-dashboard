@@ -37,7 +37,7 @@
   own request, plus established project precedent from `026-activitysim-
   demo-content`/`031-all-panel-demo-content`/`030-sidebar-navigation`,
   already resolved every genuinely ambiguous point. Real project-specific
-  file/column names (e.g. `docs/CALIBRATION-SUMMARIES.md`, `summarize.yaml`,
+  file/column names (e.g. `project-docs/CALIBRATION-SUMMARIES.md`, `summarize.yaml`,
   `taz25.geoparquet`) appear because they are literally what the user's own
   request names as targets, not as an implementation-detail leak — the
   spec's actual requirements stay framed around outcomes (structure, data

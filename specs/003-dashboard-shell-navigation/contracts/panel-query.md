@@ -12,7 +12,7 @@ import type { DashboardConfig } from '@/services/yamlLoader'
 
 /**
  * Builds a bare SQL template for a panel — $scenario.<metric> and
- * $filters.<id> placeholders only, per docs/GRAMMAR.md's SQL placeholder
+ * $filters.<id> placeholders only, per project-docs/GRAMMAR.md's SQL placeholder
  * reference table (panel queries never use $mappings/$bins/$sql — those
  * are summarize.yaml-only, already baked into the Parquet). Does NOT
  * expand placeholders itself — hand the result to sqlExpander.expand().
@@ -57,7 +57,7 @@ export const EMPTY_SUMMARIZE_CONFIG: DashboardConfig = { raw: {}, sourcePath: ''
 - **Given** a `PlotlyPanelConfig` with `metric: 'trip_mode_share'` and
   `filter: '$filters.purpose'`, **when** `buildPanelQuery` runs, **then**
   the returned template's `WHERE` clause places the `$filters.purpose`
-  reference alone on its own line, per `docs/GRAMMAR.md`'s documented
+  reference alone on its own line, per `project-docs/GRAMMAR.md`'s documented
   `all`-sentinel line-omission rule — never combined with another
   condition on the same line.
 - **Given** a config with `scenario` set (single-scenario override) rather

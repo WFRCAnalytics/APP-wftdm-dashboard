@@ -98,7 +98,7 @@ Checked against `.specify/memory/constitution.md` v2.2.0:
 - **VI. Fixed Technology Choices** — PASS. No Mapbox, no Webpack, no Web
   Storage. Adds `d3-sankey`/`d3-scale-chromatic` — neither is a choice
   this principle fixes or forbids (its enumerated list is maps/build-tool/
-  storage/UI-layer only); `docs/SPEC.md`'s own Panel types table already
+  storage/UI-layer only); `project-docs/SPEC.md`'s own Panel types table already
   names `d3-sankey` as this panel type's pinned charting choice, so this
   isn't a new technology decision being made here, just the
   already-decided one being implemented.

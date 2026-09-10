@@ -1,5 +1,5 @@
 // Ambient declaration for the File System Access API's directory-picker
-// entry point (Chrome/Edge only — docs/ARCHITECTURE.md). TypeScript's own
+// entry point (Chrome/Edge only — project-docs/ARCHITECTURE.md). TypeScript's own
 // bundled lib.dom.d.ts (confirmed against the installed 5.9.3 directly, not
 // assumed) declares the FileSystemDirectoryHandle interface itself — added
 // for StorageManager.getDirectory()'s OPFS use — but not this Window-level

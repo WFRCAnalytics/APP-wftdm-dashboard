@@ -98,13 +98,13 @@ static assets and resolves local URLs at build time), builds a
 constitution Principle II, amended 1.2.0). `coi-serviceworker.js` is loaded
 first in `index.html` to enable cross-origin isolation (SharedArrayBuffer /
 threaded WASM) where headers allow it, falling back to single-threaded WASM
-otherwise (per `docs/ARCHITECTURE.md`'s GitHub Pages note).
+otherwise (per `project-docs/ARCHITECTURE.md`'s GitHub Pages note).
 
 **Rationale**: Explicitly mandated reuse target (constitution Principle VIII);
 no reason to re-derive the wiring itself. The self-hosted-vs-CDN choice is not
 cosmetic: `duckdb.getJsDelivrBundles()` fetches the `.wasm`/worker binaries
 from `cdn.jsdelivr.net` at runtime, which requires internet access. That
-directly breaks two commitments already made in `docs/ARCHITECTURE.md` —
+directly breaks two commitments already made in `project-docs/ARCHITECTURE.md` —
 `wftdm-dashboard here`'s "no internet required; works behind a firewall,"
 and the "data never leaves the machine" framing of local-folder usage — a
 runtime CDN fetch for the query engine's own binaries would violate both,
@@ -129,12 +129,12 @@ for `here` mode), with zero runtime dependency on a third-party host.
 `FileSystemDirectoryHandle` (local-folder mode, via `showDirectoryPicker()`) or
 is paired with a separate `registerFileURL(viewName, url)` for the served/
 self-hosted mode, per the existing `services/duckdb.js` API shape documented in
-`docs/SPEC.md`. `scenarioDiscovery.js` picks the URL path for
+`project-docs/SPEC.md`. `scenarioDiscovery.js` picks the URL path for
 `public/observed/` and `public/scenarios/*` (always HTTP-fetchable, whether on
 GitHub Pages or `wftdm-dashboard serve`), and reserves the folder-handle path
 for the (out-of-scope-for-this-slice) manual picker.
 
-**Rationale**: FR-006 requires both; `docs/SPEC.md`'s deployment-detection
+**Rationale**: FR-006 requires both; `project-docs/SPEC.md`'s deployment-detection
 snippet already fixes this contract — this slice implements the URL path only
 (folder-handle plumbing exists as an accepted parameter shape but the actual
 picker UI is explicitly deferred to `scenarioManager.js`, a later slice).
@@ -181,4 +181,4 @@ affect the module's public contract.
 | Project Type | Single-project web frontend (no backend touched by this slice) |
 | Performance Goals | SC-002: all published scenarios queryable within 5s of startup on typical broadband |
 | Constraints | Query engine init must not block main thread (FR-001); no `eval()` (FR-015); Parquet/GeoParquet-only I/O; no Web Storage |
-| Scale/Scope | Small scenario counts (observed + a handful of published runs); each scenario's summary Parquet files individually well under 100MB per `docs/ARCHITECTURE.md` |
+| Scale/Scope | Small scenario counts (observed + a handful of published runs); each scenario's summary Parquet files individually well under 100MB per `project-docs/ARCHITECTURE.md` |

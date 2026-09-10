@@ -420,7 +420,7 @@ review beforehand — this feature's own contract review only found the
    `config`/`filters` change, not an `activeScenarioNames`-only one.
 3. **`readManifest()` didn't handle js-yaml parsing an unquoted
    `run_date: 2026-06-15` as a native `Date`**, not a string — the exact
-   shape `docs/SPEC.md`'s own `manifest.yaml` example uses — silently
+   shape `project-docs/SPEC.md`'s own `manifest.yaml` example uses — silently
    dropping the field. Found by this feature's own `manifestReader.test.ts`
    before it ever reached integration testing.
 4. **Radix's `Tooltip.Root` throws without a `TooltipProvider` ancestor**

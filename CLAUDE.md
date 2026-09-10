@@ -1,7 +1,40 @@
 # CLAUDE.md — WFRC TDM Calibration Dashboard
 
 ActivitySim calibration/validation dashboard. Static web app + Python post-processor.
-Read `docs/ARCHITECTURE.md` and `docs/SPEC.md` before writing any code.
+Read `project-docs/ARCHITECTURE.md` and `project-docs/SPEC.md` before writing any code.
+
+---
+
+## Deployment & the `docs/` vs `project-docs/` split (read this if `docs/` confuses you)
+
+**`project-docs/`** holds the internal reference docs — `ARCHITECTURE.md`,
+`SPEC.md`, `GRAMMAR.md`, `PIPELINE.md`, `CALIBRATION-SUMMARIES.md`, and the
+two research/UX proposal docs (`UX-REDESIGN-PROPOSAL.md`,
+`BASEMAP-PICKER-PROPOSAL.md`). These were in `docs/` until
+`039-github-pages-restructure` moved them out.
+
+**`docs/` now contains a *built copy of the demo dashboard*, not
+documentation** — it is the committed GitHub Pages output. This is a
+deliberate, temporary arrangement (explicit project decision: local build,
+commit the output, no CI/Actions):
+
+- `npm run build:pages` → `tsc --noEmit && vite build --outDir docs --emptyOutDir`.
+  Produces the production demo app in `docs/`, base path `/APP-wftdm-dashboard/`.
+- GitHub Pages serves it via **"Deploy from a branch → `/docs` folder"** at
+  `https://wfrcanalytics.github.io/APP-wftdm-dashboard/`. **No
+  `.github/workflows/` file exists or should be added** — the built output
+  is committed by hand after running `build:pages`.
+- `docs/.nojekyll` (from `public/.nojekyll`) disables Jekyll processing.
+- `npm run build` is UNCHANGED — still outputs to `dist/` for the Python
+  package embed (`make build` → `cp -r dist python/wftdm_dashboard/static`).
+  Only `build:pages` targets `docs/`.
+
+**Future:** once the real dashboard deploys from WFRC's own server
+(`wfrc.utah.gov/tdm/calibration-summary` or similar), `docs/` reverts to
+its normal meaning — a source tree for the Python-package / YAML-authoring
+documentation — and the built demo output is removed from it. Until then,
+if you open `docs/` expecting Markdown and find `index.html` + `assets/`,
+that is correct and intentional.
 
 ---
 
@@ -87,7 +120,7 @@ The set of tabs is **discovered at runtime**, not a fixed app-level constant:
 `public/scenarios/index.json` already uses for scenarios. The first filename
 in that list is always the landing page, rendered on scenario load. Whatever
 WFRC's default templates (`python/wftdm_dashboard/templates/`, see
-`docs/ARCHITECTURE.md`) happen to ship is what a freshly-`init`'d project
+`project-docs/ARCHITECTURE.md`) happen to ship is what a freshly-`init`'d project
 gets — today that's seven tabs, but the app itself imposes no count or name
 on the set; adding, removing, or renaming a tab is purely an `index.json` +
 file edit, no code change.
@@ -114,11 +147,18 @@ The Summary tab renders on scenario load. Its value boxes read from `summary_kpi
 ```
 APP-wftdm-dashboard/
 ├── CLAUDE.md
-├── docs/
-│   ├── ARCHITECTURE.md
+├── project-docs/               # internal reference docs (moved here from
+│   ├── ARCHITECTURE.md         #   docs/ by 039-github-pages-restructure)
 │   ├── SPEC.md
-│   ├── grammar.md
-│   └── CALIBRATION-SUMMARIES.md
+│   ├── GRAMMAR.md
+│   ├── PIPELINE.md
+│   ├── CALIBRATION-SUMMARIES.md
+│   ├── UX-REDESIGN-PROPOSAL.md
+│   └── BASEMAP-PICKER-PROPOSAL.md
+├── docs/                       # ⚠ NOT docs — the committed GitHub Pages
+│   ├── .nojekyll               #   BUILD OUTPUT of the demo app
+│   ├── index.html              #   (`npm run build:pages`). See the
+│   └── assets/ …               #   "Deployment" section above.
 ├── index.html                  # coi-serviceworker FIRST, then main.ts
 ├── package.json
 ├── vite.config.ts
@@ -213,7 +253,7 @@ APP-wftdm-dashboard/
 │   │       │                   # expandMappings()/expandBins()/
 │   │       │                   # expandSqlFragment() (confirmed directly
 │   │       │                   # against that file's real source, not
-│   │       │                   # docs/GRAMMAR.md's prose alone — catching
+│   │       │                   # project-docs/GRAMMAR.md's prose alone — catching
 │   │       │                   # one real doc/code divergence along the
 │   │       │                   # way: $mappings.x emits no ELSE, despite
 │   │       │                   # GRAMMAR.md's own worked example showing
@@ -236,7 +276,7 @@ APP-wftdm-dashboard/
 │   │       │                   # scenario's raw data per run, in its own
 │   │       │                   # fresh connection — required, not just
 │   │       │                   # simpler: every real metric SQL in
-│   │       │                   # docs/GRAMMAR.md already references
+│   │       │                   # project-docs/GRAMMAR.md already references
 │   │       │                   # sources this way unprefixed
 │   │       │                   # (`FROM trips t`). `ensure_source_exists()`
 │   │       │                   # is the pre-flight existence check
@@ -262,7 +302,7 @@ APP-wftdm-dashboard/
 │   │       └── manifest.py     # generate_manifest()/write_manifest() —
 │   │                           # the standard Tableau10 categorical
 │   │                           # palette (confirmed against
-│   │                           # docs/GRAMMAR.md's own worked
+│   │                           # project-docs/GRAMMAR.md's own worked
 │   │                           # manifest.yaml example, whose
 │   │                           # `color: "#4e79a7"` is exactly this
 │   │                           # palette's first entry), auto-assigned via
@@ -777,7 +817,7 @@ APP-wftdm-dashboard/
     │   │   │                     # reference — `gropaul/dash`'s own
     │   │   │                     # installed `connections-view.tsx`
     │   │   │                     # (fetched and read directly from
-    │   │   │                     # `gropaul/dash-ui`, docs/PIPELINE.md's
+    │   │   │                     # `gropaul/dash-ui`, project-docs/PIPELINE.md's
     │   │   │                     # own on-record design-inspiration note —
     │   │   │                     # its own UI source, not the extension
     │   │   │                     # repo, and confirmed to run nearly the
@@ -1012,7 +1052,7 @@ APP-wftdm-dashboard/
     │   │                         # as 018's own $baseline.<metric>
     │   │                         # sqlExpander placeholder — that's a
     │   │                         # separate, still-unconsumed-by-any-
-    │   │                         # panel path (docs/GRAMMAR.md's own
+    │   │                         # panel path (project-docs/GRAMMAR.md's own
     │   │                         # placeholder-reference table has the
     │   │                         # full disambiguation); this one never
     │   │                         # touches sqlExpander.ts at all, matching
@@ -1353,7 +1393,7 @@ APP-wftdm-dashboard/
     │   │                         # unrelated still-real tests. See
     │   │                         # `specs/012-webgl-context-management/
     │   │                         # spec.md`'s own added removal note and
-    │   │                         # `docs/PIPELINE.md`'s new flowmap
+    │   │                         # `project-docs/PIPELINE.md`'s new flowmap
     │   │                         # line-jaggedness entry for the related
     │   │                         # (but explicitly not causal) investigation
     │   │                         # that was happening at the same time.
@@ -1952,7 +1992,7 @@ APP-wftdm-dashboard/
     │   │                         # json/icu/autocomplete — needs an
     │   │                         # explicit INSTALL/LOAD, fetched
     │   │                         # lazily from extensions.duckdb.org on
-    │   │                         # first use; docs/ARCHITECTURE.md's
+    │   │                         # first use; project-docs/ARCHITECTURE.md's
     │   │                         # existing parquet-extension "no
     │   │                         # internet required" caveat now covers
     │   │                         # this second, confirmed exception too.
@@ -2808,7 +2848,7 @@ Fixed by firing unconditionally on the FIRST `'styledata'` after each
 **Later removed** (a deliberate project decision, not a bug fix, and
 explicitly not motivated by the separate flowmap line-jaggedness/
 antialiasing investigation happening around the same time — see
-`docs/PIPELINE.md`'s own entry on that): the `contextLost` state, both
+`project-docs/PIPELINE.md`'s own entry on that): the `contextLost` state, both
 `webglcontextlost`/`webglcontextrestored` listeners and their cleanup,
 the "Map context lost" banner and its wrapping `position: relative` div
 (FlowMapPanel.tsx's own container returned to a plain, unwrapped child),
@@ -2846,7 +2886,7 @@ incompatibility (`duckdb/duckdb-wasm#1791`) a scenario-independent,
 anyway. DuckDB-WASM's `spatial` extension is confirmed NOT bundled/
 autoloaded (unlike `parquet`/`json`/`icu`/`autocomplete`) — a second,
 real instance of the `parquet`-extension network-fetch caveat already
-below, now both documented in `docs/ARCHITECTURE.md`.
+below, now both documented in `project-docs/ARCHITECTURE.md`.
 
 **Pinned versions (peer deps must match):**
 - `@deck.gl/core` + `@deck.gl/layers` + `@deck.gl/mapbox`: ^9.0.0
@@ -3117,7 +3157,7 @@ first cross-reference this list was built from). ✅ done,
      genuinely different rendering model from every prior panel type: the
      `maplibregl.Map`/`MapboxOverlay` instances are imperative,
      mount-lifetime objects (created once, `overlay.setProps()` on data
-     change, `map.remove()` on unmount — `docs/SPEC.md`'s own documented
+     change, `map.remove()` on unmount — `project-docs/SPEC.md`'s own documented
      wiring), not rebuilt per-render the way every chart panel type
      before it works. Also required a `vite.config.ts` `manualChunks`
      addition (a `maps` chunk) — the first panel-type feature since
@@ -3133,7 +3173,7 @@ first cross-reference this list was built from). ✅ done,
      eight — it's since been built too; see item 10). This project's
      first GeoParquet/DuckDB-spatial feature —
      `010-flowmap-panel` deliberately avoided needing this (its own
-     `docs/GRAMMAR.md` grammar correction replaced a live spatial-join
+     `project-docs/GRAMMAR.md` grammar correction replaced a live spatial-join
      design with plain lat/lon field-mapping columns for flowmap
      specifically), but zonemap's own real `boundaries`/`boundaries_id`
      grammar genuinely needs it. Confirmed, not assumed, during planning
@@ -3144,7 +3184,7 @@ first cross-reference this list was built from). ✅ done,
      lazily from `extensions.duckdb.org` the first time any `zonemap`
      panel loads — a second, real instance of `010`'s own already-
      documented `parquet`-extension network-fetch caveat, both now
-     recorded in `docs/ARCHITECTURE.md`. Geometry itself is loaded via
+     recorded in `project-docs/ARCHITECTURE.md`. Geometry itself is loaded via
      `registerFileURL()` + plain `read_parquet()` + `ST_GeomFromWKB()`/
      `ST_AsGeoJSON()` — never `ST_Read()`/`registerFileBuffer()`,
      confirmed via a real, live upstream bug
@@ -3192,7 +3232,7 @@ first cross-reference this list was built from). ✅ done,
     originally-listed panel-type roadmap in full** — nine panel types
     total (`valuebox`, `plotly`, `table`, `markdown`, `observable-plot`,
     `sankey`, `flowmap`, `zonemap`, `graphic-walker`), none remaining.
-    Confirmed directly against `docs/GRAMMAR.md`'s own already-documented
+    Confirmed directly against `project-docs/GRAMMAR.md`'s own already-documented
     `type: graphic-walker` grammar before any design work, not assumed:
     this is an *ordinary* panel entry in the same row/panel grid every
     other type uses (`dataset`/`limit`/`height`/`width`) — "Explore tab"
@@ -3213,7 +3253,7 @@ first cross-reference this list was built from). ✅ done,
     an earlier-considered `0.4.80` pin lacks, at no React-compatibility
     cost. Renders `<GraphicWalker>` as ordinary JSX inside the panel's
     own React tree — NOT `embedGraphicWalker` (DOM-mount), reversing this
-    file's own original sketch and `docs/ARCHITECTURE.md`'s "no React
+    file's own original sketch and `project-docs/ARCHITECTURE.md`'s "no React
     ownership required" framing above, for a real, confirmed reason found
     post-completion: `embedGraphicWalker`'s own real, installed source
     (`node_modules/@kanaries/graphic-walker/dist/vanilla.js`, read
@@ -3321,7 +3361,7 @@ first cross-reference this list was built from). ✅ done,
     ActivitySim output rather than synthetic fixtures. One `summarize.yaml`
     (repo root, never published — authored against ActivitySim's real
     confirmed `final_*.csv` column shape, e.g. `zone_id`/`primary_purpose`/
-    `depart`, not `docs/GRAMMAR.md`'s own illustrative example column
+    `depart`, not `project-docs/GRAMMAR.md`'s own illustrative example column
     names, which this feature's own research directly confirmed do NOT
     match real ActivitySim output) run three times through the unmodified
     `wftdm-dashboard summarize` CLI against three real `prototype_mtc` runs
@@ -3345,7 +3385,7 @@ first cross-reference this list was built from). ✅ done,
     ever reads `breaks[1..len(labels)-1]` in the generated SQL — the first
     and last `breaks` entries are documentary bookends only, not literal
     boundaries — resolved by reading that function's real source directly
-    rather than trusting `docs/GRAMMAR.md`'s own two worked examples, which
+    rather than trusting `project-docs/GRAMMAR.md`'s own two worked examples, which
     use inconsistent breaks-vs-labels lengths relative to each other.
     Confirmed no usable real zone-boundary geometry exists for
     `prototype_mtc`'s 25 zones (the only geometry ActivitySim's own example
@@ -3389,7 +3429,7 @@ first cross-reference this list was built from). ✅ done,
     See `specs/026-activitysim-demo-content/` for the full design record.
 16. ✅ `RechartsPanel` — done (`029-shadcn-chart-panel`). Not part of this
     list when originally written either — the app-wide UI/UX redesign's
-    own shadcn/Recharts chart research (logged in `docs/PIPELINE.md`)
+    own shadcn/Recharts chart research (logged in `project-docs/PIPELINE.md`)
     identified shadcn/ui's official chart component as this app's new
     default/primary bar/line/area chart engine, and this feature is the
     first (of the five-technology charting direction PIPELINE.md records)
@@ -3443,7 +3483,7 @@ first cross-reference this list was built from). ✅ done,
     `026` didn't touch — `recharts`/`observable-plot` (Overview tab, a new
     `row_mode_share_alt_engines` row bound to the already-real
     `trip_mode_share` metric), `graphic-walker`/`markdown` (a new Explore
-    tab, `dashboard-5-explore.yaml`), and `zonemap` (a new Network tab,
+    tab, `dashboard-7-explore.yaml`), and `zonemap` (a new Network tab,
     `dashboard-4-network.yaml`). **Published** — all four are live in
     `public/demo-dashboard-config/index.json` today.
 
@@ -3714,7 +3754,7 @@ first cross-reference this list was built from). ✅ done,
     qualifying condition — made explicit, with reasoning, before any code
     was written (this feature's own spec.md/`contracts/dashboard-
     grammar.md` were corrected to match BEFORE implementation, not
-    discovered as a mismatch mid-build). `dashboard-5-explore.yaml` is now
+    discovered as a mismatch mid-build). `dashboard-7-explore.yaml` is now
     genuinely single-panel and carries `icon: compass`/`full_page: true`.
 
     **Two real, confirmed bugs found and fixed during this feature's own
@@ -3837,11 +3877,11 @@ first cross-reference this list was built from). ✅ done,
     (`Overview`/`Destination Choice`/`Transit Service`, all `026`-era, all
     deleted with no content preserved per this feature's own explicit
     instruction) with the full six-tab ActivitySim calibration outline
-    `docs/CALIBRATION-SUMMARIES.md` already documented: Summary,
+    `project-docs/CALIBRATION-SUMMARIES.md` already documented: Summary,
     Person/Household Models, Tour Models, Mode Choice, Trip Models,
     Network — using `030-sidebar-navigation`'s own real `sections:`
     accordion mechanism, one section per real submodel heading, in that
-    document's own order. The Explore tab (`dashboard-5-explore.yaml`) is
+    document's own order. The Explore tab (`dashboard-7-explore.yaml`) is
     untouched — deliberately kept at its existing filename despite landing
     7th (last) in the new tab order, since `index.json`'s array order, not
     any filename's numeric prefix, controls real display order.
@@ -3868,7 +3908,7 @@ first cross-reference this list was built from). ✅ done,
 
     **A full, real, column-level computability audit** — checked directly
     against the real, installed `configs/settings.yaml` `models:` list and
-    real CSV headers/values, not assumed from `docs/CALIBRATION-
+    real CSV headers/values, not assumed from `project-docs/CALIBRATION-
     SUMMARIES.md`'s own prose (already once found to contain an
     illustrative-only naming convention, per `026`) — found 34 of 40
     documented submodel summaries genuinely computable, one
@@ -3886,7 +3926,7 @@ first cross-reference this list was built from). ✅ done,
     dataset exists for this synthetic 25-zone system. Each of the 6 gets
     its own real `markdown` gap-note panel in the live dashboard stating
     its specific real reason (never an empty or fabricated panel standing
-    in for it) — `docs/CALIBRATION-SUMMARIES.md` itself is corrected to
+    in for it) — `project-docs/CALIBRATION-SUMMARIES.md` itself is corrected to
     match, plus two smaller, incidentally-found doc inaccuracies: the
     "Person type" segmentation list was missing the real 8th ActivitySim
     `ptype` value (pre-school child, confirmed present in real output,
@@ -4271,7 +4311,7 @@ first cross-reference this list was built from). ✅ done,
     a panel that ends up non-expandable — its returned `trigger`/`body`
     elements are simply never placed in the returned JSX, which is safe:
     an unplaced React element is inert, never mounted, never a second
-    instance of anything. `docs/GRAMMAR.md` documents the new field and
+    instance of anything. `project-docs/GRAMMAR.md` documents the new field and
     its default table.
 
     **Part B — `ValueBoxPanel.tsx`'s visual redesign**, researched
@@ -4425,7 +4465,7 @@ first cross-reference this list was built from). ✅ done,
     **Part B** — a real, significant corrected premise found during
     research, before any code was written: `Scenario.color` (sourced from
     `manifest.yaml`) had ZERO real rendering consumers anywhere in this
-    codebase. `docs/GRAMMAR.md`'s own "the panel colors by scenario" line
+    codebase. `project-docs/GRAMMAR.md`'s own "the panel colors by scenario" line
     refers to `plotlyTraces.ts`'s generic per-trace default-palette
     cycling (no explicit `marker.color` set at all), completely unrelated
     to the manifest field. This feature is therefore the FIRST real wiring

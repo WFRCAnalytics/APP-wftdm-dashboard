@@ -33,7 +33,7 @@
 
 - Items marked incomplete require spec updates before `/speckit-clarify` or `/speckit-plan`.
 - "Content Quality"/"No implementation details" is interpreted per this project's own
-  established precedent (005/006): naming `docs/GRAMMAR.md` config keys (`mark`, `x`,
+  established precedent (005/006): naming `project-docs/GRAMMAR.md` config keys (`mark`, `x`,
   `y`, `inputs:`, `$inputs.<id>`) and existing module names (`state/filterState.ts`,
   `PlotlyPanel`) is retained because those are the feature's actual public contract —
   the dashboard-authoring grammar and the fixed panel-registry pattern — not

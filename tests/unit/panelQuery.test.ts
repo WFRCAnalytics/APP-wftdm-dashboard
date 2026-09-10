@@ -195,7 +195,7 @@ describe('resolveActiveScenarios', () => {
 
 // 013-zonemap-panel: regression test for a real bug found via Playwright
 // during implementation — ZoneMapPanelConfig's own `column` field
-// (docs/GRAMMAR.md's real grammar) was being caught by the same
+// (project-docs/GRAMMAR.md's real grammar) was being caught by the same
 // `'column' in config` check written for ValueBoxPanelConfig, silently
 // dropping `metric_id` from the generated SELECT and breaking every
 // zone-id join (every zone rendered as "no data").

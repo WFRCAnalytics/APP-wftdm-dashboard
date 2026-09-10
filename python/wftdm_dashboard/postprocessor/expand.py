@@ -74,7 +74,7 @@ def _expand_equal_intervals(bin_: EqualIntervalsBin) -> str:
 def expand_bins(bin_: Bin) -> str:
     """`$bins.<name>` -> a CASE/NTILE/FLOOR expression per its `type`.
 
-    Matches the four shapes documented in docs/GRAMMAR.md and confirmed
+    Matches the four shapes documented in project-docs/GRAMMAR.md and confirmed
     directly against services/sqlExpander.ts's real expandBins() (research.md
     §4). An `UnknownBin` (a `type:` outside the four recognized values)
     raises a plain ValueError here — User Story 4 (errors.py's

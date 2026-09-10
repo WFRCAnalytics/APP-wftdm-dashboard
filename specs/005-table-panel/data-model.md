@@ -13,7 +13,7 @@ actually renders.
 
 ## TableColumnConfig
 
-One entry in a `table` panel's `columns:` list (`docs/GRAMMAR.md`).
+One entry in a `table` panel's `columns:` list (`project-docs/GRAMMAR.md`).
 
 | Field | Type | Notes |
 |---|---|---|
@@ -31,7 +31,7 @@ One entry in a `table` panel's `columns:` list (`docs/GRAMMAR.md`).
 |---|---|---|
 | `columns` | `TableColumnConfig[]?` | When present, governs which fields display, in what order, with what label/format/color (FR-003). When absent, columns are derived from the query result's own shape instead (FR-004) |
 | `sort` | `{ column: string; order: 'asc' \| 'desc' }?` | Initial sort applied before any user interaction (FR-008); omitted means the query result's own returned row order |
-| `pagination` | `number?` | Page size override; omitted falls back to the documented default, 20 (spec.md's Assumptions, sourced from `docs/GRAMMAR.md`'s own example value) |
+| `pagination` | `number?` | Page size override; omitted falls back to the documented default, 20 (spec.md's Assumptions, sourced from `project-docs/GRAMMAR.md`'s own example value) |
 | `searchable` | `boolean?` | When `true`, a search input is rendered (FR-011); omitted/`false` means no search UI |
 
 `PanelConfigBase`'s existing common fields (`title`, `metric`, `filter`,

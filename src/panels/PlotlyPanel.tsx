@@ -58,7 +58,7 @@ function resolveThemeLayout(el: HTMLElement, colorScheme: 'light' | 'dark'): Par
 
 // Proves the full pipeline (spec.md User Story 3): YAML config -> SQL
 // expansion -> query -> Plotly.react() render, filter-reactive, using
-// docs/SPEC.md's corrected two-effect pattern. See contracts/plotly-panel.md.
+// project-docs/SPEC.md's corrected two-effect pattern. See contracts/plotly-panel.md.
 export function PlotlyPanel({ config }: { config: PlotlyPanelConfig }) {
   // extractGlobalFilterIds (panelQuery.ts) — see ValueBoxPanel.tsx's own
   // comment on why this replaced an inline config.filter.replace(...) call.
@@ -96,7 +96,7 @@ export function PlotlyPanel({ config }: { config: PlotlyPanelConfig }) {
   const lastRowsRef = useRef<Record<string, unknown>[] | null>(null)
 
   // Data fetch + Plotly.react() — re-runs on config/filters change. Never
-  // purges here; react() diffs against the existing plot (docs/SPEC.md's
+  // purges here; react() diffs against the existing plot (project-docs/SPEC.md's
   // "use react() not newPlot()" guidance). Deliberately does NOT list
   // colorScheme as a dependency — see the theme-only effect below, which
   // handles that case without a redundant re-query.
@@ -145,7 +145,7 @@ export function PlotlyPanel({ config }: { config: PlotlyPanelConfig }) {
         }
         lastRowsRef.current = rows
         const traces = config.traces.flatMap((trace) => resolveTraces(trace, rows, scenarioDisplay))
-        // docs/GRAMMAR.md declares barmode per-trace (traces[].barmode),
+        // project-docs/GRAMMAR.md declares barmode per-trace (traces[].barmode),
         // but Plotly.js itself expects it at the layout level
         // (layout.barmode), not on individual trace data objects — lifted
         // here rather than silently dropped.

@@ -8,7 +8,7 @@
 - New fixture data needed: `tests/fixtures/generate.py` gains an
   `od_flows`-shaped table with `orig_taz`/`orig_lat`/`orig_lon`/
   `dest_taz`/`dest_lat`/`dest_lon`/`trips` columns (matching the
-  corrected `docs/GRAMMAR.md` grammar), including at least one duplicate
+  corrected `project-docs/GRAMMAR.md` grammar), including at least one duplicate
   (origin, destination) pair (summing coverage), one row with a
   non-positive `trips` value, and one row with a missing/null coordinate
   (exclusion coverage) — mirroring `008-sankey-panel`'s own

@@ -1,7 +1,7 @@
 # Contract: this feature's `summarize.yaml`
 
 Not a new grammar — this documents how this feature instantiates the
-existing `summarize.yaml` grammar (`docs/GRAMMAR.md`, `python/wftdm_dashboard/
+existing `summarize.yaml` grammar (`project-docs/GRAMMAR.md`, `python/wftdm_dashboard/
 postprocessor/config.py`/`expand.py`) against real ActivitySim columns.
 Anything not listed here follows the existing grammar unchanged.
 
@@ -53,7 +53,7 @@ mappings:
 ```
 
 Per `expand_mappings()`'s real, confirmed behavior (no `ELSE` clause emitted
-— docs/GRAMMAR.md §"How placeholders expand"), any real `trip_mode` value
+— project-docs/GRAMMAR.md §"How placeholders expand"), any real `trip_mode` value
 not listed above yields SQL `NULL` for `major_trip_mode`, not an error —
 acceptable here since `prototype_mtc`'s real mode-choice spec's full value
 set was directly enumerated (`tour_mode_choice.csv`) and is expected to be

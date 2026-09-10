@@ -30,7 +30,7 @@ export interface PanelConfigBase {
 // bypassing the $scenario.x union entirely. scenarios (plural): override
 // which subset of the globally-active scenarios this panel unions over
 // (still uses $scenario.x). Both real, distinct, documented grammar
-// (docs/GRAMMAR.md) — resolution behavior for each lives in
+// (project-docs/GRAMMAR.md) — resolution behavior for each lives in
 // contracts/panel-query.md, not here (this file is parsing only).
 
 export interface ValueBoxPanelConfig extends PanelConfigBase {
@@ -84,7 +84,7 @@ export function parseDashboardConfig(raw: unknown): DashboardTabConfig
 
 - **Given** a well-formed `dashboard-*.yaml`'s parsed `raw` value, **when**
   `parseDashboardConfig` runs, **then** it returns a `DashboardTabConfig`
-  with `header`/`filters`/`layout` populated per `docs/GRAMMAR.md`'s
+  with `header`/`filters`/`layout` populated per `project-docs/GRAMMAR.md`'s
   documented shape.
 - **Given** a `raw` value missing `header.tab` or `header.title`, **when**
   `parseDashboardConfig` runs, **then** it throws an `Error` naming which

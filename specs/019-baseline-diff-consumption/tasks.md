@@ -69,7 +69,7 @@
 ## Phase 5: User Story 3 - The four panel types share one authoring convention, not four (Priority: P2)
 
 - [X] T026 [US3] Added a parametrized-style test to `tests/unit/panelQuery.test.ts` confirming the shared `buildComparisonDiffQuery()`/`compareOn` mechanism produces the identically-shaped `diff_value` output regardless of column count — direct proof of one shared implementation, not four.
-- [X] T027 [P] [US3] Updated `docs/GRAMMAR.md`: added a new shared "Scenario comparison / diff mode" section (under `type: zonemap`, cross-referenced from `type: plotly`/`type: table`/`type: observable-plot`), and corrected/expanded the existing `$baseline.x` placeholder-reference note to explicitly disambiguate it from this feature's own, structurally separate `$baseline` sentinel (both exist, both work, neither builds on the other).
+- [X] T027 [P] [US3] Updated `project-docs/GRAMMAR.md`: added a new shared "Scenario comparison / diff mode" section (under `type: zonemap`, cross-referenced from `type: plotly`/`type: table`/`type: observable-plot`), and corrected/expanded the existing `$baseline.x` placeholder-reference note to explicitly disambiguate it from this feature's own, structurally separate `$baseline` sentinel (both exist, both work, neither builds on the other).
 
 **Checkpoint**: The "one consistent convention" bar is confirmed via both a direct test and updated documentation.
 

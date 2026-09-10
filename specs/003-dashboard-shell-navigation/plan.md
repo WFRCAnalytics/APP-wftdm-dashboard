@@ -13,14 +13,14 @@ through the established token set. Add the panel registry the constitution's
 v2.2.0 amendment already specifies (`panels/registry.tsx`, a `type` →
 component map) and populate it with the first two panel types — `valuebox`
 (config → query → rendered scalar) and `plotly` (YAML config → SQL
-expansion → query → `Plotly.react()`, using `docs/SPEC.md`'s corrected
+expansion → query → `Plotly.react()`, using `project-docs/SPEC.md`'s corrected
 two-effect pattern). Technical approach: introduce typed parsing of
 `dashboard-*.yaml`'s `header`/`filters`/`layout` structure (currently opaque
 `raw: unknown` from `yamlLoader.ts`); a small, new `panelQuery.ts` module
 that turns a panel's config + current filter values into the SQL template
 `sqlExpander.ts` already knows how to expand (`$filters.x`/`$scenario.x` —
 not `$mappings`/`$bins`/`$sql`, which are `summarize.yaml`-only concepts
-baked into the Parquet by the offline post-processor, per `docs/GRAMMAR.md`'s
+baked into the Parquet by the offline post-processor, per `project-docs/GRAMMAR.md`'s
 own SQL placeholder reference table); and `src/hooks/useFilterState.ts`,
 implementing the `useSyncExternalStore` wrapper the constitution already
 specifies. A new Playwright fixture fills the gap the spec flagged: no
@@ -34,7 +34,7 @@ existing fixture models a real multi-tab, multi-panel `dashboard-*.yaml`.
 (all already installed, `002-design-tokens`) for navigation; the existing
 `Card`/`Tabs` shadcn components (`src/components/ui/`) for panel cards and
 tab navigation; `lucide-react` (already installed) for value-box icons
-(`docs/GRAMMAR.md`'s `icon:` key); **new** — `plotly.js-dist-min`, not yet
+(`project-docs/GRAMMAR.md`'s `icon:` key); **new** — `plotly.js-dist-min`, not yet
 in `package.json`, for the `plotly` panel type
 
 **Component source**: New layout (`shell.tsx`, `navBar.tsx`,

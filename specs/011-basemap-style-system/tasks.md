@@ -133,7 +133,7 @@ change and `setStyle()` is not called again.
 - [X] T022 [US2] Write Playwright test — an explicit pin does NOT re-pair on a theme change, and `setStyle()` is NOT called a second time (spy on the live map instance's own `setStyle` method, not the prototype — simpler and equally direct) — PASSING.
 - [X] T023 [P] [US2] Add a raster-provider-preset fixture panel — "Flowmap Raster Provider Preset" (`basemap: OpenTopoMap`, confirmed present in the real extracted catalog) on `dashboard-3-basemaps.yaml`.
 - [X] T024 [US2] Write Playwright test — a raster-provider preset renders its tiles correctly as the basemap — PASSING.
-- [X] T025 [US2] Update `docs/GRAMMAR.md`'s `type: flowmap` section and the `dashboard-*.yaml` top-level-structure section with the real `basemap:`/`default_basemap:` grammar — done, including a new "Basemap style system" subsection covering all three preset categories, the composition shape, and the precedence/theme-repair rules.
+- [X] T025 [US2] Update `project-docs/GRAMMAR.md`'s `type: flowmap` section and the `dashboard-*.yaml` top-level-structure section with the real `basemap:`/`default_basemap:` grammar — done, including a new "Basemap style system" subsection covering all three preset categories, the composition shape, and the precedence/theme-repair rules.
 
 **Checkpoint**: User Stories 1 AND 2 both work independently.
 

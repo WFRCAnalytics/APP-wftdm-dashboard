@@ -14,13 +14,13 @@ navigation and inheriting 004's panel-expand-dialog mechanism
 automatically (no per-type wiring needed there).
 
 - Renders a panel's query result as a sortable, paginated table — per
-  docs/SPEC.md's Panel types table (\"table | plain DOM | Sortable,
+  project-docs/SPEC.md's Panel types table (\"table | plain DOM | Sortable,
   paginated\").
 - Columns are derived from the query result's own shape (whatever
   columns buildPanelQuery's SQL template + sqlExpander.expand() produce
   for this panel's config) — not a separately-configured column list in
   dashboard-*.yaml, unless research during planning finds the grammar
-  already expects one (check docs/GRAMMAR.md's actual TablePanel-related
+  already expects one (check project-docs/GRAMMAR.md's actual TablePanel-related
   fields, if any, rather than assuming there are none).
 - Sortable: clicking a column header re-sorts the currently-loaded rows
   client-side (no new query per sort) — this is client-side
@@ -43,7 +43,7 @@ of scope unless spec.md's own research finds this is expected grammar,
 not assumed), CSV export, or any other panel type (flowmap, zonemap,
 sankey, markdown, observable-plot all remain separately deferred).
 
-Resolved during specification, via docs/GRAMMAR.md's actual `type:
+Resolved during specification, via project-docs/GRAMMAR.md's actual `type:
 table` section (real, existing grammar, not assumed either way) and a
 clarifying exchange:
 - `columns:` (`field`/`label`/`format`/`color_scale`/`domain` per
@@ -117,7 +117,7 @@ screenlines, or any other column-driven ordering I care about, without
 waiting on a new query each time.
 
 **Why this priority**: The single most-used interaction on any data
-table, and directly named in `docs/SPEC.md`'s own Panel types table
+table, and directly named in `project-docs/SPEC.md`'s own Panel types table
 ("Sortable, paginated"). Builds directly on US1 — nothing to sort until
 a table renders.
 
@@ -154,7 +154,7 @@ so the panel stays readable and the page doesn't render hundreds of rows
 at once.
 
 **Why this priority**: Directly named alongside sorting in
-`docs/SPEC.md`'s Panel types table ("Sortable, paginated") — a table
+`project-docs/SPEC.md`'s Panel types table ("Sortable, paginated") — a table
 panel isn't considered complete against its own documented description
 without it. Independent of US2 (a table can be paginated without being
 sorted, and vice versa), so it's its own slice.
@@ -193,7 +193,7 @@ through everything by hand.
 **Why this priority**: Lowest priority of the four — a table panel is
 already useful and matches its documented description (US1-US3) without
 search. But `searchable: true` is real, existing grammar
-(`docs/GRAMMAR.md`), confirmed in scope during specification rather than
+(`project-docs/GRAMMAR.md`), confirmed in scope during specification rather than
 assumed away, so it's included as its own slice rather than silently
 dropped.
 
@@ -343,12 +343,12 @@ results without the user needing to know or navigate to its original page.
   undecided and MUST be resolved as an explicit research question before
   implementation, not improvised by whoever writes the color-mapping
   code.** Checked directly, not assumed either way, before writing this
-  down: neither `docs/CALIBRATION-SUMMARIES.md` (the document
-  `docs/ARCHITECTURE.md` describes as containing "Standard Segmentation
+  down: neither `project-docs/CALIBRATION-SUMMARIES.md` (the document
+  `project-docs/ARCHITECTURE.md` describes as containing "Standard Segmentation
   Definitions" — no section is literally titled that, in
-  `docs/GRAMMAR.md` or elsewhere) nor `002-design-tokens`'s actual
+  `project-docs/GRAMMAR.md` or elsewhere) nor `002-design-tokens`'s actual
   shipped token set (`src/styles/tokens.css`) establishes any
-  sequential/diverging color convention. `docs/GRAMMAR.md`'s own
+  sequential/diverging color convention. `project-docs/GRAMMAR.md`'s own
   `zonemap` example (the only other place `color_scale`/`color_ramp`
   appear in the grammar) just names generic ColorBrewer ramps (`YlOrRd`,
   `RdBu`) with no connection to any brand token. `tokens.css` itself
@@ -371,7 +371,7 @@ results without the user needing to know or navigate to its original page.
 ## Assumptions
 
 - Default page size, when a panel's config omits `pagination:`, is 20
-  rows — matching `docs/GRAMMAR.md`'s own documented example value for
+  rows — matching `project-docs/GRAMMAR.md`'s own documented example value for
   this exact field, not an arbitrarily chosen number.
 - Default initial sort, when a panel's config omits `sort:`, is the query
   result's own natural/returned row order — no forced default column
@@ -379,7 +379,7 @@ results without the user needing to know or navigate to its original page.
 - Search matches against each column's *rendered* (formatted) value, not
   a hidden raw underlying value — matching the mental model of "search
   what you can see."
-- "Inline column expressions" (mentioned in `docs/GRAMMAR.md`'s prose for
+- "Inline column expressions" (mentioned in `project-docs/GRAMMAR.md`'s prose for
   `type: table`) has no defined syntax anywhere in the documentation and
   is explicitly out of scope for this feature — a deliberate boundary
   given there is nothing specified to build against, not an oversight.

@@ -31,7 +31,7 @@ zero producers until this feature.
 
 ## `ParsedManifest` / `ManifestReadResult` (new — `src/scenario/manifestReader.ts`)
 
-The subset of `manifest.yaml`'s documented fields (`docs/SPEC.md`) this
+The subset of `manifest.yaml`'s documented fields (`project-docs/SPEC.md`) this
 feature actually consumes:
 
 ```ts

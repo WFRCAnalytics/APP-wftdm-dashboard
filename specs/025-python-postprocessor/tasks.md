@@ -238,7 +238,7 @@ specifies.
   parses (depends on T016, T019 — makes T018 pass)
 
 **Checkpoint**: User Stories 1+2+3 — the CLI's output folder can be copied
-straight into `public/scenarios/{name}/` per `docs/GRAMMAR.md`'s publish
+straight into `public/scenarios/{name}/` per `project-docs/GRAMMAR.md`'s publish
 workflow, with no manual editing.
 
 ---
@@ -322,7 +322,7 @@ spec.md coverage.
   run — it needs a real `dashboard-*.yaml` panel wired to this pipeline's
   own fixture metric names, which doesn't exist in this repo yet; noted
   here honestly rather than claimed done
-- [X] T030 Correct `docs/GRAMMAR.md`'s "Runs via `uv run summarize.py`"
+- [X] T030 Correct `project-docs/GRAMMAR.md`'s "Runs via `uv run summarize.py`"
   line to describe the real `wftdm-dashboard summarize` CLI shape
   (research.md §6's noted follow-up)
 - [X] T031 Update `CLAUDE.md`'s Python package section and Implementation

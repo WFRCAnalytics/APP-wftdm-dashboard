@@ -1,7 +1,7 @@
 # Contract: `PlotlyPanel` (`src/panels/PlotlyPanel.tsx`)
 
 Satisfies: FR-006, FR-007, FR-011. Proves the full pipeline (spec.md User
-Story 3) using `docs/SPEC.md`'s corrected two-effect pattern — one effect
+Story 3) using `project-docs/SPEC.md`'s corrected two-effect pattern — one effect
 for data fetch + `Plotly.react()` (no purge), a separate empty-deps effect
 for `Plotly.purge()` on actual unmount only.
 
@@ -59,12 +59,12 @@ module) implements research.md §3's `$metric.col`/`$scenario` resolution
 — reads a `PlotlyTraceConfig`'s `x`/`y`/`color`/`name`/`text` values and,
 for any matching `$metric.<column>` or bare `$scenario`, maps it to
 `rows.map(r => r[column])` (or `r.scenario` for the bare `$scenario`
-case). This is `docs/SPEC.md`'s own dashboard-config example
+case). This is `project-docs/SPEC.md`'s own dashboard-config example
 (`x: $metric.observed`, `name: $scenario`) implemented exactly as written
 there — `PlotlyTraceConfig`'s `x`/`y`/`color`/`name`/`text` fields are NOT
 meant to hold literal column names directly; a config author writes
 `$metric.<column>` (or the bare `$scenario` sentinel) exactly as
-`docs/GRAMMAR.md`'s `type: plotly` example shows, and `resolveTraces` is
+`project-docs/GRAMMAR.md`'s `type: plotly` example shows, and `resolveTraces` is
 where that syntax actually gets resolved against the query result — no
 deviation from the documented grammar.
 
@@ -103,7 +103,7 @@ none) and is kept in the DOM-but-hidden `containerRef` div throughout so
   is resolved here, in `plotlyTraces.ts`, not bypassed in favor of literal
   column names.
 - **Given** two or more active scenarios and a trace with `name:
-  $scenario` (the bare sentinel, per `docs/GRAMMAR.md`'s own `type:
+  $scenario` (the bare sentinel, per `project-docs/GRAMMAR.md`'s own `type:
   plotly` example — "auto-replaced per loaded scenario") and no `color`
   set, **when** `resolveTraces` runs, **then** it returns one trace per
   distinct scenario value present in the rows, each with its own `name`
