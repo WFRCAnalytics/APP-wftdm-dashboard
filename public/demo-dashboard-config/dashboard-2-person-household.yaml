@@ -17,8 +17,8 @@
 # union — a `failed` scenario is never auto-active).
 
 header:
-  tab: "Person/Household Models"
-  title: Person / Household Models
+  tab: "Person & Households"
+  title: Person & Households
   icon: users
 
 sections:

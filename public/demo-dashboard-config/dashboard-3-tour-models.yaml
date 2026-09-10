@@ -10,8 +10,8 @@
 # `description`).
 
 header:
-  tab: "Tour Models"
-  title: Tour Models
+  tab: "Tour"
+  title: Tour
   icon: route
 
 sections:

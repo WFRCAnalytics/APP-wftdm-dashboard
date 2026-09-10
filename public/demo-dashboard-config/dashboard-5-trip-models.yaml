@@ -4,8 +4,8 @@
 # fit for a spatial rollup (research.md §7).
 
 header:
-  tab: "Trip Models"
-  title: Trip Models
+  tab: "Trip"
+  title: Trip
   icon: map-pin
 
 sections:

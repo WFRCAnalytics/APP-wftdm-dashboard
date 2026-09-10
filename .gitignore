@@ -132,6 +132,17 @@ python/wftdm_dashboard/static/
 # geometry/ (fixture-copy destination) correctly keeps the blanket rule.
 !/public/demo-geometry/**/*.geoparquet
 
+# 039-github-pages-restructure: docs/ is the committed GitHub Pages BUILD
+# OUTPUT of the demo app (`npm run build:pages`) — Vite copies public/
+# verbatim into it, so it contains a full copy of the demo-scenarios/ and
+# demo-geometry/ data. Without these two negations the blanket *.parquet /
+# *.geoparquet rules above silently exclude every data file under docs/,
+# and the deployed site serves HTML+JS with NO scenario data → every panel
+# fails with "Couldn't load this value". The negations must sit AFTER the
+# public/ ones above (last matching pattern wins).
+!/docs/**/*.parquet
+!/docs/**/*.geoparquet
+
 # ── Dashboard YAML configs ────────────────────────────────────────────────────
 # .wfrc/ configs live in the model repo alongside scenario output, not here
 .wfrc/
