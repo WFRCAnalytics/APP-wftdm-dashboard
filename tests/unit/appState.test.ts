@@ -11,6 +11,7 @@ import {
   listByDisplayOrder,
   moveScenario,
   register,
+  reorderScenario,
   setActive,
   setBaseline,
   setLabel,
@@ -272,6 +273,93 @@ describe('appState.listByDisplayOrder / moveScenario', () => {
     register('c', { source: 'url', path: 'test/c' })
     // 'b' is gone; 'c' (freshly registered) still appends last after 'a'.
     expect(listByDisplayOrder().map((s) => s.name)).toEqual(['a', 'c'])
+  })
+})
+
+// 037-scenarios-tab-redesign (T005): reorderScenario() — the arbitrary
+// from→to move that drag-and-drop needs, and the single reordering code
+// path moveScenario() now delegates to (FR-004, data-model.md §2/§3).
+describe('appState.reorderScenario', () => {
+  afterEach(() => {
+    for (const name of ['a', 'b', 'c', 'd']) {
+      unregister(name)
+    }
+  })
+
+  function seed(...names: string[]) {
+    for (const n of names) register(n, { source: 'url', path: `test/${n}` })
+  }
+
+  it('moves a scenario down to an arbitrary later index', () => {
+    seed('a', 'b', 'c', 'd')
+    reorderScenario('a', 2)
+    expect(listByDisplayOrder().map((s) => s.name)).toEqual(['b', 'c', 'a', 'd'])
+  })
+
+  it('moves a scenario up to an arbitrary earlier index', () => {
+    seed('a', 'b', 'c', 'd')
+    reorderScenario('d', 0)
+    expect(listByDisplayOrder().map((s) => s.name)).toEqual(['d', 'a', 'b', 'c'])
+  })
+
+  it('moves to the last index', () => {
+    seed('a', 'b', 'c')
+    reorderScenario('a', 2)
+    expect(listByDisplayOrder().map((s) => s.name)).toEqual(['b', 'c', 'a'])
+  })
+
+  it('clamps an out-of-range targetIndex to the last position', () => {
+    seed('a', 'b', 'c')
+    reorderScenario('a', 99)
+    expect(listByDisplayOrder().map((s) => s.name)).toEqual(['b', 'c', 'a'])
+  })
+
+  it('clamps a negative targetIndex to the first position', () => {
+    seed('a', 'b', 'c')
+    reorderScenario('c', -5)
+    expect(listByDisplayOrder().map((s) => s.name)).toEqual(['c', 'a', 'b'])
+  })
+
+  it('moving to the same index is a harmless no-op that still notifies', () => {
+    seed('a', 'b', 'c')
+    const fn = vi.fn()
+    const unsub = subscribe(fn)
+    reorderScenario('b', 1)
+    unsub()
+    expect(listByDisplayOrder().map((s) => s.name)).toEqual(['a', 'b', 'c'])
+    expect(fn).toHaveBeenCalledTimes(1)
+  })
+
+  it('re-sequences `order` to a dense 0..n-1 range after the move', () => {
+    seed('a', 'b', 'c', 'd')
+    reorderScenario('a', 3)
+    const ordered = listByDisplayOrder()
+    expect(ordered.map((s) => s.order)).toEqual([0, 1, 2, 3])
+    expect(ordered.map((s) => s.name)).toEqual(['b', 'c', 'd', 'a'])
+  })
+
+  it('throws on an unregistered name', () => {
+    expect(() => reorderScenario('nope', 0)).toThrow(/never registered/)
+  })
+
+  it('never changes the resolved baseline (getBaseline ignores display order)', () => {
+    seed('a', 'b', 'c')
+    setStatus('a', 'ready')
+    setStatus('b', 'ready')
+    setStatus('c', 'ready')
+    expect(getBaseline()).toBe('a')
+    reorderScenario('a', 2)
+    reorderScenario('c', 0)
+    expect(listByDisplayOrder().map((s) => s.name)).toEqual(['c', 'b', 'a'])
+    expect(getBaseline()).toBe('a') // UNCHANGED — registration order, not display order
+  })
+
+  it('moveScenario still produces its documented one-step behavior after the reimplementation', () => {
+    seed('a', 'b', 'c')
+    moveScenario('c', 'up')
+    expect(listByDisplayOrder().map((s) => s.name)).toEqual(['a', 'c', 'b'])
+    moveScenario('a', 'up') // boundary — no-op
+    expect(listByDisplayOrder().map((s) => s.name)).toEqual(['a', 'c', 'b'])
   })
 })
 

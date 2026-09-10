@@ -247,31 +247,60 @@ export function getBaseline(): string | undefined {
 }
 
 /**
+ * 037-scenarios-tab-redesign (FR-004): moves `name` to `targetIndex` in
+ * DISPLAY order (listByDisplayOrder()'s ordering), re-sequencing EVERY
+ * scenario's `order` field to `0, 1, 2, …` across the resulting
+ * arrangement. This is the single source of truth for reordering — both
+ * drag-and-drop (a drag-end {active, over} pair → indices) and the
+ * up/down arrow buttons (moveScenario() below, now a thin wrapper) funnel
+ * through it, so the two can never disagree.
+ *
+ * `targetIndex` is clamped to [0, count - 1]. Moving to the same index is
+ * a no-op that still calls notify() (matching moveScenario()/
+ * setBaseline()'s "harmless no-op still notifies" precedent). Throws on an
+ * unregistered name, matching setActive()/setBaseline()'s convention.
+ *
+ * Never touches `active`, `label`, `color`, `status`, or the baseline
+ * pointer — getBaseline() still never reads `order`, so the automatic-
+ * default baseline is structurally unaffected.
+ */
+export function reorderScenario(name: string, targetIndex: number): void {
+  if (!scenarios.get(name)) {
+    throw new Error(`appState.reorderScenario: "${name}" was never registered`)
+  }
+  const ordered = listByDisplayOrder()
+  const from = ordered.findIndex((s) => s.name === name)
+  const to = Math.max(0, Math.min(targetIndex, ordered.length - 1))
+  if (from === to) {
+    notify()
+    return
+  }
+  const [moved] = ordered.splice(from, 1)
+  ordered.splice(to, 0, moved)
+  ordered.forEach((s, i) => {
+    s.order = i
+  })
+  notify()
+}
+
+/**
  * 020-settings-modal (FR-007): moves `name` one step up or down in
- * DISPLAY order by swapping its `order` value with its neighbor's, found
- * via listByDisplayOrder(). A no-op (still calls notify(), matching
- * setBaseline()'s own "harmless no-op re-mark still notifies" precedent)
- * when `name` is already at the requested boundary — never errors, never
- * wraps around (Edge Cases). Throws on an unregistered name, matching
- * setActive()/setBaseline()'s existing convention.
+ * DISPLAY order. A no-op (still calls notify()) when `name` is already at
+ * the requested boundary — never errors, never wraps around (Edge Cases).
+ * Throws on an unregistered name.
+ *
+ * 037-scenarios-tab-redesign: reimplemented as a thin wrapper over
+ * reorderScenario() — one reordering code path (FR-004), not two. The
+ * clamp inside reorderScenario() turns a boundary move into the same
+ * notify()-only no-op this function has always produced.
  */
 export function moveScenario(name: string, direction: 'up' | 'down'): void {
   const entry = scenarios.get(name)
   if (!entry) {
     throw new Error(`appState.moveScenario: "${name}" was never registered`)
   }
-  const ordered = listByDisplayOrder()
-  const index = ordered.findIndex((s) => s.name === name)
-  const neighborIndex = direction === 'up' ? index - 1 : index + 1
-  if (neighborIndex < 0 || neighborIndex >= ordered.length) {
-    notify()
-    return
-  }
-  const neighbor = ordered[neighborIndex]
-  const entryOrder = entry.order
-  entry.order = neighbor.order
-  neighbor.order = entryOrder
-  notify()
+  const index = listByDisplayOrder().findIndex((s) => s.name === name)
+  reorderScenario(name, index + (direction === 'up' ? -1 : 1))
 }
 
 /**

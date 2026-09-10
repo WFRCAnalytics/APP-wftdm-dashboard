@@ -572,9 +572,14 @@ test.describe('User Story 3 - Analyst manages multiple loaded local scenarios', 
 // the shape User Story 2's automatic-default behavior needs to exercise
 // for real, not synthetically.
 test.describe('018-baseline-scenario-designation', () => {
+  // 037-scenarios-tab-redesign, Part D replaced the Star control with a
+  // single chip: the current baseline row shows a filled, non-interactive
+  // "Baseline" Badge; every other row shows a clickable "Set as baseline"
+  // button (aria-label "Mark {name} as baseline scenario", unchanged).
   function baselineStar(page: Page, name: string, currentlyBaseline: boolean) {
-    const label = currentlyBaseline ? `${name} is the baseline scenario` : `Mark ${name} as baseline scenario`
-    return page.getByRole('button', { name: label })
+    return currentlyBaseline
+      ? page.getByTestId(`baseline-chip-${name}`).getByText('Baseline', { exact: true })
+      : page.getByRole('button', { name: `Mark ${name} as baseline scenario` })
   }
 
   test.describe('User Story 1 - Analyst marks a scenario as baseline via the UI', () => {
@@ -605,8 +610,11 @@ test.describe('018-baseline-scenario-designation', () => {
       await expect(baselineStar(page, 'good_scenario', true)).toBeVisible()
       await expect(baselineStar(page, 't040_local', false)).toBeVisible()
 
-      // Re-marking the current baseline is idempotent.
-      await baselineStar(page, 'good_scenario', true).click()
+      // Re-marking the current baseline is idempotent. Post-037 the
+      // baseline row's own chip is a non-interactive status Badge (Part D,
+      // FR-009) — there is no "re-mark from its own row" affordance to
+      // click — so idempotency is asserted at the state level directly.
+      await page.evaluate(() => window.__wftdm!.appState.setBaseline('good_scenario'))
       await expect(page.evaluate(() => window.__wftdm!.appState.getBaseline())).resolves.toBe(
         'good_scenario',
       )

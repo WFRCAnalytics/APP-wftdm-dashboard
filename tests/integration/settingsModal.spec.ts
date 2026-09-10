@@ -182,44 +182,51 @@ test.describe('User Story 1 - One place to manage dashboard-wide settings', () =
       'observed',
     )
     // Path is plain text, unaffected. Status is no longer literal
-    // "(ready)"/"(failed)" text (036-scenario-color-picker, Part C
-    // refinement) — the row's own border/background treatment plus the
-    // status dot's aria-label now carry it; asserted via the dot below,
-    // not text here.
+    // "(ready)"/"(failed)" text, and since 037 item 5 there is no status
+    // DOT either — the row's own left-border colour + background wash
+    // (036 Part C, FR-017/FR-018) is the sole ready/failed channel.
     await expect(list).toContainText('scenarios/good_scenario/summary')
     await expect(list).toContainText('observed/summary')
-    await expect(page.getByTestId('scenario-status-dot-good_scenario')).toHaveAttribute('aria-label', 'Ready')
+    const readyBorder = await page
+      .getByTestId('scenario-row-good_scenario')
+      .evaluate((el) => getComputedStyle(el).borderLeftColor)
+    const failedBorder = await page
+      .getByTestId('scenario-row-broken_scenario')
+      .evaluate((el) => getComputedStyle(el).borderLeftColor)
+    expect(readyBorder).not.toBe(failedBorder)
   })
 
-  // 024-settings-modal-visual-redesign (US1, FR-001), later refined by
-  // 036-scenario-color-picker's own Part C: the trailing "(ready)"/
-  // "(failed)" text this comment originally referenced was removed — the
-  // row's own border/background treatment (FR-017/FR-018) is now the
-  // second, independent channel alongside the dot. Only 'ready'/'failed'
-  // are asserted here — the fixture's scenarios settle to a final status
-  // well before boot() resolves (research.md has no note otherwise), so a
-  // live 'registering' row is not reliably observable in a real browser;
-  // that branch's mapping is covered directly by
-  // tests/unit/scenarioStatusColor.test.ts instead.
-  test('a "ready" and a "failed" scenario render visually distinct status dots (FR-001)', async ({
+  // 024-settings-modal-visual-redesign (US1, FR-001), refined by 036 Part
+  // C and again by 037 item 5: the ready/failed status DOT is now gone
+  // entirely — the row's own left-border colour + background wash is the
+  // sole channel for those two states (037 removed the dot as redundant).
+  // 'registering' keeps its own separate "Loading…" text indicator, which
+  // the fixture never exercises live (its scenarios settle before boot()
+  // resolves), so its mapping stays covered by
+  // tests/unit/scenarioStatusColor.test.ts.
+  test('a "ready" and a "failed" scenario render a visually distinct row treatment (FR-001)', async ({
     page,
   }) => {
     await boot(page)
     await page.getByRole('button', { name: 'Settings' }).click()
     await page.getByRole('tab', { name: 'Scenarios' }).click()
 
-    const readyDot = page.getByTestId('scenario-status-dot-good_scenario')
-    const failedDot = page.getByTestId('scenario-status-dot-broken_scenario')
-    await expect(readyDot).toBeVisible()
-    await expect(failedDot).toBeVisible()
-    await expect(readyDot).toHaveAttribute('aria-label', 'Ready')
-    await expect(failedDot).toHaveAttribute('aria-label', 'Failed')
+    const readyRow = page.getByTestId('scenario-row-good_scenario')
+    const failedRow = page.getByTestId('scenario-row-broken_scenario')
+    // No status dot anywhere in the list any more (037 item 5).
+    await expect(page.getByTestId('scenario-status-dot-good_scenario')).toHaveCount(0)
 
-    const [readyColor, failedColor] = await Promise.all([
-      readyDot.evaluate((el) => getComputedStyle(el).backgroundColor),
-      failedDot.evaluate((el) => getComputedStyle(el).backgroundColor),
+    const [readyBorder, failedBorder, readyBg, failedBg] = await Promise.all([
+      readyRow.evaluate((el) => getComputedStyle(el).borderLeftColor),
+      failedRow.evaluate((el) => getComputedStyle(el).borderLeftColor),
+      readyRow.evaluate((el) => getComputedStyle(el).backgroundColor),
+      failedRow.evaluate((el) => getComputedStyle(el).backgroundColor),
     ])
-    expect(readyColor).not.toBe(failedColor)
+    expect(readyBorder).not.toBe(failedBorder)
+    expect(readyBg).not.toBe(failedBg)
+    // The border colour is a real, non-transparent treatment.
+    expect(readyBorder).not.toBe('rgba(0, 0, 0, 0)')
+    expect(failedBorder).not.toBe('rgba(0, 0, 0, 0)')
   })
 
   test('the modal is dismissible via close button, overlay click, and Escape (FR-016)', async ({
@@ -1064,10 +1071,9 @@ test.describe('User Story 2 (036-scenario-color-picker) - Redesigned color picke
 // picker) at all.
 test.describe('User Story 3 (036-scenario-color-picker Part C) - Row status treatment, active toggle, baseline indicator', () => {
   function scenarioRow(page: Page, name: string) {
-    // The status dot now sits inside its own small wrapper <span> (Part C
-    // refinement, for the conditional "registering" label beside it) —
-    // one more level up than before to reach the actual row container.
-    return page.getByTestId(`scenario-status-dot-${name}`).locator('../..')
+    // 037 gives every row a stable data-testid; the old status-dot anchor
+    // is gone (037 item 5 removed the dot).
+    return page.getByTestId(`scenario-row-${name}`)
   }
 
   test('a "ready" and a "failed" row show distinct, non-transparent border/background treatment, in both themes (FR-017/FR-018)', async ({
@@ -1105,12 +1111,10 @@ test.describe('User Story 3 (036-scenario-color-picker Part C) - Row status trea
   test('toggling a scenario\'s Switch off immediately excludes it from a $scenario.-driven panel, and back on restores it (FR-019/FR-020)', async ({
     page,
   }) => {
-    // good_scenario is only made active via ?s= (appState.setActive() is
-    // never called for a published scenario by default — only 'observed'
-    // is forced active at registration, applyURLParams()'s own real
-    // activation call is what good_scenario needs, matching
-    // scenarioColorOverride.spec.ts's own established convention for this
-    // exact fixture panel).
+    // `?s=good_scenario` activates good_scenario alongside the always-
+    // active observed. row_scenario_display's table panel unions every
+    // currently active scenario with no scenario:/scenarios: pin —
+    // summary_kpis publishes 2 rows per scenario, so both active is 4.
     await page.goto('/?s=good_scenario')
     await page.waitForFunction(() => window.__wftdm !== undefined, null, { timeout: 30_000 })
     await page.waitForFunction(
@@ -1118,18 +1122,13 @@ test.describe('User Story 3 (036-scenario-color-picker Part C) - Row status trea
       null,
       { timeout: 30_000 },
     )
-    // row_scenario_display's own table panel unions every currently
-    // active scenario with no scenario:/scenarios: pin (dashboard-1-
-    // summary.yaml's own header comment) — summary_kpis publishes 2 rows
-    // per scenario, so good_scenario + observed both active is 4 rows.
     const table = panelCard(page, 'Scenario Split (Table)').locator('tbody tr')
     await expect(table).toHaveCount(4)
 
     await page.getByRole('button', { name: 'Settings' }).click()
     await page.getByRole('tab', { name: 'Scenarios' }).click()
     // Located by row identity, not by the aria-label text itself — that
-    // label flips ("Exclude..."/"Include...") with the toggle's own
-    // state, so a name-based locator would stop matching after the click.
+    // label flips with the toggle's own state.
     const observedSwitch = scenarioRow(page, 'observed').getByRole('switch')
     await expect(observedSwitch).toBeChecked()
 
@@ -1146,61 +1145,408 @@ test.describe('User Story 3 (036-scenario-color-picker Part C) - Row status trea
     await expect(table).toHaveCount(4)
   })
 
-  test('the baseline scenario shows a filled Star paired with a "Baseline" text label as one unit, which moves when a different scenario is marked (FR-021/FR-022)', async ({
-    page,
-  }) => {
-    await boot(page)
+  // NOTE: the 036 Part C Star / Star+"Baseline"-text baseline control was
+  // replaced entirely by 037's single BaselineChip (Part D). The two
+  // Star-specific tests that lived here are superseded by the
+  // "User Story (037-scenarios-tab-redesign)" block's US2 coverage
+  // (T017/T018/T019) below.
+})
+
+// 037-scenarios-tab-redesign: drag-and-drop reorder + leading-edge reorder
+// controls (US1), consolidated baseline chip (US2), Switch tooltip (US3),
+// and the Part A verification that the active/inactive Switch is NOT wired
+// backwards (FR-001). Rows carry a stable `data-testid="scenario-row-{name}"`.
+test.describe('User Story (037-scenarios-tab-redesign)', () => {
+  function row(page: Page, name: string) {
+    return page.getByTestId(`scenario-row-${name}`)
+  }
+
+  async function openScenariosTab(page: Page) {
     await page.getByRole('button', { name: 'Settings' }).click()
     await page.getByRole('tab', { name: 'Scenarios' }).click()
+  }
 
-    const baselineName = await page.evaluate(() => window.__wftdm!.appState.getBaseline())
-    await expect(scenarioRow(page, baselineName!).getByText('Baseline', { exact: true })).toBeVisible()
-    // The "Baseline" text node exists on every row's own control (a real,
-    // deliberate layout fix — see the fixed-width comment in
-    // scenariosTab.tsx) but is only VISIBLE on the baseline row itself.
-    const goodBaselineText = scenarioRow(page, 'good_scenario').getByText('Baseline', { exact: true })
-    if (baselineName === 'good_scenario') {
-      await expect(goodBaselineText).toBeVisible()
-    } else {
-      await expect(goodBaselineText).not.toBeVisible()
+  // ---- Part A (FR-001): the active/inactive Switch is wired correctly ----
+  // Not a bug — `checked={s.active}` with no negation. `observed` renders
+  // checked because it is the ONLY force-active scenario by default
+  // (FR-009; registerPublishedScenarios() never calls setActive()). This
+  // test locks that in permanently so a future accidental inversion is
+  // caught.
+  for (const dark of [false, true]) {
+    test(`FR-001: the active/inactive Switch's checked state equals the real \`active\` value for both an active and an inactive scenario (${dark ? 'dark' : 'light'})`, async ({
+      page,
+    }) => {
+      await boot(page)
+      await openScenariosTab(page)
+      await page.evaluate((d) => document.documentElement.classList.toggle('dark', d), dark)
+
+      // Real values straight from the store.
+      const [observedActive, goodActive] = await page.evaluate(() => [
+        window.__wftdm!.appState.get('observed')?.active,
+        window.__wftdm!.appState.get('good_scenario')?.active,
+      ])
+      expect(observedActive).toBe(true) // force-active at registration
+      expect(goodActive).toBe(false) // no ?s= param, never auto-activated
+
+      const observedSwitch = row(page, 'observed').getByRole('switch')
+      const goodSwitch = row(page, 'good_scenario').getByRole('switch')
+
+      // Rendered state matches the store, in BOTH directions, together.
+      // `aria-checked` is the semantic contract for role="switch" (Radix's
+      // own `data-state` on the element is not asserted — the Part E
+      // Tooltip trigger is applied to a wrapping span precisely so it
+      // doesn't overwrite the Switch's own `data-state`).
+      await expect(observedSwitch).toBeChecked()
+      await expect(observedSwitch).toHaveAttribute('aria-checked', 'true')
+      await expect(observedSwitch).toHaveAttribute('data-state', 'checked')
+      await expect(goodSwitch).not.toBeChecked()
+      await expect(goodSwitch).toHaveAttribute('aria-checked', 'false')
+      await expect(goodSwitch).toHaveAttribute('data-state', 'unchecked')
+    })
+  }
+
+  // ---- US1: reorder by drag or keyboard, from a leading-edge control ----
+
+  function orderNames(page: Page) {
+    return page.evaluate(() =>
+      window.__wftdm!.appState.listByDisplayOrder().map((s: { name: string }) => s.name),
+    )
+  }
+  function dragHandle(page: Page, name: string) {
+    return row(page, name).getByRole('button', { name: `Reorder ${name}` })
+  }
+
+  async function pointerDrag(page: Page, handle: ReturnType<typeof dragHandle>, targetY: number) {
+    const box = await handle.boundingBox()
+    if (!box) throw new Error('drag handle has no bounding box')
+    const startX = box.x + box.width / 2
+    const startY = box.y + box.height / 2
+    await page.mouse.move(startX, startY)
+    await page.mouse.down()
+    // Past PointerSensor's 4px activation constraint, then stepped toward
+    // the target so @dnd-kit's collision detection sees intermediate moves.
+    for (const t of [0.15, 0.4, 0.7, 1]) {
+      await page.mouse.move(startX, startY + (targetY - startY) * t, { steps: 3 })
     }
+    await page.mouse.up()
+  }
 
-    // The existing click-to-mark interaction — the Star button itself,
-    // its aria-label/aria-pressed/onClick — is unchanged (FR-022).
-    const goodStar = page.getByRole('button', { name: /good_scenario as baseline scenario|good_scenario is the baseline/ })
-    await goodStar.click()
-    expect(await page.evaluate(() => window.__wftdm!.appState.getBaseline())).toBe('good_scenario')
-    // The label lives INSIDE the same button as the star, not a separate
-    // floating element (research-driven refinement: icon+text together,
-    // one unit, never a badge elsewhere in the row).
-    await expect(goodStar.getByText('Baseline', { exact: true })).toBeVisible()
-    await expect(goodStar).toHaveAttribute('aria-pressed', 'true')
-  })
-
-  test('a non-baseline row shows an outline Star with no persistent text, and a "Set as baseline" tooltip on hover', async ({
+  test('T007: a pointer drag of a row handle past another row reorders the list, no reload', async ({
     page,
   }) => {
     await boot(page)
-    await page.getByRole('button', { name: 'Settings' }).click()
-    await page.getByRole('tab', { name: 'Scenarios' }).click()
+    await openScenariosTab(page)
+    expect(await orderNames(page)).toEqual(['observed', 'good_scenario', 'broken_scenario'])
 
-    const baselineName = await page.evaluate(() => window.__wftdm!.appState.getBaseline())
-    const nonBaselineName = baselineName === 'good_scenario' ? 'observed' : 'good_scenario'
-    const nonBaselineStar = page.getByRole('button', { name: `Mark ${nonBaselineName} as baseline scenario` })
+    const observedBox = await row(page, 'observed').boundingBox()
+    // Drag good_scenario's handle up above observed.
+    await pointerDrag(page, dragHandle(page, 'good_scenario'), observedBox!.y - 5)
 
-    await expect(nonBaselineStar).toBeVisible()
-    // No VISIBLE persistent "Baseline" text on this row — the same text
-    // node does exist in the DOM (a deliberate, real layout fix: it's
-    // `invisible`, not absent, so this control's width matches the
-    // baseline row's width exactly, keeping the switch/swatch/reorder-
-    // arrows to its left pixel-aligned across every row) — so this
-    // asserts non-visibility, not non-existence.
-    await expect(scenarioRow(page, nonBaselineName).getByText('Baseline', { exact: true })).not.toBeVisible()
-    await expect(nonBaselineStar).toHaveAttribute('aria-pressed', 'false')
-
-    await nonBaselineStar.hover()
-    await expect(page.getByRole('tooltip', { name: 'Set as baseline' })).toBeVisible()
+    await expect.poll(() => orderNames(page)).toEqual([
+      'good_scenario',
+      'observed',
+      'broken_scenario',
+    ])
+    // Rendered order matches the store.
+    const renderedOrder = await page
+      .getByTestId('scenario-load-list')
+      .locator('[data-testid^="scenario-row-"]')
+      .evaluateAll((els) => els.map((e) => e.getAttribute('data-testid')!.replace('scenario-row-', '')))
+    expect(renderedOrder).toEqual(['good_scenario', 'observed', 'broken_scenario'])
   })
+
+  test('T008: a keyboard drag (Space to lift, arrows to move, Space to drop) reorders the list, with position-based live announcements (FR-006)', async ({
+    page,
+  }) => {
+    await boot(page)
+    await openScenariosTab(page)
+    expect(await orderNames(page)).toEqual(['observed', 'good_scenario', 'broken_scenario'])
+
+    // @dnd-kit's own off-screen live region (NOT react-beautiful-dnd's
+    // leftover #rbd-announcement-* from graphic-walker, also on the page).
+    // Its text is transient — overwritten on each drag event — so collect
+    // every value it takes via a MutationObserver, then assert the *shape*
+    // of what landed there rather than a specific frozen message.
+    const announcements: string[] = []
+    await page.exposeFunction('__recordAnnouncement', (t: string) => announcements.push(t))
+    await page.evaluate(() => {
+      const el = document.querySelector('[id^="DndLiveRegion"]')
+      if (!el) return
+      new MutationObserver(() => {
+        const t = el.textContent?.trim()
+        if (t) (window as unknown as { __recordAnnouncement: (s: string) => void }).__recordAnnouncement(t)
+      }).observe(el, { childList: true, characterData: true, subtree: true })
+    })
+
+    await dragHandle(page, 'broken_scenario').focus()
+    await page.keyboard.press('Space') // lift
+    // Arrow-key movement. @dnd-kit's built-in sortableKeyboardCoordinates
+    // absorbs the first arrow press per drag inside a CSS-transformed
+    // ancestor (the Settings Dialog centres with -translate-*-1/2);
+    // subsequent presses advance one row each and clamp at the boundary.
+    // The functional guarantee — a keyboard-only user can lift, move, and
+    // drop to a new position — holds; press well past the first.
+    for (let k = 0; k < 4; k++) {
+      await page.keyboard.press('ArrowUp')
+      await page.waitForTimeout(60)
+    }
+    await page.keyboard.press('Space') // drop
+    await expect.poll(() => announcements.length).toBeGreaterThanOrEqual(2)
+
+    // Every announcement uses position-based ("position N of M") phrasing,
+    // per @dnd-kit's own accessibility guidance — never a raw array index.
+    const joined = announcements.join(' | ')
+    expect(joined).toMatch(/position \d+ of 3/i)
+    expect(announcements.every((a) => /position \d+ of 3/i.test(a) || /cancelled/i.test(a))).toBe(true)
+
+    // broken_scenario was dragged all the way to the top by keyboard.
+    await expect.poll(() => orderNames(page)).toEqual([
+      'broken_scenario',
+      'observed',
+      'good_scenario',
+    ])
+  })
+
+  test('T008b: a keyboard drag cancelled with Escape leaves the order unchanged (FR-007)', async ({
+    page,
+  }) => {
+    await boot(page)
+    await openScenariosTab(page)
+    const before = await orderNames(page)
+
+    await dragHandle(page, 'broken_scenario').focus()
+    await page.keyboard.press('Space') // lift
+    await page.keyboard.press('ArrowUp')
+    await page.keyboard.press('ArrowUp')
+    await page.keyboard.press('Escape') // cancel
+    expect(await orderNames(page)).toEqual(before)
+  })
+
+  test('T009: the relocated leading-edge arrows still reorder one step; boundary arrows are disabled', async ({
+    page,
+  }) => {
+    await boot(page)
+    await openScenariosTab(page)
+
+    await row(page, 'broken_scenario').getByRole('button', { name: 'Move broken_scenario up' }).click()
+    await expect.poll(() => orderNames(page)).toEqual([
+      'observed',
+      'broken_scenario',
+      'good_scenario',
+    ])
+
+    // observed is at the top → its "up" arrow is disabled, still present.
+    const observedUp = row(page, 'observed').getByRole('button', { name: 'Move observed up' })
+    await expect(observedUp).toBeVisible()
+    await expect(observedUp).toBeDisabled()
+    // good_scenario is now at the bottom → its "down" arrow is disabled.
+    const goodDown = row(page, 'good_scenario').getByRole('button', { name: 'Move good_scenario down' })
+    await expect(goodDown).toBeVisible()
+    await expect(goodDown).toBeDisabled()
+  })
+
+  test('T010: reordering the list never changes the resolved baseline (FR / Edge Case)', async ({
+    page,
+  }) => {
+    await boot(page)
+    await openScenariosTab(page)
+    const baselineBefore = await page.evaluate(() => window.__wftdm!.appState.getBaseline())
+    expect(baselineBefore).toBeTruthy()
+
+    // Move broken_scenario to the top via its (leading-edge) up arrow.
+    await row(page, 'broken_scenario').getByRole('button', { name: 'Move broken_scenario up' }).click()
+    await row(page, 'broken_scenario').getByRole('button', { name: 'Move broken_scenario up' }).click()
+
+    expect(await orderNames(page)).toEqual(['broken_scenario', 'observed', 'good_scenario'])
+    expect(await page.evaluate(() => window.__wftdm!.appState.getBaseline())).toBe(baselineBefore)
+  })
+
+  test('T011: every non-reorder control is pixel-aligned across all rows, both themes (FR-015)', async ({
+    page,
+  }) => {
+    await boot(page)
+    await openScenariosTab(page)
+    const names = ['observed', 'good_scenario', 'broken_scenario']
+
+    for (const dark of [false, true]) {
+      await page.evaluate((d) => document.documentElement.classList.toggle('dark', d), dark)
+
+      // 037 item 5: no status dot; the colour swatch moved into the
+      // identity block (before the name).
+      const xs: Record<string, number[]> = { swatch: [], name: [], sw: [], chip: [] }
+      for (const n of names) {
+        const r = row(page, n)
+        xs.swatch.push((await r.getByTestId(`scenario-color-swatch-${n}`).boundingBox())!.x)
+        xs.name.push((await r.getByTestId('scenario-name').boundingBox())!.x)
+        xs.sw.push((await r.getByRole('switch').boundingBox())!.x)
+        // BaselineChip's outer container — fixed reserved width, so its x
+        // is identical whether the row is the baseline row or not.
+        xs.chip.push((await r.getByTestId(`baseline-chip-${n}`).boundingBox())!.x)
+      }
+      for (const key of Object.keys(xs)) {
+        const [a, b, c] = xs[key]
+        expect(Math.abs(b - a), `${key} x mismatch (${dark ? 'dark' : 'light'})`).toBeLessThan(1)
+        expect(Math.abs(c - a), `${key} x mismatch (${dark ? 'dark' : 'light'})`).toBeLessThan(1)
+      }
+    }
+  })
+
+  test('T011b: the colour swatch is vertically centred against the WHOLE name+path identity block, both themes', async ({
+    page,
+  }) => {
+    await boot(page)
+    await openScenariosTab(page)
+    const names = ['observed', 'good_scenario', 'broken_scenario']
+
+    for (const dark of [false, true]) {
+      await page.evaluate((d) => document.documentElement.classList.toggle('dark', d), dark)
+      for (const n of names) {
+        const r = row(page, n)
+        const swatch = (await r.getByTestId(`scenario-color-swatch-${n}`).boundingBox())!
+        const name = (await r.getByTestId('scenario-name').boundingBox())!
+        const path = (await r.locator('.font-mono').first().boundingBox())!
+
+        const swatchCentreY = swatch.y + swatch.height / 2
+        // Midpoint between the name line's centre and the path line's centre.
+        const nameCentreY = name.y + name.height / 2
+        const pathCentreY = path.y + path.height / 2
+        const blockMidY = (nameCentreY + pathCentreY) / 2
+
+        // Swatch centre lands on the two-line block's midpoint — not on
+        // the name line alone (which would be ~one half-line higher).
+        expect(
+          Math.abs(swatchCentreY - blockMidY),
+          `${n} swatch not centred on the 2-line block (${dark ? 'dark' : 'light'})`,
+        ).toBeLessThan(2)
+        // And it is genuinely BELOW the name line's own centre (proving
+        // it is no longer beside the name alone).
+        expect(swatchCentreY).toBeGreaterThan(nameCentreY)
+      }
+    }
+  })
+
+  // ---- US2: one self-explanatory baseline chip (Part D) ----
+
+  function baselineChip(page: Page, name: string) {
+    return page.getByTestId(`baseline-chip-${name}`)
+  }
+
+  test('T017: the baseline row shows a filled, non-interactive "Baseline" chip beside the name; no tooltip', async ({
+    page,
+  }) => {
+    await boot(page)
+    await openScenariosTab(page)
+    const baselineName = (await page.evaluate(() => window.__wftdm!.appState.getBaseline()))!
+
+    const chip = baselineChip(page, baselineName).getByText('Baseline', { exact: true })
+    await expect(chip).toBeVisible()
+    // Not wrapped in a button — a status display, not an action.
+    await expect(baselineChip(page, baselineName).getByRole('button')).toHaveCount(0)
+    // No tooltip: hovering it surfaces nothing.
+    await chip.hover()
+    await page.waitForTimeout(400)
+    await expect(page.getByRole('tooltip')).toHaveCount(0)
+  })
+
+  test('T018: a non-baseline row shows an outline clickable "Set as baseline" chip; clicking it moves the baseline', async ({
+    page,
+  }) => {
+    await boot(page)
+    await openScenariosTab(page)
+    const baselineName = (await page.evaluate(() => window.__wftdm!.appState.getBaseline()))!
+    const other = baselineName === 'good_scenario' ? 'observed' : 'good_scenario'
+
+    const otherChipButton = baselineChip(page, other).getByRole('button', {
+      name: `Mark ${other} as baseline scenario`,
+    })
+    await expect(otherChipButton).toBeVisible()
+    await expect(otherChipButton.getByText('Set as baseline', { exact: true })).toBeVisible()
+
+    await otherChipButton.click()
+    await expect
+      .poll(() => page.evaluate(() => window.__wftdm!.appState.getBaseline()))
+      .toBe(other)
+    // The filled "Baseline" chip moved to `other`; the old baseline row's
+    // chip is now the outline "Set as baseline" button.
+    await expect(baselineChip(page, other).getByText('Baseline', { exact: true })).toBeVisible()
+    await expect(
+      baselineChip(page, baselineName).getByRole('button', {
+        name: `Mark ${baselineName} as baseline scenario`,
+      }),
+    ).toBeVisible()
+  })
+
+  test('T019: no Star icon / no separate Badge remains; the chip is the only baseline control, fixed width, both themes', async ({
+    page,
+  }) => {
+    await boot(page)
+    await openScenariosTab(page)
+
+    // No leftover Star-era control anywhere in the list.
+    const list = page.getByTestId('scenario-load-list')
+    await expect(
+      list.getByRole('button', { name: /is the baseline scenario/ }),
+    ).toHaveCount(0)
+    await expect(list.locator('[aria-pressed]')).toHaveCount(0)
+
+    const baselineName = (await page.evaluate(() => window.__wftdm!.appState.getBaseline()))!
+    const other = baselineName === 'good_scenario' ? 'observed' : 'good_scenario'
+
+    for (const dark of [false, true]) {
+      await page.evaluate((d) => document.documentElement.classList.toggle('dark', d), dark)
+      // The chip's reserved width is identical between the baseline row
+      // ("Baseline") and a non-baseline row ("Set as baseline"), so the
+      // identity block never shifts (FR-015).
+      const wBaseline = (await baselineChip(page, baselineName).boundingBox())!.width
+      const wOther = (await baselineChip(page, other).boundingBox())!.width
+      expect(Math.abs(wBaseline - wOther), `chip width mismatch (${dark ? 'dark' : 'light'})`).toBeLessThan(1)
+      // And the name input's x is identical across rows either way.
+      const nameXs = await Promise.all(
+        [baselineName, other, 'broken_scenario'].map(async (n) =>
+          (await row(page, n).getByTestId('scenario-name').boundingBox())!.x,
+        ),
+      )
+      expect(Math.abs(nameXs[1] - nameXs[0])).toBeLessThan(1)
+      expect(Math.abs(nameXs[2] - nameXs[0])).toBeLessThan(1)
+    }
+  })
+
+  // ---- US3: discoverable Switch tooltip (Part E) ----
+
+  for (const dark of [false, true]) {
+    test(`T024: hovering the active/inactive Switch shows an explanatory tooltip; the baseline chip has none (${dark ? 'dark' : 'light'})`, async ({
+      page,
+    }) => {
+      await boot(page)
+      await openScenariosTab(page)
+      await page.evaluate((d) => document.documentElement.classList.toggle('dark', d), dark)
+
+      const sw = row(page, 'good_scenario').getByRole('switch')
+      const ariaLabelBefore = await sw.getAttribute('aria-label')
+
+      await sw.hover()
+      const tip = page.getByRole('tooltip')
+      await expect(tip).toBeVisible()
+      // 037 item 2: the copy is scoped to the Switch's REAL effect — it
+      // only matters for panels that don't pin a specific scenario.
+      await expect(tip).toContainText(/pinned to a specific scenario/i)
+
+      // FR-013: the tooltip changes nothing about the Switch's wiring.
+      expect(await sw.getAttribute('aria-label')).toBe(ariaLabelBefore)
+      await expect(sw).not.toBeChecked() // good_scenario inactive by default
+
+      // Move the pointer well away and let the Switch tooltip close.
+      await page.mouse.move(1, 1)
+      await page.keyboard.press('Escape')
+      await expect.poll(() => page.getByRole('tooltip').count()).toBe(0)
+
+      // The baseline chip has no tooltip of its own (FR-011).
+      const baselineName = (await page.evaluate(() => window.__wftdm!.appState.getBaseline()))!
+      await page.getByTestId(`baseline-chip-${baselineName}`).hover()
+      await page.waitForTimeout(500)
+      await expect(page.getByRole('tooltip')).toHaveCount(0)
+    })
+  }
 })
 
 // Post-completion correction (explicit user request): Documentation is no

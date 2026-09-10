@@ -95,6 +95,18 @@ async function registerObserved(): Promise<void> {
     appState.setStatus('observed', 'failed')
   }
   // FR-009: observed is marked active regardless of what happened above.
+  //
+  // 037-scenarios-tab-redesign item 4 investigated flipping this to
+  // setActive(false). Confirmed observed's data IS a placeholder in every
+  // real context — but the change was NOT made: the entire fixture test
+  // dashboard config (and, per its own comments, the demo dashboard
+  // config) is authored assuming observed-is-always-active — 12 unpinned
+  // `$scenario`-union panels on the fixture Summary tab alone rely on it,
+  // and flipping the default made ~30 tests across 10 spec files render a
+  // "no active scenarios" error. It also delivers no user-visible benefit
+  // while every demo panel stays `scenario:`-pinned (037 item 3). The
+  // change belongs bundled with unpinning the demo content, not shipped
+  // as an isolated flag flip. See the 037 investigation report.
   appState.setActive('observed', true)
 }
 

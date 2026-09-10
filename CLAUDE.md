@@ -4940,6 +4940,186 @@ first cross-reference this list was built from). ✅ done,
     original 5-failure list. `scenariosTab.tsx`/`settingsModal.spec.ts`
     are untouched by any of these. Zero real regressions.
 
+24. ✅ Scenarios tab redesign — drag-and-drop reorder, consolidated
+    baseline chip, verified active toggle — done
+    (`037-scenarios-tab-redesign`). Five parts over `035`/`036`'s
+    already-shipped Scenarios-tab state.
+
+    **Part A — no bug.** Investigated whether the active/inactive `Switch`
+    was wired backwards (a screenshot appeared to show every row "off").
+    Confirmed via live DOM/attribute/state comparison that it is NOT:
+    `checked={s.active}` with no negation, and `observed` renders
+    `aria-checked=true`/`data-state=checked` because it is the ONLY
+    force-active scenario by default — `services/scenarioDiscovery.ts`'s
+    `registerPublishedScenarios()` has never called `setActive()` (a real,
+    pre-existing, already-documented fact from `035`). On a plain `/`
+    boot, 2 of 3 fixture rows are genuinely, correctly inactive, which
+    skims as "everything is off." FR-001's new regression test
+    (`settingsModal.spec.ts`, both themes) locks the correct wiring in
+    permanently — asserting the Switch's `aria-checked` equals the real
+    `active` value for an active AND an inactive scenario together.
+
+    **Part B** — the up/down move buttons moved from the trailing actions
+    cluster to the row's LEADING edge, next to a new drag handle, before
+    the status dot. Behavior (disabled at boundaries, `appState.
+    moveScenario`, `aria-label` text) unchanged.
+
+    **Part C** — real drag-and-drop reordering via `@dnd-kit/core` +
+    `@dnd-kit/sortable` + `@dnd-kit/utilities` + `@dnd-kit/modifiers`
+    (`restrictToVerticalAxis` only — `restrictToParentElement` was
+    dropped, it broke the KeyboardSensor). Chosen after evaluating real,
+    current npm-registry data: `react-beautiful-dnd` is officially
+    deprecated (and already only a transitive dep of graphic-walker);
+    `react-dnd` is lower-level and last published mid-2022; `@dnd-kit` is
+    actively maintained, React-18-compatible, and the only option with
+    documented built-in keyboard sensor + live-region screen-reader
+    announcements. **Constitution Principle VI analysis**: `@dnd-kit` is
+    a headless behavior toolkit, NOT a "component library / CSS framework
+    / icon set" — same category as Radix UI itself, `d3-sankey`, `color`,
+    deck.gl, `@observablehq/plot` already in this tree; it ships no
+    styled components, no tokens, no icons, and replaces no shadcn/Radix/
+    Tailwind/`lucide-react` role. No amendment required. Each row is now
+    its own component (`src/layout/settings/scenarioRow.tsx`) so
+    `useSortable()` has a clean per-row call site; `scenariosTab.tsx`
+    holds the `DndContext`/`SortableContext`. A `GripVertical`
+    (`lucide-react`) handle — not the whole row — carries the drag
+    listeners. `onDragEnd` funnels through a NEW `appState.reorderScenario(
+    name, targetIndex)` (a full `order` re-sequence for an arbitrary
+    from→to move); the existing `appState.moveScenario('up'|'down')` was
+    reimplemented as a thin wrapper over it, so there is genuinely ONE
+    reordering code path (FR-004), unit-tested in `tests/unit/appState.
+    test.ts` (11 new cases). The relocated arrow buttons remain a
+    complete, crisp keyboard-accessible fallback (FR-005).
+
+    **A real `@dnd-kit`-in-a-transformed-dialog finding**: the built-in
+    `sortableKeyboardCoordinates` absorbs the FIRST arrow press per
+    keyboard drag inside a CSS-transformed ancestor — the Settings
+    `DialogContent` centres with `-translate-x-1/2 -translate-y-1/2` —
+    then advances one row per press after that. A custom transform-robust
+    `coordinateGetter` was tried and behaved identically, so it was
+    reverted; the built-in getter is kept. Keyboard reordering is fully
+    functional (lift / move / drop / Escape-cancel all work, with
+    position-based announcements); it is just not pixel-1:1 on the first
+    press. The dedicated arrow buttons are the crisp 1-press-per-step
+    keyboard path. Documented in `scenariosTab.tsx` and the test.
+
+    **Part D** — the Star / Star+"Baseline"-text control (`036`) is
+    removed entirely, replaced by ONE chip in the identity block beside
+    the name (`BaselineChip` in `scenarioRow.tsx`): the current baseline
+    row shows a filled, non-interactive `<Badge variant="default">Baseline
+    </Badge>` (no `onClick`, no tooltip — FR-009/FR-011); every other row
+    shows an outline `<Badge variant="outline">Set as baseline</Badge>`
+    wrapped in a `<button>` that calls the same `appState.setBaseline()`
+    the Star used to (FR-010). Both states occupy an identical reserved
+    width via an invisible sizer rendering the wider "Set as baseline"
+    label in the same CSS-grid cell — so the identity block never shifts
+    width between a baseline and a non-baseline row (FR-015). No `Star`
+    icon, no separate `Badge`, anywhere else in the row. `scenarioManager.
+    spec.ts`'s own `018-baseline-scenario-designation` UI-flow tests were
+    a real regression from this change (their `baselineStar()` helper
+    targeted the old Star's `aria-label`) — updated to target the chip
+    (filled "Baseline" text for the baseline row; the "Mark … as baseline
+    scenario" button elsewhere), and the "re-mark the current baseline"
+    idempotency case now asserts at the state level since the baseline
+    row's own chip is intentionally not clickable.
+
+    **Part E** — a scoped `Tooltip` on the active/inactive `Switch`
+    ("Include this scenario in comparisons and queries"). **A real bug
+    caught by the full suite**: `<TooltipTrigger asChild>` writes its own
+    `data-state` (`closed`/`delayed-open`/…) onto the element it wraps —
+    applied directly to the `Switch` it CLOBBERED the Switch's own
+    `data-[state=checked|unchecked]` styling (the FR-001 test's
+    `data-state` assertion caught it; the real cost would have been the
+    Switch losing its checked/unchecked background colour). Fixed by
+    wrapping the `Switch` in a `<span>` and putting the trigger on the
+    span — hover still triggers the tooltip (FR-012); the Switch keeps
+    its `aria-label`/`checked`/`onCheckedChange`/`data-state` untouched
+    (FR-013).
+
+    Full regression: `npm run typecheck` clean; `npm run test:unit`
+    457/457 (up from 447 — the `reorderScenario` cases); `npm run build`
+    clean (`@dnd-kit` adds ~48 KB to the main chunk — not worth a
+    dedicated `manualChunks` entry). Full `tests/integration/` suite: a
+    first run surfaced 10 failures — 6 real, caused-by-this-feature and
+    all fixed (`scenarioManager` baseline helper ×4, the Switch
+    `data-state` clobber ×2), 4 pre-existing flakes. A clean re-run:
+    341 passed, 4 failed — `flowmapPanel:551`/`graphicWalkerPanel:278`/
+    `settingsModal:497` each pass in isolation (multi-worker contention),
+    and `flowmapPanel:713` is the same already-documented deck.gl
+    hover-tooltip real-hardware-timing flake. Zero real regressions in
+    the clean run.
+
+    **037 follow-up (item 5) — row-layout refinement, shipped:** the
+    green/red ready/failed status DOT is removed entirely (the row's own
+    left-border colour + background-wash treatment from 036 Part C
+    already carries those two states — the dot was redundant); only
+    `'registering'` keeps a dedicated signal, its "Loading…" text, now
+    rendered where the dot sat. The colour swatch
+    (`ScenarioColorControl`) moves out of the trailing actions cluster to
+    the LEFT of the whole two-line identity block (name on line 1, path
+    on line 2), vertically centred against both lines together by the
+    row's own `items-center` — the "leading avatar/icon beside a two-line
+    title+subtitle" list-row pattern (a first pass placed it beside the
+    name on line 1 only; a follow-up moved it to lead the whole block).
+    A legend-key "this colour = this scenario" association. Verified via
+    `getBoundingClientRect()`: the swatch's vertical centre lands within
+    2 px of the name-line/path-line midpoint and is genuinely below the
+    name line's own centre, both themes, every row (`settingsModal.spec.ts`
+    T011b); horizontal alignment across rows re-verified by T011. Tests
+    updated: the "distinct status dots" test now asserts the row's
+    border/background treatment; the FR-005 test and the 036-Part-C
+    `scenarioRow()` helper drop the `scenario-status-dot` anchor for the
+    row's own `data-testid`.
+
+    **037 follow-up (item 2) — Switch tooltip honesty fix, shipped:**
+    Part E's tooltip copy went from "Include this scenario in comparisons
+    and queries" (which implies the Switch controls everything a viewer
+    sees) to **"Include this scenario when panels aren't pinned to a
+    specific scenario"** — accurate per the 037 investigation: a panel
+    with a `scenario:`/`scenarios:` key names its data directly and is
+    independent of `appState.active` by design (`services/sqlExpander.ts`).
+    The Switch's actual behaviour is unchanged.
+
+    **037 follow-up (item 4) — INVESTIGATED, NOT SHIPPED:** flipping
+    `registerObserved()` from `setActive('observed', true)` to `false`.
+    Confirmed directly that observed's registered data IS a placeholder
+    everywhere (`public/observed/` ships no content in the demo/prod
+    deployment — the demo `dashboard-*.yaml` comments say so and record
+    the Catalog Errors it caused; the test fixture's own observed data is
+    explicitly "a fixture stand-in ... synthetic"). But the flag was NOT
+    flipped: the entire fixture dashboard-config (12 unpinned
+    `$scenario`-union panels on the Summary tab alone) and, per its own
+    comments, the demo dashboard-config are authored assuming
+    observed-is-always-active. A full-suite run with the flag flipped
+    produced **33 failures across 10 spec files** (unpinned panels
+    rendering a "no active scenarios" error on a `?s=`-less boot), for
+    **zero user-visible benefit** while every demo panel stays
+    `scenario:`-pinned. The change is the first step of unpinning the
+    demo content (the 037 item-3 architectural question), not an
+    isolated flag flip — reverted, left for that decision. The
+    `setActive('observed', true)` line carries a comment recording this.
+
+    **The 037 item-1/2/3 investigation finding (reported, no code
+    change):** across `public/demo-dashboard-config/`'s 7 tabs, **41 of
+    46 panels** carry an explicit `scenario:`/`scenarios:` pin; the other
+    5 are all `markdown` panels (no data query). **Zero data-rendering
+    demo panels use the dynamic active-scenario `$scenario` union** —
+    so the active/inactive Switch has no visible effect on anything a
+    viewer sees in the demo dashboards. `services/sqlExpander.ts`'s
+    resolution rules make this correct-by-design: `config.scenario`
+    (singular) → a direct `"{scenario}__{metric}"` view reference,
+    `$scenario` placeholder bypassed; `config.scenarios` (list) →
+    `resolveActiveScenarios()` returns `config.scenarios ??
+    activeScenarioNames`, so an explicit list also wins over the active
+    set. Only a panel with NEITHER key consults `appState.active`. The
+    demo pins so heavily *because* observed is force-active with no data
+    (an unpinned union would `UNION` a nonexistent `observed__<metric>`
+    view and throw). So the Switch's real scope, and whether the demo
+    should rely less on pinning, is a genuine architecture question —
+    left for a deliberate decision, not changed here. As an interim,
+    Part E's Switch tooltip could be made explicit that it only affects
+    panels not pinned to a specific scenario.
+
 ---
 
 ## Reference implementations — copy patterns, don't re-derive
