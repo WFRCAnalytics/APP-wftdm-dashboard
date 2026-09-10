@@ -22,9 +22,19 @@ filters:
 
 layout:
   row_kpis:
+    # 038-all-loaded-scenarios (FR-012): these two valueboxes were
+    # previously unpinned, relying on `observed` being the sole
+    # auto-active scenario for their `rows[0]` to be deterministic. Under
+    # 038 every `status === 'ready'` scenario auto-activates, so a plain
+    # boot now has both `observed` and `good_scenario` active. A valuebox
+    # takes `rows[0]` only — an unpinned union would surface an arbitrary
+    # scenario's row (the exact anti-pattern 038 pins the demo KPI cards
+    # away from). Pinned to `scenarios: [observed]` here so the value
+    # assertions (dashboardShell.spec.ts) state their scenario explicitly.
     - type: valuebox
       title: Total Households
       metric: summary_kpis
+      scenarios: [observed]
       column: total_households
       format: "{:,.0f}"
       icon: house
@@ -33,6 +43,7 @@ layout:
     - type: valuebox
       title: Total Trips
       metric: summary_kpis
+      scenarios: [observed]
       column: total_trips
       format: "{:,.0f}"
       icon: route

@@ -19,20 +19,15 @@ header:
   full_page: true
 
 layout:
-  # scenario: unset would union across every ACTIVE scenario, including
-  # "observed" (always active by default, per its own pinned: true) —
-  # confirmed live to break: observed's own real dataset never published
-  # a trip_mode_share view (it only ever published summary_kpis/
-  # vmt_by_home_taz, a completely different fixture-defined schema),
-  # producing a real "Catalog Error: Table ... observed__trip_mode_share
-  # does not exist" the moment this panel's own unpinned $scenario. union
-  # tried to include it. Pinned to one real scenario instead — matching
-  # the same explicit-scenario convention every other real demo panel in
-  # this repo already uses (dashboard-1-overview.yaml's own scenarios:
-  # list, etc.) precisely to avoid this exact class of mismatch.
+  # 038-all-loaded-scenarios: unpinned. In a real demo deployment
+  # `public/observed/` is empty, so `observed` registers `failed` and is
+  # never auto-active — the old "observed has no trip_mode_share view →
+  # Catalog Error" hazard this comment used to describe no longer applies
+  # (a `failed` scenario never joins the union). 028's `$scenario` union
+  # adds a `scenario` field the viewer can pivot on across every active
+  # run, and the panel responds to the Scenarios-tab Switch.
   row_explore:
     - type:    graphic-walker
       title:   Free-form Visual Analytics — Trip Mode Share
       dataset: trip_mode_share
-      scenario: activitysim-baseline
       width:   1.0

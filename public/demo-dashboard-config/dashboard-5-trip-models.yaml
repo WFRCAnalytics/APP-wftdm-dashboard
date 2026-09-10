@@ -28,10 +28,12 @@ layout:
     - type:       table
       title:      "Trip Purpose Breakdown"
       metric:     trip_purpose_share
-      scenario:   activitysim-baseline
       sort:       { column: trips, order: desc }
       pagination: 20
       columns:
+        # 038-all-loaded-scenarios: unpinned — the $scenario union adds this
+        # discriminator column so the table reads as a per-scenario comparison.
+        - { field: scenario, label: "Scenario" }
         - { field: primary_purpose, label: "Purpose" }
         - { field: trips,           label: "Trips", format: ",.0f" }
         - { field: share,           label: "Share", format: ".1%" }
@@ -41,7 +43,10 @@ layout:
     - type:    observable-plot
       title:   "Trip Destination Distance Distribution"
       metric:  trip_destination_summary
+      # 038: stays pinned — `fill` is committed to the trip-purpose
+      # breakdown (out-of-scope faceting needed for multi-scenario).
       scenario: activitysim-baseline
+      description: "Baseline scenario, broken out by trip purpose. Compare runs on the purpose and departure-hour panels via the Scenarios tab."
       mark:    barY
       x:       distance_bin
       y:       trips
@@ -57,7 +62,7 @@ layout:
     - type:    plotly
       title:   "Trip Departure Hour (Work Trips)"
       metric:  trip_scheduling
-      scenario: activitysim-baseline
+      # 038: unpinned + `name: $scenario` — one bar group per scenario.
       filter:  { primary_purpose: work }
       height:  400
       width:   1.0
@@ -65,9 +70,12 @@ layout:
         - type: bar
           x:    $metric.depart_hour
           y:    $metric.trips
+          name: $scenario
       layout:
         xaxis: { title: "Departure Hour" }
         yaxis: { title: "Trips" }
+        barmode: group
+        showlegend: true
 
   # Spatial rollup — real production/attraction trip ends by zone,
   # filtered to one clean, well-defined choropleth (attraction end, SOV
@@ -78,7 +86,11 @@ layout:
     - type:       zonemap
       title:      "SOV Trip Attractions by Zone"
       metric:     trip_ends_by_zone_mode
+      # 038: stays pinned — a choropleth colours one value per zone, so it
+      # shows one scenario per draw. Multi-scenario map comparison is a
+      # separate ($baseline / comparison: diff) view.
       scenario:   activitysim-baseline
+      description: "Baseline scenario. A choropleth shows one run at a time."
       filter:     { trip_end: attraction, major_trip_mode: SOV }
       boundaries:    taz25.geoparquet
       boundaries_id: TAZ1454

@@ -112,9 +112,13 @@ first, then each filename it lists, from `public/dashboard-config/{filename}` in
 dashboard repo — the same discovery pattern as `public/scenarios/index.json`, not a
 fixed filename list, and not via the old shared-`.wfrc/`-folder model this replaced.
 
-**URL deep links:** `?s=observed&s=2027-rtp-baseyear` pre-selects scenarios on load.
-Share any combination: one, two, or three scenarios. On first load with no params,
-`observed` is pre-selected by default (`pinned: true` in manifest).
+**URL deep links:** `?s=observed&s=2027-rtp-baseyear` *adds* scenarios to the
+active set on load (never removes). On first load with no params, **every scenario
+whose data loaded successfully (`status: ready`) is active by default**
+(`038-all-loaded-scenarios`) — so unpinned panels render a comparison across all
+loaded runs, and the Scenarios-tab Switch excludes any one of them. A scenario
+whose folder failed to register (an empty `public/observed/` in a real
+deployment, a broken folder) is simply absent — never an error.
 
 ---
 
@@ -1495,7 +1499,11 @@ model_version:  "1.3"
 run_date:       2026-06-15
 color:          "#4e79a7"           # auto-assigned from Tableau10 palette if omitted
 notes:          First full-region ABM run post-calibration
-pinned:         false               # true = pre-selected on load (observed only)
+pinned:         false               # observed/reference entry marker — excluded
+                                    # from the automatic $baseline pick and shown
+                                    # first. Does NOT control activation: every
+                                    # `status: ready` scenario is active by default
+                                    # (038-all-loaded-scenarios).
 ```
 
 **Observed manifest** (`public/observed/manifest.yaml`):
@@ -1504,7 +1512,11 @@ scenario_name:  observed
 display_name:   Observed Data
 color:          "#666666"
 notes:          UDOT AADT counts, Utah Household Travel Survey, NHTS 2017
-pinned:         true                # pre-selected by default on every load
+pinned:         true                # observed/reference marker (excluded from the
+                                    # automatic $baseline, shown first). Active by
+                                    # default only when its data loads (status:
+                                    # ready) — an empty public/observed/ registers
+                                    # `failed` and is not activated.
 ```
 
 ---
@@ -1513,8 +1525,11 @@ pinned:         true                # pre-selected by default on every load
 
 Observed data lives in `public/observed/summary/` — a scenario folder like any other,
 but with `pinned: true` in its `manifest.yaml`. It is registered at startup as
-`observed__*` views and pre-selected by default. Analysts can deselect it like any
-other scenario.
+`observed__*` views and, like every scenario whose data loads successfully, is
+active by default (`038-all-loaded-scenarios`). Analysts can deselect it like any
+other scenario. If `public/observed/` is empty (the real-deployment default — it is
+gitignored), `observed` registers `failed` and is simply not part of any panel's
+scenario union.
 
 ```
 public/observed/

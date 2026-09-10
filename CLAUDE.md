@@ -5120,6 +5120,102 @@ first cross-reference this list was built from). ✅ done,
     Part E's Switch tooltip could be made explicit that it only affects
     panels not pinned to a specific scenario.
 
+25. ✅ All loaded scenarios participate by default — done
+    (`038-all-loaded-scenarios`, the deliberate decision item 24's
+    investigation deferred). Two parts.
+
+    **Part 1 — the discovery rule** (`services/scenarioDiscovery.ts`, ~6
+    lines across 3 functions): every scenario whose registration reaches
+    `status === 'ready'` is `setActive(name, true)` in its own success
+    branch — uniformly for `registerObserved()` /
+    `registerPublishedScenarios()` / `registerDemoScenarios()`, with
+    **no** fixture-vs-demo branching (the only honest discriminator is
+    each scenario's own `status`; a context-dependent default could only
+    be a hack). `registerObserved()`'s old **unconditional**
+    `setActive('observed', true)` (which fired even on `status ===
+    'failed'`) is gone — an empty `public/observed/` in a real
+    deployment now registers `failed` and is never activated, so it
+    never poisons an unpinned `$scenario` union. That single fact is
+    what made 032's heavy `scenario:`-pinning necessary and what makes
+    unpinning safe now. `applyURLParams()` is unchanged (still add-only,
+    still last) — `?s=` can only widen the auto-activated set.
+    `getBaseline()` is untouched (resolves on `pinned`/`status`, never
+    `active`). No `appState` shape change, no new module, no new
+    dependency. See `specs/038-all-loaded-scenarios/contracts/
+    discovery-activation.md` (DA-1..DA-8).
+
+    **Part 2 — the demo content** (`public/demo-dashboard-config/`, 8 tab
+    files; the authoritative per-panel list is
+    `contracts/demo-panel-disposition.md`). Of 41 previously-pinned
+    panels: **27 unpinned**, **14 kept pinned** (each gains a
+    baseline-scope `description`). No demo panel uses `comparison: diff`
+    / `$baseline` — the "legitimate pin for baseline comparison"
+    category the request anticipated is **empty** for the demo. The 14
+    that stay pinned: 6 KPI `valuebox` (renders `rows[0]` only — an
+    unpinned union would surface an arbitrary scenario's row), 3
+    `zonemap`/`flowmap` (one draw per dataset), and **5** `observable-
+    plot`/`recharts` whose `fill`/`series` channel is already committed
+    to a real categorical breakdown (`school_segment` /
+    `primary_purpose` ×3 / `tour_mode`) — converting those needs
+    faceting, out of scope. The genuine "unpin + add a per-scenario
+    channel" set is **3** panels (`fill: scenario` ×1, `name:
+    $scenario` ×2); 2 more panels that carried a redundant `scenarios:
+    [all 3]` list already had `name: $scenario` in their `traces:`
+    block (an initial `js-yaml` parse checked only top-level `p.name`
+    and missed the trace-level channel — a real, recorded correction to
+    the spec's own §2 estimate; totals unchanged).
+
+    **A real, necessary refinement found during testing (T020)**: a
+    `table` with an explicit `columns:` list renders ONLY the listed
+    fields (`tableLogic.ts`). All 18 unpinned demo tables have such a
+    list, none naming `scenario` — so unpinning alone produced a
+    3-scenario union with no visible discriminator column. Every one
+    gained `- { field: scenario, label: "Scenario" }` prepended to its
+    `columns:`. (`Scenario Split (Table)` in the fixture works without
+    this only because it has no `columns:` override.)
+
+    **A pre-existing limitation surfaced, NOT a 038 regression, NOT
+    fixed** (`research.md` §6b): with **zero** active scenarios, an
+    unpinned panel's `$scenario` expansion throws synchronously in the
+    fetch-effect body (before `.then()/.catch()`), so `panelCard.tsx`'s
+    error boundary replaces the body and does not auto-reset on a later
+    prop change — the panel needs a remount to recover. Before 038 this
+    was only reachable by toggling `observed` off when it was the sole
+    active scenario (no test hit it). "Must not crash" holds; the
+    "recovers when you re-activate one" part is a follow-up (would need
+    every panel type's effect to catch-and-map the throw, or a boundary
+    reset key). DA-4/DA-7 reactive pickup (a scenario activating while
+    ≥1 was already active — the panel never hits the throw) works and is
+    covered.
+
+    **Test remediation** (FR-012 / SC-005 — much smaller than item 24's
+    "~33": that figure was from flipping `observed` fully *inactive*;
+    here `observed` stays active whenever its fixture data is present):
+    `boot.spec.ts` (2 active-set assertions + 1 test title — plain boot
+    is now `['good_scenario','observed']`), `settingsModal.spec.ts`
+    (037's FR-001 test — `good_scenario` is now auto-active, so the
+    "inactive scenario" side uses `broken_scenario` = `failed`),
+    `graphicWalkerPanel.spec.ts` (one stale comment).
+    `scenarioManager.spec.ts` needed **no** change (all its `.active`
+    assertions concern local-folder-load scenarios — unchanged path — or
+    `observed`/failed folders). Fixture `Total Households`/`Total
+    Trips`/`Average Trip Distance` valueboxes pinned `scenarios:
+    [observed]` (explicit declaration — a valuebox shouldn't be an
+    unpinned union anyway). `demoContentAllPanels.spec.ts` +
+    `demoMultiScenario.spec.ts` (new) route the fixture discovery
+    endpoints (`observed/summary/index.json`, `scenarios/index.json`,
+    `dashboard-config/index.json`) to 404 so they run against the demo
+    content alone — a real demo deployment shape — which also retires
+    that spec's 032-era cross-root "two Summary tabs" `.last()`
+    workaround. New `scenarioAutoActivation.spec.ts` (DA-1..DA-8),
+    `switchControlsUnpinnedPanels.spec.ts` (US1 against the fixture's own
+    unpinned `Scenario Split (*)` panels), `demoMultiScenario.spec.ts`
+    (US3 + dual-theme: unpinned plotly/recharts/observable-plot each
+    render 3 theme-correct per-scenario series in light AND dark).
+
+    `npm run typecheck` clean; `npm run test:unit` 457/457 (unchanged —
+    `appState` shape untouched).
+
 ---
 
 ## Reference implementations — copy patterns, don't re-derive

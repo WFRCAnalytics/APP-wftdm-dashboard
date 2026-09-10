@@ -98,13 +98,30 @@ test.describe('User Story 3 - A shared link pre-selects specific scenarios', () 
   test('an unmatched ?s= value is ignored and startup still completes', async ({ page }) => {
     await page.goto('/?s=nonexistent_scenario')
     await page.waitForFunction(() => window.__wftdm !== undefined, null, { timeout: 30_000 })
-    expect((await activeNames(page)).sort()).toEqual(['observed'])
+    // 038-all-loaded-scenarios: every `status === 'ready'` scenario
+    // auto-activates now, so the fixture ready-set (observed +
+    // good_scenario) is active regardless of an unmatched ?s= value.
+    await page.waitForFunction(
+      () => window.__wftdm!.appState.get('good_scenario')?.status === 'ready',
+      null,
+      { timeout: 30_000 },
+    )
+    expect((await activeNames(page)).sort()).toEqual(['good_scenario', 'observed'])
   })
 
-  test('no ?s= params leaves only observed active by default', async ({ page }) => {
+  test('no ?s= params leaves every ready scenario active by default', async ({ page }) => {
     await page.goto('/')
     await page.waitForFunction(() => window.__wftdm !== undefined, null, { timeout: 30_000 })
-    expect(await activeNames(page)).toEqual(['observed'])
+    // 038-all-loaded-scenarios: the retired behavior was "only observed
+    // active". Now a plain boot activates every scenario whose data
+    // loaded (observed + good_scenario `ready`; broken_scenario `failed`
+    // → not activated).
+    await page.waitForFunction(
+      () => window.__wftdm!.appState.get('good_scenario')?.status === 'ready',
+      null,
+      { timeout: 30_000 },
+    )
+    expect((await activeNames(page)).sort()).toEqual(['good_scenario', 'observed'])
   })
 })
 

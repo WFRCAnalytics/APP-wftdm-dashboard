@@ -1167,11 +1167,13 @@ test.describe('User Story (037-scenarios-tab-redesign)', () => {
   }
 
   // ---- Part A (FR-001): the active/inactive Switch is wired correctly ----
-  // Not a bug — `checked={s.active}` with no negation. `observed` renders
-  // checked because it is the ONLY force-active scenario by default
-  // (FR-009; registerPublishedScenarios() never calls setActive()). This
-  // test locks that in permanently so a future accidental inversion is
-  // caught.
+  // Not a bug — `checked={s.active}` with no negation. This test locks the
+  // wiring in permanently so a future accidental inversion is caught.
+  //
+  // 038-all-loaded-scenarios: the "inactive scenario" side now uses
+  // `broken_scenario` (status `failed` → never auto-activated). Under 038
+  // `good_scenario` (status `ready`) DOES auto-activate on a plain boot,
+  // so it is the second ACTIVE example here, not the inactive one.
   for (const dark of [false, true]) {
     test(`FR-001: the active/inactive Switch's checked state equals the real \`active\` value for both an active and an inactive scenario (${dark ? 'dark' : 'light'})`, async ({
       page,
@@ -1181,15 +1183,18 @@ test.describe('User Story (037-scenarios-tab-redesign)', () => {
       await page.evaluate((d) => document.documentElement.classList.toggle('dark', d), dark)
 
       // Real values straight from the store.
-      const [observedActive, goodActive] = await page.evaluate(() => [
+      const [observedActive, goodActive, brokenActive] = await page.evaluate(() => [
         window.__wftdm!.appState.get('observed')?.active,
         window.__wftdm!.appState.get('good_scenario')?.active,
+        window.__wftdm!.appState.get('broken_scenario')?.active,
       ])
-      expect(observedActive).toBe(true) // force-active at registration
-      expect(goodActive).toBe(false) // no ?s= param, never auto-activated
+      expect(observedActive).toBe(true) // ready → auto-active
+      expect(goodActive).toBe(true) // ready → auto-active (038)
+      expect(brokenActive).toBeFalsy() // failed → never auto-active
 
       const observedSwitch = row(page, 'observed').getByRole('switch')
       const goodSwitch = row(page, 'good_scenario').getByRole('switch')
+      const brokenSwitch = row(page, 'broken_scenario').getByRole('switch')
 
       // Rendered state matches the store, in BOTH directions, together.
       // `aria-checked` is the semantic contract for role="switch" (Radix's
@@ -1199,9 +1204,12 @@ test.describe('User Story (037-scenarios-tab-redesign)', () => {
       await expect(observedSwitch).toBeChecked()
       await expect(observedSwitch).toHaveAttribute('aria-checked', 'true')
       await expect(observedSwitch).toHaveAttribute('data-state', 'checked')
-      await expect(goodSwitch).not.toBeChecked()
-      await expect(goodSwitch).toHaveAttribute('aria-checked', 'false')
-      await expect(goodSwitch).toHaveAttribute('data-state', 'unchecked')
+      await expect(goodSwitch).toBeChecked()
+      await expect(goodSwitch).toHaveAttribute('aria-checked', 'true')
+      await expect(goodSwitch).toHaveAttribute('data-state', 'checked')
+      await expect(brokenSwitch).not.toBeChecked()
+      await expect(brokenSwitch).toHaveAttribute('aria-checked', 'false')
+      await expect(brokenSwitch).toHaveAttribute('data-state', 'unchecked')
     })
   }
 
@@ -1523,6 +1531,7 @@ test.describe('User Story (037-scenarios-tab-redesign)', () => {
 
       const sw = row(page, 'good_scenario').getByRole('switch')
       const ariaLabelBefore = await sw.getAttribute('aria-label')
+      const checkedBefore = await sw.getAttribute('aria-checked')
 
       await sw.hover()
       const tip = page.getByRole('tooltip')
@@ -1531,9 +1540,12 @@ test.describe('User Story (037-scenarios-tab-redesign)', () => {
       // only matters for panels that don't pin a specific scenario.
       await expect(tip).toContainText(/pinned to a specific scenario/i)
 
-      // FR-013: the tooltip changes nothing about the Switch's wiring.
+      // FR-013: the tooltip changes nothing about the Switch's wiring —
+      // aria-label and checked state are exactly what they were before
+      // the hover (038: good_scenario is auto-active, so `checkedBefore`
+      // is 'true' here — the point is the hover doesn't alter it).
       expect(await sw.getAttribute('aria-label')).toBe(ariaLabelBefore)
-      await expect(sw).not.toBeChecked() // good_scenario inactive by default
+      expect(await sw.getAttribute('aria-checked')).toBe(checkedBefore)
 
       // Move the pointer well away and let the Switch tooltip close.
       await page.mouse.move(1, 1)

@@ -6,12 +6,15 @@
 # Telecommute Frequency★) each get their own section with a real
 # markdown panel stating the specific reason — data-model.md §1, FR-009.
 #
-# Every panel here is pinned to a single real scenario
-# (activitysim-baseline) rather than comparing all three — this tab
-# demonstrates real data AVAILABILITY and panel-type breadth across the
-# full submodel list, not the two headline causal stories (those already
-# have their own real, multi-scenario comparison panels on the Summary/
-# Mode Choice/Network tabs, unaffected by this choice).
+# 038-all-loaded-scenarios: the tables and the graphic-walker panel are
+# UNPINNED — a `$scenario` union adds a `scenario` discriminator column /
+# field and they read as a real per-scenario comparison, responding to
+# the Scenarios-tab Switch. The two observable-plot panels whose `fill`
+# channel is already committed to a real categorical breakdown
+# (school_segment / — one gains `fill: scenario`) stay as-is or gain the
+# scenario channel per that panel's own note. No panel here needs a pin
+# for correctness any more (an empty `observed` no longer poisons a
+# union — a `failed` scenario is never auto-active).
 
 header:
   tab: "Person/Household Models"
@@ -52,11 +55,13 @@ layout:
     - type:       table
       title:      "Auto Ownership by Household Segment"
       metric:     auto_ownership_summary
-      scenario:   activitysim-baseline
       sort:       { column: households, order: desc }
       pagination: 20
       searchable: true
       columns:
+        # 038-all-loaded-scenarios: unpinned — the $scenario union adds this
+        # discriminator column so the table reads as a per-scenario comparison.
+        - { field: scenario, label: "Scenario" }
         - { field: auto_ownership, label: "Autos Owned" }
         - { field: hhsize,         label: "HH Size" }
         - { field: income_group,   label: "Income Group" }
@@ -79,7 +84,12 @@ layout:
     - type:    observable-plot
       title:   "School Location Distance Distribution"
       metric:  school_location_summary
+      # 038: stays pinned to the baseline scenario — the `fill` channel is
+      # already committed to the school-segment breakdown (K-8 / 9-12 /
+      # university), which is the analytical point of this distribution.
+      # A multi-scenario version would need faceting (out of 038 scope).
       scenario: activitysim-baseline
+      description: "Baseline scenario, broken out by school segment. Compare runs on the tables and other charts via the Scenarios tab."
       mark:    barY
       x:       distance_bin
       y:       students
@@ -93,10 +103,12 @@ layout:
     - type:    observable-plot
       title:   "Workplace Location Distance Distribution"
       metric:  workplace_location_summary
-      scenario: activitysim-baseline
+      # 038: unpinned + `fill: scenario` — its colour channel was free, so
+      # it becomes a real per-scenario comparison of the distance profile.
       mark:    barY
       x:       distance_bin
       y:       workers
+      fill:    scenario
       tip:     true
       grid:    true
       height:  400
@@ -105,11 +117,13 @@ layout:
     - type:       table
       title:      "Home-Workplace District Flows"
       metric:     workplace_od_flows
-      scenario:   activitysim-baseline
       sort:       { column: workers, order: desc }
       pagination: 15
       searchable: true
       columns:
+        # 038-all-loaded-scenarios: unpinned — the $scenario union adds this
+        # discriminator column so the table reads as a per-scenario comparison.
+        - { field: scenario, label: "Scenario" }
         - { field: home_district, label: "Home District" }
         - { field: work_district, label: "Workplace District" }
         - { field: workers,       label: "Workers", format: ",.0f" }
@@ -149,11 +163,13 @@ layout:
     - type:       table
       title:      "CDAP Activity Pattern by Segment"
       metric:     cdap_summary
-      scenario:   activitysim-baseline
       sort:       { column: persons, order: desc }
       pagination: 20
       searchable: true
       columns:
+        # 038-all-loaded-scenarios: unpinned — the $scenario union adds this
+        # discriminator column so the table reads as a per-scenario comparison.
+        - { field: scenario, label: "Scenario" }
         - { field: cdap_activity,    label: "Activity Pattern" }
         - { field: person_type,      label: "Person Type" }
         - { field: auto_sufficiency, label: "Auto Sufficiency" }
@@ -169,5 +185,6 @@ layout:
     - type:    graphic-walker
       title:   "Explore: Person/Household Profile"
       dataset: person_household_profile
-      scenario: activitysim-baseline
+      # 038: unpinned — 028's $scenario union adds a `scenario` field the
+      # viewer can pivot/filter on across every active run.
       width:   1.0

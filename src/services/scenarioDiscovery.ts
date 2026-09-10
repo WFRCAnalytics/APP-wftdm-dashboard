@@ -88,26 +88,21 @@ async function registerObserved(): Promise<void> {
   try {
     await registerSummaryFolder(folderUrl, 'observed')
     appState.setStatus('observed', 'ready')
+    // 038-all-loaded-scenarios: a scenario participates in the dynamic
+    // `$scenario` union iff its own data is genuinely present. The only
+    // condition is `status === 'ready'` — no fixture-vs-demo branching
+    // (FR-013). An empty `public/observed/` in a real deployment reaches
+    // the catch below (status 'failed') and is never activated, so it no
+    // longer poisons an unpinned union. Was previously an unconditional
+    // `setActive('observed', true)` after the try/catch; see
+    // specs/038-all-loaded-scenarios/contracts/discovery-activation.md.
+    appState.setActive('observed', true)
   } catch (err) {
     // Distinct, more severe warning than a published-scenario failure —
     // observed data is supposed to always be available (research.md §5).
     console.warn('scenarioDiscovery: observed dataset registration failed', err)
     appState.setStatus('observed', 'failed')
   }
-  // FR-009: observed is marked active regardless of what happened above.
-  //
-  // 037-scenarios-tab-redesign item 4 investigated flipping this to
-  // setActive(false). Confirmed observed's data IS a placeholder in every
-  // real context — but the change was NOT made: the entire fixture test
-  // dashboard config (and, per its own comments, the demo dashboard
-  // config) is authored assuming observed-is-always-active — 12 unpinned
-  // `$scenario`-union panels on the fixture Summary tab alone rely on it,
-  // and flipping the default made ~30 tests across 10 spec files render a
-  // "no active scenarios" error. It also delivers no user-visible benefit
-  // while every demo panel stays `scenario:`-pinned (037 item 3). The
-  // change belongs bundled with unpinning the demo content, not shipped
-  // as an isolated flag flip. See the 037 investigation report.
-  appState.setActive('observed', true)
 }
 
 async function registerPublishedScenarios(): Promise<void> {
@@ -138,6 +133,12 @@ async function registerPublishedScenarios(): Promise<void> {
     try {
       await registerSummaryFolder(folderUrl, name)
       appState.setStatus(name, 'ready')
+      // 038-all-loaded-scenarios: every published scenario whose data
+      // actually loaded participates by default (status === 'ready' only,
+      // no context branching — FR-013). A viewer excludes one via the
+      // Scenarios-tab Switch. See
+      // specs/038-all-loaded-scenarios/contracts/discovery-activation.md.
+      appState.setActive(name, true)
     } catch (err) {
       console.warn(`scenarioDiscovery: failed to register scenario "${name}"`, err)
       appState.setStatus(name, 'failed')
@@ -182,6 +183,13 @@ async function registerDemoScenarios(): Promise<void> {
     try {
       await registerSummaryFolder(folderUrl, name)
       appState.setStatus(name, 'ready')
+      // 038-all-loaded-scenarios: same rule as registerPublishedScenarios()
+      // above — a demo scenario whose data loaded participates by default
+      // (status === 'ready' only). This is what makes the real demo read
+      // as a multi-scenario comparison without any `?s=` param, and what
+      // gives the Scenarios-tab Switch real universal control. See
+      // specs/038-all-loaded-scenarios/contracts/discovery-activation.md.
+      appState.setActive(name, true)
     } catch (err) {
       console.warn(`scenarioDiscovery: failed to register demo scenario "${name}"`, err)
       appState.setStatus(name, 'failed')

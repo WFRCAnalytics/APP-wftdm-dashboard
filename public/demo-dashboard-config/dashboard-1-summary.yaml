@@ -11,23 +11,20 @@ header:
   icon: layout-dashboard
 
 layout:
-  # scenario: activitysim-baseline pinned explicitly on every valuebox —
-  # a real, confirmed bug found via live browser verification: with no
-  # scenario/scenarios field, these panels default to a $scenario union
-  # across every ACTIVE scenario, including "observed" (always active,
-  # pinned: true) — but no public/observed/ content exists in this real
-  # checkout (it's gitignored, fixture-populated-only per CLAUDE.md), so
-  # "observed" registers with no matching summary_kpis view and the union
-  # throws a real Catalog Error. Same root cause, same fix, already
-  # documented once in this repo's own history
-  # (dashboard-5-explore.yaml's own header comment) — pinning to one real
-  # scenario avoids this class of mismatch entirely, matching every other
-  # real demo panel's own established convention.
+  # 038-all-loaded-scenarios: every `status === 'ready'` scenario now
+  # auto-activates, and an unpinned `$scenario` union no longer breaks on
+  # an empty `observed` (a `failed` scenario is never auto-active). So the
+  # charts below are UNPINNED — they read as a real multi-scenario
+  # comparison and respond to the Scenarios-tab Switch. The KPI value
+  # boxes stay pinned to `activitysim-baseline`: a value box renders one
+  # number (`rows[0]`), so an unpinned union would surface an arbitrary
+  # scenario's row. Each states its baseline scope in `description`.
   row_kpis:
     - type:   valuebox
       title:  Households
       metric: summary_kpis
       scenario: activitysim-baseline
+      description: "Baseline scenario. Compare runs on the charts below via the Scenarios tab."
       column: total_households
       format: "{:,.0f}"
       icon:   home
@@ -37,6 +34,7 @@ layout:
       title:  Persons
       metric: summary_kpis
       scenario: activitysim-baseline
+      description: "Baseline scenario. Compare runs on the charts below via the Scenarios tab."
       column: total_persons
       format: "{:,.0f}"
       icon:   users
@@ -46,6 +44,7 @@ layout:
       title:  Tours
       metric: summary_kpis
       scenario: activitysim-baseline
+      description: "Baseline scenario. Compare runs on the charts below via the Scenarios tab."
       column: total_tours
       format: "{:,.0f}"
       icon:   route
@@ -55,6 +54,7 @@ layout:
       title:  Trips
       metric: summary_kpis
       scenario: activitysim-baseline
+      description: "Baseline scenario. Compare runs on the charts below via the Scenarios tab."
       column: total_trips
       format: "{:,.0f}"
       icon:   map-pin
@@ -64,13 +64,16 @@ layout:
       title:  Total VMT
       metric: summary_kpis
       scenario: activitysim-baseline
+      description: "Baseline scenario. Compare runs on the charts below via the Scenarios tab."
       column: total_vmt
       format: "{:,.0f} mi"
       icon:   gauge
       width:  0.2
 
   # Real total trips by mode (recharts) and real average trip distance by
-  # purpose (plotly) — both ★ Level-1 summaries, all three real scenarios.
+  # purpose (plotly) — both ★ Level-1 summaries. Unpinned (038): the
+  # dynamic `$scenario` union spans every active scenario, split per
+  # scenario by `series: scenario` / `name: $scenario`.
   row_charts:
     - type:       recharts
       title:      Total Trips by Mode
@@ -79,7 +82,6 @@ layout:
       x:          major_trip_mode
       y:          share
       series:     scenario
-      scenarios: [activitysim-baseline, activitysim-density-variant, activitysim-transit-variant]
       height:     400
       width:      0.5
 
@@ -88,7 +90,6 @@ layout:
       metric:  trip_distance_by_purpose
       height:  400
       width:   0.5
-      scenarios: [activitysim-baseline, activitysim-density-variant, activitysim-transit-variant]
       traces:
         - type: bar
           x:    $metric.primary_purpose

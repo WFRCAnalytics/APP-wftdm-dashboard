@@ -2,8 +2,12 @@
 # docs/CALIBRATION-SUMMARIES.md's own "Tour Models Tab" submodel
 # headings exactly, in the same order that document lists them. All 13
 # submodels here are real, confirmed computable (data-model.md §1) — no
-# gaps on this tab. Every panel pinned to activitysim-baseline (same
-# reasoning as dashboard-2-person-household.yaml's own header comment).
+# gaps on this tab. 038-all-loaded-scenarios: the tables are UNPINNED
+# (each gains a `scenario` comparison column and responds to the
+# Scenarios-tab Switch); the plotly panel gains `name: $scenario`; the
+# two observable-plot panels keep their `fill: primary_purpose`
+# breakdown and stay pinned to the baseline (scope stated in
+# `description`).
 
 header:
   tab: "Tour Models"
@@ -56,11 +60,13 @@ layout:
     - type:       table
       title:      "Mandatory Tour Frequency by Person Type"
       metric:     mandatory_tour_freq_summary
-      scenario:   activitysim-baseline
       sort:       { column: persons, order: desc }
       pagination: 20
       searchable: true
       columns:
+        # 038-all-loaded-scenarios: unpinned — the $scenario union adds this
+        # discriminator column so the table reads as a per-scenario comparison.
+        - { field: scenario, label: "Scenario" }
         - { field: mandatory_tour_frequency, label: "Frequency" }
         - { field: person_type,              label: "Person Type" }
         - { field: persons,                  label: "Persons", format: ",.0f" }
@@ -78,11 +84,13 @@ layout:
     - type:       table
       title:      "Mandatory Tour Start/End/Duration (Work Tours)"
       metric:     mandatory_tour_scheduling
-      scenario:   activitysim-baseline
       filter:     { primary_purpose: work }
       sort:       { column: tours, order: desc }
       pagination: 20
       columns:
+        # 038-all-loaded-scenarios: unpinned — the $scenario union adds this
+        # discriminator column so the table reads as a per-scenario comparison.
+        - { field: scenario, label: "Scenario" }
         - { field: start,    label: "Start Hour" }
         - { field: end,      label: "End Hour" }
         - { field: duration, label: "Duration (hrs)" }
@@ -93,11 +101,13 @@ layout:
     - type:       table
       title:      "Joint Tour Frequency and Composition"
       metric:     joint_tour_freq_summary
-      scenario:   activitysim-baseline
       sort:       { column: households, order: desc }
       pagination: 20
       searchable: true
       columns:
+        # 038-all-loaded-scenarios: unpinned — the $scenario union adds this
+        # discriminator column so the table reads as a per-scenario comparison.
+        - { field: scenario, label: "Scenario" }
         - { field: joint_tour_frequency, label: "Frequency / Composition" }
         - { field: num_hh_joint_tours,   label: "# Joint Tours" }
         - { field: households,           label: "Households", format: ",.0f" }
@@ -109,10 +119,12 @@ layout:
     - type:       table
       title:      "Joint Tour Participation (real participant counts)"
       metric:     joint_tour_participation_summary
-      scenario:   activitysim-baseline
       sort:       { column: tours, order: desc }
       pagination: 20
       columns:
+        # 038-all-loaded-scenarios: unpinned — the $scenario union adds this
+        # discriminator column so the table reads as a per-scenario comparison.
+        - { field: scenario, label: "Scenario" }
         - { field: primary_purpose,          label: "Purpose" }
         - { field: number_of_participants,   label: "Participants" }
         - { field: tours,                    label: "Tours", format: ",.0f" }
@@ -126,7 +138,10 @@ layout:
     - type:    observable-plot
       title:   "Joint Tour Destination Distance"
       metric:  joint_tour_destination_summary
+      # 038: stays pinned — `fill` is committed to the tour-purpose
+      # breakdown (out-of-scope faceting needed for multi-scenario).
       scenario: activitysim-baseline
+      description: "Baseline scenario, broken out by tour purpose. Compare runs on the tables and the frequency chart via the Scenarios tab."
       mark:    barY
       x:       distance_bin
       y:       tours
@@ -140,10 +155,12 @@ layout:
     - type:       table
       title:      "Joint Tour Scheduling"
       metric:     joint_tour_scheduling
-      scenario:   activitysim-baseline
       sort:       { column: tours, order: desc }
       pagination: 20
       columns:
+        # 038-all-loaded-scenarios: unpinned — the $scenario union adds this
+        # discriminator column so the table reads as a per-scenario comparison.
+        - { field: scenario, label: "Scenario" }
         - { field: primary_purpose, label: "Purpose" }
         - { field: start,           label: "Start Hour" }
         - { field: end,             label: "End Hour" }
@@ -155,22 +172,28 @@ layout:
     - type:    plotly
       title:   "Non-Mandatory Tour Frequency by Purpose"
       metric:  non_mandatory_tour_freq_summary
-      scenario: activitysim-baseline
+      # 038: unpinned + `name: $scenario` — one bar group per scenario.
       height:  400
       width:   1.0
       traces:
         - type: bar
           x:    $metric.purpose
           y:    $metric.tours
+          name: $scenario
       layout:
         xaxis: { title: "Purpose" }
         yaxis: { title: "Tours" }
+        barmode: group
+        showlegend: true
 
   row_non_mandatory_tour_destination:
     - type:    observable-plot
       title:   "Non-Mandatory Tour Destination Distance"
       metric:  non_mandatory_tour_destination_summary
+      # 038: stays pinned — `fill` is committed to the tour-purpose
+      # breakdown (out-of-scope faceting needed for multi-scenario).
       scenario: activitysim-baseline
+      description: "Baseline scenario, broken out by tour purpose. Compare runs on the tables and the frequency chart via the Scenarios tab."
       mark:    barY
       x:       distance_bin
       y:       tours
@@ -184,10 +207,12 @@ layout:
     - type:       table
       title:      "Non-Mandatory Tour Scheduling"
       metric:     non_mandatory_tour_scheduling
-      scenario:   activitysim-baseline
       sort:       { column: tours, order: desc }
       pagination: 20
       columns:
+        # 038-all-loaded-scenarios: unpinned — the $scenario union adds this
+        # discriminator column so the table reads as a per-scenario comparison.
+        - { field: scenario, label: "Scenario" }
         - { field: primary_purpose, label: "Purpose" }
         - { field: start,           label: "Start Hour" }
         - { field: end,             label: "End Hour" }
@@ -199,10 +224,12 @@ layout:
     - type:       table
       title:      "At-Work Subtour Frequency (parent work tours)"
       metric:     atwork_subtour_freq_summary
-      scenario:   activitysim-baseline
       sort:       { column: parent_work_tours, order: desc }
       pagination: 20
       columns:
+        # 038-all-loaded-scenarios: unpinned — the $scenario union adds this
+        # discriminator column so the table reads as a per-scenario comparison.
+        - { field: scenario, label: "Scenario" }
         - { field: atwork_subtour_frequency, label: "Subtour Frequency" }
         - { field: parent_work_tours,        label: "Parent Work Tours", format: ",.0f" }
       width: 1.0
@@ -211,10 +238,12 @@ layout:
     - type:       table
       title:      "At-Work Subtour Destination Distance"
       metric:     atwork_subtour_destination_summary
-      scenario:   activitysim-baseline
       sort:       { column: tours, order: desc }
       pagination: 20
       columns:
+        # 038-all-loaded-scenarios: unpinned — the $scenario union adds this
+        # discriminator column so the table reads as a per-scenario comparison.
+        - { field: scenario, label: "Scenario" }
         - { field: primary_purpose,     label: "Purpose" }
         - { field: distance_bin,        label: "Distance (mi)" }
         - { field: avg_distance_miles,  label: "Avg. Distance (mi)", format: ",.2f" }
@@ -225,10 +254,12 @@ layout:
     - type:       table
       title:      "At-Work Subtour Scheduling"
       metric:     atwork_subtour_scheduling
-      scenario:   activitysim-baseline
       sort:       { column: tours, order: desc }
       pagination: 20
       columns:
+        # 038-all-loaded-scenarios: unpinned — the $scenario union adds this
+        # discriminator column so the table reads as a per-scenario comparison.
+        - { field: scenario, label: "Scenario" }
         - { field: primary_purpose, label: "Purpose" }
         - { field: start,           label: "Start Hour" }
         - { field: end,             label: "End Hour" }
@@ -239,11 +270,13 @@ layout:
     - type:       table
       title:      "Stop Frequency by Tour Purpose"
       metric:     stop_frequency_summary
-      scenario:   activitysim-baseline
       sort:       { column: tours, order: desc }
       pagination: 20
       searchable: true
       columns:
+        # 038-all-loaded-scenarios: unpinned — the $scenario union adds this
+        # discriminator column so the table reads as a per-scenario comparison.
+        - { field: scenario, label: "Scenario" }
         - { field: primary_purpose,  label: "Tour Purpose" }
         - { field: stop_frequency,   label: "Stop Frequency (out_in)" }
         - { field: tours,            label: "Tours", format: ",.0f" }

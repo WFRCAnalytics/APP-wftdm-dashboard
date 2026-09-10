@@ -202,10 +202,11 @@ test.describe('User Story 2 - Author points an Explore panel at a specific datas
   test('omitting scenario: with two active scenarios unions via the existing $scenario. mechanism, adding a scenario field', async ({
     page,
   }) => {
-    // good_scenario is not globally active by default (only `observed` is
-    // pinned — src/services/scenarioDiscovery.ts) — activated here via
-    // the app's own real ?s= URL param mechanism (applyURLParams()), not
-    // a test-only shortcut.
+    // 038-all-loaded-scenarios: `good_scenario` (status 'ready') now
+    // auto-activates on any boot; the explicit `?s=good_scenario` is kept
+    // as a belt-and-braces declaration of this test's intended set (and
+    // still exercises applyURLParams()'s add-only path). Either way the
+    // active set here is `observed` + `good_scenario`.
     await boot(page, '?s=good_scenario')
     await gotoDetailTab(page)
     const card = panelCard(page, 'Free-form Visual Analytics (Multi-Scenario)')

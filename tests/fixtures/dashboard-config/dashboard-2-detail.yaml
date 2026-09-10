@@ -11,9 +11,15 @@ header:
 
 layout:
   row_kpis:
+    # 038-all-loaded-scenarios (FR-012): pinned to an explicit scenario
+    # now that a plain boot auto-activates every `status === 'ready'`
+    # scenario (observed + good_scenario), not just observed. A valuebox
+    # renders `rows[0]` only, so an unpinned union would show an arbitrary
+    # scenario's number. Same reasoning as the Summary tab's KPI cards.
     - type: valuebox
       title: Average Trip Distance
       metric: summary_kpis
+      scenarios: [observed]
       column: avg_trip_distance
       format: "{:.1f}"
       unit: miles

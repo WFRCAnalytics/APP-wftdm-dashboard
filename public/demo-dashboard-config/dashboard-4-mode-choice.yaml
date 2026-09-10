@@ -26,11 +26,13 @@ layout:
     - type:       table
       title:      "Tour Mode Share by Segment"
       metric:     tour_mode_share_summary
-      scenario:   activitysim-baseline
       sort:       { column: tours, order: desc }
       pagination: 25
       searchable: true
       columns:
+        # 038-all-loaded-scenarios: unpinned — the $scenario union adds this
+        # discriminator column so the table reads as a per-scenario comparison.
+        - { field: scenario, label: "Scenario" }
         - { field: primary_purpose,   label: "Tour Purpose" }
         - { field: tour_mode,         label: "Mode" }
         - { field: auto_sufficiency,  label: "Auto Sufficiency" }
@@ -44,7 +46,11 @@ layout:
     - type:       recharts
       title:      "At-Work Subtour Mode Share by Purpose"
       metric:     atwork_subtour_mode_summary
+      # 038: stays pinned — `series` is committed to the mode split, and
+      # recharts has no faceting for a second dimension. Scope stated
+      # below; the other Mode Choice panels compare scenarios.
       scenario:   activitysim-baseline
+      description: "Baseline scenario, split by mode. Compare runs on the other Mode Choice panels via the Scenarios tab."
       chart_type: bar
       x:          primary_purpose
       y:          tours
@@ -59,7 +65,11 @@ layout:
     - type:   sankey
       title:  "Trip Purpose to Mode Flow"
       metric: purpose_mode_flow
-      scenarios: [activitysim-baseline, activitysim-density-variant, activitysim-transit-variant]
+      # 038: unpinned. A Sankey has no per-scenario split — the $scenario
+      # union sums flows across the active scenarios, so this reads as a
+      # COMBINED purpose→mode flow that still responds to the Switch
+      # (toggle down to one scenario to see that run alone).
+      description: "Combined flow across all active scenarios. Toggle scenarios on the Scenarios tab to isolate one run."
       height: 400
       width:  1.0
       source: primary_purpose
@@ -73,7 +83,9 @@ layout:
       metric:  mode_share_by_period
       height:  400
       width:   1.0
-      scenarios: [activitysim-baseline, activitysim-density-variant, activitysim-transit-variant]
+      # 038: unpinned (was an explicit 3-scenario list) — the dynamic
+      # $scenario union already splits per scenario via `name: $scenario`
+      # below, and now responds to the Scenarios-tab Switch.
       filter:  { trip_mode: WALK_LOC }
       traces:
         - type: bar

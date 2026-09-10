@@ -52,6 +52,7 @@ layout:
       title:  "Total VMT (straight-line proxy)"
       metric: summary_kpis
       scenario: activitysim-baseline
+      description: "Baseline scenario. Compare runs on the tables and charts via the Scenarios tab."
       column: total_vmt
       format: "{:,.0f} mi"
       icon:   gauge
@@ -60,6 +61,7 @@ layout:
     - type:       zonemap
       title:      "VMT by Home Zone (straight-line proxy)"
       metric:     vmt_by_home_taz
+      # 038: stays pinned — a choropleth shows one run per draw (FR-010).
       scenario:   activitysim-baseline
       boundaries:    taz25.geoparquet
       boundaries_id: TAZ1454
@@ -74,9 +76,10 @@ layout:
       center: [-122.402, 37.787]
       zoom:   13
       description: >
-        Real straight-line distance between real zone centroids, summed
-        per real trip — not a modeled network-path VMT (this pipeline has
-        no traffic-assignment step).
+        Baseline scenario — a choropleth shows one run at a time. Real
+        straight-line distance between real zone centroids, summed per
+        real trip — not a modeled network-path VMT (this pipeline has no
+        traffic-assignment step).
 
   # Already real, already correct — the same panel dashboard-6-flows.yaml
   # (031, dissolved) already authored; re-created here, now actually
@@ -85,7 +88,10 @@ layout:
     - type:        flowmap
       title:       "Trip Distribution Desire Lines"
       metric:      od_flows
+      # 038: stays pinned — a desire-line map draws one O-D set per
+      # render, so it shows one scenario at a time (FR-010).
       scenario:    activitysim-baseline
+      description: "Baseline scenario. The desire-line map shows one run at a time."
       height:      500
       width:       1.0
       origin:      orig_taz
@@ -104,11 +110,13 @@ layout:
     - type:       table
       title:      "Home-Workplace District Flows"
       metric:     workplace_od_flows
-      scenario:   activitysim-baseline
       sort:       { column: workers, order: desc }
       pagination: 15
       searchable: true
       columns:
+        # 038-all-loaded-scenarios: unpinned — the $scenario union adds this
+        # discriminator column so the table reads as a per-scenario comparison.
+        - { field: scenario, label: "Scenario" }
         - { field: home_district, label: "Home District" }
         - { field: work_district, label: "Workplace District" }
         - { field: workers,       label: "Workers", format: ",.0f" }
@@ -118,11 +126,13 @@ layout:
     - type:       table
       title:      "Land Use / Socioeconomics by Zone"
       metric:     land_use_summary
-      scenario:   activitysim-baseline
       sort:       { column: zone_id, order: asc }
       pagination: 25
       searchable: true
       columns:
+        # 038-all-loaded-scenarios: unpinned — the $scenario union adds this
+        # discriminator column so the table reads as a per-scenario comparison.
+        - { field: scenario, label: "Scenario" }
         - { field: zone_id,             label: "Zone" }
         - { field: DISTRICT,            label: "District" }
         - { field: TOTHH,               label: "Households", format: ",.0f" }
@@ -137,11 +147,13 @@ layout:
     - type:       table
       title:      "Accessibility by Zone"
       metric:     accessibility_summary
-      scenario:   activitysim-baseline
       sort:       { column: zone_id, order: asc }
       pagination: 25
       searchable: true
       columns:
+        # 038-all-loaded-scenarios: unpinned — the $scenario union adds this
+        # discriminator column so the table reads as a per-scenario comparison.
+        - { field: scenario, label: "Scenario" }
         - { field: zone_id,     label: "Zone" }
         - { field: auPkTotal,   label: "Auto Peak (Total)",  format: ",.1f" }
         - { field: auOpTotal,   label: "Auto Off-Peak (Total)", format: ",.1f" }

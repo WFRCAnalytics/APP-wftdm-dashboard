@@ -1,10 +1,6 @@
-import { writeFileSync } from 'node:fs'
-import path from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { test, expect, type Page } from '@playwright/test'
 import type { WftdmDebugHook } from '../../src/main.tsx'
 import type maplibregl from 'maplibre-gl'
-import { acquireSharedFixtureLock, releaseSharedFixtureLock } from './_sharedFixtureLock'
 
 declare global {
   interface Window {
@@ -27,20 +23,19 @@ declare global {
 // tests/global-setup.js deliberately blanks BOTH public/demo-scenarios/
 // index.json AND public/demo-dashboard-config/index.json to [] for the
 // WHOLE suite run (026-activitysim-demo-content's own real, documented
-// finding). This spec's own beforeAll/afterAll restore BOTH files' REAL
-// content for just this file's own lifecycle, then put the blanks back.
+// finding). 038-all-loaded-scenarios: this spec serves the REAL content
+// back via per-page `page.route()` in boot() (no on-disk write, no
+// `_sharedFixtureLock`) — see boot()'s own comment.
 //
-// A real cross-worker lock (_sharedFixtureLock.ts) is still required —
-// 030-sidebar-navigation's own real, reproduced full-suite run found that
-// `fullyParallel: false` only serializes tests WITHIN one file, never
-// across files; every spec that mutates either discovery path must
-// acquire this lock for its whole run.
-const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const DEMO_DASHBOARD_INDEX_PATH = path.resolve(
-  __dirname,
-  '../../public/demo-dashboard-config/index.json',
-)
-const DEMO_SCENARIOS_INDEX_PATH = path.resolve(__dirname, '../../public/demo-scenarios/index.json')
+// 038-all-loaded-scenarios: this spec no longer mutates the on-disk demo
+// index files (and no longer needs _sharedFixtureLock). It serves the
+// real demo indexes back via per-page `page.route()` in boot(), and
+// 404s the fixture discovery endpoints — so the app registers only the
+// three real demo scenarios (a real demo deployment shape). Before 038,
+// registered-but-inactive demo scenarios were harmless to concurrent
+// specs; 038 auto-activates them, which would leak into every other
+// spec's `$scenario` unions during a disk-write window — `page.route`
+// removes that window entirely.
 const REAL_DEMO_DASHBOARD_INDEX = {
   dashboards: [
     'dashboard-1-summary.yaml',
@@ -63,24 +58,28 @@ const REAL_DEMO_SCENARIOS_INDEX = [
   'activitysim-transit-variant',
 ]
 
-test.beforeAll(async () => {
-  // Another spec file may already hold this lock — Playwright's own
-  // default beforeAll timeout (inherited from the test timeout) can
-  // otherwise elapse while merely waiting for it. Real, legitimate
-  // queueing, not a hang.
-  test.setTimeout(420_000)
-  await acquireSharedFixtureLock()
-  writeFileSync(DEMO_DASHBOARD_INDEX_PATH, JSON.stringify(REAL_DEMO_DASHBOARD_INDEX, null, 2))
-  writeFileSync(DEMO_SCENARIOS_INDEX_PATH, JSON.stringify(REAL_DEMO_SCENARIOS_INDEX, null, 2))
-})
-
-test.afterAll(() => {
-  writeFileSync(DEMO_DASHBOARD_INDEX_PATH, JSON.stringify([]))
-  writeFileSync(DEMO_SCENARIOS_INDEX_PATH, JSON.stringify([]))
-  releaseSharedFixtureLock()
-})
-
 async function boot(page: Page) {
+  // Serve the real demo indexes to this page only (global-setup blanked
+  // the on-disk files to `[]`).
+  await page.route('**/demo-dashboard-config/index.json', (r) =>
+    r.fulfill({ contentType: 'application/json', body: JSON.stringify(REAL_DEMO_DASHBOARD_INDEX) }),
+  )
+  await page.route('**/demo-scenarios/index.json', (r) =>
+    r.fulfill({ contentType: 'application/json', body: JSON.stringify(REAL_DEMO_SCENARIOS_INDEX) }),
+  )
+  // 038-all-loaded-scenarios: every `status === 'ready'` scenario now
+  // auto-activates, and the demo's panels are UNPINNED (they read as a
+  // multi-scenario comparison). Co-loading the fixture content roots
+  // would then union the fixture `observed`/`good_scenario` scenarios —
+  // which don't publish most demo metrics — into every unpinned demo
+  // panel, producing spurious Catalog Errors. Route the fixture
+  // discovery endpoints to 404 so this spec runs against the demo
+  // content alone, exactly like a real demo deployment (empty
+  // public/observed + public/scenarios; `observed` registers `failed`).
+  await page.route('**/observed/summary/index.json', (r) => r.fulfill({ status: 404, body: '' }))
+  await page.route('**/scenarios/index.json', (r) => r.fulfill({ status: 404, body: '' }))
+  await page.route('**/dashboard-config/index.json', (r) => r.fulfill({ status: 404, body: '' }))
+
   await page.goto('/')
   await page.waitForFunction(() => window.__wftdm !== undefined, null, { timeout: 30_000 })
   await page.waitForFunction(
@@ -94,27 +93,13 @@ function panelCard(page: Page, title: string) {
   return page.getByText(title, { exact: true }).locator('..').locator('..')
 }
 
-// A real, confirmed naming collision (found via a live run, not
-// anticipated): this spec's own fixture dashboard-config root (always
-// loaded alongside demo-dashboard-config onto the SAME page/tablist —
-// main.ts concatenates both) has its own landing tab also literally named
-// "Summary" (tests/fixtures/dashboard-config/dashboard-1-summary.yaml).
-// 031's own version of this file never hit this because the demo's
-// landing tab was then named "Overview" — 032's rename to "Summary"
-// (matching CALIBRATION-SUMMARIES.md's own real heading) reintroduces the
-// same class of cross-root tab-name collision 030-sidebar-navigation's own
-// "Explore Fixture"/"Explore" clash already taught this project to expect
-// whenever two dashboard-config roots share one page. main.ts's own
-// concatenation order (fixture root's loadDashboards() call first, demo
-// root's second) means the demo "Summary" tab is reliably the LAST match,
-// not the first — `.last()` disambiguates without needing an exact-text
-// workaround. Every other demo tab name (Person/Household Models, Tour
-// Models, Mode Choice, Trip Models, Network) is unique against the
-// fixture's own tab set (Summary/Detail/Basemaps) and needs no special
-// handling.
+// 038-all-loaded-scenarios: boot() now routes the fixture discovery
+// endpoints to 404, so only the demo dashboard-config root loads — there
+// is exactly one "Summary" tab and no cross-root name collision to
+// disambiguate (the `.last()` workaround the 032-era version needed is
+// gone).
 function clickDemoTab(page: Page, name: string) {
-  const locator = page.getByRole('tab', { name, exact: true })
-  return (name === 'Summary' ? locator.last() : locator).click()
+  return page.getByRole('tab', { name, exact: true }).click()
 }
 
 test.describe('032-six-tab-demo-content — User Story 1 (six-tab structure)', () => {
@@ -134,9 +119,10 @@ test.describe('032-six-tab-demo-content — User Story 1 (six-tab structure)', (
       'Network',
       'Explore',
     ]
-    for (const name of expectedOrder) {
-      expect(clean.some((t) => t.includes(name))).toBe(true)
-    }
+    // 038: the fixture dashboard-config root is 404'd in boot(), so the
+    // tablist is EXACTLY the seven demo tabs, in order — no fixture
+    // Summary/Detail/Basemaps mixed in.
+    expect(clean).toEqual(expectedOrder)
     for (const banned of ['Overview', 'Destination Choice', 'Transit Service']) {
       expect(clean.some((t) => t.includes(banned))).toBe(false)
     }
