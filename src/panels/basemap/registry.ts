@@ -69,8 +69,22 @@ const BUILT_IN_PRESETS: Record<BasemapPresetName, BuiltInPreset> = {
 // APP_DEFAULT_LIGHT/APP_DEFAULT_DARK pair — resolveEffectiveBasemap()'s
 // bottom fallback tier is now one static value, never theme-dependent
 // (research.md §6, FR-015/FR-016). Change this one value to change the
-// deployer-configured app-default; if never changed, it is 'carto-voyager'.
-export const APP_DEFAULT: BasemapPresetName = 'carto-voyager'
+// deployer-configured app-default.
+//
+// Value chosen 'openfreemap-positron' (was 'carto-voyager'): this loads by
+// default on EVERY unconfigured flowmap/zonemap panel across the app, and a
+// muted grey reference style is the right cartographic fit for "thematic
+// data on top" (flow lines, choropleth fills) — a colored style competes
+// with the data. Also the lightest of the OpenFreeMap styles by a wide
+// margin (measured: 55 style layers / ~40 paint expressions, vs ~110-120 /
+// ~90-100 for Liberty/Bright) at this app's actual zoom levels, and
+// OpenFreeMap is a genuinely keyless, no-account service — no exposure to
+// CARTO's announced-but-undated plan to extend its API-key requirement from
+// its raster endpoints to its vector ones (docs/BASEMAP-PICKER-PROPOSAL.md
+// §2/§3). carto-voyager/-positron/-dark-matter remain fully supported
+// PRESETS an author can still pin per-panel/per-tab; only the app-wide
+// fallback default moved.
+export const APP_DEFAULT: BasemapPresetName = 'openfreemap-positron'
 
 /**
  * 021-basemap-catalog-redesign (T004): replaces resolveUrlPreset() — same

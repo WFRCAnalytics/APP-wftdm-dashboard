@@ -274,18 +274,22 @@ test.describe('User Story 1 - Author renders an O-D metric as a flow map', () =>
     // requests to any map host" assertion, correct under 010's own
     // BLANK_STYLE-only default. That default has since deliberately
     // changed — this exact panel (no basemap: config) now loads a real
-    // CARTO Positron basemap by design (FR-007), so "zero requests" is no
-    // longer the right claim. What's still worth asserting: every
-    // map-host request this panel makes is to the ONE expected default
-    // source (basemaps.cartocdn.com / tiles.basemaps.cartocdn.com for
-    // CARTO's style/sprite/tiles/fonts), not some other, unexpected host
-    // — the same "no silent, unintended external dependency" concern the
-    // original test protected, updated to match the new intended
-    // behavior rather than deleted outright. Also confirms DuckDB-WASM's
-    // own unrelated extensions.duckdb.org request (present on every
-    // Parquet-querying panel, not map-specific) is correctly excluded by
-    // the host pattern below, not accidentally caught.
-    const mapHostPattern = /maptiler|mapbox|openstreetmap|demotiles\.maplibre|opentopomap|arcgis|openfreemap/i
+    // basemap by design (FR-007). The app default moved from
+    // 'carto-voyager' to 'openfreemap-positron' (registry.ts APP_DEFAULT,
+    // docs/BASEMAP-PICKER-PROPOSAL.md §2/§3), and every request that
+    // style makes — style JSON, vector tiles, the ne2_shaded relief
+    // raster, sprites, fonts — is served from tiles.openfreemap.org
+    // (confirmed directly). What's still worth asserting: this panel
+    // touches NO OTHER map host — the same "no silent, unintended
+    // external dependency" concern the original test protected. So
+    // `openfreemap` is the ONE expected host and is the only one dropped
+    // from the pattern below; `cartocdn` is newly ADDED (an unconfigured
+    // panel must no longer touch CARTO at all now that it isn't the
+    // default); `openstreetmap` stays (it appears only inside OpenFreeMap's
+    // attribution HTML as an <a href>, never as a real fetch, so a genuine
+    // request to it would still be unexpected). DuckDB-WASM's own unrelated
+    // extensions.duckdb.org request is likewise not matched by this pattern.
+    const mapHostPattern = /maptiler|mapbox|openstreetmap|demotiles\.maplibre|opentopomap|arcgis|cartocdn/i
     const unexpectedMapRequests: string[] = []
     page.on('request', (req) => {
       const url = req.url()
@@ -1031,7 +1035,7 @@ async function waitForBasemapApplied(page: Page, title: string) {
 }
 
 test.describe('011-basemap-style-system — US1: default basemap renders (quickstart.md Scenario 1)', () => {
-  test('a panel with no basemap config renders a real CARTO basemap', async ({ page }) => {
+  test('a panel with no basemap config renders the static app-default basemap', async ({ page }) => {
     const requestUrls: string[] = []
     page.on('request', (req) => requestUrls.push(req.url()))
 
@@ -1040,10 +1044,11 @@ test.describe('011-basemap-style-system — US1: default basemap renders (quicks
     await trueEventually(async () => (await container.getAttribute('data-render-count')) !== null)
     await waitForBasemapApplied(page, FLOWMAP_TITLE)
 
-    // 021-basemap-catalog-redesign: the app-default tier is now one
-    // static value (carto-voyager), never theme-paired — replaces this
-    // test's own prior positron/dark-matter-pairing assertion.
-    await trueEventually(async () => requestUrls.some((u) => u.includes('voyager-gl-style')))
+    // 021-basemap-catalog-redesign: the app-default tier is one static
+    // value, never theme-paired. Moved from 'carto-voyager' to
+    // 'openfreemap-positron' (registry.ts APP_DEFAULT) —
+    // docs/BASEMAP-PICKER-PROPOSAL.md §2/§3.
+    await trueEventually(async () => requestUrls.some((u) => u.includes('tiles.openfreemap.org/styles/positron')))
     expect(await getStyleSources(page, FLOWMAP_TITLE)).not.toEqual([])
   })
 })
@@ -1129,7 +1134,9 @@ test.describe('011-basemap-style-system — US1: setStyle()/MapboxOverlay empiri
     await expect(container.locator('canvas#deckgl-overlay')).toHaveCount(0)
     await trueEventually(async () => (await container.getAttribute('data-render-count')) !== null)
     await waitForBasemapApplied(page, FLOWMAP_TITLE)
-    await trueEventually(async () => requestUrls.some((u) => u.includes('voyager-gl-style')))
+    // The unconfigured panel resolves to APP_DEFAULT, now 'openfreemap-positron'
+    // (registry.ts; moved from 'carto-voyager', docs/BASEMAP-PICKER-PROPOSAL.md).
+    await trueEventually(async () => requestUrls.some((u) => u.includes('tiles.openfreemap.org/styles/positron')))
 
     const baseHandleBefore = await baseCanvas.elementHandle()
     const renderCountBefore = Number(await container.getAttribute('data-render-count'))

@@ -4,8 +4,12 @@ import { APP_DEFAULT, resolveBuiltInPreset } from '@/panels/basemap/registry'
 
 // 021-basemap-catalog-redesign
 describe('APP_DEFAULT', () => {
-  it('resolves to carto-voyager unless a deployer changes it (T002/FR-016)', () => {
-    expect(APP_DEFAULT).toBe('carto-voyager')
+  it('resolves to openfreemap-positron unless a deployer changes it (T002/FR-016)', () => {
+    // Moved from 'carto-voyager': a muted, keyless, low-cost style is the
+    // right app-wide fallback for every unconfigured flowmap/zonemap panel
+    // (docs/BASEMAP-PICKER-PROPOSAL.md §2/§3). carto-* presets stay
+    // available for explicit per-panel/per-tab pins.
+    expect(APP_DEFAULT).toBe('openfreemap-positron')
   })
 
   it('is the sole app-default export — APP_DEFAULT_LIGHT/APP_DEFAULT_DARK no longer exist', () => {

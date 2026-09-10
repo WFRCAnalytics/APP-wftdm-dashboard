@@ -428,7 +428,10 @@ test.describe('User Story 1 - Sectioned basemap catalog with stage-then-Apply', 
     await page.getByRole('tab', { name: 'Basemap' }).click()
 
     const headings = page.getByRole('heading', { level: 3 })
-    await expect(headings).toHaveText(['UGRC Vector Tiles', 'CARTO Vector Tiles', 'OpenFreeMap', 'Raster Tiles'])
+    // Section order: OpenFreeMap first (most universal, and the source of
+    // the app-default 'openfreemap-positron'), then CARTO, then the
+    // Utah-specific UGRC compositions, then Raster Tiles last.
+    await expect(headings).toHaveText(['OpenFreeMap', 'CARTO Vector Tiles', 'UGRC Vector Tiles', 'Raster Tiles'])
 
     const ugrc = sectionRadioGroup(page, 'UGRC Vector Tiles')
     await expect(ugrc.getByRole('radio', { name: 'Vector Lite' })).toBeVisible()
@@ -450,13 +453,18 @@ test.describe('User Story 1 - Sectioned basemap catalog with stage-then-Apply', 
     const carto = sectionRadioGroup(page, 'CARTO Vector Tiles')
     const positron = carto.getByRole('radio', { name: 'Positron' })
     const voyager = carto.getByRole('radio', { name: 'Voyager' })
-    await voyager.click()
 
-    const [stagedBorder, unstagedBorder] = await Promise.all([
-      voyager.evaluate((el) => getComputedStyle(el).borderLeftColor),
-      positron.evaluate((el) => getComputedStyle(el).borderLeftColor),
-    ])
-    expect(stagedBorder).not.toBe(unstagedBorder)
+    // Baseline: neither CARTO entry is the app default
+    // ('openfreemap-positron'), so clicking Voyager is a REAL staged-state
+    // transition here. Capture the unstaged border first, then poll for
+    // the staged one to actually differ — a one-shot getComputedStyle()
+    // read immediately after click() can land before React's re-render +
+    // style recalc has flushed (the same reason the sibling hover test
+    // below uses toHaveCSS polling rather than a bare evaluate()).
+    const unstagedBorder = await positron.evaluate((el) => getComputedStyle(el).borderLeftColor)
+    await voyager.click()
+    await expect(voyager).toHaveAttribute('data-staged', 'true')
+    await expect(voyager).not.toHaveCSS('border-left-color', unstagedBorder)
   })
 
   // 024-settings-modal-visual-redesign (US3, FR-010): a real hover state,
@@ -779,7 +787,9 @@ test.describe('User Story 1 - Sectioned basemap catalog with stage-then-Apply', 
     const card = panelCard(page, UNCONFIGURED_FLOWMAP)
     await trueEventually(async () => (await card.locator('.flowmap-chart').getAttribute('data-render-count')) !== null)
     // The app-default tier resolves first, before any viewer pick exists.
-    await trueEventually(async () => requestUrls.some((u) => u.includes('voyager-gl-style')))
+    // APP_DEFAULT is 'openfreemap-positron' (registry.ts) — moved from
+    // 'carto-voyager', docs/BASEMAP-PICKER-PROPOSAL.md §2/§3.
+    await trueEventually(async () => requestUrls.some((u) => u.includes('tiles.openfreemap.org/styles/positron')))
 
     await page.getByRole('button', { name: 'Settings' }).click()
     await page.getByRole('tab', { name: 'Basemap' }).click()

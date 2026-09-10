@@ -55,7 +55,7 @@ describe('resolveEffectiveBasemap', () => {
       selection: APP_DEFAULT,
       source: 'app-default',
     })
-    expect(APP_DEFAULT).toBe('carto-voyager')
+    expect(APP_DEFAULT).toBe('openfreemap-positron')
   })
 
   it('treats an empty/blank basemap string as unset, not as an explicit pin', () => {

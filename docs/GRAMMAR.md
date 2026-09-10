@@ -1280,12 +1280,13 @@ basemap:
     - https://example.gis.gov/services/Labels/VectorTileServer/resources/styles/root.json
 ```
 
-**Precedence** (panel > tab > app default): a panel's own `basemap:`
-wins if set; else its tab's `default_basemap:` wins if set; else the
-theme-paired default applies. An explicit `basemap:`/`default_basemap:`
-pin (either shape, either scope) is NOT re-paired when the dashboard's
-theme changes — it means that exact basemap regardless of theme. Only
-the no-config, theme-paired default reacts live to a theme change.
+**Precedence** (panel > tab > viewer global > app default): a panel's
+own `basemap:` wins if set; else its tab's `default_basemap:` wins if
+set; else the viewer's Settings → Basemap global pick (if any); else a
+single static app default — `openfreemap-positron`
+(`src/panels/basemap/registry.ts`'s `APP_DEFAULT`; not theme-paired, so
+it never changes on a theme flip). An explicit `basemap:`/`default_basemap:`
+pin means that exact basemap regardless of theme.
 
 If a configured or default basemap fails to load (unreachable host,
 unrecognized name, a composition with a broken layer), the panel falls

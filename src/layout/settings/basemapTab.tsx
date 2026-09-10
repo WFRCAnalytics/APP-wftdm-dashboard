@@ -14,6 +14,7 @@ import {
   Waves,
   Satellite,
   Mountain,
+  Star,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -71,6 +72,11 @@ interface VectorEntry {
   // name), Palette for Liberty (OpenFreeMap's own most colorful style),
   // Compass for a general-purpose default (Voyager).
   icon: LucideIcon
+  // Marks the single entry matching registry.ts's own APP_DEFAULT — a
+  // small "Recommended" cue so a viewer knows which style the app falls
+  // back to for every unconfigured flowmap/zonemap panel. Exactly one
+  // entry across all sections carries this.
+  recommended?: boolean
 }
 
 interface Section {
@@ -80,20 +86,27 @@ interface Section {
 }
 
 // Static, ordered catalog data (T011) — which preset names belong to
-// which of the three vector sections, in what order, plus one small
-// per-SECTION icon. What a selection actually LOOKS like is answered
-// entirely by the shared preview area below, not by anything on the
-// entry itself — no per-entry THUMBNAIL exists or is implied by the new
-// per-entry icon above (research.md §4's "no thumbnail pipeline" scope
-// boundary is unchanged; a category glyph is not a preview image).
+// which vector section, in what order, plus one small per-SECTION icon.
+// What a selection actually LOOKS like is answered entirely by the shared
+// preview area below, not by anything on the entry itself — no per-entry
+// THUMBNAIL exists or is implied by the per-entry icon above (research.md
+// §4's "no thumbnail pipeline" scope boundary is unchanged; a category
+// glyph is not a preview image).
+//
+// Section order: OpenFreeMap first — the most universal, broadly-relevant
+// option, and the source of the app-wide default ('openfreemap-positron',
+// marked `recommended` below); then CARTO; then UGRC (Utah-specific,
+// lowest general relevance). Raster Tiles renders last, after this array.
 const SECTIONS: Section[] = [
   {
-    heading: 'UGRC Vector Tiles',
-    icon: Landmark,
+    heading: 'OpenFreeMap',
+    icon: MapIcon,
     entries: [
-      { name: 'ugrc-vector-lite', label: 'Vector Lite', icon: MapIcon },
-      { name: 'ugrc-vector-hybrid', label: 'Vector Hybrid', icon: Satellite },
-      { name: 'ugrc-vector-outdoors', label: 'Vector Outdoors', icon: Mountain },
+      { name: 'openfreemap-liberty', label: 'Liberty', icon: Palette },
+      { name: 'openfreemap-bright', label: 'Bright', icon: Sparkles },
+      { name: 'openfreemap-positron', label: 'Positron', icon: Sun, recommended: true },
+      { name: 'openfreemap-dark', label: 'Dark', icon: Moon },
+      { name: 'openfreemap-fiord', label: 'Fiord', icon: Waves },
     ],
   },
   {
@@ -106,14 +119,12 @@ const SECTIONS: Section[] = [
     ],
   },
   {
-    heading: 'OpenFreeMap',
-    icon: MapIcon,
+    heading: 'UGRC Vector Tiles',
+    icon: Landmark,
     entries: [
-      { name: 'openfreemap-liberty', label: 'Liberty', icon: Palette },
-      { name: 'openfreemap-bright', label: 'Bright', icon: Sparkles },
-      { name: 'openfreemap-positron', label: 'Positron', icon: Sun },
-      { name: 'openfreemap-dark', label: 'Dark', icon: Moon },
-      { name: 'openfreemap-fiord', label: 'Fiord', icon: Waves },
+      { name: 'ugrc-vector-lite', label: 'Vector Lite', icon: MapIcon },
+      { name: 'ugrc-vector-hybrid', label: 'Vector Hybrid', icon: Satellite },
+      { name: 'ugrc-vector-outdoors', label: 'Vector Outdoors', icon: Mountain },
     ],
   },
 ]
@@ -422,6 +433,7 @@ export function BasemapTab() {
                     aria-checked={staged}
                     data-staged={staged || undefined}
                     onClick={() => setStagedSelection(entry.name)}
+                    title={entry.recommended ? 'Recommended — the app default for unconfigured map panels' : undefined}
                     className={cn(
                       'flex flex-col items-center justify-center gap-1.5 rounded-lg border px-2 py-3 text-center text-sm font-medium transition-colors',
                       'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
@@ -431,7 +443,21 @@ export function BasemapTab() {
                     )}
                   >
                     <EntryIcon className="h-5 w-5" aria-hidden="true" />
-                    <span>{entry.label}</span>
+                    <span className="flex items-center gap-1">
+                      {entry.label}
+                      {entry.recommended && (
+                        // Marks the entry matching registry.ts's APP_DEFAULT.
+                        // text-primary keeps it legible on the resting
+                        // (bg-card) AND staged (bg-accent) tile in both
+                        // themes; the sr-only text carries the meaning for
+                        // assistive tech (the accessible name becomes
+                        // "Positron recommended default").
+                        <>
+                          <Star className="h-3 w-3 shrink-0 fill-current text-primary" aria-hidden="true" />
+                          <span className="sr-only"> recommended default</span>
+                        </>
+                      )}
+                    </span>
                   </button>
                 )
               })}
