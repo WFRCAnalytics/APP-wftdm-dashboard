@@ -26,6 +26,7 @@ import '@fontsource-variable/geist-mono'
 import { initDuckDB } from './services/duckdb.ts'
 import { discoverScenarios } from './services/scenarioDiscovery.ts'
 import { loadDashboards, loadDashboardBranding, type DashboardBranding } from './services/yamlLoader.ts'
+import { setDeployerScenarioPalette } from './panels/scenarioDisplay.ts'
 import { parseDashboardConfig } from './layout/types.ts'
 import { Shell } from './layout/shell.tsx'
 import { get as getFilter, set as setFilter } from './state/filterState.ts'
@@ -98,7 +99,22 @@ const branding: DashboardBranding = {
   title: primaryBranding.title ?? demoBranding.title,
   logoUrl: primaryBranding.logoUrl ?? demoBranding.logoUrl,
   logoUrlDark: primaryBranding.logoUrlDark ?? demoBranding.logoUrlDark,
+  scenarioPalette: primaryBranding.scenarioPalette ?? demoBranding.scenarioPalette,
 }
+// 036-scenario-color-picker: semantic validation (is each entry a real
+// CSS color) lives here, at the one real consumption point — loadDashboardBranding()
+// itself stays a thin, format-only parse, matching its own existing
+// convention for title/logoUrl/logoUrlDark. CSS.supports() is the real,
+// standard browser API for this — no hand-rolled hex-only regex that
+// would wrongly reject a legitimate rgb(...)/named-color entry (research.md §3).
+// An entirely-invalid or empty result falls through to
+// setDeployerScenarioPalette(undefined), which panels/scenarioDisplay.ts's
+// own resolveDefaultScenarioColor() already treats as "use the shipped
+// default" (FR-008 — never a broken/blank chart).
+const validScenarioPalette = (branding.scenarioPalette ?? []).filter((entry) =>
+  CSS.supports('color', entry),
+)
+setDeployerScenarioPalette(validScenarioPalette.length > 0 ? validScenarioPalette : undefined)
 // Sets the browser tab's own title — independent of whether the header
 // renders it as visible text at all (shell.tsx only falls back to
 // showing it inline when no logo is configured, see that file's own

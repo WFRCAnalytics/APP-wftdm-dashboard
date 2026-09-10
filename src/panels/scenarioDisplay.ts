@@ -41,3 +41,45 @@ export function resolveScenarioLabel(name: string, display: ScenarioDisplayMap):
 export function resolveScenarioColor(name: string, display: ScenarioDisplayMap): string | undefined {
   return display.get(name)?.color
 }
+
+// 036-scenario-color-picker (Part A) — replaces 035's own "manifest color
+// is the default" resolution with a deployer-configured-or-shipped-
+// default categorical palette. Still fully DOM-free/pure: an entry here
+// may be a literal color a deployer configured, or one of DEFAULT_PALETTE's
+// own `var(--chart-N)` REFERENCE strings — resolving that reference to a
+// concrete value is hooks/useScenarioDisplay.ts's own job (the one place
+// with real DOM access), not this module's (specs/036-scenario-color-
+// picker/research.md §4).
+
+/** This app's own real, WCAG-verified categorical palette
+ * (--chart-1..5, 029-shadcn-chart-panel), referenced by CSS custom-
+ * property name rather than a copied hex literal — a future tokens.css
+ * retheme carries through with zero change here. */
+const DEFAULT_PALETTE: readonly string[] = [
+  'var(--chart-1)',
+  'var(--chart-2)',
+  'var(--chart-3)',
+  'var(--chart-4)',
+  'var(--chart-5)',
+]
+
+let deployerPalette: readonly string[] | undefined
+
+/** Set once, at boot, from main.tsx — never a reactive store (a
+ * deployer's own configuration is fixed for the session's lifetime).
+ * `undefined` or an empty array both mean "nothing configured," falling
+ * through to DEFAULT_PALETTE. */
+export function setDeployerScenarioPalette(palette: readonly string[] | undefined): void {
+  deployerPalette = palette && palette.length > 0 ? palette : undefined
+}
+
+/**
+ * Cycles the effective palette (deployer-configured, else the shipped
+ * default) by `index` — the scenario's stable registration-order
+ * position, computed by the caller (hooks/useScenarioDisplay.ts), never
+ * re-derived here.
+ */
+export function resolveDefaultScenarioColor(index: number): string {
+  const palette = deployerPalette ?? DEFAULT_PALETTE
+  return palette[index % palette.length]
+}

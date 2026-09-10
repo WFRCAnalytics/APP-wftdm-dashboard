@@ -31,4 +31,38 @@ describe('scenarioStatusTreatment', () => {
       expect(() => scenarioStatusTreatment(status)).not.toThrow()
     }
   })
+
+  // 036-scenario-color-picker, Part C (data-model.md §6): the row-level
+  // border/background treatment, still resolved from the SAME three
+  // tokens the dotClassName cases above already assert — no new color.
+  describe('row-level status treatment (Part C)', () => {
+    it('"ready" gets a success-token border and a real color-mix() background wash', () => {
+      const t = scenarioStatusTreatment('ready')
+      expect(t.rowBorderClassName).toBe('border-l-4 border-l-success')
+      expect(t.rowBackgroundStyle).toEqual({
+        backgroundColor: 'color-mix(in srgb, var(--success) 6%, transparent)',
+      })
+    })
+
+    it('"failed" gets a destructive-token border and a real color-mix() background wash', () => {
+      const t = scenarioStatusTreatment('failed')
+      expect(t.rowBorderClassName).toBe('border-l-4 border-l-destructive')
+      expect(t.rowBackgroundStyle).toEqual({
+        backgroundColor: 'color-mix(in srgb, var(--destructive) 6%, transparent)',
+      })
+    })
+
+    it('"registering" gets a muted-foreground-token border but NO background wash (the pulsing dot already signals it)', () => {
+      const t = scenarioStatusTreatment('registering')
+      expect(t.rowBorderClassName).toBe('border-l-4 border-l-muted-foreground')
+      expect(t.rowBackgroundStyle).toBeUndefined()
+    })
+
+    it('never uses a Tailwind slash-opacity modifier, which generates no CSS against this app\'s plain-hex tokens', () => {
+      const statuses: ScenarioStatus[] = ['registering', 'ready', 'failed']
+      for (const status of statuses) {
+        expect(scenarioStatusTreatment(status).rowBorderClassName).not.toMatch(/\//)
+      }
+    })
+  })
 })

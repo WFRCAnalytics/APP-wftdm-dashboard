@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { ChevronDown, ChevronUp, FolderOpen, Star, X } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
+import { Switch } from '@/components/ui/switch'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 import {
@@ -13,6 +14,7 @@ import {
 import { useBaseline } from '@/hooks/useBaseline'
 import { useScenarioList } from '@/hooks/useScenarioList'
 import { scenarioStatusTreatment } from '@/layout/settings/scenarioStatusColor'
+import { ScenarioColorControl } from '@/layout/settings/scenarioColorControl'
 import * as appState from '@/state/appState'
 
 // 020-settings-modal: relocated from layout/scenarioLoader.tsx (deleted by
@@ -73,6 +75,67 @@ import * as appState from '@/state/appState'
 //
 // No behavior change to any existing action (reorder/baseline/relabel/
 // remove) — every existing `data-testid`/`aria-label`/role is unchanged.
+//
+// 036-scenario-color-picker, Part C (additive, folded in after Parts A/B
+// had already shipped on this branch — does not touch the palette
+// resolution chain or the color picker at all):
+//
+// 1. The row's own outer container now also carries
+//    treatment.rowBorderClassName/rowBackgroundStyle (scenarioStatusColor.ts,
+//    extended) — a genuinely prominent per-row status treatment, still
+//    grounded in the same three existing --success/--destructive/
+//    --muted-foreground tokens the dot already used (FR-017/FR-018).
+// 2. A Switch, wired DIRECTLY to appState's existing `active`/
+//    `setActive()` — no new mechanism (FR-019). Toggling it off/on
+//    reactively changes every $scenario.-driven panel's query via the
+//    existing, unmodified useActiveScenarios() hook (FR-020). Applies to
+//    every scenario regardless of source (url or handle) — the user's
+//    own explicit scope decision that this replaces the need for a new
+//    removal capability for published scenarios.
+// 3. A "Baseline" text Badge replaces the filled Star as the PRIMARY
+//    baseline indicator (FR-021) — the Star button itself, its
+//    aria-label/aria-pressed/onClick, is completely unchanged (FR-022).
+//
+// Part C, refinement (same feature/branch, folded in after the Badge
+// version above had already shipped — real, direct research this time,
+// not invented): the separate Badge (floating in the identity block,
+// away from the Star it duplicates) and the plain outline Star elsewhere
+// in the row created a real ambiguity — two different controls in two
+// different places both claiming to indicate/set the SAME thing. Studied
+// two real, well-established cross-industry examples of exactly this
+// "one designated item among many, clearly marked, user-changeable"
+// problem before redesigning:
+//   - GitHub's own default-branch indication (github.com/{owner}/{repo}/
+//     branches, fetched directly) — the default branch is grouped under
+//     its own "Default" heading with a label immediately beside its name,
+//     never an icon standing alone.
+//   - Stripe's own `invoice_settings.default_payment_method` /
+//     `default_source` concept (docs.stripe.com/api/customers/object,
+//     fetched directly) — the real, documented convention for marking one
+//     saved item "default" among several, surfaced in the Dashboard/
+//     customer portal as a text label directly beside the item, with an
+//     explicit "set as default" action on the others.
+// The common thread in both: text label + icon TOGETHER, immediately
+// ADJACENT, as one unit — never an icon alone, never a label floating
+// elsewhere. Fixed by removing the separate Badge entirely and pairing
+// the Star with its own label directly, in the Star's own existing
+// location (not moved into the identity block):
+//   - Baseline row: one Button containing a filled/colored Star followed
+//     immediately by the text "Baseline" — one compact unit.
+//   - Every other row: the existing outline Star alone (no persistent
+//     text — an empty state doesn't need explaining the way an active one
+//     does), with a hover Tooltip reading "Set as baseline", matching
+//     both real references' own "clarify the action on hover" convention.
+// The click-to-mark interaction itself — onClick/aria-label/aria-pressed
+// text — is BYTE-FOR-BYTE unchanged from the original Star button.
+//
+// Same pass also drops the redundant trailing "(ready)"/"(failed)" text
+// entirely — FR-017/FR-018's own row-level border+background treatment
+// already communicates those two states without it. "registering" keeps
+// a visible text cue (not just the pulsing dot alone, which research
+// judged not loud enough on its own for an in-progress state) — reusing
+// scenarioStatusColor.ts's own existing `treatment.label` ("Loading")
+// rather than a new hardcoded string, shown inline next to the dot.
 export function ScenariosTab() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -193,25 +256,42 @@ export function ScenariosTab() {
               return (
                 <div
                   key={s.name}
-                  className="flex items-center gap-3 border-b border-border px-3 py-2.5 text-sm last:border-b-0 hover:bg-muted"
+                  className={cn(
+                    'flex items-center gap-3 border-b border-border px-3 py-2.5 text-sm last:border-b-0 hover:bg-muted',
+                    treatment.rowBorderClassName,
+                  )}
+                  style={treatment.rowBackgroundStyle}
                 >
-                  {/* Leading status dot — state is the first thing
+                  {/* Leading status indicator — state is the first thing
                       scanned, per Dash's own row anatomy and the
                       artifact-design skill's "encode state in form... so
                       what needs attention reads at a glance." role="status"
                       + aria-label carry the same information for anyone
-                      not relying on color alone. */}
-                  <span
-                    role="status"
-                    aria-label={treatment.label}
-                    title={treatment.label}
-                    data-testid={`scenario-status-dot-${s.name}`}
-                    className={cn(
-                      'h-2 w-2 shrink-0 rounded-full',
-                      treatment.dotClassName,
-                      treatment.pulse && 'animate-pulse',
+                      not relying on color alone. The row's own border/
+                      background treatment (below) now carries ready/
+                      failed — this dot alone is enough for those two,
+                      confirmed by the row treatment already being a
+                      second, independent channel. "registering" is the
+                      one status that still needs a visible text cue (a
+                      pulsing dot alone isn't loud enough for an
+                      in-progress state) — reusing treatment.label
+                      ("Loading") rather than a new hardcoded string. */}
+                  <span className="flex shrink-0 items-center gap-1.5">
+                    <span
+                      role="status"
+                      aria-label={treatment.label}
+                      title={treatment.label}
+                      data-testid={`scenario-status-dot-${s.name}`}
+                      className={cn(
+                        'h-2 w-2 shrink-0 rounded-full',
+                        treatment.dotClassName,
+                        treatment.pulse && 'animate-pulse',
+                      )}
+                    />
+                    {s.status === 'registering' && (
+                      <span className="text-xs text-muted-foreground">{treatment.label}…</span>
                     )}
-                  />
+                  </span>
 
                   {/* Identity block — two-tier, matching Dash's own
                       alias-on-top/path-below stack: primary identity reads
@@ -251,21 +331,6 @@ export function ScenariosTab() {
                     </div>
                   </div>
 
-                  {/* Trailing status word — a SECOND, independently-colored
-                      channel alongside the dot (spec.md FR-001: color AND
-                      text, never color alone). The existing "(ready)"
-                      text assertion in this suite's own FR-005 test keeps
-                      passing unchanged — same literal string, new
-                      position/color. */}
-                  <span
-                    className={cn(
-                      'shrink-0 text-xs',
-                      s.status === 'failed' ? 'font-medium text-destructive' : 'text-muted-foreground',
-                    )}
-                  >
-                    ({s.status})
-                  </span>
-
                   {/* Actions cluster — grouped at the far trailing edge,
                       the same "content reads left-to-right, actions live
                       at the end" convention Dash's own row already
@@ -274,39 +339,31 @@ export function ScenariosTab() {
                       copied). Behavior of every control below is
                       UNCHANGED from the prior round. */}
                   <div className="flex shrink-0 items-center gap-0.5">
-                    {/* 035-scenario-label-color (FR-009/FR-010): a native
-                        color-picker swatch, sized to match this cluster's
-                        existing h-6 w-6 icon buttons rather than
-                        components/ui/input.tsx's full-width text-input
-                        chrome (research.md §6). value reflects the
-                        CURRENTLY EFFECTIVE color — the override if set,
-                        else the manifest color, else a neutral black
-                        placeholder for a genuinely colorless scenario.
-                        Fully store-driven, same as the label input above:
-                        no local draft state. */}
-                    <input
-                      type="color"
-                      data-testid={`scenario-color-swatch-${s.name}`}
-                      className="h-6 w-6 shrink-0 cursor-pointer rounded border border-input bg-transparent p-0"
-                      value={s.colorOverride ?? s.color ?? '#000000'}
-                      aria-label={`Color for ${s.name}`}
-                      onChange={(e) => appState.setColorOverride(s.name, e.target.value)}
+                    {/* 036-scenario-color-picker, Part C (FR-019/FR-020):
+                        wired DIRECTLY to appState's existing active/
+                        setActive() — no new mechanism. Reactively affects
+                        every $scenario.-driven panel via the existing,
+                        unmodified useActiveScenarios() hook, exactly like
+                        removing a scenario does today. Applies regardless
+                        of source (url or handle). Placed first in the
+                        cluster — "whether this scenario is included in
+                        queries at all" is more fundamental than color/
+                        reorder/baseline. */}
+                    <Switch
+                      size="sm"
+                      checked={s.active}
+                      onCheckedChange={(checked) => appState.setActive(s.name, checked)}
+                      aria-label={s.active ? `Exclude ${s.name} from queries` : `Include ${s.name} in queries`}
+                      className="mr-1"
                     />
-                    {/* Only shown once an override is actually set — never
-                        a disabled/inert button (matching this row's own
-                        established "visibly present only when relevant"
-                        convention, e.g. the remove button below). */}
-                    {s.colorOverride && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6"
-                        onClick={() => appState.clearColorOverride(s.name)}
-                        aria-label={`Clear color override for ${s.name}`}
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </Button>
-                    )}
+                    {/* 036-scenario-color-picker (FR-011/FR-012):
+                        replaces 035's own native <input type="color">
+                        swatch + inline clear button with a Popover-hosted
+                        color picker (swatch, hex, RGB, all editable) —
+                        see that component's own doc comment for the full
+                        story, including where the "reset to default"
+                        action moved to (FR-016). */}
+                    <ScenarioColorControl scenario={s} />
                     {/* 020-settings-modal (US3, FR-007): move up/down — a
                         purely display-order concern
                         (appState.moveScenario()), completely independent
@@ -341,21 +398,61 @@ export function ScenariosTab() {
                         harmless no-op; there is no separate "un-mark"
                         action — the automatic default (useBaseline()
                         above) is what a viewer falls back to, via removal
-                        or by marking a different scenario instead. */}
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6"
-                      onClick={() => appState.setBaseline(s.name)}
-                      aria-label={
-                        isBaseline
-                          ? `${s.name} is the baseline scenario`
-                          : `Mark ${s.name} as baseline scenario`
-                      }
-                      aria-pressed={isBaseline}
-                    >
-                      <Star className={cn('h-3.5 w-3.5', isBaseline && 'fill-current text-primary')} />
-                    </Button>
+                        or by marking a different scenario instead.
+                        A real, confirmed layout bug fixed here: the
+                        baseline row's Star+"Baseline" text is wider than
+                        every other row's Star-alone control — with a
+                        right-aligned actions cluster, that width
+                        difference shrinks the identity block by a
+                        different amount on the baseline row specifically,
+                        visibly shifting the switch/swatch/reorder-arrows
+                        LEFT relative to every other row. Fixed by
+                        rendering the SAME markup (icon + text span) on
+                        EVERY row regardless of baseline state — the text
+                        span is `invisible`, not conditionally absent, on
+                        a non-baseline row, so it still reserves the exact
+                        same layout width without being visually shown.
+                        This makes the control's width — and therefore
+                        every other action's x-position to its left —
+                        identical across all rows, baseline or not. */}
+                    {(() => {
+                      const baselineControl = (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className={cn('h-6 gap-1 px-1.5', isBaseline && 'text-primary hover:text-primary')}
+                          onClick={() => appState.setBaseline(s.name)}
+                          aria-label={
+                            isBaseline
+                              ? `${s.name} is the baseline scenario`
+                              : `Mark ${s.name} as baseline scenario`
+                          }
+                          aria-pressed={isBaseline}
+                        >
+                          <Star className={cn('h-3.5 w-3.5 shrink-0', isBaseline && 'fill-current')} />
+                          <span className={cn('text-xs font-medium', !isBaseline && 'invisible')}>
+                            Baseline
+                          </span>
+                        </Button>
+                      )
+                      // No persistent VISIBLE text for a non-baseline row
+                      // — an empty state doesn't need explaining the way
+                      // an active one does. A hover Tooltip clarifies the
+                      // action instead, matching both real references'
+                      // own "clarify on hover" convention. TooltipProvider
+                      // is scoped locally per row, same reason as the
+                      // disabled Load-Local-Scenario branch above.
+                      return isBaseline ? (
+                        baselineControl
+                      ) : (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>{baselineControl}</TooltipTrigger>
+                            <TooltipContent>Set as baseline</TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      )
+                    })()}
                     {s.source === 'handle' && (
                       <Button
                         variant="ghost"

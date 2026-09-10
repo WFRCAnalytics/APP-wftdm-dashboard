@@ -4556,6 +4556,390 @@ first cross-reference this list was built from). ✅ done,
     `flowmapData.ts`/`mapTooltip.ts` are untouched by any of this
     feature's changes). Zero real regressions found.
 
+23. ✅ Deployer scenario palette & redesigned color picker — done
+    (`036-scenario-color-picker`). A deliberate revision of `035`'s
+    just-shipped Part B, not a bug fix — two independent parts.
+
+    **Part A** replaces `035`'s "manifest.yaml `color` is the default"
+    resolution with a three-tier chain: viewer `colorOverride` (unchanged)
+    → a new, deployer-configured `scenarioPalette` → this app's own
+    shipped `--chart-1..5` default. Real research grounded the shipped
+    default choice: Recharts has no real built-in categorical palette to
+    compare against at all (confirmed by reading the installed package —
+    `Line`/`Bar` default to single hardcoded colors, not a cycling
+    scheme), while `schemeObservable10` is real and already the basis of
+    this app's own existing, WCAG-verified `--chart-1..5` tokens — so the
+    shipped default reuses those tokens BY REFERENCE
+    (`var(--chart-N)`, not copied hex values), rather than introducing a
+    new, unverified palette. `scenarioPalette` lives on the SAME existing
+    deployer-configurable surface `028-dashboard-branding` already
+    established (`dashboard-config/index.json`'s `title`/`logoUrl`/
+    `logoUrlDark` fields), same precedence rules, no new config
+    mechanism. The actual code change is genuinely surgical, exactly as
+    planned: `hooks/useScenarioDisplay.ts`'s own `s.colorOverride ?? s.color`
+    line becomes `s.colorOverride ?? resolveDefaultScenarioColor(index)`
+    — `panels/scenarioDisplay.ts`'s `resolveScenarioColor()`, all three
+    chart panel types' own color-consuming branches, and
+    `scenarioDiscovery.ts`'s manifest fetch are all confirmed unchanged.
+
+    **A real reactivity gap found during planning** (not in the original
+    request): a `var(--chart-N)` reference needs a CONCRETE value before
+    it can safely reach Plotly (confirmed against `PlotlyPanel.tsx`'s own
+    existing `getComputedStyle()`-based workaround — Plotly's SVG
+    rendering doesn't reliably honor raw `var()` the way Recharts' normal
+    DOM cascade does), and that resolution must re-run on a theme flip.
+    Fixed by resolving `var(--x)` via `getComputedStyle(document.
+    documentElement)` inside `useScenarioDisplay()` itself (the one place
+    with real DOM access), and by having that hook also call
+    `useColorScheme()` internally, folding its value into the hook's own
+    existing cache-invalidation check — a theme change now correctly
+    re-renders every scenario's resolved color, no reload.
+
+    **Part B** replaces `035`'s plain native `<input type="color">`
+    swatch with a proper swatch+hex+RGB color picker. Initial research
+    wrongly concluded no shadcn-ecosystem color-picker pattern existed
+    (checked shadcn's own official registry and this project's own
+    established `gropaul/dash-ui` reference repo — neither has one) —
+    corrected mid-spec after the user pointed to `shadcn.io`, whose
+    gated download endpoint traced back to a real, public, MIT-licensed
+    OSS repo, `shadcnblocks/kibo`. Its real `color-picker` package (a
+    genuine "Figma-style" picker: 2D saturation/lightness canvas,
+    hue/alpha sliders, an eyedropper, mode-switchable hex/RGB/CSS/HSL
+    display) was adopted as `components/ui/color-picker.tsx` — with one
+    real, confirmed mismatch surfaced by reading the actual source: its
+    own hex/RGB fields are `readOnly` (color is set only by
+    dragging/sliding), conflicting with this project's own explicit
+    editable-entry requirement. Presented to the user as a real trade-off
+    (`AskUserQuestion`) before building anything — the user chose to
+    adopt kibo's component in full and make its hex/RGB fields genuinely
+    editable, a deliberate, documented adaptation. Two new dependencies
+    follow directly from the real source (`color`, `@radix-ui/
+    react-slider`), plus `@radix-ui/react-popover` (a genuine planning
+    oversight caught and fixed during implementation, not a later
+    discovery) for the swatch-triggered popover this project's own usage
+    needed that kibo's real example doesn't (it renders uncontrolled,
+    inline, no popover at all). `@radix-ui/react-slider` is used directly
+    inline inside the picker (matching the real source's own file
+    structure) rather than extracted into a separate shared
+    `components/ui/slider.tsx` — deliberate, no second consumer exists
+    yet.
+
+    **Three real, confirmed bugs found and fixed during implementation,
+    all via direct live reproduction, not assumed:**
+    1. `Color.hsl(h, s, l, alpha/100)`'s 4-argument form silently DROPS
+       alpha (confirmed via a live Node REPL check against the actual
+       installed `color` package — always resolves to `alpha() === 1`
+       regardless of the 4th argument). The real source's own chained
+       `.hsl(h,s,l).alpha(a)` form is the only one that actually works;
+       an early draft of the new, editable `ColorPickerFormat` used the
+       broken 4-arg form specifically there (the faithfully-copied
+       `onChange` effect elsewhere in the same file already used the
+       correct chained form) — fixed to match.
+    2. A genuine circular-update bug specific to this project's own
+       FULLY-controlled `value`+`onChange` usage (the real kibo source
+       never does this — its own example renders `<ColorPicker>`
+       uncontrolled): committing an edit fires `onChange` → the caller
+       writes to `appState` → the resolved color echoes back as a NEW
+       `value` prop → the sync effect re-derives hue/saturation/lightness
+       FROM that echo, which itself re-fires `onChange` with the same
+       value — for "Reset to default" specifically, this instantly
+       re-created the override the click had just cleared. Found via
+       live Playwright reproduction (not assumed), fixed with a
+       `lastEmittedHex` ref (skip the value-sync when the incoming value
+       matches what this component itself most recently emitted) plus an
+       `isSyncingFromValue` ref (suppress `onChange` firing as a reaction
+       to ANY value-driven sync, echo or genuine reset alike).
+    3. The SAME class of race, one layer deeper: editing three RGB fields
+       in rapid succession (R, then G, then B) lost the earlier edits —
+       traced to the "sync rgbDraft from computed color" effect firing as
+       a side-effect of R's own commit and overwriting G's just-typed,
+       not-yet-committed draft with a stale, R-only-reflecting value.
+       Fixed with the same self-edit-suppression pattern applied one
+       level deeper, inside `ColorPickerFormat` itself. Verified stable
+       across 3 consecutive full test runs after the fix, not just one
+       passing attempt — this class of bug is exactly the kind that can
+       look fixed on a lucky run.
+
+    Full regression confirmation: `npm run typecheck` clean; `npm run
+    test:unit` 443/443 passing (up from 426 — `scenarioDisplay.test.ts`
+    extended with 5 new palette-resolution cases, `colorFormat.test.ts`
+    new with 12); `npm run build` clean, no new warning categories (the
+    main chunk grew ~70KB from the 3 new dependencies, expected). Full
+    `settingsModal.spec.ts` + `scenarioColorOverride.spec.ts` together:
+    50/50 passing, including a substantial, deliberate rework of `035`'s
+    own existing tests in both files (they asserted the now-retired
+    manifest-color-default behavior — spec.md's own "revision, not a bug
+    fix" framing applied to the test suite too, not left stale). The FULL
+    `tests/integration/` Playwright suite: 321 passed, 9 failed on the
+    first full run, spread across 5 files this feature never touches.
+    Given `useScenarioDisplay()`'s broader reach into every chart panel
+    type, each failure was checked individually rather than assumed —
+    8 of 9 passed cleanly in isolation; the 9th
+    (`flowmapPanel.spec.ts`'s deck.gl hover-tooltip test) is the SAME
+    already-documented real-hardware-timing-sensitive flake this
+    session's own `035` work already confirmed pre-existing via a
+    3-run-each comparison. Zero real regressions.
+
+    **Part C** (folded into this same feature, on the same branch, after
+    Parts A/B had already shipped — a real, additive UI/UX refinement of
+    the Scenarios tab row itself, touching neither Part A's palette
+    resolution chain nor Part B's color picker at all): three sub-changes
+    to `layout/settings/scenariosTab.tsx`.
+    1. **Row status treatment** — the small status dot alone read as
+       plain default styling, not genuinely prominent. `layout/settings/
+       scenarioStatusColor.ts`'s `ScenarioStatusTreatment` gained two new
+       fields, `rowBorderClassName` (a plain `border-l-4 border-l-{token}`
+       Tailwind utility) and `rowBackgroundStyle` (a real `color-mix(in
+       srgb, var(--token) 6%, transparent)` inline style), both still
+       resolved from the SAME three existing `--success`/`--destructive`/
+       `--muted-foreground` tokens the dot already used — no new color
+       anywhere. `rowBorderClassName` deliberately stays a plain utility
+       class rather than a slash-opacity form — confirmed via the
+       `wftdm-design-system` skill that an opacity modifier against this
+       app's plain-hex custom properties generates no CSS at all, but a
+       solid border needs no transparency, so a plain class costs nothing
+       here; `rowBackgroundStyle` genuinely needs partial transparency and
+       therefore uses a real `color-mix()` inline style instead.
+       `registering` gets no background wash at all — its pulsing dot
+       already carries that state's own signal, and a wash on a fast-
+       changing/transient row would be motion-y noise rather than
+       clarity.
+    2. **Active/inactive toggle** — a real, substantial capability this
+       app had deferred since `009-scenario-manager`'s original scope. A
+       `Switch` (`components/ui/switch.tsx`, `033-shadcn-default-theme`,
+       `size="sm"`) added to the actions cluster, wired DIRECTLY to
+       `state/appState.ts`'s existing `active` field and `setActive()` —
+       no new mechanism, per the user's own explicit instruction.
+       Toggling it reactively affects every `$scenario.`-driven panel's
+       query via the existing, unmodified `useActiveScenarios()` hook,
+       exactly like removing a scenario does today — confirmed live via a
+       real Playwright test that toggles `observed` off/on against
+       `dashboard-1-summary.yaml`'s own `row_scenario_display` fixture
+       panel (a bare `$scenario` union) and asserts the rendered table
+       row count drops from 4 to 2 and back, with no reload. Applies to
+       every scenario regardless of `source` (`url` or `handle`) — the
+       user's own explicit scope decision that this replaces the need for
+       a new removal capability for published scenarios; a
+       `source: 'handle'` (local) scenario keeps its own separate remove
+       button unchanged alongside the new toggle.
+    3. **Baseline indicator redesign** — the small, easy-to-miss `Star`
+       icon is no longer the PRIMARY indicator; a `Badge`
+       (`components/ui/badge.tsx`, `034-metric-panel-redesign`, `variant=
+       "default"`) reading "Baseline" now renders inline next to the
+       baseline scenario's own label input, in the identity block's own
+       real horizontal slack (confirmed during this Part C's own research
+       — no row restructuring was needed to fit it). The `Star` `Button`
+       itself — its `aria-label`/`aria-pressed`/`onClick={() =>
+       appState.setBaseline(s.name)}` — is completely UNCHANGED; this is
+       a visual change to how the CURRENT baseline is indicated, not a
+       change to how one gets set.
+
+    **A real, confirmed reactivity non-finding worth naming**: unlike
+    `035`'s own original `colorOverride` plumbing (which needed a real
+    fix to `hooks/useScenarioList.ts` for exactly this reason), the new
+    `Switch` needed NO reactivity fix — `useScenarioList()`'s own existing
+    change-detection already covers `active` (its own header comment
+    already lists it among the fields it watches), confirmed by direct
+    re-read before writing any code, not assumed.
+
+    **A real fixture-activation detail surfaced while writing the new
+    Playwright coverage**: `state/appState.ts`'s `registerPublishedScenarios()`
+    never calls `setActive()` for a published scenario at all — only
+    `observed` is forced active at registration, and every other
+    published scenario needs either an explicit `?s=` URL param
+    (`applyURLParams()`) or a viewer's own later action. The new active-
+    toggle test therefore boots via `?s=good_scenario`, matching
+    `scenarioColorOverride.spec.ts`'s own already-established convention
+    for this exact fixture panel — not a new discovery, but a real detail
+    this Part C's own test had to get right on its second attempt (the
+    first attempt assumed `good_scenario` was already active by default
+    and saw 2 rows instead of the expected 4).
+
+    Full regression confirmation (Part C only — Parts A/B's own numbers
+    above are unchanged by this addendum): `npm run typecheck` clean;
+    `npm run test:unit` 447/447 passing (up from 443 —
+    `scenarioStatusColor.test.ts` extended with 4 new row-treatment
+    cases); `npm run build` clean, no new warning categories; 3 new
+    `settingsModal.spec.ts` tests (row border/background in both themes,
+    the active-toggle reactivity round-trip, the Baseline badge appearing/
+    moving) all passing, plus the full `settingsModal.spec.ts` file
+    (45/45) and `scenarioColorOverride.spec.ts` (8/8, confirming Parts A/B
+    unaffected) both re-run clean. The FULL `tests/integration/`
+    Playwright suite (333 tests): 327 passed, 6 failed on the first run,
+    spread across `dashboardShell.spec.ts`/`flowmapPanel.spec.ts` (×2)/
+    `observablePlotPanel.spec.ts`/`rechartsPanel.spec.ts`/
+    `zonemapPanel.spec.ts` — none in any file this Part C touches. Every
+    failure re-run individually: 4 of 6 passed cleanly in isolation
+    (genuine multi-worker resource-contention flakiness); the other 2 are
+    the SAME already-extensively-documented pre-existing flakes this
+    project's own history already records (the dark-mode Plotly
+    re-query-count off-by-one; the deck.gl hover-tooltip real-hardware-
+    timing-sensitive flake) — `scenarioStatusColor.ts`/`scenariosTab.tsx`
+    are untouched by either. Zero real regressions.
+
+    **Part C, refinement** (same feature/branch, folded in immediately
+    after Part C above had already shipped — direct, real research this
+    time, not invented). The Badge-based baseline indicator and the
+    always-textual "(ready)"/"(failed)" status shipped above were
+    correctly identified as still ambiguous: two separate controls (a
+    floating Badge, a plain outline/filled Star elsewhere in the row) both
+    claiming to indicate/set the SAME thing. Studied two real, well-
+    established cross-industry examples of exactly this "one designated
+    item among many, clearly marked, user-changeable" problem before
+    redesigning, both fetched directly rather than assumed from memory:
+    GitHub's own default-branch indication
+    (`github.com/{owner}/{repo}/branches`) and Stripe's own real,
+    documented `invoice_settings.default_payment_method`/`default_source`
+    convention (`docs.stripe.com/api/customers/object`). The common
+    thread confirmed in both: a text label paired with an icon TOGETHER,
+    immediately adjacent, as one unit — never an icon standing alone,
+    never a label floating elsewhere in the row.
+
+    Fixed by removing the separate Badge entirely and pairing the Star
+    with its own label directly, in the Star's own existing location
+    (not moved into the identity block): the baseline row renders one
+    `Button` containing a filled, `text-primary` Star immediately followed
+    by the text "Baseline"; every other row keeps the existing outline
+    Star alone (no persistent text — an empty state doesn't need
+    explaining the way an active one does), now wrapped in a `Tooltip`
+    reading "Set as baseline" on hover, matching both real references' own
+    "clarify the action on hover" convention. The click-to-mark
+    interaction itself — `onClick`/`aria-label`/`aria-pressed` text — is
+    byte-for-byte unchanged from the original Star button.
+
+    Same pass also drops the redundant trailing `"(ready)"`/`"(failed)"`
+    text entirely — the row's own border+background treatment (already
+    shipped, above) already communicates those two states without it.
+    `"registering"` keeps a visible text cue — research judged the
+    pulsing dot alone not loud enough on its own for an in-progress
+    state — reusing `scenarioStatusColor.ts`'s own existing
+    `treatment.label` ("Loading") rather than a new hardcoded string,
+    shown inline right next to the dot (not at the row's far trailing
+    edge, which no longer exists as a distinct zone at all).
+
+    **A real, confirmed test-authoring finding, found live while
+    reproducing "before" state for comparison screenshots**: directly
+    delaying a scenario's own `summary/index.json` fetch via
+    `page.route()` to try to catch a live `'registering'` row was
+    unreliable — by the time the Settings modal opened, registration had
+    already resolved despite the injected delay, for reasons not worth
+    chasing further (this project's own existing test comments already
+    flag "a live 'registering' row is not reliably observable in a real
+    browser" — this now has a second, independent confirmation). Fixed
+    for illustration purposes with a deterministic alternative:
+    `window.__wftdm.appState.register(...)` (the real, already-exposed
+    debug hook — `appState` is the full, live module, not a snapshot)
+    creates a brand-new scenario entry that starts, and stays, at
+    `'registering'` forever, since nothing ever calls `setStatus()` for
+    it — no network race at all.
+
+    A second, unrelated finding from the same screenshot session: a
+    `Tooltip`'s content renders via a Radix portal at `document.body`,
+    a SIBLING of the row list, not a descendant — a `locator.screenshot()`
+    scoped to the row list container therefore can never include it,
+    regardless of z-index/position; only a full-page (or a container
+    genuinely ancestor-to-both) screenshot captures it. The real,
+    automated Playwright assertion (`getByRole('tooltip')`) already
+    proved the tooltip works correctly throughout — this was purely a
+    screenshot-composition artifact, not a functional gap.
+
+    Full regression confirmation (this refinement only — Part C's own
+    numbers above are otherwise unchanged): `npm run typecheck` clean;
+    `npm run test:unit` 447/447 passing (unchanged — this refinement
+    touches no unit-tested pure module); `npm run build` clean. The full
+    `settingsModal.spec.ts` file (46/46, including 4 Part C tests — one
+    new, for the non-baseline row's outline-Star-plus-tooltip state) and
+    `scenarioColorOverride.spec.ts` (8/8) both re-run clean. The FULL
+    `tests/integration/` suite (333 tests): a first pass returned an
+    alarming 18 failures spread across files this refinement never
+    touched (basemap/reorder/label/color-picker tests) — investigated
+    before concluding anything, and traced to a real, SELF-INFLICTED
+    cause, not a regression: two `npx playwright test` invocations were
+    running concurrently (this refinement's own screenshot-capture spec
+    alongside a full-suite run), each running its own
+    `global-setup.js`/`global-teardown.js` independently against the SAME
+    shared `public/` fixture files with no coordination between the two
+    processes — exactly the class of hazard `tests/integration/
+    _sharedFixtureLock.ts` exists to prevent for same-file races, but
+    which does nothing for two entirely separate `playwright test`
+    process invocations each performing their own global setup/teardown.
+    Confirmed by re-running the full suite cleanly, one invocation at a
+    time: 327 passed, 6 failed — all 6 re-checked individually, 5 of 6
+    passed cleanly in isolation (resource-contention flakiness) and the
+    6th is the same already-documented deck.gl hover-tooltip flake.
+    A SECOND full clean run (after this refinement's own file swaps for
+    screenshot capture) returned 12 failures spread across 7 files this
+    refinement never touches (`boot.spec.ts`/`flowmapPanel.spec.ts`/
+    `graphicWalkerPanel.spec.ts`/`observablePlotPanel.spec.ts`/
+    `panelExpand.spec.ts`/`sankeyPanel.spec.ts`/`zonemapPanel.spec.ts`) —
+    11 of 12 passed cleanly in isolation (the `zonemapPanel.spec.ts`
+    failures re-confirmed via a full 30/30 file re-run), and the 12th is
+    again the same deck.gl hover-tooltip flake. Zero real regressions
+    across either full-suite pass.
+
+    **Part C, second refinement — a real, confirmed layout bug fixed
+    (same feature/branch)**: the Star+"Baseline"-text control built in
+    the first refinement above is wider than a plain Star on every other
+    row. With the actions cluster right-aligned (`shrink-0`) and the
+    identity block absorbing the difference (`flex-1`), that width delta
+    shrinks the identity block by a DIFFERENT amount on the baseline row
+    specifically — visibly shifting the Switch/color-swatch/reorder-
+    arrows LEFT relative to every other row, confirmed in a real
+    screenshot before fixing anything. Fixed by rendering the exact SAME
+    markup (Star icon + a `"Baseline"` text `<span>`) on every row
+    regardless of baseline state — the text span gets Tailwind's
+    `invisible` class (not conditionally omitted) on a non-baseline row,
+    which reserves its full layout width without rendering visually. This
+    makes the control's width — and therefore every action's x-position
+    to its left — bit-for-bit identical across all rows. Deliberately NOT
+    a hardcoded pixel width (`w-[88px]`-style): the "always render the
+    same content, hide only visually" technique is robust to font-size/
+    zoom changes a magic literal wouldn't be, and needs no measurement or
+    tuning to get right.
+
+    Verified with real pixel measurements, not eyeballing (per the user's
+    own explicit instruction): a temporary, since-deleted Playwright spec
+    read `getBoundingClientRect()`-derived `x` positions for the Switch,
+    color swatch, first reorder arrow, and Star button across all three
+    real fixture rows, in both themes — every value matched its own
+    column across rows to sub-pixel precision (`805.6875`/`835.6875`/
+    `861.6875`/`883.6875` px, identical on every row including the
+    baseline row, in both light and dark). Screenshots taken and visually
+    confirmed the same alignment.
+
+    **A real, confirmed test-authoring fallout from this fix**: two
+    `settingsModal.spec.ts` Part C tests asserted the "Baseline" text
+    literally didn't EXIST in the DOM on a non-baseline row
+    (`toHaveCount(0)`) — now false, since the text node always exists,
+    just invisible. Fixed both to assert `.not.toBeVisible()` instead of
+    `toHaveCount(0)`/a count-based branch, which is what those tests
+    actually meant to prove all along (no VISIBLE persistent text, not no
+    DOM node at all).
+
+    Full regression confirmation: `npm run typecheck` clean; `npm run
+    test:unit` 447/447 (unchanged); `npm run build` clean. The full
+    `settingsModal.spec.ts` file re-run clean at 46/46 after the two test
+    updates above. The FULL `tests/integration/` suite, run cleanly (a
+    single invocation — two earlier attempts at this same regression pass
+    were themselves corrupted by the SAME self-inflicted concurrent-
+    invocation hazard the prior refinement's own entry already documents,
+    confirmed again by the telltale `index.json.original-during-tests`
+    already-exists error and a spread of failures across files with no
+    relationship to this change): 5 failures on the clean run, all
+    individually triaged — 1 is the same already-documented dark-mode
+    Plotly re-query-count flake, and the other 4 (three `flowmapPanel.spec.ts`
+    reset-to-view/basemap-pin cases, one `zonemapPanel.spec.ts` basemap-
+    inheritance case) all passed cleanly in isolation. A separate, later
+    isolated re-run of the full `flowmapPanel.spec.ts` file surfaced 4
+    DIFFERENT failures, all real-UGRC-vector-tile-service-dependent tests
+    (`016-fix-ugrc-dark-mode`/`017-multi-sprite-support`) — confirmed via
+    a direct `curl` that UGRC's own real endpoint was genuinely
+    unreachable from this environment at that moment (`000`, vs. a
+    control CARTO endpoint's real `200`) — a transient external-network
+    condition, not a code regression, and not overlapping at all with the
+    original 5-failure list. `scenariosTab.tsx`/`settingsModal.spec.ts`
+    are untouched by any of these. Zero real regressions.
+
 ---
 
 ## Reference implementations — copy patterns, don't re-derive

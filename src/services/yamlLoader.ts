@@ -65,7 +65,9 @@ export async function loadManifest(url: string): Promise<DashboardConfig> {
 // of those three types) — just a richer shape for a discovery file that
 // already existed, matching the same file this app already fetches at
 // boot regardless.
-type DashboardIndexJson = string[] | { dashboards: string[]; title?: unknown; logoUrl?: unknown; logoUrlDark?: unknown }
+type DashboardIndexJson =
+  | string[]
+  | { dashboards: string[]; title?: unknown; logoUrl?: unknown; logoUrlDark?: unknown; scenarioPalette?: unknown }
 
 /**
  * Deployer-configurable app-wide branding — a real, minimal mechanism for
@@ -94,6 +96,17 @@ export interface DashboardBranding {
   title?: string
   logoUrl?: string
   logoUrlDark?: string
+  /** 036-scenario-color-picker: an optional deployer-configured default
+   * categorical palette for scenario colors — a list of CSS color
+   * strings, cycled by each scenario's registration-order position when
+   * no viewer colorOverride is set. Same discovery/precedence rules as
+   * the three fields above (the real deployment root wins over the
+   * git-tracked demo root, per-field). NOT validated here — this stays a
+   * thin, format-only parse matching this interface's own existing
+   * convention; semantic validation (is each entry a real CSS color)
+   * happens once, in main.tsx, where the resolved value is actually
+   * consumed (specs/036-scenario-color-picker/research.md §3). */
+  scenarioPalette?: string[]
 }
 
 function isDashboardIndexObject(
@@ -186,6 +199,9 @@ export async function loadDashboardBranding(
       title: typeof parsed.title === 'string' ? parsed.title : undefined,
       logoUrl: typeof parsed.logoUrl === 'string' ? parsed.logoUrl : undefined,
       logoUrlDark: typeof parsed.logoUrlDark === 'string' ? parsed.logoUrlDark : undefined,
+      scenarioPalette: Array.isArray(parsed.scenarioPalette)
+        ? parsed.scenarioPalette.filter((c): c is string => typeof c === 'string')
+        : undefined,
     }
   } catch {
     return {}

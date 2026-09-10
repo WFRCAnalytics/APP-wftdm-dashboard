@@ -181,20 +181,26 @@ test.describe('User Story 1 - One place to manage dashboard-wide settings', () =
       'placeholder',
       'observed',
     )
-    // Path and status are plain text, unaffected.
+    // Path is plain text, unaffected. Status is no longer literal
+    // "(ready)"/"(failed)" text (036-scenario-color-picker, Part C
+    // refinement) — the row's own border/background treatment plus the
+    // status dot's aria-label now carry it; asserted via the dot below,
+    // not text here.
     await expect(list).toContainText('scenarios/good_scenario/summary')
-    await expect(list).toContainText('(ready)')
     await expect(list).toContainText('observed/summary')
+    await expect(page.getByTestId('scenario-status-dot-good_scenario')).toHaveAttribute('aria-label', 'Ready')
   })
 
-  // 024-settings-modal-visual-redesign (US1, FR-001): a color status dot
-  // ALONGSIDE the existing "(status)" text above, not a replacement — the
-  // preceding test's own '(ready)' text assertion must keep passing
-  // unchanged. Only 'ready'/'failed' are asserted here — the fixture's
-  // scenarios settle to a final status well before boot() resolves
-  // (research.md has no note otherwise), so a live 'registering' row is not
-  // reliably observable in a real browser; that branch's mapping is
-  // covered directly by tests/unit/scenarioStatusColor.test.ts instead.
+  // 024-settings-modal-visual-redesign (US1, FR-001), later refined by
+  // 036-scenario-color-picker's own Part C: the trailing "(ready)"/
+  // "(failed)" text this comment originally referenced was removed — the
+  // row's own border/background treatment (FR-017/FR-018) is now the
+  // second, independent channel alongside the dot. Only 'ready'/'failed'
+  // are asserted here — the fixture's scenarios settle to a final status
+  // well before boot() resolves (research.md has no note otherwise), so a
+  // live 'registering' row is not reliably observable in a real browser;
+  // that branch's mapping is covered directly by
+  // tests/unit/scenarioStatusColor.test.ts instead.
   test('a "ready" and a "failed" scenario render visually distinct status dots (FR-001)', async ({
     page,
   }) => {
@@ -928,56 +934,104 @@ test.describe('User Story 4 - Custom scenario label', () => {
   })
 })
 
-// 035-scenario-label-color (US2) — the new per-row color swatch control,
-// same trailing-actions-cluster placement/sizing convention as the
-// existing baseline star/reorder buttons above (research.md §6).
-test.describe('User Story 2 (035-scenario-label-color) - Custom scenario color', () => {
+// 036-scenario-color-picker (US2) — REPLACES 035's own plain native
+// <input type="color"> swatch tests below with real coverage of the
+// redesigned Popover-hosted picker (a deliberate revision, not left
+// stale — the swatch is now a Popover trigger <button>, its own
+// "effective color" background style resolved from the SAME
+// useScenarioDisplay() hook every chart panel reads, which as of
+// 036 Part A no longer consults manifest color at all — see
+// scenarioColorOverride.spec.ts's own "User Story 1 (036)" block for
+// that resolution chain's own dedicated coverage).
+test.describe('User Story 2 (036-scenario-color-picker) - Redesigned color picker', () => {
   function colorSwatch(page: Page, name: string) {
     return page.getByTestId(`scenario-color-swatch-${name}`)
   }
 
-  test('the swatch previews the current effective color, before any override (FR-007)', async ({ page }) => {
-    await boot(page)
-    await page.getByRole('button', { name: 'Settings' }).click()
-    await page.getByRole('tab', { name: 'Scenarios' }).click()
+  async function resolveCssColor(page: Page, cssColor: string): Promise<string> {
+    return page.evaluate((color) => {
+      const probe = document.createElement('div')
+      probe.style.cssText = 'position:absolute;visibility:hidden;'
+      probe.style.color = color
+      document.body.appendChild(probe)
+      const resolved = getComputedStyle(probe).color
+      probe.remove()
+      return resolved
+    }, cssColor)
+  }
 
-    // Real, fixture manifest colors (tests/fixtures/scenarios/good_scenario/
-    // manifest.yaml, tests/fixtures/observed/manifest.yaml).
-    await expect(colorSwatch(page, 'good_scenario')).toHaveValue('#4e79a7')
-    await expect(colorSwatch(page, 'observed')).toHaveValue('#666666')
-    // No "clear override" control yet — nothing is overridden.
-    await expect(page.getByRole('button', { name: 'Clear color override for good_scenario' })).toHaveCount(0)
-  })
+  async function scenarioIndex(page: Page, name: string): Promise<number> {
+    return page.evaluate((n) => window.__wftdm!.appState.list().findIndex((s) => s.name === n), name)
+  }
 
-  test('picking a color calls through to appState.setColorOverride, and a clear control appears (FR-009/FR-010)', async ({
+  test('the swatch previews the current effective (shipped-default) color, before any override', async ({
     page,
   }) => {
     await boot(page)
     await page.getByRole('button', { name: 'Settings' }).click()
     await page.getByRole('tab', { name: 'Scenarios' }).click()
 
-    const swatch = colorSwatch(page, 'good_scenario')
-    // Playwright's own fill() uses the native value setter + a real
-    // 'input' event — unlike a manual el.value + dispatchEvent(), this
-    // correctly triggers React's own synthetic onChange for a controlled
-    // input (a real, confirmed finding from this test's own first run:
-    // the manual approach updated the DOM value but never called through
-    // to React's handler at all).
-    await swatch.fill('#ff0000')
-    await expect(swatch).toHaveValue('#ff0000')
-    const entry = await page.evaluate(() => window.__wftdm!.appState.get('good_scenario'))
-    expect(entry?.colorOverride).toBe('#ff0000')
-    expect(entry?.color).toBe('#4e79a7') // the manifest color itself is untouched
+    const goodIndex = await scenarioIndex(page, 'good_scenario')
+    const observedIndex = await scenarioIndex(page, 'observed')
+    const goodExpected = await resolveCssColor(page, `var(--chart-${(goodIndex % 5) + 1})`)
+    const observedExpected = await resolveCssColor(page, `var(--chart-${(observedIndex % 5) + 1})`)
 
-    const clearButton = page.getByRole('button', { name: 'Clear color override for good_scenario' })
-    await expect(clearButton).toBeVisible()
-    await clearButton.click()
-    await expect(swatch).toHaveValue('#4e79a7') // reverts to the manifest color
-    expect((await page.evaluate(() => window.__wftdm!.appState.get('good_scenario')))?.colorOverride).toBeUndefined()
-    await expect(clearButton).toHaveCount(0)
+    await expect(colorSwatch(page, 'good_scenario')).toHaveCSS('background-color', goodExpected)
+    await expect(colorSwatch(page, 'observed')).toHaveCSS('background-color', observedExpected)
+    // No "Reset to default" control yet — nothing is overridden, and the
+    // popover itself hasn't even been opened.
+    await expect(page.getByRole('button', { name: 'Reset to default' })).toHaveCount(0)
   })
 
-  test('a color override is gone after reload (FR-013)', async ({ page }) => {
+  test('typing a hex code in the picker calls through to appState.setColorOverride, and Reset to default appears', async ({
+    page,
+  }) => {
+    await boot(page)
+    await page.getByRole('button', { name: 'Settings' }).click()
+    await page.getByRole('tab', { name: 'Scenarios' }).click()
+
+    await colorSwatch(page, 'good_scenario').click()
+    const hexField = page.getByRole('textbox', { name: 'Hex color' })
+    await expect(hexField).toBeVisible()
+
+    await hexField.fill('#ff0000')
+    await expect.poll(() => page.evaluate(() => window.__wftdm!.appState.get('good_scenario')?.colorOverride)).toBe(
+      '#FF0000',
+    )
+    // The manifest color itself is untouched, and confirmed still
+    // unconsulted by the actual resolution chain (036 Part A).
+    expect((await page.evaluate(() => window.__wftdm!.appState.get('good_scenario')))?.color).toBe('#4e79a7')
+
+    const resetButton = page.getByRole('button', { name: 'Reset to default' })
+    await expect(resetButton).toBeVisible()
+    await resetButton.click()
+    expect(
+      (await page.evaluate(() => window.__wftdm!.appState.get('good_scenario')))?.colorOverride,
+    ).toBeUndefined()
+  })
+
+  test('changing an RGB field updates the same underlying color, identically to the hex path', async ({ page }) => {
+    await boot(page)
+    await page.getByRole('button', { name: 'Settings' }).click()
+    await page.getByRole('tab', { name: 'Scenarios' }).click()
+
+    await colorSwatch(page, 'good_scenario').click()
+    await page.getByRole('combobox').click() // ColorPickerOutput's mode Select
+    await page.getByRole('option', { name: 'RGB' }).click()
+
+    const redField = page.getByRole('textbox', { name: 'Red' })
+    await redField.fill('255')
+    const greenField = page.getByRole('textbox', { name: 'Green' })
+    await greenField.fill('0')
+    const blueField = page.getByRole('textbox', { name: 'Blue' })
+    await blueField.fill('0')
+
+    await expect.poll(() => page.evaluate(() => window.__wftdm!.appState.get('good_scenario')?.colorOverride)).toBe(
+      '#FF0000',
+    )
+  })
+
+  test('a color override is gone after reload', async ({ page }) => {
     await boot(page)
     await page.evaluate(() => window.__wftdm!.appState.setColorOverride('good_scenario', '#ff0000'))
 
@@ -990,7 +1044,162 @@ test.describe('User Story 2 (035-scenario-label-color) - Custom scenario color',
     )
     await page.getByRole('button', { name: 'Settings' }).click()
     await page.getByRole('tab', { name: 'Scenarios' }).click()
-    await expect(colorSwatch(page, 'good_scenario')).toHaveValue('#4e79a7')
+
+    const goodIndex = await scenarioIndex(page, 'good_scenario')
+    const expected = await resolveCssColor(page, `var(--chart-${(goodIndex % 5) + 1})`)
+    await expect(colorSwatch(page, 'good_scenario')).toHaveCSS('background-color', expected)
+  })
+})
+
+// 036-scenario-color-picker, Part C — a real UI/UX refinement of the
+// Scenarios tab row itself, folded into this same feature after Parts
+// A/B had already shipped: a genuinely prominent per-row status
+// treatment, an active/inactive Switch wired directly to appState's
+// existing active/setActive() (009-scenario-manager), and — after a
+// direct-research refinement grounded in GitHub's own default-branch
+// indicator and Stripe's own default-payment-method convention (both
+// fetched directly) — a filled Star paired with its own "Baseline" text
+// label as ONE unit, replacing an earlier separate Badge. Does not touch
+// Parts A/B's own shipped mechanisms (palette resolution, the color
+// picker) at all.
+test.describe('User Story 3 (036-scenario-color-picker Part C) - Row status treatment, active toggle, baseline indicator', () => {
+  function scenarioRow(page: Page, name: string) {
+    // The status dot now sits inside its own small wrapper <span> (Part C
+    // refinement, for the conditional "registering" label beside it) —
+    // one more level up than before to reach the actual row container.
+    return page.getByTestId(`scenario-status-dot-${name}`).locator('../..')
+  }
+
+  test('a "ready" and a "failed" row show distinct, non-transparent border/background treatment, in both themes (FR-017/FR-018)', async ({
+    page,
+  }) => {
+    await boot(page)
+    await page.getByRole('button', { name: 'Settings' }).click()
+    await page.getByRole('tab', { name: 'Scenarios' }).click()
+
+    const readyRow = scenarioRow(page, 'good_scenario')
+    const failedRow = scenarioRow(page, 'broken_scenario')
+
+    for (const dark of [false, true]) {
+      await page.evaluate((useDark) => {
+        document.documentElement.classList.toggle('dark', useDark)
+      }, dark)
+
+      const [readyBorder, failedBorder, readyBg, failedBg] = await Promise.all([
+        readyRow.evaluate((el) => getComputedStyle(el).borderLeftWidth),
+        failedRow.evaluate((el) => getComputedStyle(el).borderLeftWidth),
+        readyRow.evaluate((el) => getComputedStyle(el).backgroundColor),
+        failedRow.evaluate((el) => getComputedStyle(el).backgroundColor),
+      ])
+      // A real border-left, not the default 0px — and the two statuses'
+      // own border colors and background washes are visually distinct
+      // from one another (never identical, and never fully transparent).
+      expect(readyBorder).not.toBe('0px')
+      expect(failedBorder).not.toBe('0px')
+      expect(readyBg).not.toBe('rgba(0, 0, 0, 0)')
+      expect(failedBg).not.toBe('rgba(0, 0, 0, 0)')
+      expect(readyBg).not.toBe(failedBg)
+    }
+  })
+
+  test('toggling a scenario\'s Switch off immediately excludes it from a $scenario.-driven panel, and back on restores it (FR-019/FR-020)', async ({
+    page,
+  }) => {
+    // good_scenario is only made active via ?s= (appState.setActive() is
+    // never called for a published scenario by default — only 'observed'
+    // is forced active at registration, applyURLParams()'s own real
+    // activation call is what good_scenario needs, matching
+    // scenarioColorOverride.spec.ts's own established convention for this
+    // exact fixture panel).
+    await page.goto('/?s=good_scenario')
+    await page.waitForFunction(() => window.__wftdm !== undefined, null, { timeout: 30_000 })
+    await page.waitForFunction(
+      () => window.__wftdm!.appState.get('good_scenario')?.status !== 'registering',
+      null,
+      { timeout: 30_000 },
+    )
+    // row_scenario_display's own table panel unions every currently
+    // active scenario with no scenario:/scenarios: pin (dashboard-1-
+    // summary.yaml's own header comment) — summary_kpis publishes 2 rows
+    // per scenario, so good_scenario + observed both active is 4 rows.
+    const table = panelCard(page, 'Scenario Split (Table)').locator('tbody tr')
+    await expect(table).toHaveCount(4)
+
+    await page.getByRole('button', { name: 'Settings' }).click()
+    await page.getByRole('tab', { name: 'Scenarios' }).click()
+    // Located by row identity, not by the aria-label text itself — that
+    // label flips ("Exclude..."/"Include...") with the toggle's own
+    // state, so a name-based locator would stop matching after the click.
+    const observedSwitch = scenarioRow(page, 'observed').getByRole('switch')
+    await expect(observedSwitch).toBeChecked()
+
+    await observedSwitch.click()
+    await expect(observedSwitch).not.toBeChecked()
+    expect(await page.evaluate(() => window.__wftdm!.appState.get('observed')?.active)).toBe(false)
+    await page.getByRole('button', { name: /^Close$/ }).click()
+    await expect(table).toHaveCount(2)
+
+    await page.getByRole('button', { name: 'Settings' }).click()
+    await page.getByRole('tab', { name: 'Scenarios' }).click()
+    await scenarioRow(page, 'observed').getByRole('switch').click()
+    await page.getByRole('button', { name: /^Close$/ }).click()
+    await expect(table).toHaveCount(4)
+  })
+
+  test('the baseline scenario shows a filled Star paired with a "Baseline" text label as one unit, which moves when a different scenario is marked (FR-021/FR-022)', async ({
+    page,
+  }) => {
+    await boot(page)
+    await page.getByRole('button', { name: 'Settings' }).click()
+    await page.getByRole('tab', { name: 'Scenarios' }).click()
+
+    const baselineName = await page.evaluate(() => window.__wftdm!.appState.getBaseline())
+    await expect(scenarioRow(page, baselineName!).getByText('Baseline', { exact: true })).toBeVisible()
+    // The "Baseline" text node exists on every row's own control (a real,
+    // deliberate layout fix — see the fixed-width comment in
+    // scenariosTab.tsx) but is only VISIBLE on the baseline row itself.
+    const goodBaselineText = scenarioRow(page, 'good_scenario').getByText('Baseline', { exact: true })
+    if (baselineName === 'good_scenario') {
+      await expect(goodBaselineText).toBeVisible()
+    } else {
+      await expect(goodBaselineText).not.toBeVisible()
+    }
+
+    // The existing click-to-mark interaction — the Star button itself,
+    // its aria-label/aria-pressed/onClick — is unchanged (FR-022).
+    const goodStar = page.getByRole('button', { name: /good_scenario as baseline scenario|good_scenario is the baseline/ })
+    await goodStar.click()
+    expect(await page.evaluate(() => window.__wftdm!.appState.getBaseline())).toBe('good_scenario')
+    // The label lives INSIDE the same button as the star, not a separate
+    // floating element (research-driven refinement: icon+text together,
+    // one unit, never a badge elsewhere in the row).
+    await expect(goodStar.getByText('Baseline', { exact: true })).toBeVisible()
+    await expect(goodStar).toHaveAttribute('aria-pressed', 'true')
+  })
+
+  test('a non-baseline row shows an outline Star with no persistent text, and a "Set as baseline" tooltip on hover', async ({
+    page,
+  }) => {
+    await boot(page)
+    await page.getByRole('button', { name: 'Settings' }).click()
+    await page.getByRole('tab', { name: 'Scenarios' }).click()
+
+    const baselineName = await page.evaluate(() => window.__wftdm!.appState.getBaseline())
+    const nonBaselineName = baselineName === 'good_scenario' ? 'observed' : 'good_scenario'
+    const nonBaselineStar = page.getByRole('button', { name: `Mark ${nonBaselineName} as baseline scenario` })
+
+    await expect(nonBaselineStar).toBeVisible()
+    // No VISIBLE persistent "Baseline" text on this row — the same text
+    // node does exist in the DOM (a deliberate, real layout fix: it's
+    // `invisible`, not absent, so this control's width matches the
+    // baseline row's width exactly, keeping the switch/swatch/reorder-
+    // arrows to its left pixel-aligned across every row) — so this
+    // asserts non-visibility, not non-existence.
+    await expect(scenarioRow(page, nonBaselineName).getByText('Baseline', { exact: true })).not.toBeVisible()
+    await expect(nonBaselineStar).toHaveAttribute('aria-pressed', 'false')
+
+    await nonBaselineStar.hover()
+    await expect(page.getByRole('tooltip', { name: 'Set as baseline' })).toBeVisible()
   })
 })
 
