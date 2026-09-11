@@ -486,3 +486,96 @@ materially more invasive change (concurrent-connection lifecycle/error-
 handling, thread-safety against the one shared `AsyncDuckDB` instance)
 that deserves its own dedicated design and testing, not a rushed addition
 here.
+
+---
+
+## Two real, confirmed keyless basemap candidates — Americana, VersaTiles
+
+Found while auditing an unrelated 19-file `public/basemap/` directory of
+unknown origin (never tracked by git, apparently downloaded from
+`maplibre/maputnik`'s own example gallery — see the full audit finding
+below). Two of the 19 are genuinely usable and worth a real look for a
+future feature, kept here so the research survives past that directory's
+own deletion:
+
+- **Americana** (`tiles.openstreetmap.us`) — OpenStreetMap US's own
+  community-run vector tile project. A distinct, US-centric cartographic
+  style, not a re-skin of anything already in this app's catalog.
+- **VersaTiles** ("VersaTiles Colorful", `tiles.versatiles.org`) — a
+  self-funded, CC0-licensed (public domain) global vector tile project.
+  Also a distinct style, no existing catalog equivalent.
+
+Both confirmed genuinely free and keyless THIS session by fetching a
+real vector tile from each — not by reading the filename or trusting
+the TileJSON metadata alone (the metadata request succeeding is not
+sufficient evidence on its own; `outdoors.json`, below, is the concrete
+example of exactly that gap — its TileJSON root answers 200 with no key
+while the real tile data behind it 401s): Americana's
+`tiles.openstreetmap.us/vector/openmaptiles/2/2/1.mvt` returned a real
+HTTP 200 with a genuine 1.8MB MVT payload; VersaTiles'
+`tiles.versatiles.org/tiles/osm/0/0/0` returned a real HTTP 200 with a
+genuine 127KB vector tile, correct `vnd.mapbox-vector-tile` content
+type.
+
+**The real caveat, stated plainly**: both are third-party,
+community-hosted infrastructure with no SLA — unlike CARTO/OpenFreeMap,
+which this app's catalog already leans on as its established,
+production-grade free tier. Neither OpenStreetMap US nor VersaTiles
+makes any uptime/rate-limit commitment the way a funded commercial free
+tier (CARTO) or a widely-relied-upon community mirror with a track
+record (OpenFreeMap) does. Worth weighing deliberately before either
+becomes a shipped default, not just a "free and it works today" checkbox
+— today's live 200 is real evidence of current availability, not a
+guarantee of future availability.
+
+**The full research finding, for the record**: of the 19 files in that
+`public/basemap/` directory, **17 were confirmed either API-key-gated or
+a strictly-worse duplicate of an already-implemented catalog entry** —
+verified by reading each file's own real `sources` block directly (never
+assumed from its filename) and, for every URL that wasn't an obvious
+placeholder, firing a real live request against it:
+- `amazonlocationhybridglobaldarkdefault.json`/
+  `amazonlocationstandardgloballightdefault.json` — a long embedded AWS
+  key; a real tile request returned HTTP 403,
+  `"User is not authorized to access this resource with an explicit deny
+  in an identity-based policy"`.
+- `basic.json`/`bright.json`/`dark_matter.json`/`openstreetmap.json`/
+  `osm_liberty.json`/`positron.json`/`toner.json` — all six share the
+  identical MapTiler placeholder key
+  (`key=get_your_own_OpIi9ZULNHzrESv6T2vL`); a real request against it
+  returned HTTP 403. Four of these (`bright`/`dark_matter`/`osm_liberty`/
+  `positron`) are ALSO exact-style duplicates of `openfreemap-bright`/
+  `carto-dark-matter`/`openfreemap-liberty`/`carto-positron` +
+  `openfreemap-positron` — already implemented, free, keyless, no
+  live-test needed to know a working alternative already ships.
+- `outdoors.json` (Stadia Maps) — TileJSON metadata answers 200 with no
+  visible key, but a real tile request 401s (confirmed twice, including
+  with this app's own real deployed origin sent as `Referer`); this
+  app's own `ugrc-vector-outdoors` already covers the same real-world
+  niche anyway.
+- `streets.json` (LocationIQ) — the key is the literal string
+  `pk.put_your_api_key_here...`; a real tile request 403s.
+- `voyager.json` — its CARTO URL contains an unsubstituted `{api_key}`
+  template placeholder, not a working URL as shipped; duplicates
+  `carto-voyager`, which this app already implements via CARTO's own
+  real, free, keyless endpoint for the identical style.
+- `protomaps-black.json`/`-dark.json`/`-grayscale.json`/`-light.json`/
+  `-white.json` — all five hardcode
+  `pmtiles://https://demo-bucket.protomaps.com/v4.pmtiles`, the exact
+  Protomaps-hosted demo bucket this app's own `041-protomaps-pmtiles-
+  basemap` feature (and Protomaps' own documentation) explicitly forbids
+  hotlinking. Each also duplicates an already-implemented flavor, and
+  duplicates it in a STRICTLY WORSE way: `041`'s real integration
+  generates each flavor's style programmatically, at resolve-time, via
+  the real, installed `@protomaps/basemaps` library
+  (`layers(sourceName, namedFlavor(flavorName), {lang:'en'})`) — a frozen
+  static JSON snapshot can't track a future upstream flavor-definition
+  update the way that live call does, on top of the hotlinking
+  violation.
+
+The directory itself (all 19 files, never tracked by git, of unknown
+origin — not created by any work recorded in this repo's own commit
+history or `CLAUDE.md`) has been deleted as a result of this research;
+nothing in it was usable or in scope for anything currently planned.
+Its only lasting value — the two real candidates named above — is
+preserved here instead.
