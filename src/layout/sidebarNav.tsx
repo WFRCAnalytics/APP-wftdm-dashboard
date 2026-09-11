@@ -55,6 +55,14 @@ export function SidebarNav({ tabs, activeIndex, onTabChange }: SidebarNavProps) 
             <SidebarMenuButton
               role="tab"
               aria-selected={isActive}
+              // 040-test-suite-migration (FR-019–FR-021): an optional
+              // explicit accessible name. Only dashboard-8-test.yaml sets
+              // header.aria_label (its visible header.tab is a single
+              // space " "); for every other tab this is undefined, so no
+              // aria-label attribute is emitted and the accessible name
+              // still comes from the visible label — byte-for-byte
+              // unchanged.
+              aria-label={tab.header.aria_label}
               isActive={isActive}
               aria-expanded={sections.length > 0 ? true : undefined}
               onClick={() => onTabChange(index)}

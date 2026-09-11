@@ -488,6 +488,19 @@ export interface DashboardTabConfig {
      * Cases). Default false/absent — every existing dashboard-*.yaml is
      * unaffected. */
     full_page?: boolean
+    /** 040-test-suite-migration, FR-019–FR-021: an explicit accessible
+     * name for this tab's sidebar button, set as its `aria-label`. Only
+     * `public/demo-dashboard-config/dashboard-8-test.yaml` uses it — that
+     * tab's visible `header.tab` is a single space `" "` (an inconspicuous
+     * sliver among the real tabs), so it needs a real, separate
+     * accessible name ("Test") for keyboard/AT navigation and
+     * `getByRole('tab', { name })`. Read only by `layout/sidebarNav.tsx`;
+     * no query/data-layer code consults it. Absent → no `aria-label`
+     * attribute, so every real content tab is byte-for-byte unaffected
+     * (its accessible name still comes from its visible label). Parsed
+     * fail-soft, identical to `icon`. Replaces the retired `blank_nav`
+     * boolean + its CSS-invisible rendering branch. */
+    aria_label?: string
   }
   filters: FilterDefinition[]
   /** 011-basemap-style-system, FR-005: optional tab-level basemap
@@ -543,6 +556,10 @@ export function parseDashboardConfig(raw: unknown, sourcePath = '(unknown source
       description: typeof header.description === 'string' ? header.description : undefined,
       icon: typeof header.icon === 'string' ? header.icon : undefined,
       full_page: typeof header.full_page === 'boolean' ? header.full_page : undefined,
+      aria_label:
+        typeof header.aria_label === 'string' && header.aria_label.length > 0
+          ? header.aria_label
+          : undefined,
     },
     filters: Array.isArray(obj.filters) ? (obj.filters as FilterDefinition[]) : [],
     default_basemap: parseBasemapSelection(obj.default_basemap),

@@ -36,6 +36,11 @@ declare global {
 // specs; 038 auto-activates them, which would leak into every other
 // spec's `$scenario` unions during a disk-write window — `page.route`
 // removes that window entirely.
+// 040-test-suite-migration: the real committed index.json now has an 8th
+// permanent entry (dashboard-8-test.yaml, the broken-panel tab). This
+// spec deliberately routes its own 7-entry index — its subject is the
+// six-tab calibration STRUCTURE, not the shipped index — so the test tab
+// is intentionally excluded here.
 const REAL_DEMO_DASHBOARD_INDEX = {
   dashboards: [
     'dashboard-1-summary.yaml',
@@ -112,10 +117,10 @@ test.describe('032-six-tab-demo-content — User Story 1 (six-tab structure)', (
 
     const expectedOrder = [
       'Summary',
-      'Person/Household Models',
-      'Tour Models',
+      'Person & Households',
+      'Tour',
       'Mode Choice',
-      'Trip Models',
+      'Trip',
       'Network',
       'Explore',
     ]
@@ -136,10 +141,10 @@ test.describe('032-six-tab-demo-content — User Story 2 (real data, honest gaps
     await boot(page)
     for (const tabName of [
       'Summary',
-      'Person/Household Models',
-      'Tour Models',
+      'Person & Households',
+      'Tour',
       'Mode Choice',
-      'Trip Models',
+      'Trip',
       'Network',
     ]) {
       await clickDemoTab(page, tabName)
@@ -169,8 +174,8 @@ test.describe('032-six-tab-demo-content — User Story 3 (all ten panel types)',
     await expect(page.locator('svg path.recharts-rectangle').first()).toBeVisible({ timeout: 15_000 })
     await expect(page.locator('.js-plotly-plot').first()).toBeVisible({ timeout: 15_000 })
 
-    // table + observable-plot + markdown + graphic-walker — Person/Household Models
-    await clickDemoTab(page, 'Person/Household Models')
+    // table + observable-plot + markdown + graphic-walker — Person & Households
+    await clickDemoTab(page, 'Person & Households')
     await page.waitForTimeout(2500)
     await expect(page.getByRole('table').first()).toBeVisible({ timeout: 15_000 })
     // The gap-note panel's own title (a plain heading, no inline `<code>`
@@ -235,7 +240,7 @@ test.describe('032-six-tab-demo-content — Trip Models: real ZoneMap (Zone Trip
 
   test('renders real, non-empty zone data using the real MTC-sourced geometry', async ({ page }) => {
     await boot(page)
-    await clickDemoTab(page, 'Trip Models')
+    await clickDemoTab(page, 'Trip')
     await waitForZonemapRender(page, ZONEMAP_TITLE)
 
     await expect
@@ -250,7 +255,7 @@ test.describe('032-six-tab-demo-content — Trip Models: real ZoneMap (Zone Trip
     page,
   }) => {
     await boot(page)
-    await clickDemoTab(page, 'Trip Models')
+    await clickDemoTab(page, 'Trip')
     await waitForZonemapRender(page, ZONEMAP_TITLE)
 
     await page.evaluate(() => document.documentElement.classList.add('dark'))

@@ -142,6 +142,45 @@ The Summary tab renders on scenario load. Its value boxes read from `summary_kpi
 
 ---
 
+## Broken-panel test tab (`dashboard-8-test.yaml`) — `040-test-suite-migration`
+
+`public/demo-dashboard-config/dashboard-8-test.yaml` is a git-tracked
+`dashboard-*.yaml` holding **deliberately-broken / edge-case panels only**
+(missing metric per panel type, `chart_type: pie`, unreachable basemap,
+XSS/empty markdown, zero-row filter, unresolvable `comparison: diff`,
+`full_page` + many panels, …). It exists so error/empty-state UI stays
+covered by the integration suite without any synthetic Parquet — every
+panel binds to the **real** demo scenarios/metrics and fails by config
+shape alone. It replaces the retired `tests/fixtures/dashboard-config/`
+"(intentional)" panels.
+
+It is a **permanent 8th entry** in `public/demo-dashboard-config/index.json`
+— present in every build (local dev, production, GitHub Pages). There is
+**no** conditional/test-only registration: `global-setup.js` /
+`global-teardown.js` do not touch `index.json`, and there is no dev
+helper script. (An earlier design injected it test-only; that was
+reversed — the injection machinery, `scripts/dev-test-tab.js`, and the
+`header.blank_nav` field were all removed.)
+
+It is kept unobtrusive for real users purely by its sidebar rendering:
+
+- `header.tab: " "` — a single space. A real, valid non-empty string
+  (`parseDashboardConfig` requires non-empty), it renders as a
+  barely-visible sliver among the seven real tabs. No CSS-hidden element.
+- `header.icon` — omitted entirely, so no glyph renders (already graceful
+  in `sidebarNav.tsx`).
+- `header.aria_label: "Test"` — a new optional `string` field
+  (`layout/types.ts`), wired by `layout/sidebarNav.tsx` as the sidebar
+  button's `aria-label`, so keyboard / screen-reader users get a real
+  name and `getByRole('tab', { name: 'Test' })` resolves it. Undefined
+  for every other tab ⇒ no `aria-label` attribute ⇒ real tabs unchanged.
+
+To inspect the broken panels: run `npm run dev`, then click the thin
+sliver as the 8th sidebar item (or tab to it — its accessible name is
+"Test").
+
+---
+
 ## File structure
 
 ```

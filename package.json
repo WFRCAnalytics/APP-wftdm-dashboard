@@ -13,9 +13,7 @@
     "postinstall": "node scripts/postinstall.js",
     "typecheck": "tsc --noEmit",
     "test:unit": "vitest run",
-    "pretest:integration": "uv run python tests/fixtures/generate.py",
-    "test:integration": "playwright test",
-    "dev:fixtures": "node scripts/copy-fixtures.js"
+    "test:integration": "playwright test"
   },
   "dependencies": {
     "@deck.gl/core": "^9.0.0",

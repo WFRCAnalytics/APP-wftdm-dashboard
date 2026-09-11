@@ -24,6 +24,10 @@ declare global {
 // deployment (empty public/observed + public/scenarios; `observed`
 // registers `failed`).
 
+// 040-test-suite-migration: the real committed index.json now has an 8th
+// permanent entry (dashboard-8-test.yaml). This spec routes its own
+// 7-entry index — its subject is the multi-scenario demo content, not
+// the shipped index — so the test tab is intentionally excluded here.
 const REAL_DEMO_DASHBOARD_INDEX = {
   dashboards: [
     'dashboard-1-summary.yaml',
@@ -158,7 +162,7 @@ test.describe('038 US3 — the demo reads as a multi-scenario comparison', () =>
       expect(new Set(traceFills.filter(Boolean)).size).toBeGreaterThanOrEqual(3)
 
       // --- observable-plot: "Workplace Location Distance Distribution" (fill: scenario) ---
-      await gotoTab(page, 'Person/Household Models')
+      await gotoTab(page, 'Person & Households')
       const op = panelCard(page, 'Workplace Location Distance Distribution')
       await expect(op).toBeVisible()
       // Observable Plot renders a swatch/legend label per fill value.

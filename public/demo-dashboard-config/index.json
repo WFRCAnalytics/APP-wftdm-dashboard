@@ -6,7 +6,8 @@
     "dashboard-4-mode-choice.yaml",
     "dashboard-5-trip-models.yaml",
     "dashboard-6-network.yaml",
-    "dashboard-7-explore.yaml"
+    "dashboard-7-explore.yaml",
+    "dashboard-8-test.yaml"
   ],
   "title": "WFRC TDM Calibration Dashboard",
   "logoUrl": "https://raw.githubusercontent.com/WFRCAnalytics/wfrc-brand/main/_extensions/wfrc-brand/assets/logo/horizontal/WFRC_logo_horizontal_color_transparent.png",
