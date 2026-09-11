@@ -4,9 +4,29 @@
 # The query text that references these (via $mappings./$bins./$sql./
 # $filters./$scenario.) lives in the test code, not here — this file only
 # defines what a real summarize.yaml would define.
-
+#
+# 040-test-suite-migration: this is the ONE surviving fixture (T007/T011),
+# hand-maintained deliberately, and this touch-up is exactly the kind T042
+# anticipated. `sql_fragments.base_table` now points at a REAL published
+# metric (`trip_mode_share`, activitysim-baseline) instead of the retired
+# `good_scenario__trip_mode_share` fixture view. Real, confirmed directly
+# against summarize.yaml (not assumed): trip_mode_share's own real SQL
+# already applies `$mappings.major_trip_mode` itself, at the metric level —
+# its output column is `major_trip_mode` (already-mapped real values SOV/
+# HOV/Transit/Non-Motorized/Ride Hail), not a raw, unmapped `mode` column,
+# and it carries no `purpose` column at all (trip_purpose_share does, but
+# has no mode-like column either — no real published metric has both a raw
+# mode-like AND a purpose-like column together in one table, the shape the
+# retired synthetic fixture relied on). `major_mode` (this file's own
+# mapping name) is re-keyed to `mode_group` accordingly, mapping the
+# metric's own already-real output values into the SAME Drive/Transit/
+# Active 3-bucket shape the retired fixture asserted — this file's own
+# mapping/bin KEY NAMES are self-contained and were never required to
+# match any real summarize.yaml name; boot.spec.ts's own template now
+# filters on `major_trip_mode` (a column that genuinely exists) instead of
+# `purpose` (which does not, on this table).
 mappings:
-  major_mode:
+  mode_group:
     SOV: Drive
     HOV: Drive
     Transit: Transit
@@ -20,4 +40,10 @@ bins:
     labels: [Low, Medium, High]
 
 sql_fragments:
-  base_table: good_scenario__trip_mode_share
+  # Double-quoted: activitysim-baseline's own hyphen makes this a real
+  # DuckDB identifier-quoting requirement, not stylistic — confirmed live
+  # (an unquoted reference threw "Parser Error: syntax error at or near
+  # '-'"), matching every other hyphenated-scenario-name view reference
+  # elsewhere in this test suite (e.g. boot.spec.ts's own
+  # `"activitysim-baseline__summary_kpis"` query).
+  base_table: '"activitysim-baseline__trip_mode_share"'

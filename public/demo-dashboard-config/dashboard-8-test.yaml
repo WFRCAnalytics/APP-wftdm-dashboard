@@ -251,6 +251,13 @@ layout:
       columns:
         - { field: primary_purpose, label: "Purpose" }
         - { field: trips,           label: "Δ Trips" }
+      # 040-test-suite-migration (panelExpand.spec.ts): table is
+      # expandable by TYPE default — this explicit override proves a
+      # per-panel `expandable: false` wins over that default (the "opts
+      # OUT" half of panelExpand.spec.ts's own override test; row_missing_
+      # metric's own "Broken Table Panel" — no override — is the sibling
+      # "opts don't override, stays expandable" half of the same test).
+      expandable: false
       width: 1.0
 
   # ── Zero-row filter → empty state (value confirmed absent from real data) ──

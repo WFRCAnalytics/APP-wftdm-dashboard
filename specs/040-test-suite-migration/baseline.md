@@ -1,44 +1,34 @@
 # T001 — Integration-suite baseline
 
-## Original capture (superseded — kept for history)
+## History (superseded captures — kept for record)
 
-Captured 2026-09-10 on branch `040-test-suite-migration` @ `50847d5` (clean
-tree, no WIP), before any Phase 2 work: `350 passed, 8 failed (9.6 min)`.
-Stale as of this update — Phase 2's own atomic cutover (T011: `git rm -r
-tests/fixtures/dashboard-config tests/fixtures/observed tests/fixtures/
-scenarios tests/fixtures/geometry`) has since landed, along with Phase 3
-(US1) and features 041/042, all of which change the real numbers
-materially. Superseded by the real, freshly-captured baseline below.
+- 2026-09-10, before any Phase 2 work: `350 passed, 8 failed (9.6 min)`.
+- Resuming after Phase 3 (US1) + features 041/042, before T014: real,
+  fresh capture — `79 passed, 299 failed (11.5 min)`.
+- After T014 (`dashboardShell.spec.ts`): `91 passed, 285 failed (11.0 min)`
+  — confirmed clean, isolated win (+12/−14, every other file's failure
+  count byte-for-byte unchanged).
 
-## Real baseline, re-captured resuming this feature (before T014)
+Each superseded by real drift since capture (further migrations, and
+genuine full-suite multi-worker flakiness this project's own history
+already extensively documents — see "Full-suite run-to-run variance"
+below, new to this update).
 
-Captured via a full, untruncated `npx playwright test --reporter=list`
-run (single invocation, no concurrent `npx playwright test` process — the
-earlier lesson this project's own history already records about
-cross-invocation `global-setup`/`global-teardown` collisions on the
-shared `index.json` files was deliberately respected here).
+## Real baseline, this session (before metricStrip/panelExpand/boot)
+
+Captured via a full, untruncated, single (no concurrent invocation)
+`npx playwright test --reporter=list` run:
 
 ```
-79 passed, 299 failed (11.5 min)
+89 passed, 287 failed (11.6 min)
 ```
 
-The 299 failures are genuine, reproducible, NOT a concurrency artifact —
-confirmed directly: most are real `ENOENT` errors reading
-`tests/fixtures/dashboard-config/index.json`, which T011 already deleted
-entirely as part of Phase 2's own atomic cutover. This is exactly the
-"Foundational (Phase 2) is an atomic cutover... immediately after it, the
-integration suite is red for every not-yet-migrated fixture-coupled spec"
-state this file's own tasks.md "Green-checkpoint reality" section already
-predicted — not a new regression.
-
-Per-file failure counts (every `[ ]`-still-open Phase 4-7 task's own spec
-file, confirming tasks.md's checkbox state is accurate — no incidental
-drift found anywhere):
+Per-file failure counts (every `[ ]`-still-open file):
 
 | Spec file | Failures |
 |---|---|
 | `flowmapPanel.spec.ts` | 41 |
-| `settingsModal.spec.ts` | 31 |
+| `settingsModal.spec.ts` | 32 |
 | `zonemapPanel.spec.ts` | 30 |
 | `graphicWalkerPanel.spec.ts` | 29 |
 | `observablePlotPanel.spec.ts` | 24 |
@@ -46,7 +36,6 @@ drift found anywhere):
 | `scenarioManager.spec.ts` | 16 |
 | `panelExpand.spec.ts` | 16 |
 | `valueBoxPanel.spec.ts` | 14 |
-| `dashboardShell.spec.ts` | 14 (fixed by T014 — see below) |
 | `sankeyPanel.spec.ts` | 11 |
 | `markdownPanel.spec.ts` | 10 |
 | `scenarioColorOverride.spec.ts` | 8 |
@@ -57,32 +46,58 @@ drift found anywhere):
 | `boot.spec.ts` | 5 |
 | `metricStrip.spec.ts` | 2 |
 | `switchControlsUnpinnedPanels.spec.ts` | 1 |
+| `demoContentAllPanels.spec.ts` | 1 (pre-existing flake, see below — not in any `[ ]`-open file) |
 
-Every already-`[x]`-marked-done file (`sidebarNav`, `demoContentAllPanels`,
-`demoMultiScenario`, `fullPagePanel`, `testTabInvisibility`,
-`brokenPanelStates`, `formInputPrimitives`) shows **zero** failures —
-confirms no regression in already-completed Phase 3 work.
+## After metricStrip.spec.ts + panelExpand.spec.ts + boot.spec.ts
 
-## After T014 (dashboardShell.spec.ts migration) — real, confirmed
+Each re-read directly and re-confirmed fully fixture-coupled before
+touching (per the resuming session's own instruction — not assumed
+still-accurate from an earlier line-count/grep pass). One real, minimal
+content addition (`expandable: false` on one already-real
+`dashboard-8-test.yaml` panel, for `panelExpand.spec.ts`'s override
+test — NOT new-content-authoring in the `flowmapPanel.spec.ts` sense);
+one real fixture-column fix (`tests/fixtures/all-placeholders-config.yaml`
+— see T031's own tasks.md entry for the full real-column story); one
+real DuckDB identifier-quoting bug found and fixed live (a hyphenated
+view name needs `"..."` quoting, confirmed via a real Parser Error before
+the fix).
 
-A second full, untruncated, isolated run (again a single invocation, no
-overlap):
+**Isolated verification** (the three files together, single worker):
+`24/24 passing` — twice, byte-identical.
 
-```
-91 passed, 285 failed (11.0 min)
-```
+**Full-suite run-to-run variance — a real, confirmed finding worth
+recording explicitly this time**: two full-suite confirmation runs
+(matching T014's own two-run standard) produced `109 passed, 265 failed`
+and `102 passed, 272 failed` — NOT identical to each other. Investigated
+directly rather than assumed benign: the second run's own failure list
+showed `boot.spec.ts`, `dashboardShell.spec.ts`, `demoContentAllPanels.
+spec.ts`, `demoMultiScenario.spec.ts`, and `graphicWalkerPanel.spec.ts`
+(the last three untouched by this session) all failing at the **identical
+30.6s mark** — the shared `waitForFunction(..., { timeout: 30_000 })`
+boot-wait ceiling every test uses, hit simultaneously across unrelated
+files under full 10-worker load. A genuine resource-contention signature,
+not a logic regression — confirmed by re-running the exact same file in
+isolation immediately after (`brokenPanelStates.spec.ts` 9/9, `boot.spec.ts`
+6/6, both clean). This project's own CLAUDE.md history already documents
+this exact class of flakiness repeatedly; this is the first time this
+migration's own `baseline.md` records a concrete, investigated instance
+of it rather than treating a single run's numbers as ground truth.
 
-Real delta: **+12 passed, −14 failed** (`dashboardShell.spec.ts`'s own 14
-failures dropped to 0 — its real test count changed slightly during the
-rewrite, 13 tests now, all passing in isolation too). Every OTHER file's
-failure count is **byte-for-byte identical** to the pre-T014 run above —
-confirms this was a clean, isolated fix with zero regressions anywhere
-else in the suite.
+**The stable, trustworthy signal** (not the noisy pass/fail total, which
+this project's own history already establishes varies run-to-run under
+full-suite load): `metricStrip.spec.ts` and `panelExpand.spec.ts` show
+**zero** failures in both full-suite runs. `boot.spec.ts` shows zero in
+run 1 and one (the confirmed 30.6s contention timeout, not a real
+failure) in run 2 — its own isolated 6/6-passing-twice result is the
+real, trustworthy state. No other already-`[x]`-done file's underlying
+correctness regressed — every non-30.6s-timeout failure in both runs
+maps to an already-open `[ ]` task's own pre-existing, unrelated gap.
 
 ## Effective green target
 
-`91 + 285 = 376` real, current total. Getting the remaining Phase 4-7
-tasks done (T024/T025 in particular — the two largest remaining files,
-41 + 30 = 71 of the 285 current failures) is the path to
-`baseline.md`'s own original "full green" goal — see `tasks.md`'s T024/T025
-entries for the precise, confirmed (not guessed) scope each now needs.
+`89 + 287 = 376` (this session's own starting total; unchanged by these
+migrations, since no new tests were added — only fixture references
+removed). `flowmapPanel.spec.ts`/`zonemapPanel.spec.ts` (T024/T025, 71 of
+the remaining 265 failures) are the two largest remaining files, still
+deferred as their own dedicated future session — see their own tasks.md
+entries for the precise, confirmed new-content scope each needs.

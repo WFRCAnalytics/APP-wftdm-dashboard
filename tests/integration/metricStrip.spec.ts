@@ -11,12 +11,17 @@ declare global {
 // Strip auto-fill layout). quickstart.md Scenario 8's own integration
 // half (the unit half lives in tests/unit/dashboardLayout.test.ts).
 //
-// Uses the default fixture set's own pre-existing `row_kpis` rows
-// (dashboard-1-summary.yaml: 2 valuebox panels; dashboard-2-detail.yaml:
-// 2 valuebox panels, one broken) — both are ALREADY genuinely all-
-// valuebox rows, so no new fixture content was needed for this story at
-// all: FR-018's own auto-classification applies to them automatically the
-// moment isMetricStripRow()/dashboardRenderer.tsx's branch exist.
+// 040-test-suite-migration: migrated off the retired synthetic
+// tests/fixtures/dashboard-config/ set. The real
+// public/demo-dashboard-config/dashboard-1-summary.yaml (Summary tab)
+// happens to use the SAME row key names the retired fixture did —
+// `row_kpis` (5 valuebox panels: Households/Persons/Tours/Trips/Total
+// VMT — already genuinely all-valuebox, FR-018's own auto-classification
+// applies with no YAML change needed) and `row_charts` (plural in the
+// real file, singular `row_chart` in the retired fixture — the one real
+// difference) holding 2 non-valuebox panels (a recharts bar chart + a
+// plotly chart), so it still correctly does NOT qualify as a Metric
+// Strip row.
 test.describe('030-sidebar-navigation — User Story 4 (Metric Strip layout)', () => {
   test('an all-valuebox row lays out as an auto-filling grid of minimum-width cards (FR-018)', async ({
     page,
@@ -40,15 +45,16 @@ test.describe('030-sidebar-navigation — User Story 4 (Metric Strip layout)', (
     await page.goto('/')
     await page.waitForFunction(() => window.__wftdm !== undefined, null, { timeout: 30_000 })
 
-    // row_chart is a single plotly panel — not all-valuebox — must use
-    // the ordinary gridTemplateColumns fraction math, not auto-fill.
-    const chartRow = page.locator('[data-testid="row_chart"]')
+    // row_charts (real Summary tab) holds a recharts panel + a plotly
+    // panel — not all-valuebox — must use the ordinary gridTemplateColumns
+    // fraction math, not auto-fill.
+    const chartRow = page.locator('[data-testid="row_charts"]')
     const gridTemplateColumns = await chartRow.evaluate((el) => getComputedStyle(el).gridTemplateColumns)
     // Auto-fill rows resolve to a repeat(...)-driven multi-column value at
-    // this viewport width; a single-panel fraction row resolves to
-    // exactly one track. Confirms this row did NOT take the Metric Strip
-    // branch.
-    expect(gridTemplateColumns.trim().split(/\s+/)).toHaveLength(1)
+    // this viewport width; a real two-panel fraction row (0.5/0.5 width)
+    // resolves to exactly two tracks. Confirms this row did NOT take the
+    // Metric Strip branch.
+    expect(gridTemplateColumns.trim().split(/\s+/)).toHaveLength(2)
   })
 
   test('an existing, unmodified dashboard-*.yaml file renders unchanged apart from the automatic Metric Strip reclassification (FR-020)', async ({
@@ -58,9 +64,8 @@ test.describe('030-sidebar-navigation — User Story 4 (Metric Strip layout)', (
     await page.waitForFunction(() => window.__wftdm !== undefined, null, { timeout: 30_000 })
     // The Summary tab's own real content (panel titles, values) renders
     // exactly as before this feature — a spot-check against a few
-    // already-known-real panels, not a full pixel diff (that's T036's own
-    // before/after screenshot pass).
-    await expect(page.getByText('Total Households', { exact: true })).toBeVisible()
-    await expect(page.getByText('Mode Share by Purpose', { exact: true })).toBeVisible()
+    // already-known-real panels, not a full pixel diff.
+    await expect(page.getByText('Households', { exact: true })).toBeVisible()
+    await expect(page.getByText('Total Trips by Mode', { exact: true })).toBeVisible()
   })
 })
