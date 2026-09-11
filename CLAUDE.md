@@ -5480,6 +5480,167 @@ first cross-reference this list was built from). ✅ done,
     `npm run typecheck` clean; `npm run test:unit` 457/457 (unchanged —
     `appState` shape untouched).
 
+26. ✅ Boot-performance fix — parallelized scenario-file registration,
+    real code-splitting by panel type — done
+    (`042-boot-performance-fix`). Fixes the two confirmed-dominant
+    bottlenecks from a real, measured investigation of the deployed
+    GitHub Pages site's slow cold-cache load (real Playwright/CDP network
+    traces, not assumptions — see this feature's own investigation
+    transcript and `project-docs/PIPELINE.md`'s "Boot-performance findings
+    deferred" entry for the three real findings deliberately NOT fixed
+    here).
+
+    **Fix 1 — `services/scenarioDiscovery.ts`**: `registerSummaryFolder()`'s
+    per-file loop (`for (...) { await registerFileURL(...) }` — 105 real
+    Parquet files across 3 demo scenarios, confirmed the investigation's
+    single dominant cost) is now `Promise.all()`. Confirmed, before
+    parallelizing, there is NO real ordering dependency between files
+    within one scenario (each gets a globally-unique view name; verified
+    empirically, not just reasoned about — 12 real demo files registered
+    concurrently vs. sequentially against the live DuckDB-WASM connection
+    produced byte-identical row counts, zero errors).
+    `registerPublishedScenarios()`/`registerDemoScenarios()` gained a
+    real two-phase restructuring: Phase 1 (manifest fetch + `appState.
+    register()`, kept sequential, cheap) establishes every scenario's Map
+    entry — and therefore its `order` field and its position in
+    `getBaseline()`'s "earliest-registered, non-pinned, ready" tie-break —
+    strictly in `index.json`'s own listed order; Phase 2 (the real
+    bottleneck: `registerSummaryFolder()` + `setStatus()`/`setActive()`)
+    then runs fully in parallel across every scenario in that group,
+    since one scenario's own data-loading never reads another's state.
+    `discoverScenarios()`'s own group-level sequencing
+    (`registerObserved()` → `registerPublishedScenarios()` →
+    `registerDemoScenarios()`) is DELIBERATELY left sequential — a real,
+    confirmed, documented ordering dependency (both fields above rely on
+    observed registering before any published/demo scenario, and
+    published before demo) that costs little to preserve (3 group
+    transitions, not 105 file-level ones).
+
+    **A real, honest limitation found during this feature's OWN
+    verification, not anticipated by the investigation**: a follow-up
+    real-network test (a local static server with ~40ms artificial
+    per-request latency, isolating the code change from live-site network
+    variance) showed the actual HTTP requests these `Promise.all()`-
+    wrapped calls trigger still land strictly one at a time — confirmed
+    not a bug in this feature's own code by bypassing it entirely (12 raw
+    `registerFileURL()` calls fired directly via `window.__wftdm` against
+    the same server showed the identical serialized pattern, while a
+    control test of 12 plain `fetch()` calls against the same server
+    correctly overlapped). DuckDB-WASM's one shared connection
+    (`services/duckdb.ts`) processes query execution strictly serially
+    internally, regardless of caller-side concurrency — ordinary,
+    expected single-connection database behavior, not a defect. This
+    fix's own `Promise.all()` conversion is still the correct code-level
+    change (no ordering-dependency regression, ready to benefit
+    automatically if the connection model ever changes) but delivers a
+    smaller real-world network-parallelism win for the file-registration
+    phase specifically than a naive "N requests × RTT" model predicts —
+    logged in `project-docs/PIPELINE.md` as its own deferred finding (a real
+    fix would need multiple DuckDB connections, a materially more
+    invasive change).
+
+    **Fix 2 — `panels/registry.tsx`**: all ten panel-type imports
+    converted from static top-level imports to `React.lazy(() =>
+    import('@/panels/X').then((m) => ({ default: m.X })))` (each panel
+    component is a named export, hence the adapter). New `panels/
+    PanelLoadingState.tsx` is the shared `<Suspense>` fallback, matching
+    this app's own established `animate-pulse rounded-md bg-muted`
+    skeleton convention; `layout/panelCard.tsx` and `layout/
+    dashboardRenderer.tsx`'s `FullPagePanel` (the registry's only two
+    consumers) each wrap `<PanelComponent config={config} />` in
+    `<Suspense fallback={<PanelLoadingState height={config.height} />}>`,
+    placed INSIDE `PanelErrorBoundary` (a rejected dynamic import is
+    caught by the same boundary every other panel-render failure already
+    goes through). `034-metric-panel-redesign`'s expand-ability scoping
+    (`EXPANDABLE_PANEL_TYPES`/`config.expandable`) needed zero changes —
+    confirmed by direct read: it only inspects `config.type`/
+    `config.expandable`, never the registry's own component values.
+
+    **Three further real, confirmed leaks found and fixed while verifying
+    this actually deferred anything** (each traced with Vite's own build
+    API — `chunk.imports`/`chunk.modules` — not assumed from the
+    `React.lazy()` conversion alone):
+    1. `layout/settings/basemapTab.tsx` (reachable unconditionally from
+       `Shell` → `SettingsModal`, never lazy — it hosts the Basemap tab's
+       own live MapLibre preview) statically imported `DEFAULT_CENTER`/
+       `DEFAULT_ZOOM` directly from `FlowMapPanel.tsx`, transitively
+       pulling `@deck.gl`/`@flowmap.gl` into the eager entry graph
+       regardless of the registry fix. Fixed by extracting both constants
+       into a new, dependency-free `panels/mapDefaults.ts`;
+       `FlowMapPanel.tsx` now imports-and-re-exports them (preserving its
+       own existing public surface) instead of defining them locally.
+    2. `vite.config.ts`'s existing single `'maps'` `manualChunks` bucket
+       force-merged `maplibre-gl` (legitimately needed eagerly by
+       `basemapTab.tsx`) together with `@deck.gl`/`@flowmap.gl`/
+       `@luma.gl`/`@math.gl`/`@loaders.gl`/`@probe.gl` (needed ONLY by the
+       now-lazy `FlowMapPanel.tsx` — confirmed `ZoneMapPanel.tsx` is pure
+       MapLibre with no deck.gl at all) into ONE physical output file —
+       Rollup's `manualChunks` forces every matched module into the same
+       chunk regardless of which importer reaches it, so the whole merged
+       file still downloaded eagerly the instant `basemapTab.tsx` needed
+       any part of it. Split into two buckets: `'maps'` (maplibre-gl +
+       pmtiles + `@protomaps/basemaps`, still eager, correctly) and a new
+       `'flowmap-deck'` (deck.gl family, now genuinely lazy).
+    3. The deepest one, found by inspecting the `'recharts'`/
+       `'flowmap-deck'` chunks' own real module composition after the fix
+       above still left them in `index.html`'s `modulepreload` list:
+       Rollup's own automatic chunking (for every package this
+       `manualChunks` function doesn't explicitly name) had physically
+       placed **React, ReactDOM, and Scheduler themselves** inside the
+       `'recharts'` chunk (recharts v3 pulls them in transitively via
+       `@reduxjs/toolkit`/`react-redux` — invisible before this feature
+       only because `'recharts'` was already part of the eager graph back
+       then). Since literally everything needs React, every other chunk
+       — including leaf ones with nothing to do with charts, like
+       `hooks/useFilterState.ts`'s own tiny chunk — was forced to
+       statically import the whole `'recharts'` bundle just to reach
+       React's exports. Fixed with an explicit `'react-vendor'` bucket,
+       checked first, before any other rule can claim
+       `react`/`react-dom`/`scheduler`. Two smaller instances of the
+       identical class of leak followed the same fix once `'recharts'`
+       shrank far enough to reveal them (new `'app-shared'` bucket):
+       `panels/scenarioDisplay.ts` (this app's own pure module, imported
+       both eagerly — `main.tsx`'s `setDeployerScenarioPalette()`,
+       `scenarioColorControl.tsx` via the always-mounted Scenarios tab —
+       and by the lazy Recharts/Plotly/ObservablePlot chain), and two
+       Vite-internal virtual modules (`vite/preload-helper`, `vite/
+       modulepreload-polyfill` — the shared runtime every `import()` call
+       site needs, including all ten of `registry.tsx`'s own `lazy()`
+       factories, which live in the entry chunk itself) and, last,
+       `clsx` (used by this app's own `cn()` helper — `@/lib/utils` —
+       needed by essentially every eager shadcn-pattern UI component, and
+       also by Recharts internally). Rollup's own `hoistTransitiveImports`
+       option was tried once, alone, at the very start of this
+       investigation (its documented symptom — a real import backed by no
+       real shared code — matched what was being seen) and had ZERO
+       measurable effect, confirmed by diffing output file hashes before/
+       after; not left in the config as a misleading non-fix.
+
+    **Verification, matching the investigation's own methodology**: a
+    real local A/B build comparison (the unmodified `main` tree built to
+    one static-server root, this feature's own tree built to a second,
+    both served with `Cache-Control: no-store` to simulate a genuine
+    cold-cache visit) via a real Playwright/CDP network trace, not theory.
+    `index.html`'s own `modulepreload` list dropped from 10 entries
+    (including `plotly`/`graphic-walker`/`recharts`/`maps` at their full,
+    unsplit sizes) to 8 (only the genuinely-always-needed
+    `duckdb`/`yamlLoader`/`appState`/`filterState`/`react-vendor`/
+    `app-shared`/`maps` remain — confirmed via the same real chunk-import-
+    graph inspection used to find the three leaks above, not just eyeballing
+    the HTML). Near-zero-latency localhost, isolating just this feature's
+    own effect: total bytes transferred for one full page load, 14.07MB →
+    9.12MB (script bytes 13.19MB → 8.23MB); Shell-render time (loading
+    skeleton removed) 2376ms → 1945ms; full boot ready 2385ms → 2021ms.
+    Under ~40ms simulated realistic per-request latency (the same server
+    used for the DuckDB-connection-serialization finding above): total
+    bytes 21.61MB → 6.07MB (the bigger gap here is the real, confirmed
+    interaction with the still-unfixed coi-serviceworker double-reload —
+    see `project-docs/PIPELINE.md` — duplicating a much smaller eager
+    payload now); full boot ready 8774ms → 7842ms. `npm run typecheck`
+    clean; `npm run test:unit` 471/471 passing, unchanged (no unit-tested
+    pure module's own behavior changed — this feature is entirely
+    boot-sequencing/bundling).
+
 ---
 
 ## Reference implementations — copy patterns, don't re-derive

@@ -1,7 +1,8 @@
-import { Component, type ReactNode } from 'react'
+import { Component, Suspense, type ReactNode } from 'react'
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { PanelErrorState } from '@/panels/PanelErrorState'
+import { PanelLoadingState } from '@/panels/PanelLoadingState'
 import { registry } from '@/panels/registry'
 import { EXPANDABLE_PANEL_TYPES } from '@/panels/expandablePanelTypes'
 import { usePanelExpandHost } from '@/layout/panelExpandHost'
@@ -58,9 +59,20 @@ export function PanelCard({ config }: { config: PanelConfig }) {
   // changes across this component's own re-renders.
   const isExpandable = config.expandable ?? EXPANDABLE_PANEL_TYPES.has(config.type)
 
+  // 042-boot-performance-fix: registry[config.type] is now a React.lazy()
+  // component (panels/registry.tsx) — its own JS chunk may not have
+  // finished its dynamic import() yet the first time a tab renders a
+  // panel of this type. <Suspense> is the required boundary for that;
+  // placed INSIDE PanelErrorBoundary (not outside) so a rejected
+  // dynamic import — a genuine network failure fetching the chunk, not
+  // just a slow one — is also caught by the same error boundary every
+  // other panel-render failure already goes through, rather than needing
+  // a second, separate failure path.
   const panelElement = PanelComponent ? (
     <PanelErrorBoundary panelTitle={config.title}>
-      <PanelComponent config={config} />
+      <Suspense fallback={<PanelLoadingState height={config.height} />}>
+        <PanelComponent config={config} />
+      </Suspense>
     </PanelErrorBoundary>
   ) : null
 

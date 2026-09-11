@@ -408,3 +408,81 @@ already named. Needs its own dedicated discussion of what, if anything,
 this actually changes about build/deployment configuration — plausibly
 very little, given the existing multi-target `base:` pattern already
 exists to be extended, but not confirmed either way here.
+
+---
+
+## Boot-performance findings deferred by `042-boot-performance-fix`
+
+The `042` investigation (real, measured Playwright/CDP evidence against
+the live deployed site) identified five candidate causes of slow cold-
+cache load; two were confirmed real and dominant (sequential scenario-
+file registration, no code-splitting by panel type) and fixed by that
+feature. Three more real, confirmed findings came out of the
+investigation and this feature's own implementation/verification —
+each real, each worth its own dedicated look, none rushed into this fix.
+
+**1. coi-serviceworker double-registration reload.** Confirmed real via
+direct console-log/frame-navigation capture: the service worker
+registers, then triggers exactly one genuine full-page reload
+(`"Reloading page to make use of updated COOP/COEP Service Worker."`,
+two real `framenavigated` events). Every hashed entry-point asset (JS/
+CSS/font — 17 distinct files at the time of the investigation) gets
+requested twice as a result. Flagged in the investigation as real but
+secondary/bounded — not this fix's dominant cause — and confirmed to
+stay bounded under fast/near-zero-latency conditions. **A new, sharper
+finding from this fix's own verification**: under realistic per-request
+latency (a local A/B test with ~40ms artificial server latency, isolating
+the code change from real-world network variance), the double-fetch
+compounds badly with a LARGE eager payload — the pre-042 build's own
+`graphic-walker`/`maps`/`index` chunks (4.17MB/1.71MB/1.44MB) each showed
+up twice in one real page load, inflating total transferred bytes to
+21.6MB for that single visit. Post-042, the same double-fetch still
+happens (untouched, out of this feature's scope) but costs far less in
+absolute terms since the chunks it duplicates are now much smaller
+(`index`/`maps` only, at 1.03MB/0.84MB — `recharts`/`flowmap-deck`/
+`graphic-walker`/`plotly` are excluded from the double-fetch entirely
+since they no longer load eagerly at all). This is a real, positive
+interaction between the two fixes, but the underlying double-reload
+itself is unfixed and will keep taxing whatever IS still eager.
+
+**2. `MANUAL_BUNDLES` never configures a threaded DuckDB-WASM bundle.**
+`services/duckdb.ts`'s `MANUAL_BUNDLES` only registers `mvp`/`eh` — no
+`coi` (threaded, SharedArrayBuffer-based) bundle exists in the config at
+all, confirmed by direct read. The coi-serviceworker's entire purpose
+(enabling cross-origin isolation for `SharedArrayBuffer`) currently has
+no real consumer — `window.crossOriginIsolated` measures `true` after
+boot, but nothing in this app's DuckDB initialization path ever requests
+or benefits from it.
+
+**3. DuckDB-WASM's single shared connection serializes query execution
+internally, regardless of caller-side concurrency — found during this
+feature's own verification, not anticipated by the investigation.**
+`042` converted `scenarioDiscovery.ts`'s sequential per-file
+`registerFileURL()` loop to `Promise.all()`, confirmed functionally safe
+via a real, live test (12 real demo Parquet files registered concurrently
+vs. sequentially against the actual running DuckDB-WASM connection —
+byte-identical row counts, zero errors). But a follow-up real-network
+test (the same local latency-injecting server used for the double-reload
+finding above) showed the ACTUAL HTTP requests triggered by those
+`Promise.all()`-wrapped calls still land strictly one at a time —
+confirmed not a bug in `042`'s own code by bypassing it entirely: a raw
+`Promise.all()` of 12 `registerFileURL()` calls fired directly via
+`window.__wftdm` (the app's own debug hook) against the same latency
+server showed the identical serialized pattern (each request starting
+the instant the previous one finished), while a control test — 12 plain
+`fetch()` calls against the same server — correctly overlapped (Chrome's
+real per-origin HTTP/1.1 connection limit, ~6 concurrent). This is
+normal, expected behavior for a single database connection (every SQL
+engine serializes statement execution within one connection — DuckDB is
+no exception), not a defect in DuckDB-WASM. It does mean `042`'s own
+Promise.all() conversion, while correct and the right code-level change
+for what was asked (no ordering-dependency regression, structurally
+ready to benefit automatically if the connection model ever changes), 
+delivers a smaller real-world network-parallelism win for the file-
+registration phase specifically than a naive "N requests × RTT" model
+would predict. Unlocking the full benefit would need multiple DuckDB
+connections (`db.connect()` can be called more than once) — a separate,
+materially more invasive change (concurrent-connection lifecycle/error-
+handling, thread-safety against the one shared `AsyncDuckDB` instance)
+that deserves its own dedicated design and testing, not a rushed addition
+here.

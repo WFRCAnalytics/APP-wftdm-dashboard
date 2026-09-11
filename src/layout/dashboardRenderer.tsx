@@ -1,7 +1,8 @@
-import { useMemo } from 'react'
+import { Suspense, useMemo } from 'react'
 import { PanelCard, PanelErrorBoundary } from '@/layout/panelCard'
 import { registry } from '@/panels/registry'
 import { PanelErrorState } from '@/panels/PanelErrorState'
+import { PanelLoadingState } from '@/panels/PanelLoadingState'
 import { findFullPagePanel, isMetricStripRow, resolveSections } from '@/layout/dashboardLayout'
 import { isMapRenderingPanel, type DashboardTabConfig, type PanelConfig } from '@/layout/types'
 
@@ -99,7 +100,12 @@ function FullPagePanel({ config }: { config: PanelConfig }) {
     <div className="flex min-h-0 flex-1 flex-col">
       {PanelComponent ? (
         <PanelErrorBoundary panelTitle={config.title}>
-          <PanelComponent config={config} />
+          {/* 042-boot-performance-fix: same Suspense requirement as
+              panelCard.tsx's own — registry[config.type] is a
+              React.lazy() component now, see that file's own comment. */}
+          <Suspense fallback={<PanelLoadingState height={config.height} />}>
+            <PanelComponent config={config} />
+          </Suspense>
         </PanelErrorBoundary>
       ) : (
         <PanelErrorState message={`Unknown panel type: "${config.type}"`} />

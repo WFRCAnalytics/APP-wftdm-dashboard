@@ -27,6 +27,7 @@ import { resolveEffectiveBasemap, basemapKey } from '@/panels/basemap/resolveEff
 import { loadBasemapStyle, BLANK_STYLE, freshBlankStyle } from '@/panels/basemap/loadBasemapStyle'
 import { PanelEmptyState } from '@/panels/PanelEmptyState'
 import { PanelErrorState } from '@/panels/PanelErrorState'
+import { DEFAULT_CENTER, DEFAULT_ZOOM } from '@/panels/mapDefaults'
 import type { FlowMapPanelConfig } from '@/layout/types'
 
 const ALL_FILTERS: ['*'] = ['*']
@@ -34,14 +35,17 @@ const ALL_FILTERS: ['*'] = ['*']
 // Default view state when a panel's config omits center/zoom — roughly
 // the Wasatch Front, matching both real reference apps' own default
 // centering (research.md; project-docs/GRAMMAR.md's own worked example uses the
-// same coordinates). Exported (021-basemap-catalog-redesign) so
-// layout/settings/basemapTab.tsx's own shared preview map can reuse the
-// EXACT same values directly rather than redefining an equivalent pair —
+// same coordinates). 042-boot-performance-fix: moved to
+// panels/mapDefaults.ts (a dependency-free module) and re-exported here —
+// layout/settings/basemapTab.tsx's own shared preview map now imports
+// directly from that module instead of from this file, so reusing these
+// two literals no longer transitively pulls maplibre-gl/@deck.gl/
+// @flowmap.gl/layers into basemapTab.tsx's own always-eager reachability
+// graph (see mapDefaults.ts's own header comment for the full finding).
 // ZoneMapPanel.tsx still keeps its own private copy (untouched, out of
 // this feature's scope) since importing across two already-independent
 // panel types for two primitive numbers isn't worth the coupling.
-export const DEFAULT_CENTER: [number, number] = [-111.89, 40.76]
-export const DEFAULT_ZOOM = 9
+export { DEFAULT_CENTER, DEFAULT_ZOOM }
 
 // 012-webgl-context-management's own BLANK_STYLE_LAYER_IDS constant
 // (guarding a since-REMOVED transformStyle option below against

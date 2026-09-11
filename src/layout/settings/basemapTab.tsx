@@ -32,7 +32,13 @@ import {
 } from '@/panels/basemap/registry'
 import { loadBasemapStyle, freshBlankStyle } from '@/panels/basemap/loadBasemapStyle'
 import { PROTOMAPS_FLAVOR_NAMES, isProtomapsFlavorName } from '@/panels/basemap/protomapsStyle'
-import { DEFAULT_CENTER, DEFAULT_ZOOM } from '@/panels/FlowMapPanel'
+// 042-boot-performance-fix: imported from the dependency-free
+// mapDefaults.ts, NOT from FlowMapPanel.tsx (this file is reachable
+// unconditionally from Shell -> SettingsModal -> BasemapTab, so an import
+// of FlowMapPanel.tsx itself would transitively pull maplibre-gl/
+// @deck.gl/@flowmap.gl/layers into the app's eager entry graph — see
+// mapDefaults.ts's own header comment for the full finding).
+import { DEFAULT_CENTER, DEFAULT_ZOOM } from '@/panels/mapDefaults'
 import { useGlobalBasemap } from '@/hooks/useGlobalBasemap'
 import { useProtomapsSource } from '@/hooks/useProtomapsSource'
 import { setGlobalBasemap } from '@/state/basemapState'
