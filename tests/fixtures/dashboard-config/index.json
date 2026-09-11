@@ -1,6 +1,0 @@
-{
-  "dashboards": ["dashboard-1-summary.yaml", "dashboard-2-detail.yaml", "dashboard-3-basemaps.yaml"],
-  "title": "Fixture Test Dashboard",
-  "logoUrl": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='32'%3E%3Crect width='120' height='32' fill='%23023c5b'/%3E%3C/svg%3E",
-  "logoUrlDark": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='32'%3E%3Crect width='120' height='32' fill='%23ffffff'/%3E%3C/svg%3E"
-}

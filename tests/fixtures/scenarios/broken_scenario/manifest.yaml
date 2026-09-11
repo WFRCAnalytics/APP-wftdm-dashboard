@@ -1,4 +1,0 @@
-scenario_name: "broken_scenario"
-display_name: "Broken Fixture Scenario"
-color: "#e15759"
-notes: "Fixture scenario with missing summary/index.json, on purpose"
