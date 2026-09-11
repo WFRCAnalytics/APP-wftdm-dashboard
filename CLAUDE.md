@@ -2934,6 +2934,191 @@ below, now both documented in `project-docs/ARCHITECTURE.md`.
 
 ---
 
+## Protomaps PMTiles basemap
+
+Done (`041-protomaps-pmtiles-basemap`). Adds all 5 official Protomaps
+flavors (`protomaps-light`/`-dark`/`-white`/`-grayscale`/`-black`) as a
+new "Protomaps" section in the Basemap tab's catalog, positioned
+directly above Raster Tiles — no code change to `BasemapPresetName`
+needed (`panels/basemap/types.ts`'s existing `string` type already
+covers them, `panels/basemap/registry.ts`'s `BUILT_IN_PRESETS` is
+**not** touched). Two new npm dependencies confirmed real/current via
+`npm view` at implementation time: `@protomaps/basemaps@^5.7.2` (zero
+runtime dependencies) and `pmtiles@^4.5.0` (one dependency, `fflate`) —
+both folded into `vite.config.ts`'s existing `maps` chunk, not a new
+dedicated one.
+
+Styling is generated PROGRAMMATICALLY at resolve-time via the real,
+installed `layers(sourceName, namedFlavor(flavorName), {lang:'en'})` —
+never a hand-authored per-flavor style document (the whole reason this
+integration path was chosen over 5 committed style.json files: a future
+Protomaps flavor-definition update needs no regenerated/diffed output
+here). New `panels/basemap/protomapsStyle.ts` (pure, DOM-free —
+`PROTOMAPS_FLAVOR_NAMES`, `PROTOMAPS_ATTRIBUTION`,
+`isProtomapsFlavorName()`, `buildProtomapsStyle()`) is the one place
+that calls into `@protomaps/basemaps`. New `panels/basemap/
+pmtilesProtocol.ts` registers the `pmtiles://` MapLibre protocol
+(`maplibregl.addProtocol('pmtiles', new Protocol().tile)`) as a
+MODULE-LOAD side effect — imported once, at the top of `loadBasemapStyle.ts`
+(the one shared resolution path every map-rendering surface already
+funnels through), so `main.tsx`'s boot sequence needed zero changes and
+ES module singleton caching guarantees the registration itself only
+ever runs once.
+
+`resolvePresetName()` in `loadBasemapStyle.ts` gained ONE new branch
+(checked before the existing raster-provider-name fallback): a
+Protomaps flavor name is deliberately **not** a static
+`BUILT_IN_PRESETS` entry (unlike the UGRC composition aliases) — its
+real value depends on a RUNTIME-configured PMTiles source, unknown at
+module load time — so it's resolved via `isProtomapsFlavorName()` +
+`getEffectivePmtilesSource()` instead, falling back to the same
+`freshBlankStyle()` every other unconfigured/unreachable basemap
+already uses when no source is available (FR-010, no new fallback
+mechanism invented).
+
+**Shared source, two-tier precedence** (`state/protomapsSourceState.ts`,
+new — data-model.md E-2): `viewerOverride ?? deployerDefault ?? undefined`.
+- **Deployer default** — one more optional field,
+  `protomapsPmtilesUrl?: string`, on the SAME `dashboard-config/
+  index.json` discovery-file shape `title`/`logoUrl`/`scenarioPalette`
+  already live on (`services/yamlLoader.ts`'s `DashboardBranding`) — no
+  new config file type (Constitution Principle VII), same real/demo-root
+  precedence, resolved once at boot in `main.tsx` via
+  `setDeployerPmtilesUrl()` (mirrors `panels/scenarioDisplay.ts`'s
+  `setDeployerScenarioPalette()` shape — a plain module-level value, no
+  reactivity needed since it never changes post-boot). Accepts EITHER a
+  path relative to this app's own bundled assets OR a full external
+  `https://` URL — both are just strings to the `pmtiles://` source `url`
+  field; a relative string resolves correctly via the browser's own
+  native `fetch()` relative-URL handling (confirmed directly against the
+  real, installed `pmtiles` package's `FetchSource` — it calls plain
+  `fetch(this.url, ...)`, no Node-style base-URL resolution involved), so
+  no extra resolution code was needed for either form.
+- **Viewer session override** — `setViewerPmtilesOverride()`/
+  `clearViewerPmtilesOverride()` + `subscribe()`/`notify()` (mirrors
+  `state/basemapState.ts`'s exact shape — reactive, since both the
+  Basemap tab and any already-mounted map panel need to pick up a change
+  live). Plain in-memory module state, never `localStorage`/
+  `sessionStorage` (Constitution Principle VI) — satisfies "never
+  persists beyond the current session" for free, a page reload clears it
+  with no explicit cleanup. Validated before being accepted: the entered
+  URL is opened via the real `pmtiles` client's own `new
+  PMTiles(url).getHeader()` call — the natural, already-provided
+  validation surface, no hand-rolled byte-sniffing.
+- New `hooks/useProtomapsSource.ts` (mirrors `hooks/useGlobalBasemap.ts`'s
+  no-cache primitive-return shape) is threaded into
+  `FlowMapPanel.tsx`'s/`ZoneMapPanel.tsx`'s EXISTING basemap-application
+  effect's own dependency array (alongside their existing
+  `useGlobalBasemap()` call) and into `basemapTab.tsx`'s own preview-map
+  effect — a source becoming available/changing re-resolves an
+  already-active `protomaps-*` selection with no panel remount, even
+  though `basemapKey()`'s own content-based `key` stays identical when
+  only the underlying SOURCE changes (the selection string itself
+  doesn't).
+
+**A real, confirmed bug found and fixed during implementation**:
+`basemapTab.tsx`'s own `isRasterProviderSelection()` helper
+(`resolveBuiltInPreset(name) === undefined`) also matched every
+Protomaps flavor name (since they're deliberately not a
+`BUILT_IN_PRESETS` entry either) — left unfixed, staging a Protomaps
+flavor would have wrongly routed it into the preview effect's
+raster-only error/timeout-detection branch (scoped to a source id,
+`"basemap"`, a Protomaps style never uses), and its 4-second
+no-tile-loaded timeout would have flagged every successfully-loading
+Protomaps selection as failed. Fixed by excluding
+`isProtomapsFlavorName(name)` explicitly in that same helper.
+
+**Attribution**: the confirmed real string
+(`<a href="https://github.com/protomaps/basemaps">Protomaps</a> © <a
+href="https://openstreetmap.org">OpenStreetMap</a>`) is set as the
+`protomaps` source's own `attribution` field — rendered by MapLibre's
+own built-in `AttributionControl`, already present on every map
+instance in this app, no new attribution wiring needed. Sprite/glyph
+assets are the confirmed-stable `protomaps.github.io/basemaps-assets`
+host (a per-flavor sprite sheet, one shared glyphs template) — used
+directly, never fetched from a discovery endpoint.
+
+**Never hardcoded**: no Protomaps-hosted demo-bucket/daily-build/
+hosted-API URL appears anywhere in `src/` as a default (Protomaps' own
+documentation explicitly forbids hotlinking those) — confirmed via a
+`grep` sweep at completion; the only two literal `protomaps.*` URLs in
+`src/` are the GitHub repo link inside the attribution string and the
+confirmed-stable `basemaps-assets` sprite/glyph host. `public/
+demo-dashboard-config/index.json` deliberately does NOT set
+`protomapsPmtilesUrl` — the real demo deployment ships Protomaps
+genuinely "not configured," exercising that real UI state honestly
+(WFRC has not yet prepared a real Wasatch Front PMTiles extract).
+
+**Test fixture**: `tests/fixtures/protomaps/tiny-test-area.pmtiles` — a
+small (374-byte), real, valid PMTiles v3 archive, generated by
+`scripts/build-protomaps-test-fixture.py` via the real, official Python
+`pmtiles` package (`uv run --with pmtiles python scripts/
+build-protomaps-test-fixture.py`), containing exactly one empty
+(zero-layer) tile at z0/x0/y0. A genuinely NEW technique this feature
+needed: no `pmtiles`/`tippecanoe`/Go toolchain was available in the
+implementing environment, so `uv run --with pmtiles` (a real, working
+internet-backed resolve) was used specifically to fetch a tool for
+one-off asset generation, not for the app's own dependency tree — the
+same category of "prepare a small, real, git-tracked test asset"
+precedent `031-all-panel-demo-content`'s own `taz25.geoparquet` already
+established for a different data type. An empty tile is deliberately
+sufficient: a flavor's own `background` layer (confirmed distinct per
+flavor in the real, installed `@protomaps/basemaps` `Flavor` type)
+paints regardless of whether any real feature data exists for the
+current viewport, so `tests/integration/protomapsBasemap.spec.ts` proves
+real, distinct per-flavor rendering via canvas pixel sampling without
+needing to hand-author a full, schema-correct vector tile.
+
+**A real, confirmed spec-writing correction, caught during
+implementation, not assumed**: the original FR-012 wording ("switching
+flavors MUST NOT re-fetch the underlying vector tile data") turned out
+to be imprecise once tested against a real archive — `map.setStyle()`
+recreates the vector source's own tile layer on every call (true for
+ANY basemap switch in this app, not Protomaps-specific), so the
+specific tiles currently in view legitimately re-request on every
+flavor switch. The real, meaningful, ACHIEVABLE guarantee (and the one
+`pmtiles`'s own `Protocol` class actually provides, confirmed via its
+real source): the archive's own header/root-directory — a fixed
+`bytes=0-16383` range read, the expensive part for a real, large
+regional extract — is opened exactly ONCE per source URL and reused
+across every flavor switch, never re-parsed. `spec.md`/`contracts/
+basemap-resolution.md`/`quickstart.md` were all corrected to state this
+precisely; the regression test asserts the header-range request count
+stays at 1 across 3 flavor switches, not "zero new requests of any
+kind."
+
+**Regression check** (confirmed, not assumed): `npm run typecheck`
+clean; `npm run test:unit` 471/471 passing (7 new,
+`protomapsStyle.test.ts`); the new `protomapsBasemap.spec.ts` 6/6
+passing. A pre-existing, UNRELATED regression was found and fixed
+during this pass: `settingsModal.spec.ts`'s own "renders four labeled
+sections" test asserted an exact 4-heading list, which this feature's
+new "Protomaps" section (the 5th) collided with — fixed to expect 5.
+Separately confirmed via a `git stash` A/B comparison, not assumed: the
+~30 OTHER `settingsModal.spec.ts` failures on this same run (Scenarios
+tab drag-and-drop, color picker, reorder — none of which this feature
+touches) reproduce byte-for-byte identically on the clean, unmodified
+tree — genuine pre-existing environment flakiness in the implementing
+sandbox, not caused by this feature. `tests/integration/
+flowmapPanel.spec.ts`/`zonemapPanel.spec.ts` were found, via the same
+git-stash A/B technique, to be ENTIRELY pre-existing broken in this
+checkout — both still reference a fixture-only "Basemaps" tab and
+panel titles (e.g. "Flow Map Trip Distribution Desire Lines") that no
+longer exist in the real demo content at all, an apparent gap left by
+`040-test-suite-migration`'s own incomplete scope (that feature's own
+CLAUDE.md entry records only "Foundation + US1 MVP" as implemented,
+`dashboardShell.spec.ts`'s migration explicitly deferred — these two
+large map-panel spec files were evidently deferred too, silently, and
+remain un-migrated) — flagged here as a real, separate, still-open gap
+for its own follow-up, not something this feature caused or is in
+scope to fix. A targeted, throwaway smoke check (not part of the
+permanent suite) confirmed the real demo's own live flowmap/zonemap
+panels (Network tab) still render correctly, 2 real canvases, no new
+console error, after this feature's `useProtomapsSource()` wiring into
+their basemap-application effects.
+
+---
+
 ## Graphic Walker panel
 
 Done (`014-graphic-walker-panel`). The sketch this section originally

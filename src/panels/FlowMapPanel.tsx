@@ -12,6 +12,7 @@ import * as filterState from '@/state/filterState'
 import { useFilterState } from '@/hooks/useFilterState'
 import { useActiveScenarios } from '@/hooks/useActiveScenarios'
 import { useGlobalBasemap } from '@/hooks/useGlobalBasemap'
+import { useProtomapsSource } from '@/hooks/useProtomapsSource'
 import {
   buildPanelQuery,
   resolveActiveScenarios,
@@ -103,6 +104,14 @@ export function FlowMapPanel({ config }: { config: FlowMapPanelConfig }) {
   // this panel's ONLY use of useColorScheme(), confirmed dead once
   // removed.
   const globalBasemap = useGlobalBasemap()
+  // 041-protomaps-pmtiles-basemap: a Protomaps flavor's own resolved
+  // style depends on this value too, but basemapKey()/`key` below stays
+  // IDENTICAL when only the underlying PMTiles source changes (e.g. a
+  // viewer setting/clearing a session override) while the panel's own
+  // `basemap: protomaps-*` selection string doesn't — so it's threaded
+  // into this effect's own dependency array directly (below), not into
+  // `key`/basemapKey() itself, the same way `mapReady` already is.
+  const protomapsSource = useProtomapsSource()
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
   const overlayRef = useRef<MapboxOverlay | null>(null)
@@ -616,7 +625,14 @@ export function FlowMapPanel({ config }: { config: FlowMapPanelConfig }) {
     // No lint config exists in this repo to silence for this (confirmed
     // — no .eslintrc*/eslint.config.* present), so no disable-comment is
     // needed here, just this explanation.
-  }, [key, mapReady])
+    //
+    // 041-protomaps-pmtiles-basemap: `protomapsSource` is ALSO in this
+    // dependency array — a real, effective PMTiles source becoming
+    // available (or a viewer clearing their own session override) must
+    // re-resolve an already-active `protomaps-*` selection with no panel
+    // remount, even though `key` itself is unchanged (see this value's
+    // own declaration comment above).
+  }, [key, mapReady, protomapsSource])
 
   // Data update — rebuilds the FlowmapLayer and pushes it to the
   // already-existing overlay via setProps(). Never creates a new

@@ -4,6 +4,13 @@
 import type { StyleSpecification } from 'maplibre-gl'
 import { isBasemapComposition, type BasemapSelection } from '@/panels/basemap/types'
 import { resolveBuiltInPreset, resolveRasterProvider } from '@/panels/basemap/registry'
+// 041-protomaps-pmtiles-basemap: importing this module IS the pmtiles://
+// MapLibre protocol registration (a module-load side effect, run exactly
+// once via ES module singleton caching) — see that file's own header
+// comment for why this is the one real import site, not main.tsx.
+import '@/panels/basemap/pmtilesProtocol'
+import { buildProtomapsStyle, isProtomapsFlavorName } from '@/panels/basemap/protomapsStyle'
+import { getEffectivePmtilesSource } from '@/state/protomapsSourceState'
 
 // Same background-only, zero-network style FlowMapPanel.tsx defined in
 // 010-flowmap-panel — re-exported here as the single source of truth for
@@ -102,6 +109,20 @@ async function resolvePresetName(name: string, signal?: AbortSignal): Promise<Re
   const builtIn = resolveBuiltInPreset(name)
   if (builtIn?.kind === 'url') return { kind: 'url', url: builtIn.url }
   if (builtIn?.kind === 'composition') return { kind: 'style', style: await composeStyles(builtIn.layers, signal) }
+
+  // 041-protomaps-pmtiles-basemap: NOT a static BUILT_IN_PRESETS entry
+  // (research.md R-6) — its real value depends on a runtime-configured
+  // source (state/protomapsSourceState.ts) unknown at module load time,
+  // unlike every other built-in preset above. Checked before the
+  // raster-provider fallback below, contracts/basemap-resolution.md.
+  if (isProtomapsFlavorName(name)) {
+    const pmtilesUrl = getEffectivePmtilesSource()
+    // FR-010 — no deployer default AND no viewer override: the same
+    // fail-soft fallback every other unconfigured/unreachable basemap
+    // case already uses, never a thrown error up to the panel.
+    if (!pmtilesUrl) return { kind: 'style', style: freshBlankStyle() }
+    return { kind: 'style', style: buildProtomapsStyle(name, pmtilesUrl) }
+  }
 
   const raster = await resolveRasterProvider(name, signal)
   if (raster) {

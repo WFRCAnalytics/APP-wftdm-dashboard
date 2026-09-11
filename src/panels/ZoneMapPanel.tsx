@@ -10,6 +10,7 @@ import { useFilterState } from '@/hooks/useFilterState'
 import { useActiveScenarios } from '@/hooks/useActiveScenarios'
 import { useBaseline } from '@/hooks/useBaseline'
 import { useGlobalBasemap } from '@/hooks/useGlobalBasemap'
+import { useProtomapsSource } from '@/hooks/useProtomapsSource'
 import {
   buildComparisonDiffQuery,
   buildPanelQuery,
@@ -147,6 +148,10 @@ export function ZoneMapPanel({ config }: { config: ZoneMapPanelConfig }) {
   // resolveEffectiveBasemap()'s bottom fallback tier stopped being
   // theme-dependent (research.md §6).
   const globalBasemap = useGlobalBasemap()
+  // 041-protomaps-pmtiles-basemap: same reasoning as FlowMapPanel.tsx's
+  // own identical declaration — threaded into this effect's own
+  // dependency array below, not into `key`/basemapKey() itself.
+  const protomapsSource = useProtomapsSource()
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
   const probeRef = useRef<HTMLDivElement | null>(null)
@@ -583,8 +588,13 @@ export function ZoneMapPanel({ config }: { config: ZoneMapPanelConfig }) {
       controller.abort()
       detachStyleReadyListener?.()
     }
+    // 041-protomaps-pmtiles-basemap: protomapsSource added — see its own
+    // declaration comment above for why (a real source becoming
+    // available/changing must re-resolve an already-active
+    // `protomaps-*` selection with no remount, even though `key` itself
+    // is unchanged).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key, mapReady])
+  }, [key, mapReady, protomapsSource])
 
   // 5. Data update — joins rows to zoneGeometry by metric_id/
   // boundaries_id/zoneId, resolves each feature's fill color, and calls

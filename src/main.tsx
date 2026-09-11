@@ -27,6 +27,7 @@ import { initDuckDB } from './services/duckdb.ts'
 import { discoverScenarios } from './services/scenarioDiscovery.ts'
 import { loadDashboards, loadDashboardBranding, type DashboardBranding } from './services/yamlLoader.ts'
 import { setDeployerScenarioPalette } from './panels/scenarioDisplay.ts'
+import { setDeployerPmtilesUrl } from './state/protomapsSourceState.ts'
 import { parseDashboardConfig } from './layout/types.ts'
 import { Shell } from './layout/shell.tsx'
 import { get as getFilter, set as setFilter } from './state/filterState.ts'
@@ -100,6 +101,7 @@ const branding: DashboardBranding = {
   logoUrl: primaryBranding.logoUrl ?? demoBranding.logoUrl,
   logoUrlDark: primaryBranding.logoUrlDark ?? demoBranding.logoUrlDark,
   scenarioPalette: primaryBranding.scenarioPalette ?? demoBranding.scenarioPalette,
+  protomapsPmtilesUrl: primaryBranding.protomapsPmtilesUrl ?? demoBranding.protomapsPmtilesUrl,
 }
 // 036-scenario-color-picker: semantic validation (is each entry a real
 // CSS color) lives here, at the one real consumption point — loadDashboardBranding()
@@ -115,6 +117,15 @@ const validScenarioPalette = (branding.scenarioPalette ?? []).filter((entry) =>
   CSS.supports('color', entry),
 )
 setDeployerScenarioPalette(validScenarioPalette.length > 0 ? validScenarioPalette : undefined)
+// 041-protomaps-pmtiles-basemap: same real/demo-root precedence as every
+// other DashboardBranding field above — set once, at boot, before any
+// panel/Basemap-tab resolution could ever read it. No semantic
+// validation here (unlike scenarioPalette's CSS.supports() check above)
+// — a bad/unreachable URL is validated lazily, on first real use, by the
+// pmtiles client library itself (data-model.md E-2), the same fail-soft-
+// until-actually-used convention every other basemap source in this app
+// already follows.
+setDeployerPmtilesUrl(branding.protomapsPmtilesUrl)
 // Sets the browser tab's own title — independent of whether the header
 // renders it as visible text at all (shell.tsx only falls back to
 // showing it inline when no logo is configured, see that file's own

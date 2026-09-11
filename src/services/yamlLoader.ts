@@ -67,7 +67,14 @@ export async function loadManifest(url: string): Promise<DashboardConfig> {
 // boot regardless.
 type DashboardIndexJson =
   | string[]
-  | { dashboards: string[]; title?: unknown; logoUrl?: unknown; logoUrlDark?: unknown; scenarioPalette?: unknown }
+  | {
+      dashboards: string[]
+      title?: unknown
+      logoUrl?: unknown
+      logoUrlDark?: unknown
+      scenarioPalette?: unknown
+      protomapsPmtilesUrl?: unknown
+    }
 
 /**
  * Deployer-configurable app-wide branding — a real, minimal mechanism for
@@ -107,6 +114,21 @@ export interface DashboardBranding {
    * happens once, in main.tsx, where the resolved value is actually
    * consumed (specs/036-scenario-color-picker/research.md §3). */
   scenarioPalette?: string[]
+  /** 041-protomaps-pmtiles-basemap: the deployer-level default PMTiles
+   * source shared by all 5 Protomaps basemap flavors (contracts/
+   * deployer-config.md). Either a path relative to this app's own
+   * deployed assets or a full https:// URL — both forms behave
+   * identically (FR-004), since this stays a thin, format-only parse
+   * (matching every other field on this interface) and both are just
+   * strings to state/protomapsSourceState.ts's getEffectivePmtilesSource()
+   * and panels/basemap/protomapsStyle.ts's buildProtomapsStyle().
+   * Absent -> no deployer default; the Basemap tab's Protomaps section
+   * is "not configured" unless a viewer sets a session override
+   * (FR-010). MUST NEVER default to a Protomaps-hosted demo/daily-build/
+   * hosted-API URL (FR-005) — this field is simply left undefined when a
+   * deployer hasn't prepared their own extract; there is no fallback URL
+   * here to omit. */
+  protomapsPmtilesUrl?: string
 }
 
 function isDashboardIndexObject(
@@ -202,6 +224,10 @@ export async function loadDashboardBranding(
       scenarioPalette: Array.isArray(parsed.scenarioPalette)
         ? parsed.scenarioPalette.filter((c): c is string => typeof c === 'string')
         : undefined,
+      protomapsPmtilesUrl:
+        typeof parsed.protomapsPmtilesUrl === 'string' && parsed.protomapsPmtilesUrl.length > 0
+          ? parsed.protomapsPmtilesUrl
+          : undefined,
     }
   } catch {
     return {}

@@ -56,6 +56,17 @@ export default defineConfig({
           // + the whole deck.gl/flowmap.gl/luma.gl family are all large,
           // previously-absent libraries, split into their own chunk for the
           // same reason plotly got one above.
+          // 041-protomaps-pmtiles-basemap: pmtiles + @protomaps/basemaps are
+          // both small, dependency-light (pmtiles has one dependency,
+          // fflate; @protomaps/basemaps has zero, confirmed via `npm view`)
+          // and meaningfully useless without maplibre-gl already loaded —
+          // they only ever run inside this app's own MapLibre style-
+          // resolution path (panels/basemap/loadBasemapStyle.ts). Folded
+          // into the existing "maps" bucket rather than a new dedicated
+          // chunk, matching this project's own "don't split out a small
+          // addition" precedent (d3-sankey/d3-scale-chromatic were never
+          // split out either) — revisit only if a measured build-size
+          // regression is found (research.md R-8).
           if (
             id.includes('maplibre-gl') ||
             id.includes('@deck.gl') ||
@@ -63,7 +74,10 @@ export default defineConfig({
             id.includes('@luma.gl') ||
             id.includes('@math.gl') ||
             id.includes('@loaders.gl') ||
-            id.includes('@probe.gl')
+            id.includes('@probe.gl') ||
+            id.includes('pmtiles') ||
+            id.includes('@protomaps/basemaps') ||
+            id.includes('fflate')
           ) {
             return 'maps'
           }

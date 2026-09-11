@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore, type FormEvent } from 'react'
 import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import '@/panels/mapControls.css'
+import { PMTiles } from 'pmtiles'
 import {
   Landmark,
   Globe,
@@ -15,6 +16,9 @@ import {
   Satellite,
   Mountain,
   Star,
+  Layers,
+  Contrast,
+  CircleDashed,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -27,9 +31,17 @@ import {
   type CuratedRasterProvider,
 } from '@/panels/basemap/registry'
 import { loadBasemapStyle, freshBlankStyle } from '@/panels/basemap/loadBasemapStyle'
+import { PROTOMAPS_FLAVOR_NAMES, isProtomapsFlavorName } from '@/panels/basemap/protomapsStyle'
 import { DEFAULT_CENTER, DEFAULT_ZOOM } from '@/panels/FlowMapPanel'
 import { useGlobalBasemap } from '@/hooks/useGlobalBasemap'
+import { useProtomapsSource } from '@/hooks/useProtomapsSource'
 import { setGlobalBasemap } from '@/state/basemapState'
+import {
+  subscribe as subscribeProtomapsSource,
+  getViewerPmtilesOverride,
+  setViewerPmtilesOverride,
+  clearViewerPmtilesOverride,
+} from '@/state/protomapsSourceState'
 import { PanelEmptyState } from '@/panels/PanelEmptyState'
 import { PanelErrorState } from '@/panels/PanelErrorState'
 import type { BasemapPresetName } from '@/panels/basemap/types'
@@ -138,12 +150,55 @@ type RasterSectionStatus =
 // composition presets is, by construction, a raster provider's dotted
 // name (or bare name) — reusing the existing registry lookup rather than
 // inventing a second naming convention (research.md §5).
+//
+// 041-protomaps-pmtiles-basemap: a Protomaps flavor name ALSO resolves
+// to `undefined` from resolveBuiltInPreset() (research.md R-6 — it's
+// deliberately not a static BUILT_IN_PRESETS entry), so it must be
+// excluded here explicitly or it would be misclassified as a raster
+// provider — which would wrongly route it into the preview effect's
+// raster-only error/timeout-detection branch below (scoped to a source
+// id, "basemap", that a Protomaps style never uses) and, worse, would
+// ALWAYS flag a successfully-loading Protomaps selection as failed once
+// that branch's own 4-second no-tile-loaded timeout elapses.
 function isRasterProviderSelection(name: BasemapPresetName): boolean {
-  return resolveBuiltInPreset(name) === undefined
+  return resolveBuiltInPreset(name) === undefined && !isProtomapsFlavorName(name)
+}
+
+// Honest, categorical icons (never a fabricated preview of what the
+// flavor actually renders as) — same convention every entry in SECTIONS
+// above already follows. Built FROM PROTOMAPS_FLAVOR_NAMES (data-model.md
+// E-1's own single-source-of-truth requirement) rather than a second,
+// independently-maintained list of the same 5 names.
+const PROTOMAPS_FLAVOR_LABEL_AND_ICON: Record<(typeof PROTOMAPS_FLAVOR_NAMES)[number], { label: string; icon: LucideIcon }> = {
+  'protomaps-light': { label: 'Light', icon: Sun },
+  'protomaps-dark': { label: 'Dark', icon: Moon },
+  'protomaps-white': { label: 'White', icon: Sparkles },
+  'protomaps-grayscale': { label: 'Grayscale', icon: Contrast },
+  'protomaps-black': { label: 'Black', icon: CircleDashed },
 }
 
 export function BasemapTab() {
   const appliedBasemap = useGlobalBasemap()
+  // 041-protomaps-pmtiles-basemap — the effective PMTiles source
+  // (viewer override ?? deployer default ?? undefined). Reactive: a
+  // viewer committing/clearing their own override below re-renders this
+  // component (and the shared preview map, via its own effect
+  // dependency) immediately, no reload.
+  const protomapsSource = useProtomapsSource()
+  // Whether the CURRENT source is specifically a viewer override (as
+  // opposed to the deployer default, or nothing) — drives the "Reset to
+  // default" affordance (contracts/basemap-tab-ui.md). A second,
+  // independent useSyncExternalStore call against the same store/
+  // selector-free subscribe(), watching a different selector than
+  // useProtomapsSource()'s own — both are valid, ordinary React.
+  const protomapsOverrideActive = useSyncExternalStore(
+    subscribeProtomapsSource,
+    () => getViewerPmtilesOverride() !== undefined,
+  )
+  const [protomapsOverrideDraft, setProtomapsOverrideDraft] = useState('')
+  const [protomapsOverrideStatus, setProtomapsOverrideStatus] = useState<
+    { kind: 'idle' } | { kind: 'validating' } | { kind: 'error'; message: string }
+  >({ kind: 'idle' })
   // T013 — initialized ONCE to whatever is currently applied (or the
   // resolved app-default), so the preview never starts blank (FR-011).
   // Deliberately not re-synced on a later live appliedBasemap change —
@@ -310,7 +365,12 @@ export function BasemapTab() {
       if (onSourceError) map.off('error', onSourceError)
       if (onSourceData) map.off('data', onSourceData)
     }
-  }, [mapReady, stagedSelection])
+    // 041-protomaps-pmtiles-basemap: protomapsSource added — a source
+    // becoming available/changing (deployer default resolving, or a
+    // viewer committing/clearing their own override) must re-resolve an
+    // already-staged `protomaps-*` selection immediately, with no
+    // reload (contracts/basemap-tab-ui.md).
+  }, [mapReady, stagedSelection, protomapsSource])
 
   // T015 — the Raster Tiles section's own async load status. The other
   // three sections need no equivalent state (their entries are
@@ -329,6 +389,38 @@ export function BasemapTab() {
   }, [])
 
   const stagedIsRaster = isRasterProviderSelection(stagedSelection)
+
+  // 041-protomaps-pmtiles-basemap (FR-007, data-model.md E-2's
+  // validation rule): before accepting a viewer-entered URL, confirm it
+  // actually opens — the `pmtiles` client library's own real
+  // getHeader() call is the natural, already-provided validation
+  // surface, no hand-rolled byte-sniffing needed. A reachable-but-not-a-
+  // valid-PMTiles-archive URL rejects the same way an unreachable one
+  // does — both are "this source doesn't work," never a silent
+  // fallback (contracts/basemap-tab-ui.md).
+  async function handleCommitProtomapsOverride(e: FormEvent) {
+    e.preventDefault()
+    const url = protomapsOverrideDraft.trim()
+    if (!url) return
+    setProtomapsOverrideStatus({ kind: 'validating' })
+    try {
+      await new PMTiles(url).getHeader()
+      setViewerPmtilesOverride(url)
+      setProtomapsOverrideStatus({ kind: 'idle' })
+      setProtomapsOverrideDraft('')
+    } catch {
+      setProtomapsOverrideStatus({
+        kind: 'error',
+        message: "Couldn't open this PMTiles source — check the URL and try again.",
+      })
+    }
+  }
+
+  function handleResetProtomapsOverride() {
+    clearViewerPmtilesOverride()
+    setProtomapsOverrideStatus({ kind: 'idle' })
+    setProtomapsOverrideDraft('')
+  }
 
   return (
     // UI polish pass: this component now owns its OWN internal scroll
@@ -464,6 +556,110 @@ export function BasemapTab() {
             </div>
           </div>
         ))}
+
+        {/* 041-protomaps-pmtiles-basemap: "Protomaps" — positioned
+            directly above Raster Tiles, after the three vector sections
+            above (spec.md FR-001). Not one more SECTIONS entry — unlike
+            those three static sections, whether these 5 tiles are
+            selectable at all depends on runtime state (is a PMTiles
+            source currently configured?), a genuinely different
+            rendering shape (contracts/basemap-tab-ui.md). */}
+        <div className="flex flex-col gap-1.5">
+          <h3 className="flex items-center gap-1.5 border-b border-border pb-1 font-heading text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <Layers className="h-3.5 w-3.5" aria-hidden="true" />
+            Protomaps
+          </h3>
+          <div
+            className="grid grid-cols-[repeat(auto-fit,minmax(84px,1fr))] gap-2"
+            role="radiogroup"
+            aria-label="Protomaps"
+          >
+            {PROTOMAPS_FLAVOR_NAMES.map((name) => {
+              const { label, icon: EntryIcon } = PROTOMAPS_FLAVOR_LABEL_AND_ICON[name]
+              const staged = stagedSelection === name
+              return (
+                <button
+                  key={name}
+                  type="button"
+                  role="radio"
+                  aria-checked={staged}
+                  data-staged={staged || undefined}
+                  disabled={!protomapsSource}
+                  onClick={() => setStagedSelection(name)}
+                  title={!protomapsSource ? 'No PMTiles source configured' : undefined}
+                  className={cn(
+                    'flex flex-col items-center justify-center gap-1.5 rounded-lg border px-2 py-3 text-center text-sm font-medium transition-colors',
+                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                    'disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-card',
+                    staged
+                      ? 'border-transparent bg-accent text-accent-foreground'
+                      : 'border-border bg-card text-muted-foreground hover:bg-muted',
+                  )}
+                >
+                  <EntryIcon className="h-5 w-5" aria-hidden="true" />
+                  {label}
+                </button>
+              )
+            })}
+          </div>
+
+          {/* FR-010 — clearly distinguishable from the error state below:
+              this means "nothing is set up here at all," not "something
+              is set up here and it's broken." */}
+          {!protomapsSource && (
+            <p className="text-sm text-muted-foreground" data-testid="protomaps-not-configured">
+              No PMTiles source configured for this deployment.
+            </p>
+          )}
+          {protomapsSource && (
+            <p className="text-xs text-muted-foreground" data-testid="protomaps-source-status">
+              {protomapsOverrideActive
+                ? 'Using your own session-only PMTiles source.'
+                : "Using this deployment's configured PMTiles source."}
+            </p>
+          )}
+
+          {/* FR-006 — always visible/editable, even once a deployer
+              default exists (a viewer may still override it for their
+              own session, contracts/basemap-tab-ui.md); never persists
+              beyond this session (state/protomapsSourceState.ts). */}
+          <form
+            onSubmit={handleCommitProtomapsOverride}
+            className="flex flex-col gap-1.5 sm:flex-row sm:items-center"
+          >
+            <label htmlFor="protomaps-source-override" className="sr-only">
+              PMTiles source URL
+            </label>
+            <input
+              id="protomaps-source-override"
+              type="text"
+              placeholder="https://example.com/your-region.pmtiles"
+              value={protomapsOverrideDraft}
+              onChange={(e) => setProtomapsOverrideDraft(e.target.value)}
+              className="h-9 flex-1 rounded-md border border-input bg-background px-3 text-sm"
+            />
+            <div className="flex gap-1.5">
+              <Button
+                type="submit"
+                size="sm"
+                variant="secondary"
+                disabled={protomapsOverrideStatus.kind === 'validating' || protomapsOverrideDraft.trim().length === 0}
+              >
+                {protomapsOverrideStatus.kind === 'validating' ? 'Checking…' : 'Use this source'}
+              </Button>
+              {protomapsOverrideActive && (
+                <Button type="button" size="sm" variant="ghost" onClick={handleResetProtomapsOverride}>
+                  Reset to default
+                </Button>
+              )}
+            </div>
+          </form>
+          {protomapsOverrideStatus.kind === 'error' && (
+            <p role="alert" data-testid="protomaps-source-error" className="text-sm text-destructive">
+              {protomapsOverrideStatus.message}
+            </p>
+          )}
+        </div>
 
         {/* T015/T016/T017 — Raster Tiles: loading/error/empty/ready.
             Participates in the SAME stage-then-Apply flow as the sections

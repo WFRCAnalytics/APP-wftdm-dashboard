@@ -431,7 +431,15 @@ test.describe('User Story 1 - Sectioned basemap catalog with stage-then-Apply', 
     // Section order: OpenFreeMap first (most universal, and the source of
     // the app-default 'openfreemap-positron'), then CARTO, then the
     // Utah-specific UGRC compositions, then Raster Tiles last.
-    await expect(headings).toHaveText(['OpenFreeMap', 'CARTO Vector Tiles', 'UGRC Vector Tiles', 'Raster Tiles'])
+    // 041-protomaps-pmtiles-basemap: "Protomaps" is the 5th vector-style
+    // section, directly above Raster Tiles (spec.md FR-001).
+    await expect(headings).toHaveText([
+      'OpenFreeMap',
+      'CARTO Vector Tiles',
+      'UGRC Vector Tiles',
+      'Protomaps',
+      'Raster Tiles',
+    ])
 
     const ugrc = sectionRadioGroup(page, 'UGRC Vector Tiles')
     await expect(ugrc.getByRole('radio', { name: 'Vector Lite' })).toBeVisible()
