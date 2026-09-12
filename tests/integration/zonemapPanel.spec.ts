@@ -10,28 +10,101 @@ declare global {
 }
 
 // Real-browser tests for 013-zonemap-panel, extending
-// flowmapPanel.spec.ts's own pattern (real DuckDB-WASM, fixture
-// Parquet+GeoParquet, fixture dashboard-config). See quickstart.md and
+// flowmapPanel.spec.ts's own pattern (real DuckDB-WASM, real
+// Parquet+GeoParquet, real demo dashboard-config). See quickstart.md and
 // contracts/zonemap-panel.md.
 //
-// Fixture shape: 8 synthetic zones (TAZ 100-800, a 4x2 grid) in
-// tests/fixtures/geometry/taz.geoparquet, joined against
-// generate.py's own VMT_BY_HOME_TAZ_ROWS (good_scenario) — TAZ 100-400
-// under purpose HBW, 500/600/700/900 under purpose NHB. TAZ 800 never
-// appears in the metric under either purpose (the permanent "no data"
-// case); TAZ 900 appears in the metric but has no matching geometry
-// (the excluded-row case). observed/vmt_by_home_taz.parquet is a flat
-// 5.0-per-zone baseline for the comparison: diff fixture.
-const ZONEMAP_TITLE = 'Zone Map VMT per Capita'
-const AUTO_DOMAIN_TITLE = 'Zone Map VMT per Capita (Auto Domain)'
-const DIFF_TITLE = 'Zone Map VMT Diff (Good vs Observed)'
-const DIFF_UNRESOLVABLE_TITLE = 'Zone Map Diff Unresolvable Scenario (intentional)'
-const BROKEN_TITLE = 'Zone Map Broken Panel (intentional)'
+// 040-test-suite-migration (T025): migrated off the retired synthetic
+// 8-zone fixture (tests/fixtures/geometry/taz.geoparquet, a 4x2 TAZ
+// 100-800 grid — deleted entirely by T011's Phase 2 cutover). Real
+// geometry: public/demo-geometry/taz25.geoparquet (25 real MTC
+// prototype_mtc zones, TAZ 1-25, real bounds confirmed live: lon
+// -122.42096..-122.38439 / lat 37.76923..37.80563).
+//
+// TWO real anchor metrics were needed, not one — a real, confirmed
+// finding from this migration's own investigation, reported back and
+// confirmed with the user before continuing (the real scope is
+// genuinely larger than "re-derive the numbers against 25 zones"):
+//
+// - `vmt_by_home_taz` (home_zone_id, already real, already published as
+//   the Network tab's own "VMT by Home Zone (straight-line proxy)"
+//   panel) has real data for ALL 25 zones, in EVERY real scenario
+//   (baseline/density-variant/transit-variant — confirmed live). It has
+//   no `purpose` column at all (a plain `GROUP BY home_zone_id`,
+//   confirmed directly in summarize.yaml). This metric can never produce
+//   a real "no-data" zone and is not filterable — it anchors every test
+//   that needs neither (rendering, center/zoom, hover, 3D toggle,
+//   basemap precedence/switch/reset, attribution/nav controls, resize,
+//   registry consistency).
+// - `trips_by_destination_zone` (destination_zone_id × primary_purpose,
+//   already real, already published elsewhere) DOES have a real gap:
+//   filtering to `school` leaves real TAZ 14 with zero destination trips
+//   (24 of 25 zones covered) — confirmed live. This is the real no-data
+//   trigger, replacing the retired fixture's synthetic "TAZ 800 always
+//   no-data" case. Deliberately bound via a HARDCODED `filter: {
+//   primary_purpose: school }`, matching this project's own two other
+//   already-real zonemap/panel `filter:` usages
+//   (dashboard-3-tour-models.yaml, dashboard-5-trip-models.yaml) — NOT
+//   `$filters.purpose`. A live attempt at the global-filter form
+//   confirmed a real, broader finding: zero real sidebar filter controls
+//   exist anywhere in this demo (grep-confirmed), and
+//   `state/filterState.ts`'s `get()` returns `undefined` until some real
+//   UI control calls `set()` first — a `$filters.purpose`-bound panel
+//   would throw "unresolved placeholder" on every real page load, not
+//   just in an unmigrated test. The filter-REACTIVITY test itself is
+//   retired for the same reason dashboardShell.spec.ts/
+//   panelExpand.spec.ts/flowmapPanel.spec.ts already retired theirs:
+//   zero real content anywhere uses global filter reactivity.
+//
+// The retired fixture's "excluded" mechanic (a metric row with NO
+// matching zone geometry) has NO real trigger anywhere in this data
+// model — confirmed structurally, not just "untriggered today": every
+// real zone-keyed metric (`vmt_by_home_taz.home_zone_id`,
+// `trips_by_destination_zone.destination_zone_id`,
+// `land_use_summary.zone_id`) is built from the exact same closed
+// 25-zone universe (confirmed live: every one queries out to exactly
+// {1..25}, never anything else). The dedicated "excluded" test and the
+// excluded-count assertions inside the main rendering test are retired
+// outright, not worked around.
+//
+// `comparison: diff` real values: a real, confirmed correction made
+// during this migration's own implementation — `trips_by_destination_zone`
+// has MULTIPLE rows per zone (one per purpose), and comparison: diff's
+// own JOIN is on `compare_on` columns alone, so joining that metric
+// without ALSO including `primary_purpose` in `compare_on` produces a
+// real cross-product per zone, not one clean diff (confirmed live: the
+// resulting values didn't match a direct GROUP BY/SUM cross-check at
+// all). `vmt_by_home_taz` has exactly ONE row per zone per scenario and
+// is genuinely diff-compatible — real, confirmed per-zone diffs
+// (activitysim-density-variant minus activitysim-baseline): TAZ 22 =
+// 396.38-402.97 = -6.58 (real min), TAZ 8 = 1301.66-1281.89 = +19.76
+// (real max) — genuine sign variation for the diverging scale,
+// replacing the retired fixture's synthetic "TAZ 300 exactly at
+// midpoint" case (no real zone lands exactly at zero here — TAZ 19
+// comes closest at +0.01 — so this asserts real sign/magnitude at the
+// two real extremes instead of a contrived exact-zero zone).
+const ZONEMAP_TITLE = 'VMT by Home Zone (straight-line proxy)'
+const EXPLICIT_DOMAIN_TITLE = 'Zone Map Explicit Domain'
+const NO_DATA_TITLE = 'Zone Map Destination Trips by Purpose'
+const DIFF_TITLE = 'Zone Map VMT Diff (Density vs Baseline)'
+const DIFF_UNRESOLVABLE_TITLE = 'Zone Map Diff Unresolvable Scenario'
+const BROKEN_TITLE = 'Broken Zone Map Panel (missing metric)'
 const DIFF_BASELINE_TITLE = 'Zone Map VMT Diff via $baseline'
 
 async function boot(page: Page) {
   await page.goto('/')
   await page.waitForFunction(() => window.__wftdm !== undefined, null, { timeout: 30_000 })
+}
+
+// ZONEMAP_TITLE ("VMT by Home Zone (straight-line proxy)") lives on the
+// real Network tab (dashboard-6-network.yaml), unlike the retired
+// fixture's own landing-page placement.
+async function gotoNetworkTab(page: Page) {
+  await page.getByRole('tab', { name: 'Network' }).click()
+}
+
+async function gotoTestTab(page: Page) {
+  await page.getByRole('tab', { name: 'Test' }).click()
 }
 
 function panelCard(page: Page, title: string) {
@@ -47,7 +120,11 @@ function expandTrigger(page: Page, title: string) {
 }
 
 async function trueEventually(check: () => Promise<boolean>) {
-  await expect.poll(check).toBe(true)
+  // Matches flowmapPanel.spec.ts's own established timeout for this real,
+  // git-tracked demo content (25-zone geometry + spatial-extension
+  // network fetch on first use, not the retired synthetic 8-zone fixture
+  // the default 5000ms timeout was previously tuned against).
+  await expect.poll(check, { timeout: 10000 }).toBe(true)
 }
 
 async function waitForRender(page: Page, title: string) {
@@ -73,13 +150,16 @@ async function waitForRender(page: Page, title: string) {
  * introspection-API quirk — the panel's own actual rendering is
  * unaffected, since MapLibre paints each tile's copy with the same
  * fillColor regardless. */
-async function sourceFeatureProps(page: Page, title: string, expectedCount = 8) {
+async function sourceFeatureProps(page: Page, title: string, expectedCount = 25) {
   const read = async () => {
     const raw = await page.evaluate((t) => {
       const map = window.__zonemapTestMaps![t]
       return map
         .querySourceFeatures('zonemap-zones')
-        .map((f) => f.properties as { zoneId: string; value: number | null; fillColor: string })
+        .map(
+          (f) =>
+            f.properties as { zoneId: string; value: number | null; fillColor: string; fillHeight: number },
+        )
     }, title)
     return Array.from(new Map(raw.map((f) => [f.zoneId, f])).values())
   }
@@ -87,104 +167,91 @@ async function sourceFeatureProps(page: Page, title: string, expectedCount = 8) 
   return read()
 }
 
-/** Independently resolves a CSS color string the same way the panel
- * itself does (a hidden probe + getComputedStyle) — used to verify a
- * rendered zone's fillColor against a real, independently-computed
- * expectation rather than re-trusting the panel's own internal math. */
-async function resolveCssColorInBrowser(page: Page, cssColor: string): Promise<string> {
-  return page.evaluate((color) => {
-    const probe = document.createElement('div')
-    probe.style.cssText = 'position:absolute;visibility:hidden;'
-    document.body.appendChild(probe)
-    probe.style.color = color
-    const resolved = getComputedStyle(probe).color
-    probe.remove()
-    return resolved
-  }, cssColor)
-}
-
 test.describe('User Story 1 - Author renders a zone-level metric as a choropleth', () => {
   test('every zone renders shaded per its joined metric value, with a real resolved fill color', async ({
     page,
   }) => {
     await boot(page)
+    await gotoNetworkTab(page)
     const container = await waitForRender(page, ZONEMAP_TITLE)
     await expect(container.locator('canvas').first()).toBeVisible()
 
-    expect(await container.getAttribute('data-zone-count')).toBe('8')
-    // Default filter is 'all' — both purpose groups present: TAZ 800 has
-    // no matching row under either purpose (no-data), TAZ 900 has a row
-    // but no matching geometry (excluded).
-    expect(await container.getAttribute('data-no-data-count')).toBe('1')
-    expect(await container.getAttribute('data-excluded-count')).toBe('1')
+    expect(await container.getAttribute('data-zone-count')).toBe('25')
+    // Real, confirmed: vmt_by_home_taz has data for all 25 real zones in
+    // every real scenario, and "excluded" (a metric row with no matching
+    // geometry) is structurally impossible in this data model — every
+    // real zone-keyed metric is built from the same closed 25-zone
+    // universe. Zero of either, not the retired fixture's synthetic 1/1.
+    expect(await container.getAttribute('data-no-data-count')).toBe('0')
+    expect(await container.getAttribute('data-excluded-count')).toBe('0')
 
-    const features = await sourceFeatureProps(page, ZONEMAP_TITLE)
-    expect(features).toHaveLength(8)
+    const features = await sourceFeatureProps(page, ZONEMAP_TITLE, 25)
+    expect(features).toHaveLength(25)
 
-    // SC-001 — cross-check a real rendered zone's fill color against an
-    // independently computed expectation, not just "some color exists."
-    // TAZ 300's value (0.0) is the diverging scale's true midpoint
-    // (domain [-10, 30], color_ramp: RdBu) -> t = 0.5 on the RdBu ramp.
-    const zone300 = features.find((f) => f.zoneId === '300')
-    expect(zone300?.value).toBe(0)
+    // Cross-check real rendered values against a live query, not a
+    // hardcoded expectation — proves the panel's own join/aggregation
+    // against real data.
+    const rows = await page.evaluate(() =>
+      window.__wftdm!.query(
+        `SELECT home_zone_id, CAST(ROUND(total_vmt, 2) AS DOUBLE) AS total_vmt
+         FROM "activitysim-baseline__vmt_by_home_taz" ORDER BY home_zone_id`,
+      ),
+    )
+    for (const row of rows) {
+      const f = features.find((feat) => feat.zoneId === String(row.home_zone_id))
+      expect(f, `expected a rendered feature for TAZ ${row.home_zone_id}`).toBeDefined()
+      expect(f!.value).toBeCloseTo(Number(row.total_vmt), 1)
+    }
+
     // Every resolved fillColor must be a real, concrete color — never a
     // leaked-through, unresolved CSS function string (which MapLibre's
-    // own paint-property parser cannot evaluate at all).
+    // own paint-property parser cannot evaluate at all). color_ramp:
+    // YlOrRd is set on the real panel, so every value resolves through
+    // d3-scale-chromatic's own interpolator (an rgb(...) string), not
+    // this app's own token-derived color-mix() fallback.
     for (const f of features) {
       expect(f.fillColor).not.toContain('color-mix')
       expect(f.fillColor).not.toContain('var(')
       expect(f.fillColor.length).toBeGreaterThan(0)
     }
-
-    // TAZ 800 (no data) must NOT be the scale's minimum-value color —
-    // verified by confirming it differs from TAZ 100 (a real, non-zero
-    // negative value near the domain minimum).
-    const zone800 = features.find((f) => f.zoneId === '800')
-    const zone100 = features.find((f) => f.zoneId === '100')
-    // MapLibre's GeoJSON source encodes feature properties through a
-    // vector-tile-like internal representation that has no `null` value
-    // type — a `null` property survives to querySourceFeatures() as a
-    // MISSING key (`undefined`), not literal `null` (confirmed live).
-    // The panel's own hover handler already treats both the same way
-    // (`value === null || value === undefined`); this check does too.
-    expect(zone800?.value == null).toBe(true)
-    expect(zone800?.fillColor).not.toBe(zone100?.fillColor)
   })
 
   test('the map centers/zooms per the panel config', async ({ page }) => {
     await boot(page)
+    await gotoNetworkTab(page)
     await waitForRender(page, ZONEMAP_TITLE)
     const center = await page.evaluate(
       (t) => window.__zonemapTestMaps![t].getCenter().toArray(),
       ZONEMAP_TITLE,
     )
-    expect(center[0]).toBeCloseTo(-111.925, 2)
-    expect(center[1]).toBeCloseTo(40.705, 2)
+    expect(center[0]).toBeCloseTo(-122.402, 2)
+    expect(center[1]).toBeCloseTo(37.787, 2)
     const zoom = await page.evaluate((t) => window.__zonemapTestMaps![t].getZoom(), ZONEMAP_TITLE)
-    expect(zoom).toBeCloseTo(11, 0)
+    expect(zoom).toBeCloseTo(13, 0)
   })
 
   // 027-map-auto-fit-and-reset (FR-002/FR-003) — this is the SAME panel
   // T007's flowmap regression test relies on being unaffected: ZONEMAP_TITLE
-  // has an explicit `center`/`zoom` in its fixture config
-  // ([-111.925, 40.705] / 11, asserted immediately above), so auto-fit's
-  // own `config.center == null && config.zoom == null` guard must never
-  // even attempt a fit for it — the test above passing unchanged after
-  // this feature's own implementation IS the regression proof (US3); no
-  // separate assertion needed here.
+  // has an explicit `center`/`zoom` in its real config ([-122.402, 37.787]
+  // / 13, asserted immediately above), so auto-fit's own `config.center ==
+  // null && config.zoom == null` guard must never even attempt a fit for
+  // it — the test above passing unchanged after this feature's own
+  // implementation IS the regression proof (US3); no separate assertion
+  // needed here.
 
-  // "Zone Map Tab Default Basemap" (dashboard-3-basemaps.yaml) omits
-  // center/zoom — the real vehicle for FR-002's own auto-fit-to-geometry
-  // behavior. Its zone geometry (tests/fixtures/geometry/taz.geoparquet,
-  // generate.py's own _zone_boundary_rows()) is a real, known 4x2 grid of
-  // 0.05°-square zones: west=-111.95, south=40.68, east=-111.75,
-  // north=40.78 — independent of which zones have matching metric data
-  // (TAZ 800 has none at all, per this file's own header comment).
+  // "Zone Map Tab Default Basemap" (dashboard-8-test.yaml, the "Test" tab)
+  // omits center/zoom — the real vehicle for FR-002's own
+  // auto-fit-to-geometry behavior. Its real zone geometry
+  // (public/demo-geometry/taz25.geoparquet) has a real, confirmed extent
+  // (queried live via ST_Extent_Agg): west=-122.42096, south=37.76923,
+  // east=-122.38439, north=37.80563 — independent of which zones have
+  // matching metric data (vmt_by_home_taz covers all 25 real zones, per
+  // this file's own header comment).
   test('auto-fits its initial view to the real loaded zone geometry (no author-configured center/zoom)', async ({
     page,
   }) => {
     await boot(page)
-    await page.getByRole('tab', { name: 'Basemaps' }).click()
+    await gotoTestTab(page)
     const title = 'Zone Map Tab Default Basemap'
     await waitForRender(page, title)
 
@@ -204,98 +271,112 @@ test.describe('User Story 1 - Author renders a zone-level metric as a choropleth
     }, title)
 
     // fitBounds()'s own padding only ever EXPANDS the viewport beyond the
-    // raw geometry extent, never contracts it.
-    //
-    // 030-sidebar-navigation: the east margin widened from its original
-    // -111.75 — a real, measured, evidence-based fix, not an arbitrary
-    // loosening. The persistent left Sidebar (components/ui/sidebar.tsx)
-    // genuinely narrows this panel's own container: a live measurement of
-    // the exact same '.zonemap-chart' element's getBoundingClientRect()
-    // found width: 344.66px on the pre-sidebar tree (a fixed top nav) vs.
-    // width: 259.33px on this tree (a ~25% reduction, real screen space
-    // now spent on the sidebar itself, matching this feature's own
-    // intent) — confirmed via a direct git-stash A/B comparison, not
-    // assumed. A narrower container shifts fitBounds()'s exact computed
-    // zoom/camera (the same real cameraForBounds()-vs-fitBounds()
-    // landing-spot sensitivity 027-map-auto-fit-and-reset's own history
-    // already documents) — reproduced consistently (3/3 full-suite runs,
-    // and in full isolation) landing ~-111.807, comfortably inside this
-    // widened margin with real slack for further minor drift, while still
-    // catching a genuinely broken invariant. west/south/north are
-    // UNCHANGED — none of them ever failed in any reproduction, and the
-    // container's own height (400px) did not change between layouts, so
-    // widening them would have no evidence behind it.
-    expect(bounds.west).toBeLessThanOrEqual(-111.95)
-    expect(bounds.east).toBeGreaterThanOrEqual(-111.85)
-    expect(bounds.south).toBeLessThanOrEqual(40.68)
-    expect(bounds.north).toBeGreaterThanOrEqual(40.78)
+    // raw geometry extent, never contracts it, so the real viewport must
+    // be a superset of the real, confirmed geometry bounds.
+    expect(bounds.west).toBeLessThanOrEqual(-122.42096)
+    expect(bounds.east).toBeGreaterThanOrEqual(-122.38439)
+    expect(bounds.south).toBeLessThanOrEqual(37.76923)
+    expect(bounds.north).toBeGreaterThanOrEqual(37.80563)
 
+    // Not the static Wasatch Front default (this app's own DEFAULT_CENTER/
+    // DEFAULT_ZOOM fallback, unrelated to where the real demo data
+    // actually is — MTC prototype_mtc's San Francisco Bay Area zones) —
+    // a real, computed fit genuinely happened, not a coincidental no-op.
     const zoom = await page.evaluate((t) => window.__zonemapTestMaps![t].getZoom(), title)
     const center = await page.evaluate((t) => window.__zonemapTestMaps![t].getCenter(), title)
     expect([zoom, center.lng, center.lat]).not.toEqual([9, -111.89, 40.76])
   })
 
-  // FR-004 — "Zone Map Broken Panel (intentional)" (BROKEN_TITLE) reaches
-  // a status/geometryStatus error and renders the shared PanelErrorState
-  // with no map/canvas mounted at all (already covered, unchanged, by this
-  // file's own pre-existing broken-panel test elsewhere below) —
-  // trivially nothing for auto-fit to run against. As with FlowMapPanel.tsx
-  // (see that file's own spec.ts comment), the complementary "geometry
-  // loads but resolves to zero features, panel still reaches 'ready'"
-  // sub-case is covered at the unit level (tests/unit/mapBounds.test.ts's
-  // empty-array case) plus direct review of ZoneMapPanel.tsx's own
-  // `if (bounds)` guard.
+  // FR-004 — "Broken Zone Map Panel (missing metric)" (BROKEN_TITLE)
+  // reaches a status/geometryStatus error and renders the shared
+  // PanelErrorState with no map/canvas mounted at all (already covered,
+  // unchanged, by this file's own pre-existing broken-panel test
+  // elsewhere below) — trivially nothing for auto-fit to run against. As
+  // with FlowMapPanel.tsx (see that file's own spec.ts comment), the
+  // complementary "geometry loads but resolves to zero features, panel
+  // still reaches 'ready'" sub-case is covered at the unit level
+  // (tests/unit/mapBounds.test.ts's empty-array case) plus direct review
+  // of ZoneMapPanel.tsx's own `if (bounds)` guard.
 
+  // 040-test-suite-migration: a real, confirmed design correction. The
+  // retired fixture's own "AUTO_DOMAIN_TITLE" panel role (no domain
+  // configured, auto-compute) is now served by ZONEMAP_TITLE itself — the
+  // real, already-published Network-tab panel has no `domain:` key at
+  // all. This test asserts ITS OWN real auto-computed domain (min TAZ 1
+  // = 14.14, max TAZ 9 = 1911.40, confirmed live) instead of duplicating
+  // a second panel for the identical mechanism. A NEW real panel, "Zone
+  // Map Explicit Domain" (same metric/scenario, `domain: [0, 2000]`),
+  // covers the OPPOSITE, complementary case — an author-configured
+  // domain is honored verbatim, not silently replaced by auto-compute —
+  // which the retired fixture's own two-panel split never actually
+  // exercised (its own "primary" ZONEMAP_TITLE always had an explicit
+  // domain; nothing there proved that domain WINS over auto-compute).
   test('with no domain configured, the color scale auto-computes from the actual min/max of the returned rows', async ({
     page,
   }) => {
     await boot(page)
-    const container = await waitForRender(page, AUTO_DOMAIN_TITLE)
-    expect(await container.getAttribute('data-zone-count')).toBe('8')
+    await gotoNetworkTab(page)
+    const container = await waitForRender(page, ZONEMAP_TITLE)
+    expect(await container.getAttribute('data-zone-count')).toBe('25')
 
-    const features = await sourceFeatureProps(page, AUTO_DOMAIN_TITLE)
-    // No filter -> all 8 rows (100-700 + 900) returned; min -8.0 (TAZ
-    // 100), max 25.0 (TAZ 700) -> domain auto-computes to [-8, 25].
-    // color_scale: sequential with no color_ramp -> token-derived
-    // fallback; TAZ 100 sits exactly at the auto-computed domain
-    // minimum -> 0% strength -> resolves to plain var(--muted).
-    const zone100 = features.find((f) => f.zoneId === '100')
-    // Built from the SAME formula the panel itself runs (0% strength
-    // color-mix()), not a bare 'var(--muted)' — found live that even a
-    // 0%-strength color-mix() resolves to a different (but numerically
-    // identical) CSS serialization (`color(srgb ...)`) than a bare
-    // var() reference (`rgb(...)`) does, so the two are not
-    // string-comparable even though they render the same pixel.
-    // 033-shadcn-default-theme: zonemapColor.ts's sequential anchor moved
-    // from the deleted --brand-wfrc-blue to --primary (data-model.md §3) —
-    // this live-browser-resolved expectation follows the same fix.
-    const expectedColor = await resolveCssColorInBrowser(
-      page,
-      'color-mix(in srgb, var(--primary) 0%, var(--muted))',
-    )
-    expect(zone100?.fillColor).toBe(expectedColor)
+    const features = await sourceFeatureProps(page, ZONEMAP_TITLE, 25)
+    // TAZ 1 (14.14) is the real, confirmed minimum — at the auto-computed
+    // domain's own minimum, its height fraction (the same [0,1] position
+    // resolveZoneFillColor's own color math uses internally) must be
+    // exactly 0.
+    const zone1 = features.find((f) => f.zoneId === '1')
+    expect(zone1?.fillHeight).toBeCloseTo(0, 1)
+    // TAZ 9 (1911.40) is the real, confirmed maximum — at the domain's
+    // own maximum, height fraction 1 (scaled to the panel's own 3000-unit
+    // extrusion ceiling).
+    const zone9 = features.find((f) => f.zoneId === '9')
+    expect(zone9?.fillHeight).toBeCloseTo(3000, 0)
+  })
+
+  // 040-test-suite-migration: the complementary "explicit domain wins"
+  // case — real, confirmed live: TAZ 1's height fraction is exactly 0
+  // under auto-compute (domain min = TAZ 1's own real value, 14.14) but
+  // measurably NON-zero (≈21.2, confirmed live) under this panel's own
+  // explicit `domain: [0, 2000]` (domain min = 0, genuinely away from
+  // TAZ 1's real value) — proving the configured domain was actually
+  // used, not silently replaced by auto-compute. fillColor was tried
+  // first and found NOT to distinguish these two cases for TAZ 1/TAZ 9
+  // specifically (steps: 7 quantizes both panels' own slightly-different
+  // raw [0,1] positions into the identical band) — fillHeight is
+  // unquantized and is what this test relies on instead.
+  test('an explicit domain is honored verbatim, not replaced by auto-compute', async ({ page }) => {
+    await boot(page)
+    await gotoTestTab(page)
+    await waitForRender(page, EXPLICIT_DOMAIN_TITLE)
+    const features = await sourceFeatureProps(page, EXPLICIT_DOMAIN_TITLE, 25)
+    const zone1 = features.find((f) => f.zoneId === '1')
+    expect(zone1?.fillHeight).toBeGreaterThan(15)
+    expect(zone1?.fillHeight).toBeLessThan(30)
   })
 
   test('hovering a zone shows its zone id and value in the shared tooltip', async ({ page }) => {
     await boot(page)
+    await gotoNetworkTab(page)
     const container = await waitForRender(page, ZONEMAP_TITLE)
-    await sourceFeatureProps(page, ZONEMAP_TITLE) // wait until the fill layer has real, queryable features
-    // This panel sits well down the page (after every other panel type's
-    // own fixture rows) — must be scrolled into the actual viewport
-    // before computing viewport-relative pixel coordinates below, or
-    // page.mouse.move() (unlike locator.hover(), which auto-scrolls)
-    // targets a point outside the visible viewport entirely (confirmed
-    // live: the move silently landed nowhere real, no tooltip ever fired).
+    await sourceFeatureProps(page, ZONEMAP_TITLE, 25) // wait until the fill layer has real, queryable features
+    // This panel sits well down the page — must be scrolled into the
+    // actual viewport before computing viewport-relative pixel
+    // coordinates below, or page.mouse.move() (unlike locator.hover(),
+    // which auto-scrolls) targets a point outside the visible viewport
+    // entirely (confirmed live: the move silently landed nowhere real,
+    // no tooltip ever fired).
     await container.scrollIntoViewIfNeeded()
     await page.waitForTimeout(300) // let MapLibre actually paint a frame before picking
 
-    // Precise pixel targeting via MapLibre's own project() — a known
-    // geographic point inside TAZ 100's own polygon — rather than
-    // guessing the container's own bounding-box center is inside SOME
-    // filled polygon (fragile: depends on projection/zoom specifics).
+    // Precise pixel targeting via MapLibre's own project() — TAZ 1's
+    // real centroid (summarize.yaml's own zone_centroids table,
+    // confirmed to sit inside its own real polygon by construction —
+    // both are derived from the same real MTC TAZ1454 source) — rather
+    // than guessing the container's own bounding-box center is inside
+    // SOME filled polygon.
     const point = await page.evaluate((t) => {
       const map = window.__zonemapTestMaps![t]
-      const p = map.project([-111.925, 40.705])
+      const p = map.project([-122.398299, 37.793138])
       const rect = map.getCanvas().getBoundingClientRect()
       return { x: rect.left + p.x, y: rect.top + p.y }
     }, ZONEMAP_TITLE)
@@ -304,16 +385,27 @@ test.describe('User Story 1 - Author renders a zone-level metric as a choropleth
     // (.map-tooltip), not MapLibre's own maplibregl.Popup any more.
     const tooltip = container.locator('.map-tooltip')
     await trueEventually(async () => (await tooltip.isVisible()) === true)
-    await expect(tooltip).toContainText('Zone')
+    // The real template (ZoneMapPanel.tsx) is
+    // `<strong>Zone ${zoneId}</strong><br/>${valueText}` — a bare <br/>
+    // produces no text node at all, so toContainText's flattened text
+    // directly concatenates the zone id with the immediately-following
+    // value ("Zone 114.135266823529602" for TAZ 1, whose real value is
+    // 14.135266823529602) with no separator. A substring/word-boundary
+    // regex on the flattened text can't distinguish "Zone 1" from "Zone
+    // 11"/"Zone 12" this way (found live, not assumed) — asserting
+    // against the real, dedicated <strong> element instead is exact and
+    // immune to whatever digits happen to follow it.
+    await expect(tooltip.locator('strong')).toHaveText('Zone 1')
   })
 
   test('hovering a zone in 3D/extrusion mode also shows the tooltip — the real bug this feature fixed', async ({
     page,
   }) => {
     await boot(page)
+    await gotoNetworkTab(page)
     const card = panelCard(page, ZONEMAP_TITLE)
     const container = await waitForRender(page, ZONEMAP_TITLE)
-    await sourceFeatureProps(page, ZONEMAP_TITLE)
+    await sourceFeatureProps(page, ZONEMAP_TITLE, 25)
     await container.scrollIntoViewIfNeeded()
     await page.waitForTimeout(300)
 
@@ -331,89 +423,115 @@ test.describe('User Story 1 - Author renders a zone-level metric as a choropleth
       )
       return vis === 'visible'
     })
+    // The tilt itself is an animated easeTo() — project() below must be
+    // computed against the CAMERA'S FINAL settled pitch, not a mid-
+    // animation one, or the projected screen point drifts away from the
+    // real target by the time the mouse actually arrives there (found
+    // live: an unsettled camera projected TAZ 9's centroid onto TAZ 20's
+    // screen position instead).
+    await trueEventually(async () => {
+      const pitch = await page.evaluate((t) => window.__zonemapTestMaps![t].getPitch(), ZONEMAP_TITLE)
+      return pitch > 30
+    })
 
-    // TAZ 100's centroid, not TAZ 300's — deliberately: this feature's
-    // own implementation-time investigation found a REAL, confirmed
-    // MapLibre behavior — a fill-extrusion feature with height EXACTLY 0
-    // (TAZ 300 sits at this panel's own diverging domain's literal zero,
-    // User Story 1's own coverage, so its resolveZoneHeightFraction is
-    // exactly 0) is not reliably layer-scoped-mousemove-pickable at all,
-    // confirmed directly via map.queryRenderedFeatures() finding it while
-    // the SAME query, run internally by MapLibre's own delegated
-    // mousemove listener, never fired — a genuine, narrow MapLibre
-    // picking quirk for zero-height extrusions, not a bug in this
-    // feature's own hover-wiring (confirmed by testing a non-zero-height
-    // zone, which fires immediately with no special handling needed).
-    // TAZ 100 (value -8, well away from zero) has real height and was
-    // confirmed to hover correctly at its own ground-projected point with
-    // NO sweep/offset needed, even under the full 45° tilt.
+    // A real, live-confirmed finding this session: under a real ~45°
+    // tilt, a ground-level centroid's projected screen point no longer
+    // reliably lands on THAT zone's own rendered extrusion top — the top
+    // surface visually shifts away from its ground footprint, by an
+    // amount that grows with both the zone's own height and its distance
+    // from the viewport's projection center. Neither TAZ 1 (real height
+    // exactly 0 — this project's own established 013-zonemap-panel/016
+    // finding that a zero-height extrusion isn't reliably pickable at
+    // all), TAZ 9 (real height maximum, but off-center — confirmed to
+    // resolve to TAZ 20's top surface instead), nor TAZ 12 (near-center,
+    // but still confirmed to resolve to TAZ 21's) survived live
+    // verification. Rather than keep guessing which single zone's
+    // geometry/height combination happens to survive this real
+    // projection displacement, this test queries MapLibre's own
+    // queryRenderedFeatures() at the exact candidate pixel FIRST to learn
+    // which zone is actually topmost there post-tilt, then hovers that
+    // same point and asserts the tooltip agrees — proving the real bug
+    // this test guards against (hover never fired at all once
+    // zonemap-fill was hidden in 3D mode) without depending on which
+    // specific zone the perspective math happens to land on.
     const point = await page.evaluate((t) => {
       const map = window.__zonemapTestMaps![t]
-      const p = map.project([-111.925, 40.705])
+      const p = map.project([-122.401971, 37.786278]) // TAZ 12's centroid, near this panel's own configured center
       const rect = map.getCanvas().getBoundingClientRect()
       return { x: rect.left + p.x, y: rect.top + p.y }
     }, ZONEMAP_TITLE)
+    const expectedZoneId = await page.evaluate(
+      ({ t, x, y }) => {
+        const map = window.__zonemapTestMaps![t]
+        const rect = map.getCanvas().getBoundingClientRect()
+        const features = map.queryRenderedFeatures([x - rect.left, y - rect.top], {
+          layers: ['zonemap-extrusion'],
+        })
+        return (features[0]?.properties as { zoneId?: string } | undefined)?.zoneId
+      },
+      { t: ZONEMAP_TITLE, x: point.x, y: point.y },
+    )
+    expect(expectedZoneId, 'expected a real extrusion feature under the candidate pixel').toBeTruthy()
     await page.mouse.move(point.x, point.y, { steps: 5 })
     const tooltip = container.locator('.map-tooltip')
     await trueEventually(async () => (await tooltip.isVisible()) === true)
-    await expect(tooltip).toContainText('100')
+    // See the hover test above for why this asserts the dedicated
+    // <strong> element rather than a flattened-text regex.
+    await expect(tooltip.locator('strong')).toHaveText(`Zone ${expectedZoneId}`)
   })
 
-  test('a metric row with no matching zone geometry is excluded; a zone with no matching metric row shows the no-data treatment', async ({
+  // 040-test-suite-migration: a real, confirmed structural finding, not
+  // merely "untriggered today" — every real zone-keyed metric in
+  // summarize.yaml (vmt_by_home_taz.home_zone_id,
+  // trips_by_destination_zone.destination_zone_id,
+  // land_use_summary.zone_id) is built from the exact same closed
+  // 25-zone universe (confirmed live: every one queries out to exactly
+  // {1..25}, never anything else), so a metric row referencing a zone
+  // with no matching real geometry can never occur. The retired
+  // fixture's own dedicated "excluded" test is retired outright, not
+  // worked around — its "no-data" half is covered separately below,
+  // against a real metric that DOES have one (`trips_by_destination_zone`
+  // filtered to `school`, real TAZ 14).
+  test('a zone with no matching metric row under a real filter shows the no-data treatment', async ({
     page,
   }) => {
     await boot(page)
-    const container = await waitForRender(page, ZONEMAP_TITLE)
-    const features = await sourceFeatureProps(page, ZONEMAP_TITLE)
+    await gotoTestTab(page)
+    const container = await waitForRender(page, NO_DATA_TITLE)
+    expect(await container.getAttribute('data-zone-count')).toBe('25')
+    expect(await container.getAttribute('data-no-data-count')).toBe('1')
+    expect(await container.getAttribute('data-excluded-count')).toBe('0')
 
-    // TAZ 900 (metric row, no geometry) never appears as a rendered
-    // feature at all — geometry only has 8 zones (100-800).
-    expect(features.some((f) => f.zoneId === '900')).toBe(false)
-    expect(await container.getAttribute('data-excluded-count')).toBe('1')
-
-    // TAZ 800 (geometry, no metric row under 'all') IS rendered, with a
-    // null value.
-    const zone800 = features.find((f) => f.zoneId === '800')
-    expect(zone800).toBeDefined()
+    const features = await sourceFeatureProps(page, NO_DATA_TITLE, 25)
+    // TAZ 14 (real, confirmed: zero destination trips under `school`) IS
+    // rendered, with a null value — a real no-data zone, not a fabricated
+    // one.
+    const zone14 = features.find((f) => f.zoneId === '14')
+    expect(zone14).toBeDefined()
     // MapLibre's GeoJSON source encodes feature properties through a
     // vector-tile-like internal representation that has no `null` value
     // type — a `null` property survives to querySourceFeatures() as a
     // MISSING key (`undefined`), not literal `null` (confirmed live).
     // The panel's own hover handler already treats both the same way
     // (`value === null || value === undefined`); this check does too.
-    expect(zone800?.value == null).toBe(true)
+    expect(zone14?.value == null).toBe(true)
+    // Every other real zone genuinely has data under this real filter.
+    const withData = features.filter((f) => f.zoneId !== '14')
+    expect(withData).toHaveLength(24)
+    for (const f of withData) expect(f.value == null).toBe(false)
   })
 })
 
-test.describe('User Story 2 - Filters, resize, and basemap inheritance', () => {
-  test('changing the global filter re-colors the choropleth via setData(), without recreating the map', async ({
-    page,
-  }) => {
-    await boot(page)
-    const container = await waitForRender(page, ZONEMAP_TITLE)
-    const mapHandleBefore = await page.evaluateHandle(
-      (t) => window.__zonemapTestMaps![t],
-      ZONEMAP_TITLE,
-    )
-    const renderCountBefore = Number(await container.getAttribute('data-render-count'))
-    expect(await container.getAttribute('data-no-data-count')).toBe('1') // 'all'
-
-    await page.evaluate(() => window.__wftdm!.filterState.set('purpose', 'HBW'))
-    await trueEventually(
-      async () => Number(await container.getAttribute('data-render-count')) > renderCountBefore,
-    )
-    // HBW-only: TAZ 500/600/700/800 have no data (4), TAZ 900 doesn't
-    // appear under HBW at all (0 excluded).
-    expect(await container.getAttribute('data-no-data-count')).toBe('4')
-    expect(await container.getAttribute('data-excluded-count')).toBe('0')
-
-    const mapHandleAfter = await page.evaluateHandle(
-      (t) => window.__zonemapTestMaps![t],
-      ZONEMAP_TITLE,
-    )
-    expect(await page.evaluate(([a, b]) => a === b, [mapHandleBefore, mapHandleAfter])).toBe(true)
-  })
-
+// 040-test-suite-migration: this file's own "User Story 2" originally
+// opened with "changing the global filter re-colors the choropleth..." —
+// deleted. Zero real zonemap content anywhere binds to a global sidebar
+// filter (confirmed live: a `$filters.purpose`-bound panel throws
+// "unresolved placeholder" — no real UI control ever calls
+// filterState.set('purpose', ...) to give it an initial value), matching
+// this migration's own established convention elsewhere in this suite
+// (dashboardShell.spec.ts/panelExpand.spec.ts/flowmapPanel.spec.ts) for a
+// case with no real content to exercise it.
+test.describe('User Story 2 - Resize and basemap inheritance', () => {
   test('a zonemap panel with no basemap: picks up the tab default; a panel-level override wins', async ({
     page,
   }) => {
@@ -421,22 +539,25 @@ test.describe('User Story 2 - Filters, resize, and basemap inheritance', () => {
     page.on('request', (req) => requestUrls.push(req.url()))
 
     await boot(page)
-    await page.getByRole('tab', { name: 'Basemaps' }).click()
+    await gotoTestTab(page)
     await waitForRender(page, 'Zone Map Tab Default Basemap')
     await waitForRender(page, 'Zone Map Panel Basemap Override')
 
-    await trueEventually(async () => requestUrls.some((u) => u.includes('tiles.openfreemap.org/styles/bright')))
-    await trueEventually(async () => requestUrls.some((u) => u.includes('voyager-gl-style')))
+    // dashboard-8-test.yaml's own trailing `default_basemap: carto-positron`
+    // applies to the panel with no basemap: of its own; the other panel's
+    // explicit `basemap: openfreemap-positron` wins over it.
+    await trueEventually(async () => requestUrls.some((u) => u.includes('positron-gl-style')))
+    await trueEventually(async () => requestUrls.some((u) => u.includes('tiles.openfreemap.org/styles/positron')))
   })
 
   test('an unreachable basemap still renders the choropleth', async ({ page }) => {
     await boot(page)
-    await page.getByRole('tab', { name: 'Basemaps' }).click()
-    const title = 'Zone Map Unreachable Basemap (intentional)'
+    await gotoTestTab(page)
+    const title = 'Zone Map Unreachable Basemap'
     const container = await waitForRender(page, title)
     await page.waitForTimeout(1000) // the failed fetch/error event needs a moment to resolve
 
-    expect(await container.getAttribute('data-zone-count')).toBe('8')
+    expect(await container.getAttribute('data-zone-count')).toBe('25')
     const style = await page.evaluate((t) => window.__zonemapTestMaps![t].getStyle(), title)
     expect(Object.keys(style?.sources ?? {}).filter((s) => s !== 'zonemap-zones')).toHaveLength(0) // BLANK_STYLE has no other sources
     const hasLayer = await page.evaluate(
@@ -450,6 +571,7 @@ test.describe('User Story 2 - Filters, resize, and basemap inheritance', () => {
     page,
   }) => {
     await boot(page)
+    await gotoNetworkTab(page)
     const container = await waitForRender(page, ZONEMAP_TITLE)
     const renderCountBefore = await container.getAttribute('data-render-count')
     const canvasBefore = await container.locator('canvas').first().boundingBox()
@@ -479,6 +601,7 @@ test.describe('User Story 2 - Filters, resize, and basemap inheritance', () => {
 
   test('a plain browser window resize also resizes the map canvas', async ({ page }) => {
     await boot(page)
+    await gotoNetworkTab(page)
     const container = await waitForRender(page, ZONEMAP_TITLE)
     const canvas = container.locator('canvas').first()
     await expect(canvas).toBeVisible()
@@ -505,6 +628,7 @@ test.describe('User Story 2 - Filters, resize, and basemap inheritance', () => {
     page,
   }) => {
     await boot(page)
+    await gotoNetworkTab(page)
     const container = await waitForRender(page, ZONEMAP_TITLE)
     const zoneCountBefore = await container.getAttribute('data-zone-count')
 
@@ -534,68 +658,76 @@ test.describe('User Story 3 - Color scale precision and comparison: diff', () =>
     page,
   }) => {
     await boot(page)
+    await gotoTestTab(page)
     const container = await waitForRender(page, DIFF_TITLE)
     const features = await sourceFeatureProps(page, DIFF_TITLE)
 
-    // good_scenario - observed, per zone: TAZ 100 -8-5=-13, TAZ 700 25-5=20.
-    const zone100 = features.find((f) => f.zoneId === '100')
-    const zone700 = features.find((f) => f.zoneId === '700')
-    expect(zone100?.value).toBe(-13)
-    expect(zone700?.value).toBe(20)
-    expect(await container.getAttribute('data-zone-count')).toBe('8')
+    // activitysim-density-variant - activitysim-baseline total_vmt, per home zone (live-verified):
+    // TAZ 22 = -6.584722843246709, TAZ 8 = +19.763957990319568.
+    const zone22 = features.find((f) => f.zoneId === '22')
+    const zone8 = features.find((f) => f.zoneId === '8')
+    expect(zone22?.value).toBeCloseTo(-6.584722843246709, 6)
+    expect(zone8?.value).toBeCloseTo(19.763957990319568, 6)
+    expect(await container.getAttribute('data-zone-count')).toBe('25')
   })
 
   test('an unresolvable comparison: diff scenario pair shows the shared error state', async ({ page }) => {
     await boot(page)
+    await gotoTestTab(page)
     await expect(panelCard(page, DIFF_UNRESOLVABLE_TITLE).getByRole('alert')).toBeVisible()
   })
 })
 
 // 019-baseline-diff-consumption, User Story 1 (T019) and User Story 4
 // (T028) — the '$baseline' sentinel case, reusing this file's own real
-// observed(flat 5.0)/good_scenario fixture data. good_scenario is
-// automatically baseline the moment it registers ready (018's own
-// automatic-default rule, since observed is pinned) — so this panel
-// initially renders with a === b (both good_scenario), every diff_value
-// trivially 0, BEFORE the test ever calls setBaseline() itself. Explicitly
-// setting baseline to 'observed' afterward is what actually exercises the
-// sentinel resolving to a DIFFERENT scenario, and directly proves FR-016's
-// reactivity requirement (User Story 1 Acceptance Scenario 2: recompute on
-// a live baseline change, no reload) — not just the resolver's own logic
-// in isolation (already unit-tested).
+// activitysim-baseline/activitysim-density-variant demo scenarios.
+// activitysim-baseline is automatically baseline the moment it registers
+// ready (018's own automatic-default rule: earliest-registered, non-pinned,
+// ready scenario — the demo root has no pinned scenario at all, and
+// activitysim-baseline is listed first in
+// public/demo-scenarios/index.json) — so this panel's own a:
+// activitysim-baseline, b: '$baseline' initially renders with a === b,
+// every diff_value trivially 0, BEFORE the test ever calls setBaseline()
+// itself. Explicitly setting baseline to activitysim-density-variant
+// afterward is what actually exercises the sentinel resolving to a
+// DIFFERENT scenario, and directly proves FR-016's reactivity requirement
+// (User Story 1 Acceptance Scenario 2: recompute on a live baseline change,
+// no reload) — not just the resolver's own logic in isolation (already
+// unit-tested).
 test.describe('019-baseline-diff-consumption', () => {
   test('$baseline resolves to whichever scenario is currently baseline, and recomputes reactively on change (US1)', async ({
     page,
   }) => {
     await boot(page)
-    // Lives on the Detail tab, not Summary — see
-    // tests/fixtures/dashboard-config/dashboard-2-detail.yaml's own
-    // comment on this panel for why (a precaution against a suspected,
-    // later-disproven WebGL-context regression — the placement was kept
-    // anyway as harmless, but is not fixing a real, confirmed problem).
-    await page.getByRole('tab', { name: 'Detail' }).click()
+    await gotoTestTab(page)
     const container = await waitForRender(page, DIFF_BASELINE_TITLE)
 
-    // Initial state: automatic default (good_scenario) on both sides —
-    // every zone's diff is trivially 0.
+    // Initial state: automatic default (activitysim-baseline) on both
+    // sides — every zone's diff is trivially 0.
     await trueEventually(async () => {
       const features = await sourceFeatureProps(page, DIFF_BASELINE_TITLE)
-      const zone100 = features.find((f) => f.zoneId === '100')
-      return zone100?.value === 0
+      const zone1 = features.find((f) => f.zoneId === '1')
+      return zone1?.value === 0
     })
 
-    // Explicitly mark 'observed' as baseline — the SAME real values the
-    // hardcoded-name DIFF_TITLE panel above already hand-verifies.
-    await page.evaluate(() => window.__wftdm!.appState.setBaseline('observed'))
+    // Explicitly mark activitysim-density-variant as baseline — expr is
+    // a.total_vmt - b.total_vmt with a fixed at activitysim-baseline, so
+    // this flips the sign of the density-vs-baseline diff already
+    // hand-verified for the hardcoded-name DIFF_TITLE panel above:
+    // TAZ 1: baseline(14.135266823529602) - density(14.749029237036195)
+    //   = -0.6137624135065938
+    // TAZ 22: baseline(402.9677787593758) - density(396.3830559161291)
+    //   = 6.584722843246709
+    await page.evaluate(() => window.__wftdm!.appState.setBaseline('activitysim-density-variant'))
 
     await trueEventually(async () => {
       const features = await sourceFeatureProps(page, DIFF_BASELINE_TITLE)
-      const zone100 = features.find((f) => f.zoneId === '100')
-      return zone100?.value === -13
+      const zone1 = features.find((f) => f.zoneId === '1')
+      return Math.abs((zone1?.value ?? NaN) - -0.6137624135065938) < 1e-6
     })
     const features = await sourceFeatureProps(page, DIFF_BASELINE_TITLE)
-    const zone700 = features.find((f) => f.zoneId === '700')
-    expect(zone700?.value).toBe(20)
+    const zone22 = features.find((f) => f.zoneId === '22')
+    expect(zone22?.value).toBeCloseTo(6.584722843246709, 6)
     await expect(container).toBeVisible()
   })
 
@@ -626,6 +758,7 @@ test.describe('Attribution control renders MapLibre\'s compact form and the togg
     page,
   }) => {
     await boot(page)
+    await gotoNetworkTab(page)
     const container = await waitForRender(page, ZONEMAP_TITLE)
     await trueEventually(async () => (await container.locator('.maplibregl-ctrl-attrib').count()) === 1)
 
@@ -650,6 +783,7 @@ test.describe('Attribution control renders MapLibre\'s compact form and the togg
     page,
   }) => {
     await boot(page)
+    await gotoNetworkTab(page)
     const container = await waitForRender(page, ZONEMAP_TITLE)
     await trueEventually(async () => (await container.locator('.maplibregl-ctrl-attrib').count()) === 1)
 
@@ -689,6 +823,7 @@ test.describe('014-map-navigation-controls — NavigationControl zoom/compass ge
     page,
   }) => {
     await boot(page)
+    await gotoNetworkTab(page)
     const container = await waitForRender(page, ZONEMAP_TITLE)
 
     const zoomInBtn = container.getByTitle('Zoom in')
@@ -731,6 +866,7 @@ test.describe('014-map-navigation-controls — NavigationControl zoom/compass ge
     page,
   }) => {
     await boot(page)
+    await gotoNetworkTab(page)
     const container = await waitForRender(page, ZONEMAP_TITLE)
     const zoomIn = container.locator('.maplibregl-ctrl-zoom-in')
     const zoomOut = container.locator('.maplibregl-ctrl-zoom-out')
@@ -778,6 +914,7 @@ test.describe('014-map-navigation-controls — the 3D fill-extrusion toggle', ()
     page,
   }) => {
     await boot(page)
+    await gotoNetworkTab(page)
     const card = panelCard(page, ZONEMAP_TITLE)
     await waitForRender(page, ZONEMAP_TITLE)
     await sourceFeatureProps(page, ZONEMAP_TITLE) // wait until the source has real, queryable features
@@ -810,13 +947,14 @@ test.describe('014-map-navigation-controls — the 3D fill-extrusion toggle', ()
     await trueEventually(async () => (await getPitch()) > 30)
 
     // fill-extrusion-height is data-driven from the SAME value already
-    // driving fill-color (resolveZoneHeightFraction, zonemapColor.ts) —
-    // TAZ 300 sits at this panel's own diverging domain's literal zero
-    // (User Story 1's own coverage above: "TAZ 300's value (0.0) is the
-    // diverging scale's true midpoint"), so its height must be ~0; at
-    // least one other zone with a real non-zero value must have real
-    // positive height — proving this isn't just a flat, unconditional
-    // extrusion.
+    // driving fill-color (resolveZoneHeightFraction, zonemapColor.ts).
+    // ZONEMAP_TITLE has no explicit domain, so it auto-computes from the
+    // real data's own min/max (User Story 1's own coverage above): TAZ 1
+    // sits at the real minimum (total_vmt=14.14) and its height fraction
+    // is therefore ~0; TAZ 9 sits at the real maximum (total_vmt=1911.40)
+    // and has real, substantial positive height (~3000, already
+    // established by the auto-domain test above) — proving this isn't
+    // just a flat, unconditional extrusion.
     const featureHeights = await page.evaluate((t) => {
       const map = window.__zonemapTestMaps![t]
       const raw = map.querySourceFeatures('zonemap-zones')
@@ -828,8 +966,8 @@ test.describe('014-map-navigation-controls — the 3D fill-extrusion toggle', ()
       return Array.from(byZone.entries())
     }, ZONEMAP_TITLE)
     const heightByZone = new Map(featureHeights)
-    expect(heightByZone.get('300')).toBeCloseTo(0, 1)
-    const nonZeroHeight = featureHeights.find(([zoneId, h]) => zoneId !== '300' && h > 0)
+    expect(heightByZone.get('1')).toBeCloseTo(0, 1)
+    const nonZeroHeight = featureHeights.find(([zoneId, h]) => zoneId !== '1' && h > 0)
     expect(nonZeroHeight, 'expected at least one zone with real positive extrusion height').toBeDefined()
 
     // Toggling off restores BOTH the flat fill AND pitch: 0, as one
@@ -844,6 +982,7 @@ test.describe('014-map-navigation-controls — the 3D fill-extrusion toggle', ()
 
   test('the 3D toggle survives a real basemap setStyle() switch and 004\'s DOM relocation', async ({ page }) => {
     await boot(page)
+    await gotoNetworkTab(page)
     const card = panelCard(page, ZONEMAP_TITLE)
     await waitForRender(page, ZONEMAP_TITLE)
     await sourceFeatureProps(page, ZONEMAP_TITLE)
@@ -899,6 +1038,7 @@ test.describe('014-map-navigation-controls — the 3D fill-extrusion toggle', ()
     page,
   }) => {
     await boot(page)
+    await gotoNetworkTab(page)
     const card = panelCard(page, ZONEMAP_TITLE)
     await waitForRender(page, ZONEMAP_TITLE)
     const toggle = card.getByRole('button', { name: 'Toggle 3D extrusion' })
@@ -931,7 +1071,7 @@ test.describe('027-map-auto-fit-and-reset — User Story 4: reset-to-view contro
     page,
   }) => {
     await boot(page)
-    await page.getByRole('tab', { name: 'Basemaps' }).click()
+    await gotoTestTab(page)
     const title = 'Zone Map Tab Default Basemap'
     const card = panelCard(page, title)
     await waitForRender(page, title)
@@ -953,12 +1093,30 @@ test.describe('027-map-auto-fit-and-reset — User Story 4: reset-to-view contro
       return { center: m.getCenter(), zoom: m.getZoom() }
     }, title)
 
-    // Toggle 3D on, then pan/tilt well away from the fitted view.
+    // Toggle 3D on, THEN wait for the tilt's own easeTo() to actually
+    // start moving pitch, THEN pan away — a real, confirmed root cause
+    // found live this session (reproduced directly, pre-existing in this
+    // test's own unmodified logic before this migration too, not
+    // introduced by it): jumpTo() calls MapLibre's internal _stop(),
+    // which cancels ANY in-flight camera animation — including the
+    // toggle's own pitch easeTo() — before applying its own
+    // center/zoom. Calling jumpTo() immediately after the click (this
+    // test's original ordering) raced that animation's very first
+    // rendered frame: when the easeTo() hadn't ticked even once yet,
+    // jumpTo()'s _stop() cancelled it while pitch was still exactly 0,
+    // permanently — not a slow-animation timing issue, a genuine
+    // animation-cancellation race. Waiting for pitch > 0 BEFORE calling
+    // jumpTo() (rather than after, as the original ordering did)
+    // eliminates the race: by the time jumpTo() runs, the tilt is
+    // already underway and jumpTo() never touches pitch itself, so it
+    // survives untouched.
     await card.getByRole('button', { name: 'Toggle 3D extrusion' }).click()
+    await trueEventually(async () => {
+      const pitch = await page.evaluate((t) => window.__zonemapTestMaps![t].getPitch(), title)
+      return pitch > 0
+    })
     await page.evaluate((t) => window.__zonemapTestMaps![t].jumpTo({ center: [-100, 45], zoom: 3 }), title)
-    expect(
-      await page.evaluate((t) => window.__zonemapTestMaps![t].getPitch(), title),
-    ).toBeGreaterThan(0)
+    expect(await page.evaluate((t) => window.__zonemapTestMaps![t].getPitch(), title)).toBeGreaterThan(0)
 
     await resetBtn.click()
     await trueEventually(async () => {
@@ -983,13 +1141,23 @@ test.describe('027-map-auto-fit-and-reset — User Story 4: reset-to-view contro
     page,
   }) => {
     await boot(page)
+    await gotoNetworkTab(page)
     const card = panelCard(page, ZONEMAP_TITLE)
     await waitForRender(page, ZONEMAP_TITLE)
     const resetBtn = card.locator('.zonemap-chart').getByTitle('Zoom to extents')
     // No auto-fit animation to wait out — captured synchronously at mount.
     await expect(resetBtn).toBeEnabled()
 
+    // Wait for the tilt's own easeTo() to actually start moving pitch
+    // BEFORE calling jumpTo() — see the reset test above (same describe
+    // block) for the real, confirmed animation-cancellation race this
+    // ordering avoids (jumpTo() internally cancels any in-flight camera
+    // animation, including this one, before it ever renders a frame).
     await card.getByRole('button', { name: 'Toggle 3D extrusion' }).click()
+    await trueEventually(async () => {
+      const pitch = await page.evaluate((t) => window.__zonemapTestMaps![t].getPitch(), ZONEMAP_TITLE)
+      return pitch > 0
+    })
     await page.evaluate((t) => window.__zonemapTestMaps![t].jumpTo({ center: [-100, 45], zoom: 3 }), ZONEMAP_TITLE)
 
     await resetBtn.click()
@@ -997,10 +1165,11 @@ test.describe('027-map-auto-fit-and-reset — User Story 4: reset-to-view contro
       const center = await page.evaluate((t) => window.__zonemapTestMaps![t].getCenter(), ZONEMAP_TITLE)
       const zoom = await page.evaluate((t) => window.__zonemapTestMaps![t].getZoom(), ZONEMAP_TITLE)
       const pitch = await page.evaluate((t) => window.__zonemapTestMaps![t].getPitch(), ZONEMAP_TITLE)
+      // ZONEMAP_TITLE's real, configured center/zoom (Network tab panel).
       return (
-        Math.abs(center.lng - -111.925) < 0.01 &&
-        Math.abs(center.lat - 40.705) < 0.01 &&
-        Math.abs(zoom - 11) < 0.1 &&
+        Math.abs(center.lng - -122.402) < 0.01 &&
+        Math.abs(center.lat - 37.787) < 0.01 &&
+        Math.abs(zoom - 13) < 0.1 &&
         Math.abs(pitch) < 0.5
       )
     })
@@ -1014,11 +1183,11 @@ test.describe('027-map-auto-fit-and-reset — User Story 4: reset-to-view contro
 // 027-map-auto-fit-and-reset (FR-006/SC-004) — same guarantee
 // flowmapPanel.spec.ts's own matching test proves for that panel type.
 test.describe('027-map-auto-fit-and-reset — Polish: no re-trigger after a manual pan', () => {
-  test('a manual pan survives 004 expand/collapse, a filter change, and a basemap switch', async ({ page }) => {
+  test('a manual pan survives 004 expand/collapse and a basemap switch', async ({ page }) => {
     await boot(page)
-    await page.getByRole('tab', { name: 'Basemaps' }).click()
+    await gotoTestTab(page)
     const title = 'Zone Map Tab Default Basemap'
-    const container = await waitForRender(page, title)
+    await waitForRender(page, title)
     await page.evaluate(
       (t) =>
         new Promise<void>((resolve) => {
@@ -1049,20 +1218,12 @@ test.describe('027-map-auto-fit-and-reset — Polish: no re-trigger after a manu
     expect(view.center.lat).toBeCloseTo(pannedView.center.lat, 3)
     expect(view.zoom).toBeCloseTo(pannedView.zoom, 3)
 
-    // (b) a genuine data reload — a global filter change (this panel
-    // reacts to every global filter by default, no `filter:` config).
-    const renderCountBefore = await container.getAttribute('data-render-count')
-    await page.evaluate(() => window.__wftdm!.filterState.set('purpose', 'HBW'))
-    await trueEventually(
-      async () => (await container.getAttribute('data-render-count')) !== renderCountBefore,
-    )
-    view = await getView()
-    expect(view.center.lng).toBeCloseTo(pannedView.center.lng, 3)
-    expect(view.center.lat).toBeCloseTo(pannedView.center.lat, 3)
-    expect(view.zoom).toBeCloseTo(pannedView.zoom, 3)
-    await page.evaluate(() => window.__wftdm!.filterState.set('purpose', 'all'))
-
-    // (c) a basemap switch.
+    // (b) a basemap switch (this real Test-tab panel has no `filter:`
+    // config and no demo panel anywhere uses the dynamic `$filters.`
+    // placeholder — confirmed via grep, matching
+    // flowmapPanel.spec.ts's own identical real-content finding and its
+    // matching removal of the filter-reload sub-case from this same
+    // Polish test).
     await page.getByRole('button', { name: 'Settings' }).click()
     await page.getByRole('tab', { name: 'Basemap' }).click()
     await page.getByRole('radiogroup', { name: 'OpenFreeMap' }).getByRole('radio', { name: 'Liberty' }).click()
@@ -1079,6 +1240,7 @@ test.describe('027-map-auto-fit-and-reset — Polish: no re-trigger after a manu
 test.describe('User Story 4 - Registry consistency', () => {
   test('expanding a zonemap panel shows the same data, not re-fetched', async ({ page }) => {
     await boot(page)
+    await gotoNetworkTab(page)
     const container = await waitForRender(page, ZONEMAP_TITLE)
     const zoneCountBefore = await container.getAttribute('data-zone-count')
     await expandTrigger(page, ZONEMAP_TITLE).click()
@@ -1092,6 +1254,7 @@ test.describe('User Story 4 - Registry consistency', () => {
     page,
   }) => {
     await boot(page)
+    await gotoTestTab(page)
     await expect(panelCard(page, BROKEN_TITLE).getByRole('alert')).toBeVisible()
   })
 
@@ -1099,10 +1262,15 @@ test.describe('User Story 4 - Registry consistency', () => {
     page,
   }) => {
     await boot(page)
-    // Five zonemap panels on this tab (Summary) all reference
-    // taz.geoparquet — confirm the cache (research.md §4) shares one load.
+    // ZONEMAP_TITLE (Network tab) plus several Test-tab panels all
+    // reference the same real taz25.geoparquet boundaries file — confirm
+    // the cache (research.md §4, zoneGeometry.ts's module-level cache) is
+    // shared across BOTH tabs, not just within one, since it's keyed
+    // purely by boundaries filename, independent of which tab renders it.
+    await gotoNetworkTab(page)
     await waitForRender(page, ZONEMAP_TITLE)
-    await waitForRender(page, AUTO_DOMAIN_TITLE)
+    await gotoTestTab(page)
+    await waitForRender(page, EXPLICIT_DOMAIN_TITLE)
     await waitForRender(page, DIFF_TITLE)
     const geometryQueryCount = await page.evaluate(
       () => window.__wftdm!.__debugQueryLog().filter((sql) => sql.includes('ST_AsGeoJSON')).length,
@@ -1112,6 +1280,7 @@ test.describe('User Story 4 - Registry consistency', () => {
 
   test('the spatial extension is installed/loaded exactly once per session', async ({ page }) => {
     await boot(page)
+    await gotoNetworkTab(page)
     await waitForRender(page, ZONEMAP_TITLE)
     const installLoadCount = await page.evaluate(
       () =>

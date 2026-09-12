@@ -396,4 +396,203 @@ layout:
       height: 320
       width:  0.5
 
+  # ── 040-test-suite-migration (T025): zonemap analogs of the real
+  #    basemap-precedence/no-view pair authored for flowmap above — real
+  #    vmt_by_home_taz/activitysim-baseline, real taz25.geoparquet
+  #    boundaries. "Zone Map Tab Default Basemap" deliberately has NO
+  #    basemap/center/zoom, serving both the auto-fit-to-geometry test
+  #    (User Story 1) and the tab-default-basemap-inheritance test (User
+  #    Story 2) — the same dual role the retired 8-zone fixture's own
+  #    identically-named panel served. ──
+  row_zonemap_basemap_precedence:
+    - type:          zonemap
+      title:         "Zone Map Tab Default Basemap"
+      metric:        vmt_by_home_taz
+      scenario:      activitysim-baseline
+      boundaries:    taz25.geoparquet
+      boundaries_id: TAZ1454
+      metric_id:     home_zone_id
+      column:        total_vmt
+      color_scale:   sequential
+      color_ramp:    YlOrRd
+      steps:         7
+      height: 320
+      width:  0.5
+
+    - type:          zonemap
+      title:         "Zone Map Panel Basemap Override"
+      metric:        vmt_by_home_taz
+      scenario:      activitysim-baseline
+      basemap:       openfreemap-positron
+      boundaries:    taz25.geoparquet
+      boundaries_id: TAZ1454
+      metric_id:     home_zone_id
+      column:        total_vmt
+      color_scale:   sequential
+      color_ramp:    YlOrRd
+      steps:         7
+      center: [-122.402, 37.787]
+      zoom:   13
+      height: 320
+      width:  0.5
+
+  # ── 040-test-suite-migration (T025): a real explicit `domain:` —
+  #    real vmt_by_home_taz auto-computes to [14.14, 1911.40] (the real
+  #    Network-tab panel's own domain, no config needed there); this
+  #    panel deliberately configures a DIFFERENT, wider domain ([0, 2000])
+  #    to prove an author-configured domain is honored verbatim, not
+  #    silently replaced by the auto-computed one. ──
+  row_zonemap_explicit_domain:
+    - type:          zonemap
+      title:         "Zone Map Explicit Domain"
+      metric:        vmt_by_home_taz
+      scenario:      activitysim-baseline
+      boundaries:    taz25.geoparquet
+      boundaries_id: TAZ1454
+      metric_id:     home_zone_id
+      column:        total_vmt
+      color_scale:   sequential
+      color_ramp:    YlOrRd
+      steps:         7
+      domain:        [0, 2000]
+      center: [-122.402, 37.787]
+      zoom:   13
+      height: 320
+      width:  1.0
+
+  # ── 040-test-suite-migration (T025): a real, confirmed scope correction,
+  #    found live (not assumed) during this migration's own
+  #    implementation. vmt_by_home_taz has no purpose dimension at all
+  #    (summarize.yaml — a plain GROUP BY home_zone_id) and covers all 25
+  #    real zones in every scenario, so it cannot drive a real no-data
+  #    zone at all. trips_by_destination_zone (destination_zone_id ×
+  #    primary_purpose, already real, already published) DOES have a real
+  #    gap — confirmed live: filtering to `school` leaves real TAZ 14
+  #    with zero destination trips (24 of 25 zones covered) — the real
+  #    no-data trigger this migration's own investigation found, replacing
+  #    the retired fixture's synthetic "TAZ 800 always no-data" case.
+  #    Deliberately a HARDCODED `filter:` value (`primary_purpose:
+  #    school`), matching this project's own two other already-real
+  #    zonemap/panel `filter:` usages (dashboard-3-tour-models.yaml,
+  #    dashboard-5-trip-models.yaml) — NOT a `$filters.purpose` global
+  #    sidebar reference. A live attempt at the latter confirmed a real,
+  #    broader finding: `state/filterState.ts`'s `get()` returns
+  #    `undefined` until some real UI control calls `set()` first, and
+  #    zero real sidebar filter controls exist anywhere in this demo
+  #    (grep-confirmed) — a `$filters.purpose`-bound panel would throw
+  #    "unresolved placeholder" on every real page load, not just in an
+  #    unmigrated test, so it was never a viable real-content choice here.
+  #    The filter-REACTIVITY test itself (changing a global filter
+  #    re-colors this panel) is retired for the same reason
+  #    dashboardShell.spec.ts/panelExpand.spec.ts/flowmapPanel.spec.ts
+  #    already retired theirs: zero real content anywhere uses global
+  #    filter reactivity. ──
+  row_zonemap_filter_reactive:
+    - type:          zonemap
+      title:         "Zone Map Destination Trips by Purpose"
+      metric:        trips_by_destination_zone
+      scenario:      activitysim-baseline
+      filter:        { primary_purpose: school }
+      boundaries:    taz25.geoparquet
+      boundaries_id: TAZ1454
+      metric_id:     destination_zone_id
+      column:        trips
+      color_scale:   sequential
+      color_ramp:    YlOrRd
+      steps:         7
+      center: [-122.402, 37.787]
+      zoom:   13
+      height: 320
+      width:  1.0
+
+  # ── 040-test-suite-migration (T025): comparison: diff on real data.
+  #    A real, confirmed correction made during this migration's own
+  #    implementation: trips_by_destination_zone (destination_zone_id ×
+  #    primary_purpose) has MULTIPLE rows per zone — comparison: diff's
+  #    own JOIN is on `compare_on` columns ALONE (destination_zone_id
+  #    here), so joining that metric without ALSO including
+  #    primary_purpose in compare_on produces a real cross-product over
+  #    purposes per zone, not one clean per-zone diff (confirmed live:
+  #    the resulting values didn't match a direct GROUP BY/SUM
+  #    cross-check at all). vmt_by_home_taz has exactly ONE row per
+  #    zone per scenario (a plain GROUP BY home_zone_id, no further
+  #    split) and is genuinely diff-compatible with no such risk — real,
+  #    confirmed per-zone diffs (activitysim-density-variant minus
+  #    activitysim-baseline, home_zone_id): TAZ 22 = 396.38-402.97 =
+  #    -6.58 (real min), TAZ 8 = 1301.66-1281.89 = +19.76 (real max) —
+  #    genuine sign variation for the diverging scale, replacing the
+  #    retired fixture's synthetic "TAZ 300 exactly at midpoint" case
+  #    (no real zone lands exactly at zero here — TAZ 19 comes closest
+  #    at +0.01 — so this test asserts real sign/magnitude at the two
+  #    real extremes instead of a contrived exact-zero zone). ──
+  row_zonemap_diff:
+    - type:        zonemap
+      title:       "Zone Map VMT Diff (Density vs Baseline)"
+      metric:      vmt_by_home_taz
+      comparison:
+        type: diff
+        a:    activitysim-density-variant
+        b:    activitysim-baseline
+        expr: "a.total_vmt - b.total_vmt"
+      compare_on:    [home_zone_id]
+      boundaries:    taz25.geoparquet
+      boundaries_id: TAZ1454
+      metric_id:     home_zone_id
+      column:        diff_value
+      color_scale:   diverging
+      color_ramp:    RdBu
+      domain:        [-10, 25]
+      center: [-122.402, 37.787]
+      zoom:   13
+      height: 320
+      width:  0.5
+
+    - type:        zonemap
+      title:       "Zone Map Diff Unresolvable Scenario"
+      metric:      vmt_by_home_taz
+      comparison:
+        type: diff
+        a:    __nope_a__
+        b:    __nope_b__
+        expr: "a.total_vmt - b.total_vmt"
+      compare_on:    [home_zone_id]
+      boundaries:    taz25.geoparquet
+      boundaries_id: TAZ1454
+      metric_id:     home_zone_id
+      column:        diff_value
+      color_scale:   diverging
+      color_ramp:    RdBu
+      domain:        [-10, 25]
+      center: [-122.402, 37.787]
+      zoom:   13
+      height: 320
+      width:  0.5
+
+  # ── 019-baseline-diff-consumption: the $baseline sentinel, real data.
+  #    activitysim-baseline is auto-baseline until a test explicitly
+  #    changes it (038's own automatic-default rule) — so this panel
+  #    initially renders a===b (trivial 0 everywhere) exactly like the
+  #    retired fixture's own DIFF_BASELINE_TITLE did. ──
+  row_zonemap_diff_baseline:
+    - type:        zonemap
+      title:       "Zone Map VMT Diff via $baseline"
+      metric:      vmt_by_home_taz
+      comparison:
+        type: diff
+        a:    activitysim-baseline
+        b:    "$baseline"
+        expr: "a.total_vmt - b.total_vmt"
+      compare_on:    [home_zone_id]
+      boundaries:    taz25.geoparquet
+      boundaries_id: TAZ1454
+      metric_id:     home_zone_id
+      column:        diff_value
+      color_scale:   diverging
+      color_ramp:    RdBu
+      domain:        [-10, 25]
+      center: [-122.402, 37.787]
+      zoom:   13
+      height: 320
+      width:  1.0
+
 default_basemap: carto-positron

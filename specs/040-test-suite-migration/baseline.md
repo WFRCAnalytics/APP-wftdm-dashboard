@@ -224,3 +224,196 @@ consistent with this project's own extensively pre-existing documented
 flakiness pattern, and does not regress any other file's own established
 baseline. `npm run typecheck` clean; `npm run test:unit` 471/471
 unchanged throughout.
+
+## T025 (`zonemapPanel.spec.ts`) — real findings and results
+
+**Real scope, confirmed larger than "flowmap's own pattern applied to
+zonemap"**, per the user's own explicit kickoff instruction for this
+task. A direct, full re-read of the pre-migration file (not the earlier
+narrow scan) confirmed every hardcoded value was tied to
+`tests/fixtures/geometry/taz.geoparquet`, a synthetic 8-zone grid
+(TAZ 100–900) T011 already deleted. Re-deriving against the real
+`public/demo-geometry/taz25.geoparquet` (25 real MTC/SF-area zones,
+TAZ 1–25) surfaced two real, structural findings beyond a plain
+value-substitution, requiring a stop-and-report via `AskUserQuestion`
+mid-task (matching this session's own established discipline):
+
+1. **The retired fixture's "excluded" mechanic — a metric row with NO
+   matching geometry — is structurally impossible in this real data
+   model.** Every real zone-keyed metric (`vmt_by_home_taz`,
+   `trips_by_destination_zone`) is built from the same closed 25-zone
+   universe as the boundaries file itself; there is no real metric whose
+   zone set is a strict subset. Retired outright, not worked around —
+   the dedicated "excluded" test and both `data-excluded-count`
+   assertions in the main rendering test are gone, replaced by a
+   structural-impossibility comment.
+2. **A single real metric could not cover the full test surface.**
+   `vmt_by_home_taz` (one row per zone, no purpose split) has no real
+   no-data gap anywhere — every one of the 25 zones has a real value in
+   every scenario. A genuine no-data trigger required
+   `trips_by_destination_zone` filtered to `primary_purpose: school`
+   (TAZ 14 has zero real school-purpose trips). The user's own decision
+   (`AskUserQuestion`, "Proceed now with the two-metric design") was to
+   author real panels for BOTH metrics rather than force one metric to
+   cover a case its own real data doesn't support.
+
+**Two further real, confirmed bugs found and fixed during live
+verification, before any test assertion was written against them (same
+discipline as T024's own UGRC-timeout/multi-worker-lock findings):**
+
+- **`comparison: diff` cross-product bug**: an initial diff panel used
+  `trips_by_destination_zone` (multiple rows per zone, one per
+  `primary_purpose`) with `compare_on: [destination_zone_id]` only.
+  `buildComparisonDiffQuery()`'s JOIN is purely on `compare_on`
+  columns with no aggregation, so omitting `primary_purpose` produced a
+  real cross-product over every purpose combination per zone — live
+  values didn't match a manual computation at all. Fixed by switching
+  the diff panels to `vmt_by_home_taz` (exactly one row per zone per
+  scenario — genuinely diff-compatible, no `compare_on` risk).
+- **`$filters.purpose` is a real, unresolvable placeholder in this demo
+  content.** A grep sweep confirmed zero real demo panels anywhere use
+  the dynamic `$filters.` placeholder (only hardcoded literal
+  `filter: { primary_purpose: work }`-style values exist). The new
+  no-data panel was fixed to use a hardcoded `filter: {
+  primary_purpose: school }` instead — and the pre-existing "changing
+  the global filter re-colors…" test was deleted outright, matching
+  `flowmapPanel.spec.ts`'s (T024) own identical real-content finding
+  and its own established precedent for removing that class of test.
+
+**Two new Test-tab (`dashboard-8-test.yaml`) rows added**, all
+live-verified against real values before use:
+`row_zonemap_basemap_precedence` (Tab Default Basemap / Panel Basemap
+Override), `row_zonemap_explicit_domain`, `row_zonemap_filter_reactive`
+(the school-purpose no-data panel), `row_zonemap_diff` (VMT Diff
+Density-vs-Baseline + an unresolvable-scenario-pair panel), and
+`row_zonemap_diff_baseline` (the `$baseline` sentinel case). Every real
+value asserted in the spec was independently re-derived via a live
+DuckDB query against the real Parquet files (see the file's own header
+comment for the full derivation), never guessed or carried over from
+the retired fixture: real geographic bounds
+(west=-122.42096/east=-122.38439/south=37.76923/north=37.80563), real
+auto-domain min/max (TAZ 1 = 14.135266823529602, TAZ 9 =
+1911.3995660519704), real diff values (density-baseline: TAZ 22 =
+-6.584722843246709, TAZ 8 = +19.763957990319568).
+
+**Two further real bugs found and fixed during isolated-run
+iteration, neither anticipated at design time:**
+
+- **The tooltip template has no separator between the zone id and its
+  value** (`<strong>Zone ${zoneId}</strong><br/>${valueText}` — a bare
+  `<br/>` produces no text node, so `toContainText`'s flattened text
+  directly concatenates them, e.g. `"Zone 114.135266823529602"` for
+  TAZ 1). A substring/word-boundary regex on the flattened text cannot
+  distinguish "Zone 1" from "Zone 11"/"Zone 12" this way. Fixed by
+  asserting the tooltip's own dedicated `<strong>` element instead
+  (`toHaveText('Zone 1')`), immune to whatever digits follow it.
+- **A real MapLibre animation-cancellation race**, reproduced live and
+  root-caused via direct instrumentation (not assumed): `jumpTo()`
+  calls MapLibre's internal `_stop()`, which cancels ANY in-flight
+  camera animation — including the 3D toggle's own pitch `easeTo()` —
+  before applying its own center/zoom. The original test ordering
+  (click the 3D toggle, then immediately `jumpTo()`) raced the pitch
+  animation's very first rendered frame: when `easeTo()` hadn't ticked
+  even once, `jumpTo()`'s `_stop()` cancelled it while pitch was still
+  exactly 0, permanently (confirmed via a dedicated debug harness:
+  pitch stayed at exactly `0` for 28+ seconds across repeated polling —
+  not a slow-animation timing issue, a genuine cancellation, reproduced
+  in 3 of 5 isolated runs before the fix). This is a real,
+  pre-existing race in this test's own original, unmodified logic
+  (confirmed via `git show HEAD`), not introduced by this migration —
+  fixed by waiting for pitch > 0 BEFORE calling `jumpTo()` (rather than
+  after), at all 3 real call sites in the file that click the 3D toggle
+  then pan away (`returns the camera to the auto-fitted geometry
+  extent...`, `for an author-configured panel, returns exactly to the
+  configured center/zoom...`, and the 3D-hover test's own centroid
+  choice, described next). A related, second real finding: perspective
+  displacement under a real ~45° tilt means a ground-level centroid's
+  projected screen point does not reliably land on that same zone's
+  rendered extrusion top the further that point sits from the
+  viewport's own projection center — TAZ 9 (real height maximum, but
+  off-center) and TAZ 12 (near-center, but still real height) each
+  independently resolved to a DIFFERENT zone's top surface live. Fixed
+  by querying `queryRenderedFeatures()` at the candidate pixel FIRST to
+  learn which zone is actually topmost there post-tilt, then asserting
+  the tooltip agrees — proving the real bug under test (hover never
+  fired at all once `zonemap-fill` was hidden in 3D mode) without
+  depending on which specific zone the perspective math happens to
+  land on.
+
+**Isolated verification**: `trueEventually`'s poll timeout was raised
+from the Vitest/Playwright default 5000ms to 10000ms (matching
+`flowmapPanel.spec.ts`'s own already-established value) after the
+first isolated run showed 10 failures, every one a bare
+`waitForRender`/`trueEventually` timeout against this real, git-tracked
+content (25-zone geometry + a real spatial-extension network fetch on
+first use) — not a logic bug. After that fix plus the tooltip/animation
+fixes above: **30/30 passed, clean**, confirmed across THREE separate
+isolated single-worker runs in direct succession.
+
+**Full-suite confirmation, two runs** (10 workers each, ~12 minutes
+Playwright-internal timer each): run 1 **zonemapPanel.spec.ts 30/30**;
+run 2 **zonemapPanel.spec.ts 29/30** — the one failure
+("an explicit domain is honored verbatim…") is a bare
+`waitForRender`/`trueEventually` 10-second timeout (`Test tab` is now
+the single most panel-dense tab in the whole demo config, having grown
+by 8 more real panels this session), not a wrong-value assertion —
+consistent with this project's own extensively-documented "a single
+early-scheduled/heavily-loaded panel can exceed its timeout under real
+10-way parallel load" residual-risk pattern (see `flowmapPanel.spec.ts`'s
+own T024 entry above for the identical class of finding). Every other
+already-`[x]`-done 040-migration file — `boot`/`brokenPanelStates`/
+`dashboardShell`/`demoContentAllPanels`/`demoMultiScenario`/
+`formInputPrimitives`/`fullPagePanel`/`metricStrip`/`panelExpand`/
+`protomapsBasemap`/`sidebarNav`/`testTabInvisibility` — passed with
+**zero** failures in BOTH runs, byte-identical; `flowmapPanel.spec.ts`
+itself showed its own already-documented single pre-existing flake
+(36/1 in both runs, unrelated to this file).
+
+**A real, important non-finding, confirmed via a targeted isolated
+re-run before concluding anything**: both full-suite runs also showed a
+large, nearly IDENTICAL block of 100%-per-file failures
+(`tablePanel`/`valueBoxPanel`/`markdownPanel`/`observablePlotPanel`/
+`rechartsPanel`/`sankeyPanel`/`graphicWalkerPanel`/`sectionSubNav`, plus
+`scenarioManager`/`scenarioColorOverride`/`scenarioLabelDisplay`/
+`scenarioAutoActivation`/`switchControlsUnpinnedPanels`/`settingsModal`
+partial). The IDENTICAL-across-two-runs shape of this (unlike ordinary
+contention noise, which produces a DIFFERENT handful of failures each
+run) warranted direct investigation rather than being waved off as
+"expected variance." A single-worker isolated re-run of
+`tablePanel.spec.ts` alone reproduced its own 23/23 failures with ZERO
+cross-file contention — confirming this is not contention at all.
+Root cause, confirmed directly: `tablePanel.spec.ts`'s own test bodies
+still reference `'Screenline Validation'`, a panel title that exists in
+neither the real demo content nor any currently-served config — the
+retired synthetic fixture content T011 already deleted. This is simply
+the expected, ALREADY-TRACKED state of `tasks.md`'s own remaining NOT-DONE
+migration tasks (T018 `valueBoxPanel`, T019 `tablePanel`, T020
+`markdownPanel`, T021 `observablePlotPanel`, T022 `rechartsPanel`, T023
+`sankeyPanel`, T026 `graphicWalkerPanel`, T028 `sectionSubNav`) — every
+one of those 8 files fails 100%, deterministically, because their own
+content was never migrated, not because of anything T025 touched or any
+new environmental regression. `scenarioManager`/`scenarioColorOverride`/
+`scenarioLabelDisplay`/`scenarioAutoActivation`/
+`switchControlsUnpinnedPanels`/`settingsModal` are outside this task
+list's own scope entirely (018/020/035/036/037/038 UI-flow specs, not
+panel-type migrations) — their failures were not investigated further
+here, correctly out of scope for T025.
+
+`npm run typecheck` clean; `npm run test:unit` 471/471 unchanged
+throughout (no unit-tested pure module's own behavior changed — this
+migration is test-content-only).
+
+## T025 conclusion
+
+**T025 (`zonemapPanel.spec.ts`) is DONE.** Isolated correctness is
+unambiguous — 30/30, reproduced clean across three separate isolated
+runs after all real bugs found this session were fixed (the animation-
+cancellation race, the tooltip-flattening ambiguity, the timeout
+mismatch). Full-suite confirmation across two complete runs shows zero
+regression to any other already-migrated file, and the one zonemap
+failure in run 2 is a real, explained, single-test contention timeout —
+not a logic bug, not reproduced in any of five isolated confirmations.
+The large block of unrelated legacy-fixture failures seen in both
+full-suite runs was investigated directly (not assumed benign) and
+confirmed to be the expected, already-tracked state of this same
+migration epic's own remaining NOT-DONE tasks, unconnected to T025.
