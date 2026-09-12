@@ -14,34 +14,43 @@ declare global {
 
 // Real-browser tests for 010-flowmap-panel, extending
 // sankeyPanel.spec.ts's/scenarioManager.spec.ts's own pattern (real
-// DuckDB-WASM, fixture Parquet, fixture dashboard-config). See
+// DuckDB-WASM, real Parquet, real demo dashboard-config). See
 // quickstart.md and contracts/flowmap-panel.md.
 //
-// Fixture shape (tests/fixtures/dashboard-config/dashboard-1-summary.yaml's
-// row_flowmap):
-// - "Flow Map Trip Distribution Desire Lines": reactive to
-//   $filters.purpose — US1/US2's primary vehicle.
-// - "Flow Map Broken Panel (intentional)": metric no scenario publishes —
-//   error state.
+// 040-test-suite-migration: migrated off the retired synthetic
+// tests/fixtures/dashboard-config/ set (deleted — including
+// tests/fixtures/generate.py's own OD_FLOWS_ROWS, 6 hand-authored flows
+// among a handful of deliberately-invalid rows). The real vehicle is now
+// `public/demo-dashboard-config/dashboard-6-network.yaml`'s "Trip
+// Distribution Desire Lines (Default View)" panel — real od_flows data
+// (activitysim-baseline scenario, MTC prototype_mtc's real San Francisco
+// Bay Area zones, NOT the Wasatch Front — a real, confirmed correction:
+// this app's own DEFAULT_CENTER/DEFAULT_ZOOM fallback is Utah, but the
+// demo DATA itself is SF), Network tab, deliberately with no author
+// center/zoom/basemap so US1/US2's generic-mechanics coverage (auto-fit,
+// default basemap resolution, attribution/nav controls, deck.gl hover,
+// expand/resize, registry consistency) has a real home — the tab's OTHER
+// real od_flows panel ("Trip Distribution Desire Lines") has its own
+// authored center/zoom and can't serve this role (027's own
+// `center == null && zoom == null` auto-fit guard never runs for it).
 //
-// Fixture data (tests/fixtures/generate.py's OD_FLOWS_ROWS), purpose:
-// 'all' (default, no WHERE clause): 5 distinct locations (100/200/300/
-// 400/500 — TAZ 600's row is excluded for a missing coordinate before it
-// ever becomes a location), 6 flows — (100,200) and (100,300) are each a
-// summed duplicate pair — 1 row excluded for a non-positive value, 1 for
-// a missing coordinate. purpose: 'HBW' narrows to 5 flows / 5 locations
-// (drops the one NHB-only pair, (300,400)); purpose: 'NHB' narrows to 2
-// flows / 4 locations — a clearly different diagram, used for
-// filter-reactivity coverage (US2).
-
-const EXPECTED_FLOWS_ALL: { origin: string; dest: string; value: number }[] = [
-  { origin: '100', dest: '200', value: 590 }, // 500 (HBW) + 90 (NHB)
-  { origin: '100', dest: '300', value: 200 }, // 120 + 80 (duplicate pair)
-  { origin: '200', dest: '400', value: 60 },
-  { origin: '300', dest: '500', value: 40 },
-  { origin: '500', dest: '200', value: 30 },
-  { origin: '300', dest: '400', value: 50 }, // NHB only
-]
+// Real od_flows aggregation (queried directly, not assumed — see the
+// aggregation-correctness test below for the live cross-check query
+// itself): 623 distinct (orig_taz, dest_taz) pairs, 25 distinct
+// locations. Real extent: lon -122.417245..-122.390667 /
+// lat 37.77274..37.801557. Two real fixture-era edge cases have NO real
+// trigger in this data and are corrected below rather than faked — see
+// each test's own comment: (1) zero rows have a non-positive value or a
+// missing coordinate (the "excludes N row(s)" warning never fires);
+// (2) zero raw rows share an (orig_taz, dest_taz) pair (every real pair
+// is already unique before aggregation — no raw duplicate exists to sum).
+//
+// Broken/edge-case panels now live on `dashboard-8-test.yaml`'s
+// permanent, near-invisible "Test" tab (contracts/dashboard-8-test.md):
+// "Broken Flow Map Panel (missing metric)" (error state), plus real
+// basemap-precedence/raster/UGRC-composition/unreachable-preset content
+// authored specifically for this migration (each panel's own comment in
+// that file records why it lives there rather than the real Network tab).
 
 async function boot(page: Page) {
   await page.goto('/')
@@ -68,17 +77,37 @@ async function queryCountFor(page: Page, needle: string) {
   )
 }
 
+// 040-test-suite-migration: default poll timeout raised from Playwright's
+// own built-in 5000ms to 10000ms — confirmed via two real, isolated runs
+// that intermittent 5000ms timeouts recur on DIFFERENT checks each run
+// (a render-count wait, a reset-to-view camera-settle wait, a raster-tile
+// request wait — never the same one twice), the same real signature this
+// file's own UGRC-composition test already found and fixed with an
+// explicit longer poll: this real Test tab mounts far more real/broken
+// map panels at once (11) than the retired fixture's own dedicated
+// "Basemaps" tab ever did, and under that real concurrent load a 5s
+// ceiling is intermittently, not permanently, too tight. A global fix
+// here (not a growing pile of one-off per-call-site overrides) addresses
+// the actual shared root cause.
 async function trueEventually(check: () => Promise<boolean>) {
-  await expect.poll(check).toBe(true)
+  await expect.poll(check, { timeout: 10000 }).toBe(true)
 }
 
-const FLOWMAP_TITLE = 'Flow Map Trip Distribution Desire Lines'
+const FLOWMAP_TITLE = 'Trip Distribution Desire Lines (Default View)'
+
+// The real panel lives on the Network tab (dashboard-6-network.yaml),
+// unlike the retired fixture's own landing-page placement — every test
+// using FLOWMAP_TITLE must navigate there first.
+async function gotoNetworkTab(page: Page) {
+  await page.getByRole('tab', { name: 'Network' }).click()
+}
 
 test.describe('User Story 1 - Author renders an O-D metric as a flow map', () => {
-  test('rendered locations/flows match a direct GROUP BY/SUM aggregation of the fixture data', async ({
+  test('rendered locations/flows match a direct GROUP BY/SUM aggregation of the real od_flows data', async ({
     page,
   }) => {
     await boot(page)
+    await gotoNetworkTab(page)
     const card = panelCard(page, FLOWMAP_TITLE)
     const container = card.locator('.flowmap-chart')
     await expect(container).toBeVisible()
@@ -87,43 +116,45 @@ test.describe('User Story 1 - Author renders an O-D metric as a flow map', () =>
 
     const flowCount = await container.getAttribute('data-flow-count')
     const locationCount = await container.getAttribute('data-location-count')
-    expect(Number(flowCount)).toBe(EXPECTED_FLOWS_ALL.length)
-    expect(Number(locationCount)).toBe(5)
 
-    // Cross-check against a direct query, not just a hardcoded expected
-    // value — proves the fixture assumption itself, not only the panel's
-    // arithmetic.
+    // Cross-check against a direct query, not a hardcoded expected value —
+    // proves the panel's own aggregation against real data, not a
+    // recalled number. CAST(...AS BIGINT) — DuckDB's SUM(INTEGER)
+    // defaults to HUGEINT, whose Arrow-to-JS serialization doesn't come
+    // back as a plain number (found empirically, same class of
+    // DuckDB-WASM Arrow-conversion quirk this project has hit before with
+    // DECIMAL/DOUBLE).
     const rows = await page.evaluate(() =>
       window.__wftdm!.query(
-        // CAST(...AS BIGINT) — DuckDB's SUM(INTEGER) defaults to HUGEINT,
-        // whose Arrow-to-JS serialization doesn't come back as a plain
-        // number (row.toJSON() on the raw HUGEINT read back as undefined,
-        // not NaN's usual "wrong value" — found empirically, not assumed).
-        // Same class of DuckDB-WASM Arrow-conversion quirk
-        // tests/fixtures/generate.py's own _sql_literal already documents
-        // for DECIMAL/DOUBLE.
-        `SELECT orig_taz, dest_taz, CAST(SUM(trips) AS BIGINT) AS total
-         FROM good_scenario__od_flows WHERE trips > 0
-         GROUP BY orig_taz, dest_taz ORDER BY orig_taz, dest_taz`,
+        `SELECT COUNT(*) AS pair_count FROM (
+           SELECT orig_taz, dest_taz
+           FROM "activitysim-baseline__od_flows"
+           GROUP BY orig_taz, dest_taz
+         )`,
       ),
     )
-    // Row 600's (missing-coordinate) trips=25 row is > 0 so this direct
-    // query includes it as its own group unless filtered out — the panel
-    // itself excludes it for a different reason (no coordinate), so
-    // compare only the pairs the panel is expected to render.
-    const directPairs = rows.filter((r) => Number(r.orig_taz) !== 600)
-    expect(directPairs).toHaveLength(EXPECTED_FLOWS_ALL.length)
-    for (const expected of EXPECTED_FLOWS_ALL) {
-      const match = directPairs.find(
-        (r) => String(r.orig_taz) === expected.origin && String(r.dest_taz) === expected.dest,
-      )
-      expect(match, `expected a direct-query row for ${expected.origin} -> ${expected.dest}`).toBeDefined()
-      expect(Number(match!.total)).toBe(expected.value)
-    }
+    expect(Number(flowCount)).toBe(Number(rows[0].pair_count))
+
+    const locRows = await page.evaluate(() =>
+      window.__wftdm!.query(
+        `SELECT COUNT(DISTINCT taz) AS n FROM (
+           SELECT orig_taz AS taz FROM "activitysim-baseline__od_flows"
+           UNION SELECT dest_taz AS taz FROM "activitysim-baseline__od_flows"
+         )`,
+      ),
+    )
+    expect(Number(locationCount)).toBe(Number(locRows[0].n))
+
+    // Real, confirmed values (queried directly, not guessed) — locks the
+    // cross-check itself in against a silent future data change, same
+    // discipline the original fixture-era hardcoded expectation provided.
+    expect(Number(flowCount)).toBe(623)
+    expect(Number(locationCount)).toBe(25)
   })
 
   test('the map has a real, non-zero-size canvas once rendered', async ({ page }) => {
     await boot(page)
+    await gotoNetworkTab(page)
     const card = panelCard(page, FLOWMAP_TITLE)
     const container = card.locator('.flowmap-chart')
     await trueEventually(async () => (await container.getAttribute('data-render-count')) !== null)
@@ -138,8 +169,8 @@ test.describe('User Story 1 - Author renders an O-D metric as a flow map', () =>
   })
 
   // 027-map-auto-fit-and-reset (FR-001/FR-004/FR-005/FR-006) — FLOWMAP_TITLE
-  // omits center/zoom in its fixture config, so once its real flow data
-  // (generate.py's OD_FLOWS_ROWS) resolves, the map's initial view must be
+  // omits center/zoom in its real dashboard-6-network.yaml config, so once
+  // its real od_flows data resolves, the map's initial view must be
   // auto-fitted to that data's own real extent — no longer left at
   // DEFAULT_CENTER/DEFAULT_ZOOM (that assertion was this test's OWN
   // previous behavior before this feature; superseded here, not merely
@@ -148,6 +179,7 @@ test.describe('User Story 1 - Author renders an O-D metric as a flow map', () =>
     page,
   }) => {
     await boot(page)
+    await gotoNetworkTab(page)
     const card = panelCard(page, FLOWMAP_TITLE)
     const container = card.locator('.flowmap-chart')
     await trueEventually(async () => (await container.getAttribute('data-render-count')) !== null)
@@ -172,27 +204,29 @@ test.describe('User Story 1 - Author renders an O-D metric as a flow map', () =>
       return { west: b.getWest(), south: b.getSouth(), east: b.getEast(), north: b.getNorth() }
     }, FLOWMAP_TITLE)
 
-    // The real, known extent of every displayable flow's origin/
-    // destination point (generate.py's OD_FLOWS_ROWS, excluding TAZ 600's
-    // missing-coordinate row) — west=-112.00 (TAZ 500), east=-111.75 (TAZ
-    // 400), south=40.60 (TAZ 400), north=40.85 (TAZ 300). fitBounds()'s own
+    // The real, confirmed extent of every real od_flows origin/destination
+    // point (activitysim-baseline, queried directly — MTC prototype_mtc's
+    // real San Francisco Bay Area zones, TAZ 1-25): west=-122.417245,
+    // east=-122.390667, south=37.77274, north=37.801557. fitBounds()'s own
     // padding only ever EXPANDS the visible viewport beyond the raw data
     // extent, never contracts it, so the real viewport must be a superset.
-    expect(bounds.west).toBeLessThanOrEqual(-112.0)
-    expect(bounds.east).toBeGreaterThanOrEqual(-111.75)
-    expect(bounds.south).toBeLessThanOrEqual(40.6)
-    expect(bounds.north).toBeGreaterThanOrEqual(40.85)
+    expect(bounds.west).toBeLessThanOrEqual(-122.417245)
+    expect(bounds.east).toBeGreaterThanOrEqual(-122.390667)
+    expect(bounds.south).toBeLessThanOrEqual(37.77274)
+    expect(bounds.north).toBeGreaterThanOrEqual(37.801557)
 
-    // Not the static default — a real, computed fit genuinely happened,
-    // not a coincidental no-op.
+    // Not the static Wasatch Front default (this app's own DEFAULT_CENTER/
+    // DEFAULT_ZOOM fallback, unrelated to where the real demo data actually
+    // is) — a real, computed fit genuinely happened, not a coincidental
+    // no-op.
     const zoom = await page.evaluate((t) => window.__flowmapTestMaps![t].getZoom(), FLOWMAP_TITLE)
     const center = await page.evaluate((t) => window.__flowmapTestMaps![t].getCenter(), FLOWMAP_TITLE)
     expect([zoom, center.lng, center.lat]).not.toEqual([9, -111.89, 40.76])
   })
 
   // FR-004 — a panel that never reaches a genuine displayable-data state
-  // must never attempt a fit at all. "Flow Map Broken Panel (intentional)"
-  // (a metric no scenario publishes) reaches `status: 'error'` — which,
+  // must never attempt a fit at all. "Broken Flow Map Panel (missing
+  // metric)" (a metric no scenario publishes) reaches `status: 'error'` — which,
   // per FlowMapPanel.tsx's own render logic, renders the shared
   // PanelErrorState with NO map/canvas mounted at all (asserted below and
   // already covered, unchanged, by this file's own pre-existing "a broken
@@ -209,7 +243,8 @@ test.describe('User Story 1 - Author renders an O-D metric as a flow map', () =>
   // proves.
   test('a panel that never reaches displayable data renders no map to (mis)fit at all', async ({ page }) => {
     await boot(page)
-    const card = panelCard(page, 'Flow Map Broken Panel (intentional)')
+    await page.getByRole('tab', { name: 'Test' }).click()
+    const card = panelCard(page, 'Broken Flow Map Panel (missing metric)')
     await expect(card.getByText("Couldn't load this map")).toBeVisible()
     await expect(card.locator('.flowmap-chart')).toHaveCount(0)
     await expect(card.locator('canvas')).toHaveCount(0)
@@ -219,10 +254,11 @@ test.describe('User Story 1 - Author renders an O-D metric as a flow map', () =>
     page,
   }) => {
     await boot(page)
+    await gotoNetworkTab(page)
     const card = panelCard(page, FLOWMAP_TITLE)
     const container = card.locator('.flowmap-chart')
     await trueEventually(async () => (await container.getAttribute('data-render-count')) !== null)
-    // The fixture panel sets clustering: true / clustering_auto: true —
+    // The real panel config sets clustering: true / clustering_auto: true —
     // confirmed indirectly via a successful, non-erroring render (a
     // FlowmapLayer constructed with invalid/mismatched clustering props
     // would throw or render nothing) combined with the flow/location
@@ -233,21 +269,28 @@ test.describe('User Story 1 - Author renders an O-D metric as a flow map', () =>
     await expect(container).toBeVisible()
   })
 
-  test('duplicate (origin, destination) rows sum into one flow line, not duplicate overlapping lines', async ({
-    page,
-  }) => {
-    await boot(page)
-    const card = panelCard(page, FLOWMAP_TITLE)
-    const container = card.locator('.flowmap-chart')
-    await trueEventually(async () => (await container.getAttribute('data-render-count')) !== null)
+  // 040-test-suite-migration: a real, confirmed scope correction, not a
+  // simplification. The retired fixture's own (100,200)/(100,300) rows
+  // were deliberately hand-authored duplicates specifically to exercise
+  // flowmapData.ts's dedup-by-(origin,destination)-key-and-sum logic. The
+  // real od_flows data has NO raw duplicate (orig_taz, dest_taz) pair at
+  // all — confirmed directly: 623 raw rows aggregate to exactly 623
+  // distinct pairs (queried live, not assumed). Per this migration's own
+  // explicit instruction, a synthetic duplicate is not fabricated here —
+  // this test is retired. The same SUM-per-group mechanism it existed to
+  // prove is already exercised, generically, by the aggregation-
+  // correctness test above (a real GROUP BY/SUM cross-check against this
+  // exact data) and remains covered at the unit level by
+  // tests/unit/flowmapData.test.ts's own dedicated duplicate-row case.
 
-    const flowCount = Number(await container.getAttribute('data-flow-count'))
-    // 6 distinct pairs, not 8 raw valid rows — proves (100,200) and
-    // (100,300)'s duplicate rows summed rather than rendering twice.
-    expect(flowCount).toBe(6)
-  })
-
-  test('excludes the non-positive-value and missing-coordinate rows, logs exactly one scoped console.warn', async ({
+  // 040-test-suite-migration: a real, confirmed scope correction. Zero
+  // real od_flows rows have a non-positive value or a missing
+  // coordinate — confirmed directly by querying the live data
+  // (COUNT(*) WHERE trips <= 0 OR any coordinate IS NULL = 0). Per this
+  // migration's own explicit instruction, a bad row is not fabricated to
+  // force the warning — the correct, honest assertion under real data is
+  // that FlowMapPanel's own scoped console.warn never fires at all.
+  test('logs no exclusion warning — the real data has no non-positive-value or missing-coordinate row', async ({
     page,
   }) => {
     const warnings: string[] = []
@@ -258,13 +301,17 @@ test.describe('User Story 1 - Author renders an O-D metric as a flow map', () =>
     })
 
     await boot(page)
+    await gotoNetworkTab(page)
     const card = panelCard(page, FLOWMAP_TITLE)
     const container = card.locator('.flowmap-chart')
     await trueEventually(async () => (await container.getAttribute('data-render-count')) !== null)
+    // No positive event to await for "nothing happened" — a bounded wait
+    // is the honest mechanism here, matching this file's own established
+    // convention for negative assertions elsewhere (e.g. the setStyle()
+    // no-re-pair checks below).
+    await page.waitForTimeout(1500)
 
-    await trueEventually(async () => warnings.length > 0)
-    expect(warnings).toHaveLength(1)
-    expect(warnings[0]).toContain('excluded 2 row(s)')
+    expect(warnings).toEqual([])
   })
 
   test('every map-host request is to the expected default basemap source, nothing unexpected', async ({
@@ -304,6 +351,7 @@ test.describe('User Story 1 - Author renders an O-D metric as a flow map', () =>
     })
 
     await boot(page)
+    await gotoNetworkTab(page)
     const card = panelCard(page, FLOWMAP_TITLE)
     const container = card.locator('.flowmap-chart')
     await trueEventually(async () => (await container.getAttribute('data-render-count')) !== null)
@@ -317,20 +365,24 @@ test.describe('User Story 1 - Author renders an O-D metric as a flow map', () =>
 
 // 027-map-auto-fit-and-reset, User Story 3 — an author's explicit
 // center/zoom always wins outright; auto-fit must never run at all for
-// such a panel. "Flowmap Explicit View Override" (dashboard-3-basemaps.yaml,
-// the "Basemaps" tab) is deliberately configured with a center/zoom far
-// from its own real flow data (which spans roughly lon -112.00..-111.75 /
-// lat 40.60..40.85) specifically so this test can tell "stayed at the
-// authored view" apart from "coincidentally close to a real fit". Named
-// with this feature's own number, not a bare "User Story 3" — this file
-// already has a pre-existing, differently-scoped "User Story 3" describe
-// block (010-flowmap-panel's own numbering) further below.
+// such a panel. "Flowmap Explicit View Override"
+// (dashboard-8-test.yaml, the "Test" tab, 040-test-suite-migration) is
+// deliberately configured with a center/zoom far from its own real flow
+// data — the real od_flows extent is roughly lon -122.417..-122.391 /
+// lat 37.773..37.802 (MTC prototype_mtc's San Francisco Bay Area zones,
+// NOT the Wasatch Front — this app's own DEFAULT_CENTER/DEFAULT_ZOOM
+// fallback is Utah, but the demo DATA is not) — specifically so this test
+// can tell "stayed at the authored view" apart from "coincidentally close
+// to a real fit". Named with this feature's own number, not a bare "User
+// Story 3" — this file already has a pre-existing, differently-scoped
+// "User Story 3" describe block (010-flowmap-panel's own numbering)
+// further below.
 test.describe('027-map-auto-fit-and-reset — User Story 3: an author explicit view configuration is always respected', () => {
   test('an explicit center/zoom wins outright over auto-fit, even when it is nowhere near the real data', async ({
     page,
   }) => {
     await boot(page)
-    await page.getByRole('tab', { name: 'Basemaps' }).click()
+    await page.getByRole('tab', { name: 'Test' }).click()
     const title = 'Flowmap Explicit View Override'
     const container = panelCard(page, title).locator('.flowmap-chart')
     await trueEventually(async () => (await container.getAttribute('data-render-count')) !== null)
@@ -373,6 +425,7 @@ test.describe('Attribution control renders MapLibre\'s compact form and the togg
     page,
   }) => {
     await boot(page)
+    await gotoNetworkTab(page)
     const card = panelCard(page, FLOWMAP_TITLE)
     const container = card.locator('.flowmap-chart')
     await trueEventually(async () => (await container.getAttribute('data-render-count')) !== null)
@@ -403,6 +456,7 @@ test.describe('Attribution control renders MapLibre\'s compact form and the togg
     page,
   }) => {
     await boot(page)
+    await gotoNetworkTab(page)
     const card = panelCard(page, FLOWMAP_TITLE)
     const container = card.locator('.flowmap-chart')
     await trueEventually(async () => (await container.getAttribute('data-render-count')) !== null)
@@ -461,6 +515,7 @@ test.describe('014-map-navigation-controls — NavigationControl zoom/compass ge
     page,
   }) => {
     await boot(page)
+    await gotoNetworkTab(page)
     const card = panelCard(page, FLOWMAP_TITLE)
     const container = card.locator('.flowmap-chart')
     await trueEventually(async () => (await container.getAttribute('data-render-count')) !== null)
@@ -510,6 +565,7 @@ test.describe('014-map-navigation-controls — NavigationControl zoom/compass ge
     page,
   }) => {
     await boot(page)
+    await gotoNetworkTab(page)
     const card = panelCard(page, FLOWMAP_TITLE)
     const container = card.locator('.flowmap-chart')
     await trueEventually(async () => (await container.getAttribute('data-render-count')) !== null)
@@ -564,6 +620,7 @@ test.describe('027-map-auto-fit-and-reset — User Story 4: reset-to-view contro
       window.__flowmapTestMapReadyDelayMs = 1000
     })
     await boot(page)
+    await gotoNetworkTab(page)
     const card = panelCard(page, FLOWMAP_TITLE)
     const container = card.locator('.flowmap-chart')
     const resetBtn = container.getByTitle('Zoom to extents')
@@ -617,7 +674,7 @@ test.describe('027-map-auto-fit-and-reset — User Story 4: reset-to-view contro
     page,
   }) => {
     await boot(page)
-    await page.getByRole('tab', { name: 'Basemaps' }).click()
+    await page.getByRole('tab', { name: 'Test' }).click()
     const title = 'Flowmap Explicit View Override'
     const container = panelCard(page, title).locator('.flowmap-chart')
     const resetBtn = container.getByTitle('Zoom to extents')
@@ -639,13 +696,23 @@ test.describe('027-map-auto-fit-and-reset — User Story 4: reset-to-view contro
 
 // 027-map-auto-fit-and-reset (FR-006/SC-004) — once auto-fit has run,
 // nothing else should ever move the camera again on its own: a viewer's
-// manual pan must survive 004 expand/collapse, a genuine data reload
-// (filter/scenario change), and a basemap switch — none of which reload
-// the flow data itself, and FR-006 requires auto-fit to run at most once
-// per mount regardless of what re-triggers the data-update effect.
+// manual pan must survive 004 expand/collapse and a basemap switch —
+// neither of which reload the flow data itself, and FR-006 requires
+// auto-fit to run at most once per mount regardless of what re-triggers
+// the data-update effect.
+//
+// 040-test-suite-migration: this test originally had a third sub-case,
+// (b) a global filter change ($filters.purpose narrowing the fixture's
+// own flow set) — removed. This panel is pinned to `scenario:
+// activitysim-baseline` (dashboard-6-network.yaml) and no real demo
+// content anywhere binds a flowmap panel to a global filter, matching
+// this migration's own established convention elsewhere in this suite
+// (dashboardShell.spec.ts/panelExpand.spec.ts) for a case with no real
+// content to exercise it.
 test.describe('027-map-auto-fit-and-reset — Polish: no re-trigger after a manual pan', () => {
-  test('a manual pan survives 004 expand/collapse, a filter change, and a basemap switch', async ({ page }) => {
+  test('a manual pan survives 004 expand/collapse and a basemap switch', async ({ page }) => {
     await boot(page)
+    await gotoNetworkTab(page)
     const card = panelCard(page, FLOWMAP_TITLE)
     const container = card.locator('.flowmap-chart')
     await trueEventually(async () => (await container.getAttribute('data-render-count')) !== null)
@@ -680,19 +747,7 @@ test.describe('027-map-auto-fit-and-reset — Polish: no re-trigger after a manu
     expect(view.center.lat).toBeCloseTo(pannedView.center.lat, 3)
     expect(view.zoom).toBeCloseTo(pannedView.zoom, 3)
 
-    // (b) a genuine data reload — a global filter change.
-    await page.evaluate(() => window.__wftdm!.filterState.set('purpose', 'HBW'))
-    await trueEventually(async () => {
-      const flowCount = await container.getAttribute('data-flow-count')
-      return flowCount !== null && Number(flowCount) === 5 // HBW narrows to 5 flows
-    })
-    view = await getView()
-    expect(view.center.lng).toBeCloseTo(pannedView.center.lng, 3)
-    expect(view.center.lat).toBeCloseTo(pannedView.center.lat, 3)
-    expect(view.zoom).toBeCloseTo(pannedView.zoom, 3)
-    await page.evaluate(() => window.__wftdm!.filterState.set('purpose', 'all'))
-
-    // (c) a basemap switch (Settings modal's real, shipped Apply action —
+    // (b) a basemap switch (Settings modal's real, shipped Apply action —
     // same mechanism this file's own interleaved-overlay-survival test
     // already uses to trigger a real setStyle() call).
     await page.getByRole('button', { name: 'Settings' }).click()
@@ -714,98 +769,87 @@ test.describe('027-map-auto-fit-and-reset — Polish: no re-trigger after a manu
 // confirmed this session. Uses the SAME shared mapTooltip.ts component
 // zonemapPanel.spec.ts's own hover coverage verifies, styled identically.
 test.describe('015-map-controls-polish — deck.gl onHover tooltip shows origin/destination/value', () => {
-  test('hovering the largest flow line shows a real tooltip with origin, destination, and value', async ({
+  // 040-test-suite-migration: a real, confirmed design correction found
+  // via live verification, not assumed. Targeting one specific NAMED
+  // flow's geographic midpoint (the original approach — this panel's
+  // real largest flow, or its largest non-self-loop flow) turned out
+  // unreliable against this panel's own real, dense 623-flow dataset:
+  // `clustering_auto: true` genuinely clusters many nearby real TAZ
+  // points at FLOWMAP_TITLE's own auto-fitted zoom (confirmed live —
+  // zoom 11 settles with entire regions merged into synthetic cluster
+  // ids like `{[110]}`, leaving no individually-pickable line anywhere
+  // near several real candidate flows' own midpoints, top-8-largest
+  // included). This test therefore targets the OTHER real od_flows panel
+  // on this tab, "Trip Distribution Desire Lines" — its own real,
+  // authored `center`/`zoom: 13` (dashboard-6-network.yaml) is
+  // tight enough that individual flows remain pickable, confirmed live by
+  // a grid sweep. Rather than pin one exact (origin, destination) pair
+  // (fragile to re-derive by hand against 623 candidates, and still not
+  // guaranteed hittable at a specific pixel), this test sweeps for the
+  // first genuinely non-clustered hit (`strongText` matching plain
+  // `\d+ → \d+`, no `{...}` cluster id) and cross-checks its own
+  // rendered (origin, destination, value) triple against a live query —
+  // proving the real deck.gl onHover + shared mapTooltip.ts mechanism
+  // against whichever real flow it happens to land on, exactly the same
+  // guarantee the original single-target design existed to prove.
+  test('hovering a real, non-clustered flow line shows a tooltip whose origin/destination/value matches a live query', async ({
     page,
   }) => {
     await boot(page)
-    const card = panelCard(page, FLOWMAP_TITLE)
+    await gotoNetworkTab(page)
+    const title = 'Trip Distribution Desire Lines'
+    const card = panelCard(page, title)
     const container = card.locator('.flowmap-chart')
     await trueEventually(async () => (await container.getAttribute('data-render-count')) !== null)
     await container.scrollIntoViewIfNeeded()
     await page.waitForTimeout(300) // let deck.gl actually paint a frame before picking
 
-    // Geographic midpoint between TAZ 100 (40.76, -111.89) and TAZ 200
-    // (40.70, -111.85) — the (100, 200) flow is this fixture's largest
-    // (590 = 500 HBW + 90 NHB, EXPECTED_FLOWS_ALL above), and therefore
-    // the widest, easiest-to-hit rendered line.
-    const point = await page.evaluate((t) => {
-      const map = window.__flowmapTestMaps![t]
-      const p = map.project([-111.87, 40.73])
-      const rect = map.getCanvas().getBoundingClientRect()
-      return { x: rect.left + p.x, y: rect.top + p.y }
-    }, FLOWMAP_TITLE)
-
+    const box = await container.locator('canvas.maplibregl-canvas').boundingBox()
     const tooltip = container.locator('.map-tooltip')
-    // A small vertical sweep, not one exact point — flowmap.gl renders
-    // flow lines with a slight curve (flowLineCurviness), so the
-    // straight-line geographic midpoint doesn't always land EXACTLY on
-    // the rendered curve's own pixel. FlowMapPanel.tsx's own
-    // pickingRadius: 8 already affords some tolerance; this sweep affords
-    // a bit more — standard practice for hover-testing thin line
-    // geometry, not a sign anything is flaky.
-    let found = false
-    for (const dy of [0, -6, 6, -12, 12, -18, 18]) {
-      await page.mouse.move(point.x, point.y + dy, { steps: 3 })
-      if (await tooltip.isVisible().catch(() => false)) {
-        found = true
-        break
+
+    let hit: { origin: number; dest: number; count: number } | null = null
+    outer: for (let fx = 0.1; fx <= 0.9; fx += 0.04) {
+      for (let fy = 0.1; fy <= 0.9; fy += 0.04) {
+        await page.mouse.move(box!.x + box!.width * fx, box!.y + box!.height * fy, { steps: 2 })
+        if (!(await tooltip.isVisible().catch(() => false))) continue
+        const strongText = (await tooltip.locator('strong').textContent())?.trim() ?? ''
+        const match = /^(\d+) → (\d+)$/.exec(strongText)
+        if (!match) continue // a cluster id (e.g. "{[110]} → 9") — keep sweeping
+        const countText = await tooltip.evaluate((el) => el.querySelector('br')?.nextSibling?.textContent ?? '')
+        hit = { origin: Number(match[1]), dest: Number(match[2]), count: Number(countText) }
+        break outer
       }
-      await page.waitForTimeout(100)
     }
-    expect(found).toBe(true)
-    await expect(tooltip).toContainText('100')
-    await expect(tooltip).toContainText('200')
-    await expect(tooltip).toContainText('590')
+    expect(hit, 'expected at least one non-clustered flow to be pickable somewhere on this panel').not.toBeNull()
+
+    // Cross-check against a direct query — proves the tooltip's rendered
+    // value is real, aggregated od_flows data, not merely "some text
+    // appeared."
+    const rows = await page.evaluate(
+      (h) =>
+        window.__wftdm!.query(
+          `SELECT CAST(SUM(trips) AS BIGINT) AS total FROM "activitysim-baseline__od_flows"
+           WHERE orig_taz = ${h!.origin} AND dest_taz = ${h!.dest}`,
+        ),
+      hit,
+    )
+    expect(Number(rows[0].total)).toBe(hit!.count)
   })
 })
 
-test.describe('User Story 2 - Flowmap panel responds to global filters and resizes correctly', () => {
-  test('changing a bound global filter updates the flow lines without recreating the map instance', async ({
-    page,
-  }) => {
-    await boot(page)
-    const card = panelCard(page, FLOWMAP_TITLE)
-    const container = card.locator('.flowmap-chart')
-    const canvas = container.locator('canvas').first()
-    await trueEventually(async () => (await container.getAttribute('data-render-count')) !== null)
-    expect(Number(await container.getAttribute('data-flow-count'))).toBe(6) // 'all'
-
-    const canvasHandleBefore = await canvas.elementHandle()
-    const renderCountBefore = await container.getAttribute('data-render-count')
-
-    await page.evaluate(() => window.__wftdm!.filterState.set('purpose', 'HBW'))
-    await trueEventually(
-      async () => (await container.getAttribute('data-render-count')) !== renderCountBefore,
-    )
-
-    // Same DOM node — not a remount — and the data genuinely narrowed.
-    const canvasHandleAfter = await canvas.elementHandle()
-    const sameNode = await page.evaluate(
-      ([a, b]) => a === b,
-      [canvasHandleBefore, canvasHandleAfter],
-    )
-    expect(sameNode).toBe(true)
-    expect(Number(await container.getAttribute('data-flow-count'))).toBe(5) // 'HBW' only
-    expect(Number(await container.getAttribute('data-location-count'))).toBe(5)
-  })
-
-  test('a filter value matching zero rows shows the shared PanelEmptyState', async ({ page }) => {
-    await boot(page)
-    const card = panelCard(page, FLOWMAP_TITLE)
-    await expect(card.locator('.flowmap-chart')).toBeVisible()
-
-    await page.evaluate(() => window.__wftdm!.filterState.set('purpose', 'NONEXISTENT'))
-    await expect(card.getByText('No data for this selection')).toBeVisible()
-    await expect(card.locator('.flowmap-chart')).toHaveCount(0)
-
-    await page.evaluate(() => window.__wftdm!.filterState.set('purpose', 'all'))
-    await expect(card.locator('.flowmap-chart')).toBeVisible()
-  })
-
+// 040-test-suite-migration: this describe block originally opened with
+// two tests exercising $filters.purpose reactivity/empty-state — deleted.
+// This panel is pinned to `scenario: activitysim-baseline`
+// (dashboard-6-network.yaml) and no real demo content anywhere binds a
+// flowmap panel to a global filter, matching this migration's own
+// established convention elsewhere in this suite (dashboardShell.spec.ts/
+// panelExpand.spec.ts) for a case with no real content to exercise it.
+test.describe('User Story 2 - Flowmap panel resizes correctly and behaves consistently with the rest of the panel registry', () => {
   test('004 expand/collapse resizes the map correctly, issues zero additional query, preserves the map instance, and collapse returns correct card-sized rendering', async ({
     page,
   }) => {
     await boot(page)
+    await gotoNetworkTab(page)
     const card = panelCard(page, FLOWMAP_TITLE)
     const container = card.locator('.flowmap-chart')
     const canvas = container.locator('canvas').first()
@@ -848,6 +892,7 @@ test.describe('User Story 2 - Flowmap panel responds to global filters and resiz
 
   test('a plain browser window resize also resizes the map canvas correctly', async ({ page }) => {
     await boot(page)
+    await gotoNetworkTab(page)
     const card = panelCard(page, FLOWMAP_TITLE)
     const canvas = card.locator('.flowmap-chart canvas').first()
     await expect(canvas).toBeVisible()
@@ -876,6 +921,7 @@ test.describe('User Story 2 - Flowmap panel responds to global filters and resiz
     // live, interactive instance afterward — not a frozen last frame of a
     // WebGL context that silently died in the move.
     await boot(page)
+    await gotoNetworkTab(page)
     const card = panelCard(page, FLOWMAP_TITLE)
     const container = card.locator('.flowmap-chart')
     // 012-webgl-context-management — UPDATED: interleaved MapboxOverlay
@@ -940,6 +986,7 @@ test.describe('User Story 2 - Flowmap panel responds to global filters and resiz
       window.__flowmapTestMapReadyDelayMs = 1000
     })
     await boot(page)
+    await gotoNetworkTab(page)
     const card = panelCard(page, FLOWMAP_TITLE)
     const container = card.locator('.flowmap-chart')
 
@@ -949,7 +996,7 @@ test.describe('User Story 2 - Flowmap panel responds to global filters and resiz
     // true, rather than being stuck permanently empty from an early
     // return with no re-trigger.
     await trueEventually(async () => (await container.getAttribute('data-render-count')) !== null)
-    expect(Number(await container.getAttribute('data-flow-count'))).toBe(6)
+    expect(Number(await container.getAttribute('data-flow-count'))).toBe(623)
   })
 })
 
@@ -966,55 +1013,44 @@ test.describe('User Story 3 - Flowmap panel behaves consistently with the rest o
     page,
   }) => {
     await boot(page)
-    const card = panelCard(page, 'Flow Map Broken Panel (intentional)')
+    await page.getByRole('tab', { name: 'Test' }).click()
+    const card = panelCard(page, 'Broken Flow Map Panel (missing metric)')
     await expect(card.getByText("Couldn't load this map")).toBeVisible()
     await expect(card.locator('.flowmap-chart')).toHaveCount(0)
     await expect(card.locator('canvas')).toHaveCount(0)
   })
 
-  test('a tab mixing all eight now-built panel types renders without error in a single load', async ({
-    page,
-  }) => {
-    await boot(page)
-    await expect(page.getByText('Total Households')).toBeVisible() // valuebox
-    await expect(page.getByText('Mode Share by Purpose', { exact: true })).toBeVisible() // plotly
-    await expect(panelCard(page, 'Screenline Validation').locator('table')).toBeVisible() // table
-    await expect(
-      panelCard(page, 'Methodology Notes').getByRole('heading', { name: 'Highway Assignment Validation' }),
-    ).toBeVisible() // markdown
-    await expect(
-      panelCard(page, 'Observable Plot Mode Share (Bar)').locator('.observable-plot-chart svg[viewBox]'),
-    ).toBeVisible() // observable-plot
-    await expect(
-      panelCard(page, 'Sankey Tour-to-Trip Mode Consistency').locator('.sankey-chart svg[viewBox] rect[data-node-id]'),
-    ).not.toHaveCount(0) // sankey
-
-    const flowmapCard = panelCard(page, FLOWMAP_TITLE)
-    // .first() — kept from 010's original assertion shape; 012-webgl-
-    // context-management's interleaved MapboxOverlay mode now leaves
-    // exactly one real <canvas> inside .flowmap-chart (deck.gl draws
-    // into MapLibre's own canvas, no separate #deckgl-overlay element),
-    // so .first() is a no-op here rather than disambiguating two.
-    await expect(flowmapCard.locator('.flowmap-chart canvas').first()).toBeVisible() // flowmap
-    await expect(expandTrigger(page, FLOWMAP_TITLE)).toBeVisible()
-
-    // 013-zonemap-panel — the eighth and final originally-listed panel
-    // type, completing this mixed-tab guarantee (spec.md SC-005).
-    const zonemapCard = panelCard(page, 'Zone Map VMT per Capita')
-    await expect(zonemapCard.locator('.zonemap-chart canvas').first()).toBeVisible() // zonemap
-    await expect(expandTrigger(page, 'Zone Map VMT per Capita')).toBeVisible()
-  })
+  // 040-test-suite-migration: this describe block originally closed with
+  // "a tab mixing all eight now-built panel types renders without error
+  // in a single load" — deleted, not migrated. It is now fully redundant:
+  // demoContentAllPanels.spec.ts's own SC-005 coverage already proves
+  // every one of the ten real panel types (not just eight) renders
+  // correctly together against real demo content — the exact guarantee
+  // this test existed to prove, under a real, more current name.
 })
 
 // 011-basemap-style-system — real-browser basemap coverage. Reuses
-// FLOWMAP_TITLE ("Flow Map Trip Distribution Desire Lines", no basemap:
-// config) for the app-default/theme-pairing path and the empirical
-// survival test; the "Basemaps" fixture tab (dashboard-3-basemaps.yaml)
-// hosts every other scenario (precedence, raster, composition, fallback).
-// See quickstart.md for the full scenario list this section implements.
+// FLOWMAP_TITLE ("Trip Distribution Desire Lines (Default View)", no
+// basemap: config) for the app-default/theme-pairing path and the
+// empirical survival test; `dashboard-8-test.yaml`'s permanent "Test" tab
+// hosts every other scenario (precedence, raster, composition, fallback)
+// via real, purpose-built content authored for this migration.
 
 async function getStyleSources(page: Page, title: string): Promise<string[]> {
-  const style = await page.evaluate((t) => window.__flowmapTestMaps![t].getStyle(), title)
+  // 040-test-suite-migration: the real Test tab mounts far more real/broken
+  // map panels at once (11) than the retired fixture's own dedicated
+  // "Basemaps" tab ever did — confirmed live: a handful of callers of this
+  // helper (017-multi-sprite-support, 016-fix-ugrc-dark-mode) call it
+  // immediately after the tab click with no prior render-count wait, and
+  // under this busier tab, `window.__flowmapTestMaps` can still be
+  // genuinely undefined (no flowmap panel has finished mounting yet) on
+  // the very first poll attempt — a bare `![t]` non-null assertion then
+  // throws, and expect.poll does not retry past a thrown exception,
+  // failing the whole check immediately instead of polling until mounted.
+  // Optional chaining here treats "not mounted yet" the same as "mounted,
+  // zero sources so far" — the correct semantic for every caller, which
+  // all exist to wait for a basemap to resolve.
+  const style = await page.evaluate((t) => window.__flowmapTestMaps?.[t]?.getStyle(), title)
   return Object.keys(style?.sources ?? {})
 }
 
@@ -1040,6 +1076,7 @@ test.describe('011-basemap-style-system — US1: default basemap renders (quicks
     page.on('request', (req) => requestUrls.push(req.url()))
 
     await boot(page)
+    await gotoNetworkTab(page)
     const container = panelCard(page, FLOWMAP_TITLE).locator('.flowmap-chart')
     await trueEventually(async () => (await container.getAttribute('data-render-count')) !== null)
     await waitForBasemapApplied(page, FLOWMAP_TITLE)
@@ -1069,6 +1106,7 @@ test.describe('021-basemap-catalog-redesign — US2: the static app-default neve
     // setStyle() calls directly tests the actual claim (no re-pairing)
     // and is immune to that unrelated noise.
     await boot(page)
+    await gotoNetworkTab(page)
     const title = FLOWMAP_TITLE
     const container = panelCard(page, title).locator('.flowmap-chart')
     await trueEventually(async () => (await container.getAttribute('data-render-count')) !== null)
@@ -1127,6 +1165,7 @@ test.describe('011-basemap-style-system — US1: setStyle()/MapboxOverlay empiri
     page.on('request', (req) => requestUrls.push(req.url()))
 
     await boot(page)
+    await gotoNetworkTab(page)
     const card = panelCard(page, FLOWMAP_TITLE)
     const container = card.locator('.flowmap-chart')
     const baseCanvas = container.locator('canvas.maplibregl-canvas')
@@ -1253,6 +1292,7 @@ test.describe('012-webgl-context-management — interleaved overlay repopulates 
     // not a specific intermediate count that depends on batching timing
     // this feature does not control.
     await boot(page)
+    await gotoNetworkTab(page)
     const container = panelCard(page, FLOWMAP_TITLE).locator('.flowmap-chart')
     await trueEventually(async () => (await container.getAttribute('data-render-count')) !== null)
     await waitForBasemapApplied(page, FLOWMAP_TITLE)
@@ -1291,8 +1331,8 @@ test.describe('011-basemap-style-system — US1: uniform blank-style fallback (q
     page,
   }) => {
     await boot(page)
-    await page.getByRole('tab', { name: 'Basemaps' }).click()
-    const title = 'Flowmap Unreachable Basemap (intentional)'
+    await page.getByRole('tab', { name: 'Test' }).click()
+    const title = 'Flowmap Unreachable Basemap'
     const container = panelCard(page, title).locator('.flowmap-chart')
     await trueEventually(async () => (await container.getAttribute('data-render-count')) !== null)
     await page.waitForTimeout(1000) // the failed fetch/error event needs a moment to resolve
@@ -1327,10 +1367,10 @@ test.describe('011-basemap-style-system — US2: three-level precedence (quickst
     page.on('request', (req) => requestUrls.push(req.url()))
 
     await boot(page)
-    await page.getByRole('tab', { name: 'Basemaps' }).click()
+    await page.getByRole('tab', { name: 'Test' }).click()
 
-    const tabDefaultTitle = 'Flowmap Tab Default Basemap'
-    const overrideTitle = 'Flowmap Panel Basemap Override'
+    const tabDefaultTitle = 'Basemap Precedence — inherits tab default'
+    const overrideTitle = 'Basemap Precedence — panel override wins'
     await trueEventually(
       async () =>
         (await panelCard(page, tabDefaultTitle).locator('.flowmap-chart').getAttribute('data-render-count')) !==
@@ -1343,12 +1383,13 @@ test.describe('011-basemap-style-system — US2: three-level precedence (quickst
     await waitForBasemapApplied(page, tabDefaultTitle)
     await waitForBasemapApplied(page, overrideTitle)
 
-    // Tab default (openfreemap-bright) resolves for the panel with no
+    // Tab default (dashboard-8-test.yaml's own trailing
+    // `default_basemap: carto-positron`) resolves for the panel with no
     // basemap: of its own.
-    expect(requestUrls.some((u) => u.includes('tiles.openfreemap.org/styles/bright'))).toBe(true)
-    // Panel-level override (carto-voyager) wins over the tab default for
-    // the other panel.
-    expect(requestUrls.some((u) => u.includes('voyager-gl-style'))).toBe(true)
+    expect(requestUrls.some((u) => u.includes('positron-gl-style'))).toBe(true)
+    // Panel-level override (basemap: openfreemap-positron) wins over the
+    // tab default for the other panel.
+    expect(requestUrls.some((u) => u.includes('tiles.openfreemap.org/styles/positron'))).toBe(true)
   })
 })
 
@@ -1357,8 +1398,8 @@ test.describe('011-basemap-style-system — US2: explicit pin does not re-pair o
     page,
   }) => {
     await boot(page)
-    await page.getByRole('tab', { name: 'Basemaps' }).click()
-    const title = 'Flowmap Panel Basemap Override' // basemap: carto-voyager
+    await page.getByRole('tab', { name: 'Test' }).click()
+    const title = 'Basemap Precedence — panel override wins' // basemap: openfreemap-positron
     const container = panelCard(page, title).locator('.flowmap-chart')
     await trueEventually(async () => (await container.getAttribute('data-render-count')) !== null)
     await waitForBasemapApplied(page, title)
@@ -1393,7 +1434,7 @@ test.describe('011-basemap-style-system — US2: a raster-provider preset render
     page.on('request', (req) => requestUrls.push(req.url()))
 
     await boot(page)
-    await page.getByRole('tab', { name: 'Basemaps' }).click()
+    await page.getByRole('tab', { name: 'Test' }).click()
     const title = 'Flowmap Raster Provider Preset' // basemap: OpenTopoMap
     const container = panelCard(page, title).locator('.flowmap-chart')
     await trueEventually(async () => (await container.getAttribute('data-render-count')) !== null)
@@ -1421,10 +1462,18 @@ test.describe('011-basemap-style-system — US3: real UGRC multi-source composit
     page,
   }) => {
     await boot(page)
-    await page.getByRole('tab', { name: 'Basemaps' }).click()
+    await page.getByRole('tab', { name: 'Test' }).click()
     const title = 'Flowmap UGRC Composition'
     const container = panelCard(page, title).locator('.flowmap-chart')
-    await trueEventually(async () => (await container.getAttribute('data-render-count')) !== null)
+    // 040-test-suite-migration: a longer, explicit poll window (not the
+    // generic trueEventually()'s default ~5s) — this real Test tab mounts
+    // 11 real/broken map panels at once (far more than the retired
+    // fixture's own dedicated "Basemaps" tab ever had), and this panel's
+    // own data query is dispatched last among them; confirmed empirically
+    // this can legitimately exceed 5s under that real concurrent load.
+    await expect
+      .poll(async () => (await container.getAttribute('data-render-count')) !== null, { timeout: 15000 })
+      .toBe(true)
     // A real, multi-fetch composition genuinely can take a few seconds —
     // 2 sequential real network round-trips (style docs) plus 2 more
     // (each layer's own TileJSON, research.md §6 update), confirmed
@@ -1548,7 +1597,7 @@ test.describe('017-multi-sprite-support — US1: both UGRC panels\' highway/rout
   // automatable, no real hardware required (unlike 016's own defect).
   test('Flowmap UGRC Composition — LiteLabels\' own highway-shield icons are present', async ({ page }) => {
     await boot(page)
-    await page.getByRole('tab', { name: 'Basemaps' }).click()
+    await page.getByRole('tab', { name: 'Test' }).click()
     const title = 'Flowmap UGRC Composition'
     await waitForBasemapApplied(page, title)
     await page.waitForTimeout(1500) // same real multi-fetch settle window as the composition test above
@@ -1575,7 +1624,7 @@ test.describe('017-multi-sprite-support — US1: both UGRC panels\' highway/rout
     page,
   }) => {
     await boot(page)
-    await page.getByRole('tab', { name: 'Basemaps' }).click()
+    await page.getByRole('tab', { name: 'Test' }).click()
     const title = 'Flowmap UGRC Outdoors Composition'
     await waitForBasemapApplied(page, title)
     await page.waitForTimeout(1500)
@@ -1607,7 +1656,7 @@ test.describe('016-fix-ugrc-dark-mode — US1/US2: both UGRC panels get an injec
     page,
   }) => {
     await boot(page)
-    await page.getByRole('tab', { name: 'Basemaps' }).click()
+    await page.getByRole('tab', { name: 'Test' }).click()
 
     for (const title of ['Flowmap UGRC Composition', 'Flowmap UGRC Outdoors Composition']) {
       await waitForBasemapApplied(page, title)
@@ -1630,7 +1679,7 @@ test.describe('016-fix-ugrc-dark-mode — US1/US2: both UGRC panels get an injec
     page,
   }) => {
     await boot(page)
-    await page.getByRole('tab', { name: 'Basemaps' }).click()
+    await page.getByRole('tab', { name: 'Test' }).click()
     const title = 'Flowmap UGRC Composition'
     const card = panelCard(page, title)
     const container = card.locator('.flowmap-chart')
@@ -1668,8 +1717,8 @@ test.describe('016-fix-ugrc-dark-mode — US1/US2: both UGRC panels get an injec
 test.describe('011-basemap-style-system — US3: one broken composition layer falls back the WHOLE basemap (quickstart.md Scenario 5, composition subset)', () => {
   test('never a partial composite', async ({ page }) => {
     await boot(page)
-    await page.getByRole('tab', { name: 'Basemaps' }).click()
-    const title = 'Flowmap Broken Composition Layer (intentional)'
+    await page.getByRole('tab', { name: 'Test' }).click()
+    const title = 'Flowmap Broken Composition Layer'
     const container = panelCard(page, title).locator('.flowmap-chart')
     await trueEventually(async () => (await container.getAttribute('data-render-count')) !== null)
     await page.waitForTimeout(1500) // the failed layer fetch needs a moment to reject
@@ -1694,21 +1743,22 @@ test.describe('011-basemap-style-system — fully offline fallback (quickstart.m
     )
 
     await boot(page)
+    await gotoNetworkTab(page)
 
-    // The default-path panel (Summary tab, no basemap: config).
+    // The default-path panel (Network tab, no basemap: config).
     const defaultContainer = panelCard(page, FLOWMAP_TITLE).locator('.flowmap-chart')
     await trueEventually(async () => (await defaultContainer.getAttribute('data-render-count')) !== null)
     await page.waitForTimeout(1000)
     expect(await getStyleSources(page, FLOWMAP_TITLE)).toEqual([])
     expect(Number(await defaultContainer.getAttribute('data-flow-count'))).toBeGreaterThan(0)
 
-    // Every basemap-tab panel too — pinned preset, tab default, raster
+    // Every Test-tab panel too — pinned preset, tab default, raster
     // preset, and composition all funnel through the same FR-010
     // fallback regardless of which source category they'd otherwise use.
-    await page.getByRole('tab', { name: 'Basemaps' }).click()
+    await page.getByRole('tab', { name: 'Test' }).click()
     for (const title of [
-      'Flowmap Tab Default Basemap',
-      'Flowmap Panel Basemap Override',
+      'Basemap Precedence — inherits tab default',
+      'Basemap Precedence — panel override wins',
       'Flowmap Raster Provider Preset',
       'Flowmap UGRC Composition',
     ]) {
@@ -1834,14 +1884,14 @@ async function canvasCornersAreNotUniformBlankGray(page: Page, title: string): P
 test.describe('012-webgl-context-management — expand/collapse never regresses a working basemap (quickstart.md Scenario 3)', () => {
   test('expanding one of six panels leaves it and every sibling correctly rendered', async ({ page }) => {
     await boot(page)
-    await page.getByRole('tab', { name: 'Basemaps' }).click()
+    await page.getByRole('tab', { name: 'Test' }).click()
     const titles = [
-      'Flowmap Tab Default Basemap',
-      'Flowmap Panel Basemap Override',
+      'Basemap Precedence — inherits tab default',
+      'Basemap Precedence — panel override wins',
       'Flowmap Raster Provider Preset',
-      'Flowmap Unreachable Basemap (intentional)',
+      'Flowmap Unreachable Basemap',
       'Flowmap UGRC Composition',
-      'Flowmap Broken Composition Layer (intentional)',
+      'Flowmap Broken Composition Layer',
     ]
     for (const title of titles) {
       const container = panelCard(page, title).locator('.flowmap-chart')
@@ -1849,7 +1899,7 @@ test.describe('012-webgl-context-management — expand/collapse never regresses 
     }
     await page.waitForTimeout(1500) // let every panel's own fallback/composition settle
 
-    const expandTitle = 'Flowmap Tab Default Basemap'
+    const expandTitle = 'Basemap Precedence — inherits tab default'
     await expandTrigger(page, expandTitle).click()
     const dialogContainer = page.getByRole('dialog').locator('.flowmap-chart')
     await expect(dialogContainer.locator('canvas.maplibregl-canvas')).toBeVisible()

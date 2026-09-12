@@ -315,4 +315,85 @@ layout:
       height: 320
       width:  0.5
 
+  # ── 040-test-suite-migration: an author-configured view deliberately
+  #    far from the real data's own extent (real od_flows spans roughly
+  #    lon -112.0..-111.75 / lat 40.6..40.85, the Wasatch Front) — proves
+  #    an explicit center/zoom always wins outright over auto-fit. ──
+  row_explicit_view:
+    - type:      flowmap
+      title:     "Flowmap Explicit View Override"
+      metric:    od_flows
+      scenario:  activitysim-baseline
+      origin:      orig_taz
+      origin_lat:  orig_lat
+      origin_lon:  orig_lon
+      destination: dest_taz
+      dest_lat:    dest_lat
+      dest_lon:    dest_lon
+      value:       trips
+      center: [-110.0, 39.0]
+      zoom:   6
+      height: 320
+      width:  1.0
+
+  # ── 040-test-suite-migration: a real leaflet-providers raster preset
+  #    (OpenTopoMap) — extends basemap coverage to the third source
+  #    category (vector preset / composition / raster). ──
+  row_raster_provider:
+    - type:      flowmap
+      title:     "Flowmap Raster Provider Preset"
+      metric:    od_flows
+      scenario:  activitysim-baseline
+      basemap:   OpenTopoMap
+      origin:      orig_taz
+      origin_lat:  orig_lat
+      origin_lon:  orig_lon
+      destination: dest_taz
+      dest_lat:    dest_lat
+      dest_lon:    dest_lon
+      value:       trips
+      center: [-122.402, 37.787]
+      zoom:   11
+      height: 320
+      width:  1.0
+
+  # ── 040-test-suite-migration: real UGRC multi-source compositions
+  #    (Utah's own GIS agency) — the app's own most elaborate real
+  #    basemap-composition case (2 stacked vector sources, sprite/glyph
+  #    resolution, highway-shield icon coverage). ──
+  row_ugrc_composition:
+    - type:      flowmap
+      title:     "Flowmap UGRC Composition"
+      metric:    od_flows
+      scenario:  activitysim-baseline
+      basemap:   ugrc-vector-lite
+      origin:      orig_taz
+      origin_lat:  orig_lat
+      origin_lon:  orig_lon
+      destination: dest_taz
+      dest_lat:    dest_lat
+      dest_lon:    dest_lon
+      value:       trips
+      center: [-122.402, 37.787]
+      zoom:   11
+      height: 320
+      width:  0.5
+
+    - type:      flowmap
+      title:     "Flowmap UGRC Outdoors Composition"
+      metric:    od_flows
+      scenario:  activitysim-baseline
+      basemap:   ugrc-vector-outdoors
+      origin:      orig_taz
+      origin_lat:  orig_lat
+      origin_lon:  orig_lon
+      destination: dest_taz
+      dest_lat:    dest_lat
+      dest_lon:    dest_lon
+      value:       trips
+      center: [-122.402, 37.787]
+      zoom:   11
+      height: 320
+      width:  0.5
+
 default_basemap: carto-positron

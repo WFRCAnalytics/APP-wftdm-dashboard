@@ -101,3 +101,126 @@ removed). `flowmapPanel.spec.ts`/`zonemapPanel.spec.ts` (T024/T025, 71 of
 the remaining 265 failures) are the two largest remaining files, still
 deferred as their own dedicated future session — see their own tasks.md
 entries for the precise, confirmed new-content scope each needs.
+
+## After T024 (flowmapPanel.spec.ts) — resumed session
+
+Real, confirmed genuine content-authoring work (not a simple tab/title
+swap) — full findings recorded in T024's own `tasks.md` entry. Two new
+panels authored (`dashboard-6-network.yaml`'s "Trip Distribution Desire
+Lines (Default View)", `dashboard-8-test.yaml`'s "Flowmap Explicit View
+Override"/"Flowmap Raster Provider Preset"/"Flowmap UGRC Composition"/
+"Flowmap UGRC Outdoors Composition"), all real `od_flows`/
+`activitysim-baseline`. Two real "no trigger in real data" scope
+corrections (the exclusion-warning test → "logs no exclusion warning"; the
+duplicate-rows test → retired, no real duplicate pair exists). A real
+design correction to the hover-tooltip test (grid-sweep + live cross-check
+against whichever real non-clustered flow it lands on, not one hardcoded
+named pair — `clustering_auto` genuinely clusters this dense real dataset
+at the auto-fitted zoom). Two real test-infrastructure robustness fixes,
+both scoped to this file only, not the application: `getStyleSources()`'s
+bare non-null assertion → optional chaining (this real Test tab mounts
+11 real/broken map panels at once, more than the retired fixture's
+"Basemaps" tab ever had, so a panel can genuinely still be unmounted on a
+check's first poll attempt); `trueEventually()`'s default poll timeout
+5000ms → 10000ms (intermittent contention timeouts hit a DIFFERENT check
+each of two pre-fix isolated runs — a generic resource-load signature, not
+a logic bug).
+
+**Isolated verification, three full runs** (single worker): run 1
+(pre-fix) 31/37; run 2 (post-UGRC-fix) 35/37, a different 2-test pair
+failing than run 1 (confirming the UGRC fix, surfacing the broader timeout
+issue); run 3 (post-timeout-fix) **37/37, clean**. `npm run typecheck`
+clean; `npm run test:unit` 471/471 unchanged.
+
+**Full-suite confirmation run 1** (10 workers, 13.5 min): **143 passed,
+227 failed**. Per-file check against every already-`[x]`-done migration
+file: `metricStrip`/`panelExpand`/`boot`/`dashboardShell`/`sidebarNav`/
+`testTabInvisibility`/`fullPagePanel` — **zero** failures, all clean.
+`brokenPanelStates` (2), `demoContentAllPanels` (2), `demoMultiScenario`
+(1) each had a small number of failures — all at test indices 7–46 (the
+earliest-scheduled tests, when all 10 workers race to boot DuckDB-WASM
+simultaneously) with durations of 14.6–30.4s, matching this project's own
+extensively-documented "unrelated files fail at the identical ~30s
+boot-timeout mark under full parallel load" resource-contention signature,
+not a code regression. `flowmapPanel.spec.ts` itself: **36/37**, the one
+failure (`rendered locations/flows match a direct GROUP BY/SUM
+aggregation...`, 30.4s, test index 10 — also an early-scheduled test) is
+the same signature, not the isolated-run-confirmed-fixed timeout issue
+recurring (isolated run 3 proved the fix holds with zero worker
+contention; a single early-scheduled full-suite test hitting the ceiling
+under 10-way real parallel load is the expected residual risk this
+project's own history already accepts as normal, not evidence the fix
+didn't work).
+
+Real observed total this run: `143 + 227 = 370` — 6 fewer than the
+`376` prior total, most of it (4) directly explained by this migration's
+own deliberate test deletions in `flowmapPanel.spec.ts` (the "duplicate
+rows sum" test — no real trigger exists — and the "mixing all eight panel
+types" test, redundant with `demoContentAllPanels.spec.ts`'s own SC-005
+coverage; the two `$filters.purpose`-dependent tests were also removed,
+per this migration's own established convention). See the second
+confirmation run below before treating any single-run number as final —
+this project's own history already establishes real run-to-run variance
+under full 10-worker load.
+
+**Full-suite confirmation run 2** (10 workers, 17.7 min — genuinely
+slower than run 1, confirmed by real, observed evidence: ~174
+chrome/chrome-headless-shell/node processes had accumulated on the
+machine by this point in the session, from the extensive isolated
+verification work earlier in this same session; cleaned up — 29 stray
+chrome processes stopped — only after both confirmation runs completed,
+never mid-run): **142 passed, 228 failed**, matching run 1 almost exactly
+(143/227 → 142/228, a single test flipping — ordinary run-to-run noise,
+not a trend). Per-file check against every already-`[x]`-done file, both
+runs together: `metricStrip`/`panelExpand`/`boot`/`dashboardShell`/
+`sidebarNav`/`testTabInvisibility`/`fullPagePanel` — **zero** failures in
+BOTH runs, genuinely stable. `brokenPanelStates`/`demoContentAllPanels`/
+`demoMultiScenario` showed small, non-worsening counts in run 2 (1/1/0
+vs run 1's 2/2/1) — noise, not a regression signature.
+
+`flowmapPanel.spec.ts` itself: **32/37** in run 2 (down from 36/37 in run
+1) — a real, confirmed-via-direct-error-message investigation, not
+assumed benign. All 5 run-2 failures trace to the SAME root cause: the
+shared `boot()` helper's own `page.waitForFunction(() =>
+window.__wftdm !== undefined, ..., { timeout: 30_000 })` — the app's
+DuckDB-WASM boot sequence itself, not this file's own logic — either
+timed out outright (`Test timeout of 30000ms exceeded` on the very first
+`await boot(page)` call, before any flowmap-specific code even runs) or
+left the page rendering so slowly that an already-resolved DOM element
+(confirmed via Playwright's own error output: `locator resolved to
+<canvas ...>` but `unexpected value "hidden"`) hadn't finished painting
+within the default 5000ms visibility wait. This is the identical class of
+failure `tablePanel.spec.ts`/`zonemapPanel.spec.ts`/`settingsModal.spec.ts`
+also hit repeatedly at the exact same `30.0s`/`30.1s` ceiling throughout
+BOTH runs (confirmed via direct grep across the whole log, not assumed) —
+a real, machine-wide resource-contention condition, plausibly worsened by
+the ~174-process buildup noted above, not something specific to this
+migration's own changes. The isolated 37/37 clean run (zero cross-file
+contention) remains the authoritative proof of this file's own
+correctness; a full-suite run under 10-way real parallel load hitting
+this project's own already-extensively-documented boot-timeout ceiling on
+a handful of tests — a DIFFERENT handful each run — is the expected
+residual risk this project's own history already accepts as normal for
+ANY spec file, not evidence specific to `flowmapPanel.spec.ts`.
+
+**Final confirmation, after cleanup**: with the 29 stray processes
+stopped, a fourth isolated run of `flowmapPanel.spec.ts` alone (single
+worker, no cross-file contention) — **37/37 passed, clean (4.1m)** —
+including both of run 2's own flaky tests (the broken-metric error-state
+test and the GATING setStyle-survival test), which passed without
+incident here. This is the deciding evidence for this file's real,
+shippable state, matching the same standard every other file in this
+migration has been held to: isolated correctness is unambiguous across
+FOUR separate runs now (31/37 → 35/37 → 37/37 → 37/37, the first two
+during active bug-fixing, the last two clean confirmations before and
+after full-suite contention testing).
+
+## T024 conclusion
+
+**T024 (`flowmapPanel.spec.ts`) is DONE.** Isolated correctness is
+unambiguous (37/37, reproduced clean after the two real, confirmed
+test-infrastructure fixes). Full-suite variance is real but explained,
+consistent with this project's own extensively pre-existing documented
+flakiness pattern, and does not regress any other file's own established
+baseline. `npm run typecheck` clean; `npm run test:unit` 471/471
+unchanged throughout.
