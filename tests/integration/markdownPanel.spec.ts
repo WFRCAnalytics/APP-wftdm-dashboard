@@ -4,24 +4,30 @@ import type { WftdmDebugHook } from '../../src/main.tsx'
 declare global {
   interface Window {
     __wftdm?: WftdmDebugHook
-    __xssFired?: boolean
+    __xss_fired?: boolean
   }
 }
 
-// Real-browser tests for 006-markdown-panel, extending
-// dashboardShell.spec.ts's/tablePanel.spec.ts's pattern (real DuckDB-WASM,
-// fixture Parquet, fixture dashboard-config — even though this panel type
-// itself issues no query at all). See quickstart.md and
-// contracts/markdown-panel.md.
+// Real-browser tests for 006-markdown-panel.
 //
-// Fixture shape (tests/fixtures/dashboard-config/dashboard-1-summary.yaml's
-// row_markdown):
-// - "Methodology Notes": headings, bold/italic, ordered/unordered lists, a
-//   plain link (no author-written target:/rel:), a GFM table.
-// - "Markdown XSS Payload (intentional)": a literal <script> tag, an
-//   onerror-bearing <img>, legitimate markdown before and after both.
-// - "Markdown Empty (intentional)": no content: key at all.
-// - "Markdown Whitespace-Only (intentional)": content: "   ".
+// 040-test-suite-migration: migrated off the retired
+// tests/fixtures/dashboard-config/dashboard-1-summary.yaml (deleted in
+// T011 — its own `row_markdown` panels: a rich "Methodology Notes" with
+// headings/emphasis/lists/a link/a GFM table, plus XSS/empty/whitespace
+// edge cases). Every real demo markdown panel today is a plain-paragraph
+// gap note (no headings/lists/tables/code spans at all) — none has the
+// richness this file's own typography/rendering coverage needs, so a
+// new, genuinely real "Methodology Notes" panel was authored on the
+// Summary tab (dashboard-1-summary.yaml's own new `row_methodology`),
+// documenting this project's own real straight-line-distance-proxy
+// caveat (already on record elsewhere in this codebase, e.g.
+// zonemapPanel.spec.ts's own header comment) rather than any fabricated
+// content. The XSS/empty/whitespace edge cases already existed, real, in
+// `dashboard-8-test.yaml`'s own `row_markdown_edge` (Foundation phase) —
+// this migration only retargets titles, EXCEPT the "legitimate markdown
+// around unsafe fragments" case, which needed two short, genuinely
+// descriptive sentences added around the payload (the real panel
+// originally had none) to keep that assertion meaningful.
 
 async function boot(page: Page) {
   await page.goto('/')
@@ -32,20 +38,24 @@ function panelCard(page: Page, title: string) {
   return page.getByText(title, { exact: true }).locator('..').locator('..')
 }
 
+async function gotoTestTab(page: Page) {
+  await page.getByRole('tab', { name: 'Test' }).click()
+}
+
 test.describe('User Story 1 - Author renders formatted prose in a dashboard tab', () => {
   test('renders headings, emphasis, lists, and a link as real HTML elements', async ({ page }) => {
     await boot(page)
     const card = panelCard(page, 'Methodology Notes')
 
-    await expect(card.getByRole('heading', { name: 'Highway Assignment Validation' })).toBeVisible()
-    await expect(card.locator('strong', { hasText: 'UDOT AADT counts' })).toBeVisible()
-    await expect(card.locator('em', { hasText: '±10%' })).toBeVisible()
-    await expect(card.locator('ol li', { hasText: 'Observed counts' })).toBeVisible()
-    await expect(card.locator('ul li', { hasText: 'Freeway' })).toBeVisible()
-    await expect(card.getByRole('link', { name: 'UDOT traffic count program' })).toBeVisible()
-    // A raw markdown code span (`summary_kpis.parquet`) renders as a real
+    await expect(card.getByRole('heading', { name: 'Straight-Line Distance Proxy' })).toBeVisible()
+    await expect(card.locator('strong', { hasText: 'haversine straight-line distance' })).toBeVisible()
+    await expect(card.locator('em', { hasText: 'approximate, not authoritative' })).toBeVisible()
+    await expect(card.locator('ol li', { hasText: 'final_trips.csv' })).toBeVisible()
+    await expect(card.locator('ul li', { hasText: 'intrazonal' })).toBeVisible()
+    await expect(card.getByRole('link', { name: 'ActivitySim documentation' })).toBeVisible()
+    // A raw markdown code span (`final_trips.csv`) renders as a real
     // <code> element, not literal backticks as text.
-    await expect(card.locator('code', { hasText: 'summary_kpis.parquet' })).toBeVisible()
+    await expect(card.locator('code', { hasText: 'final_trips.csv' })).toBeVisible()
   })
 
   test('a GFM table renders as a real <table> structure', async ({ page }) => {
@@ -53,10 +63,10 @@ test.describe('User Story 1 - Author renders formatted prose in a dashboard tab'
     const card = panelCard(page, 'Methodology Notes')
     const table = card.locator('table')
     await expect(table).toBeVisible()
-    await expect(table.locator('thead th', { hasText: 'Threshold' })).toBeVisible()
-    await expect(table.locator('tbody tr', { hasText: 'Arterial' }).locator('td').last()).toHaveText(
-      '±15%',
-    )
+    await expect(table.locator('thead th', { hasText: 'Tolerance' })).toBeVisible()
+    await expect(
+      table.locator('tbody tr', { hasText: 'Trip length distribution' }).locator('td').last(),
+    ).toHaveText('±10%')
   })
 
   test('rendered headings/body use the dashboard\'s own typography, not marked.js defaults', async ({
@@ -72,13 +82,13 @@ test.describe('User Story 1 - Author renders formatted prose in a dashboard tab'
       .getByRole('heading', { name: 'Methodology Notes' })
       .evaluate((el) => getComputedStyle(el).fontFamily)
     const markdownHeadingFont = await card
-      .getByRole('heading', { name: 'Highway Assignment Validation' })
+      .getByRole('heading', { name: 'Straight-Line Distance Proxy' })
       .evaluate((el) => getComputedStyle(el).fontFamily)
     expect(markdownHeadingFont).toBe(cardTitleFont)
 
     const bodyFont = await page.evaluate(() => getComputedStyle(document.body).fontFamily)
     const markdownParagraphFont = await card
-      .locator('p', { hasText: 'Screenline volumes' })
+      .locator('p', { hasText: 'Several distance-based metrics' })
       .evaluate((el) => getComputedStyle(el).fontFamily)
     expect(markdownParagraphFont).toBe(bodyFont)
   })
@@ -88,7 +98,7 @@ test.describe('User Story 1 - Author renders formatted prose in a dashboard tab'
   }) => {
     await boot(page)
     const card = panelCard(page, 'Methodology Notes')
-    const link = card.getByRole('link', { name: 'UDOT traffic count program' })
+    const link = card.getByRole('link', { name: 'ActivitySim documentation' })
     await expect(link).toHaveAttribute('target', '_blank')
     await expect(link).toHaveAttribute('rel', 'noopener noreferrer')
   })
@@ -98,7 +108,7 @@ test.describe('User Story 1 - Author renders formatted prose in a dashboard tab'
     await page.getByRole('button', { name: 'Expand Methodology Notes' }).click()
     const dialog = page.getByRole('dialog')
     await expect(dialog).toBeVisible()
-    await expect(dialog.getByRole('heading', { name: 'Highway Assignment Validation' })).toBeVisible()
+    await expect(dialog.getByRole('heading', { name: 'Straight-Line Distance Proxy' })).toBeVisible()
     await expect(dialog.locator('table')).toBeVisible()
 
     await dialog.getByRole('button', { name: 'Close' }).click()
@@ -106,7 +116,7 @@ test.describe('User Story 1 - Author renders formatted prose in a dashboard tab'
     // Still there, unchanged, back in the inline card.
     await expect(
       panelCard(page, 'Methodology Notes').getByRole('heading', {
-        name: 'Highway Assignment Validation',
+        name: 'Straight-Line Distance Proxy',
       }),
     ).toBeVisible()
   })
@@ -115,16 +125,18 @@ test.describe('User Story 1 - Author renders formatted prose in a dashboard tab'
 test.describe('User Story 2 - Dashboard stays safe when markdown content is untrusted', () => {
   test('a <script> tag does not execute and is absent from the DOM', async ({ page }) => {
     await boot(page)
-    const card = panelCard(page, 'Markdown XSS Payload (intentional)')
-    await expect(card.getByRole('heading', { name: 'Still Renders Safely' })).toBeVisible()
+    await gotoTestTab(page)
+    const card = panelCard(page, 'Markdown XSS Payload (must be sanitized)')
+    await expect(card.getByRole('heading', { name: 'Sanitized Heading' })).toBeVisible()
     await expect(card.locator('script')).toHaveCount(0)
-    const fired = await page.evaluate(() => window.__xssFired)
+    const fired = await page.evaluate(() => window.__xss_fired)
     expect(fired).toBeUndefined()
   })
 
   test('an onerror attribute is stripped and never fires', async ({ page }) => {
     await boot(page)
-    const card = panelCard(page, 'Markdown XSS Payload (intentional)')
+    await gotoTestTab(page)
+    const card = panelCard(page, 'Markdown XSS Payload (must be sanitized)')
     const img = card.locator('img')
     // The <img> element itself may or may not survive sanitization
     // (DOMPurify permits <img> by default) — what matters is that if it's
@@ -133,7 +145,7 @@ test.describe('User Story 2 - Dashboard stays safe when markdown content is untr
     if (await img.count()) {
       await expect(img).not.toHaveAttribute('onerror', /.*/)
     }
-    const fired = await page.evaluate(() => window.__xssFired)
+    const fired = await page.evaluate(() => window.__xss_fired)
     expect(fired).toBeUndefined()
   })
 
@@ -141,7 +153,8 @@ test.describe('User Story 2 - Dashboard stays safe when markdown content is untr
     page,
   }) => {
     await boot(page)
-    const card = panelCard(page, 'Markdown XSS Payload (intentional)')
+    await gotoTestTab(page)
+    const card = panelCard(page, 'Markdown XSS Payload (must be sanitized)')
     await expect(
       card.getByText('This paragraph is legitimate markdown and should render normally.'),
     ).toBeVisible()
@@ -152,13 +165,18 @@ test.describe('User Story 2 - Dashboard stays safe when markdown content is untr
 })
 
 test.describe('User Story 3 - Panel behaves consistently with the rest of the registry', () => {
-  test('a markdown panel alongside valuebox/plotly/table panels renders without error, standard chrome', async ({
+  test('a markdown panel alongside valuebox/plotly/recharts panels renders without error, standard chrome', async ({
     page,
   }) => {
     await boot(page)
-    await expect(page.getByText('Total Households')).toBeVisible() // valuebox
-    await expect(page.getByText('Mode Share by Purpose')).toBeVisible() // plotly
-    await expect(panelCard(page, 'Screenline Validation').locator('table')).toBeVisible() // table
+    // Real Summary tab composition: valuebox + recharts + plotly +
+    // (now) markdown together — the same "coexists cleanly with every
+    // other real panel type" guarantee the retired fixture's own
+    // valuebox/plotly/table trio proved, adapted to the real tab's own
+    // actual panel-type mix (no table panel exists on this tab).
+    await expect(page.getByText('Households', { exact: true })).toBeVisible() // valuebox
+    await expect(page.getByText('Total Trips by Mode', { exact: true })).toBeVisible() // recharts
+    await expect(page.getByText('Average Trip Distance by Purpose', { exact: true })).toBeVisible() // plotly
     const markdownCard = panelCard(page, 'Methodology Notes')
     await expect(markdownCard.getByRole('heading', { name: 'Methodology Notes' })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Expand Methodology Notes' })).toBeVisible()
@@ -168,7 +186,8 @@ test.describe('User Story 3 - Panel behaves consistently with the rest of the re
     page,
   }) => {
     await boot(page)
-    const card = panelCard(page, 'Markdown Empty (intentional)')
+    await gotoTestTab(page)
+    const card = panelCard(page, 'Markdown Empty Content')
     await expect(card.getByText('No content configured')).toBeVisible()
   })
 
@@ -176,7 +195,8 @@ test.describe('User Story 3 - Panel behaves consistently with the rest of the re
     page,
   }) => {
     await boot(page)
-    const card = panelCard(page, 'Markdown Whitespace-Only (intentional)')
+    await gotoTestTab(page)
+    const card = panelCard(page, 'Markdown Whitespace Only')
     await expect(card.getByText('No content configured')).toBeVisible()
   })
 })

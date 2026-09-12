@@ -8,20 +8,41 @@ declare global {
 }
 
 // Real-browser tests for 035-scenario-label-color (Part A — User Story
-// 1). Fixture: tests/fixtures/dashboard-config/dashboard-1-summary.yaml's
-// `row_scenario_display` — four panels (plotly/recharts/observable-plot/
-// table), all bound to `summary_kpis` (the one metric with matching
-// columns published under both `good_scenario` and `observed`), all
-// splitting/keying by the bare `scenario` column, no `scenario:`/
-// `scenarios:` pin. See quickstart.md Scenarios 1-4.
+// 1).
+//
+// 040-test-suite-migration: migrated off the retired
+// tests/fixtures/dashboard-config/dashboard-1-summary.yaml (deleted in
+// T011 — its own `row_scenario_display` four Scenario-Split-* panels,
+// all bound to one shared `summary_kpis` metric). The real demo config
+// has no single shared-metric panel set like that, so this file instead
+// reuses the SAME real, already-validated unpinned panels
+// `demoMultiScenario.spec.ts` (038) established for exactly this kind of
+// per-scenario-series check, one per real panel type: "Total Trips by
+// Mode" (recharts, `series: scenario`) and "Average Trip Distance by
+// Purpose" (plotly, `name: $scenario`) — both Summary tab — plus "Auto
+// Ownership by Household Segment" (table, unpinned, real `scenario`
+// column labeled "Scenario") and "Workplace Location Distance
+// Distribution" (observable-plot, `fill: scenario`) — both Person &
+// Households tab. All three real demo scenarios
+// (activitysim-baseline/-density-variant/-transit-variant) auto-activate
+// by default (038) — no `?s=` param needed.
 
-async function boot(page: Page, searchParams = '') {
-  await page.goto('/' + searchParams)
+async function boot(page: Page) {
+  await page.goto('/')
   await page.waitForFunction(() => window.__wftdm !== undefined, null, { timeout: 30_000 })
+  await page.waitForFunction(
+    () => window.__wftdm!.appState.get('activitysim-transit-variant')?.status === 'ready',
+    null,
+    { timeout: 30_000 },
+  )
 }
 
 function panelCard(page: Page, title: string) {
   return page.getByText(title, { exact: true }).locator('..').locator('..')
+}
+
+async function gotoTab(page: Page, name: string) {
+  await page.getByRole('tablist').getByRole('tab', { name, exact: true }).click()
 }
 
 async function setLabel(page: Page, name: string, label: string) {
@@ -34,86 +55,95 @@ async function clearLabel(page: Page, name: string) {
 
 test.describe('User Story 1 - Scenario labels appear everywhere a name is shown', () => {
   test('a labeled scenario\'s name resolves to the label in a Plotly legend', async ({ page }) => {
-    await boot(page, '?s=good_scenario')
-    await setLabel(page, 'good_scenario', 'Preferred Alternative')
+    await boot(page)
+    await setLabel(page, 'activitysim-baseline', 'Preferred Alternative')
 
-    const card = panelCard(page, 'Scenario Split (Plotly)')
+    const card = panelCard(page, 'Average Trip Distance by Purpose')
     await expect(card).toBeVisible()
     // Plotly's own legend renders trace names as real, visible <text>
     // nodes inside the plot's own legend group.
     await expect(card.getByText('Preferred Alternative')).toBeVisible()
-    // observed has no label set — its real name still renders unchanged.
-    await expect(card.getByText('observed', { exact: true })).toBeVisible()
+    // The other two real scenarios have no label set — their real names
+    // still render unchanged.
+    await expect(card.getByText('activitysim-density-variant', { exact: true })).toBeVisible()
+    await expect(card.getByText('activitysim-transit-variant', { exact: true })).toBeVisible()
   })
 
   test('a labeled scenario\'s name resolves to the label in Recharts/Observable Plot/Table', async ({
     page,
   }) => {
-    await boot(page, '?s=good_scenario')
-    await setLabel(page, 'good_scenario', 'Preferred Alternative')
+    await boot(page)
+    await setLabel(page, 'activitysim-baseline', 'Preferred Alternative')
 
-    const rechartsCard = panelCard(page, 'Scenario Split (Recharts)')
+    const rechartsCard = panelCard(page, 'Total Trips by Mode')
     await expect(rechartsCard).toBeVisible()
     await expect(rechartsCard.getByText('Preferred Alternative')).toBeVisible()
 
-    const plotCard = panelCard(page, 'Scenario Split (Observable Plot)')
+    await gotoTab(page, 'Person & Households')
+    const plotCard = panelCard(page, 'Workplace Location Distance Distribution')
     await expect(plotCard).toBeVisible()
-    await expect(plotCard.getByText('Preferred Alternative')).toBeVisible()
+    await expect(plotCard.getByText('Preferred Alternative').first()).toBeVisible()
 
-    const tableCard = panelCard(page, 'Scenario Split (Table)')
+    const tableCard = panelCard(page, 'Auto Ownership by Household Segment')
     await expect(tableCard).toBeVisible()
-    // Cell values in the scenario column show the label — summary_kpis
-    // has 2 rows per scenario, so 2 matching cells is real and expected.
+    // Cell values in the scenario column show the label — real, multiple
+    // matching rows is expected (many households per scenario).
     await expect(tableCard.getByText('Preferred Alternative').first()).toBeVisible()
-    // ...but the column HEADER is still the literal field name, never a
-    // scenario name (contracts §1.4) — it was never affected either way.
-    await expect(tableCard.getByRole('columnheader', { name: 'scenario' })).toBeVisible()
+    // ...but the column HEADER is still the literal configured label
+    // ("Scenario"), never a scenario name (contracts §1.4) — it was
+    // never affected either way.
+    await expect(tableCard.getByRole('columnheader', { name: 'Scenario' })).toBeVisible()
   })
 
   test('an unlabeled scenario displays its real name exactly as before', async ({ page }) => {
-    await boot(page, '?s=good_scenario')
-    // No label set on either scenario at all.
-    const card = panelCard(page, 'Scenario Split (Plotly)')
+    await boot(page)
+    // No label set on any scenario at all.
+    const card = panelCard(page, 'Average Trip Distance by Purpose')
     await expect(card).toBeVisible()
-    await expect(card.getByText('good_scenario', { exact: true })).toBeVisible()
-    await expect(card.getByText('observed', { exact: true })).toBeVisible()
+    await expect(card.getByText('activitysim-baseline', { exact: true })).toBeVisible()
+    await expect(card.getByText('activitysim-density-variant', { exact: true })).toBeVisible()
+    await expect(card.getByText('activitysim-transit-variant', { exact: true })).toBeVisible()
   })
 
   test('label change/clear on an already-rendered panel updates immediately, no reload', async ({
     page,
   }) => {
-    await boot(page, '?s=good_scenario')
-    const card = panelCard(page, 'Scenario Split (Recharts)')
+    await boot(page)
+    const card = panelCard(page, 'Total Trips by Mode')
     await expect(card).toBeVisible()
-    await expect(card.getByText('good_scenario', { exact: true })).toBeVisible()
+    await expect(card.getByText('activitysim-baseline', { exact: true })).toBeVisible()
 
-    await setLabel(page, 'good_scenario', 'Preferred Alternative')
+    await setLabel(page, 'activitysim-baseline', 'Preferred Alternative')
     await expect(card.getByText('Preferred Alternative')).toBeVisible()
-    await expect(card.getByText('good_scenario', { exact: true })).toHaveCount(0)
+    await expect(card.getByText('activitysim-baseline', { exact: true })).toHaveCount(0)
 
-    await clearLabel(page, 'good_scenario')
-    await expect(card.getByText('good_scenario', { exact: true })).toBeVisible()
+    await clearLabel(page, 'activitysim-baseline')
+    await expect(card.getByText('activitysim-baseline', { exact: true })).toBeVisible()
     await expect(card.getByText('Preferred Alternative')).toHaveCount(0)
   })
 
   test('the underlying SQL never references the label — real scenario names only', async ({ page }) => {
-    await boot(page, '?s=good_scenario')
-    await setLabel(page, 'good_scenario', 'Preferred Alternative')
-    await expect(panelCard(page, 'Scenario Split (Plotly)')).toBeVisible()
+    await boot(page)
+    await setLabel(page, 'activitysim-baseline', 'Preferred Alternative')
+    const card = panelCard(page, 'Total Trips by Mode')
+    await expect(card).toBeVisible()
+    // Wait for the panel's own real chart to actually render — the title
+    // text becomes visible before the underlying query fires, so reading
+    // the query log immediately after the title check alone is a real
+    // race (found live: it read an empty log on the first attempt).
+    // activitysim-baseline itself now shows the label, so wait on one of
+    // the other two real, still-unlabeled scenario names instead.
+    await expect(card.getByText('activitysim-density-variant', { exact: true })).toBeVisible()
 
     const queryLog = await page.evaluate(() => window.__wftdm!.__debugQueryLog())
-    // Scoped to THIS feature's own row_scenario_display panels
-    // specifically: buildPanelQuery() emits `SELECT *` for a metric-bound
-    // panel (no column names appear literally in the SQL at all — a real,
-    // confirmed finding from this test's own first run, corrected here),
-    // so the real distinguishing signal is the $scenario.<metric> UNION
-    // ALL itself — the unrelated "Total Households" valuebox panel
-    // elsewhere on this tab is pinned to one scenario and never unions.
-    const summaryQueries = queryLog.filter((sql) => sql.includes('summary_kpis') && sql.includes('UNION ALL'))
-    expect(summaryQueries.length).toBeGreaterThan(0)
-    for (const sql of summaryQueries) {
+    // The recharts panel's own real, unpinned $scenario union.
+    const tripModeQueries = queryLog.filter(
+      (sql) => sql.includes('trip_mode_share') && sql.includes('UNION ALL'),
+    )
+    expect(tripModeQueries.length).toBeGreaterThan(0)
+    for (const sql of tripModeQueries) {
       expect(sql).not.toContain('Preferred Alternative')
-      expect(sql).toContain('good_scenario')
+      expect(sql).toContain('activitysim-baseline')
     }
   })
 })

@@ -417,3 +417,149 @@ The large block of unrelated legacy-fixture failures seen in both
 full-suite runs was investigated directly (not assumed benign) and
 confirmed to be the expected, already-tracked state of this same
 migration epic's own remaining NOT-DONE tasks, unconnected to T025.
+
+## Batch 3 (T028, T033, T034, T036, T020) — real findings and results
+
+A new session's own first step was a direct re-read of `tasks.md` (not a
+memory of an earlier summary) to confirm nothing drifted: T014/T024/T025/
+T027/T030/T031 were merged; remaining open work was the full Phase 4
+(T018–T023, T026), Phase 5 (T028), Phase 6 (T032–T037), and Phase 7/8
+cleanup tasks — a materially larger remaining scope than "T018-T023, T026,
+T028" alone (the Phase 6 scenario-manager family, T032/T035/T037, was
+still fully open). Every remaining spec file was read directly (not
+estimated from `tasks.md`'s own original one-line descriptions) before
+committing to a scope for this session:
+
+- **Confirmed cheap, real-content reuse, no new authoring** (chosen for
+  this session): `sectionSubNav.spec.ts` (99 lines — real `sections:`
+  already existed exactly where needed), `scenarioColorOverride.spec.ts`
+  (223 lines), `scenarioLabelDisplay.spec.ts` (119 lines),
+  `switchControlsUnpinnedPanels.spec.ts` (104 lines) — all three
+  scenario-family files reuse the SAME real, already-validated unpinned
+  panels `demoMultiScenario.spec.ts` (038) established.
+- **Modest new content needed** (also chosen): `markdownPanel.spec.ts`
+  (182 lines) — one new real "Methodology Notes" panel authored.
+- **Confirmed much bigger than the plan's one-liner, deferred to a future
+  session**: `valueBoxPanel.spec.ts` (needs 6 distinct new valuebox
+  variations authored, not the 2 that exist today), `tablePanel.spec.ts`
+  (needs a real rank-ordered dataset re-derivation plus two new
+  `$baseline`-diff panels with hand-verified values, comparable in scope
+  to `zonemapPanel.spec.ts`'s own full-session effort), and — not yet
+  fully read but the same size class —
+  `observablePlotPanel.spec.ts`/`graphicWalkerPanel.spec.ts`/
+  `scenarioManager.spec.ts`/`settingsModal.spec.ts` (the last one alone is
+  1613 lines with 100 legacy-fixture references, the largest file in the
+  whole suite).
+
+The user confirmed the recommended 5-file chunk via `AskUserQuestion`
+before any code was written.
+
+**Fresh isolated baseline, captured before touching anything**: all 5
+files together, single worker — **1 passed (vacuous — a conditional
+`onerror`-attribute check that trivially no-ops when its target panel
+doesn't exist), 29 failed** (30 tests total).
+
+**Real findings during migration, one file at a time:**
+
+- **`sectionSubNav.spec.ts`**: the retired fixture's "Summary" tab HAD
+  `sections:`; the real demo "Summary" tab deliberately has NONE — the
+  exact opposite shape. Real `sections:` live on
+  `dashboard-2`/`3`/`4`/`5`/`6` instead. "Mode Choice"
+  (`dashboard-4-mode-choice.yaml`) uniquely hosts both a real single-row
+  section ("Tour Mode Choice") and a real two-row section ("Trip Mode
+  Choice", `[row_trip_mode_flow, row_trip_mode_by_period]`) in ONE tab —
+  covering this file's two distinct structural needs without requiring
+  two separate real tabs. "Summary" (no `sections:`) replaced the retired
+  fixture's "Basemaps" for the negative case. One real strict-mode
+  collision found and fixed: "Tour Mode Choice" is a substring of the
+  same tab's own "At-Work Subtour Mode Choice" — needed `exact: true`.
+- **`scenarioColorOverride.spec.ts`**: the original file read
+  `tests/fixtures/dashboard-config/index.json` directly off disk via
+  `readFileSync` to inject a `scenarioPalette` — that file no longer
+  exists (T011), so this would throw immediately. Fixed by routing the
+  REAL `dashboard-config/index.json` endpoint via `page.route()` with an
+  inline JSON body instead (matching `demoMultiScenario.spec.ts`'s own
+  established convention) — confirmed via a direct read of `main.tsx`
+  that `primaryBranding.scenarioPalette ?? demoBranding.scenarioPalette`
+  means the primary root (empty/gitignored in this dev/test environment)
+  always wins when routed, with no real on-disk file needed. Real
+  manifest color confirmed live via the actual manifest file:
+  `activitysim-baseline` = `#59A14F`.
+- **`scenarioLabelDisplay.spec.ts`**: a real, confirmed correction to
+  this task's own original plan — the retired file's actual mechanism is
+  `appState.setLabel()`/`clearLabel()` with an arbitrary custom label
+  ("Preferred Alternative"), not real manifest `display_name`s (no such
+  field exists on `Scenario` at all, confirmed via `state/appState.ts`).
+  Migrated the real mechanism. A real timing bug found and fixed: reading
+  `__debugQueryLog()` immediately after a title-visibility check races
+  the panel's own query (the title renders before the query fires) —
+  fixed by waiting for a second, still-unlabeled real scenario name to
+  render first before reading the log.
+- **`switchControlsUnpinnedPanels.spec.ts`**: a real timing bug found and
+  fixed, same class as above — capturing the pinned KPI's "before" value
+  via the whole card's `innerText()` immediately after a visibility check
+  raced the panel's own query, capturing `"Households"` with no number at
+  all on the first attempt. Fixed by reading the `.tabular-nums` value
+  node specifically and waiting for a real digit first, matching
+  `demoMultiScenario.spec.ts`'s own established technique.
+- **`markdownPanel.spec.ts`**: confirmed via a direct grep sweep that
+  every real demo markdown panel today is a plain-paragraph gap note —
+  none has the headings/emphasis/lists/link/GFM-table/code-span richness
+  this file's own coverage needs. A new, real "Methodology Notes" panel
+  was authored on the Summary tab, documenting this project's own real
+  straight-line-distance-proxy caveat (already on record elsewhere in
+  this codebase). The real XSS/empty/whitespace edge panels already
+  existed in `dashboard-8-test.yaml` (Foundation phase) — retargeted, not
+  authored — except the "legitimate markdown around unsafe fragments"
+  case, which needed two short, genuinely descriptive real sentences
+  added around the payload (the panel originally had none) to keep that
+  assertion meaningful; also corrected the sentinel variable name to the
+  real one already authored (`window.__xss_fired`, not the
+  originally-assumed `__xssFired`).
+
+**Isolated verification**: all 5 files together, single worker — **30/30
+passed, clean**, confirmed across multiple runs per file plus one
+combined run.
+
+**Full-suite confirmation, two complete runs** (10 workers each, ~12
+minutes Playwright-internal timer each): **all 5 batch-3 files — 30/30 in
+BOTH runs**, byte-identical. `flowmapPanel.spec.ts` showed its own
+already-documented pre-existing flake (36/1 then 35/2 — a different
+specific test each run, matching the established multi-worker
+resource-contention signature, not a regression). `zonemapPanel.spec.ts`
+30/0 in both. Every other already-`[x]`-done file
+(`boot`/`dashboardShell`/`demoContentAllPanels`/`demoMultiScenario`/
+`formInputPrimitives`/`fullPagePanel`/`metricStrip`/`panelExpand`/
+`protomapsBasemap`/`sidebarNav`/`testTabInvisibility`) — zero failures in
+both runs. One real, confirmed non-regression investigated directly:
+`brokenPanelStates.spec.ts` showed 1 failure in run 1 (a
+"Broken Flow Map Panel" timeout, nothing to do with this session's own
+`dashboard-8-test.yaml` edit to `row_markdown_edge`) — a clean, isolated
+9/9 re-run (including the markdown-XSS test most related to this
+session's own edit) confirmed it was pure contention noise; run 2 showed
+9/0 clean on its own. The same large, already-investigated block of
+unrelated legacy-fixture failures
+(`tablePanel`/`valueBoxPanel`/`observablePlotPanel`/`rechartsPanel`/
+`sankeyPanel`/`graphicWalkerPanel`/`scenarioManager`/
+`scenarioAutoActivation`, plus `settingsModal`'s own partial mix)
+reproduced at the same scale in both runs — the expected, already-tracked
+state of this migration's own remaining NOT-DONE tasks, unconnected to
+this session's changes.
+
+`npm run typecheck` clean; `npm run test:unit` 471/471 unchanged
+throughout (test-content-only, no unit-tested pure module touched).
+
+## Batch 3 conclusion
+
+**T028, T033, T034, T036, and T020 are all DONE.** Every file's isolated
+correctness is unambiguous (30/30 combined, reproduced clean across
+multiple runs), and full-suite confirmation across two complete runs
+shows zero regression to any other already-migrated file. Two real,
+confirmed timing bugs (query-log/value-capture races) were found and
+fixed using this project's own already-established "wait for a real
+signal before reading" convention. Remaining scope for a future session:
+Phase 4's `valueBoxPanel`/`tablePanel`/`observablePlotPanel`/
+`rechartsPanel`/`sankeyPanel`/`graphicWalkerPanel`, Phase 6's
+`scenarioManager`/`scenarioAutoActivation`/`settingsModal`, and Phase 7/8
+cleanup — each confirmed, via direct reading, to be a substantially
+larger effort than this session's own chunk.

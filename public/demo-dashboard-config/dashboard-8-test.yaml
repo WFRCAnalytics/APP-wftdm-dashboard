@@ -198,10 +198,14 @@ layout:
       title: "Markdown XSS Payload (must be sanitized)"
       width: 0.34
       content: |
+        This paragraph is legitimate markdown and should render normally.
+
         ## Sanitized Heading
         <script>window.__xss_fired = true</script>
         <img src="x" onerror="window.__xss_fired = true" />
         [ok link](https://example.com)
+
+        This paragraph comes after the unsafe fragments and should also render.
 
     - type:  markdown
       title: "Markdown Empty Content"
