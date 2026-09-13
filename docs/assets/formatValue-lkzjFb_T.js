@@ -1,0 +1,1 @@
+function u(t,c){if(t==null)return"N/A";if(typeof t!="number")return String(t);const r=c.match(/\{:(,)?\.(\d+)(f|%)\}/);if(!r)return String(t);const[,m,e,i]=r,f=Number(e);let n=(i==="%"?t*100:t).toFixed(f);if(m){const[s,o]=n.split(".");n=Number(s).toLocaleString("en-US")+(o?`.${o}`:"")}return i==="%"?`${n}%`:n}export{u as f};

@@ -99,3 +99,44 @@ layout:
         xaxis: { title: "Purpose" }
         yaxis: { title: "Average Distance (straight-line miles)" }
         showlegend: true
+
+  # 040-test-suite-migration (T020) — a real, rich Methodology Notes
+  # panel, richer than every other real demo markdown panel (which are
+  # all plain-paragraph gap notes) — headings/emphasis/lists/a link/a
+  # GFM table/a code span, exercising markdown-panel.spec.ts's own
+  # typography and rendering coverage against genuine content.
+  row_methodology:
+    - type:  markdown
+      title: "Methodology Notes"
+      width: 1.0
+      content: |
+        ## Straight-Line Distance Proxy
+
+        Several distance-based metrics in this demo (Trip Destination,
+        Non-Mandatory Tour Destination, VMT by Home TAZ) use a
+        **haversine straight-line distance** between real zone centroids
+        rather than a modeled network distance — this project's
+        `prototype_mtc` synthetic 25-zone system has no calibrated
+        network skim available. Reported distances are therefore
+        *approximate, not authoritative*.
+
+        Real data sources feeding these metrics:
+
+        1. ActivitySim's own `final_trips.csv` output
+        2. The real `zone_centroids` lookup table (25 MTC TAZ ids)
+        3. The post-processor's own `summarize.yaml` SQL fragments
+
+        Known caveats:
+
+        - Six real submodel gaps have no computable data in this
+          deployment — see each gap note on its own tab.
+        - Same-zone (intrazonal) trips are clamped to avoid a domain
+          error in the underlying distance computation.
+
+        | Check | Tolerance |
+        | --- | --- |
+        | Trip length distribution | ±10% |
+        | Mode share by purpose | ±5 percentage points |
+
+        See the [ActivitySim documentation](https://activitysim.github.io/activitysim/)
+        for the underlying travel model framework.

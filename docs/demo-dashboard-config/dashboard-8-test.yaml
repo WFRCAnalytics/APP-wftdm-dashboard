@@ -1,0 +1,602 @@
+# 040-test-suite-migration — the broken-panel / edge-case test dashboard.
+#
+# PERMANENT 8th entry in public/demo-dashboard-config/index.json — present
+# in every build (local dev, production, GitHub Pages). It is NOT hidden
+# from real users by conditional registration; it is kept out of the way
+# purely by a near-invisible sidebar label:
+#   - header.tab is a single space " " (a real, valid non-empty string —
+#     parseDashboardConfig requires non-empty — that renders as a barely
+#     visible sliver among the seven real tabs);
+#   - header.icon is omitted entirely (no glyph);
+#   - header.aria_label gives keyboard / screen-reader users a real name
+#     ("Test"), wired as the sidebar button's aria-label so
+#     getByRole('tab', { name: 'Test' }) resolves it.
+#
+# Every panel binds to a REAL demo scenario/metric and produces its error
+# / empty state through CONFIG SHAPE ALONE — no synthetic Parquet (FR-005).
+# Sentinel strings (__nonexistent_metric__, __no_such_purpose__,
+# totally-made-up-preset-name, __nope_*__) are confirmed absent from the
+# real demo Parquet columns/values and from src/panels/basemap/registry.ts.
+#
+# Panel inventory maps 1:1 to specs/040-test-suite-migration/contracts/
+# dashboard-8-test.md. See that contract for the expected UI state per row.
+
+header:
+  tab: " "
+  title: "Test / Broken Panels"
+  aria_label: "Test"
+  # full_page + more than one panel below ⇒ the deliberate misconfiguration
+  # case: dashboardLayout.ts's findFullPagePanel() finds no single panel,
+  # so the app console.warns and falls back to ordinary card-grid
+  # rendering (030 behavior). This is the fullPagePanel.spec.ts
+  # misconfiguration coverage, expressed statically.
+  full_page: true
+
+layout:
+  # ── Missing metric → Catalog Error / "Couldn't load…" (one per type) ──
+  row_missing_metric:
+    - type:   table
+      title:  "Broken Table Panel (missing metric)"
+      metric: __nonexistent_metric__
+      columns:
+        - { field: scenario, label: "Scenario" }
+        - { field: trips,    label: "Trips" }
+      width: 0.5
+
+    - type:  plotly
+      title: "Broken Plotly Panel (missing metric)"
+      metric: __nonexistent_metric__
+      traces:
+        - { type: bar, x: $metric.x, y: $metric.y, name: $scenario }
+      width: 0.5
+
+  row_missing_metric_2:
+    - type:   sankey
+      title:  "Broken Sankey Panel (missing metric)"
+      metric: __nonexistent_metric__
+      source: a
+      target: b
+      value:  v
+      width:  0.34
+
+    - type:   recharts
+      title:  "Broken Recharts Panel (missing metric)"
+      metric: __nonexistent_metric__
+      chart_type: bar
+      x: k
+      y: v
+      width: 0.33
+
+    - type:   observable-plot
+      title:  "Broken Observable Plot Panel (missing metric)"
+      metric: __nonexistent_metric__
+      mark:   barY
+      x:      k
+      y:      v
+      width:  0.33
+
+  row_missing_metric_maps:
+    - type:      flowmap
+      title:     "Broken Flow Map Panel (missing metric)"
+      metric:    __nonexistent_metric__
+      origin:      o
+      origin_lat:  olat
+      origin_lon:  olon
+      destination: d
+      dest_lat:    dlat
+      dest_lon:    dlon
+      value:       v
+      height: 320
+      width:  0.5
+
+    - type:      zonemap
+      title:     "Broken Zone Map Panel (missing metric)"
+      metric:    __nonexistent_metric__
+      boundaries:    taz25.geoparquet
+      boundaries_id: TAZ1454
+      metric_id:     zone_id
+      column:        v
+      height: 320
+      width:  0.5
+
+  # ── Invalid chart_type → runtime validation error before any query ──
+  row_bad_chart_type:
+    - type:   recharts
+      title:  "Recharts Invalid Chart Type (pie)"
+      metric: trip_mode_share
+      scenario: activitysim-baseline
+      chart_type: pie
+      x: major_trip_mode
+      y: share
+      width: 1.0
+
+  # ── Unreachable basemap preset → blank-style fallback, data still draws ──
+  row_bad_basemap:
+    - type:      flowmap
+      title:     "Flowmap Unreachable Basemap"
+      metric:    od_flows
+      scenario:  activitysim-baseline
+      basemap:   totally-made-up-preset-name
+      origin:      orig_taz
+      origin_lat:  orig_lat
+      origin_lon:  orig_lon
+      destination: dest_taz
+      dest_lat:    dest_lat
+      dest_lon:    dest_lon
+      value:       trips
+      center: [-122.402, 37.787]
+      zoom:   11
+      height: 360
+      width:  0.5
+
+    - type:      zonemap
+      title:     "Zone Map Unreachable Basemap"
+      metric:    vmt_by_home_taz
+      scenario:  activitysim-baseline
+      basemap:   totally-made-up-preset-name
+      boundaries:    taz25.geoparquet
+      boundaries_id: TAZ1454
+      metric_id:     home_zone_id
+      column:        total_vmt
+      color_scale: sequential
+      color_ramp:  YlOrRd
+      steps:       7
+      center: [-122.402, 37.787]
+      zoom:   11
+      height: 360
+      width:  0.5
+
+  # ── Composition layer at an unreachable URL → whole basemap falls back ──
+  row_broken_composition:
+    - type:      flowmap
+      title:     "Flowmap Broken Composition Layer"
+      metric:    od_flows
+      scenario:  activitysim-baseline
+      basemap:
+        layers:
+          - "https://invalid.example.invalid/style-does-not-exist.json"
+      origin:      orig_taz
+      origin_lat:  orig_lat
+      origin_lon:  orig_lon
+      destination: dest_taz
+      dest_lat:    dest_lat
+      dest_lon:    dest_lon
+      value:       trips
+      center: [-122.402, 37.787]
+      zoom:   11
+      height: 360
+      width:  1.0
+
+  # ── graphic-walker: bad dataset (fixed) + bad dataset (with picker) ──
+  row_bad_gw_dataset:
+    - type:    graphic-walker
+      title:   "Explore Panel Broken (missing dataset)"
+      dataset: __nonexistent_dataset__
+      width:   0.5
+
+    - type:    graphic-walker
+      title:   "Explore Panel Broken (Dataset Picker, No Match)"
+      dataset: __nonexistent_dataset__
+      dataset_picker: true
+      width:   0.5
+
+  # ── graphic-walker: a real dataset, expandable — restores the 004
+  #    expand-mechanism coverage graphicWalkerPanel.spec.ts US3 needs
+  #    (034 moved the default so graphic-walker is not expandable
+  #    without this explicit override). ──
+  row_gw_expandable:
+    - type:    graphic-walker
+      title:   "Free-form Visual Analytics (expandable)"
+      dataset: trip_mode_share
+      scenario: activitysim-baseline
+      expandable: true
+      width:   1.0
+
+  # ── markdown: XSS payload / empty / whitespace-only ──
+  row_markdown_edge:
+    - type:  markdown
+      title: "Markdown XSS Payload (must be sanitized)"
+      width: 0.34
+      content: |
+        This paragraph is legitimate markdown and should render normally.
+
+        ## Sanitized Heading
+        <script>window.__xss_fired = true</script>
+        <img src="x" onerror="window.__xss_fired = true" />
+        [ok link](https://example.com)
+
+        This paragraph comes after the unsafe fragments and should also render.
+
+    - type:  markdown
+      title: "Markdown Empty Content"
+      content: ""
+      width: 0.33
+
+    - type:  markdown
+      title: "Markdown Whitespace Only"
+      content: "   "
+      width: 0.33
+
+  # ── valuebox: sparkline / baseline_trend referencing a missing metric ──
+  row_valuebox_edge:
+    - type:   valuebox
+      title:  "Value Box — Broken Sparkline"
+      metric: summary_kpis
+      scenario: activitysim-baseline
+      column: total_trips
+      format: "{:,.0f}"
+      sparkline:
+        metric: __nonexistent_metric__
+        x: k
+        y: v
+      width: 0.5
+
+    - type:   valuebox
+      title:  "Value Box — Broken Baseline Trend"
+      metric: summary_kpis
+      scenario: activitysim-baseline
+      column: total_trips
+      format: "{:,.0f}"
+      baseline_trend:
+        expr: "a.__missing_col__ - b.total_persons"
+      width: 0.5
+
+  # ── comparison: diff whose a/b name unresolvable scenarios ──
+  row_bad_diff:
+    - type:   table
+      title:  "Broken Comparison Diff (unresolvable a/b)"
+      metric: trip_purpose_share
+      comparison:
+        type: diff
+        a: __nope_a__
+        b: __nope_b__
+        expr: "a.trips - b.trips"
+      compare_on: [primary_purpose]
+      columns:
+        - { field: primary_purpose, label: "Purpose" }
+        - { field: trips,           label: "Δ Trips" }
+      # 040-test-suite-migration (panelExpand.spec.ts): table is
+      # expandable by TYPE default — this explicit override proves a
+      # per-panel `expandable: false` wins over that default (the "opts
+      # OUT" half of panelExpand.spec.ts's own override test; row_missing_
+      # metric's own "Broken Table Panel" — no override — is the sibling
+      # "opts don't override, stays expandable" half of the same test).
+      expandable: false
+      width: 1.0
+
+  # ── Zero-row filter → empty state (value confirmed absent from real data) ──
+  row_empty_result:
+    - type:   recharts
+      title:  "Recharts Empty Result"
+      metric: trip_mode_share
+      scenario: activitysim-baseline
+      filter: { major_trip_mode: __no_such_mode__ }
+      chart_type: bar
+      x: major_trip_mode
+      y: share
+      width: 0.5
+
+    - type:    graphic-walker
+      title:   "Free-form Visual Analytics Empty"
+      dataset: trip_mode_share
+      scenario: activitysim-baseline
+      filter:  { major_trip_mode: __no_such_mode__ }
+      width:   0.5
+
+  # ── Basemap precedence: panel with / without its own basemap under a
+  #    tab-level default_basemap (panel > tab > global > app-default) ──
+  row_basemap_precedence:
+    - type:      flowmap
+      title:     "Basemap Precedence — inherits tab default"
+      metric:    od_flows
+      scenario:  activitysim-baseline
+      origin:      orig_taz
+      origin_lat:  orig_lat
+      origin_lon:  orig_lon
+      destination: dest_taz
+      dest_lat:    dest_lat
+      dest_lon:    dest_lon
+      value:       trips
+      center: [-122.402, 37.787]
+      zoom:   11
+      height: 320
+      width:  0.5
+
+    - type:      flowmap
+      title:     "Basemap Precedence — panel override wins"
+      metric:    od_flows
+      scenario:  activitysim-baseline
+      basemap:   openfreemap-positron
+      origin:      orig_taz
+      origin_lat:  orig_lat
+      origin_lon:  orig_lon
+      destination: dest_taz
+      dest_lat:    dest_lat
+      dest_lon:    dest_lon
+      value:       trips
+      center: [-122.402, 37.787]
+      zoom:   11
+      height: 320
+      width:  0.5
+
+  # ── 040-test-suite-migration: an author-configured view deliberately
+  #    far from the real data's own extent (real od_flows spans roughly
+  #    lon -112.0..-111.75 / lat 40.6..40.85, the Wasatch Front) — proves
+  #    an explicit center/zoom always wins outright over auto-fit. ──
+  row_explicit_view:
+    - type:      flowmap
+      title:     "Flowmap Explicit View Override"
+      metric:    od_flows
+      scenario:  activitysim-baseline
+      origin:      orig_taz
+      origin_lat:  orig_lat
+      origin_lon:  orig_lon
+      destination: dest_taz
+      dest_lat:    dest_lat
+      dest_lon:    dest_lon
+      value:       trips
+      center: [-110.0, 39.0]
+      zoom:   6
+      height: 320
+      width:  1.0
+
+  # ── 040-test-suite-migration: a real leaflet-providers raster preset
+  #    (OpenTopoMap) — extends basemap coverage to the third source
+  #    category (vector preset / composition / raster). ──
+  row_raster_provider:
+    - type:      flowmap
+      title:     "Flowmap Raster Provider Preset"
+      metric:    od_flows
+      scenario:  activitysim-baseline
+      basemap:   OpenTopoMap
+      origin:      orig_taz
+      origin_lat:  orig_lat
+      origin_lon:  orig_lon
+      destination: dest_taz
+      dest_lat:    dest_lat
+      dest_lon:    dest_lon
+      value:       trips
+      center: [-122.402, 37.787]
+      zoom:   11
+      height: 320
+      width:  1.0
+
+  # ── 040-test-suite-migration: real UGRC multi-source compositions
+  #    (Utah's own GIS agency) — the app's own most elaborate real
+  #    basemap-composition case (2 stacked vector sources, sprite/glyph
+  #    resolution, highway-shield icon coverage). ──
+  row_ugrc_composition:
+    - type:      flowmap
+      title:     "Flowmap UGRC Composition"
+      metric:    od_flows
+      scenario:  activitysim-baseline
+      basemap:   ugrc-vector-lite
+      origin:      orig_taz
+      origin_lat:  orig_lat
+      origin_lon:  orig_lon
+      destination: dest_taz
+      dest_lat:    dest_lat
+      dest_lon:    dest_lon
+      value:       trips
+      center: [-122.402, 37.787]
+      zoom:   11
+      height: 320
+      width:  0.5
+
+    - type:      flowmap
+      title:     "Flowmap UGRC Outdoors Composition"
+      metric:    od_flows
+      scenario:  activitysim-baseline
+      basemap:   ugrc-vector-outdoors
+      origin:      orig_taz
+      origin_lat:  orig_lat
+      origin_lon:  orig_lon
+      destination: dest_taz
+      dest_lat:    dest_lat
+      dest_lon:    dest_lon
+      value:       trips
+      center: [-122.402, 37.787]
+      zoom:   11
+      height: 320
+      width:  0.5
+
+  # ── 040-test-suite-migration (T025): zonemap analogs of the real
+  #    basemap-precedence/no-view pair authored for flowmap above — real
+  #    vmt_by_home_taz/activitysim-baseline, real taz25.geoparquet
+  #    boundaries. "Zone Map Tab Default Basemap" deliberately has NO
+  #    basemap/center/zoom, serving both the auto-fit-to-geometry test
+  #    (User Story 1) and the tab-default-basemap-inheritance test (User
+  #    Story 2) — the same dual role the retired 8-zone fixture's own
+  #    identically-named panel served. ──
+  row_zonemap_basemap_precedence:
+    - type:          zonemap
+      title:         "Zone Map Tab Default Basemap"
+      metric:        vmt_by_home_taz
+      scenario:      activitysim-baseline
+      boundaries:    taz25.geoparquet
+      boundaries_id: TAZ1454
+      metric_id:     home_zone_id
+      column:        total_vmt
+      color_scale:   sequential
+      color_ramp:    YlOrRd
+      steps:         7
+      height: 320
+      width:  0.5
+
+    - type:          zonemap
+      title:         "Zone Map Panel Basemap Override"
+      metric:        vmt_by_home_taz
+      scenario:      activitysim-baseline
+      basemap:       openfreemap-positron
+      boundaries:    taz25.geoparquet
+      boundaries_id: TAZ1454
+      metric_id:     home_zone_id
+      column:        total_vmt
+      color_scale:   sequential
+      color_ramp:    YlOrRd
+      steps:         7
+      center: [-122.402, 37.787]
+      zoom:   13
+      height: 320
+      width:  0.5
+
+  # ── 040-test-suite-migration (T025): a real explicit `domain:` —
+  #    real vmt_by_home_taz auto-computes to [14.14, 1911.40] (the real
+  #    Network-tab panel's own domain, no config needed there); this
+  #    panel deliberately configures a DIFFERENT, wider domain ([0, 2000])
+  #    to prove an author-configured domain is honored verbatim, not
+  #    silently replaced by the auto-computed one. ──
+  row_zonemap_explicit_domain:
+    - type:          zonemap
+      title:         "Zone Map Explicit Domain"
+      metric:        vmt_by_home_taz
+      scenario:      activitysim-baseline
+      boundaries:    taz25.geoparquet
+      boundaries_id: TAZ1454
+      metric_id:     home_zone_id
+      column:        total_vmt
+      color_scale:   sequential
+      color_ramp:    YlOrRd
+      steps:         7
+      domain:        [0, 2000]
+      center: [-122.402, 37.787]
+      zoom:   13
+      height: 320
+      width:  1.0
+
+  # ── 040-test-suite-migration (T025): a real, confirmed scope correction,
+  #    found live (not assumed) during this migration's own
+  #    implementation. vmt_by_home_taz has no purpose dimension at all
+  #    (summarize.yaml — a plain GROUP BY home_zone_id) and covers all 25
+  #    real zones in every scenario, so it cannot drive a real no-data
+  #    zone at all. trips_by_destination_zone (destination_zone_id ×
+  #    primary_purpose, already real, already published) DOES have a real
+  #    gap — confirmed live: filtering to `school` leaves real TAZ 14
+  #    with zero destination trips (24 of 25 zones covered) — the real
+  #    no-data trigger this migration's own investigation found, replacing
+  #    the retired fixture's synthetic "TAZ 800 always no-data" case.
+  #    Deliberately a HARDCODED `filter:` value (`primary_purpose:
+  #    school`), matching this project's own two other already-real
+  #    zonemap/panel `filter:` usages (dashboard-3-tour-models.yaml,
+  #    dashboard-5-trip-models.yaml) — NOT a `$filters.purpose` global
+  #    sidebar reference. A live attempt at the latter confirmed a real,
+  #    broader finding: `state/filterState.ts`'s `get()` returns
+  #    `undefined` until some real UI control calls `set()` first, and
+  #    zero real sidebar filter controls exist anywhere in this demo
+  #    (grep-confirmed) — a `$filters.purpose`-bound panel would throw
+  #    "unresolved placeholder" on every real page load, not just in an
+  #    unmigrated test, so it was never a viable real-content choice here.
+  #    The filter-REACTIVITY test itself (changing a global filter
+  #    re-colors this panel) is retired for the same reason
+  #    dashboardShell.spec.ts/panelExpand.spec.ts/flowmapPanel.spec.ts
+  #    already retired theirs: zero real content anywhere uses global
+  #    filter reactivity. ──
+  row_zonemap_filter_reactive:
+    - type:          zonemap
+      title:         "Zone Map Destination Trips by Purpose"
+      metric:        trips_by_destination_zone
+      scenario:      activitysim-baseline
+      filter:        { primary_purpose: school }
+      boundaries:    taz25.geoparquet
+      boundaries_id: TAZ1454
+      metric_id:     destination_zone_id
+      column:        trips
+      color_scale:   sequential
+      color_ramp:    YlOrRd
+      steps:         7
+      center: [-122.402, 37.787]
+      zoom:   13
+      height: 320
+      width:  1.0
+
+  # ── 040-test-suite-migration (T025): comparison: diff on real data.
+  #    A real, confirmed correction made during this migration's own
+  #    implementation: trips_by_destination_zone (destination_zone_id ×
+  #    primary_purpose) has MULTIPLE rows per zone — comparison: diff's
+  #    own JOIN is on `compare_on` columns ALONE (destination_zone_id
+  #    here), so joining that metric without ALSO including
+  #    primary_purpose in compare_on produces a real cross-product over
+  #    purposes per zone, not one clean per-zone diff (confirmed live:
+  #    the resulting values didn't match a direct GROUP BY/SUM
+  #    cross-check at all). vmt_by_home_taz has exactly ONE row per
+  #    zone per scenario (a plain GROUP BY home_zone_id, no further
+  #    split) and is genuinely diff-compatible with no such risk — real,
+  #    confirmed per-zone diffs (activitysim-density-variant minus
+  #    activitysim-baseline, home_zone_id): TAZ 22 = 396.38-402.97 =
+  #    -6.58 (real min), TAZ 8 = 1301.66-1281.89 = +19.76 (real max) —
+  #    genuine sign variation for the diverging scale, replacing the
+  #    retired fixture's synthetic "TAZ 300 exactly at midpoint" case
+  #    (no real zone lands exactly at zero here — TAZ 19 comes closest
+  #    at +0.01 — so this test asserts real sign/magnitude at the two
+  #    real extremes instead of a contrived exact-zero zone). ──
+  row_zonemap_diff:
+    - type:        zonemap
+      title:       "Zone Map VMT Diff (Density vs Baseline)"
+      metric:      vmt_by_home_taz
+      comparison:
+        type: diff
+        a:    activitysim-density-variant
+        b:    activitysim-baseline
+        expr: "a.total_vmt - b.total_vmt"
+      compare_on:    [home_zone_id]
+      boundaries:    taz25.geoparquet
+      boundaries_id: TAZ1454
+      metric_id:     home_zone_id
+      column:        diff_value
+      color_scale:   diverging
+      color_ramp:    RdBu
+      domain:        [-10, 25]
+      center: [-122.402, 37.787]
+      zoom:   13
+      height: 320
+      width:  0.5
+
+    - type:        zonemap
+      title:       "Zone Map Diff Unresolvable Scenario"
+      metric:      vmt_by_home_taz
+      comparison:
+        type: diff
+        a:    __nope_a__
+        b:    __nope_b__
+        expr: "a.total_vmt - b.total_vmt"
+      compare_on:    [home_zone_id]
+      boundaries:    taz25.geoparquet
+      boundaries_id: TAZ1454
+      metric_id:     home_zone_id
+      column:        diff_value
+      color_scale:   diverging
+      color_ramp:    RdBu
+      domain:        [-10, 25]
+      center: [-122.402, 37.787]
+      zoom:   13
+      height: 320
+      width:  0.5
+
+  # ── 019-baseline-diff-consumption: the $baseline sentinel, real data.
+  #    activitysim-baseline is auto-baseline until a test explicitly
+  #    changes it (038's own automatic-default rule) — so this panel
+  #    initially renders a===b (trivial 0 everywhere) exactly like the
+  #    retired fixture's own DIFF_BASELINE_TITLE did. ──
+  row_zonemap_diff_baseline:
+    - type:        zonemap
+      title:       "Zone Map VMT Diff via $baseline"
+      metric:      vmt_by_home_taz
+      comparison:
+        type: diff
+        a:    activitysim-baseline
+        b:    "$baseline"
+        expr: "a.total_vmt - b.total_vmt"
+      compare_on:    [home_zone_id]
+      boundaries:    taz25.geoparquet
+      boundaries_id: TAZ1454
+      metric_id:     home_zone_id
+      column:        diff_value
+      color_scale:   diverging
+      color_ramp:    RdBu
+      domain:        [-10, 25]
+      center: [-122.402, 37.787]
+      zoom:   13
+      height: 320
+      width:  1.0
+
+default_basemap: carto-positron

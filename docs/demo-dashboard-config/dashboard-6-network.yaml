@@ -23,7 +23,7 @@ sections:
     rows: [row_vmt_by_home_taz]
   - id: od-desire-lines
     label: "O-D Desire Lines"
-    rows: [row_od_desire_lines]
+    rows: [row_od_desire_lines, row_od_desire_lines_default]
   - id: home-workplace-flows
     label: "Home-Workplace Flows"
     rows: [row_home_workplace_flows]
@@ -105,6 +105,39 @@ layout:
       clustering_auto: true
       center: [-122.402, 37.787]
       zoom:   13
+
+  # 040-test-suite-migration: a second real od_flows panel, deliberately
+  # with NO center/zoom/basemap config — the real vehicle for
+  # flowmapPanel.spec.ts's own many generic-mechanics tests (auto-fit,
+  # default app-basemap resolution, attribution/nav controls, deck.gl
+  # hover tooltip, expand/resize, registry consistency). The existing
+  # row_od_desire_lines panel above can't serve this role — it has its
+  # own real, authored center/zoom, so auto-fit's own `config.center ==
+  # null && config.zoom == null` guard never runs for it. Placed on this
+  # REAL tab (not dashboard-8-test.yaml) specifically because
+  # dashboard-8-test.yaml's own `default_basemap: carto-positron` (needed
+  # by its own real tab-default-precedence panels, below) would
+  # incorrectly apply to a panel meant to prove resolution to the real
+  # APP-WIDE default (openfreemap-positron) — this tab sets no
+  # `default_basemap` of its own, so an unconfigured panel here
+  # genuinely resolves to APP_DEFAULT, the real case these tests need.
+  row_od_desire_lines_default:
+    - type:        flowmap
+      title:       "Trip Distribution Desire Lines (Default View)"
+      metric:      od_flows
+      scenario:    activitysim-baseline
+      description: "Same real O-D data as above, with no author-configured view or basemap — auto-fits to the data's own extent using the app-wide default basemap."
+      height:      500
+      width:       1.0
+      origin:      orig_taz
+      origin_lat:  orig_lat
+      origin_lon:  orig_lon
+      destination: dest_taz
+      dest_lat:    dest_lat
+      dest_lon:    dest_lon
+      value:       trips
+      clustering:      true
+      clustering_auto: true
 
   row_home_workplace_flows:
     - type:       table
