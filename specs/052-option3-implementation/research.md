@@ -151,3 +151,27 @@ No implementation detail deviated from `051`'s own design during this
 pass — pool size 6, the retry/failure-isolation shape, and the
 buffer-handoff mechanism all matched what was scoped, with no new
 empirical surprises requiring a design change.
+
+---
+
+## Real, measured win — a controlled A/B, not a prediction
+
+Built both the pre-052 tree (`051`'s own tip, `f0fdf87`, via a nested
+git worktree so `node_modules` resolved via ancestor lookup) and this
+feature's tree, served both identically (same local static server, same
+60ms injected per-request latency, same real 105 published demo Parquet
+files), 3 runs each:
+
+| | pre-052 (shared connection, `Promise.all`) | post-052 (loader pool, size 6) |
+|---|---|---|
+| registration span (105 files) | ~8.0–8.1s | ~1.7–1.8s |
+| total boot time (`window.__wftdm` ready) | ~11.1–11.3s | ~5.7–5.9s |
+
+**Registration: ~4.6× faster (78% reduction). Total boot time: ~1.9×
+faster (48% reduction)** — consistent with the pre-implementation trace
+finding that registration was 58–66% of total boot time, and closely
+matching `051`'s own standalone-harness prediction for pool size 6 at
+105 files (that harness measured 1582ms registration + 891ms boot =
+2474ms total, in isolation from the rest of a real boot sequence — this
+real, integrated measurement lands in the same range once folded into
+an actual page load).
