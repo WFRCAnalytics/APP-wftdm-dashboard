@@ -65,7 +65,17 @@ export function useScenarioList(): Scenario[] {
           s.path !== p.path ||
           s.pinned !== p.pinned ||
           s.active !== p.active ||
-          s.source !== p.source
+          s.source !== p.source ||
+          // 052-option3-implementation: same class of gap this file's own
+          // header comment already documents twice (label, colorOverride)
+          // — array identity would always differ across snapshots even
+          // when the CONTENTS are the same, so this compares content via
+          // a cheap join() rather than reference equality (which would
+          // either always mismatch, forcing a re-render on every notify,
+          // or never mismatch if compared by `!==` against a memoized
+          // reference that happens to be reused — neither is what a real
+          // content change should do).
+          (s.failedFiles ?? []).join(',') !== (p.failedFiles ?? []).join(',')
         )
       })
     if (changed) cache.current = live.map((s) => ({ ...s }))

@@ -445,6 +445,39 @@ since they no longer load eagerly at all). This is a real, positive
 interaction between the two fixes, but the underlying double-reload
 itself is unfixed and will keep taxing whatever IS still eager.
 
+**Real first-visit confirmation (`052-option3-implementation`, pre-
+implementation investigation):** re-measured against a genuinely fresh,
+never-used persistent browser profile (a brand-new temp `userDataDir`
+per run, not Playwright's default ephemeral context reused across many
+runs) — the closest practical equivalent to a real fresh machine
+available in this environment (OS-level DNS flush was attempted but
+requires elevated privileges not available here; disclosed as a real,
+known limit — GitHub Pages' own CDN edge is also likely warm from this
+session's own extensive prior testing of this exact URL, so these
+numbers may run modestly faster than a true first-ever visitor from a
+different network/geography would see). 3/3 fresh-profile runs
+confirmed the double-reload fires on every genuinely first visit
+(expected — a fresh profile has never registered the service worker
+before); one of those 3 runs hit the rarer TRIPLE-navigation case
+(a second registration cycle) already flagged as a real, occasional
+occurrence in `050`'s own live-site testing. Real, measured costs from
+the SAME single trace, decomposed:
+
+| | typical (2 of 3 runs) | rare extra-reload case (1 of 3) |
+|---|---|---|
+| reload dead time | ~120–130ms | ~435ms |
+| DuckDB-WASM registration span (105 real files) | 2.3–3.1s | 8.2s |
+| everything else (JS/WASM load+init, manifests) | 1.5s | 3.7s |
+| **total boot time** | **4.0–4.8s** | **12.4s** |
+
+**The DuckDB-WASM registration phase dominates in every real run** —
+consistently 58–66% of total boot time, 10–25× larger in absolute terms
+than the reload's cost. The reload is real (fires on literally every
+first visit) but small and bounded; it was never worth a dedicated fix
+ahead of the registration bottleneck, and this real trace confirms that
+prioritization was correct. See `052-option3-implementation` for the
+loader-instance-pool fix this finding motivates.
+
 **2. `MANUAL_BUNDLES` never configures a threaded DuckDB-WASM bundle.**
 `services/duckdb.ts`'s `MANUAL_BUNDLES` only registers `mvp`/`eh` — no
 `coi` (threaded, SharedArrayBuffer-based) bundle exists in the config at

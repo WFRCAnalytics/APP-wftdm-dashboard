@@ -60,6 +60,23 @@ export interface Scenario {
   // Lives on this same object so unregister() discards it for free, the
   // same behavior `label` already gets with no special-cased cleanup.
   colorOverride?: string
+  // 052-option3-implementation: real per-file registration failures for a
+  // scenario that's otherwise 'ready' (at least one file succeeded) —
+  // e.g. ["mode_share_by_period"] means that one metric's Parquet file
+  // failed to register while every other file in the scenario loaded
+  // fine. Undefined (never an empty array) when nothing failed, matching
+  // this interface's own existing optional-field convention (label/
+  // colorOverride above). Never set on a 'failed' scenario — a wholly-
+  // failed scenario has nothing that succeeded for this to be "partial"
+  // relative to. Populated by services/scenarioDiscovery.ts from
+  // services/duckdbLoaderPool.ts's own PoolRegistrationResult.failed —
+  // see that module's own header comment for why a bad file no longer
+  // silently fails the WHOLE scenario the way it did before this
+  // feature (specs/051-scope-option3-pool-design/research.md §2). This
+  // is the DATA layer only — no UI currently reads this field; a real
+  // viewer-facing surface ("2 of 35 files failed to load") is an
+  // explicitly separate, deferred product decision (051's own research.md).
+  failedFiles?: string[]
 }
 
 export interface ScenarioMetadata {
@@ -135,6 +152,7 @@ export function register(name: string, metadata: ScenarioMetadata): void {
     order: nextOrder++,
     label: undefined,
     colorOverride: undefined,
+    failedFiles: undefined,
   })
   notify()
 }
@@ -353,5 +371,23 @@ export function clearColorOverride(name: string): void {
     throw new Error(`appState.clearColorOverride: "${name}" was never registered`)
   }
   entry.colorOverride = undefined
+  notify()
+}
+
+/**
+ * 052-option3-implementation: records which of a scenario's own files
+ * failed to register, without changing its `status` — called only for a
+ * scenario whose registration is otherwise proceeding as 'ready' (at
+ * least one file succeeded; see services/scenarioDiscovery.ts's own
+ * registerSummaryFolder()). An empty array normalizes to `undefined`,
+ * matching this file's own "absent, not empty" convention for every
+ * other optional Scenario field.
+ */
+export function setFailedFiles(name: string, failedFiles: string[]): void {
+  const entry = scenarios.get(name)
+  if (!entry) {
+    throw new Error(`appState.setFailedFiles: "${name}" was never registered`)
+  }
+  entry.failedFiles = failedFiles.length > 0 ? failedFiles : undefined
   notify()
 }

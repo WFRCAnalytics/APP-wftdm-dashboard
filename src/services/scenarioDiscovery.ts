@@ -5,7 +5,7 @@
 // the new, git-tracked real-content root, additive alongside (not a
 // replacement for) the paths above. See
 // specs/026-activitysim-demo-content/contracts/discovery.md.
-import { registerFileURL } from './duckdb.ts'
+import { registerFilesViaPool } from './duckdbLoaderPool.ts'
 import { loadManifest } from './yamlLoader.ts'
 import { manifestFromObject, type ParsedManifest } from '../scenario/manifestReader.ts'
 import * as appState from '../state/appState.ts'
@@ -51,42 +51,67 @@ async function fetchScenarioManifest(manifestUrl: string): Promise<Partial<Parse
 
 /**
  * Registers every filename listed in `{folderUrl}/index.json` as a view
- * named `{namePrefix}__{fileStem}`.
+ * named `{namePrefix}__{fileStem}`, via `services/duckdbLoaderPool.ts`'s
+ * fixed loader-instance pool.
  * @param folderUrl e.g. `${base}observed/summary`
  * @param namePrefix e.g. 'observed'
+ * @returns the file STEMS (e.g. "summary_kpis", not the full namespaced
+ *   view name) that failed to register — empty when every file
+ *   succeeded. Throws only when EVERY file failed (nothing to be
+ *   "partial" relative to) — the caller marks the scenario 'failed' in
+ *   that case exactly as before this change.
  *
- * 042-boot-performance-fix: the per-file loop was previously sequential
- * (`for (...) { await registerFileURL(...) }`), the single dominant
- * bottleneck confirmed by the 042 investigation (docs/PIPELINE.md) — 105
- * real Parquet files across 3 demo scenarios registered one at a time,
- * ~20-25ms of pure per-request latency each even on a fast/low-latency
- * connection, ~2.4-2.6s of the ~5-12s total boot time.
+ * 042-boot-performance-fix confirmed there is NO real ordering
+ * dependency between files within one scenario's summary folder — each
+ * file gets its own globally-unique view name (`{namePrefix}__{stem}`),
+ * so they were switched from a sequential loop to `Promise.all()`
+ * against the app's one shared connection. 048/050/051-scope-multi-
+ * connection then found that fix's real ceiling empirically: the shared
+ * connection's single underlying Worker still processes every task one
+ * at a time regardless of caller-side concurrency (confirmed: 1/2/4/8
+ * connections against the SAME AsyncDuckDB instance all land at the
+ * same total time for the same file set) — real parallelism needs
+ * genuinely separate instances, not more concurrent calls on one.
  *
- * Confirmed there is NO real ordering dependency between files within one
- * scenario's summary folder before parallelizing: each file gets its own
- * globally-unique view name (`{namePrefix}__{stem}`, confirmed unique
- * because `namePrefix` is always a distinct scenario name and `stem` a
- * distinct filename), so registerFileURL()'s two real effects —
- * duckdb.ts's `db.registerFileURL()` (a virtual filename->URL mapping,
- * DB-level, not connection-level) and `createViewOverParquet()`'s own
- * `CREATE OR REPLACE VIEW "{viewName}" ...` query against the ONE shared
- * connection — never touch another file's view. Empirically verified,
- * not just reasoned about: a live test against the real, running
- * DuckDB-WASM connection (12 real demo Parquet files registered and
- * queried via Promise.all vs. the same 12 registered sequentially)
- * produced byte-identical row counts with zero errors, confirming the
- * shared AsyncDuckDBConnection safely queues/serializes concurrent
- * same-connection query calls internally rather than corrupting or
- * rejecting them.
+ * 052-option3-implementation replaces the `Promise.all(registerFileURL)`
+ * call with `registerFilesViaPool()` — a fixed pool of 6 separate loader
+ * instances (051's own empirically-swept sweet spot for this app's real
+ * ~105-file/3-scenario shape) registering+fetching in parallel, each
+ * handing its resolved buffer off to the shared instance. A second real
+ * behavior change alongside the performance one: a single bad file
+ * (network blip, malformed Parquet, a stale index.json entry) no longer
+ * fails the WHOLE scenario — see specs/051-scope-option3-pool-design/
+ * research.md §2 for the real, confirmed gap this closes (the OLD
+ * `Promise.all()` here had no per-file catch at all, so one failure
+ * rejected everything).
  */
-async function registerSummaryFolder(folderUrl: string, namePrefix: string): Promise<void> {
+async function registerSummaryFolder(
+  folderUrl: string,
+  namePrefix: string,
+): Promise<{ failedStems: string[] }> {
   const filenames = await fetchJSON<string[]>(`${folderUrl}/index.json`)
-  await Promise.all(
-    filenames.map((fileName) => {
-      const stem = fileName.replace(/\.parquet$/, '')
-      return registerFileURL(`${namePrefix}__${stem}`, `${folderUrl}/${fileName}`)
-    }),
-  )
+  if (filenames.length === 0) return { failedStems: [] }
+
+  const stemByViewName = new Map<string, string>()
+  const files = filenames.map((fileName) => {
+    const stem = fileName.replace(/\.parquet$/, '')
+    const viewName = `${namePrefix}__${stem}`
+    stemByViewName.set(viewName, stem)
+    return { viewName, url: `${folderUrl}/${fileName}` }
+  })
+
+  const { succeeded, failed } = await registerFilesViaPool(files)
+
+  if (succeeded.length === 0) {
+    // Nothing at all registered — genuinely a total failure, same
+    // semantics as before this change (the caller's own try/catch marks
+    // the scenario 'failed').
+    throw new Error(
+      `registerSummaryFolder: every file failed to register for "${namePrefix}" (${failed.length}/${files.length})`,
+    )
+  }
+
+  return { failedStems: failed.map((f) => stemByViewName.get(f.viewName) ?? f.viewName) }
 }
 
 async function registerObserved(): Promise<void> {
@@ -112,8 +137,9 @@ async function registerObserved(): Promise<void> {
     notes: manifest.notes,
   })
   try {
-    await registerSummaryFolder(folderUrl, 'observed')
+    const { failedStems } = await registerSummaryFolder(folderUrl, 'observed')
     appState.setStatus('observed', 'ready')
+    if (failedStems.length > 0) appState.setFailedFiles('observed', failedStems)
     // 038-all-loaded-scenarios: a scenario participates in the dynamic
     // `$scenario` union iff its own data is genuinely present. The only
     // condition is `status === 'ready'` — no fixture-vs-demo branching
@@ -200,8 +226,9 @@ async function registerPublishedScenarios(): Promise<void> {
     names.map(async (name) => {
       const folderUrl = folderUrls.get(name)!
       try {
-        await registerSummaryFolder(folderUrl, name)
+        const { failedStems } = await registerSummaryFolder(folderUrl, name)
         appState.setStatus(name, 'ready')
+        if (failedStems.length > 0) appState.setFailedFiles(name, failedStems)
         // 038-all-loaded-scenarios: every published scenario whose data
         // actually loaded participates by default (status === 'ready'
         // only, no context branching — FR-013). A viewer excludes one via
@@ -275,8 +302,9 @@ async function registerDemoScenarios(): Promise<void> {
     names.map(async (name) => {
       const folderUrl = folderUrls.get(name)!
       try {
-        await registerSummaryFolder(folderUrl, name)
+        const { failedStems } = await registerSummaryFolder(folderUrl, name)
         appState.setStatus(name, 'ready')
+        if (failedStems.length > 0) appState.setFailedFiles(name, failedStems)
         // 038-all-loaded-scenarios: same rule as registerPublishedScenarios()
         // above — a demo scenario whose data loaded participates by default
         // (status === 'ready' only). This is what makes the real demo read

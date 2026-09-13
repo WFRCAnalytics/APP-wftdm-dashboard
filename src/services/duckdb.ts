@@ -65,6 +65,36 @@ async function getDB(): Promise<duckdb.AsyncDuckDB> {
   return db
 }
 
+/**
+ * Creates a fresh, independent AsyncDuckDB instance (its own Worker) —
+ * NEVER the shared singleton `dbPromise`/`connectionPromise` above, and
+ * never assigned to them. For `services/duckdbLoaderPool.ts`'s
+ * loader-instance pool only (052-option3-implementation, building on
+ * 050/051-scope-multi-connection's own scoping): parallel scenario-file
+ * registration needs genuinely separate Worker/engine instances, not
+ * more connections on the one shared instance — confirmed empirically in
+ * 050/051 that multiple `AsyncDuckDBConnection`s against ONE `AsyncDuckDB`
+ * all funnel through the same single Worker and buy zero real
+ * parallelism (1/2/4/8 connections all landed at the same ~1.2s for 16
+ * real files); only genuinely separate instances measurably parallelize
+ * (4 separate instances: ~2.5x faster). Uses the exact same bundle-
+ * selection logic as `initDuckDB()` so a loader instance behaves
+ * identically to the shared one (same mvp/eh choice, same no-CDN
+ * self-hosted bundles) — duplicated rather than factored out of
+ * `initDuckDB()` because that function's own shape (assign-the-promise-
+ * before-awaiting, for idempotency) is specifically about the ONE shared
+ * instance and would be the wrong shape to reuse for "create N
+ * independent instances."
+ */
+export async function createLoaderInstance(): Promise<duckdb.AsyncDuckDB> {
+  const bundle = await duckdb.selectBundle(MANUAL_BUNDLES)
+  const worker = new Worker(bundle.mainWorker!)
+  const logger = new duckdb.ConsoleLogger(duckdb.LogLevel.WARNING)
+  const db = new duckdb.AsyncDuckDB(logger, worker)
+  await db.instantiate(bundle.mainModule, bundle.pthreadWorker)
+  return db
+}
+
 async function getConnection(): Promise<duckdb.AsyncDuckDBConnection> {
   if (!connectionPromise) {
     throw new Error('duckdb.ts: initDuckDB() must resolve before querying')
@@ -92,6 +122,31 @@ async function createViewOverParquet(viewName: string): Promise<void> {
     `CREATE OR REPLACE VIEW "${viewName}" AS SELECT * FROM read_parquet('${viewName}')`,
   )
   allViews.add(viewName)
+}
+
+/**
+ * Hands a buffer — produced by a loader instance's own
+ * `copyFileToBuffer()` (`services/duckdbLoaderPool.ts`) — to the SHARED
+ * instance and creates a view over it, exactly like `registerFileURL()`
+ * above does for a URL-backed file. `registerFileBuffer()` TRANSFERS
+ * (does not copy) the underlying `ArrayBuffer` to the shared instance's
+ * own Worker — confirmed directly in `051-scope-option3-pool-design`'s
+ * own empirical test (`buffer.byteLength` reads the real size
+ * immediately before this call, then `0` immediately after) — so
+ * `buffer` is unusable by the caller once this resolves; never read or
+ * reuse it afterward. Steady-state cost is small (~2-3ms per call after
+ * a one-time ~100ms warm-up on the shared instance's own first handoff
+ * of a boot — confirmed, not assumed, 051 §3), so calling this once per
+ * file across a real ~105-file registration run does not erode the
+ * loader pool's own parallelism win.
+ */
+export async function registerBufferOnSharedInstance(
+  viewName: string,
+  buffer: Uint8Array,
+): Promise<void> {
+  const db = await getDB()
+  await db.registerFileBuffer(viewName, buffer)
+  await createViewOverParquet(viewName)
 }
 
 // 004-panel-expand-dialog test instrumentation: records every SQL string
