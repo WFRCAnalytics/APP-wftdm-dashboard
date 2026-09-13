@@ -487,6 +487,28 @@ handling, thread-safety against the one shared `AsyncDuckDB` instance)
 that deserves its own dedicated design and testing, not a rushed addition
 here.
 
+**Correction (`050-scope-multi-connection`, scoping-only pass, real
+empirical test, not theory):** the paragraph above's "would need multiple
+DuckDB connections" claim is **wrong** — confirmed directly, both from
+the installed library's own `selectBundle()`/`registerFileURL()` source
+and from a real, reproducible test (16 real published Parquet files,
+60ms injected latency, distinct URLs per test group to rule out a fetch-
+cache confound): calling `db.connect()` multiple times against the SAME
+`AsyncDuckDB` instance buys **zero** additional throughput — 1, 2, 4, and
+8 connections all land at the same ~1.18–1.22s for 16 files, with an
+identical fully-serialized per-file completion timeline every time.
+`registerFileURL()` is a DB-instance-level method, not a connection-level
+one, and every connection's `query()` funnels through the same single
+`Worker` regardless of which connection issued it — there is exactly one
+single-threaded WASM engine underneath all of them (no `coi`/pthread
+bundle is configured, confirmed separately — see `specs/
+050-scope-multi-connection/research.md` §1). What DOES scale: genuinely
+**separate `AsyncDuckDB` instances** (their own `Worker` each) — 4
+separate instances handling the same 16 files land at 477ms, ~2.5× faster,
+with a clean parallel-lockstep completion pattern. Full findings,
+real trace data, and three scoped implementation options (none built
+yet) are in `specs/050-scope-multi-connection/research.md`.
+
 ---
 
 ## Two real, confirmed keyless basemap candidates — Americana, VersaTiles
