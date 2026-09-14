@@ -1,6 +1,7 @@
 import { fileURLToPath, URL } from 'node:url'
 import { defineConfig } from 'vite'
 import tailwindcss from '@tailwindcss/vite'
+import { bootSkeletonPlugin } from './scripts/viteBootSkeletonPlugin.ts'
 
 export default defineConfig({
   // GitHub Pages *project* page for WFRCAnalytics/APP-wftdm-dashboard —
@@ -16,7 +17,12 @@ export default defineConfig({
   // directive (research.md §3/§4's confirmed, empirically-trialed bridge)
   // is what lets tailwind.config.js itself stay a plain, unmodified JS file
   // under this plugin — no CSS-native `@theme` rewrite needed.
-  plugins: [tailwindcss()],
+  // 055-build-time-skeleton: bootSkeletonPlugin() must run AFTER
+  // tailwindcss() in this array only in the sense that plugin order
+  // here is irrelevant to it — it only touches index.html's own markup
+  // via transformIndexHtml, never CSS. Listed second simply because it
+  // was added second; no real ordering dependency exists between them.
+  plugins: [tailwindcss(), bootSkeletonPlugin()],
   worker: { format: 'es' }, // REQUIRED for DuckDB-WASM
   optimizeDeps: { exclude: ['@duckdb/duckdb-wasm'] }, // REQUIRED
   resolve: {
