@@ -50,6 +50,50 @@ export async function initDuckDB(): Promise<void> {
       const logger = new duckdb.ConsoleLogger(duckdb.LogLevel.WARNING)
       const db = new duckdb.AsyncDuckDB(logger, worker)
       await db.instantiate(bundle.mainModule, bundle.pthreadWorker)
+      // registerFileURL() otherwise ALWAYS downloads a registered Parquet
+      // file in full, on first read, regardless of query selectivity or
+      // file size — confirmed empirically (056's own follow-up
+      // investigation, not assumed): a real, direct browser network
+      // capture against this app's own registerFileURL() showed a
+      // selective query against a real 24MB synthetic Parquet file over
+      // HTTP still triggered exactly one plain GET, no Range header,
+      // reading all 24MB. DuckDB-WASM's own HTTP range-request detection
+      // (`runtime_browser.ts`'s openFile(), confirmed via its own source
+      // map) is real but gated behind this exact `DuckDBFilesystemConfig`,
+      // which this app never set before now. With it, the SAME 24MB file
+      // + selective query instead issued 8 genuine range-scoped GETs
+      // (~1.4MB total, ~94% less) — confirmed via the identical direct
+      // capture technique. `allowFullHTTPReads: true` was tried and
+      // REJECTED: confirmed, via a same-session clean A/B against the
+      // identical capable server/file/query, that it does not merely add
+      // a rare-case safety net — it disables range reads UNCONDITIONALLY,
+      // even on a fully range-capable server, making it a no-op relative
+      // to this app's prior (always-full-download) behavior. Cost at this
+      // app's own real file scale (500B–90KB demo files) is real but
+      // negligible — measured directly across 3 repeated runs of a
+      // realistic 39-file batch under ~35ms simulated per-request
+      // latency: 3844ms before vs 3816–3828ms after (noise, not a
+      // regression) — dominated by this app's own per-file
+      // `CREATE VIEW ... AS SELECT * FROM read_parquet(...)` schema-
+      // resolution cost, not the extra HEAD probe.
+      //
+      // The real, confirmed trade-off `allowFullHTTPReads: false` accepts:
+      // a server that genuinely cannot do HTTP range requests at all
+      // throws a raw, unhelpful DuckDB error at query time
+      // (`Failed to open file: <name>`, mentioning neither "range" nor
+      // "HTTP" — confirmed live against a deliberately range-incapable
+      // test server) instead of silently falling back. registerFileURL()
+      // below catches exactly this failure and retries via a manual full
+      // fetch()+registerFileBuffer() — real range reads as the default,
+      // graceful (and clearly logged) degradation as the exception,
+      // rather than accepting `allowFullHTTPReads: true`'s always-full
+      // no-op. This app's own real HTTP-serving targets — vite dev/
+      // preview and the built dist/docs output (GitHub Pages) — were all
+      // directly `curl`-confirmed range-capable, so the fallback path is
+      // not expected to be live in this app's own real deployments today.
+      await db.open({
+        filesystem: { allowFullHTTPReads: false, reliableHeadRequests: true, forceFullHTTPReads: false },
+      })
       return db
     })()
   }
@@ -158,11 +202,67 @@ export async function registerScenario(
   }
 }
 
+// The exact, confirmed error text initDuckDB()'s own `allowFullHTTPReads:
+// false` config produces when a file can't be opened via DuckDB-WASM's own
+// HTTP range-detection path — reproduced live against a deliberately
+// range-incapable test server. Confirmed (also live, same session) that a
+// genuinely missing/404 file produces this SAME signature — this string
+// alone doesn't distinguish "range unsupported" from "doesn't exist", which
+// is why registerFileURLViaFullFetch() below re-derives the real answer via
+// its own fetch() rather than trusting the match alone; the match's only
+// job is deciding whether a fallback attempt is worth making at all.
+function isRangeDetectionFailure(err: unknown, viewName: string): boolean {
+  return err instanceof Error && err.message.includes(`Failed to open file: ${viewName}`)
+}
+
+// Manual fallback for a server DuckDB-WASM's own HTTP range-request
+// detection can't read from at all (see initDuckDB()'s own db.open() call
+// for the full story on why allowFullHTTPReads stays false rather than
+// relying on DuckDB-WASM's own built-in fallback, which was confirmed to
+// disable range reads unconditionally, not just as a rare-case safety net).
+// A plain fetch() neither knows nor cares about server-side Range support —
+// it's the same request path a real deployer's own <img>/<a> tag would use.
+// A non-ok response (genuine 404, network failure, ...) rethrows a new
+// error rather than silently swallowing it — registerFileURL()'s own
+// callers (scenarioDiscovery.ts's fail-soft registration) still need a real
+// missing/unreachable file to throw, exactly as before this fallback
+// existed.
+async function registerFileURLViaFullFetch(
+  db: duckdb.AsyncDuckDB,
+  viewName: string,
+  url: string,
+): Promise<void> {
+  const response = await fetch(url)
+  if (!response.ok) {
+    throw new Error(
+      `registerFileURL: '${viewName}' failed HTTP range-request detection, and the fallback full fetch also failed (${response.status} ${response.statusText})`,
+    )
+  }
+  const buffer = new Uint8Array(await response.arrayBuffer())
+  // registerFileBuffer() TRANSFERS (does not copy) the underlying
+  // ArrayBuffer to the worker (already documented, elsewhere in this
+  // codebase, for registerBufferOnSharedInstance()'s identical case) — read
+  // byteLength BEFORE the call, not after, or it reads 0 (confirmed live:
+  // an earlier version of this exact line logged "(0 bytes)" every time).
+  const byteLength = buffer.byteLength
+  await db.dropFile(viewName)
+  await db.registerFileBuffer(viewName, buffer)
+  await createViewOverParquet(viewName)
+  console.warn(
+    `registerFileURL: '${viewName}' does not support HTTP range requests — fell back to a full download (${byteLength} bytes)`,
+  )
+}
+
 /** Registers a single Parquet/GeoParquet file reachable by URL as a view. */
 export async function registerFileURL(viewName: string, url: string): Promise<void> {
   const db = await getDB()
   await db.registerFileURL(viewName, url, duckdb.DuckDBDataProtocol.HTTP, false)
-  await createViewOverParquet(viewName)
+  try {
+    await createViewOverParquet(viewName)
+  } catch (err) {
+    if (!isRangeDetectionFailure(err, viewName)) throw err
+    await registerFileURLViaFullFetch(db, viewName, url)
+  }
 }
 
 /**
