@@ -107,6 +107,34 @@ pre-reload page load):
    consistent with every prior measurement this session, small and
    bounded.
 
+**Correction (`054-pool-consolidation-and-boot-unblock`, found while
+scoping a fix for item 4 above, before writing any code — real, self-
+caught, not shipped wrong):** item 4's own claim that "the Shell doesn't
+render ANYTHING (not even a loading skeleton)" is **wrong**. The
+`appInnerHTMLLength` staying flat at 3714 bytes for the whole pre-mount
+period was misread as "blank" — it is in fact a real, deliberately
+built, already-deployed **static HTML skeleton** baked directly into
+`index.html` itself (`138c75d`, "apply design system to shell/nav
+(Phase 2) — page title role, boot skeleton, …"), present from the very
+first paint with zero JavaScript required at all: a shaped
+header+KPI-card+chart-card placeholder using this app's own established
+`animate-pulse rounded-md bg-muted` shimmer treatment, replaced
+wholesale the instant `ReactDOM.createRoot(...).render()` mounts the
+real `Shell` (that component unconditionally replaces a container's
+existing children on first render — no manual cleanup needed, per its
+own code comment). `main.tsx`'s own boot sequence genuinely still gates
+`ReactDOM.createRoot(...).render()` on `discoverScenarios()` resolving
+— that structural fact is unchanged and correctly described — but the
+IMPLICATION drawn from it here ("so nothing is visible") does not
+follow, because a real loading UI exists entirely outside React's own
+render cycle. A React-level "mount a skeleton immediately" fix was
+drafted in response to this section's own wrong claim, confirmed
+redundant against the already-deployed static skeleton (same content,
+same timing, an unnecessary extra reconciliation cycle on top of an
+already-solved problem), and reverted before ever being committed — see
+`specs/054-pool-consolidation-and-boot-unblock/research.md` for the
+full record of that dead end.
+
 **The real, corrected headline finding — direct answer to "don't
 assume registration is still dominant":** it isn't, anymore. `052`
 fixed the actual file-transfer cost (105 files now register in well

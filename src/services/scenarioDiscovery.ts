@@ -5,7 +5,7 @@
 // the new, git-tracked real-content root, additive alongside (not a
 // replacement for) the paths above. See
 // specs/026-activitysim-demo-content/contracts/discovery.md.
-import { registerFilesViaPool } from './duckdbLoaderPool.ts'
+import { registerFilesViaPool, type PoolFileSpec } from './duckdbLoaderPool.ts'
 import { loadManifest } from './yamlLoader.ts'
 import { manifestFromObject, type ParsedManifest } from '../scenario/manifestReader.ts'
 import * as appState from '../state/appState.ts'
@@ -50,9 +50,41 @@ async function fetchScenarioManifest(manifestUrl: string): Promise<Partial<Parse
 }
 
 /**
+ * Fetches `{folderUrl}/index.json` and resolves it to the pool-ready
+ * file specs for one scenario — `{namePrefix}__{fileStem}` view names,
+ * matching `services/duckdb.ts#registerFileURL()`'s own naming
+ * convention. Cheap: one small JSON request, no registration work at
+ * all yet — split out from `registerSummaryFolder()` below specifically
+ * so `registerPublishedScenarios()`/`registerDemoScenarios()` can fetch
+ * every scenario's OWN file list independently (still concurrent, still
+ * cheap) while feeding ALL of them into ONE combined pool call — see
+ * `054-pool-consolidation-and-boot-unblock`'s own header comment on
+ * that Phase 2 rewrite for why.
+ */
+async function fetchScenarioFileList(folderUrl: string, namePrefix: string): Promise<PoolFileSpec[]> {
+  const filenames = await fetchJSON<string[]>(`${folderUrl}/index.json`)
+  return filenames.map((fileName) => ({
+    viewName: `${namePrefix}__${fileName.replace(/\.parquet$/, '')}`,
+    url: `${folderUrl}/${fileName}`,
+  }))
+}
+
+/** Recovers a file's plain stem (e.g. "summary_kpis") from its
+ * namespaced viewName (e.g. "observed__summary_kpis") — the inverse of
+ * fetchScenarioFileList()'s own `{namePrefix}__{stem}` construction. */
+function stemFromViewName(viewName: string, namePrefix: string): string {
+  return viewName.slice(`${namePrefix}__`.length)
+}
+
+/**
  * Registers every filename listed in `{folderUrl}/index.json` as a view
  * named `{namePrefix}__{fileStem}`, via `services/duckdbLoaderPool.ts`'s
- * fixed loader-instance pool.
+ * fixed loader-instance pool. For a SINGLE scenario only — `registerObserved()`'s
+ * own use below, the one caller that never has sibling scenarios racing
+ * it for pool capacity. `registerPublishedScenarios()`/
+ * `registerDemoScenarios()` do NOT call this — see their own Phase 2 for
+ * why (they combine every scenario in their own group into ONE pool
+ * call instead, reusing `fetchScenarioFileList()` above directly).
  * @param folderUrl e.g. `${base}observed/summary`
  * @param namePrefix e.g. 'observed'
  * @returns the file STEMS (e.g. "summary_kpis", not the full namespaced
@@ -89,16 +121,8 @@ async function registerSummaryFolder(
   folderUrl: string,
   namePrefix: string,
 ): Promise<{ failedStems: string[] }> {
-  const filenames = await fetchJSON<string[]>(`${folderUrl}/index.json`)
-  if (filenames.length === 0) return { failedStems: [] }
-
-  const stemByViewName = new Map<string, string>()
-  const files = filenames.map((fileName) => {
-    const stem = fileName.replace(/\.parquet$/, '')
-    const viewName = `${namePrefix}__${stem}`
-    stemByViewName.set(viewName, stem)
-    return { viewName, url: `${folderUrl}/${fileName}` }
-  })
+  const files = await fetchScenarioFileList(folderUrl, namePrefix)
+  if (files.length === 0) return { failedStems: [] }
 
   const { succeeded, failed } = await registerFilesViaPool(files)
 
@@ -111,7 +135,7 @@ async function registerSummaryFolder(
     )
   }
 
-  return { failedStems: failed.map((f) => stemByViewName.get(f.viewName) ?? f.viewName) }
+  return { failedStems: failed.map((f) => stemFromViewName(f.viewName, namePrefix)) }
 }
 
 async function registerObserved(): Promise<void> {
@@ -190,6 +214,98 @@ async function registerObserved(): Promise<void> {
  * only ever looks up its OWN name in appState's Map (already registered
  * in Phase 1) and mutates only that entry.
  */
+/**
+ * Phase 2 for both `registerPublishedScenarios()` and
+ * `registerDemoScenarios()` below — shared because the fix this
+ * function embodies (`054-pool-consolidation-and-boot-unblock`) applies
+ * identically to both: fetch every scenario's OWN file list
+ * concurrently (cheap), then register ALL of them through ONE combined
+ * `services/duckdbLoaderPool.ts` call instead of one call per scenario.
+ *
+ * **Real, confirmed bug this fixes**
+ * (`specs/053-post-052-trace-and-consolidation/research.md`): the old
+ * code called `registerSummaryFolder()` — and therefore
+ * `registerFilesViaPool()` — once PER SCENARIO, inside this same
+ * `Promise.all(names.map(...))`. Since `registerFilesViaPool()` boots
+ * its OWN fresh pool of up to 6 loader instances every call, N
+ * scenarios registering concurrently produced N SEPARATE pools — for
+ * the real demo-content shape (3 scenarios), that's up to 18
+ * simultaneous `AsyncDuckDB` instances at peak, each independently
+ * compiling its own copy of the ~35–39MB WASM engine (real, CPU-bound,
+ * non-cache-shareable work — confirmed via a real fresh-profile trace,
+ * NOT the file-fetch bytes themselves, which the browser's own HTTP
+ * cache correctly shared across instances). ONE combined call below
+ * means ONE shared pool of (up to) 6 loaders for the WHOLE group,
+ * regardless of how many scenarios it covers.
+ */
+async function registerScenarioGroupFiles(
+  names: string[],
+  folderUrls: Map<string, string>,
+  warnLabel: string,
+): Promise<void> {
+  // Phase 2a: fetch every scenario's own file list concurrently — cheap
+  // (one index.json request each), not the confirmed bottleneck.
+  const fileListResults = await Promise.all(
+    names.map(async (name) => {
+      try {
+        return { name, files: await fetchScenarioFileList(folderUrls.get(name)!, name) }
+      } catch (err) {
+        console.warn(`scenarioDiscovery: failed to fetch file list for ${warnLabel} "${name}"`, err)
+        return { name, files: null as PoolFileSpec[] | null }
+      }
+    }),
+  )
+
+  // A scenario whose own index.json fetch failed never had any files to
+  // register at all — mark it failed immediately, the same outcome the
+  // old code's "whole registerSummaryFolder() call rejected" case had.
+  const withFiles = fileListResults.filter(
+    (r): r is { name: string; files: PoolFileSpec[] } => r.files !== null,
+  )
+  for (const r of fileListResults) {
+    if (r.files === null) appState.setStatus(r.name, 'failed')
+  }
+
+  // A real but EMPTY index.json (genuinely no files) is trivially
+  // 'ready' with nothing to register or fail.
+  const toRegister = withFiles.filter((r) => r.files.length > 0)
+  for (const r of withFiles) {
+    if (r.files.length === 0) {
+      appState.setStatus(r.name, 'ready')
+      appState.setActive(r.name, true)
+    }
+  }
+
+  if (toRegister.length === 0) return
+
+  // Phase 2b: ONE combined pool call across every scenario in this
+  // group — the actual fix. registerFilesViaPool() never throws (each
+  // file's own success/failure is isolated internally), so one
+  // scenario's files failing entirely can't affect any other scenario's
+  // own files in the same call.
+  const allFiles = toRegister.flatMap((r) => r.files)
+  const { succeeded, failed } = await registerFilesViaPool(allFiles)
+
+  // Phase 2c: split the combined result back out per scenario by
+  // viewName prefix (each file's viewName is "{name}__{stem}",
+  // guaranteed unique per scenario by fetchScenarioFileList() above).
+  for (const r of toRegister) {
+    const prefix = `${r.name}__`
+    const scenarioSucceeded = succeeded.filter((v) => v.startsWith(prefix))
+    if (scenarioSucceeded.length === 0) {
+      console.warn(`scenarioDiscovery: every file failed to register for ${warnLabel} "${r.name}"`)
+      appState.setStatus(r.name, 'failed')
+      continue
+    }
+    appState.setStatus(r.name, 'ready')
+    const scenarioFailedStems = failed
+      .filter((f) => f.viewName.startsWith(prefix))
+      .map((f) => stemFromViewName(f.viewName, r.name))
+    if (scenarioFailedStems.length > 0) appState.setFailedFiles(r.name, scenarioFailedStems)
+    appState.setActive(r.name, true)
+  }
+}
+
 async function registerPublishedScenarios(): Promise<void> {
   let names: string[]
   try {
@@ -221,26 +337,16 @@ async function registerPublishedScenarios(): Promise<void> {
     })
   }
 
-  // Phase 2: load every scenario's actual Parquet files in parallel.
-  await Promise.all(
-    names.map(async (name) => {
-      const folderUrl = folderUrls.get(name)!
-      try {
-        const { failedStems } = await registerSummaryFolder(folderUrl, name)
-        appState.setStatus(name, 'ready')
-        if (failedStems.length > 0) appState.setFailedFiles(name, failedStems)
-        // 038-all-loaded-scenarios: every published scenario whose data
-        // actually loaded participates by default (status === 'ready'
-        // only, no context branching — FR-013). A viewer excludes one via
-        // the Scenarios-tab Switch. See
-        // specs/038-all-loaded-scenarios/contracts/discovery-activation.md.
-        appState.setActive(name, true)
-      } catch (err) {
-        console.warn(`scenarioDiscovery: failed to register scenario "${name}"`, err)
-        appState.setStatus(name, 'failed')
-      }
-    }),
-  )
+  // Phase 2: load every scenario's actual Parquet files — 054-pool-
+  // consolidation-and-boot-unblock: ONE combined loader-pool call across
+  // every scenario in this group (see registerScenarioGroupFiles()'s own
+  // header comment for the real, confirmed bug this fixes), not one
+  // call per scenario. 038-all-loaded-scenarios: every published
+  // scenario whose data actually loaded participates by default
+  // (status === 'ready' only, no context branching — FR-013) — a
+  // viewer excludes one via the Scenarios-tab Switch. See
+  // specs/038-all-loaded-scenarios/contracts/discovery-activation.md.
+  await registerScenarioGroupFiles(names, folderUrls, 'scenario')
 }
 
 /**
@@ -297,27 +403,20 @@ async function registerDemoScenarios(): Promise<void> {
     })
   }
 
-  // Phase 2: load every scenario's actual Parquet files in parallel.
-  await Promise.all(
-    names.map(async (name) => {
-      const folderUrl = folderUrls.get(name)!
-      try {
-        const { failedStems } = await registerSummaryFolder(folderUrl, name)
-        appState.setStatus(name, 'ready')
-        if (failedStems.length > 0) appState.setFailedFiles(name, failedStems)
-        // 038-all-loaded-scenarios: same rule as registerPublishedScenarios()
-        // above — a demo scenario whose data loaded participates by default
-        // (status === 'ready' only). This is what makes the real demo read
-        // as a multi-scenario comparison without any `?s=` param, and what
-        // gives the Scenarios-tab Switch real universal control. See
-        // specs/038-all-loaded-scenarios/contracts/discovery-activation.md.
-        appState.setActive(name, true)
-      } catch (err) {
-        console.warn(`scenarioDiscovery: failed to register demo scenario "${name}"`, err)
-        appState.setStatus(name, 'failed')
-      }
-    }),
-  )
+  // Phase 2: load every scenario's actual Parquet files — 054-pool-
+  // consolidation-and-boot-unblock: ONE combined loader-pool call across
+  // every scenario in this group (see registerScenarioGroupFiles()'s own
+  // header comment) instead of one call per scenario. This is the group
+  // most affected in absolute terms — 3 real demo scenarios × ~35 files
+  // each, all registering concurrently — since the old per-scenario
+  // call pattern here is exactly what produced up to 18 simultaneous
+  // AsyncDuckDB instances (specs/053-post-052-trace-and-consolidation/
+  // research.md). 038-all-loaded-scenarios: a demo scenario whose data
+  // loaded participates by default (status === 'ready' only) — this is
+  // what makes the real demo read as a multi-scenario comparison
+  // without any `?s=` param. See specs/038-all-loaded-scenarios/
+  // contracts/discovery-activation.md.
+  await registerScenarioGroupFiles(names, folderUrls, 'demo scenario')
 }
 
 /**
