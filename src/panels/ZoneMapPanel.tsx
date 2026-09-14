@@ -11,6 +11,7 @@ import { useActiveScenarios } from '@/hooks/useActiveScenarios'
 import { useBaseline } from '@/hooks/useBaseline'
 import { useGlobalBasemap } from '@/hooks/useGlobalBasemap'
 import { useProtomapsSource } from '@/hooks/useProtomapsSource'
+import { ensureRegistered } from '@/services/tabDataLoader'
 import {
   buildComparisonDiffQuery,
   buildPanelQuery,
@@ -222,6 +223,7 @@ export function ZoneMapPanel({ config }: { config: ZoneMapPanelConfig }) {
     setStatus('loading')
 
     let sql: string
+    let pairs: { scenario: string; metric: string }[]
     if (isComparisonDiff(config.comparison)) {
       const diff = config.comparison
       const resolvedA = resolveComparisonScenarioName(diff.a, baseline)
@@ -237,16 +239,29 @@ export function ZoneMapPanel({ config }: { config: ZoneMapPanelConfig }) {
         config.compare_on ?? [config.metric_id],
         diff.expr,
       )
+      pairs = [
+        { scenario: resolvedA, metric: config.metric },
+        { scenario: resolvedB, metric: config.metric },
+      ]
     } else {
+      const resolvedScenarios = resolveActiveScenarios(config, activeScenarioNames)
       sql = sqlExpander.expand(
         buildPanelQuery(config, filters),
         EMPTY_SUMMARIZE_CONFIG,
         filterState,
-        resolveActiveScenarios(config, activeScenarioNames),
+        resolvedScenarios,
       )
+      pairs = resolvedScenarios.map((scenario) => ({ scenario, metric: config.metric }))
     }
 
-    query(sql)
+    // 056-lazy-tab-scoped-loading: see dashboardRenderer.tsx's own
+    // comment — a no-op when already loaded/in-flight, a real await
+    // otherwise. Zone GEOMETRY (boundaries:) is a separate, non-scenario
+    // published-geometry file this panel loads through its own existing
+    // panels/zoneGeometry.ts effect, untouched by this feature — only the
+    // metric data query below routes through the lazy loader.
+    ensureRegistered(pairs)
+      .then(() => query(sql))
       .then((result) => {
         if (cancelled) return
         if (result.length === 0) {

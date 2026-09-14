@@ -5,7 +5,22 @@
 // the new, git-tracked real-content root, additive alongside (not a
 // replacement for) the paths above. See
 // specs/026-activitysim-demo-content/contracts/discovery.md.
-import { registerFilesViaPool, type PoolFileSpec } from './duckdbLoaderPool.ts'
+//
+// 056-lazy-tab-scoped-loading: this file no longer eagerly REGISTERS any
+// scenario's Parquet files at boot — it fetches and RETAINS each
+// scenario's real metric catalog (data-model.md entity 3,
+// appState.setAvailableMetrics()) only. A scenario reaches
+// status: 'ready'/active: true once its catalog (summary/index.json) is
+// confirmed fetchable, not once every file is registered — actual file
+// registration is now deferred to services/tabDataLoader.ts#
+// ensureRegistered(), called lazily by whichever tab/panel first needs a
+// given scenario+metric. services/duckdbLoaderPool.ts (052) and
+// services/duckdb.ts#createLoaderInstance() are REMOVED entirely by this
+// feature — a real, measured sweep (specs/056-lazy-tab-scoped-loading/
+// research.md §4) confirmed the single shared DuckDB-WASM instance is
+// faster than the pool at every batch size this app's real tabs produce,
+// and this rewrite removes the ~105-file eager-boot event the pool was
+// built for in the first place, so nothing calls it anymore either way.
 import { loadManifest } from './yamlLoader.ts'
 import { manifestFromObject, type ParsedManifest } from '../scenario/manifestReader.ts'
 import * as appState from '../state/appState.ts'
@@ -50,92 +65,48 @@ async function fetchScenarioManifest(manifestUrl: string): Promise<Partial<Parse
 }
 
 /**
- * Fetches `{folderUrl}/index.json` and resolves it to the pool-ready
- * file specs for one scenario — `{namePrefix}__{fileStem}` view names,
- * matching `services/duckdb.ts#registerFileURL()`'s own naming
- * convention. Cheap: one small JSON request, no registration work at
- * all yet — split out from `registerSummaryFolder()` below specifically
- * so `registerPublishedScenarios()`/`registerDemoScenarios()` can fetch
- * every scenario's OWN file list independently (still concurrent, still
- * cheap) while feeding ALL of them into ONE combined pool call — see
- * `054-pool-consolidation-and-boot-unblock`'s own header comment on
- * that Phase 2 rewrite for why.
+ * Fetches `{folderUrl}/index.json` — the real metric catalog for one
+ * scenario, known independent of whether any of it is actually loaded
+ * yet (056-lazy-tab-scoped-loading, data-model.md entity 3). Cheap: one
+ * small JSON request, no registration work at all. Returns bare file
+ * stems (e.g. "summary_kpis"), matching `appState.availableMetrics`'s
+ * own documented convention.
  */
-async function fetchScenarioFileList(folderUrl: string, namePrefix: string): Promise<PoolFileSpec[]> {
+async function fetchScenarioMetricCatalog(folderUrl: string): Promise<string[]> {
   const filenames = await fetchJSON<string[]>(`${folderUrl}/index.json`)
-  return filenames.map((fileName) => ({
-    viewName: `${namePrefix}__${fileName.replace(/\.parquet$/, '')}`,
-    url: `${folderUrl}/${fileName}`,
-  }))
-}
-
-/** Recovers a file's plain stem (e.g. "summary_kpis") from its
- * namespaced viewName (e.g. "observed__summary_kpis") — the inverse of
- * fetchScenarioFileList()'s own `{namePrefix}__{stem}` construction. */
-function stemFromViewName(viewName: string, namePrefix: string): string {
-  return viewName.slice(`${namePrefix}__`.length)
+  return filenames.map((fileName) => fileName.replace(/\.parquet$/, ''))
 }
 
 /**
- * Registers every filename listed in `{folderUrl}/index.json` as a view
- * named `{namePrefix}__{fileStem}`, via `services/duckdbLoaderPool.ts`'s
- * fixed loader-instance pool. For a SINGLE scenario only — `registerObserved()`'s
- * own use below, the one caller that never has sibling scenarios racing
- * it for pool capacity. `registerPublishedScenarios()`/
- * `registerDemoScenarios()` do NOT call this — see their own Phase 2 for
- * why (they combine every scenario in their own group into ONE pool
- * call instead, reusing `fetchScenarioFileList()` above directly).
- * @param folderUrl e.g. `${base}observed/summary`
- * @param namePrefix e.g. 'observed'
- * @returns the file STEMS (e.g. "summary_kpis", not the full namespaced
- *   view name) that failed to register — empty when every file
- *   succeeded. Throws only when EVERY file failed (nothing to be
- *   "partial" relative to) — the caller marks the scenario 'failed' in
- *   that case exactly as before this change.
+ * Fetches a scenario's real metric catalog and marks it ready/active the
+ * moment that catalog is confirmed fetchable — or failed if the fetch
+ * itself fails. No Parquet file is ever registered here; that is
+ * deferred entirely to services/tabDataLoader.ts#ensureRegistered(),
+ * called lazily by whichever tab/panel first references this scenario's
+ * data (056-lazy-tab-scoped-loading). This REPLACES the old eager
+ * "register every one of a scenario's ~35 files at boot" step — the
+ * loader pool that step used to need (services/duckdbLoaderPool.ts, 052)
+ * is removed entirely by this feature (research.md §4: a real, measured
+ * sweep confirmed it was never faster than the single shared instance at
+ * any batch size this app's real tabs produce).
  *
- * 042-boot-performance-fix confirmed there is NO real ordering
- * dependency between files within one scenario's summary folder — each
- * file gets its own globally-unique view name (`{namePrefix}__{stem}`),
- * so they were switched from a sequential loop to `Promise.all()`
- * against the app's one shared connection. 048/050/051-scope-multi-
- * connection then found that fix's real ceiling empirically: the shared
- * connection's single underlying Worker still processes every task one
- * at a time regardless of caller-side concurrency (confirmed: 1/2/4/8
- * connections against the SAME AsyncDuckDB instance all land at the
- * same total time for the same file set) — real parallelism needs
- * genuinely separate instances, not more concurrent calls on one.
- *
- * 052-option3-implementation replaces the `Promise.all(registerFileURL)`
- * call with `registerFilesViaPool()` — a fixed pool of 6 separate loader
- * instances (051's own empirically-swept sweet spot for this app's real
- * ~105-file/3-scenario shape) registering+fetching in parallel, each
- * handing its resolved buffer off to the shared instance. A second real
- * behavior change alongside the performance one: a single bad file
- * (network blip, malformed Parquet, a stale index.json entry) no longer
- * fails the WHOLE scenario — see specs/051-scope-option3-pool-design/
- * research.md §2 for the real, confirmed gap this closes (the OLD
- * `Promise.all()` here had no per-file catch at all, so one failure
- * rejected everything).
+ * 038-all-loaded-scenarios: a scenario participates in the dynamic
+ * `$scenario` union iff its own data is genuinely present — redefined
+ * here as "its real catalog is confirmed to exist," not "every one of
+ * its files is already registered" (the file-count distinction this
+ * function's own predecessor cared about no longer applies, since no
+ * file is registered at discovery time at all now).
  */
-async function registerSummaryFolder(
-  folderUrl: string,
-  namePrefix: string,
-): Promise<{ failedStems: string[] }> {
-  const files = await fetchScenarioFileList(folderUrl, namePrefix)
-  if (files.length === 0) return { failedStems: [] }
-
-  const { succeeded, failed } = await registerFilesViaPool(files)
-
-  if (succeeded.length === 0) {
-    // Nothing at all registered — genuinely a total failure, same
-    // semantics as before this change (the caller's own try/catch marks
-    // the scenario 'failed').
-    throw new Error(
-      `registerSummaryFolder: every file failed to register for "${namePrefix}" (${failed.length}/${files.length})`,
-    )
+async function registerOneScenario(name: string, folderUrl: string, warnLabel: string): Promise<void> {
+  try {
+    const metrics = await fetchScenarioMetricCatalog(folderUrl)
+    appState.setAvailableMetrics(name, metrics)
+    appState.setStatus(name, 'ready')
+    appState.setActive(name, true)
+  } catch (err) {
+    console.warn(`scenarioDiscovery: failed to fetch metric catalog for ${warnLabel} "${name}"`, err)
+    appState.setStatus(name, 'failed')
   }
-
-  return { failedStems: failed.map((f) => stemFromViewName(f.viewName, namePrefix)) }
 }
 
 async function registerObserved(): Promise<void> {
@@ -146,12 +117,9 @@ async function registerObserved(): Promise<void> {
   // present from this scenario's very first appState entry, not applied
   // as a later patch.
   const manifest = await fetchScenarioManifest(`${base}observed/manifest.yaml`)
-  // Register in appState first (source-of-truth entry exists regardless of
-  // what happens next), then attempt the actual data registration.
   // 020-settings-modal: `path` is the real folder URL this scenario's
   // data is fetched from (research.md §5) — already computed above as
-  // `folderUrl`, reused below rather than a second registerSummaryFolder()
-  // call.
+  // `folderUrl`.
   appState.register('observed', {
     pinned: true,
     source: 'url',
@@ -160,150 +128,50 @@ async function registerObserved(): Promise<void> {
     runDate: manifest.runDate,
     notes: manifest.notes,
   })
-  try {
-    const { failedStems } = await registerSummaryFolder(folderUrl, 'observed')
-    appState.setStatus('observed', 'ready')
-    if (failedStems.length > 0) appState.setFailedFiles('observed', failedStems)
-    // 038-all-loaded-scenarios: a scenario participates in the dynamic
-    // `$scenario` union iff its own data is genuinely present. The only
-    // condition is `status === 'ready'` — no fixture-vs-demo branching
-    // (FR-013). An empty `public/observed/` in a real deployment reaches
-    // the catch below (status 'failed') and is never activated, so it no
-    // longer poisons an unpinned union. Was previously an unconditional
-    // `setActive('observed', true)` after the try/catch; see
-    // specs/038-all-loaded-scenarios/contracts/discovery-activation.md.
-    appState.setActive('observed', true)
-  } catch (err) {
-    // Distinct, more severe warning than a published-scenario failure —
-    // observed data is supposed to always be available (research.md §5).
-    console.warn('scenarioDiscovery: observed dataset registration failed', err)
-    appState.setStatus('observed', 'failed')
-  }
+  await registerOneScenario('observed', folderUrl, 'observed dataset')
 }
 
 /**
- * 042-boot-performance-fix: TWO-PHASE registration, replacing the
- * previous single `for (const name of names) { await ...everything... }`
- * loop that processed one scenario fully (manifest fetch + ~35 file
- * registrations) before ever starting the next.
- *
- * Confirmed, before restructuring, that a REAL ordering dependency exists
- * here — unlike the per-file case inside registerSummaryFolder() above,
- * this one is real and must be preserved: appState.register()'s own
- * `order: nextOrder++` field (state/appState.ts) is assigned purely by
- * CALL SEQUENCE, and getBaseline()'s automatic-default fallback resolves
- * to "the earliest-REGISTERED (Map insertion order) scenario with
- * pinned === false && status === 'ready'" — both documented, deliberate
- * invariants this app relies on for deterministic default display order
- * and deterministic automatic baseline selection. If every scenario's
- * manifest-fetch-then-register() sequence ran fully concurrently
- * (Promise.all over the whole per-scenario body), the actual register()
- * CALL order — and therefore both of those invariants — would become a
- * real network-timing race between scenarios, silently non-deterministic
- * across page loads.
- *
- * Phase 1 (register(), sequential, cheap) fixes that: manifest fetches
- * are one small YAML request each — not the confirmed bottleneck — so
- * keeping them sequential costs a few tens of ms total while guaranteeing
- * every appState.register() call happens strictly in `names`' own listed
- * (index.json) order, exactly as before this fix.
- *
- * Phase 2 (the real bottleneck, fully parallel) is safe to parallelize
- * across scenarios: registerSummaryFolder()/setStatus()/setActive() for
- * one scenario never read or depend on another scenario's state — each
- * only ever looks up its OWN name in appState's Map (already registered
- * in Phase 1) and mutates only that entry.
+ * Shared by `registerPublishedScenarios()`/`registerDemoScenarios()`
+ * below (056-lazy-tab-scoped-loading). TWO-PHASE, preserving the real
+ * ordering dependency `042-boot-performance-fix` first confirmed:
+ * `appState.register()`'s `order: nextOrder++` field and
+ * `getBaseline()`'s automatic-default fallback both depend on
+ * `register()` calls happening strictly in `names`' own listed
+ * (index.json) order — Phase 1 stays sequential to guarantee that.
+ * Phase 2 (each scenario's own catalog fetch) is now cheap enough (one
+ * small JSON request each, not ~35 Parquet registrations) that
+ * parallelizing it is a modest, low-risk win rather than the dominant
+ * cost this file used to restructure around — kept concurrent anyway
+ * since `registerOneScenario()` for one scenario never reads or depends
+ * on another's state, the same safety argument that justified
+ * parallelizing the old, much more expensive Phase 2.
  */
-/**
- * Phase 2 for both `registerPublishedScenarios()` and
- * `registerDemoScenarios()` below — shared because the fix this
- * function embodies (`054-pool-consolidation-and-boot-unblock`) applies
- * identically to both: fetch every scenario's OWN file list
- * concurrently (cheap), then register ALL of them through ONE combined
- * `services/duckdbLoaderPool.ts` call instead of one call per scenario.
- *
- * **Real, confirmed bug this fixes**
- * (`specs/053-post-052-trace-and-consolidation/research.md`): the old
- * code called `registerSummaryFolder()` — and therefore
- * `registerFilesViaPool()` — once PER SCENARIO, inside this same
- * `Promise.all(names.map(...))`. Since `registerFilesViaPool()` boots
- * its OWN fresh pool of up to 6 loader instances every call, N
- * scenarios registering concurrently produced N SEPARATE pools — for
- * the real demo-content shape (3 scenarios), that's up to 18
- * simultaneous `AsyncDuckDB` instances at peak, each independently
- * compiling its own copy of the ~35–39MB WASM engine (real, CPU-bound,
- * non-cache-shareable work — confirmed via a real fresh-profile trace,
- * NOT the file-fetch bytes themselves, which the browser's own HTTP
- * cache correctly shared across instances). ONE combined call below
- * means ONE shared pool of (up to) 6 loaders for the WHOLE group,
- * regardless of how many scenarios it covers.
- */
-async function registerScenarioGroupFiles(
+async function registerScenarioGroup(
   names: string[],
-  folderUrls: Map<string, string>,
+  folderUrlFor: (name: string) => string,
+  manifestUrlFor: (name: string) => string,
   warnLabel: string,
 ): Promise<void> {
-  // Phase 2a: fetch every scenario's own file list concurrently — cheap
-  // (one index.json request each), not the confirmed bottleneck.
-  const fileListResults = await Promise.all(
-    names.map(async (name) => {
-      try {
-        return { name, files: await fetchScenarioFileList(folderUrls.get(name)!, name) }
-      } catch (err) {
-        console.warn(`scenarioDiscovery: failed to fetch file list for ${warnLabel} "${name}"`, err)
-        return { name, files: null as PoolFileSpec[] | null }
-      }
-    }),
-  )
-
-  // A scenario whose own index.json fetch failed never had any files to
-  // register at all — mark it failed immediately, the same outcome the
-  // old code's "whole registerSummaryFolder() call rejected" case had.
-  const withFiles = fileListResults.filter(
-    (r): r is { name: string; files: PoolFileSpec[] } => r.files !== null,
-  )
-  for (const r of fileListResults) {
-    if (r.files === null) appState.setStatus(r.name, 'failed')
+  // Phase 1: establish every scenario's appState entry (and its `order`)
+  // synchronously, in listed order.
+  const folderUrls = new Map<string, string>()
+  for (const name of names) {
+    const folderUrl = folderUrlFor(name)
+    folderUrls.set(name, folderUrl)
+    const manifest = await fetchScenarioManifest(manifestUrlFor(name))
+    appState.register(name, {
+      source: 'url',
+      path: folderUrl,
+      color: manifest.color,
+      runDate: manifest.runDate,
+      notes: manifest.notes,
+    })
   }
 
-  // A real but EMPTY index.json (genuinely no files) is trivially
-  // 'ready' with nothing to register or fail.
-  const toRegister = withFiles.filter((r) => r.files.length > 0)
-  for (const r of withFiles) {
-    if (r.files.length === 0) {
-      appState.setStatus(r.name, 'ready')
-      appState.setActive(r.name, true)
-    }
-  }
-
-  if (toRegister.length === 0) return
-
-  // Phase 2b: ONE combined pool call across every scenario in this
-  // group — the actual fix. registerFilesViaPool() never throws (each
-  // file's own success/failure is isolated internally), so one
-  // scenario's files failing entirely can't affect any other scenario's
-  // own files in the same call.
-  const allFiles = toRegister.flatMap((r) => r.files)
-  const { succeeded, failed } = await registerFilesViaPool(allFiles)
-
-  // Phase 2c: split the combined result back out per scenario by
-  // viewName prefix (each file's viewName is "{name}__{stem}",
-  // guaranteed unique per scenario by fetchScenarioFileList() above).
-  for (const r of toRegister) {
-    const prefix = `${r.name}__`
-    const scenarioSucceeded = succeeded.filter((v) => v.startsWith(prefix))
-    if (scenarioSucceeded.length === 0) {
-      console.warn(`scenarioDiscovery: every file failed to register for ${warnLabel} "${r.name}"`)
-      appState.setStatus(r.name, 'failed')
-      continue
-    }
-    appState.setStatus(r.name, 'ready')
-    const scenarioFailedStems = failed
-      .filter((f) => f.viewName.startsWith(prefix))
-      .map((f) => stemFromViewName(f.viewName, r.name))
-    if (scenarioFailedStems.length > 0) appState.setFailedFiles(r.name, scenarioFailedStems)
-    appState.setActive(r.name, true)
-  }
+  // Phase 2: fetch every scenario's own real metric catalog concurrently
+  // and mark it ready/active — no file registration happens here at all.
+  await Promise.all(names.map((name) => registerOneScenario(name, folderUrls.get(name)!, warnLabel)))
 }
 
 async function registerPublishedScenarios(): Promise<void> {
@@ -316,37 +184,15 @@ async function registerPublishedScenarios(): Promise<void> {
     // empty-index handling in yamlLoader.ts).
     return
   }
-
-  // Phase 1: establish every scenario's appState entry (and its `order`)
-  // synchronously, in listed order.
-  const folderUrls = new Map<string, string>()
-  for (const name of names) {
-    // 020-settings-modal: `path` is the real folder URL (research.md §5).
-    const folderUrl = `${base}scenarios/${name}/summary`
-    folderUrls.set(name, folderUrl)
-    // 035-scenario-label-color: see fetchScenarioManifest()'s own header
-    // comment — manifest.yaml sits at `{base}scenarios/{name}/manifest.yaml`,
-    // one level up from `folderUrl`.
-    const manifest = await fetchScenarioManifest(`${base}scenarios/${name}/manifest.yaml`)
-    appState.register(name, {
-      source: 'url',
-      path: folderUrl,
-      color: manifest.color,
-      runDate: manifest.runDate,
-      notes: manifest.notes,
-    })
-  }
-
-  // Phase 2: load every scenario's actual Parquet files — 054-pool-
-  // consolidation-and-boot-unblock: ONE combined loader-pool call across
-  // every scenario in this group (see registerScenarioGroupFiles()'s own
-  // header comment for the real, confirmed bug this fixes), not one
-  // call per scenario. 038-all-loaded-scenarios: every published
-  // scenario whose data actually loaded participates by default
-  // (status === 'ready' only, no context branching — FR-013) — a
-  // viewer excludes one via the Scenarios-tab Switch. See
-  // specs/038-all-loaded-scenarios/contracts/discovery-activation.md.
-  await registerScenarioGroupFiles(names, folderUrls, 'scenario')
+  await registerScenarioGroup(
+    names,
+    (name) => `${base}scenarios/${name}/summary`,
+    // 035-scenario-label-color: manifest.yaml sits at
+    // `{base}scenarios/{name}/manifest.yaml`, one level up from the
+    // scenario's own summary/ folder.
+    (name) => `${base}scenarios/${name}/manifest.yaml`,
+    'scenario',
+  )
 }
 
 /**
@@ -359,20 +205,6 @@ async function registerPublishedScenarios(): Promise<void> {
  * that function's own existing behavior/tests stay completely untouched
  * (spec.md FR-010).
  */
-/**
- * 042-boot-performance-fix: same two-phase restructuring as
- * registerPublishedScenarios() above, same reason — see that function's
- * own header comment for the full ordering-dependency analysis (identical
- * here: appState.register()'s `order` field and getBaseline()'s
- * automatic-default tie-break both depend on register() calls happening
- * in `names`' listed order, which Phase 1 preserves by staying
- * sequential; Phase 2, the real bottleneck, is safe to fully parallelize
- * since registerSummaryFolder()/setStatus()/setActive() for one demo
- * scenario never touch another's state). This is the group most affected
- * in absolute terms — 3 real demo scenarios × ~35 files each — since the
- * old code processed all three fully sequentially, scenario by scenario,
- * on top of the per-file sequential loop inside registerSummaryFolder().
- */
 async function registerDemoScenarios(): Promise<void> {
   let names: string[]
   try {
@@ -383,40 +215,15 @@ async function registerDemoScenarios(): Promise<void> {
     // as a whole, mirroring registerPublishedScenarios()'s own handling.
     return
   }
-
-  // Phase 1: establish every scenario's appState entry (and its `order`)
-  // synchronously, in listed order.
-  const folderUrls = new Map<string, string>()
-  for (const name of names) {
-    const folderUrl = `${base}demo-scenarios/${name}/summary`
-    folderUrls.set(name, folderUrl)
+  await registerScenarioGroup(
+    names,
+    (name) => `${base}demo-scenarios/${name}/summary`,
     // 035-scenario-label-color: manifest.yaml sits at
     // `{base}demo-scenarios/{name}/manifest.yaml`, same reasoning as the
-    // two registration paths above.
-    const manifest = await fetchScenarioManifest(`${base}demo-scenarios/${name}/manifest.yaml`)
-    appState.register(name, {
-      source: 'url',
-      path: folderUrl,
-      color: manifest.color,
-      runDate: manifest.runDate,
-      notes: manifest.notes,
-    })
-  }
-
-  // Phase 2: load every scenario's actual Parquet files — 054-pool-
-  // consolidation-and-boot-unblock: ONE combined loader-pool call across
-  // every scenario in this group (see registerScenarioGroupFiles()'s own
-  // header comment) instead of one call per scenario. This is the group
-  // most affected in absolute terms — 3 real demo scenarios × ~35 files
-  // each, all registering concurrently — since the old per-scenario
-  // call pattern here is exactly what produced up to 18 simultaneous
-  // AsyncDuckDB instances (specs/053-post-052-trace-and-consolidation/
-  // research.md). 038-all-loaded-scenarios: a demo scenario whose data
-  // loaded participates by default (status === 'ready' only) — this is
-  // what makes the real demo read as a multi-scenario comparison
-  // without any `?s=` param. See specs/038-all-loaded-scenarios/
-  // contracts/discovery-activation.md.
-  await registerScenarioGroupFiles(names, folderUrls, 'demo scenario')
+    // published-scenario path above.
+    (name) => `${base}demo-scenarios/${name}/manifest.yaml`,
+    'demo scenario',
+  )
 }
 
 /**
@@ -442,32 +249,23 @@ function applyURLParams(): void {
  *
  * 042-boot-performance-fix: the three group calls below are DELIBERATELY
  * still sequential (`await` each, not Promise.all) — a real ordering
- * dependency was confirmed here, unlike the per-file case inside
- * registerSummaryFolder() and the per-scenario-within-a-group case in
- * registerPublishedScenarios()/registerDemoScenarios() (both parallelized
- * above; see their own header comments). appState.register()'s `order`
- * field is assigned purely by call sequence, and getBaseline()'s
- * automatic-default fallback resolves to "the earliest-REGISTERED
- * scenario with pinned === false && status === 'ready'" — both rely on
- * observed registering before any published/demo scenario, and published
- * scenarios registering before demo scenarios, exactly as this app's own
- * documented history records (state/appState.ts's getBaseline() comment).
- * Running all three groups' register() calls concurrently would make that
- * relative order a genuine network-timing race, silently non-deterministic
- * across page loads — a real regression this fix must not introduce.
+ * dependency was confirmed here: appState.register()'s `order` field is
+ * assigned purely by call sequence, and getBaseline()'s automatic-default
+ * fallback resolves to "the earliest-REGISTERED scenario with pinned ===
+ * false && status === 'ready'" — both rely on observed registering before
+ * any published/demo scenario, and published scenarios registering
+ * before demo scenarios, exactly as this app's own documented history
+ * records (state/appState.ts's getBaseline() comment). Running all three
+ * groups' register() calls concurrently would make that relative order a
+ * genuine network-timing race, silently non-deterministic across page
+ * loads.
  *
- * This is NOT the confirmed dominant bottleneck, though, so leaving it
- * sequential costs little: the 042 investigation's real, measured cost was
- * the 105 sequential FILE registrations (~2.4-2.6s serialized even on a
- * fast connection), not the 3 group-level `await` transitions between
- * registerObserved()/registerPublishedScenarios()/registerDemoScenarios()
- * — each of which now completes in roughly the time of its OWN slowest
- * single file/request (Phase 2 inside each is fully parallel), not the
- * sum of all its files' latencies. Serializing 3 already-fast group calls
- * to fully preserve a real, documented invariant is a good trade; a finer-
- * grained overlap (e.g. starting group 2's cheap Phase 1 while group 1's
- * Phase 2 is still loading files) was considered and rejected as added
- * complexity for a cost that's no longer the dominant one.
+ * 056-lazy-tab-scoped-loading: each group's own Phase 2 now fetches only
+ * a small metric-catalog JSON per scenario, not ~35 Parquet
+ * registrations each — this whole function completes in roughly the
+ * time of a handful of small JSON requests, not the ~2.4-2.6s of
+ * serialized Parquet registration `042-boot-performance-fix` originally
+ * measured and restructured around.
  */
 export async function discoverScenarios(): Promise<void> {
   await registerObserved()

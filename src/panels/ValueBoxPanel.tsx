@@ -9,6 +9,7 @@ import * as filterState from '@/state/filterState'
 import { useFilterState } from '@/hooks/useFilterState'
 import { useActiveScenarios } from '@/hooks/useActiveScenarios'
 import { useBaseline } from '@/hooks/useBaseline'
+import { ensureRegistered } from '@/services/tabDataLoader'
 import {
   buildPanelQuery,
   buildSparklineQuery,
@@ -84,7 +85,13 @@ export function ValueBoxPanel({ config }: { config: ValueBoxPanelConfig }) {
     // $scenario/$filters, never $mappings/$bins/$sql (research.md §2).
     const sql = sqlExpander.expand(template, EMPTY_SUMMARIZE_CONFIG, filterState, activeScenarios)
 
-    query(sql)
+    // 056-lazy-tab-scoped-loading: ensure this panel's own scenario+metric
+    // pair(s) are registered before querying — a no-op when
+    // dashboardRenderer.tsx's own tab-wide call already covered it
+    // (ensureRegistered()'s in-flight/loaded memoization), a real await
+    // when this scenario just activated while already on this tab.
+    ensureRegistered(activeScenarios.map((scenario) => ({ scenario, metric: config.metric })))
+      .then(() => query(sql))
       .then((rows) => {
         if (cancelled) return
         if (rows.length === 0) {
@@ -126,7 +133,8 @@ export function ValueBoxPanel({ config }: { config: ValueBoxPanelConfig }) {
     const activeScenarios = resolveActiveScenarios(config, activeScenarioNames)
     const sql = sqlExpander.expand(template, EMPTY_SUMMARIZE_CONFIG, filterState, activeScenarios)
 
-    query(sql)
+    ensureRegistered(activeScenarios.map((scenario) => ({ scenario, metric: sparkline.metric })))
+      .then(() => query(sql))
       .then((rows) => {
         if (cancelled) return
         if (rows.length === 0) {
@@ -182,7 +190,11 @@ export function ValueBoxPanel({ config }: { config: ValueBoxPanelConfig }) {
       config.baseline_trend.expr,
     )
 
-    query(sql)
+    ensureRegistered([
+      { scenario: config.scenario, metric: config.metric },
+      { scenario: resolvedBaseline, metric: config.metric },
+    ])
+      .then(() => query(sql))
       .then((rows) => {
         if (cancelled) return
         if (rows.length === 0) {

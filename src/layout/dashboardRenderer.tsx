@@ -1,10 +1,12 @@
-import { Suspense, useMemo } from 'react'
+import { Suspense, useEffect, useMemo } from 'react'
 import { PanelCard, PanelErrorBoundary } from '@/layout/panelCard'
 import { registry } from '@/panels/registry'
 import { PanelErrorState } from '@/panels/PanelErrorState'
 import { PanelLoadingState } from '@/panels/PanelLoadingState'
 import { findFullPagePanel, isMetricStripRow, resolveSections } from '@/layout/dashboardLayout'
 import { isMapRenderingPanel, type DashboardTabConfig, type PanelConfig } from '@/layout/types'
+import { computeTabDataRequirement, ensureRegistered } from '@/services/tabDataLoader'
+import { useActiveScenarios } from '@/hooks/useActiveScenarios'
 
 // Renders one active tab's layout (project-docs/GRAMMAR.md: named rows, each a
 // flat list of panels) as ordered rows of PanelCards, each sized by its
@@ -50,6 +52,29 @@ import { isMapRenderingPanel, type DashboardTabConfig, type PanelConfig } from '
 // pre-existing ordinary multi-row path below, per FR-020's own explicit
 // "an existing, unmodified dashboard-*.yaml renders unchanged" guarantee.
 export function DashboardRenderer({ tab }: { tab: DashboardTabConfig }) {
+  // 056-lazy-tab-scoped-loading: proactively kick off THIS tab's whole
+  // real data requirement (data-model.md entity 1) as soon as it becomes
+  // active, or as soon as the active-scenario set changes while it's
+  // already active — a single combined ensureRegistered() call across
+  // every panel's own pairs, deduplicated. This is a performance
+  // optimization only, not the source of correctness: each individual
+  // panel type's own fetch effect (panels/*.tsx) calls ensureRegistered()
+  // again for its own narrower need before querying, and that narrower
+  // call is what actually gates a panel's query — ensureRegistered()'s
+  // own in-flight-promise memoization means this tab-wide call and every
+  // panel's own call for an overlapping pair share the same underlying
+  // work, never registering anything twice. Errors are deliberately not
+  // handled here — a failed pair surfaces through whichever panel's own
+  // ensureRegistered() call actually needed it, via that panel's existing
+  // error-state branch (spec.md FR-011), not a tab-level error UI.
+  const activeScenarios = useActiveScenarios()
+  useEffect(() => {
+    const pairs = computeTabDataRequirement(tab, activeScenarios)
+    ensureRegistered(pairs).catch(() => {
+      // Intentionally swallowed here — see comment above.
+    })
+  }, [tab, activeScenarios])
+
   // FR-008: checked BEFORE the normal row-rendering path. Only a genuine
   // exactly-one-panel tab renders full-page — findFullPagePanel() itself
   // never consults header.full_page (that's this component's own job, so

@@ -10,6 +10,7 @@ import { useActiveScenarios } from '@/hooks/useActiveScenarios'
 import { useBaseline } from '@/hooks/useBaseline'
 import { useColorScheme } from '@/hooks/useColorScheme'
 import { useScenarioDisplay } from '@/hooks/useScenarioDisplay'
+import { ensureRegistered } from '@/services/tabDataLoader'
 import {
   buildComparisonDiffQuery,
   buildPanelQuery,
@@ -111,6 +112,7 @@ export function PlotlyPanel({ config }: { config: PlotlyPanelConfig }) {
     // built; an unresolved baseline shows this panel's existing error
     // state directly, never attempting a doomed query (FR-011).
     let sql: string
+    let pairs: { scenario: string; metric: string }[]
     if (isComparisonDiff(config.comparison)) {
       const diff = config.comparison
       const resolvedA = resolveComparisonScenarioName(diff.a, baseline)
@@ -128,15 +130,24 @@ export function PlotlyPanel({ config }: { config: PlotlyPanelConfig }) {
       // below turns into the shared PanelErrorState, same as any other
       // unresolvable configuration (spec.md Edge Cases).
       sql = buildComparisonDiffQuery(config.metric, resolvedA, resolvedB, config.compare_on ?? [], diff.expr)
+      pairs = [
+        { scenario: resolvedA, metric: config.metric },
+        { scenario: resolvedB, metric: config.metric },
+      ]
     } else {
       const template = buildPanelQuery(config, filters)
       const activeScenarios = resolveActiveScenarios(config, activeScenarioNames)
       // Intentionally empty, not a stub — panel queries only ever use
       // $scenario/$filters, never $mappings/$bins/$sql (research.md §2).
       sql = sqlExpander.expand(template, EMPTY_SUMMARIZE_CONFIG, filterState, activeScenarios)
+      pairs = activeScenarios.map((scenario) => ({ scenario, metric: config.metric }))
     }
 
-    query(sql)
+    // 056-lazy-tab-scoped-loading: see dashboardRenderer.tsx's own
+    // comment — a no-op when already loaded/in-flight, a real await
+    // otherwise.
+    ensureRegistered(pairs)
+      .then(() => query(sql))
       .then((rows) => {
         if (cancelled || !containerRef.current) return
         if (rows.length === 0) {

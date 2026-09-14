@@ -9,6 +9,7 @@ import { useActiveScenarios } from '@/hooks/useActiveScenarios'
 import { useScenarioDisplay } from '@/hooks/useScenarioDisplay'
 import { resolveScenarioLabel } from '@/panels/scenarioDisplay'
 import { useBaseline } from '@/hooks/useBaseline'
+import { ensureRegistered } from '@/services/tabDataLoader'
 import {
   buildComparisonDiffQuery,
   buildPanelQuery,
@@ -104,6 +105,7 @@ export function TablePanel({ config }: { config: TablePanelConfig }) {
     // built; an unresolved baseline shows this panel's existing error
     // state directly, never attempting a doomed query (FR-011).
     let sql: string
+    let pairs: { scenario: string; metric: string }[]
     if (isComparisonDiff(config.comparison)) {
       const diff = config.comparison
       const resolvedA = resolveComparisonScenarioName(diff.a, baseline)
@@ -118,13 +120,22 @@ export function TablePanel({ config }: { config: TablePanelConfig }) {
       // same defined way as any other missing-required-field
       // misconfiguration (spec.md Edge Cases).
       sql = buildComparisonDiffQuery(config.metric, resolvedA, resolvedB, config.compare_on ?? [], diff.expr)
+      pairs = [
+        { scenario: resolvedA, metric: config.metric },
+        { scenario: resolvedB, metric: config.metric },
+      ]
     } else {
       const template = buildPanelQuery(config, filters)
       const activeScenarios = resolveActiveScenarios(config, activeScenarioNames)
       sql = sqlExpander.expand(template, EMPTY_SUMMARIZE_CONFIG, filterState, activeScenarios)
+      pairs = activeScenarios.map((scenario) => ({ scenario, metric: config.metric }))
     }
 
-    query(sql)
+    // 056-lazy-tab-scoped-loading: see dashboardRenderer.tsx's own
+    // comment — a no-op when already loaded/in-flight, a real await
+    // otherwise.
+    ensureRegistered(pairs)
+      .then(() => query(sql))
       .then((result) => {
         if (cancelled) return
         if (result.length === 0) {

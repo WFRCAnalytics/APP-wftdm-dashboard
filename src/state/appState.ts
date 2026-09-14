@@ -66,17 +66,32 @@ export interface Scenario {
   // failed to register while every other file in the scenario loaded
   // fine. Undefined (never an empty array) when nothing failed, matching
   // this interface's own existing optional-field convention (label/
-  // colorOverride above). Never set on a 'failed' scenario — a wholly-
-  // failed scenario has nothing that succeeded for this to be "partial"
-  // relative to. Populated by services/scenarioDiscovery.ts from
-  // services/duckdbLoaderPool.ts's own PoolRegistrationResult.failed —
-  // see that module's own header comment for why a bad file no longer
-  // silently fails the WHOLE scenario the way it did before this
-  // feature (specs/051-scope-option3-pool-design/research.md §2). This
-  // is the DATA layer only — no UI currently reads this field; a real
-  // viewer-facing surface ("2 of 35 files failed to load") is an
-  // explicitly separate, deferred product decision (051's own research.md).
+  // colorOverride above). This is the DATA layer only — no UI currently
+  // reads this field.
+  //
+  // 056-lazy-tab-scoped-loading: no longer populated by
+  // services/scenarioDiscovery.ts — that file no longer registers any
+  // Parquet file at discovery time at all (data-model.md entity 4), so
+  // there is no more "one of a scenario's ~35 boot-time files failed"
+  // event for it to report. A per-metric load failure now lives in
+  // services/tabDataLoader.ts's own, separate, finer-grained Metric Load
+  // State (data-model.md entity 2) instead — deliberately NOT layered
+  // onto this field, since that state is keyed by {scenario, metric}
+  // pairs, not enumerable per-scenario the way this field's own shape
+  // assumes. The field/type stays (a past feature's real, still-valid
+  // capability; nothing currently writes to it, which is harmless for an
+  // optional field), kept here rather than deleted in case a future
+  // scenario-level failure summary still wants it.
   failedFiles?: string[]
+  // 056-lazy-tab-scoped-loading: the real metric filenames this scenario's
+  // own summary/index.json (or, for a local folder, its actual registered
+  // views) names — known independent of whether any of them have been
+  // loaded yet (data-model.md entity 3, the "Dataset Catalog"). Bare
+  // stems, same convention stemFromViewName() already uses. Undefined
+  // until the owning registration path has fetched/derived it — never an
+  // empty array standing in for "not known yet" (this file's own
+  // established optional-field convention).
+  availableMetrics?: string[]
 }
 
 export interface ScenarioMetadata {
@@ -153,6 +168,7 @@ export function register(name: string, metadata: ScenarioMetadata): void {
     label: undefined,
     colorOverride: undefined,
     failedFiles: undefined,
+    availableMetrics: undefined,
   })
   notify()
 }
@@ -389,5 +405,21 @@ export function setFailedFiles(name: string, failedFiles: string[]): void {
     throw new Error(`appState.setFailedFiles: "${name}" was never registered`)
   }
   entry.failedFiles = failedFiles.length > 0 ? failedFiles : undefined
+  notify()
+}
+
+/**
+ * 056-lazy-tab-scoped-loading: records the real metric catalog a scenario
+ * publishes (data-model.md entity 3) — mirrors setFailedFiles()'s own
+ * look-up/throw/mutate/notify() shape exactly. Called once the owning
+ * registration path knows the real file/view list, independent of
+ * whether any of it has actually been registered/loaded yet.
+ */
+export function setAvailableMetrics(name: string, metrics: string[]): void {
+  const entry = scenarios.get(name)
+  if (!entry) {
+    throw new Error(`appState.setAvailableMetrics: "${name}" was never registered`)
+  }
+  entry.availableMetrics = metrics
   notify()
 }

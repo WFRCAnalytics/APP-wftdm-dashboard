@@ -13,6 +13,7 @@ import { useFilterState } from '@/hooks/useFilterState'
 import { useActiveScenarios } from '@/hooks/useActiveScenarios'
 import { useGlobalBasemap } from '@/hooks/useGlobalBasemap'
 import { useProtomapsSource } from '@/hooks/useProtomapsSource'
+import { ensureRegistered } from '@/services/tabDataLoader'
 import {
   buildPanelQuery,
   resolveActiveScenarios,
@@ -202,7 +203,11 @@ export function FlowMapPanel({ config }: { config: FlowMapPanelConfig }) {
     const activeScenarios = resolveActiveScenarios(config, activeScenarioNames)
     const sql = sqlExpander.expand(template, EMPTY_SUMMARIZE_CONFIG, filterState, activeScenarios)
 
-    query(sql)
+    // 056-lazy-tab-scoped-loading: see dashboardRenderer.tsx's own
+    // comment — a no-op when already loaded/in-flight, a real await
+    // otherwise.
+    ensureRegistered(activeScenarios.map((scenario) => ({ scenario, metric: config.metric })))
+      .then(() => query(sql))
       .then((result) => {
         if (cancelled) return
         if (result.length === 0) {

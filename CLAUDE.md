@@ -2596,6 +2596,14 @@ similarly gained one new, additive call (`registerDemoScenarios()`, see
 `services/scenarioDiscovery.ts`'s entry above) — both existing calls in the
 snippet above are unmodified.
 
+**056-lazy-tab-scoped-loading** changed what `discoverScenarios()` itself
+*does*, not this sequence's own shape: "register" now means fetching and
+retaining each scenario's real metric catalog only — no Parquet file is
+registered at boot anymore. Actual file registration happens lazily,
+per active tab, via `services/tabDataLoader.ts` once `renderDashboard()`
+(and every later tab switch) runs. See that feature's own Implementation
+order entry for the full design.
+
 **Correction (`028-dashboard-branding`):** the "zero code change" claim
 above was WRONG — a real, confirmed bug, found while wiring this feature's
 own demo-root branding read through the same function. `loadDashboards()`
@@ -5640,6 +5648,75 @@ first cross-reference this list was built from). ✅ done,
     clean; `npm run test:unit` 471/471 passing, unchanged (no unit-tested
     pure module's own behavior changed — this feature is entirely
     boot-sequencing/bundling).
+
+27. ✅ Lazy, tab-scoped data loading — `services/scenarioDiscovery.ts` no
+    longer eagerly registers any scenario's Parquet files at boot; it
+    fetches and retains each scenario's real metric catalog (new
+    `Scenario.availableMetrics`, `state/appState.ts`) only. A scenario
+    reaches `status: 'ready'`/`active: true` once its `summary/index.json`
+    catalog is confirmed fetchable, not once every file is registered.
+    Actual file registration is now lazy, dispatched per active tab by a
+    new module, `services/tabDataLoader.ts`:
+    `computeTabDataRequirement(tab, activeScenarios)` (pure — walks a
+    tab's real panels, resolving each one's `{scenario, metric}`
+    need(s), deduplicated) and `ensureRegistered(pairs)` (registers
+    exactly those pairs via `services/duckdb.ts#registerFileURL()`
+    against the single shared instance, memoized so redundant/concurrent
+    calls for an already-loaded or in-flight pair are free). Every
+    data-bound panel type's existing fetch effect gained one
+    `await ensureRegistered(...)` call immediately before its existing
+    `query()`/`queryArrow()` call — the same effect, same reactivity
+    (re-running on `useActiveScenarios()` change already re-triggers it),
+    no new mechanism. `layout/dashboardRenderer.tsx` also proactively
+    kicks off a tab's whole batch on activation, a pure performance
+    optimization (parallel-friendly) layered on the same primitive.
+
+    Real, measured before/after (a fresh dev server,
+    `window.__wftdm.listViews()`): the landing tab (Summary, 3 real
+    metrics) registers exactly 9 views (3 metrics × 3 real demo
+    scenarios) — not the deployment's full 105 (35 metrics × 3
+    scenarios). Visiting the largest real tab (Tour Models, 13 metrics)
+    brings the total to 48; revisiting Summary registers 0 new views.
+
+    **`services/duckdbLoaderPool.ts` (052) and
+    `services/duckdb.ts#createLoaderInstance()` are removed entirely** —
+    a real, measured sweep (both warm- and cold-cache passes, real batch
+    sizes 3/6/13/39 files, the actual range this feature's own tab-scoped
+    loading produces) confirmed the single shared DuckDB-WASM instance is
+    faster than the old multi-instance pool at every size tested, by
+    43–99%; the pool's own cheapest measured cost (~870ms, dominated by
+    spinning up fresh `AsyncDuckDB` instances on every call) exceeded the
+    single instance's most expensive measured cost (593ms). This also
+    resolves a real, pre-existing, unamended departure from constitution
+    Principle II ("exactly one shared instance") that `createLoaderInstance()`
+    had introduced (052) — removing the pool removes the violation at its
+    source; no amendment was needed.
+
+    `panels/graphicWalkerDatasets.ts#listSelectableDatasets()` — the
+    Explore tab's dataset picker (028) — was re-pointed from
+    `services/duckdb.ts#listViews()` (the live, registered-so-far view
+    registry, a safe proxy only under the old eager-boot model) to each
+    active scenario's real `availableMetrics` catalog, so the picker
+    still always offers the complete real catalog regardless of which
+    tabs have actually been visited — confirmed live (35/35 real metrics
+    listed on a picker-enabled tab visited as the very first thing in a
+    session, before any other tab). Selecting a not-yet-loaded entry
+    triggers `ensureRegistered()` the same way every other panel does.
+
+    A real, confirmed, PRE-EXISTING bug (not caused by this feature) was
+    found and fixed along the way: `tests/integration/
+    graphicWalkerPanel.spec.ts` was 29/29 failing — entirely because
+    `040-test-suite-migration` deleted `tests/fixtures/dashboard-config/`
+    (the "Detail" tab this spec depended on) without migrating this one
+    file, the same class of gap already recorded for `flowmapPanel.spec.ts`/
+    `zonemapPanel.spec.ts`. Rewritten against real, unmodified app code and
+    real demo scenario data via `page.route()` injection (no fixture
+    dependency) — 28/28 passing, confirmed stable across repeated runs.
+
+    See `specs/056-lazy-tab-scoped-loading/` for the full spec/plan/
+    research record, including the real empirical loader-pool sweep data
+    and the pre-condition check that confirmed 028's picker was never
+    actually regressed before this feature touched it.
 
 ---
 

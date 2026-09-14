@@ -4,7 +4,9 @@ import '@kanaries/graphic-walker/dist/style.css'
 import '@/panels/graphicWalkerPanel.css'
 import { Compass } from 'lucide-react'
 
-import { listViews, query, queryArrow } from '@/services/duckdb'
+import { query, queryArrow } from '@/services/duckdb'
+import { ensureRegistered } from '@/services/tabDataLoader'
+import * as appState from '@/state/appState'
 import * as sqlExpander from '@/services/sqlExpander'
 import { useActiveScenarios } from '@/hooks/useActiveScenarios'
 import { useColorScheme } from '@/hooks/useColorScheme'
@@ -134,19 +136,34 @@ export function GraphicWalkerPanel({ config }: { config: GraphicWalkerPanelConfi
   // (research.md §4). Deliberately NOT dependent on global filters — no
   // useFilterState call anywhere in this component (FR-009/014's FR-005).
   //
-  // Async (not a useMemo) because of a real, confirmed gap found during
-  // this feature's own implementation: listSelectableDatasets()'s
-  // view-EXISTENCE check alone can't tell that a metric's real columns
-  // differ between two scenarios (a real, reachable case in this
-  // project's own fixture data — vmt_by_home_taz has 2 columns under
-  // observed, 3 under good_scenario), which would make
-  // sqlExpander.ts's own unmodified $scenario. UNION ALL throw the
-  // moment a viewer actually picked it — exactly the predictable failure
-  // FR-005/SC-002 exist to prevent. filterSchemaConsistent() closes that
-  // gap, but needs each scenario's real column names, fetched via one
-  // `information_schema.columns` query per scenario in scope (skipped
-  // entirely when scenarioScope has 0-1 entries — no UNION is ever built
-  // for a single/pinned scenario, so there's nothing to mismatch).
+  // Async (not a useMemo) for two real, confirmed reasons:
+  //
+  // 1. (028's own original finding) listSelectableDatasets()'s catalog
+  //    intersection alone can't tell that a metric's real columns differ
+  //    between two scenarios (a real, reachable case in this project's
+  //    own fixture data — vmt_by_home_taz has 2 columns under observed,
+  //    3 under good_scenario), which would make sqlExpander.ts's own
+  //    unmodified $scenario. UNION ALL throw the moment a viewer actually
+  //    picked it. filterSchemaConsistent() closes that gap, but needs
+  //    each scenario's real column names, fetched via one
+  //    `information_schema.columns` query per scenario in scope (skipped
+  //    entirely when scenarioScope has 0-1 entries — no UNION is ever
+  //    built for a single/pinned scenario, so there's nothing to
+  //    mismatch).
+  // 2. (056-lazy-tab-scoped-loading, contracts/graphic-walker-dataset-
+  //    catalog.md's own flagged decision) under lazy loading, a
+  //    candidate's real columns aren't queryable at all until its view is
+  //    actually registered — the catalog only proves the metric EXISTS,
+  //    not that it's LOADED. Resolved here by calling ensureRegistered()
+  //    for every multi-scenario candidate BEFORE querying
+  //    information_schema.columns, so the schema-consistency check always
+  //    has real data to work with rather than silently narrowing the
+  //    picker's own offered list to whatever happened to be loaded
+  //    already. This is a deliberate, documented cost specific to the
+  //    multi-scenario picker case: building its own candidate list means
+  //    loading every candidate up front, not lazily on selection — the
+  //    single-scenario/pinned case (the common one) pays nothing extra,
+  //    since no schema check runs there at all.
   const [availableDatasets, setAvailableDatasets] = useState<string[]>([])
   useEffect(() => {
     let cancelled = false
@@ -155,32 +172,45 @@ export function GraphicWalkerPanel({ config }: { config: GraphicWalkerPanelConfi
       return undefined
     }
     const scenarioScope = config.scenario ? [config.scenario] : activeScenarioNames
-    const candidates = listSelectableDatasets(listViews(), scenarioScope)
+    const availableMetricsByScenario = new Map(
+      scenarioScope.map((name) => [name, appState.get(name)?.availableMetrics ?? []]),
+    )
+    const candidates = listSelectableDatasets(availableMetricsByScenario, scenarioScope)
     if (scenarioScope.length <= 1 || candidates.length === 0) {
       setAvailableDatasets(candidates)
       return undefined
     }
-    Promise.all(
-      scenarioScope.map(async (scenarioName) => {
-        const prefix = `${scenarioName}__`
-        const viewNames = candidates.map((metric) => `${prefix}${metric}`)
-        const rows = await query(
-          `SELECT table_name, string_agg(column_name, ',' ORDER BY ordinal_position) AS cols ` +
-            `FROM information_schema.columns ` +
-            `WHERE table_name IN (${viewNames.map((v) => `'${v}'`).join(', ')}) ` +
-            `GROUP BY table_name`,
-        )
-        const columnsForScenario = new Map<string, string>()
-        for (const row of rows) {
-          const tableName = row.table_name as string
-          columnsForScenario.set(tableName.slice(prefix.length), row.cols as string)
-        }
-        return [scenarioName, columnsForScenario] as const
-      }),
-    ).then((entries) => {
-      if (cancelled) return
-      setAvailableDatasets(filterSchemaConsistent(candidates, scenarioScope, new Map(entries)))
-    })
+    ensureRegistered(scenarioScope.flatMap((scenario) => candidates.map((metric) => ({ scenario, metric }))))
+      .catch(() => {
+        // A candidate that fails to load is simply excluded below (its
+        // information_schema.columns query returns no rows for that
+        // scenario, so filterSchemaConsistent() naturally drops it) —
+        // never a picker-wide failure over one bad metric.
+      })
+      .then(() =>
+        Promise.all(
+          scenarioScope.map(async (scenarioName) => {
+            const prefix = `${scenarioName}__`
+            const viewNames = candidates.map((metric) => `${prefix}${metric}`)
+            const rows = await query(
+              `SELECT table_name, string_agg(column_name, ',' ORDER BY ordinal_position) AS cols ` +
+                `FROM information_schema.columns ` +
+                `WHERE table_name IN (${viewNames.map((v) => `'${v}'`).join(', ')}) ` +
+                `GROUP BY table_name`,
+            )
+            const columnsForScenario = new Map<string, string>()
+            for (const row of rows) {
+              const tableName = row.table_name as string
+              columnsForScenario.set(tableName.slice(prefix.length), row.cols as string)
+            }
+            return [scenarioName, columnsForScenario] as const
+          }),
+        ),
+      )
+      .then((entries) => {
+        if (cancelled) return
+        setAvailableDatasets(filterSchemaConsistent(candidates, scenarioScope, new Map(entries)))
+      })
     return () => {
       cancelled = true
     }
@@ -203,7 +233,15 @@ export function GraphicWalkerPanel({ config }: { config: GraphicWalkerPanelConfi
       NOOP_FILTER_STATE,
       activeScenarioNames,
     )
-    queryArrow(sql)
+    // 056-lazy-tab-scoped-loading: see dashboardRenderer.tsx's own
+    // comment — a no-op when already loaded/in-flight, a real await
+    // otherwise. This is also what makes FR-008 (picking a not-yet-loaded
+    // catalog entry loads it on demand) actually work — selectedDataset
+    // changing re-runs this whole effect, including this call, for the
+    // newly picked dataset.
+    const scenarioScope = config.scenario ? [config.scenario] : activeScenarioNames
+    ensureRegistered(scenarioScope.map((scenario) => ({ scenario, metric: selectedDataset })))
+      .then(() => queryArrow(sql))
       .then((table) => {
         if (cancelled) return
         const nextRows = table.toArray().map((r) => convertBigIntsToNumbers(r.toJSON()))

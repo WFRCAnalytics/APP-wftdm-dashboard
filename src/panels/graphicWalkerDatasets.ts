@@ -6,16 +6,24 @@
 // renderer needed.
 //
 // See specs/028-graphic-walker-dataset-picker/research.md §2/§3 for the
-// full reasoning this implements:
+// original reasoning, and specs/056-lazy-tab-scoped-loading/contracts/
+// graphic-walker-dataset-catalog.md for this function's own real,
+// confirmed input-source change:
 //
-// - services/duckdb.ts's listViews() is a closed registry — every view it
-//   can ever return was created by registerScenario()/registerFileURL(),
-//   so the only real contamination risk is a NON-metric view family
-//   (confirmed: panels/zoneGeometry.ts's own "zonemap-geom__{boundaries}"
-//   views). A view only counts as a selectable dataset if its name starts
-//   with one of `scenarioNames` followed by "__" — "zonemap-geom" can
-//   never itself be a registered scenario name, so this excludes that
-//   family by construction, with no guessed regex.
+// - Under 014/028's original eager-boot design, `services/duckdb.ts`'s
+//   `listViews()` (every REGISTERED view) was a safe proxy for "every
+//   real dataset a scenario publishes," since eager boot guaranteed
+//   every real metric was already registered before any panel rendered.
+//   056-lazy-tab-scoped-loading loads metrics on demand per tab, so
+//   `listViews()` would shrink to only whatever tabs happen to have been
+//   visited so far — a real, confirmed regression against this picker's
+//   own whole purpose (research.md §3/§4a). The input is now each active
+//   scenario's real metric CATALOG (state/appState.ts's
+//   `availableMetrics`, known independent of load state), not the live
+//   view registry — no non-metric-view contamination risk to guard
+//   against here either (a scenario's own catalog never contains a
+//   non-metric entry like `zonemap-geom__*` in the first place, unlike
+//   `listViews()`, which mixes every view family together).
 // - A dataset is only offered if it exists for EVERY name in
 //   `scenarioNames` (intersection, not union) — sqlExpander.ts's existing,
 //   unmodified expandScenario() unconditionally UNIONs one clause per
@@ -25,13 +33,15 @@
 //   sqlExpander.ts.
 
 /**
- * Every metric name backed by a real `{scenario}__{metric}` view for
- * EVERY name in `scenarioNames` (set intersection across scenarios' own
- * metric-name sets), sorted alphabetically for a deterministic result
- * regardless of `viewNames`'/`Set` iteration order (FR-011).
+ * Every metric name published by EVERY name in `scenarioNames` (set
+ * intersection across scenarios' own real catalogs), sorted alphabetically
+ * for a deterministic result regardless of Map/Set iteration order
+ * (FR-011).
  *
- * @param viewNames services/duckdb.ts's listViews() output (or an
- *   equivalent snapshot of it)
+ * @param availableMetricsByScenario scenario name -> that scenario's real
+ *   metric catalog (state/appState.ts `Scenario.availableMetrics`) — known
+ *   independent of whether any of it has actually loaded yet
+ *   (056-lazy-tab-scoped-loading).
  * @param scenarioNames the scenario name(s) to intersect against — either
  *   useActiveScenarios()'s full result, or a single pinned
  *   `[config.scenario]` (research.md §5)
@@ -39,17 +49,14 @@
  *   `scenarioNames` is empty
  */
 export function listSelectableDatasets(
-  viewNames: readonly string[],
+  availableMetricsByScenario: ReadonlyMap<string, readonly string[]>,
   scenarioNames: readonly string[],
 ): string[] {
   if (scenarioNames.length === 0) return []
 
   let intersection: Set<string> | undefined
   for (const scenarioName of scenarioNames) {
-    const prefix = `${scenarioName}__`
-    const metricsForScenario = new Set(
-      viewNames.filter((v) => v.startsWith(prefix)).map((v) => v.slice(prefix.length)),
-    )
+    const metricsForScenario = new Set(availableMetricsByScenario.get(scenarioName) ?? [])
     intersection =
       intersection === undefined
         ? metricsForScenario
