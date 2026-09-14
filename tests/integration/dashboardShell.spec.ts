@@ -271,14 +271,10 @@ test.describe('028-dashboard-branding', () => {
   test('a logo that fails to load falls back to the configured title text, never a broken image', async ({
     page,
   }) => {
-    // Overrides just this one request's response — this app's own
-    // coi-serviceworker (index.html, loaded first) intercepts every
-    // fetch to inject cross-origin-isolation headers, which colliding
-    // with route.fetch()-based re-routing was already confirmed live by
-    // this file's own prior version (it returned index.html's own markup
-    // instead of the JSON body) — building a fully synthetic response
-    // body here (mirroring the real demo branding's own title, only
-    // logoUrl swapped) sidesteps that entirely, same technique as before.
+    // Overrides just this one request's response with a fully synthetic
+    // body (mirroring the real demo branding's own title, only logoUrl
+    // swapped) rather than route.fetch()-based re-routing of the real
+    // response.
     const realBranding = {
       dashboards: [
         'dashboard-1-summary.yaml',
