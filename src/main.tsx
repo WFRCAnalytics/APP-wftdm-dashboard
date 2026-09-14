@@ -67,6 +67,21 @@ document.documentElement.classList.toggle(
   window.matchMedia('(prefers-color-scheme: dark)').matches,
 )
 
+// Fire-and-forget — deliberately NOT awaited, unlike coi-serviceworker.js's
+// own now-removed blocking reload-to-activate pattern (that one existed to
+// inject COOP/COEP headers onto the document response itself, which only
+// works if the worker already controlled the page before navigation
+// started). This worker (public/asset-cache-serviceworker.js) never
+// touches the document — only later fetches for a few specific, large,
+// content-hashed DuckDB-WASM binaries — so it needs no such gate: the
+// current page load proceeds exactly as it would with no service worker
+// at all, and the worker installs in the background for the NEXT visit.
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker
+    .register(`${import.meta.env.BASE_URL}asset-cache-serviceworker.js`)
+    .catch(() => {})
+}
+
 await initDuckDB()
 await discoverScenarios()
 
