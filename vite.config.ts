@@ -210,6 +210,84 @@ export default defineConfig({
           // plotly/maplibre-gl were each in when they got their own chunk
           // above (research.md §9).
           if (id.includes('@kanaries/graphic-walker')) return 'graphic-walker'
+          // 057-observable-plot-conversion (found post-hoc, not part of
+          // that feature's own original scope — a real, confirmed chunk-
+          // graph leak, same class as 042's three react-vendor/app-shared
+          // findings, discovered while investigating why Summary's
+          // landing tab still downloaded the full recharts vendor chunk
+          // after every real recharts panel there was converted to
+          // observable-plot). `@observablehq/plot`'s own real dependency
+          // (`d3`, the umbrella package) and `recharts`' own real
+          // dependency (via `victory-vendor`) both genuinely,
+          // independently need several of the SAME top-level d3-*
+          // packages — confirmed directly via each library's own real
+          // `package.json` (`victory-vendor` depends on `d3-array`/
+          // `d3-interpolate`/`d3-scale`/`d3-shape`/`d3-time`/`d3-timer`/
+          // `d3-ease`; `d3` depends on all of those plus `d3-color`/
+          // `d3-format`/`d3-path`), resolved by npm to the IDENTICAL
+          // physical `node_modules` files, not two separate copies. Left
+          // unmatched by every rule in this function, Rollup's own
+          // auto-chunking placed the full overlapping set — d3-array/
+          // d3-color/d3-format/d3-interpolate/d3-path/d3-scale/d3-shape/
+          // d3-time/d3-time-format, confirmed via Vite's own build API
+          // chunk-graph output, not guessed — entirely inside the
+          // (forced) `recharts` bucket below. Since `@observablehq/plot`
+          // itself was ALSO left unmatched (auto-chunked under an
+          // arbitrary `index-*` name), every real Observable Plot
+          // consumer needed a static cross-chunk import edge back into
+          // the FULL `recharts` chunk just to reach these shared, purely
+          // generic math/formatting/scale primitives — dragging recharts
+          // plus its own real, unique dependencies (`@reduxjs/toolkit`,
+          // `react-redux`, ...) onto any page using Observable Plot,
+          // including a bare value-box sparkline, even with zero real
+          // recharts panels anywhere on it (confirmed live: Summary's
+          // landing tab, no recharts panel since this feature's own
+          // conversion, still downloaded the full ~450KB recharts chunk
+          // on every visit). Fixed with a THIRD, small, neutral bucket
+          // for exactly this confirmed-shared subset — checked before
+          // recharts' own rule below — so neither chart engine's real,
+          // UNIQUE code (recharts' own React/Redux layer; Observable
+          // Plot's own mark/facet/plot.js logic) is ever pulled in by a
+          // page using only the other one. `internmap` (d3-array's own
+          // small internal Map-polyfill dependency) travels with it for
+          // the same reason. This is NOT the same fix as 042's three
+          // react-vendor/app-shared findings — those were real APP
+          // source files (`scenarioDisplay.ts`) or a Vite runtime helper
+          // reachable from literally everywhere; this is a genuine
+          // third-party-dependency-version-overlap case, first possible
+          // the moment this feature gave Observable Plot a second real
+          // consumer (`valueBoxSparkline.tsx`) — before that, Observable
+          // Plot had only one importer (`ObservablePlotPanel.tsx`) and
+          // was bundled directly into that single chunk with no sharing
+          // possible at all.
+          if (
+            id.includes('node_modules/d3-array/') ||
+            id.includes('node_modules/d3-color/') ||
+            id.includes('node_modules/d3-format/') ||
+            id.includes('node_modules/d3-interpolate/') ||
+            id.includes('node_modules/d3-path/') ||
+            id.includes('node_modules/d3-scale/') ||
+            id.includes('node_modules/d3-shape/') ||
+            id.includes('node_modules/d3-time/') ||
+            id.includes('node_modules/d3-time-format/') ||
+            id.includes('node_modules/internmap/')
+          ) {
+            return 'd3-shared'
+          }
+          // 057-observable-plot-conversion (same post-hoc fix as above):
+          // @observablehq/plot never had its own explicit bucket —
+          // Rollup auto-chunked it under a generic, unstable `index-*`
+          // name instead. Same "large, previously-unshared library gets
+          // its own explicit, stably-named chunk" reasoning as plotly/
+          // maps/graphic-walker/recharts in this same function — its own
+          // exclusive d3-* dependencies (d3-axis/d3-contour/d3-delaunay/
+          // d3-dispatch/d3-ease/d3-hierarchy/d3-random/d3-selection/
+          // d3-timer/d3-transition/d3-zoom — confirmed via the same
+          // chunk-graph inspection to have no other real importer
+          // anywhere in this app) are deliberately left unmatched here
+          // and stay with it via Rollup's own default placement, exactly
+          // as they already correctly did before this fix.
+          if (id.includes('@observablehq/plot')) return 'observable-plot'
           // 029-shadcn-chart-panel: this codebase's first dependency on
           // recharts. UPGRADED to recharts@^3.10.1 (a deliberate, later
           // major-version upgrade from the original ^2.15.4 the shadcn CLI

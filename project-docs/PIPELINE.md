@@ -634,3 +634,101 @@ history or `CLAUDE.md`) has been deleted as a result of this research;
 nothing in it was usable or in scope for anything currently planned.
 Its only lasting value — the two real candidates named above — is
 preserved here instead.
+
+---
+
+## Confirmed: GitHub Pages/Fastly corrupts HTTP Range requests when combined with gzip negotiation — real CDN bug, not an app defect
+
+Investigated live, against the actual deployed site
+(`wfrcanalytics.github.io/APP-wftdm-dashboard/`), after a real, reported
+"Opening file X failed"/"does not support HTTP range requests — fell
+back to a full download" console pattern firing for every Parquet
+metric on every scenario, every visit. Root-caused directly via `curl`
+against the live CDN, not assumed from either of the two obvious
+hypotheses ("GitHub Pages just doesn't support ranges" / "Parquet is
+served differently from the WASM binaries").
+
+**Neither hypothesis is correct. The real cause: GitHub Pages' Fastly
+CDN honors `Range` requests correctly ONLY when the response isn't
+being gzip-compressed — the instant a real client also sends
+`Accept-Encoding: gzip` (which every browser, and DuckDB-WASM's own
+fetch-based HTTP client, always does — it's a forbidden header
+application code can't opt out of), Fastly serves the requested byte
+range against the COMPRESSED representation of the file, not the
+logical/uncompressed one.** The proof is in the `Content-Range`
+denominator, confirmed on two structurally different files served by
+the same origin:
+
+| Request (same Parquet file, `summary_kpis.parquet`, real size 1107 bytes) | Status | `Content-Range` |
+|---|---|---|
+| `Range: bytes=0-99`, no `Accept-Encoding` sent | `206 Partial Content`, strong `ETag` | `bytes 0-99/1107` — correct, matches the real file size |
+| `Range: bytes=0-99`, `Accept-Encoding: gzip, deflate, br` (a real browser/fetch's actual default) | `206 Partial Content`, `Content-Encoding: gzip`, **weak** `ETag: W/"..."` | `bytes 0-99/442` — **442 is the gzip-compressed size**, not the file |
+
+Reproduced identically against the DuckDB-WASM binary itself
+(`duckdb-eh-*.wasm`, real size 34,242,586 bytes) to confirm this is a
+CDN-level behavior, not something Parquet-specific:
+
+```
+Range: bytes=0-99, Accept-Encoding: gzip, deflate, br  →  duckdb-eh-*.wasm
+206 Partial Content, Content-Encoding: gzip
+Content-Range: bytes 0-99/7842000   (7,842,000 = the compressed size,
+                                      not the real 34,242,586-byte file —
+                                      also the exact "transfer size" this
+                                      app's own live boot traces measured
+                                      for this file)
+```
+
+Bytes 0-99 handed back under compression negotiation are bytes of the
+**gzip container stream**, not bytes 0-99 of the real file — a
+meaningless slice for any format-aware reader. That's exactly why
+DuckDB-WASM's Parquet reader throws the generic, format-agnostic
+`Failed to open file: <name>` error (confirmed live, matching this
+exact string) when it receives one: it asked for and received "a byte
+range," but the bytes don't correspond to what it asked for. The WASM
+binary hits the identical corrupted-range response in this same test
+but never surfaces a visible failure in the app, purely because
+nothing in this codebase ever range-reads it — it's loaded once, as a
+complete blob, for `WebAssembly.instantiate()`, not via
+`registerFileURL()`'s partial-read path. Same CDN bug, different code
+path, only one of the two is ever exercised.
+
+**Correcting the record on `c3d5a01`'s own earlier verification**: that
+commit's header comment states "This app's own real HTTP-serving
+targets — vite dev/preview and the built dist/docs output (GitHub
+Pages) — were all directly `curl`-confirmed range-capable." That check
+was real but incomplete — almost certainly run with plain `curl -H
+"Range: ..."`, which does not send an `Accept-Encoding` header unless
+`--compressed` is explicitly passed, so it never negotiated compression
+and never hit this bug. A real browser (and DuckDB-WASM's own HTTP
+client) has no such option — it always negotiates compression on every
+request — so this failure path is not an edge case for real users of
+the deployed site; it fires on every single Parquet file, every visit.
+The "range-capable" conclusion was accurate for what was actually
+tested; it just wasn't the request shape a real client sends.
+
+**No code change needed — confirmed the existing fallback already
+handles this correctly in practice.** `services/duckdb.ts`'s
+`registerFileURLViaFullFetch()` (added by the same `c3d5a01` commit,
+for a different anticipated scenario — "a server that genuinely cannot
+do HTTP range requests at all") catches exactly this failure signature
+and retries via a plain, non-`Range` `fetch()`. A full `fetch()`
+response is transparently decompressed by the browser regardless of
+`Content-Encoding`, so it sidesteps the corrupted-range-against-
+compressed-bytes problem entirely — it just happens to also be the
+correct fix for a cause its own author didn't have in mind when writing
+it. Confirmed live: the fallback fires, logs its existing
+`does not support HTTP range requests — fell back to a full download`
+warning, and every scenario's data registers and queries correctly. At
+this app's real file sizes (500B–1.1KB demo files today), the cost of
+always hitting the fallback path is negligible.
+
+**No further action required** unless one of two things changes:
+GitHub Pages/Fastly's own CDN behavior (out of this project's control —
+this is upstream, managed infrastructure, not something a `vite.config.ts`
+or server-header change here can fix), or a future deployment target
+(WFRC's own server, per the "Deployment split" entry above) goes live —
+that target's own Range+compression interaction should be independently
+re-verified via this same direct-`curl`-with-real-`Accept-Encoding`
+technique before assuming it either has or lacks this specific bug; a
+different origin server/CDN has no reason to share Fastly's exact
+implementation quirk.
