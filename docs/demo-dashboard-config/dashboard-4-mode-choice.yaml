@@ -43,18 +43,23 @@ layout:
       width: 1.0
 
   row_atwork_subtour_mode:
-    - type:       recharts
+    - type:       observable-plot
       title:      "At-Work Subtour Mode Share by Purpose"
       metric:     atwork_subtour_mode_summary
-      # 038: stays pinned — `series` is committed to the mode split, and
-      # recharts has no faceting for a second dimension. Scope stated
+      # 038: stays pinned — `fill` is committed to the mode split (057-
+      # observable-plot-conversion: converted from recharts; faceting to
+      # also compare scenarios is a real, available Observable Plot
+      # strength but deferred to this feature's own explicitly later
+      # polish effort, contracts/panel-conversions.md). Scope stated
       # below; the other Mode Choice panels compare scenarios.
       scenario:   activitysim-baseline
       description: "Baseline scenario, split by mode. Compare runs on the other Mode Choice panels via the Scenarios tab."
-      chart_type: bar
+      mark:       barY
       x:          primary_purpose
       y:          tours
-      series:     tour_mode
+      fill:       tour_mode
+      tip:        true
+      grid:       true
       height:     400
       width:      1.0
 
@@ -78,21 +83,18 @@ layout:
       color_scheme: Tableau10
 
   row_trip_mode_by_period:
-    - type:    plotly
+    - type:    observable-plot
       title:   "Trip Mode Share by Time-of-Day Period (WALK_LOC)"
       metric:  mode_share_by_period
+      # 038: unpinned — the dynamic $scenario union already splits per
+      # scenario via `fill: scenario` below, and responds to the
+      # Scenarios-tab Switch.
+      filter:  { trip_mode: WALK_LOC }
+      mark:    barY
+      x:       time_of_day_period
+      y:       share
+      fill:    scenario
+      tip:     true
+      grid:    true
       height:  400
       width:   1.0
-      # 038: unpinned (was an explicit 3-scenario list) — the dynamic
-      # $scenario union already splits per scenario via `name: $scenario`
-      # below, and now responds to the Scenarios-tab Switch.
-      filter:  { trip_mode: WALK_LOC }
-      traces:
-        - type: bar
-          x:    $metric.time_of_day_period
-          y:    $metric.share
-          name: $scenario
-      layout:
-        xaxis: { title: "Time of Day Period" }
-        yaxis: { title: "WALK_LOC Share of Trips", tickformat: ".1%" }
-        showlegend: true

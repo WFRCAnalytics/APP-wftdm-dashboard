@@ -169,22 +169,18 @@ layout:
       width: 1.0
 
   row_non_mandatory_tour_freq:
-    - type:    plotly
+    - type:    observable-plot
       title:   "Non-Mandatory Tour Frequency by Purpose"
       metric:  non_mandatory_tour_freq_summary
-      # 038: unpinned + `name: $scenario` — one bar group per scenario.
+      # 038: unpinned + `fill: scenario` — one bar per (purpose, scenario).
+      mark:    barY
+      x:       purpose
+      y:       tours
+      fill:    scenario
+      tip:     true
+      grid:    true
       height:  400
       width:   1.0
-      traces:
-        - type: bar
-          x:    $metric.purpose
-          y:    $metric.tours
-          name: $scenario
-      layout:
-        xaxis: { title: "Purpose" }
-        yaxis: { title: "Tours" }
-        barmode: group
-        showlegend: true
 
   row_non_mandatory_tour_destination:
     - type:    observable-plot
