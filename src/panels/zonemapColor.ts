@@ -7,13 +7,18 @@
 // continuous sequential/diverging + domain grammar):
 //   - when color_ramp is omitted/unrecognized: 005-table-panel's
 //     tableLogic.ts cellColor()'s exact token-derived, capped color-mix()
-//     formula, reused verbatim (diverging midpoint anchored at literal
-//     zero, not domain's geometric center; out-of-domain values clamp to
-//     the nearest extreme)
+//     formula — since 060-codebase-cleanup-audit (Finding 4), a genuinely
+//     SHARED import (panels/colorScale.ts) rather than a verbatim-reused
+//     but independently-maintained copy; see that module's own header
+//     comment for the full history of this deliberately revisited
+//     decision (diverging midpoint anchored at literal zero, not domain's
+//     geometric center; out-of-domain values clamp to the nearest
+//     extreme)
 //   - when color_ramp names a recognized value (e.g. 'YlOrRd', 'RdBu'):
 //     sankeyColor.ts's own recognized-name-else-undefined shape, resolved
 //     here to a real d3-scale-chromatic interpolator instead
 import { interpolateRdBu, interpolateYlOrRd } from 'd3-scale-chromatic'
+import { clamp01, NO_DATA_COLOR, tokenDerivedColor } from '@/panels/colorScale'
 
 export type ColorScale = 'sequential' | 'diverging'
 
@@ -46,53 +51,15 @@ export function computeAutoDomain(values: (number | null)[]): [number, number] {
   return [Math.min(...numeric), Math.max(...numeric)]
 }
 
-// Distinct from both the sequential-minimum and diverging-zero colors
-// (neither of which uses --muted-foreground) — a "no data" zone must be
-// visibly different from "the lowest real value on the scale," not just
-// a same-looking color-mix() string with 0% strength (spec.md Edge
-// Cases: "not the color scale's zero/minimum color").
-const NO_DATA_COLOR = 'color-mix(in srgb, var(--muted-foreground) 25%, var(--muted))'
-
-// Same cap tableLogic.ts's cellColor() uses, same reasoning (legibility
-// at every point on the scale) — kept as its own local constant rather
-// than importing tableLogic.ts's private one, since that module doesn't
-// export it and this is a small enough value to duplicate deliberately
-// (two independent panel types each owning their own color convention,
-// not a shared library either has a reason to factor out yet).
-const MAX_COLOR_STRENGTH = 40
-
-function clamp01(t: number): number {
-  if (Number.isNaN(t)) return 0
-  return Math.min(1, Math.max(0, t))
-}
-
-/** tableLogic.ts's cellColor(), reused verbatim (research.md §8) — the
- * token-derived fallback used whenever no recognized color_ramp applies.
- * `t` here is already the resolved [0,1] position class the caller
- * computed (see resolveZoneFillColor below); this function only knows
- * how to turn a raw `value`/`domain`/`colorScale` triple into the exact
- * same color-mix() string tableLogic.ts's own cellColor() would produce
- * for the equivalent table cell. */
-function tokenDerivedColor(value: number, colorScale: ColorScale, domain: [number, number]): string {
-  const [domainMin, domainMax] = domain
-
-  if (colorScale === 'sequential') {
-    const span = domainMax - domainMin
-    const t = span === 0 ? 0 : clamp01((value - domainMin) / span)
-    const strength = t * MAX_COLOR_STRENGTH
-    return `color-mix(in srgb, var(--primary) ${strength}%, var(--muted))`
-  }
-
-  // diverging — midpoint fixed at literal 0, not (domainMin + domainMax) / 2.
-  if (value >= 0) {
-    const t = domainMax === 0 ? (value > 0 ? 1 : 0) : clamp01(value / domainMax)
-    const strength = t * MAX_COLOR_STRENGTH
-    return `color-mix(in srgb, var(--destructive) ${strength}%, var(--muted))`
-  }
-  const t = domainMin === 0 ? (value < 0 ? 1 : 0) : clamp01(value / domainMin)
-  const strength = t * MAX_COLOR_STRENGTH
-  return `color-mix(in srgb, var(--primary) ${strength}%, var(--muted))`
-}
+// 060-codebase-cleanup-audit (Finding 4): NO_DATA_COLOR, clamp01, and
+// tokenDerivedColor() are now imported from panels/colorScale.ts, shared
+// verbatim with tableLogic.ts's own cellColor() — see that module's own
+// header comment. NO_DATA_COLOR remains distinct from both the
+// sequential-minimum and diverging-zero colors tokenDerivedColor() can
+// itself produce — a "no data" zone must be visibly different from "the
+// lowest real value on the scale," not just a same-looking color-mix()
+// string with 0% strength (spec.md Edge Cases: "not the color scale's
+// zero/minimum color").
 
 /** Maps `value` onto a recognized ramp's own [0,1] interpolator domain,
  * preserving the SAME zero-anchored-midpoint convention tokenDerivedColor
