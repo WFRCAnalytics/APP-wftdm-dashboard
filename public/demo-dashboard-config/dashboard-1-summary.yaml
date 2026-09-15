@@ -79,7 +79,18 @@ layout:
       title:   Total Trips by Mode
       metric:  trip_mode_share
       mark:    barY
-      x:       major_trip_mode
+      # Grouped (side-by-side), not stacked — real, confirmed bug fix.
+      # Observable Plot's own documented pattern for a grouped bar chart
+      # (no groupX-style transform exists; a bare `x: category, fill:
+      # scenario` with no facet triggers Plot's implicit stackY transform
+      # whenever a fill channel is present — its own docs: "For a grouped
+      # bar chart, use faceting"). facet_x carries the real category (the
+      # same field `x` held before this fix); x now holds the comparison
+      # dimension (scenario) — genuinely side-by-side bars within each
+      # category's own facet, colored by the same `fill: scenario`
+      # unchanged. Same query, same columns, only the encoding changed.
+      facet_x: major_trip_mode
+      x:       scenario
       y:       share
       fill:    scenario
       tip:     true
@@ -91,7 +102,10 @@ layout:
       title:   Average Trip Distance by Purpose
       metric:  trip_distance_by_purpose
       mark:    barY
-      x:       primary_purpose
+      # Grouped, not stacked — see "Total Trips by Mode" above for the
+      # full rationale.
+      facet_x: primary_purpose
+      x:       scenario
       y:       avg_distance_miles
       fill:    scenario
       tip:     true

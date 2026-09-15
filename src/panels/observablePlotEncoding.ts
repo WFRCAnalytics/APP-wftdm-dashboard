@@ -79,6 +79,38 @@ export function resolveObservablePlotEncoding(
   // check, not covered when this feature originally shipped).
   if (config.fill || config.stroke) plotOptions.color = { legend: true }
 
+  // Real, confirmed bug fix (grouped-vs-stacked bar investigation): Plot's
+  // own documented grouped-bar recipe (bar.md — "For a grouped bar chart,
+  // use faceting") facets by the real category (facet_x/facet_y) and puts
+  // the comparison dimension on x, matching its own fill/stroke channel.
+  // Left as-is, this renders every facet's own x-axis tick labels too —
+  // literally the same handful of category values (e.g. every scenario
+  // name) repeated once per facet, overlapping into illegible text
+  // (confirmed live via screenshot: a facet_x-scenario grouped bar chart
+  // with real scenario names rendered as solid black smear along the
+  // bottom). The color legend already names each x position exactly once;
+  // repeating it as x-axis text under every facet is pure redundancy, not
+  // information. Plot's own official example for this exact pattern
+  // (`Plot.barX(penguins, {fy: "island", y: "sex", x: 1, inset: 0.5})`)
+  // suppresses it too, via a top-level `label: null` — done here more
+  // narrowly (only the x axis, not every axis, since this app's y-axis
+  // value labels stay genuinely useful) and only for the specific
+  // grouped-bar-via-facet shape: a facet is set AND x is the same field as
+  // fill/stroke (the color channel), never for any other facet_x/facet_y
+  // usage this panel type supports.
+  // `plotOptions.x`, NOT `options.x` — `options` holds this mark's own
+  // per-channel bindings (`options.x = config.x` above is the literal
+  // COLUMN NAME driving position, e.g. "scenario"; overwriting it with an
+  // object here would break that binding entirely, not just hide the
+  // axis). `x: {axis: null}` is a top-level Plot.plot() SCALE option,
+  // same family as `y`/`fx`/`fy` — it only suppresses the rendered axis,
+  // leaving the channel binding above completely untouched.
+  const hasFacet = Boolean(config.facet_x || config.facet_y)
+  const xMatchesColorChannel = Boolean(config.x) && (config.x === config.fill || config.x === config.stroke)
+  if (hasFacet && xMatchesColorChannel) {
+    plotOptions.x = { axis: null }
+  }
+
   // 019-baseline-diff-consumption (FR-014): a real, confirmed finding —
   // research.md §6 originally assumed Observable Plot's own native
   // null-handling omits a null-valued mark the same way Plotly's does.

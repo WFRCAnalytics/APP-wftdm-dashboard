@@ -64,8 +64,15 @@ layout:
       metric:  trip_scheduling
       # 038: unpinned + `fill: scenario` — one bar per (hour, scenario).
       filter:  { primary_purpose: work }
+      # Grouped, not stacked — a real, confirmed bug fix: `x: category,
+      # fill: scenario` with no facet triggers Plot's own implicit stackY
+      # (its docs: "For a grouped bar chart, use faceting"). facet_x
+      # carries the real category (depart_hour, the field `x` held
+      # before this fix); x now holds the comparison dimension
+      # (scenario) — same query, same columns, only the encoding changed.
       mark:    barY
-      x:       depart_hour
+      facet_x: depart_hour
+      x:       scenario
       y:       trips
       fill:    scenario
       tip:     true

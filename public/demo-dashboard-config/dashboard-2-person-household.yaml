@@ -105,8 +105,15 @@ layout:
       metric:  workplace_location_summary
       # 038: unpinned + `fill: scenario` — its colour channel was free, so
       # it becomes a real per-scenario comparison of the distance profile.
+      # Grouped, not stacked — a real, confirmed bug fix: `x: category,
+      # fill: scenario` with no facet triggers Plot's own implicit stackY
+      # (its docs: "For a grouped bar chart, use faceting"). facet_x
+      # carries the real category (distance_bin, the field `x` held
+      # before this fix); x now holds the comparison dimension
+      # (scenario) — same query, same columns, only the encoding changed.
       mark:    barY
-      x:       distance_bin
+      facet_x: distance_bin
+      x:       scenario
       y:       workers
       fill:    scenario
       tip:     true

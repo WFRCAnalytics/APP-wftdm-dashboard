@@ -173,8 +173,15 @@ layout:
       title:   "Non-Mandatory Tour Frequency by Purpose"
       metric:  non_mandatory_tour_freq_summary
       # 038: unpinned + `fill: scenario` — one bar per (purpose, scenario).
+      # Grouped, not stacked — a real, confirmed bug fix: `x: category,
+      # fill: scenario` with no facet triggers Plot's own implicit stackY
+      # (its docs: "For a grouped bar chart, use faceting"). facet_x
+      # carries the real category (purpose, the field `x` held before
+      # this fix); x now holds the comparison dimension (scenario) — same
+      # query, same columns, only the encoding changed.
       mark:    barY
-      x:       purpose
+      facet_x: purpose
+      x:       scenario
       y:       tours
       fill:    scenario
       tip:     true

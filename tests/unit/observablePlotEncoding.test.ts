@@ -39,6 +39,54 @@ describe('resolveObservablePlotEncoding', () => {
     expect(result.options).toEqual({ fx: 'mode', fy: 'purpose' })
   })
 
+  // Real, confirmed bug fix: Observable Plot's own documented pattern for
+  // a grouped (side-by-side) bar chart is facet_x/facet_y + an x channel
+  // matching fill/stroke (bar.md — "For a grouped bar chart, use
+  // faceting"; no groupX-style transform exists). Left unaddressed, every
+  // facet renders its own x-axis tick labels too — the same handful of
+  // values (e.g. every scenario name) repeated once per facet, confirmed
+  // live to overlap into illegible text. The color legend already names
+  // each x position once, so the per-facet axis is pure redundancy for
+  // this exact shape.
+  describe('grouped-bar x-axis suppression (facet + x matching the color channel)', () => {
+    it('suppresses the x axis when facet_x + x match fill — the real grouped-bar-via-facet shape', () => {
+      const result = resolveObservablePlotEncoding(
+        { ...baseConfig, facet_x: 'purpose', x: 'scenario', fill: 'scenario' },
+        rows,
+      )
+      expect(result.plotOptions.x).toEqual({ axis: null })
+      // The channel binding itself is untouched — still the literal
+      // column name, never overwritten by the axis-suppression object.
+      expect(result.options.x).toBe('scenario')
+    })
+
+    it('suppresses the x axis when facet_y + x match stroke, same as fill', () => {
+      const result = resolveObservablePlotEncoding(
+        { ...baseConfig, facet_y: 'purpose', x: 'scenario', stroke: 'scenario' },
+        rows,
+      )
+      expect(result.plotOptions.x).toEqual({ axis: null })
+    })
+
+    it('does NOT suppress the x axis when a facet is set but x does not match fill/stroke — a different, legitimate facet+x combination', () => {
+      const result = resolveObservablePlotEncoding(
+        { ...baseConfig, facet_x: 'purpose', x: 'mode', fill: 'scenario' },
+        rows,
+      )
+      expect(result.plotOptions).not.toHaveProperty('x')
+    })
+
+    it('does NOT suppress the x axis when x matches fill but no facet is set — the ordinary (non-grouped) stacked/single-series case is unaffected', () => {
+      const result = resolveObservablePlotEncoding({ ...baseConfig, x: 'scenario', fill: 'scenario' }, rows)
+      expect(result.plotOptions).not.toHaveProperty('x')
+    })
+
+    it('does NOT suppress the x axis when neither fill nor stroke is set, even with a facet + matching-named x', () => {
+      const result = resolveObservablePlotEncoding({ ...baseConfig, facet_x: 'purpose', x: 'purpose' }, rows)
+      expect(result.plotOptions).not.toHaveProperty('x')
+    })
+  })
+
   it('does not set options.tip at all when config.tip is unset', () => {
     expect(resolveObservablePlotEncoding(baseConfig, rows).options).toEqual({})
   })
