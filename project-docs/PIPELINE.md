@@ -732,3 +732,103 @@ re-verified via this same direct-`curl`-with-real-`Accept-Encoding`
 technique before assuming it either has or lacks this specific bug; a
 different origin server/CDN has no reason to share Fastly's exact
 implementation quirk.
+
+---
+
+## Confirmed: `latest.protomaps.com/v4.pmtiles` is not a usable production PMTiles source from any real deployer's own domain — a genuine Protomaps-hosting CORS gap, not an app bug
+
+Investigated after a report of this URL failing this app's own Protomaps
+basemap validation (`041-protomaps-pmtiles-basemap`'s viewer-session
+override field, `layout/settings/basemapTab.tsx`). Root-caused directly —
+live browser reproduction against the real deployed site plus direct
+`curl` testing of the domain's own CORS behavior — rather than assumed
+from either "the file's too big" or "the app's validation is broken."
+
+**What the URL actually is**: a real, working, but **undocumented**
+convenience alias for Protomaps' current full-planet build. It does not
+appear anywhere in Protomaps' own docs, their `basemaps` GitHub repo, or
+public writeups — their own documented pattern is dated snapshots at
+`build.protomaps.com/YYYYMMDD.pmtiles`, discovered via `maps.protomaps.com/
+builds`, with an explicit warning: *"URLs may change and hotlinking to
+these downloads are discouraged. Instead, you should copy the tileset to
+your own Cloud Storage."* Real size, confirmed via a plain HEAD request
+(`Content-Length: 138013553034`, ~138GB / ~128.5GiB) — consistent with
+Protomaps' own public "~120GB" full-planet figure, and genuinely serving
+valid, current PMTiles data (`Accept-Ranges: bytes`, a real `ETag`/
+`Last-Modified` from the same day as this investigation).
+
+**The real, confirmed root cause: no CORS access for arbitrary origins.**
+Direct `curl` testing with a real `Origin` header, across several distinct
+origins, against the identical ranged request:
+
+| Origin sent | `Access-Control-Allow-Origin` in response |
+|---|---|
+| `http://localhost:5173` | `http://localhost:5173` (echoed — present) |
+| `http://localhost:5174` / `http://localhost:4173` (other local ports) | **absent** |
+| `https://wfrcanalytics.github.io` (this app's own real deployed origin) | **absent** |
+| `https://example.com` (an arbitrary third origin) | **absent** |
+
+Only the single, specific origin `http://localhost:5173` — Vite's own
+default dev port — gets a CORS grant; every other origin tested, including
+this app's own real production origin, gets none. This is almost
+certainly Protomaps' own dev/testing convenience for their own local
+tooling, not a general access grant to anyone — and it is NOT "any
+localhost," confirmed by the two other local ports above also getting
+nothing.
+
+**Live reproduction, exact browser-console text**, captured against the
+real deployed site (`https://wfrcanalytics.github.io`):
+
+```
+Access to fetch at 'https://latest.protomaps.com/v4.pmtiles' from origin
+'https://wfrcanalytics.github.io' has been blocked by CORS policy: No
+'Access-Control-Allow-Origin' header is present on the requested resource.
+Failed to load resource: net::ERR_FAILED
+```
+
+A textbook browser-enforced CORS block — confirmed to happen before a
+single byte of the file is ever read, unrelated to its size. A parallel
+local reproduction (from a dev-server port confirmed above to NOT be
+allowlisted) proved the *entire rest* of the pipeline — header validation,
+style resolution, real sparse range reads deep into the 138GB file (byte
+offsets confirmed around 766MB and 137GB in), and actual MapLibre
+rendering — works correctly end to end once CORS is satisfied at all; from
+the one allowlisted local port, this exact URL renders a real, correct
+Protomaps basemap of Salt Lake City. The size is real and notable but was
+confirmed NOT to be the actual blocker — pmtiles' own range-read design
+makes a 138GB archive practically indistinguishable from a small one for a
+browser, once the CORS door is open.
+
+**What this means, stated plainly**: this URL cannot be used as a
+Protomaps PMTiles source from this app's real, deployed origin — or from
+any other real deployer's own domain, since the CORS grant is scoped to
+one specific dev-tooling origin, not a general one. This is a genuine,
+inherent limitation of Protomaps' own hosting for this particular
+convenience alias, not a bug in this app's validation logic or its
+`041-protomaps-pmtiles-basemap` design — and it's fully consistent with
+Protomaps' own documented guidance above (self-host, don't hotlink) and
+with the separate, already-recorded finding in this same file (the "Two
+real, confirmed keyless basemap candidates" entry above) that Protomaps'
+own `demo-bucket.protomaps.com` is explicitly hotlinking-forbidden for the
+identical reason. **This reinforces, rather than changes, `041`'s own
+existing design**: a deployer's own self-hosted regional PMTiles extract
+(`protomapsPmtilesUrl` in `dashboard-config/index.json`, or a viewer's own
+session override pointed at their own storage) remains the only real,
+working path to a Protomaps basemap in production — this specific
+convenience URL was never a viable shortcut around that, for this
+deployer or any other.
+
+Two small, confirmed, real improvements shipped as a direct result of this
+investigation (`layout/settings/basemapTab.tsx`'s
+`handleCommitProtomapsOverride()`): the previously bare `catch { }` now
+captures and `console.error()`s the real thrown error (it was silently
+discarded before, which is why this investigation needed a live browser
+reproduction instead of a two-second console check), and the user-facing
+rejection message no longer implies a URL typo is the likely cause —
+`"Couldn't open this PMTiles source. This can happen if the URL is
+unreachable, or if the hosting server doesn't allow cross-origin access
+from this site."` A browser deliberately never exposes the specific
+CORS-block reason to page script (a security boundary, confirmed directly
+— the caught error is a generic `TypeError: Failed to fetch`, nothing
+more specific), so detecting or routing around the block itself from this
+app's own code is not possible, and was not attempted.
