@@ -90,8 +90,15 @@ layout:
       # scenario via `fill: scenario` below, and responds to the
       # Scenarios-tab Switch.
       filter:  { trip_mode: WALK_LOC }
+      # Grouped, not stacked — a real, confirmed bug fix: `x: category,
+      # fill: scenario` with no facet triggers Plot's own implicit stackY
+      # (its docs: "For a grouped bar chart, use faceting"). facet_x
+      # carries the real category (time_of_day_period, the field `x`
+      # held before this fix); x now holds the comparison dimension
+      # (scenario) — same query, same columns, only the encoding changed.
       mark:    barY
-      x:       time_of_day_period
+      facet_x: time_of_day_period
+      x:       scenario
       y:       share
       fill:    scenario
       tip:     true
