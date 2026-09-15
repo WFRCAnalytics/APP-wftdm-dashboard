@@ -1,5 +1,41 @@
 <!--
 Sync Impact Report
+- Version change: 2.4.1 → 2.4.2
+- Modified principles: none
+- Modified sections:
+  - Technology Stack Reference: "Charts — default | Plotly.js" and
+    "Charts — reactive inputs | Observable Plot (`@observablehq/plot`)"
+    corrected — stale twice over. `029-shadcn-chart-panel` made Recharts
+    "this app's new default/primary engine for bar/line/area charts"
+    (CLAUDE.md's own entry) with no constitution amendment on record at
+    the time; `057-observable-plot-conversion` then moved every real
+    demo bar/distribution chart off Plotly/Recharts onto Observable
+    Plot, and that feature's own plan.md explicitly logged this same
+    cell as stale a second time, recommending exactly this
+    documentation-only PATCH (its "Non-blocking documentation note").
+    "Charts — default" now reads "Observable Plot (`@observablehq/plot`)",
+    naming Plotly.js/Recharts as the two remaining registered, supported
+    (non-default) chart panel types. The old "Charts — reactive inputs"
+    row (which named Observable Plot back when it was the secondary
+    engine) is replaced with "Charts — Sankey" naming D3 (`d3-sankey`)
+    directly — matching CLAUDE.md's own current Stack table shape; no
+    genuine Observable Plot Sankey support exists (no mark/transform, no
+    documented composition pattern, an unresolved upstream request since
+    2022).
+  - PATCH, not MINOR: the same reasoning the 2.4.0→2.4.1 amendment below
+    already established for an identical class of change — a Technology
+    Stack Reference cell corrected to match actual, already-shipped
+    usage is a wording clarification, not a new or redefined principle;
+    no Core Principle is touched, no binding constraint added or
+    relaxed.
+- Added principles: none
+- Added sections: none
+- Removed sections: none
+- Deferred TODOs: none
+-->
+
+<!--
+Sync Impact Report (2.4.1, superseded above)
 - Version change: 2.4.0 → 2.4.1
 - Modified principles: none
 - Modified sections:
@@ -450,8 +486,8 @@ requires amending this constitution first:
 | Build | Vite, TypeScript (ES2022 target); React not yet adopted — arrives with whichever feature first needs it, styled with Tailwind CSS + shadcn/ui (Radix UI primitives), icons via `lucide-react` |
 | Query — browser | DuckDB-WASM in a Web Worker |
 | Query — offline | Python DuckDB (`uv run`) |
-| Charts — default | Plotly.js |
-| Charts — reactive inputs | Observable Plot (`@observablehq/plot`) |
+| Charts — default | Observable Plot (`@observablehq/plot`) — `057-observable-plot-conversion` moved every real demo bar/distribution chart off Plotly.js/Recharts onto it; both remain registered, supported panel types (`plotly`/`recharts`), just no longer used by real demo content |
+| Charts — Sankey | D3 (`d3-sankey`) — no genuine Observable Plot Sankey support exists (no mark/transform, no documented composition pattern, an unresolved upstream request since 2022) |
 | Explore tab | Graphic Walker (`<GraphicWalker>` component, rendered directly in this app's own React tree — not `embedGraphicWalker`) |
 | Maps | MapLibre GL (never Mapbox) |
 | O-D flows | `@flowmap.gl/layers` + `@deck.gl/mapbox` (`MapboxOverlay`) |
@@ -508,4 +544,4 @@ forbidden config files, no Mapbox/Webpack/Web Storage usage. Any exception
 requires a
 prior amendment to this document, not a one-off waiver in review.
 
-**Version**: 2.4.1 | **Ratified**: 2026-08-19 | **Last Amended**: 2026-09-03
+**Version**: 2.4.2 | **Ratified**: 2026-08-19 | **Last Amended**: 2026-09-15

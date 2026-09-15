@@ -4,23 +4,13 @@ import 'maplibre-gl/dist/maplibre-gl.css'
 import { Map as MapIcon } from 'lucide-react'
 
 import { query } from '@/services/duckdb'
-import * as sqlExpander from '@/services/sqlExpander'
-import * as filterState from '@/state/filterState'
 import { useFilterState } from '@/hooks/useFilterState'
 import { useActiveScenarios } from '@/hooks/useActiveScenarios'
 import { useBaseline } from '@/hooks/useBaseline'
 import { useGlobalBasemap } from '@/hooks/useGlobalBasemap'
 import { useProtomapsSource } from '@/hooks/useProtomapsSource'
 import { ensureRegistered } from '@/services/tabDataLoader'
-import {
-  buildComparisonDiffQuery,
-  buildPanelQuery,
-  isComparisonDiff,
-  resolveActiveScenarios,
-  resolveComparisonScenarioName,
-  extractGlobalFilterIds,
-  EMPTY_SUMMARIZE_CONFIG,
-} from '@/panels/panelQuery'
+import { resolveQueryAndPairs, isComparisonDiff, extractGlobalFilterIds } from '@/panels/panelQuery'
 import { loadZoneGeometry, type ZoneGeometry } from '@/panels/zoneGeometry'
 import { computeGeometryBounds } from '@/panels/mapBounds'
 import { computeAutoDomain, resolveZoneFillColor, resolveZoneHeightFraction } from '@/panels/zonemapColor'
@@ -206,53 +196,40 @@ export function ZoneMapPanel({ config }: { config: ZoneMapPanelConfig }) {
   // long-lived event-handler closure instead.
   const [layerRepopulateGeneration, setLayerRepopulateGeneration] = useState(0)
 
-  // 1. Data fetch — routes through buildComparisonDiffQuery() (no
-  // sqlExpander involved — that query has no $filters/$scenario
-  // placeholders to expand, research.md §7) when config.comparison is
-  // the diff shape; otherwise identical to every other data-bound panel
-  // type. 019-baseline-diff-consumption: buildComparisonDiffQuery() is
-  // now the generalized, shared version (panelQuery.ts) — this is the
-  // reference migration every other panel type's own wiring mirrors
-  // (research.md §7). A '$baseline' sentinel on either side of
-  // config.comparison is resolved via resolveComparisonScenarioName()
-  // BEFORE the query is built; an unresolved baseline shows the panel's
-  // existing error state directly, never attempting a query built from
-  // an undefined scenario name (FR-011).
+  // 1. Data fetch — resolves either the comparison: diff shape or an
+  // ordinary $scenario query via resolveQueryAndPairs() (panelQuery.ts,
+  // 060-codebase-cleanup-audit), the same shared helper every other
+  // data-bound, comparison-capable panel type now calls. A '$baseline'
+  // sentinel on either side of config.comparison is resolved BEFORE the
+  // query is built; an unresolved baseline shows the panel's existing
+  // error state directly, never attempting a query built from an
+  // undefined scenario name (FR-011).
   useEffect(() => {
     let cancelled = false
     setStatus('loading')
 
-    let sql: string
-    let pairs: { scenario: string; metric: string }[]
-    if (isComparisonDiff(config.comparison)) {
-      const diff = config.comparison
-      const resolvedA = resolveComparisonScenarioName(diff.a, baseline)
-      const resolvedB = resolveComparisonScenarioName(diff.b, baseline)
-      if (resolvedA === undefined || resolvedB === undefined) {
-        setStatus('error')
-        return
-      }
-      sql = buildComparisonDiffQuery(
-        config.metric,
-        resolvedA,
-        resolvedB,
-        config.compare_on ?? [config.metric_id],
-        diff.expr,
-      )
-      pairs = [
-        { scenario: resolvedA, metric: config.metric },
-        { scenario: resolvedB, metric: config.metric },
-      ]
-    } else {
-      const resolvedScenarios = resolveActiveScenarios(config, activeScenarioNames)
-      sql = sqlExpander.expand(
-        buildPanelQuery(config, filters),
-        EMPTY_SUMMARIZE_CONFIG,
-        filterState,
-        resolvedScenarios,
-      )
-      pairs = resolvedScenarios.map((scenario) => ({ scenario, metric: config.metric }))
+    // 060-codebase-cleanup-audit (Finding 1): resolveQueryAndPairs()
+    // (panelQuery.ts) is the shared comparison-diff/ordinary-query
+    // resolution every comparison-capable panel type's fetch effect now
+    // calls — replaces the ~20-line isComparisonDiff()/
+    // buildComparisonDiffQuery()/resolveComparisonScenarioName() block
+    // this file's own comment above says every other panel type's own
+    // wiring mirrors (see that function's own doc comment for the full
+    // story). ZoneMapPanel is the one caller that supplies its own
+    // compare_on default — `[config.metric_id]`, not the other panel
+    // types' `[]` — passed in already-resolved.
+    const resolved = resolveQueryAndPairs(
+      config,
+      filters,
+      activeScenarioNames,
+      baseline,
+      config.compare_on ?? [config.metric_id],
+    )
+    if ('error' in resolved) {
+      setStatus('error')
+      return
     }
+    const { sql, pairs } = resolved
 
     // 056-lazy-tab-scoped-loading: see dashboardRenderer.tsx's own
     // comment — a no-op when already loaded/in-flight, a real await

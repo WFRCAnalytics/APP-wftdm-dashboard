@@ -5,22 +5,12 @@ import { Bar, BarChart, Line, LineChart, Area, AreaChart, CartesianGrid, XAxis }
 import '@/panels/rechartsPanel.css'
 
 import { query } from '@/services/duckdb'
-import * as sqlExpander from '@/services/sqlExpander'
-import * as filterState from '@/state/filterState'
 import { useFilterState } from '@/hooks/useFilterState'
 import { useActiveScenarios } from '@/hooks/useActiveScenarios'
 import { useBaseline } from '@/hooks/useBaseline'
 import { useScenarioDisplay } from '@/hooks/useScenarioDisplay'
 import { ensureRegistered } from '@/services/tabDataLoader'
-import {
-  buildComparisonDiffQuery,
-  buildPanelQuery,
-  isComparisonDiff,
-  resolveActiveScenarios,
-  resolveComparisonScenarioName,
-  extractGlobalFilterIds,
-  EMPTY_SUMMARIZE_CONFIG,
-} from '@/panels/panelQuery'
+import { resolveQueryAndPairs, extractGlobalFilterIds } from '@/panels/panelQuery'
 import { encodeRechartsData } from '@/panels/rechartsEncoding'
 import {
   ChartContainer,
@@ -122,27 +112,25 @@ export function RechartsPanel({ config }: { config: RechartsPanelConfig }) {
       return
     }
 
-    let sql: string
-    let pairs: { scenario: string; metric: string }[]
-    if (isComparisonDiff(config.comparison)) {
-      const diff = config.comparison
-      const resolvedA = resolveComparisonScenarioName(diff.a, baseline)
-      const resolvedB = resolveComparisonScenarioName(diff.b, baseline)
-      if (resolvedA === undefined || resolvedB === undefined) {
-        setStatus('error')
-        return
-      }
-      sql = buildComparisonDiffQuery(config.metric, resolvedA, resolvedB, config.compare_on ?? [], diff.expr)
-      pairs = [
-        { scenario: resolvedA, metric: config.metric },
-        { scenario: resolvedB, metric: config.metric },
-      ]
-    } else {
-      const template = buildPanelQuery(config, filters)
-      const activeScenarios = resolveActiveScenarios(config, activeScenarioNames)
-      sql = sqlExpander.expand(template, EMPTY_SUMMARIZE_CONFIG, filterState, activeScenarios)
-      pairs = activeScenarios.map((scenario) => ({ scenario, metric: config.metric }))
+    // 060-codebase-cleanup-audit (Finding 1): resolveQueryAndPairs()
+    // (panelQuery.ts) is the shared comparison-diff/ordinary-query
+    // resolution every comparison-capable panel type's fetch effect now
+    // calls — replaces the ~20-line isComparisonDiff()/
+    // buildComparisonDiffQuery()/resolveComparisonScenarioName() block
+    // this file used to duplicate inline (see that function's own doc
+    // comment for the full story).
+    const resolved = resolveQueryAndPairs(
+      config,
+      filters,
+      activeScenarioNames,
+      baseline,
+      config.compare_on ?? [],
+    )
+    if ('error' in resolved) {
+      setStatus('error')
+      return
     }
+    const { sql, pairs } = resolved
 
     // 056-lazy-tab-scoped-loading: see dashboardRenderer.tsx's own
     // comment — a no-op when already loaded/in-flight, a real await

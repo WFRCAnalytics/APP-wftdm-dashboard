@@ -173,13 +173,37 @@ export function register(name: string, metadata: ScenarioMetadata): void {
   notify()
 }
 
-export function setStatus(name: string, status: 'ready' | 'failed'): void {
+/**
+ * 060-codebase-cleanup-audit (Finding 3): the shared look-up/throw/
+ * mutate/notify() shape every single-field scenario mutator below used to
+ * repeat inline (setStatus/setActive/setBaseline/setLabel/clearLabel/
+ * setColorOverride/clearColorOverride/setFailedFiles/setAvailableMetrics —
+ * 9 near-identical copies). `callerLabel` reproduces each function's own
+ * exact `appState.<name>: "..." was never registered` error text, so this
+ * extraction changes no observable behavior — same lookup, same thrown
+ * message, same notify() call, same per-field mutation, just written once.
+ * `fn` receives the found entry so it can mutate it directly (setBaseline
+ * below doesn't touch the entry at all — it only needs the existence
+ * check — and ignores the parameter).
+ *
+ * Deliberately NOT used by reorderScenario()/moveScenario()/register()/
+ * unregister()/getBaseline() — each has a genuinely different body (a
+ * whole-list re-sequence, multi-field construction, cross-field cleanup,
+ * or no mutation at all), not this shape.
+ */
+function mutateScenario(name: string, callerLabel: string, fn: (entry: Scenario) => void): void {
   const entry = scenarios.get(name)
   if (!entry) {
-    throw new Error(`appState.setStatus: "${name}" was never registered`)
+    throw new Error(`appState.${callerLabel}: "${name}" was never registered`)
   }
-  entry.status = status
+  fn(entry)
   notify()
+}
+
+export function setStatus(name: string, status: 'ready' | 'failed'): void {
+  mutateScenario(name, 'setStatus', (entry) => {
+    entry.status = status
+  })
 }
 
 /**
@@ -188,12 +212,9 @@ export function setStatus(name: string, status: 'ready' | 'failed'): void {
  * here (see contracts/app-state.md).
  */
 export function setActive(name: string, active: boolean): void {
-  const entry = scenarios.get(name)
-  if (!entry) {
-    throw new Error(`appState.setActive: "${name}" was never registered`)
-  }
-  entry.active = active
-  notify()
+  mutateScenario(name, 'setActive', (entry) => {
+    entry.active = active
+  })
 }
 
 export function get(name: string): Scenario | undefined {
@@ -241,12 +262,9 @@ export function unregister(name: string): void {
  * other mutator here regardless of whether the value actually changed.
  */
 export function setBaseline(name: string): void {
-  const entry = scenarios.get(name)
-  if (!entry) {
-    throw new Error(`appState.setBaseline: "${name}" was never registered`)
-  }
-  explicitBaseline = name
-  notify()
+  mutateScenario(name, 'setBaseline', () => {
+    explicitBaseline = name
+  })
 }
 
 /**
@@ -344,22 +362,16 @@ export function moveScenario(name: string, direction: 'up' | 'down'): void {
  * unregistered name, matching every other mutator here.
  */
 export function setLabel(name: string, label: string): void {
-  const entry = scenarios.get(name)
-  if (!entry) {
-    throw new Error(`appState.setLabel: "${name}" was never registered`)
-  }
-  entry.label = label
-  notify()
+  mutateScenario(name, 'setLabel', (entry) => {
+    entry.label = label
+  })
 }
 
 /** 020-settings-modal: clears a scenario's custom label back to `undefined`. */
 export function clearLabel(name: string): void {
-  const entry = scenarios.get(name)
-  if (!entry) {
-    throw new Error(`appState.clearLabel: "${name}" was never registered`)
-  }
-  entry.label = undefined
-  notify()
+  mutateScenario(name, 'clearLabel', (entry) => {
+    entry.label = undefined
+  })
 }
 
 /**
@@ -370,24 +382,18 @@ export function clearLabel(name: string): void {
  * consumer reached through hooks/useScenarioDisplay.ts (FR-011).
  */
 export function setColorOverride(name: string, color: string): void {
-  const entry = scenarios.get(name)
-  if (!entry) {
-    throw new Error(`appState.setColorOverride: "${name}" was never registered`)
-  }
-  entry.colorOverride = color
-  notify()
+  mutateScenario(name, 'setColorOverride', (entry) => {
+    entry.colorOverride = color
+  })
 }
 
 /** 035-scenario-label-color: clears a scenario's color override back to
  * `undefined` — its effective color reverts to the manifest `color` field
  * (or that panel type's own default cycling if that's also absent). */
 export function clearColorOverride(name: string): void {
-  const entry = scenarios.get(name)
-  if (!entry) {
-    throw new Error(`appState.clearColorOverride: "${name}" was never registered`)
-  }
-  entry.colorOverride = undefined
-  notify()
+  mutateScenario(name, 'clearColorOverride', (entry) => {
+    entry.colorOverride = undefined
+  })
 }
 
 /**
@@ -400,12 +406,9 @@ export function clearColorOverride(name: string): void {
  * other optional Scenario field.
  */
 export function setFailedFiles(name: string, failedFiles: string[]): void {
-  const entry = scenarios.get(name)
-  if (!entry) {
-    throw new Error(`appState.setFailedFiles: "${name}" was never registered`)
-  }
-  entry.failedFiles = failedFiles.length > 0 ? failedFiles : undefined
-  notify()
+  mutateScenario(name, 'setFailedFiles', (entry) => {
+    entry.failedFiles = failedFiles.length > 0 ? failedFiles : undefined
+  })
 }
 
 /**
@@ -416,10 +419,7 @@ export function setFailedFiles(name: string, failedFiles: string[]): void {
  * whether any of it has actually been registered/loaded yet.
  */
 export function setAvailableMetrics(name: string, metrics: string[]): void {
-  const entry = scenarios.get(name)
-  if (!entry) {
-    throw new Error(`appState.setAvailableMetrics: "${name}" was never registered`)
-  }
-  entry.availableMetrics = metrics
-  notify()
+  mutateScenario(name, 'setAvailableMetrics', (entry) => {
+    entry.availableMetrics = metrics
+  })
 }

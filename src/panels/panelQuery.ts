@@ -6,7 +6,10 @@
 // to services/sqlExpander.ts's expand(). See contracts/panel-query.md.
 import type { DashboardConfig } from '@/services/yamlLoader'
 import type { FilterId, FilterValue } from '@/state/filterState'
+import * as filterState from '@/state/filterState'
+import * as sqlExpander from '@/services/sqlExpander'
 import type {
+  ComparisonCapablePanelConfig,
   ComparisonDiff,
   DataBoundPanelConfigBase,
   GraphicWalkerPanelConfig,
@@ -360,4 +363,83 @@ export function buildValueBoxBaselineTrendQuery(
     `SELECT a."${column}" AS current_value, b."${column}" AS baseline_value, (${expr}) AS diff_value`,
     `FROM ${aView} a, ${bView} b`,
   ].join('\n')
+}
+
+export interface ResolvedPanelQuery {
+  sql: string
+  pairs: { scenario: string; metric: string }[]
+}
+
+/**
+ * 060-codebase-cleanup-audit (Finding 1): the shared "resolve either a
+ * comparison: diff query or an ordinary $scenario query, plus the
+ * {scenario, metric} pairs tabDataLoader.ts's ensureRegistered() needs"
+ * shape every comparison-capable panel type's own fetch effect
+ * (PlotlyPanel.tsx/TablePanel.tsx/ObservablePlotPanel.tsx/
+ * RechartsPanel.tsx/ZoneMapPanel.tsx) duplicated inline, verbatim, since
+ * 019-baseline-diff-consumption first established it — PlotlyPanel.tsx's
+ * own comment used to say so directly ("same ... shape ZoneMapPanel.tsx's
+ * own reference migration establishes"), and each later panel type
+ * copied the block forward again rather than sharing it.
+ *
+ * Unlike every other export in this file, this one DOES call
+ * sqlExpander.expand() directly — the shared "build template, then expand
+ * placeholders" step every caller already performed itself immediately
+ * after calling buildPanelQuery()/buildComparisonDiffQuery(), not a new
+ * responsibility invented here. This file's own header comment ("Does NOT
+ * expand placeholders itself — hand the result to services/sqlExpander.ts's
+ * expand()") describes every OTHER export in this file; this one is a
+ * deliberate, narrowly-scoped exception for exactly the shape that was
+ * duplicated five times over.
+ *
+ * `compareOn` is the CALLER's own already-resolved compare_on column list
+ * — every panel type but ZoneMapPanel defaults to `[]` when
+ * config.compare_on is omitted; ZoneMapPanel defaults to
+ * `[config.metric_id]` (research.md §1/§3 of 019-baseline-diff-consumption).
+ * Passing it in already-resolved keeps each panel type's own default
+ * exactly where it already lived, rather than teaching this shared
+ * function about ZoneMapPanelConfig's own metric_id field.
+ *
+ * `inputState` is optional and forwarded verbatim to sqlExpander.expand()'s
+ * own optional 5th parameter — only ObservablePlotPanel.tsx ever supplies
+ * it (007-observable-plot-panel); every other caller omits it, exactly as
+ * each did before this extraction.
+ *
+ * Returns `{ error: true }` when a '$baseline' sentinel in
+ * config.comparison doesn't currently resolve to any scenario
+ * (resolveComparisonScenarioName() returning undefined for either side) —
+ * the CALLER is responsible for its own setStatus('error')-and-return,
+ * exactly as each panel already did inline (FR-011); this function never
+ * touches React state itself.
+ */
+export function resolveQueryAndPairs(
+  config: DataBoundPanelConfigBase & ComparisonCapablePanelConfig,
+  filters: Record<FilterId, FilterValue>,
+  activeScenarioNames: string[],
+  baseline: string | undefined,
+  compareOn: string[],
+  inputState?: sqlExpander.FilterStateLike,
+): ResolvedPanelQuery | { error: true } {
+  if (isComparisonDiff(config.comparison)) {
+    const diff = config.comparison
+    const resolvedA = resolveComparisonScenarioName(diff.a, baseline)
+    const resolvedB = resolveComparisonScenarioName(diff.b, baseline)
+    if (resolvedA === undefined || resolvedB === undefined) {
+      return { error: true }
+    }
+    return {
+      sql: buildComparisonDiffQuery(config.metric, resolvedA, resolvedB, compareOn, diff.expr),
+      pairs: [
+        { scenario: resolvedA, metric: config.metric },
+        { scenario: resolvedB, metric: config.metric },
+      ],
+    }
+  }
+  const template = buildPanelQuery(config, filters)
+  const activeScenarios = resolveActiveScenarios(config, activeScenarioNames)
+  const sql = sqlExpander.expand(template, EMPTY_SUMMARIZE_CONFIG, filterState, activeScenarios, inputState)
+  return {
+    sql,
+    pairs: activeScenarios.map((scenario) => ({ scenario, metric: config.metric })),
+  }
 }

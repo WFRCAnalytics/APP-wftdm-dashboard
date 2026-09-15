@@ -3,23 +3,13 @@ import * as Plot from '@observablehq/plot'
 import { ChartNoAxesColumn } from 'lucide-react'
 
 import { query, distinctValues } from '@/services/duckdb'
-import * as sqlExpander from '@/services/sqlExpander'
-import * as filterState from '@/state/filterState'
 import { useFilterState } from '@/hooks/useFilterState'
 import { useActiveScenarios } from '@/hooks/useActiveScenarios'
 import { useBaseline } from '@/hooks/useBaseline'
 import { useScenarioDisplay } from '@/hooks/useScenarioDisplay'
 import { useColorScheme } from '@/hooks/useColorScheme'
 import { ensureRegistered } from '@/services/tabDataLoader'
-import {
-  buildComparisonDiffQuery,
-  buildPanelQuery,
-  isComparisonDiff,
-  resolveActiveScenarios,
-  resolveComparisonScenarioName,
-  extractGlobalFilterIds,
-  EMPTY_SUMMARIZE_CONFIG,
-} from '@/panels/panelQuery'
+import { resolveQueryAndPairs, resolveActiveScenarios, extractGlobalFilterIds } from '@/panels/panelQuery'
 import { resolveObservablePlotEncoding } from '@/panels/observablePlotEncoding'
 import { PanelEmptyState } from '@/panels/PanelEmptyState'
 import { PanelErrorState } from '@/panels/PanelErrorState'
@@ -131,44 +121,32 @@ export function ObservablePlotPanel({ config }: { config: ObservablePlotPanelCon
     let cancelled = false
     setStatus('loading')
 
-    // 019-baseline-diff-consumption: same isComparisonDiff()/
-    // buildComparisonDiffQuery()/resolveComparisonScenarioName() shape
-    // ZoneMapPanel.tsx's own reference migration establishes — a
-    // '$baseline' sentinel on either side is resolved BEFORE the query is
-    // built; an unresolved baseline shows this panel's existing error
-    // state directly, never attempting a doomed query (FR-011).
-    let sql: string
-    let pairs: { scenario: string; metric: string }[]
-    if (isComparisonDiff(config.comparison)) {
-      const diff = config.comparison
-      const resolvedA = resolveComparisonScenarioName(diff.a, baseline)
-      const resolvedB = resolveComparisonScenarioName(diff.b, baseline)
-      if (resolvedA === undefined || resolvedB === undefined) {
-        setStatus('error')
-        return
-      }
-      // config.compare_on is required for comparison: diff on this panel
-      // type (no zonemap-style metric_id default — research.md §1/§3);
-      // an omitted compare_on is a config-authoring error, surfacing the
-      // same defined way as any other missing-required-field
-      // misconfiguration (spec.md Edge Cases).
-      sql = buildComparisonDiffQuery(config.metric, resolvedA, resolvedB, config.compare_on ?? [], diff.expr)
-      pairs = [
-        { scenario: resolvedA, metric: config.metric },
-        { scenario: resolvedB, metric: config.metric },
-      ]
-    } else {
-      const template = buildPanelQuery(config, filters)
-      const resolvedScenarios = resolveActiveScenarios(config, activeScenarios)
-      sql = sqlExpander.expand(
-        template,
-        EMPTY_SUMMARIZE_CONFIG,
-        filterState,
-        resolvedScenarios,
-        inputState, // 5th param — research.md §2 (007-observable-plot-panel)
-      )
-      pairs = resolvedScenarios.map((scenario) => ({ scenario, metric: config.metric }))
+    // 060-codebase-cleanup-audit (Finding 1): resolveQueryAndPairs()
+    // (panelQuery.ts) is the shared comparison-diff/ordinary-query
+    // resolution every comparison-capable panel type's fetch effect now
+    // calls — replaces the ~20-line isComparisonDiff()/
+    // buildComparisonDiffQuery()/resolveComparisonScenarioName() block
+    // this file used to duplicate inline (see that function's own doc
+    // comment for the full story). A '$baseline' sentinel on either side
+    // of config.comparison is still resolved BEFORE any query is built;
+    // an unresolved baseline still shows this panel's existing error
+    // state directly, never attempting a doomed query (FR-011). `inputState`
+    // is this panel type's own 6th argument — forwarded verbatim to
+    // sqlExpander.expand()'s own optional 5th parameter (research.md §2 of
+    // 007-observable-plot-panel); every other panel type omits it.
+    const resolved = resolveQueryAndPairs(
+      config,
+      filters,
+      activeScenarios,
+      baseline,
+      config.compare_on ?? [],
+      inputState,
+    )
+    if ('error' in resolved) {
+      setStatus('error')
+      return
     }
+    const { sql, pairs } = resolved
 
     // 056-lazy-tab-scoped-loading: see dashboardRenderer.tsx's own
     // comment — a no-op when already loaded/in-flight, a real await
