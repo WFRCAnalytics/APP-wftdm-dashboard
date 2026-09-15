@@ -404,6 +404,36 @@ export function BasemapTab() {
   // valid-PMTiles-archive URL rejects the same way an unreachable one
   // does — both are "this source doesn't work," never a silent
   // fallback (contracts/basemap-tab-ui.md).
+  //
+  // Real, confirmed investigation (this session, live against the actual
+  // deployed site): a URL that's reachable and CORS-open from one origin
+  // can still fail here purely because the hosting server doesn't grant
+  // CORS access to THIS app's own origin — confirmed directly against
+  // https://latest.protomaps.com/v4.pmtiles, which genuinely works end
+  // to end (validates, resolves a style, renders real tiles) from a
+  // localhost dev origin, and fails with a browser-level CORS block
+  // (`Access to fetch at '...' from origin '...' has been blocked by
+  // CORS policy: No 'Access-Control-Allow-Origin' header is present`)
+  // from this app's real production origin. Two real, confirmed, and
+  // deliberately narrow fixes follow from that:
+  //
+  // 1. The catch below used to be a bare `catch { }` — the real thrown
+  //    error was discarded entirely, unseen, which is exactly why this
+  //    investigation needed a live browser reproduction instead of a
+  //    two-second console check. Logging it costs nothing and helps the
+  //    next person debugging a rejected URL.
+  // 2. The message no longer implies "check the URL" is the likely fix —
+  //    a CORS-blocked fetch() and a genuinely broken/unreachable URL are
+  //    NOT distinguishable from caught JS error content; browsers
+  //    deliberately never expose the specific CORS-block reason to page
+  //    script (a security boundary, confirmed directly — only the
+  //    browser's own devtools console prints that string, never
+  //    anything this catch block can read). Naming both real
+  //    possibilities honestly, instead of guessing one, is the correct
+  //    fix given that real constraint — there is no way to detect or
+  //    route around the CORS block itself from here, consistent with
+  //    Protomaps' own documented guidance to copy a tileset to your own
+  //    storage rather than hotlink it.
   async function handleCommitProtomapsOverride(e: FormEvent) {
     e.preventDefault()
     const url = protomapsOverrideDraft.trim()
@@ -414,10 +444,12 @@ export function BasemapTab() {
       setViewerPmtilesOverride(url)
       setProtomapsOverrideStatus({ kind: 'idle' })
       setProtomapsOverrideDraft('')
-    } catch {
+    } catch (err) {
+      console.error('Protomaps PMTiles source validation failed:', err)
       setProtomapsOverrideStatus({
         kind: 'error',
-        message: "Couldn't open this PMTiles source — check the URL and try again.",
+        message:
+          "Couldn't open this PMTiles source. This can happen if the URL is unreachable, or if the hosting server doesn't allow cross-origin access from this site.",
       })
     }
   }

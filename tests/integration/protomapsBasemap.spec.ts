@@ -285,7 +285,7 @@ test.describe('041-protomaps-pmtiles-basemap — US3: viewer session override (F
 
     await expect(page.getByTestId('protomaps-source-error')).toBeVisible()
     await expect(page.getByTestId('protomaps-source-error')).toHaveText(
-      "Couldn't open this PMTiles source — check the URL and try again.",
+      "Couldn't open this PMTiles source. This can happen if the URL is unreachable, or if the hosting server doesn't allow cross-origin access from this site.",
     )
     // Distinct from the "not configured" message — and the tiles remain
     // exactly where they were (still disabled, nothing silently applied).
