@@ -18,14 +18,23 @@ declare global {
 // reuses the SAME real, already-validated unpinned panels
 // `demoMultiScenario.spec.ts` (038) established for exactly this kind of
 // per-scenario-series check, one per real panel type: "Total Trips by
-// Mode" (recharts, `series: scenario`) and "Average Trip Distance by
-// Purpose" (plotly, `name: $scenario`) — both Summary tab — plus "Auto
-// Ownership by Household Segment" (table, unpinned, real `scenario`
-// column labeled "Scenario") and "Workplace Location Distance
+// Mode" and "Average Trip Distance by Purpose" — both Summary tab — plus
+// "Auto Ownership by Household Segment" (table, unpinned, real
+// `scenario` column labeled "Scenario") and "Workplace Location Distance
 // Distribution" (observable-plot, `fill: scenario`) — both Person &
 // Households tab. All three real demo scenarios
 // (activitysim-baseline/-density-variant/-transit-variant) auto-activate
 // by default (038) — no `?s=` param needed.
+//
+// 057-observable-plot-conversion: "Total Trips by Mode" and "Average Trip
+// Distance by Purpose" were `recharts`/`plotly` until this feature
+// converted both to `observable-plot` (contracts/panel-conversions.md).
+// None of the `getByText()` assertions below needed a locator change —
+// a scenario's label/name renders as real, visible text inside
+// Observable Plot's own swatch legend exactly as it did inside Plotly's/
+// Recharts' own legends, so a title-based text query finds it the same
+// way regardless of engine. Only the two tests' own descriptions/comments
+// (which named the specific old engine) are updated.
 
 async function boot(page: Page) {
   await page.goto('/')
@@ -54,14 +63,16 @@ async function clearLabel(page: Page, name: string) {
 }
 
 test.describe('User Story 1 - Scenario labels appear everywhere a name is shown', () => {
-  test('a labeled scenario\'s name resolves to the label in a Plotly legend', async ({ page }) => {
+  test('a labeled scenario\'s name resolves to the label in an Observable Plot legend', async ({ page }) => {
     await boot(page)
     await setLabel(page, 'activitysim-baseline', 'Preferred Alternative')
 
     const card = panelCard(page, 'Average Trip Distance by Purpose')
     await expect(card).toBeVisible()
-    // Plotly's own legend renders trace names as real, visible <text>
-    // nodes inside the plot's own legend group.
+    // Observable Plot's own swatches legend renders each category's own
+    // label as a real, visible text node (research.md §9 of
+    // 057-observable-plot-conversion) — the same "just find the text" check
+    // this test already used for Plotly's own legend text nodes.
     await expect(card.getByText('Preferred Alternative')).toBeVisible()
     // The other two real scenarios have no label set — their real names
     // still render unchanged.
@@ -69,15 +80,15 @@ test.describe('User Story 1 - Scenario labels appear everywhere a name is shown'
     await expect(card.getByText('activitysim-transit-variant', { exact: true })).toBeVisible()
   })
 
-  test('a labeled scenario\'s name resolves to the label in Recharts/Observable Plot/Table', async ({
+  test('a labeled scenario\'s name resolves to the label in Observable Plot/Table', async ({
     page,
   }) => {
     await boot(page)
     await setLabel(page, 'activitysim-baseline', 'Preferred Alternative')
 
-    const rechartsCard = panelCard(page, 'Total Trips by Mode')
-    await expect(rechartsCard).toBeVisible()
-    await expect(rechartsCard.getByText('Preferred Alternative')).toBeVisible()
+    const tripsByModeCard = panelCard(page, 'Total Trips by Mode')
+    await expect(tripsByModeCard).toBeVisible()
+    await expect(tripsByModeCard.getByText('Preferred Alternative')).toBeVisible()
 
     await gotoTab(page, 'Person & Households')
     const plotCard = panelCard(page, 'Workplace Location Distance Distribution')
@@ -136,7 +147,7 @@ test.describe('User Story 1 - Scenario labels appear everywhere a name is shown'
     await expect(card.getByText('activitysim-density-variant', { exact: true })).toBeVisible()
 
     const queryLog = await page.evaluate(() => window.__wftdm!.__debugQueryLog())
-    // The recharts panel's own real, unpinned $scenario union.
+    // The "Total Trips by Mode" panel's own real, unpinned $scenario union.
     const tripModeQueries = queryLog.filter(
       (sql) => sql.includes('trip_mode_share') && sql.includes('UNION ALL'),
     )

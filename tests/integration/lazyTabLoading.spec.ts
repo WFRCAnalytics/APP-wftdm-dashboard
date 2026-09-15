@@ -114,14 +114,14 @@ test.describe('User Story 2 - Activating a scenario after arriving on a tab', ()
     await page.waitForTimeout(1500)
 
     const chart = page.locator('text=Average Trip Distance by Purpose').locator('../..')
-    await expect(chart.locator('svg').getByText('activitysim-density-variant')).toBeVisible({ timeout: 10_000 })
+    await expect(chart.locator('.observable-plot-chart [class*="-swatches"]').getByText('activitysim-density-variant')).toBeVisible({ timeout: 10_000 })
 
     await page.evaluate(() => window.__wftdm!.appState.setActive('activitysim-density-variant', false))
-    await expect(chart.locator('svg').getByText('activitysim-density-variant')).toHaveCount(0, {
+    await expect(chart.locator('.observable-plot-chart [class*="-swatches"]').getByText('activitysim-density-variant')).toHaveCount(0, {
       timeout: 10_000,
     })
 
     await page.evaluate(() => window.__wftdm!.appState.setActive('activitysim-density-variant', true))
-    await expect(chart.locator('svg').getByText('activitysim-density-variant')).toBeVisible({ timeout: 10_000 })
+    await expect(chart.locator('.observable-plot-chart [class*="-swatches"]').getByText('activitysim-density-variant')).toBeVisible({ timeout: 10_000 })
   })
 })

@@ -13,6 +13,13 @@ declare global {
 // once. Dual-theme verified for the chart panels (standing project
 // requirement for a single-series -> multi-series change).
 //
+// 057-observable-plot-conversion: "Total Trips by Mode" and "Average Trip
+// Distance by Purpose" were `recharts`/`plotly` until this feature
+// converted both to `observable-plot` (contracts/panel-conversions.md) —
+// the dual-theme per-scenario-series test below is rewritten accordingly
+// (it originally checked three DISTINCT engines' own DOM shapes; now two
+// of its three panels share the same engine as the third).
+//
 // Isolation is done ENTIRELY with per-page `page.route()` — no on-disk
 // mutation, so no `_sharedFixtureLock` and no leak window (038 made
 // auto-activated demo scenarios leak into every concurrently-running
@@ -129,39 +136,41 @@ test.describe('038 US3 — the demo reads as a multi-scenario comparison', () =>
   })
 
   for (const dark of [false, true]) {
-    test(`unpinned plotly / recharts / observable-plot each render three per-scenario series, theme-correct (${dark ? 'dark' : 'light'})`, async ({
+    test(`three real demo panels each render three per-scenario series via Observable Plot, theme-correct (${dark ? 'dark' : 'light'})`, async ({
       page,
     }) => {
       await boot(page)
       await page.evaluate((d) => document.documentElement.classList.toggle('dark', d), dark)
 
-      // --- recharts: "Total Trips by Mode" (series: scenario), Summary tab ---
-      const rc = panelCard(page, 'Total Trips by Mode')
-      await expect(rc).toBeVisible()
+      // --- "Total Trips by Mode" (fill: scenario), Summary tab ---
+      const totalTripsCard = panelCard(page, 'Total Trips by Mode')
+      await expect(totalTripsCard).toBeVisible()
+      const totalTripsLegend = totalTripsCard.locator('.observable-plot-chart [class*="-swatches"]')
       for (const s of REAL_DEMO_SCENARIOS_INDEX) {
-        await expect(rc.getByText(s, { exact: true })).toBeVisible()
+        await expect(totalTripsLegend.getByText(s, { exact: true })).toBeVisible()
       }
       // Bars actually render, in a resolved (non-transparent) fill.
-      const rcBarFill = await rc
-        .locator('path.recharts-rectangle, .recharts-bar-rectangle path')
+      const totalTripsBarFill = await totalTripsCard
+        .locator('.observable-plot-chart svg[viewBox] rect')
         .first()
         .evaluate((el) => getComputedStyle(el as Element).fill)
-      expect(rcBarFill).not.toBe('none')
-      expect(rcBarFill).not.toBe('rgba(0, 0, 0, 0)')
+      expect(totalTripsBarFill).not.toBe('none')
+      expect(totalTripsBarFill).not.toBe('rgba(0, 0, 0, 0)')
 
-      // --- plotly: "Average Trip Distance by Purpose" (name: $scenario) ---
-      const pl = panelCard(page, 'Average Trip Distance by Purpose')
-      await expect(pl).toBeVisible()
+      // --- "Average Trip Distance by Purpose" (fill: scenario) ---
+      const avgDistanceCard = panelCard(page, 'Average Trip Distance by Purpose')
+      await expect(avgDistanceCard).toBeVisible()
+      const avgDistanceLegend = avgDistanceCard.locator('.observable-plot-chart [class*="-swatches"]')
       for (const s of REAL_DEMO_SCENARIOS_INDEX) {
-        await expect(pl.locator('.legend').getByText(s, { exact: true })).toBeVisible()
+        await expect(avgDistanceLegend.getByText(s, { exact: true })).toBeVisible()
       }
-      // Three distinct trace fill colours (one per scenario).
-      const traceFills = await pl
-        .locator('.legend .traces path')
+      // Three distinct swatch fill colours (one per scenario).
+      const swatchFills = await avgDistanceLegend
+        .locator('rect')
         .evaluateAll((els) => els.map((e) => getComputedStyle(e).fill))
-      expect(new Set(traceFills.filter(Boolean)).size).toBeGreaterThanOrEqual(3)
+      expect(new Set(swatchFills.filter(Boolean)).size).toBeGreaterThanOrEqual(3)
 
-      // --- observable-plot: "Workplace Location Distance Distribution" (fill: scenario) ---
+      // --- "Workplace Location Distance Distribution" (fill: scenario) ---
       await gotoTab(page, 'Person & Households')
       const op = panelCard(page, 'Workplace Location Distance Distribution')
       await expect(op).toBeVisible()
@@ -177,9 +186,9 @@ test.describe('038 US3 — the demo reads as a multi-scenario comparison', () =>
   }) => {
     await boot(page)
 
-    // Tab A: Summary — recharts "Total Trips by Mode".
-    const rc = panelCard(page, 'Total Trips by Mode')
-    await expect(rc.getByText('activitysim-transit-variant', { exact: true })).toBeVisible()
+    // Tab A: Summary — "Total Trips by Mode".
+    const totalTripsCard = panelCard(page, 'Total Trips by Mode')
+    await expect(totalTripsCard.getByText('activitysim-transit-variant', { exact: true })).toBeVisible()
     // A pinned KPI on the same tab — its value must survive the toggle
     // unchanged (pinned to activitysim-baseline, FR-006). Read the value
     // node specifically, not the whole card.
@@ -204,7 +213,7 @@ test.describe('038 US3 — the demo reads as a multi-scenario comparison', () =>
     // Gone from both tabs' unpinned panels.
     await expect(lu.locator('tbody tr td').filter({ hasText: 'activitysim-transit-variant' })).toHaveCount(0)
     await gotoTab(page, 'Summary')
-    await expect(rc.getByText('activitysim-transit-variant', { exact: true })).toHaveCount(0)
+    await expect(totalTripsCard.getByText('activitysim-transit-variant', { exact: true })).toHaveCount(0)
     // Pinned KPI unchanged — same value it had before the toggle.
     await expect
       .poll(async () => (await panelCard(page, 'Households').locator('.tabular-nums').first().textContent())?.trim())
@@ -214,6 +223,6 @@ test.describe('038 US3 — the demo reads as a multi-scenario comparison', () =>
     await openScenariosTab(page)
     await switchFor(page, 'activitysim-transit-variant').click()
     await page.getByRole('button', { name: /^Close$/ }).click()
-    await expect(rc.getByText('activitysim-transit-variant', { exact: true })).toBeVisible()
+    await expect(totalTripsCard.getByText('activitysim-transit-variant', { exact: true })).toBeVisible()
   })
 })

@@ -161,18 +161,39 @@ test.describe('032-six-tab-demo-content — User Story 2 (real data, honest gaps
   })
 })
 
-test.describe('032-six-tab-demo-content — User Story 3 (all ten panel types)', () => {
-  test('every one of the ten registered panel types renders at least once, real and non-empty', async ({
+// 057-observable-plot-conversion: 032-six-tab-demo-content's own original
+// success criterion here was "all ten registered panel types render real,
+// non-empty content across the six primary tabs." This feature's own
+// explicit FR-001/FR-002 (convert EVERY real Plotly/Recharts chart panel
+// in the demo content to Observable Plot, no exception carved out to
+// preserve type-coverage) deliberately supersedes that — a real,
+// confirmed, INTENTIONAL conflict found and resolved during this
+// feature's own /speckit-tasks phase (research.md §10a), not an
+// oversight. After this feature, real content on the six primary tabs
+// covers EIGHT of the ten registered types; `plotly`/`recharts` remain
+// fully supported, registered panel types — exercised for real via
+// `dashboard-8-test.yaml`'s own per-type error-state coverage
+// (`row_missing_metric`/`row_missing_metric_2`) instead of by real
+// Summary-tab data. This test is rewritten to state and prove that new,
+// correct invariant, not silently patched or deleted.
+test.describe('032-six-tab-demo-content — User Story 3 (panel type coverage)', () => {
+  test('eight of the ten registered panel types render real, non-empty content across the six primary tabs; plotly/recharts remain supported, exercised via the Test tab instead', async ({
     page,
   }) => {
     await boot(page)
 
-    // valuebox + recharts + plotly — Summary
+    // valuebox + observable-plot ×2 — Summary (both charts were
+    // recharts/plotly until 057-observable-plot-conversion converted them,
+    // contracts/panel-conversions.md)
     await clickDemoTab(page, 'Summary')
     await page.waitForTimeout(2000)
     await expect(panelCard(page, 'Households')).toBeVisible()
-    await expect(page.locator('svg path.recharts-rectangle').first()).toBeVisible({ timeout: 15_000 })
-    await expect(page.locator('.js-plotly-plot').first()).toBeVisible({ timeout: 15_000 })
+    await expect(
+      panelCard(page, 'Total Trips by Mode').locator('.observable-plot-chart svg[viewBox]'),
+    ).toBeVisible({ timeout: 15_000 })
+    await expect(
+      panelCard(page, 'Average Trip Distance by Purpose').locator('.observable-plot-chart svg[viewBox]'),
+    ).toBeVisible({ timeout: 15_000 })
 
     // table + observable-plot + markdown + graphic-walker — Person & Households
     await clickDemoTab(page, 'Person & Households')

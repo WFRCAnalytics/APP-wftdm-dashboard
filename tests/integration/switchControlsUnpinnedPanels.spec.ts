@@ -17,13 +17,23 @@ declare global {
 // already-unpinned `Scenario Split (*)` panels (deleted in T011). Reuses
 // the SAME real, already-validated unpinned panels
 // `demoMultiScenario.spec.ts` (038) established: "Total Trips by Mode"
-// (recharts) + "Average Trip Distance by Purpose" (plotly), both Summary
+// + "Average Trip Distance by Purpose", both Summary
 // tab; "Land Use / Socioeconomics by Zone" (table), Network tab; and the
 // real pinned "Households" KPI (activitysim-baseline) as the unaffected
 // reference. Kept as its own dedicated file per this migration's own
 // scoping decision — a distinct, narrowly-focused US1-mechanics check,
 // not a duplicate of demoMultiScenario.spec.ts's own broader "reads as a
 // comparison" coverage.
+//
+// 057-observable-plot-conversion: both Summary-tab panels were
+// `recharts`/`plotly` until this feature converted both to
+// `observable-plot` (contracts/panel-conversions.md) — every assertion
+// below queries by real scenario-name TEXT (`getByText`), which resolves
+// identically regardless of rendering engine (a scenario's name is a
+// real, visible text node in Observable Plot's own swatch legend, same
+// as it was in Plotly's/Recharts' own legends), so no locator needed to
+// change; only the two variable names below (`totalTripsCard`/`avgDistanceCard`)
+// are renamed for accuracy.
 
 async function boot(page: Page) {
   await page.addInitScript(() => {
@@ -68,13 +78,13 @@ test.describe('038 US1 — the Switch universally controls every unpinned panel'
       navigated = true
     })
 
-    const rechartsCard = panelCard(page, 'Total Trips by Mode')
-    const plotlyCard = panelCard(page, 'Average Trip Distance by Purpose')
+    const totalTripsCard = panelCard(page, 'Total Trips by Mode')
+    const avgDistanceCard = panelCard(page, 'Average Trip Distance by Purpose')
 
     // Baseline: all three real demo scenarios active → every unpinned
     // panel shows all three.
-    await expect(rechartsCard.getByText('activitysim-density-variant', { exact: true })).toBeVisible()
-    await expect(plotlyCard.getByText('activitysim-density-variant', { exact: true })).toBeVisible()
+    await expect(totalTripsCard.getByText('activitysim-density-variant', { exact: true })).toBeVisible()
+    await expect(avgDistanceCard.getByText('activitysim-density-variant', { exact: true })).toBeVisible()
 
     await gotoTab(page, 'Network')
     const tableCard = panelCard(page, 'Land Use / Socioeconomics by Zone')
@@ -101,11 +111,11 @@ test.describe('038 US1 — the Switch universally controls every unpinned panel'
     await page.getByRole('button', { name: /^Close$/ }).click()
 
     // Every unpinned panel drops it, immediately — on both tabs.
-    await expect(rechartsCard.getByText('activitysim-density-variant', { exact: true })).toHaveCount(0)
-    await expect(plotlyCard.getByText('activitysim-density-variant', { exact: true })).toHaveCount(0)
+    await expect(totalTripsCard.getByText('activitysim-density-variant', { exact: true })).toHaveCount(0)
+    await expect(avgDistanceCard.getByText('activitysim-density-variant', { exact: true })).toHaveCount(0)
     // The other two real scenarios are still shown everywhere.
-    await expect(rechartsCard.getByText('activitysim-baseline', { exact: true })).toBeVisible()
-    await expect(rechartsCard.getByText('activitysim-transit-variant', { exact: true })).toBeVisible()
+    await expect(totalTripsCard.getByText('activitysim-baseline', { exact: true })).toBeVisible()
+    await expect(totalTripsCard.getByText('activitysim-transit-variant', { exact: true })).toBeVisible()
 
     await gotoTab(page, 'Network')
     await expect(
@@ -122,8 +132,8 @@ test.describe('038 US1 — the Switch universally controls every unpinned panel'
       tableCard.locator('tbody tr td').filter({ hasText: 'activitysim-density-variant' }).first(),
     ).toBeVisible()
     await gotoTab(page, 'Summary')
-    await expect(rechartsCard.getByText('activitysim-density-variant', { exact: true })).toBeVisible()
-    await expect(plotlyCard.getByText('activitysim-density-variant', { exact: true })).toBeVisible()
+    await expect(totalTripsCard.getByText('activitysim-density-variant', { exact: true })).toBeVisible()
+    await expect(avgDistanceCard.getByText('activitysim-density-variant', { exact: true })).toBeVisible()
 
     // No navigation/reload happened across the whole flow.
     expect(navigated).toBe(false)

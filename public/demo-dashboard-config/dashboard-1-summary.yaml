@@ -70,35 +70,34 @@ layout:
       icon:   gauge
       width:  0.2
 
-  # Real total trips by mode (recharts) and real average trip distance by
-  # purpose (plotly) — both ★ Level-1 summaries. Unpinned (038): the
-  # dynamic `$scenario` union spans every active scenario, split per
-  # scenario by `series: scenario` / `name: $scenario`.
+  # Real total trips by mode and real average trip distance by purpose —
+  # both ★ Level-1 summaries, both observable-plot (057-observable-plot-
+  # conversion). Unpinned (038): the dynamic `$scenario` union spans every
+  # active scenario, split per scenario by `fill: scenario`.
   row_charts:
-    - type:       recharts
-      title:      Total Trips by Mode
-      metric:     trip_mode_share
-      chart_type: bar
-      x:          major_trip_mode
-      y:          share
-      series:     scenario
-      height:     400
-      width:      0.5
-
-    - type:    plotly
-      title:   Average Trip Distance by Purpose
-      metric:  trip_distance_by_purpose
+    - type:    observable-plot
+      title:   Total Trips by Mode
+      metric:  trip_mode_share
+      mark:    barY
+      x:       major_trip_mode
+      y:       share
+      fill:    scenario
+      tip:     true
+      grid:    true
       height:  400
       width:   0.5
-      traces:
-        - type: bar
-          x:    $metric.primary_purpose
-          y:    $metric.avg_distance_miles
-          name: $scenario
-      layout:
-        xaxis: { title: "Purpose" }
-        yaxis: { title: "Average Distance (straight-line miles)" }
-        showlegend: true
+
+    - type:    observable-plot
+      title:   Average Trip Distance by Purpose
+      metric:  trip_distance_by_purpose
+      mark:    barY
+      x:       primary_purpose
+      y:       avg_distance_miles
+      fill:    scenario
+      tip:     true
+      grid:    true
+      height:  400
+      width:   0.5
 
   # 040-test-suite-migration (T020) — a real, rich Methodology Notes
   # panel, richer than every other real demo markdown panel (which are

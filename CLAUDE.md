@@ -45,8 +45,8 @@ that is correct and intentional.
 | Build | Vite, TypeScript (ES2022 target) |
 | Query — browser | DuckDB-WASM in a Web Worker |
 | Query — offline | Python DuckDB (`uv run`) |
-| Charts — default | Plotly.js |
-| Charts — reactive inputs | Observable Plot (`@observablehq/plot`) |
+| Charts — default | Observable Plot (`@observablehq/plot`) — `057-observable-plot-conversion` moved every real demo bar/distribution chart off Plotly/Recharts onto it; both remain registered, supported panel types (`plotly`/`recharts`), just no longer used by the real demo content |
+| Charts — Sankey | D3 (`d3-sankey`) — confirmed no genuine Observable Plot support exists (no mark/transform, no documented composition pattern, an unresolved upstream request since 2022) |
 | Explore tab | Graphic Walker (`<GraphicWalker>` component, rendered directly — not `embedGraphicWalker`, see "Graphic Walker panel" below) |
 | Maps | MapLibre GL (NOT Mapbox) |
 | O-D flows | `@flowmap.gl/layers` + `@deck.gl/mapbox` (`MapboxOverlay`) |
@@ -5717,6 +5717,123 @@ first cross-reference this list was built from). ✅ done,
     research record, including the real empirical loader-pool sweep data
     and the pre-condition check that confirmed 028's picker was never
     actually regressed before this feature touched it.
+
+28. ✅ Observable Plot chart consolidation — six real chart panels across
+    four `public/demo-dashboard-config/*.yaml` files, previously `plotly`
+    (4) or `recharts` (2), re-authored to `type: observable-plot`:
+    Summary's "Total Trips by Mode"/"Average Trip Distance by Purpose",
+    Tour's "Non-Mandatory Tour Frequency by Purpose", Mode Choice's
+    "At-Work Subtour Mode Share by Purpose"/"Trip Mode Share by
+    Time-of-Day Period (WALK_LOC)", Trip's "Trip Departure Hour (Work
+    Trips)" — every one a `mark: barY` + `fill: scenario` (or `fill:
+    tour_mode`/`fill: primary_purpose` where the panel stays pinned to
+    one scenario) config, using `ObservablePlotPanelConfig`/
+    `resolveObservablePlotEncoding()` completely unmodified (already
+    fully sufficient, confirmed before converting anything). Zero changes
+    to `panels/panelQuery.ts`/`services/sqlExpander.ts` — every conversion
+    is a rendering-engine swap, never a query change. `panels/PlotlyPanel.tsx`/
+    `panels/RechartsPanel.tsx` and both panel types remain fully
+    registered and supported — `dashboard-8-test.yaml` (untouched, zero
+    diff) still exercises both for real via its own per-type broken-
+    metric coverage.
+
+    **Sankey stays on D3, confirmed not a gap**: directly inspected the
+    installed `@observablehq/plot` package's full source (no `sankey`
+    mark/transform anywhere), fetched Observable Plot's own official
+    `link`-mark documentation (no Sankey mention), and found a still-open,
+    unresolved upstream feature request since 2022
+    (`observablehq/plot#698`). The one real Sankey panel ("Trip Purpose to
+    Mode Flow," Mode Choice tab) is untouched — a confirmed, accepted gap,
+    not an oversight.
+
+    **No hierarchical/exotic chart type exists in real content** — a full
+    grep of every real `dashboard-*.yaml` found none; the only `chart_type:
+    pie` anywhere is `dashboard-8-test.yaml`'s own deliberately-invalid
+    test case (proving the app rejects an unsupported value), not real
+    content to convert.
+
+    **Value-box sparkline** (`panels/valueBoxSparkline.tsx`) re-implemented
+    against `@observablehq/plot` directly (`Plot.plot()`, `axis: null` on
+    both scales, explicit `height: 40`) instead of bare Recharts
+    primitives — same exported signature, same `h-10 w-full aria-hidden`
+    container, same `chart_type: 'bar' | 'line'` behavior. Reuses
+    `ObservablePlotPanel.tsx`'s own already-proven `--plot-background`
+    dark-mode fix verbatim (including its `FALLBACK_CARD` constant and
+    `useColorScheme()`-driven redraw-on-theme-flip) and its own
+    `observable-plot-chart` container class name — one consistent
+    selector convention across the whole app for "this DOM region holds
+    Observable-Plot output," rather than a second, sparkline-only class.
+    A `ResizeObserver` was added (not in the original illustrative
+    sketch) since `Plot.plot()` has no `responsive:true` equivalent and
+    the value-box's own card width isn't guaranteed stable across a
+    sidebar collapse/window resize/004-expand-dialog transition.
+
+    **Already-Observable-Plot audit**: the five panels already on this
+    engine (School/Workplace Location Distance Distribution, Joint/
+    Non-Mandatory Tour Destination Distance, Trip Destination Distance
+    Distribution) and the shared `observablePlotEncoding.ts`/
+    `ObservablePlotPanel.tsx` modules were reviewed against Observable
+    Plot's own idioms (null-filtering, per-mark-shape tooltip precision,
+    scenario label/color fallback, automatic legend) and found already
+    correct — **zero code change**, per this feature's own explicit
+    first-pass, fix-confirmed-issues-only discipline (four of the five
+    stay pinned to one scenario because their `fill` channel already
+    encodes a category breakdown; unpinning via faceting is a real,
+    available improvement left to the later, separate visual-refinement
+    effort this feature explicitly defers to, not built here).
+
+    **A real, confirmed, deliberate test-invariant supersession**:
+    `032-six-tab-demo-content`'s own "every one of the ten registered
+    panel types renders at least once, real and non-empty" test
+    (`demoContentAllPanels.spec.ts`) directly asserted `.js-plotly-plot`/
+    `svg path.recharts-rectangle` on the Summary tab — exactly the two
+    panels this feature converts. This feature's own explicit FR-001/
+    FR-002 (convert *every* real Plotly/Recharts panel, no exception
+    carved out to preserve type-coverage) deliberately supersedes that
+    prior success criterion — found and resolved during this feature's
+    own `/speckit-tasks` phase, not an oversight. Rewritten (not silently
+    patched or deleted) to state and prove the new, correct invariant:
+    real content now covers eight of the ten registered types on the six
+    primary tabs; `plotly`/`recharts` remain fully supported, exercised
+    for real via `dashboard-8-test.yaml`'s own error-state coverage
+    instead of by real Summary-tab data.
+
+    **A large, pre-existing, systemic test-infrastructure gap found (NOT
+    caused by this feature, NOT fixed here)**: the full `tests/
+    integration/` suite (375 tests) ran 240 passed / 135 failed, twice,
+    identically. Every one of the 135 failures was individually
+    triaged and confirmed pre-existing via a real `git stash` A/B against
+    a fully clean tree — each of 9 files' own failure count matched
+    exactly: `settingsModal.spec.ts`×32, `observablePlotPanel.spec.ts`×24,
+    `tablePanel.spec.ts`×23, `scenarioManager.spec.ts`×16,
+    `valueBoxPanel.spec.ts`×14, `sankeyPanel.spec.ts`×11,
+    `rechartsPanel.spec.ts`×8, `scenarioAutoActivation.spec.ts`×6,
+    `flowmapPanel.spec.ts`×1 (the last one the same already-documented
+    real-hardware-timing flake this project's own history already
+    records). Zero real regressions. Eight of those nine files share one
+    root cause: they still depend on the `tests/fixtures/dashboard-
+    config/` on-disk fixture-copy mechanism `040-test-suite-migration`
+    already retired (confirmed directly from `tests/global-setup.js`'s
+    own header comment) and were apparently never migrated — the same
+    class of gap this file's own `026`/`056` entries already recorded for
+    `flowmapPanel.spec.ts`/`zonemapPanel.spec.ts`/the original
+    `graphicWalkerPanel.spec.ts` (the first two of which are otherwise
+    fine here — `flowmapPanel.spec.ts`'s one failure is the separate,
+    already-documented flake, and `zonemapPanel.spec.ts` passed in full),
+    but at a far larger scale (8 files, ~129 tests) than previously
+    documented anywhere in this project. **Not fixed here** — a genuinely
+    separate, large test-infrastructure migration project of its own,
+    well outside a rendering-engine-conversion feature's scope; flagged
+    in full, with every file/count named, for its own future follow-up.
+    `npx tsc --noEmit` clean; `npm run test:unit` 481/481 passing,
+    unchanged (no unit-tested pure module's own behavior changed).
+
+    See `specs/057-observable-plot-conversion/` for the full spec/plan/
+    research record, including the real Observable Plot legend-DOM
+    structure finding (swatches render as a sibling of the chart `<svg>`,
+    not nested inside it — confirmed directly against the installed
+    package's own source) that several rewritten Playwright assertions
+    depend on.
 
 ---
 

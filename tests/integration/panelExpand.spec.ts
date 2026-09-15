@@ -14,8 +14,16 @@ declare global {
 // tests/fixtures/dashboard-config/ set. Real panels used throughout:
 // "Households" (Summary tab valuebox, no expand trigger by 034-metric-
 // panel-redesign's own type default) and "Average Trip Distance by
-// Purpose" (Summary tab plotly, expandable by type default — the same
+// Purpose" (Summary tab, expandable by type default — the same
 // role "Mode Share by Purpose" played in the retired fixture).
+//
+// 057-observable-plot-conversion: "Average Trip Distance by Purpose" was
+// `type: plotly` until this feature converted it to `type: observable-plot`
+// (contracts/panel-conversions.md) — every `.js-plotly-plot` locator below
+// was rewritten to `.observable-plot-chart` accordingly. The one test this
+// conversion genuinely removes coverage for (Plotly's own legend click-to-
+// toggle-trace-visibility) is deleted, not retargeted — see its own removed
+// location below for why.
 //
 // The override test ("expandable: true/false wins over its type's own
 // default") needed one real, minimal addition, not fabricated content:
@@ -56,7 +64,7 @@ function panelCard(page: Page, title: string) {
 const CHART_TITLE = 'Average Trip Distance by Purpose'
 
 test.describe('User Story 1 - Expand a panel to a large view', () => {
-  test('expand trigger opens a dialog showing the same content, for a plotly panel; a valuebox panel has no expand trigger at all', async ({
+  test('expand trigger opens a dialog showing the same content, for an observable-plot panel; a valuebox panel has no expand trigger at all', async ({
     page,
   }) => {
     await boot(page)
@@ -65,11 +73,11 @@ test.describe('User Story 1 - Expand a panel to a large view', () => {
     // expand trigger at all.
     await expect(expandTrigger(page, 'Households')).toHaveCount(0)
 
-    // plotly — unaffected by 034-metric-panel-redesign.
+    // observable-plot — unaffected by 034-metric-panel-redesign.
     await expandTrigger(page, CHART_TITLE).click()
     const dialog = page.getByRole('dialog')
     await expect(dialog).toBeVisible()
-    await expect(dialog.locator('.js-plotly-plot')).toBeVisible()
+    await expect(dialog.locator('.observable-plot-chart svg[viewBox]')).toBeVisible()
   })
 
   test('an explicit expandable: true/false override wins over its panel type\'s own default, in both directions', async ({
@@ -201,55 +209,21 @@ test.describe('User Story 1 - Expand a panel to a large view', () => {
     await expect(allDialogRoots).toHaveCount(0)
   })
 
-  test('clicking a Plotly legend entry toggles the trace and does not close the dialog', async ({
-    page,
-  }) => {
-    await boot(page)
-    await expandTrigger(page, CHART_TITLE).click()
-    const dialog = page.getByRole('dialog')
-    await expect(dialog).toBeVisible()
-
-    const legendEntry = dialog.locator('.legend .traces').first()
-    await expect(legendEntry).toBeVisible()
-
-    const dialogChart = dialog.locator('.js-plotly-plot')
-    const tracesBefore = await dialogChart.evaluate((gd) => {
-      return (gd as unknown as { data: { visible?: boolean }[] }).data.map((t) => t.visible ?? true)
-    })
-
-    // Plotly's modebar (zoom/pan/camera icons, shown on hover) floats over
-    // the same top-right corner as the legend and physically intercepts
-    // the click at the browser's own hit-testing level — `force: true`
-    // only bypasses Playwright's pre-click actionability check, it doesn't
-    // change which element the browser actually dispatches the event to,
-    // so the modebar still wins even with force. Removing it is a
-    // Plotly default-layout detail unrelated to what this test exists to
-    // check, so it's a legitimate, test-only DOM cleanup. Scoped to the
-    // DIALOG's own modebar specifically — the Summary tab has other
-    // plotly panels too, so an unscoped
-    // document.querySelector('.modebar-container') could pick a
-    // DIFFERENT (still-inline, not-yet-relocated) panel's own modebar
-    // instead of the expanded dialog's real one.
-    await dialog.evaluate((el) => el.querySelector('.modebar-container')?.remove())
-    await legendEntry.click()
-
-    // Plotly updates its internal trace state slightly after the click
-    // event fires (its own legend-click handler), so poll rather than
-    // read once immediately — reading too early would just observe the
-    // pre-click state and look like nothing happened.
-    await expect
-      .poll(async () => {
-        return dialogChart.evaluate((gd) => {
-          return (gd as unknown as { data: { visible?: boolean | 'legendonly' }[] }).data.map(
-            (t) => t.visible ?? true,
-          )
-        })
-      })
-      .not.toEqual(tracesBefore) // the legend click actually toggled something
-
-    // The specific risk this test exists for: the dialog must still be open.
-    await expect(dialog).toBeVisible()
-  })
+  // REMOVED (057-observable-plot-conversion): this test proved Plotly's own
+  // legend click-to-toggle-trace-visibility interaction on CHART_TITLE,
+  // which — per this feature's conversion — no longer renders via Plotly.
+  // Not retargeted: no real Plotly panel remains anywhere in
+  // public/demo-dashboard-config/'s real content after this feature (every
+  // one converted, per FR-001/FR-002), and Observable Plot has no built-in
+  // equivalent interaction to prove instead — confirmed during this
+  // feature's own research (spec.md's own Assumptions section records this
+  // as a disclosed, accepted first-pass trade-off, the same class of gap
+  // 029-shadcn-chart-panel's own contracts/recharts-panel.md already
+  // recorded for Recharts). The Plotly panel TYPE itself still has this
+  // capability, unaffected — rechartsPanel.spec.ts's own "an existing
+  // plotly panel's own legend click-to-toggle-trace-visibility still
+  // works" test (against a fixture-only panel, not real demo content)
+  // continues to cover the mechanism at the panel-type level.
 
   test('a modal expanded view blocks background interaction, including switching tabs — until closed', async ({
     page,
@@ -295,18 +269,18 @@ test.describe('User Story 2 - Return to the dashboard without losing panel state
     page,
   }) => {
     await boot(page)
-    await expect(panelCard(page, CHART_TITLE).locator('.js-plotly-plot')).toBeVisible()
+    await expect(panelCard(page, CHART_TITLE).locator('.observable-plot-chart svg[viewBox]')).toBeVisible()
 
     await expandTrigger(page, CHART_TITLE).click()
     const dialog = page.getByRole('dialog')
     await expect(dialog).toBeVisible()
     await expect(dialog.locator('.animate-pulse')).toHaveCount(0)
-    await expect(dialog.locator('.js-plotly-plot')).toBeVisible()
+    await expect(dialog.locator('.observable-plot-chart svg[viewBox]')).toBeVisible()
 
     await dialog.getByRole('button', { name: 'Close' }).click()
     await expect(dialog).not.toBeVisible()
     await expect(page.locator('.animate-pulse')).toHaveCount(0)
-    await expect(panelCard(page, CHART_TITLE).locator('.js-plotly-plot')).toBeVisible()
+    await expect(panelCard(page, CHART_TITLE).locator('.observable-plot-chart svg[viewBox]')).toBeVisible()
   })
 
   test('expanding and collapsing a panel never triggers an additional data query', async ({ page }) => {
@@ -314,7 +288,7 @@ test.describe('User Story 2 - Return to the dashboard without losing panel state
     // (services/duckdb.ts's __debugQueryLog) proves the real guarantee
     // (FR-008) directly, regardless of timing.
     await boot(page)
-    await expect(panelCard(page, CHART_TITLE).locator('.js-plotly-plot')).toBeVisible()
+    await expect(panelCard(page, CHART_TITLE).locator('.observable-plot-chart svg[viewBox]')).toBeVisible()
 
     const countFor = (needle: string) =>
       page.evaluate(
@@ -328,7 +302,7 @@ test.describe('User Story 2 - Return to the dashboard without losing panel state
     await expandTrigger(page, CHART_TITLE).click()
     const dialog = page.getByRole('dialog')
     await expect(dialog).toBeVisible()
-    await expect(dialog.locator('.js-plotly-plot')).toBeVisible()
+    await expect(dialog.locator('.observable-plot-chart svg[viewBox]')).toBeVisible()
 
     await dialog.getByRole('button', { name: 'Close' }).click()
     await expect(dialog).not.toBeVisible()
@@ -371,18 +345,22 @@ test.describe('User Story 3 - Charts render correctly sized inside the expanded 
     page,
   }) => {
     await boot(page)
-    const cardChart = panelCard(page, CHART_TITLE).locator('.js-plotly-plot')
+    const cardChart = panelCard(page, CHART_TITLE).locator('.observable-plot-chart svg[viewBox]')
     await expect(cardChart).toBeVisible()
     const cardBox = await cardChart.boundingBox()
     expect(cardBox).not.toBeNull()
 
     await expandTrigger(page, CHART_TITLE).click()
     const dialog = page.getByRole('dialog')
-    const dialogChart = dialog.locator('.js-plotly-plot')
+    const dialogChart = dialog.locator('.observable-plot-chart svg[viewBox]')
     await expect(dialogChart).toBeVisible()
 
-    // Give the ResizeObserver a beat to fire and Plotly.Plots.resize() to
-    // apply before measuring.
+    // Give the ResizeObserver a beat to fire and ObservablePlotPanel.tsx's
+    // own resize-triggered rebuild-and-swap (research.md §6 of
+    // 007-observable-plot-panel: Plot.plot() has no in-place update/
+    // responsive:true equivalent, unlike Plotly.react(), so a resize
+    // rebuilds a brand-new plot element rather than resizing the existing
+    // one) to apply before measuring.
     await page.waitForTimeout(300)
 
     // Height reliably grows (fixed card height vs. h-[90vh]). Width is
@@ -403,34 +381,49 @@ test.describe('User Story 3 - Charts render correctly sized inside the expanded 
   test("the chart's container DOM node identity is unchanged before and after expanding", async ({
     page,
   }) => {
+    // 057-observable-plot-conversion: the marker is set on
+    // `.observable-plot-chart` — the panel's own React-rendered container
+    // div (ObservablePlotPanel.tsx's `containerRef`) — NOT on the inner
+    // `svg[viewBox]`. Confirmed against that component's own source
+    // (research.md of 007-observable-plot-panel, and this feature's own
+    // research.md §6): unlike Plotly's `.js-plotly-plot` div (which
+    // Plotly.js itself creates once and updates in place via
+    // `Plotly.react()`), `Plot.plot()` returns a brand-new detached SVG/
+    // figure element on every draw, which ObservablePlotPanel.tsx removes
+    // and re-appends INSIDE the stable container div — so the svg itself
+    // has no persistent identity to prove here, but the container div
+    // (rendered once by this component instance's own JSX, relocated as a
+    // whole by the same portal mechanism panelExpandHost.tsx already
+    // proves generically for every panel type) does.
     await boot(page)
-    const cardChart = panelCard(page, CHART_TITLE).locator('.js-plotly-plot')
+    const cardChart = panelCard(page, CHART_TITLE).locator('.observable-plot-chart')
     await expect(cardChart).toBeVisible()
     await cardChart.evaluate((el) => el.setAttribute('data-preexpand-identity', 'same-node'))
 
     await expandTrigger(page, CHART_TITLE).click()
     const dialog = page.getByRole('dialog')
-    await expect(dialog.locator('.js-plotly-plot')).toBeVisible()
+    await expect(dialog.locator('.observable-plot-chart svg[viewBox]')).toBeVisible()
 
     // Exactly one chart container carries the marker set before expanding
-    // (unique regardless of how many total .js-plotly-plot divs exist on
-    // the page) — proof of relocation, not remount — and it's now inside
-    // the dialog specifically, not still in the (now-hidden) inline card.
-    await expect(page.locator('.js-plotly-plot[data-preexpand-identity="same-node"]')).toHaveCount(1)
-    await expect(dialog.locator('.js-plotly-plot[data-preexpand-identity="same-node"]')).toHaveCount(1)
+    // (unique regardless of how many total .observable-plot-chart divs
+    // exist on the page) — proof of relocation, not remount — and it's now
+    // inside the dialog specifically, not still in the (now-hidden) inline
+    // card.
+    await expect(page.locator('.observable-plot-chart[data-preexpand-identity="same-node"]')).toHaveCount(1)
+    await expect(dialog.locator('.observable-plot-chart[data-preexpand-identity="same-node"]')).toHaveCount(1)
   })
 
   test('collapsing an expanded chart panel returns it to correct card-sized rendering', async ({
     page,
   }) => {
     await boot(page)
-    const cardChart = panelCard(page, CHART_TITLE).locator('.js-plotly-plot')
+    const cardChart = panelCard(page, CHART_TITLE).locator('.observable-plot-chart svg[viewBox]')
     await expect(cardChart).toBeVisible()
     const cardBoxBefore = await cardChart.boundingBox()
 
     await expandTrigger(page, CHART_TITLE).click()
     const dialog = page.getByRole('dialog')
-    await expect(dialog.locator('.js-plotly-plot')).toBeVisible()
+    await expect(dialog.locator('.observable-plot-chart svg[viewBox]')).toBeVisible()
 
     await dialog.getByRole('button', { name: 'Close' }).click()
     await expect(dialog).not.toBeVisible()

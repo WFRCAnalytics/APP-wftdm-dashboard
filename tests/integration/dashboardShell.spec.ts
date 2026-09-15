@@ -109,22 +109,31 @@ test.describe('User Story 2 - An analyst sees a real number, computed from real 
 })
 
 test.describe('User Story 3 - An analyst sees a real, filter-reactive chart', () => {
-  test('a plotly panel renders real data from real ActivitySim scenarios', async ({ page }) => {
+  // 057-observable-plot-conversion: this panel was `type: plotly` until
+  // this feature converted it to `type: observable-plot` (contracts/
+  // panel-conversions.md) — the query/data it renders is byte-for-byte
+  // unchanged (FR-005), only the rendering engine differs.
+  test('an observable-plot panel renders real data from real ActivitySim scenarios', async ({ page }) => {
     await page.goto('/')
     await page.waitForFunction(() => window.__wftdm !== undefined, null, { timeout: 30_000 })
-    // Real Summary-tab plotly panel: "Average Trip Distance by Purpose"
-    // (trip_distance_by_purpose, unpinned — a real multi-scenario union
-    // per 038-all-loaded-scenarios, one trace per active scenario).
+    // Real Summary-tab observable-plot panel: "Average Trip Distance by
+    // Purpose" (trip_distance_by_purpose, unpinned — a real multi-scenario
+    // union per 038-all-loaded-scenarios, one fill category per active
+    // scenario, per the panel's own `fill: scenario` config).
     const plotlyCard = page.getByText('Average Trip Distance by Purpose', { exact: true }).locator('..').locator('..')
-    await expect(plotlyCard.locator('.js-plotly-plot')).toBeVisible({ timeout: 10_000 })
+    await expect(plotlyCard.locator('.observable-plot-chart svg[viewBox]')).toBeVisible({ timeout: 10_000 })
 
-    const traceCount = await plotlyCard.locator('.js-plotly-plot').evaluate((gd) => {
-      return (gd as unknown as { data: unknown[] }).data.length
-    })
     // 3 real active demo scenarios (activitysim-baseline/-density-variant/
-    // -transit-variant) — one trace each, per the panel's own `name:
-    // $scenario` trace config.
-    expect(traceCount).toBe(3)
+    // -transit-variant) — one legend swatch entry each, per the panel's
+    // own `fill: scenario` config (observablePlotPanel.spec.ts's own
+    // established "assert real category labels by name" convention,
+    // preferred here over counting anonymous DOM nodes whose exact markup
+    // isn't part of Plot's own public contract).
+    const legend = plotlyCard.locator('.observable-plot-chart [class*="-swatches"]')
+    await expect(legend).toBeVisible()
+    await expect(legend).toContainText('activitysim-baseline')
+    await expect(legend).toContainText('activitysim-density-variant')
+    await expect(legend).toContainText('activitysim-transit-variant')
 
     // 040-test-suite-migration: the retired fixture test also exercised
     // `$filters.purpose` global-filter reactivity (a filter change
@@ -144,40 +153,39 @@ test.describe('User Story 3 - An analyst sees a real, filter-reactive chart', ()
     // dedicated dashboard-8-test.yaml row) rather than fabricated here.
   })
 
-  // Real bug found live (015-theme-toggle): Plotly.js's own default
-  // paper_bgcolor/plot_bgcolor is opaque white and font.color/gridcolor
-  // default to a fixed dark gray — none of it theme-aware on its own —
-  // so every Plotly panel showed a bright white card in dark mode.
-  // PlotlyPanel.tsx now resolves paper/plot background to fully
-  // transparent (letting the card's own bg-card show through) and
-  // font/gridline colors from the real --foreground/--border tokens via
-  // getComputedStyle, re-applied on a theme change with no extra query
-  // (a second, theme-only effect reusing the last-fetched traces).
-  test('a plotly panel matches the app theme in dark mode — transparent background, real token colors, no re-query', async ({
+  // 057-observable-plot-conversion: rewritten for the same panel's new
+  // engine. The bug this test originally guarded (PlotlyPanel.tsx's own
+  // 015-theme-toggle fix) doesn't apply to Observable Plot's own,
+  // separately-proven dark-mode fix — @observablehq/plot's generated SVG
+  // hardcodes `--plot-background: white` (confirmed directly against the
+  // installed package's source, research.md §8), which ObservablePlotPanel.tsx
+  // already overrides with the real, current `--card` token via
+  // getComputedStyle(), applied directly to the chart <svg> as an inline
+  // style (src/panels/ObservablePlotPanel.tsx). This test proves that
+  // fix live rather than merely trusting the source comment.
+  test('an observable-plot panel matches the app theme in dark mode — real --card token, no re-query', async ({
     page,
   }) => {
     await page.goto('/')
     await page.waitForFunction(() => window.__wftdm !== undefined, null, { timeout: 30_000 })
     const plotlyCard = page.getByText('Average Trip Distance by Purpose', { exact: true }).locator('..').locator('..')
-    await expect(plotlyCard.locator('.js-plotly-plot')).toBeVisible({ timeout: 10_000 })
+    const svg = plotlyCard.locator('.observable-plot-chart svg[viewBox]')
+    await expect(svg).toBeVisible({ timeout: 10_000 })
 
     const queryCountBefore = await page.evaluate(() => window.__wftdm!.__debugQueryLog().length)
 
     await page.evaluate(() => document.documentElement.classList.add('dark'))
     await page.waitForTimeout(300)
 
-    const styles = await plotlyCard.locator('.js-plotly-plot .bg').first().evaluate((el) => {
-      const cs = getComputedStyle(el)
-      return { fillOpacity: cs.fillOpacity }
-    })
-    expect(styles.fillOpacity).toBe('0') // fully transparent — the card's own bg-card shows through
+    // 033-shadcn-default-theme: --card dark is #171717 (tokens.css).
+    const plotBackground = await svg.evaluate((el) => getComputedStyle(el).getPropertyValue('--plot-background').trim())
+    expect(plotBackground).toBe('#171717')
 
-    const tickFill = await plotlyCard
-      .locator('.js-plotly-plot .xtick text')
-      .first()
-      .evaluate((el) => getComputedStyle(el).fill)
-    // 033-shadcn-default-theme: --foreground dark is #fafafa.
-    expect(tickFill).toBe('rgb(250, 250, 250)') // --foreground in dark mode
+    // Text (axis ticks, legend labels) inherits currentColor from the
+    // app's own text-foreground class — no separate fix needed for it,
+    // confirmed by ObservablePlotPanel.tsx's own header comment; not
+    // re-asserted here since it was never the bug this file's own prior
+    // Plotly-specific version guarded.
 
     // A theme flip must not re-query DuckDB-WASM — only colors change.
     await page.waitForTimeout(300)

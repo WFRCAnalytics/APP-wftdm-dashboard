@@ -20,9 +20,9 @@ declare global {
 // (also gone — reading it directly, as this file's own original
 // `bootWithScenarioPalette()` did, would throw). Reuses
 // scenarioLabelDisplay.spec.ts's own real, already-validated panels:
-// "Average Trip Distance by Purpose" (plotly, Summary tab) for every
-// swatch/legend check, and "Total Trips by Mode" (recharts)/"Workplace
-// Location Distance Distribution" (observable-plot) for the cross-type
+// "Average Trip Distance by Purpose" (Summary tab) for every
+// swatch/legend check, and "Total Trips by Mode"/"Workplace
+// Location Distance Distribution" for the cross-type
 // rendering check. `scenarioPalette` is injected via `page.route()`
 // directly on the REAL `dashboard-config/index.json` endpoint (the
 // primary root — empty/gitignored in this dev/test environment, exactly
@@ -46,16 +46,25 @@ function panelCard(page: Page, title: string) {
   return page.getByText(title, { exact: true }).locator('..').locator('..')
 }
 
-// Plotly's own real legend DOM (confirmed via direct live inspection, not
-// guessed): one <g class="traces"> per trace, containing both its
-// <text class="legendtext"> label AND its own marker <path> (fill color
-// in the path's own inline style) as SIBLING descendants of the same
-// <g class="traces">.
+// 057-observable-plot-conversion: rewritten for Observable Plot's own
+// real legend DOM (confirmed via direct read of the installed
+// @observablehq/plot package's source, node_modules/@observablehq/plot/
+// src/legends/swatches.js — not guessed). With no `columns` option set
+// (observablePlotEncoding.ts's plotOptions.color = {legend: true} never
+// sets one), legendItems() renders one <span class="<hash>-swatch"> per
+// category inside a <div class="<hash>-swatches <hash>-swatches-wrap">,
+// each swatch containing a small <svg fill="<color>"><rect .../></svg>
+// immediately followed by a text node with the category's own label —
+// swatch and label are SIBLINGS inside the same <span>, matching the
+// shape the original Plotly helper's own doc comment described for
+// <g class="traces">. `[class$="-swatch"]` (ends-with, not `*=`) is
+// deliberate: the container's own classes end in "-swatches"/"-wrap",
+// which a substring match would incorrectly also match.
 function legendSwatchFill(card: ReturnType<typeof panelCard>, scenarioText: string) {
   return card
-    .locator('.legend .traces')
+    .locator('.observable-plot-chart [class*="-swatches"] [class$="-swatch"]')
     .filter({ hasText: scenarioText })
-    .locator('path')
+    .locator('rect')
     .first()
 }
 
@@ -185,18 +194,26 @@ test.describe('User Story 1 (036) - A deployer sets a consistent, on-brand scena
 })
 
 test.describe('User Story 2 (035) - A viewer picks a scenario\'s own display color', () => {
-  test('two scenarios render consistently across all three chart types', async ({ page }) => {
+  // 057-observable-plot-conversion: both Summary-tab panels below are now
+  // observable-plot (converted from plotly/recharts respectively,
+  // contracts/panel-conversions.md) — this test's original "across all
+  // three chart types" premise is superseded (there is only one engine
+  // left among these three example panels); the value this test still
+  // proves — a scenario's color applies consistently across multiple,
+  // independently-rendered panel instances, not just one — is unchanged
+  // and still worth checking.
+  test('two scenarios render consistently across every panel instance', async ({ page }) => {
     await boot(page)
 
-    // Summary tab: plotly + recharts.
+    // Summary tab: two independent observable-plot panel instances.
     const plotCard = panelCard(page, 'Average Trip Distance by Purpose')
     await expect(plotCard).toBeVisible()
-    await expect(plotCard.locator('.js-plotly-plot')).toBeVisible()
+    await expect(plotCard.locator('.observable-plot-chart svg[viewBox]')).toBeVisible()
     const rechartsCard = panelCard(page, 'Total Trips by Mode')
     await expect(rechartsCard).toBeVisible()
-    await expect(rechartsCard.locator('.recharts-wrapper')).toBeVisible()
+    await expect(rechartsCard.locator('.observable-plot-chart svg[viewBox]')).toBeVisible()
 
-    // Person & Households tab: observable-plot.
+    // Person & Households tab: a third, independent observable-plot instance.
     await page.getByRole('tablist').getByRole('tab', { name: 'Person & Households', exact: true }).click()
     const observableCard = panelCard(page, 'Workplace Location Distance Distribution')
     await expect(observableCard).toBeVisible()

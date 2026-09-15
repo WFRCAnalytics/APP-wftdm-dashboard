@@ -142,8 +142,11 @@ test.describe('User Story 3 - A value box shows how its metric varies across its
     )
     expect(sparklineQueried).toBe(true)
 
-    // A real chart rendered — Recharts' own SVG bar marks.
-    await expect(card.locator('.recharts-bar-rectangle, .recharts-bar rect')).not.toHaveCount(0)
+    // A real chart rendered — Observable Plot's own SVG bar marks
+    // (057-observable-plot-conversion: panels/valueBoxSparkline.tsx was
+    // recharts until this feature converted it, contracts/
+    // valuebox-sparkline-plot.md).
+    await expect(card.locator('.observable-plot-chart svg[viewBox] rect')).not.toHaveCount(0)
   })
 
   test('a sparkline query failure never blocks the primary scalar value', async ({ page }) => {
@@ -165,7 +168,7 @@ test.describe('User Story 3 - A value box shows how its metric varies across its
     await expect(card).toBeVisible()
     await expect(card.getByText('1,500')).toBeVisible()
     // No chart, no sparkline-specific text anywhere on this card.
-    await expect(card.locator('.recharts-wrapper')).toHaveCount(0)
+    await expect(card.locator('.observable-plot-chart')).toHaveCount(0)
   })
 })
 
@@ -258,6 +261,6 @@ test.describe('User Story 4 - A value box shows whether it\'s trending up or dow
 
     await expect(card.getByText('9,200')).toBeVisible() // primary value
     await expect(card.getByText('5,400')).toBeVisible() // trend badge
-    await expect(card.locator('.recharts-wrapper')).not.toHaveCount(0) // sparkline
+    await expect(card.locator('.observable-plot-chart svg[viewBox]')).not.toHaveCount(0) // sparkline
   })
 })

@@ -165,18 +165,22 @@ test.describe('User Story 2 - Dashboard stays safe when markdown content is untr
 })
 
 test.describe('User Story 3 - Panel behaves consistently with the rest of the registry', () => {
-  test('a markdown panel alongside valuebox/plotly/recharts panels renders without error, standard chrome', async ({
+  test('a markdown panel alongside valuebox/observable-plot panels renders without error, standard chrome', async ({
     page,
   }) => {
     await boot(page)
-    // Real Summary tab composition: valuebox + recharts + plotly +
+    // Real Summary tab composition: valuebox + observable-plot ×2 +
     // (now) markdown together — the same "coexists cleanly with every
     // other real panel type" guarantee the retired fixture's own
     // valuebox/plotly/table trio proved, adapted to the real tab's own
     // actual panel-type mix (no table panel exists on this tab).
+    // 057-observable-plot-conversion: both charts below were
+    // recharts/plotly until this feature converted both to
+    // observable-plot (contracts/panel-conversions.md) — this test is
+    // title-only and needed no locator change.
     await expect(page.getByText('Households', { exact: true })).toBeVisible() // valuebox
-    await expect(page.getByText('Total Trips by Mode', { exact: true })).toBeVisible() // recharts
-    await expect(page.getByText('Average Trip Distance by Purpose', { exact: true })).toBeVisible() // plotly
+    await expect(page.getByText('Total Trips by Mode', { exact: true })).toBeVisible() // observable-plot
+    await expect(page.getByText('Average Trip Distance by Purpose', { exact: true })).toBeVisible() // observable-plot
     const markdownCard = panelCard(page, 'Methodology Notes')
     await expect(markdownCard.getByRole('heading', { name: 'Methodology Notes' })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Expand Methodology Notes' })).toBeVisible()
