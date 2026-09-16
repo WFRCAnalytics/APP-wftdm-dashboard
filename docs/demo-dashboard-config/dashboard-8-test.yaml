@@ -110,6 +110,147 @@ layout:
       y: share
       width: 1.0
 
+  # ── 040-test-suite-migration (rechartsPanel.spec.ts, Batch B): real
+  #    working bar/line/area panels — 057-observable-plot-conversion
+  #    moved every real recharts panel out of the actual demo tabs, so
+  #    this panel type's own real mechanics (per-series --chart-N
+  #    coloring, legend, tooltip, theming) have no home left in real
+  #    calibration content. Per direct user decision, that content lives
+  #    here instead — the same "exercises a panel type's own mechanics,
+  #    not part of the real calibration story" role this tab already
+  #    serves for sankeyPanel.spec.ts's own recent addition.
+  #
+  #    Bar: trip_purpose_share has exactly 10 real primary_purpose values,
+  #    every one a single word with no space (confirmed live via the
+  #    duckdb CLI) — x/series on the SAME real column gives one bar per
+  #    purpose, each its own real --chart-N color, cycling through the 5
+  #    tokens twice. A real, confirmed, CONFIRMED-AVOIDED bug shaped this
+  #    choice: trip_mode_share's own major_trip_mode domain (the first
+  #    real candidate tried) includes "Ride Hail" — a real category value
+  #    containing a literal space — and components/ui/chart.tsx's own
+  #    `ChartStyle` emits `--color-${key}: ...;` verbatim (confirmed via
+  #    direct source read); a raw space inside a CSS custom-property name
+  #    is invalid, so that one specific series' color declaration fails to
+  #    parse and its bar renders pure black (confirmed live: the OTHER 4
+  #    modes' bars resolved real --chart-N colors correctly, only "Ride
+  #    Hail"'s came back rgb(0,0,0)). A real, confirmed, out-of-scope
+  #    app-level gap (chart.tsx is a verbatim shadcn-CLI file this project
+  #    already keeps pristine by convention) — not fixed here; this
+  #    migration's own established discipline is to choose real data that
+  #    doesn't trigger an unrelated, pre-existing bug, not to fix
+  #    application code from inside a test-migration task. Every real
+  #    primary_purpose value is a single word, so this metric avoids the
+  #    trigger entirely while still proving real per-series coloring.
+  row_recharts_charts:
+    - type:   recharts
+      title:  "Recharts Mode Breakdown (Bar)"
+      metric: trip_purpose_share
+      scenario: activitysim-baseline
+      chart_type: bar
+      x: primary_purpose
+      series: primary_purpose
+      y: share
+      width: 0.34
+
+    # Line: trip_destination_summary (primary_purpose x distance_bin) has
+    # 10 real purposes, confirmed live — no `filter:` (this grammar only
+    # supports one exact-match value, not a list) narrows it to a smaller
+    # "2 series" shape, so this uses the real, full 10-series set instead.
+    # A genuinely MORE thorough real test than the retired fixture's own
+    # fabricated 2-series version: 10 series cycling through 5 --chart-N
+    # tokens twice proves real token wraparound, never exercised before.
+    # Real bin coverage differs per purpose (work: 5 bins 0.0-2.0;
+    # shopping: 4 bins 0.0-1.5; univ: 3 bins 0.0-1.0 — confirmed live) —
+    # a genuine no-data gap for some (x, series) pairs, exactly the real
+    # case rechartsEncoding.ts's own "never coerced to 0" contract exists
+    # for. `y: avg_distance_miles`, NOT `trips` — a second real, confirmed,
+    # out-of-scope bug found and avoided: `trips` is a COUNT(*)-derived
+    # BIGINT (the same already-documented DuckDB-WASM bigint-vs-number gap
+    # CLAUDE.md records for `formatValue.ts`/`ZoneMapPanel.tsx`), and
+    # Recharts' own internal geometry/scale computation cannot handle a
+    # raw JS `bigint` value — confirmed live: with `y: trips`, the legend
+    # and axes rendered correctly but ZERO `<path>` elements of any kind
+    # appeared anywhere in the chart (not just `.recharts-line-curve`).
+    # `avg_distance_miles` is a real `DOUBLE` column (confirmed via
+    # `DESCRIBE`), unaffected, and a more natural fit for a "Trip Length
+    # Frequency" panel's own real y-axis than a raw trip count anyway.
+    - type:   recharts
+      title:  "Recharts Trip Length Frequency (Line)"
+      metric: trip_destination_summary
+      scenario: activitysim-baseline
+      chart_type: line
+      x: distance_bin
+      series: primary_purpose
+      y: avg_distance_miles
+      width: 0.33
+
+    # Area: same real metric, filtered to ONE real purpose (`work`, which
+    # has all 5 real bins 0.0-2.0) — the single-series case (no `series`
+    # key), --chart-1 only. Same `avg_distance_miles` choice as the line
+    # panel above, for the same real, confirmed bigint reason.
+    - type:   recharts
+      title:  "Recharts Trip Length Frequency (Area)"
+      metric: trip_destination_summary
+      scenario: activitysim-baseline
+      chart_type: area
+      filter: { primary_purpose: work }
+      x: distance_bin
+      y: avg_distance_miles
+      width: 0.33
+
+  # ── Regression proof: the real space-in-category-value bug the two
+  #    comments above document as "confirmed, out-of-scope, not fixed
+  #    here" WAS subsequently fixed at its root (a follow-up request,
+  #    same 040-test-suite-migration lineage) — components/ui/chart.tsx's
+  #    `ChartStyle` and RechartsPanel.tsx's own `var(--color-${key})`
+  #    references now both slugify the key via the newly-exported
+  #    `sanitizeColorKey()` before using it in a CSS custom-property name,
+  #    while the real, unslugged "Ride Hail" label stays exactly what
+  #    renders in the legend/tooltip/dataKey binding. This panel uses the
+  #    ORIGINAL real data source the bug was found on and then avoided
+  #    (trip_mode_share, real major_trip_mode values SOV/HOV/Transit/
+  #    Non-Motorized/"Ride Hail") — proving the fix against the actual
+  #    trigger, not a data source chosen to route around it. See
+  #    PIPELINE.md's own recorded finding for the full account.
+  row_recharts_space_in_category:
+    - type:   recharts
+      title:  "Recharts Mode Share (Bar, Space in Category Value)"
+      metric: trip_mode_share
+      scenario: activitysim-baseline
+      chart_type: bar
+      x: major_trip_mode
+      series: major_trip_mode
+      y: share
+      width: 1.0
+
+  # ── 040-test-suite-migration (rechartsPanel.spec.ts, Batch B): a real,
+  #    working, legend-bearing Plotly panel — confirmed live (grep sweep)
+  #    that ZERO real `type: plotly` panels exist anywhere in demo
+  #    content any more (057 moved every real one to Observable Plot;
+  #    the only other `plotly` panel in this whole app is this tab's own
+  #    broken missing-metric one). rechartsPanel.spec.ts's own legend-
+  #    click-to-toggle regression test (FR-010: adding the recharts
+  #    registry entry must never affect Plotly's own existing legend
+  #    behavior) needs a real, multi-trace, legend-bearing Plotly panel
+  #    to prove that against — plotlyTraces.ts's own `color: $metric.<col>`
+  #    split (confirmed via direct source read) splits one trace
+  #    declaration into one real Plotly trace per distinct value of that
+  #    column, each Plotly's own default-palette color and its own real
+  #    legend entry. Uses trip_mode_share (5 real modes, including "Ride
+  #    Hail") DELIBERATELY, not trip_purpose_share — Plotly assigns trace
+  #    colors from its own internal default palette, never via a CSS
+  #    custom-property name derived from the category string, so it has
+  #    no exposure to the real, confirmed chart.tsx space-in-`--color-`
+  #    bug the recharts bar panel above had to route around.
+  row_plotly_legend:
+    - type:   plotly
+      title:  "Plotly Mode Share (Bar)"
+      metric: trip_mode_share
+      scenario: activitysim-baseline
+      traces:
+        - { type: bar, x: $metric.major_trip_mode, y: $metric.share, color: $metric.major_trip_mode }
+      width: 1.0
+
   # ── Unreachable basemap preset → blank-style fallback, data still draws ──
   row_bad_basemap:
     - type:      flowmap
