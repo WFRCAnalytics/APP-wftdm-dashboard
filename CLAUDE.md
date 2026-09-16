@@ -47,6 +47,7 @@ that is correct and intentional.
 | Query — offline | Python DuckDB (`uv run`) |
 | Charts — default | Observable Plot (`@observablehq/plot`) — `057-observable-plot-conversion` moved every real demo bar/distribution chart off Plotly/Recharts onto it; both remain registered, supported panel types (`plotly`/`recharts`), just no longer used by the real demo content |
 | Charts — Sankey | D3 (`d3-sankey`) — confirmed no genuine Observable Plot support exists (no mark/transform, no documented composition pattern, an unresolved upstream request since 2022) |
+| Charts — Hierarchical | D3 (`d3-hierarchy`/`d3-shape`) — confirmed no genuine Observable Plot treemap/sunburst support exists either (058-hierarchical-chart-panels); SVG built via plain `document.createElementNS()`, never `d3-selection`/`d3-transition`, matching the Sankey panel's own established convention |
 | Explore tab | Graphic Walker (`<GraphicWalker>` component, rendered directly — not `embedGraphicWalker`, see "Graphic Walker panel" below) |
 | Maps | MapLibre GL (NOT Mapbox) |
 | O-D flows | `@flowmap.gl/layers` + `@deck.gl/mapbox` (`MapboxOverlay`) |
@@ -2743,8 +2744,78 @@ export const registry: Record<string, ComponentType<PanelProps>> = {
   'graphic-walker':   GraphicWalkerPanel,
   'markdown':         MarkdownPanel,
   'recharts':         RechartsPanel,
+  'treemap':          TreemapPanel,
+  'sunburst':         SunburstPanel,
 }
 ```
+
+`treemap`/`sunburst` (058-hierarchical-chart-panels) are the eleventh and
+twelfth panel types — genuinely hierarchical (parent-child nested) data as
+an interactive, zoomable treemap or radial sunburst. Observable Plot has
+no composition path for either (confirmed by direct source search of the
+installed `@observablehq/plot` package — no `treemap`/`partition` support
+of any kind; its own `Plot.tree`/`Plot.cluster` marks are a node-link
+"tidy tree" diagram, a different algorithm family entirely), so both are
+dedicated D3 (`d3-hierarchy`/`d3-shape`) renderers sharing one new host,
+`panels/HierarchicalChartHost.tsx` — the same `useEffect`+`ref`-wraps-a-
+non-React-library shape `ObservablePlotPanel.tsx` already establishes,
+generalized to accept a pluggable `HierarchyRenderer` (`panels/
+hierarchyRenderers/treemapRenderer.ts`/`sunburstRenderer.ts`) rather than
+calling one fixed library function directly. Both panel types read the
+IDENTICAL `path`/`value`/`color_scheme` grammar (`layout/types.ts`'s new
+`HierarchicalPanelConfigBase`) — only `type:` differs.
+
+Built with plain DOM (`document.createElementNS`) and a hand-rolled linear
+scale + `requestAnimationFrame` tween (new `panels/hierarchyTween.ts`),
+NOT `d3-selection`/`d3-transition`/`d3-scale` — matching `SankeyPanel.tsx`'s
+own established precedent (a D3 layout package for genuinely complex math,
+plain code for DOM/animation) rather than introducing this app's first
+D3-DOM-manipulation dependency. `d3-shape` (`d3.arc()`) is the one
+exception — real SVG arc-path generation is intricate math this project
+has no reason to re-derive, confirmed already present transitively three
+times over (`@kanaries/graphic-walker`, `@observablehq/plot`'s own bundled
+`d3`, `d3-sankey`) before being added as an explicit, direct dependency.
+Both renderers reuse the real, current, canonical D3 zoomable-treemap/
+zoomable-sunburst techniques, fetched directly from Observable's own
+current notebooks (`specs/058-hierarchical-chart-panels/research.md`
+§3a/§3b) — genuinely different D3 idioms per chart type (scale-domain
+remapping + DOM-group crossfade for the treemap; per-node `current`/
+`target` state + tweened reflow for the sunburst), confirmed NOT
+forceable into one shared drawing routine, unlike the query/loading/
+theming layer above them, which is fully shared.
+
+First real content: the already-published `purpose_mode_flow` metric
+(`primary_purpose` → `major_trip_mode`, real trip counts) on
+`dashboard-8-test.yaml` — zero new `summarize.yaml` metric needed
+(confirmed live: a real 2-level hierarchy, 10 purposes × up to 5 modes,
+23,583 total trips). A candidate real geographic hierarchy
+(`land_use_summary`'s `SD`/`DISTRICT`/`zone_id`) was investigated and
+rejected — confirmed live, every one of the 25 real zones in this
+synthetic `prototype_mtc` system shares the same `SD=1`/`DISTRICT=1`
+value, a degenerate single-branch case with nothing real to show.
+
+Hovering any node shows its real underlying value via this app's own
+established `mapTooltip.ts` mechanism (`SankeyPanel.tsx`'s own already-
+confirmed reason: a native SVG `<title>` has a real ~2s browser hover
+delay) — a real, confirmed mid-implementation correction: the host
+originally rendered `<svg ref={containerRef}>` directly, which cannot
+hold `createMapTooltip()`'s own HTML `<div>` child at all; fixed by
+rendering a plain `position: relative` `<div>` instead (matching
+`SankeyPanel.tsx`'s own real container shape), with each renderer
+creating and owning its own `<svg>` child. Node/segment fill colors
+resolve from this app's real `--chart-1..5` tokens (or a named
+`color_scheme`, new `panels/hierarchyColor.ts`, mirroring
+`sankeyColor.ts`'s exact shape) via `getComputedStyle()` against the
+mounted container (research.md §5) — never a raw, unresolved `var(--x)`
+left on a D3-managed node — keyed by each node's own top-level (depth-1)
+ancestor, a real design decision made during implementation: the
+reference zoomable-treemap notebook uses flat grayscale fills with no
+real categorical coloring at all; only the zoomable-sunburst reference
+demonstrates one, adopted for both chart types so they read consistently.
+`FR-009` (a negligibly-small node's label must not render/overflow) is
+satisfied by the sunburst reference's own real `arcVisible`/
+`labelVisible` predicate helpers, reused verbatim, and by a minimum-
+pixel-size + `<clipPath>` guard for the treemap.
 
 `recharts` (029-shadcn-chart-panel) is the tenth panel type and this app's
 new default/primary engine for bar/line/area charts — shadcn/ui's own
@@ -3276,6 +3347,19 @@ export default defineConfig({
                                           // walker-panel)
   "@observablehq/plot": "latest",
   "apache-arrow": "^18.0.0",
+  "d3-hierarchy": "^3.1.2",  // 058-hierarchical-chart-panels — treemap/
+                             // partition layouts for the new treemap/
+                             // sunburst panel types. `d3-selection`/
+                             // `d3-transition`/`d3-scale` deliberately
+                             // NOT added — reimplemented as plain DOM/
+                             // hand-rolled tween, matching SankeyPanel.tsx's
+                             // own established precedent.
+  "d3-shape": "^3.2.0",  // 058-hierarchical-chart-panels — d3.arc() for
+                         // the sunburst renderer only; confirmed already
+                         // present transitively three times over
+                         // (graphic-walker, @observablehq/plot's own
+                         // bundled d3, d3-sankey) before being added as
+                         // an explicit, direct dependency.
   "js-yaml": "latest",
   "maplibre-gl": "^4.7.1",
   "plotly.js-dist-min": "latest",
@@ -5834,6 +5918,72 @@ first cross-reference this list was built from). ✅ done,
     not nested inside it — confirmed directly against the installed
     package's own source) that several rewritten Playwright assertions
     depend on.
+
+29. ✅ Hierarchical chart panels (`treemap`/`sunburst`) —
+    058-hierarchical-chart-panels. The eleventh and twelfth, and actual
+    final, panel types — genuinely hierarchical (parent-child nested)
+    data as an interactive, zoomable treemap or radial sunburst, a real
+    gap no existing panel type (flat, tidy-row query data only) or
+    charting engine (Observable Plot has no treemap/sunburst composition
+    path of any kind — confirmed by direct source search, the same class
+    of gap item 28's own "Sankey stays on D3" finding already established
+    for a different diagram) could fill. See `panels/registry.tsx`'s own
+    updated entry above for the full architectural account (shared
+    `HierarchicalChartHost.tsx` + two independent D3 renderers + the
+    `mapTooltip.ts`/coloring/dependency findings) — not repeated here.
+
+    **Real content**: the already-published `purpose_mode_flow` metric on
+    `dashboard-8-test.yaml` (real, non-fabricated: 10 primary_purpose ×
+    up to 5 major_trip_mode, 23,583 total trips, confirmed live via the
+    duckdb CLI) — zero new `summarize.yaml` metric needed. A candidate
+    real geographic hierarchy (`land_use_summary`'s `SD`/`DISTRICT`/
+    `zone_id`) was investigated and rejected as degenerate in this
+    synthetic 25-zone system (every zone shares `SD=1`/`DISTRICT=1`).
+
+    **Real, confirmed test-authoring findings during implementation**
+    (all found live, via temporary debug specs since deleted, none
+    assumed): (1) a locator matching `rect` anywhere inside a node group
+    also matched each node's own nested `<clipPath><rect>` (an unfilled,
+    default-black rect for label clipping), inflating a "5 distinct
+    colors" check to 6 — fixed by scoping to the direct child (`> rect`).
+    (2) A raw, unscoped DuckDB query-log count is unsafe on this crowded
+    Test tab (an unrelated zonemap panel's own independently-lazy
+    geometry query can coincidentally land mid-test); even a
+    metric-name-scoped count is unsafe if checked too early, since
+    several sibling fixture panels (empty/broken/degenerate, both chart
+    types) reference the same real metric and can still be finishing
+    their own first real fetch. Fixed with a `waitForQueryActivityToSettle()`
+    helper requiring 3 consecutive agreeing query-log-length reads, 500ms
+    apart, before ever taking a "before" snapshot for a no-refetch-on-zoom
+    assertion — a single-agreeing-pair first attempt was still genuinely
+    flaky, caught live across repeated runs, not assumed safe. (3) A
+    dark-mode label-color assertion compared the SVG label's own
+    `currentColor`-resolved fill against `document.body`'s computed
+    `color` directly — a real, confirmed near-miss (`rgb(255,255,255)` vs
+    `rgb(250,250,250)`), since `--foreground` is actually applied at a
+    closer ancestor (the panel's own `.hierarchical-chart-container` div)
+    — fixed by comparing against that real, closer container instead; no
+    application code needed to change.
+
+    **Verification**: `npx tsc --noEmit` clean; `npm run test:unit`
+    496/496 passing (10 new — `hierarchyData.test.ts`/`hierarchyColor.test.ts`
+    — plus `panelRegistry.test.ts`'s own real, expected 8→10 update for
+    the two new expandable panel types). Three new Playwright files —
+    `treemapPanel.spec.ts` (6/6), `sunburstPanel.spec.ts` (4/4),
+    `hierarchicalChartTheming.spec.ts` (3/3) — all confirmed stable across
+    two separate consecutive isolated runs after the fixes above; the
+    full 10-worker suite run and `npm run dev` quickstart walkthrough are
+    this feature's own closing verification step (see `specs/
+    058-hierarchical-chart-panels/tasks.md`'s own T036/T037 for the full,
+    final record).
+
+    See `specs/058-hierarchical-chart-panels/` for the full spec/plan/
+    research record, including the two real, current, canonical D3
+    zoomable-treemap/zoomable-sunburst techniques fetched directly from
+    Observable's own current notebooks (research.md §3a/§3b) and the
+    real `vite.config.ts` chunking correction `d3-hierarchy` needed once
+    it gained a second real importer beyond Observable Plot's own
+    internal usage (research.md §7b).
 
 ---
 

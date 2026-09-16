@@ -1,5 +1,41 @@
 <!--
 Sync Impact Report
+- Version change: 2.4.2 → 2.5.0
+- Modified principles: none
+- Modified sections:
+  - Technology Stack Reference: new row, "Charts — Hierarchical | D3
+    (`d3-hierarchy`/`d3-shape`)" — added directly below the existing
+    "Charts — Sankey" row by `058-hierarchical-chart-panels`, which adds
+    the app's first zoomable treemap/sunburst panel types. Confirmed
+    directly (not assumed) that Observable Plot has no treemap/sunburst
+    composition path of any kind (a full source search for "treemap"/
+    "partition"/"pack" across the installed `@observablehq/plot`
+    package returns zero matches, and it declares no `d3-hierarchy`
+    dependency) — the same class of gap the existing "Charts — Sankey"
+    row already documents for Sankey diagrams. `d3-shape` (for
+    `d3.arc()` only, needed by the sunburst renderer) is named alongside
+    `d3-hierarchy` — a real, implementation-time finding: the canonical
+    zoomable-treemap/sunburst reference implementations also use
+    `d3-selection`/`d3-transition`/`d3-scale`, none of which this
+    amendment adds — those are reimplemented as plain functions/raw DOM
+    manipulation instead, matching `SankeyPanel.tsx`'s own existing,
+    established precedent of depending on a D3 layout package
+    (`d3-sankey`) while building/updating its SVG via plain
+    `document.createElementNS()` calls, never `d3-selection`/
+    `d3-transition`.
+- MINOR, not PATCH: a new named technology added for a new capability —
+  existing guidance materially expanded, not a wording fix — matching
+  this file's own established precedent for the identical class of
+  change (2.2.0→2.3.0's `@deck.gl/layers` addition; the existing
+  "Charts — Sankey" row's own original addition).
+- Added principles: none
+- Added sections: none
+- Removed sections: none
+- Deferred TODOs: none
+-->
+
+<!--
+Sync Impact Report (2.4.2, superseded above)
 - Version change: 2.4.1 → 2.4.2
 - Modified principles: none
 - Modified sections:
@@ -488,6 +524,7 @@ requires amending this constitution first:
 | Query — offline | Python DuckDB (`uv run`) |
 | Charts — default | Observable Plot (`@observablehq/plot`) — `057-observable-plot-conversion` moved every real demo bar/distribution chart off Plotly.js/Recharts onto it; both remain registered, supported panel types (`plotly`/`recharts`), just no longer used by real demo content |
 | Charts — Sankey | D3 (`d3-sankey`) — no genuine Observable Plot Sankey support exists (no mark/transform, no documented composition pattern, an unresolved upstream request since 2022) |
+| Charts — Hierarchical | D3 (`d3-hierarchy`/`d3-shape`) — no genuine Observable Plot treemap/sunburst support exists either (confirmed by direct source search, not assumed); SVG is built via plain `document.createElementNS()`, never `d3-selection`/`d3-transition`, matching the Sankey panel's own established convention |
 | Explore tab | Graphic Walker (`<GraphicWalker>` component, rendered directly in this app's own React tree — not `embedGraphicWalker`) |
 | Maps | MapLibre GL (never Mapbox) |
 | O-D flows | `@flowmap.gl/layers` + `@deck.gl/mapbox` (`MapboxOverlay`) |
@@ -544,4 +581,4 @@ forbidden config files, no Mapbox/Webpack/Web Storage usage. Any exception
 requires a
 prior amendment to this document, not a one-off waiver in review.
 
-**Version**: 2.4.2 | **Ratified**: 2026-08-19 | **Last Amended**: 2026-09-15
+**Version**: 2.5.0 | **Ratified**: 2026-08-19 | **Last Amended**: 2026-09-15

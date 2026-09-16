@@ -54,4 +54,10 @@ export const registry: Record<string, ComponentType<PanelProps<any>>> = {
   'graphic-walker': lazy(() =>
     import('@/panels/GraphicWalkerPanel').then((m) => ({ default: m.GraphicWalkerPanel })),
   ),
+  // 058-hierarchical-chart-panels: the eleventh and twelfth panel types —
+  // each a thin wrapper over the shared HierarchicalChartHost.tsx, lazy
+  // per-type exactly like every other entry (only ever pulls in
+  // d3-hierarchy/d3-shape once a treemap/sunburst panel actually renders).
+  treemap: lazy(() => import('@/panels/TreemapPanel').then((m) => ({ default: m.TreemapPanel }))),
+  sunburst: lazy(() => import('@/panels/SunburstPanel').then((m) => ({ default: m.SunburstPanel }))),
 }

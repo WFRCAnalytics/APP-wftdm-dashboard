@@ -13,7 +13,21 @@ import { EXPANDABLE_PANEL_TYPES } from '@/panels/expandablePanelTypes'
 // exists but covers a real, unrelated module — panels/basemap/registry.ts's
 // basemap presets, not panels/registry.tsx.
 describe('EXPANDABLE_PANEL_TYPES', () => {
-  const expandable = ['table', 'markdown', 'plotly', 'observable-plot', 'sankey', 'recharts', 'flowmap', 'zonemap']
+  // 058-hierarchical-chart-panels: 'treemap'/'sunburst' added — both
+  // interactive, zoomable chart types benefit from 004's expand-to-dialog
+  // room, matching every other real chart/map panel type's own default.
+  const expandable = [
+    'table',
+    'markdown',
+    'plotly',
+    'observable-plot',
+    'sankey',
+    'recharts',
+    'flowmap',
+    'zonemap',
+    'treemap',
+    'sunburst',
+  ]
   const notExpandable = ['valuebox', 'graphic-walker']
 
   it.each(expandable)('contains "%s"', (type) => {
@@ -24,7 +38,7 @@ describe('EXPANDABLE_PANEL_TYPES', () => {
     expect(EXPANDABLE_PANEL_TYPES.has(type)).toBe(false)
   })
 
-  it('contains exactly the 8 documented types — no more, no fewer', () => {
+  it('contains exactly the 10 documented types — no more, no fewer', () => {
     expect(EXPANDABLE_PANEL_TYPES.size).toBe(expandable.length)
   })
 })

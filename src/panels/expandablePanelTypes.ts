@@ -33,4 +33,9 @@ export const EXPANDABLE_PANEL_TYPES = new Set([
   'recharts',
   'flowmap',
   'zonemap',
+  // 058-hierarchical-chart-panels: both new interactive, zoomable chart
+  // types benefit from 004's expand-to-dialog room, matching every other
+  // real chart/map panel type's own default.
+  'treemap',
+  'sunburst',
 ])

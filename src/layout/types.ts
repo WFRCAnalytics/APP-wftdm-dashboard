@@ -409,6 +409,42 @@ export interface GraphicWalkerPanelConfig extends PanelConfigBase {
   // picker shown.
 }
 
+/**
+ * 058-hierarchical-chart-panels — the shared grammar both new hierarchical
+ * chart types (treemap, sunburst) extend. `path`/`value` follow this app's
+ * own established "author names a real, literal result-set column, never a
+ * `$metric.`-prefixed placeholder" convention (SankeyPanelConfig's own
+ * source/target/value precedent, generalized from three fixed named
+ * columns to an ordered, arbitrary-depth array — data-model.md §1,
+ * research.md §4). `color_scheme` matches SankeyPanelConfig's own exact
+ * field name/role (a named categorical scheme for discrete node/segment
+ * coloring — the closest existing analog).
+ */
+export interface HierarchicalPanelConfigBase
+  extends DataBoundPanelConfigBase,
+    ComparisonCapablePanelConfig {
+  path: string[]
+  value: string
+  color_scheme?: string
+}
+
+/** The eleventh panel type — 058-hierarchical-chart-panels. Rendered by
+ * TreemapPanel.tsx via HierarchicalChartHost + hierarchyRenderers/
+ * treemapRenderer.ts (contracts/treemap-panel.md). */
+export interface TreemapPanelConfig extends HierarchicalPanelConfigBase {
+  type: 'treemap'
+}
+
+/** The twelfth panel type — 058-hierarchical-chart-panels. Rendered by
+ * SunburstPanel.tsx via HierarchicalChartHost + hierarchyRenderers/
+ * sunburstRenderer.ts (contracts/sunburst-panel.md). Deliberately reads
+ * the identical `path`/`value`/`color_scheme` grammar as
+ * TreemapPanelConfig — only `type` differs (research.md §4's own
+ * "same real hierarchy, two ways" framing). */
+export interface SunburstPanelConfig extends HierarchicalPanelConfigBase {
+  type: 'sunburst'
+}
+
 /** Any panel type that participates in basemap resolution — FlowMapPanelConfig
  * and ZoneMapPanelConfig today. dashboardRenderer.tsx uses this as a type
  * guard so tab-level default_basemap injection stays generic across
@@ -451,6 +487,8 @@ export type PanelConfig =
   | ZoneMapPanelConfig
   | GraphicWalkerPanelConfig
   | RechartsPanelConfig
+  | TreemapPanelConfig
+  | SunburstPanelConfig
   | UnknownPanelConfig
 
 /** 030-sidebar-navigation, FR-013/data-model.md §2: one accordion

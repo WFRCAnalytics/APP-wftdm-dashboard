@@ -260,10 +260,39 @@ export default defineConfig({
           // Plot had only one importer (`ObservablePlotPanel.tsx`) and
           // was bundled directly into that single chunk with no sharing
           // possible at all.
+          // 058-hierarchical-chart-panels: `d3-hierarchy` ADDED to this
+          // list — a real, confirmed instance of the exact same class of
+          // leak this whole bucket already exists to prevent, found while
+          // starting this feature's own implementation, before it could
+          // ship broken. `d3-hierarchy` was previously exclusive to
+          // `@observablehq/plot`'s own internal `Plot.tree`/`Plot.cluster`
+          // marks (confirmed via this feature's own research.md §1) — the
+          // comment below this block used to list it among the packages
+          // "deliberately left unmatched... stay [t]here via Rollup's own
+          // default placement" for exactly that reason. This feature's new
+          // `treemapRenderer.ts`/`sunburstRenderer.ts` (each reachable only
+          // via their own new, separately-lazy `TreemapPanel`/
+          // `SunburstPanel` registry entries) are now a SECOND, real,
+          // independent importer — left unmatched, Rollup would place
+          // `d3-hierarchy` in whichever chunk it judged best (most likely
+          // the already-existing `observable-plot` chunk, since that
+          // importer existed first), forcing a viewer who opens ONLY a
+          // treemap/sunburst panel to also eagerly pull in the entire
+          // Observable Plot bundle just to reach it — the identical failure
+          // mode every other rule in this function already exists to
+          // prevent. `d3-shape` (this feature's other new dependency,
+          // `d3.arc()` for the sunburst renderer) needed NO new rule at
+          // all — it already matches the existing `d3-shape` entry below,
+          // confirmed via `npm ls d3-shape` to already be a real,
+          // multiply-shared package (`@kanaries/graphic-walker`'s own
+          // `vega-scenegraph` dependency, `@observablehq/plot`'s own
+          // bundled `d3`, and `victory-vendor`) before this feature ever
+          // added a direct top-level dependency on it.
           if (
             id.includes('node_modules/d3-array/') ||
             id.includes('node_modules/d3-color/') ||
             id.includes('node_modules/d3-format/') ||
+            id.includes('node_modules/d3-hierarchy/') ||
             id.includes('node_modules/d3-interpolate/') ||
             id.includes('node_modules/d3-path/') ||
             id.includes('node_modules/d3-scale/') ||
@@ -281,12 +310,16 @@ export default defineConfig({
           // its own explicit, stably-named chunk" reasoning as plotly/
           // maps/graphic-walker/recharts in this same function — its own
           // exclusive d3-* dependencies (d3-axis/d3-contour/d3-delaunay/
-          // d3-dispatch/d3-ease/d3-hierarchy/d3-random/d3-selection/
-          // d3-timer/d3-transition/d3-zoom — confirmed via the same
-          // chunk-graph inspection to have no other real importer
-          // anywhere in this app) are deliberately left unmatched here
-          // and stay with it via Rollup's own default placement, exactly
-          // as they already correctly did before this fix.
+          // d3-dispatch/d3-ease/d3-random/d3-selection/d3-timer/
+          // d3-transition/d3-zoom — confirmed via the same chunk-graph
+          // inspection to have no other real importer anywhere in this
+          // app) are deliberately left unmatched here and stay with it
+          // via Rollup's own default placement, exactly as they already
+          // correctly did before this fix. `d3-hierarchy` was ALSO on
+          // this exclusive list originally — `058-hierarchical-chart-
+          // panels` moved it up into the `d3-shared` bucket above once it
+          // gained a second, independent real importer; see that block's
+          // own comment for the full finding.
           if (id.includes('@observablehq/plot')) return 'observable-plot'
           // 029-shadcn-chart-panel: this codebase's first dependency on
           // recharts. UPGRADED to recharts@^3.10.1 (a deliberate, later

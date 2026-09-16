@@ -1365,6 +1365,47 @@ d3-sankey — mode shift or tour-to-trip mode consistency.
   color_scheme: Tableau10
 ```
 
+### `type: treemap` / `type: sunburst` (058-hierarchical-chart-panels)
+
+D3 (`d3-hierarchy`/`d3-shape`) — genuinely hierarchical (parent-child
+nested) data as an interactive, zoomable treemap or radial sunburst.
+Observable Plot has no composition path for either diagram (confirmed by
+direct source search — no `treemap`/`partition` support of any kind), so
+both are dedicated, custom-built panel types, sharing one underlying
+"hierarchical chart host" architecture. Both read the IDENTICAL grammar —
+an ordered `path:` (root-to-leaf real column names) and a `value:` column
+— only `type:` differs, matching this app's own "same real hierarchy, two
+ways" design intent.
+
+```yaml
+- type:   treemap        # or: sunburst
+  title:  Trip Purpose to Mode Breakdown
+  metric: purpose_mode_flow
+  scenario: activitysim-baseline
+  path:   [primary_purpose, major_trip_mode]   # ordered, root to leaf
+  value:  trips                                # sized-value column
+  color_scheme: Tableau10   # optional — falls back to --chart-1..5 cycling
+  height: 500
+  width:  1.0
+```
+
+Click a non-leaf node to zoom in; click the zoom-out affordance (the
+treemap's own title bar, or the sunburst's own center circle) to zoom back
+out one level. Zooming never re-fetches data — it's pure client-side state
+over the already-queried result. Hovering any node shows its real
+underlying value (this app's own established `mapTooltip.ts` mechanism,
+not a native SVG `<title>`, which has a real, confirmed ~2s browser hover
+delay). Node/segment fill colors resolve from this app's real
+`--chart-1..5` tokens (or a named `color_scheme`, same convention as
+`type: sankey`'s own `color_scheme`), keyed by each node's own top-level
+(depth-1) ancestor — every descendant of a branch shares that branch's own
+color.
+
+Not built by this feature (explicit non-goals): an icicle-diagram variant,
+showing more than two sunburst layers at once (the real, canonical
+zoomable-sunburst reference's own deliberate design, reused as-is), or an
+author-configurable tiling method for the treemap.
+
 ### `type: graphic-walker`
 
 Graphic Walker — full-tab free-form Tableau-style sandbox. Explore tab only.
