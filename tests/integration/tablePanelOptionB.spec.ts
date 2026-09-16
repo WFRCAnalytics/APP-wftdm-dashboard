@@ -111,7 +111,9 @@ test.describe('TABLE-PANEL-PROPOSAL.md Option B — column visibility, sort icon
     await expect(card.locator('tbody tr').first()).toBeVisible({ timeout: 10_000 })
 
     const firstHeaderButton = card.locator('thead th').first().locator('button')
-    await expect(firstHeaderButton.locator('svg')).toHaveCount(1)
+    // 068-column-type-indicators added a second, leading svg (the column's
+    // type glyph) — one type icon + one sort icon per header button.
+    await expect(firstHeaderButton.locator('svg')).toHaveCount(2)
     // The literal Unicode glyphs this replaced must be gone.
     await expect(firstHeaderButton).not.toContainText('▲')
     await expect(firstHeaderButton).not.toContainText('▼')
@@ -125,6 +127,33 @@ test.describe('TABLE-PANEL-PROPOSAL.md Option B — column visibility, sort icon
     await expect(firstHeader).toHaveAttribute('aria-sort', 'descending')
   })
 
+  test('068-column-type-indicators — each header shows the real column type as a leading lucide-react icon, matching gropaul/dash-ui\'s own convention', async ({
+    page,
+  }) => {
+    await boot(page)
+    await gotoTourTab(page)
+    const card = panelCard(page, REAL_TITLE)
+    await expect(card.locator('tbody tr').first()).toBeVisible({ timeout: 10_000 })
+
+    // Real columns, confirmed live: Scenario/Frequency/Person Type are
+    // VARCHAR (string -> lucide-text), Persons is BIGINT (number ->
+    // lucide-hash) — the exact icon choice dash-ui's own real
+    // value-icon.tsx uses for the same two types (it already depends on
+    // lucide-react too, so no substitution was needed).
+    const headerButtons = card.locator('thead th button')
+    await expect(headerButtons.nth(0).locator('svg').first()).toHaveClass(/lucide-text/)
+    await expect(headerButtons.nth(1).locator('svg').first()).toHaveClass(/lucide-text/)
+    await expect(headerButtons.nth(2).locator('svg').first()).toHaveClass(/lucide-text/)
+    await expect(headerButtons.nth(3).locator('svg').first()).toHaveClass(/lucide-hash/)
+
+    // The type icon leads the label — matches dash-ui's own real header
+    // layout order (type glyph, then name, then the sort affordance).
+    const firstButtonChildren = await headerButtons.nth(3).evaluate((btn) =>
+      Array.from(btn.childNodes).map((n) => (n instanceof Element ? n.tagName : 'TEXT')),
+    )
+    expect(firstButtonChildren[0]).toBe('svg') // the type icon, first
+  })
+
   test('an unsorted, sortable column shows a neutral indicator on hover (not only after being clicked)', async ({
     page,
   }) => {
@@ -134,7 +163,9 @@ test.describe('TABLE-PANEL-PROPOSAL.md Option B — column visibility, sort icon
     await expect(card.locator('tbody tr').first()).toBeVisible({ timeout: 10_000 })
 
     const secondHeaderButton = card.locator('thead th').nth(1).locator('button')
-    const icon = secondHeaderButton.locator('svg')
+    // The sort icon is the LAST svg in the button — the type icon (068-
+    // column-type-indicators, always visible) is the first.
+    const icon = secondHeaderButton.locator('svg').last()
     await expect(icon).toHaveCSS('opacity', '0')
     await secondHeaderButton.hover()
     await expect(icon).toHaveCSS('opacity', '1')

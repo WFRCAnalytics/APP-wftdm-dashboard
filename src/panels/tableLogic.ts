@@ -6,12 +6,72 @@ import { formatValue } from '@/panels/formatValue'
 import { NO_DATA_COLOR, tokenDerivedColor } from '@/panels/colorScale'
 import type { TableColumnConfig, TablePanelConfig } from '@/layout/types'
 
+// 068-column-type-indicators — matches gropaul/dash-ui's own real,
+// confirmed convention (fetched directly, src/components/relation/
+// common/value-icon.tsx): a per-column type glyph read from the query
+// result itself, not authored in dashboard-*.yaml. Deliberately narrower
+// than dash-ui's own type vocabulary (which also covers List/Struct/Map,
+// via apache-arrow's DataType predicates against a live Arrow schema) —
+// this app's TablePanel.tsx queries via services/duckdb.ts's query(), not
+// queryArrow(), so no Arrow schema is available at all; every real column
+// this app's own SQL layer can ever produce is a flat scalar (this
+// project's DuckDB queries never return a nested/list/struct value), so
+// there is no real List/Struct/Map case to cover. 'date' is deliberately
+// NOT one of the cases either — confirmed live (not assumed) that a real
+// DuckDB DATE/TIMESTAMP column arrives through query()'s own
+// Arrow-row-to-JSON conversion as a plain epoch-millisecond `number`,
+// indistinguishable via typeof from a genuine numeric metric — and a
+// direct survey of every real column across every published demo metric
+// (public/demo-scenarios/activitysim-baseline/summary/*.parquet, via the
+// duckdb CLI) found exactly three real column types today: BIGINT (90),
+// VARCHAR (43), DOUBLE (40) — zero DATE/TIMESTAMP, zero BOOLEAN. Boolean
+// is kept anyway (a real, unambiguous `typeof 'boolean'` needs no
+// heuristic, at negligible cost) even though no real content exercises
+// it yet; a genuine date-column type is not, since there is no reliable
+// signal to build it on without misclassifying real numeric data.
+export type ColumnValueType = 'number' | 'string' | 'boolean' | 'unknown'
+
+/**
+ * Infers one column's real value type from the already-fetched rows —
+ * this app's own established convention (sortRows()'s numeric-vs-locale
+ * branch, formatValue()'s `typeof value !== 'number'` guard) already
+ * treats "column type" as a value-derived concept, not a schema one;
+ * this follows the same pattern rather than introducing a second one.
+ * Scans for the first non-null/non-undefined value (real columns in this
+ * app are never genuinely mixed-type — one metric, one SQL type per
+ * column); an all-null column (e.g. a $baseline diff with no valid rows)
+ * has no real type to report and is 'unknown', matching NO_DATA_COLOR's/
+ * formatValue()'s own "N/A, not a guess" treatment of the same case.
+ * `bigint` is folded into 'number' defensively — 031-all-panel-demo-
+ * content's own real, confirmed finding was that a DuckDB `COUNT(*)`
+ * result CAN arrive as a JS `bigint` over a different code path
+ * (queryArrow()'s raw Arrow row access); query()'s own `.toJSON()`
+ * conversion was directly confirmed (live, this session) to already
+ * coerce it to a plain `number` for every case tested, but this costs
+ * nothing to guard anyway.
+ */
+export function inferColumnValueType(
+  rows: Record<string, unknown>[],
+  field: string,
+): ColumnValueType {
+  for (const row of rows) {
+    const value = row[field]
+    if (value === null || value === undefined) continue
+    const t = typeof value
+    if (t === 'number' || t === 'bigint') return 'number'
+    if (t === 'string' || t === 'boolean') return t
+    return 'unknown'
+  }
+  return 'unknown'
+}
+
 export interface ResolvedColumn {
   field: string
   label: string
   format?: string
   colorScale?: 'sequential' | 'diverging'
   domain?: [number, number]
+  valueType: ColumnValueType
 }
 
 /**
@@ -31,11 +91,16 @@ export function resolveColumns(
       format: column.format,
       colorScale: column.color_scale,
       domain: column.domain,
+      valueType: inferColumnValueType(rows, column.field),
     }))
   }
   const first = rows[0]
   if (!first) return []
-  return Object.keys(first).map((field) => ({ field, label: field }))
+  return Object.keys(first).map((field) => ({
+    field,
+    label: field,
+    valueType: inferColumnValueType(rows, field),
+  }))
 }
 
 /**

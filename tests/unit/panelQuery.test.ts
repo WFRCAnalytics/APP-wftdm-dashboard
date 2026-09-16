@@ -4,13 +4,21 @@ import {
   buildComparisonDiffQuery,
   buildGraphicWalkerQuery,
   buildPanelQuery,
+  buildRowCountQuery,
+  buildSearchPredicate,
+  buildSearchRowCountQuery,
   buildSparklineQuery,
+  buildTableDrivenPageQuery,
   buildValueBoxBaselineTrendQuery,
+  escapeSqlLiteral,
   isComparisonDiff,
   resolveActiveScenarios,
   resolveComparisonScenarioName,
+  resolveTableQueryMode,
   extractGlobalFilterIds,
+  TABLE_QUERY_MODE_THRESHOLD,
 } from '@/panels/panelQuery'
+import type { ResolvedColumn } from '@/panels/tableLogic'
 import type {
   GraphicWalkerPanelConfig,
   ObservablePlotPanelConfig,
@@ -182,14 +190,33 @@ describe('resolveActiveScenarios', () => {
     ])
   })
 
-  it('scenario (singular) short-circuits the union in buildPanelQuery — resolveActiveScenarios output is unused in that case', () => {
-    // resolveActiveScenarios itself still honors scenarios if both are set
-    // (a config-authoring edge case); buildPanelQuery is what actually
-    // ignores this output once `scenario` bypasses the placeholder.
+  it('scenario (singular) short-circuits the $scenario placeholder in buildPanelQuery\'s own SQL text', () => {
     const config = { ...valueBoxConfig, scenario: 'good_scenario', scenarios: ['observed'] }
     const sql = buildPanelQuery(config, {})
     expect(sql).not.toContain('$scenario')
     expect(sql).toContain('"good_scenario__summary_kpis"')
+  })
+
+  // 059-server-side-pagination — a real, confirmed, pre-existing bug this
+  // test replaces (see resolveActiveScenarios()'s own doc comment for the
+  // full story): a prior version of this file asserted the OPPOSITE of
+  // what's tested below — that resolveActiveScenarios()'s own return
+  // value is simply "unused" once `config.scenario` (singular) is set.
+  // That was true for buildPanelQuery()'s own SQL text (the test above),
+  // but resolveQueryAndPairs()'s `pairs` field also depends on this
+  // function's return value, unconditionally — and a wrong, overly-broad
+  // return value there means ensureRegistered() tries to register a
+  // pinned metric under every globally-active scenario, not just the one
+  // it's actually bound to, a real, confirmed registration failure the
+  // moment that metric doesn't exist under every other active scenario.
+  it('scenario (singular) takes priority over both scenarios and globallyActive — the real registration-pairs bug this fixes', () => {
+    const config = { ...valueBoxConfig, scenario: 'good_scenario', scenarios: ['observed'] }
+    expect(resolveActiveScenarios(config, ['observed', 'a_third_scenario'])).toEqual(['good_scenario'])
+  })
+
+  it('scenario (singular) alone, with neither scenarios nor globallyActive relevant, resolves to just that one scenario', () => {
+    const config = { ...valueBoxConfig, scenario: 'good_scenario' }
+    expect(resolveActiveScenarios(config, ['observed', 'a_third_scenario'])).toEqual(['good_scenario'])
   })
 })
 
@@ -443,5 +470,156 @@ describe('buildValueBoxBaselineTrendQuery', () => {
     expect(sql).toContain('FROM "x__m" a, "y__m" b')
     expect(sql).not.toContain('JOIN')
     expect(sql).not.toContain(' ON ')
+  })
+})
+
+// 059-server-side-pagination — see specs/059-server-side-pagination/
+// {research.md,contracts/query-shapes.md}. T004/T011/T013/T015/T019.
+describe('resolveTableQueryMode', () => {
+  it('resolves to "client" for a real row count below the threshold', () => {
+    expect(resolveTableQueryMode(0)).toBe('client')
+    expect(resolveTableQueryMode(99_999)).toBe('client')
+    expect(resolveTableQueryMode(TABLE_QUERY_MODE_THRESHOLD - 1)).toBe('client')
+  })
+
+  it('resolves to "query-driven" at and above the real, measured threshold — a real boundary test, not just mid-range', () => {
+    expect(resolveTableQueryMode(TABLE_QUERY_MODE_THRESHOLD)).toBe('query-driven')
+    expect(resolveTableQueryMode(100_001)).toBe('query-driven')
+    expect(resolveTableQueryMode(2_000_000)).toBe('query-driven')
+  })
+})
+
+describe('buildRowCountQuery', () => {
+  it('wraps the inner query in a COUNT(*) subquery, per contracts/query-shapes.md §1', () => {
+    expect(buildRowCountQuery('SELECT * FROM "trips"')).toBe('SELECT COUNT(*) AS cnt FROM (SELECT * FROM "trips") t')
+  })
+})
+
+describe('buildTableDrivenPageQuery', () => {
+  const base = { innerSql: 'SELECT * FROM "trips"', sortColumn: 'trip_distance', page: 0, pageSize: 20 }
+
+  it('produces the ROW_NUMBER()/WHERE __rn/ORDER BY/LIMIT shape for ASC, per contracts/query-shapes.md §2', () => {
+    const sql = buildTableDrivenPageQuery({ ...base, direction: 'asc' })
+    expect(sql).toContain('ROW_NUMBER() OVER (ORDER BY "trip_distance" ASC) AS __rn')
+    expect(sql).toContain('FROM (SELECT * FROM "trips") t')
+    expect(sql).toContain('WHERE __rn > 0')
+    expect(sql).toContain('ORDER BY __rn')
+    expect(sql).toContain('LIMIT 20')
+  })
+
+  it('produces DESC when requested', () => {
+    const sql = buildTableDrivenPageQuery({ ...base, direction: 'desc' })
+    expect(sql).toContain('ORDER BY "trip_distance" DESC) AS __rn')
+  })
+
+  it('computes the correct row-number cursor for a non-first page', () => {
+    const sql = buildTableDrivenPageQuery({ ...base, direction: 'asc', page: 5, pageSize: 20 })
+    expect(sql).toContain('WHERE __rn > 100')
+  })
+
+  it('falls back to an empty OVER() — natural/scan order — when no sort column is known yet', () => {
+    const sql = buildTableDrivenPageQuery({ ...base, sortColumn: null, direction: 'asc' })
+    expect(sql).toContain('ROW_NUMBER() OVER () AS __rn')
+    expect(sql).not.toContain('ORDER BY "trip_distance"')
+  })
+
+  it('omits the WHERE clause inside the ROW_NUMBER() subquery when no search predicate is given', () => {
+    const sql = buildTableDrivenPageQuery({ ...base, direction: 'asc' })
+    // Only the outer "WHERE __rn > 0" should appear — no inner WHERE at all.
+    expect(sql.match(/WHERE/g)).toHaveLength(1)
+  })
+
+  it('splices a search predicate INSIDE the same subquery that computes __rn — before the window function runs, per research.md §2\'s live-verified evaluation order', () => {
+    const sql = buildTableDrivenPageQuery({ ...base, direction: 'asc', searchPredicate: '"purpose" ILIKE \'%work%\'' })
+    const rnIndex = sql.indexOf('ROW_NUMBER()')
+    const predicateIndex = sql.indexOf('"purpose" ILIKE')
+    const outerWhereIndex = sql.indexOf('WHERE __rn >')
+    expect(predicateIndex).toBeGreaterThan(-1)
+    // The predicate's own WHERE sits between the ROW_NUMBER() computation's
+    // own SELECT and the outer WHERE __rn > ... — i.e. inside the same
+    // subquery, not appended after it closes.
+    expect(predicateIndex).toBeGreaterThan(rnIndex)
+    expect(predicateIndex).toBeLessThan(outerWhereIndex)
+    expect(sql.match(/WHERE/g)).toHaveLength(2)
+  })
+})
+
+describe('escapeSqlLiteral', () => {
+  it('leaves a plain term unchanged', () => {
+    expect(escapeSqlLiteral('work')).toBe('work')
+  })
+
+  it('doubles an embedded single quote — the real, verified case (research.md §6)', () => {
+    expect(escapeSqlLiteral("O'Brien")).toBe("O''Brien")
+  })
+
+  it('doubles every occurrence, not just the first', () => {
+    expect(escapeSqlLiteral("a'b'c")).toBe("a''b''c")
+  })
+})
+
+describe('buildSearchPredicate', () => {
+  const numberFormatted: ResolvedColumn = { field: 'trips', label: 'Trips', valueType: 'number', format: ',.0f' }
+  const numberPlain: ResolvedColumn = { field: 'count', label: 'Count', valueType: 'number' }
+  const percentFormatted: ResolvedColumn = { field: 'pct', label: 'Pct', valueType: 'number', format: '.1%' }
+  const stringCol: ResolvedColumn = { field: 'purpose', label: 'Purpose', valueType: 'string' }
+  const boolCol: ResolvedColumn = { field: 'flag', label: 'Flag', valueType: 'boolean' }
+  const unknownCol: ResolvedColumn = { field: 'diff_value', label: 'Diff', valueType: 'unknown' }
+
+  it('returns null for an empty search term, matching filterRows()\'s own short-circuit', () => {
+    expect(buildSearchPredicate([stringCol], '')).toBeNull()
+  })
+
+  it('a string column matches its raw value directly, no format() wrapping', () => {
+    const predicate = buildSearchPredicate([stringCol], 'work')
+    expect(predicate).toBe('"purpose" ILIKE \'%work%\'')
+  })
+
+  it('a number column with a configured format wraps the value in format(), per contracts/query-shapes.md §3', () => {
+    const predicate = buildSearchPredicate([numberFormatted], '1,234')
+    expect(predicate).toContain("format('{:,.0f}', CAST(\"trips\" AS DOUBLE))")
+    expect(predicate).toContain("ILIKE '%1,234%'")
+  })
+
+  it('a percent-formatted number column multiplies by 100 and appends a literal % suffix, mirroring formatValue.ts', () => {
+    const predicate = buildSearchPredicate([percentFormatted], '84.7%')
+    expect(predicate).toContain("format('{:.1f}', (CAST(\"pct\" AS DOUBLE) * 100))")
+    expect(predicate).toContain("|| '%'")
+  })
+
+  it('a number column with no configured format falls back to a plain VARCHAR cast', () => {
+    const predicate = buildSearchPredicate([numberPlain], '42')
+    expect(predicate).toBe('CAST("count" AS VARCHAR) ILIKE \'%42%\'')
+  })
+
+  it('a boolean column matches via a plain VARCHAR cast', () => {
+    const predicate = buildSearchPredicate([boolCol], 'true')
+    expect(predicate).toBe('CAST("flag" AS VARCHAR) ILIKE \'%true%\'')
+  })
+
+  it('an unknown-typed (all-null) column is omitted entirely — it can never contain a real match', () => {
+    expect(buildSearchPredicate([unknownCol], 'anything')).toBeNull()
+    // Confirmed by omission even when mixed with a real column too:
+    const predicate = buildSearchPredicate([unknownCol, stringCol], 'work')
+    expect(predicate).not.toContain('diff_value')
+  })
+
+  it('OR-joins multiple visible columns, matching filterRows()\'s own "any column matches" semantics', () => {
+    const predicate = buildSearchPredicate([stringCol, numberPlain], 'x')!
+    expect(predicate).toContain('"purpose" ILIKE')
+    expect(predicate).toContain('OR')
+    expect(predicate).toContain('CAST("count" AS VARCHAR) ILIKE')
+  })
+
+  it('escapes an embedded single quote in the search term itself', () => {
+    const predicate = buildSearchPredicate([stringCol], "O'Brien")!
+    expect(predicate).toContain("O''Brien")
+  })
+})
+
+describe('buildSearchRowCountQuery', () => {
+  it('wraps the inner query with the search predicate as a WHERE clause, per contracts/query-shapes.md §4', () => {
+    const sql = buildSearchRowCountQuery('SELECT * FROM "trips"', '"purpose" ILIKE \'%work%\'')
+    expect(sql).toBe('SELECT COUNT(*) AS cnt FROM (SELECT * FROM "trips") t WHERE ("purpose" ILIKE \'%work%\')')
   })
 })

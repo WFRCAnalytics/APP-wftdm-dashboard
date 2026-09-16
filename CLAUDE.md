@@ -5985,6 +5985,132 @@ first cross-reference this list was built from). ✅ done,
     it gained a second real importer beyond Observable Plot's own
     internal usage (research.md §7b).
 
+30. ✅ Server-side sort, filter & pagination for TablePanel —
+    059-server-side-pagination. Implements `project-docs/TABLE-PANEL-PROPOSAL.md`
+    §8's own long-open query-architecture recommendation (§9's own
+    "Still genuinely open" list, now resolved — see that document's own
+    addendum). `TablePanel.tsx` gained a real `TableQueryMode` split:
+    `rowCount < 100_000` (`TABLE_QUERY_MODE_THRESHOLD`, `panels/
+    panelQuery.ts`) stays on today's unmodified fetch-everything-then-
+    process-in-JS path, byte-for-byte — every real published table today
+    is comfortably under this line, confirmed by direct survey before
+    picking the constant; `rowCount >= 100_000` switches to a genuinely
+    new query-driven mode, fetching one page at a time via SQL rather
+    than holding the whole result set in browser memory. The 100,000-row
+    line itself is a real, measured constant (`research.md` §1 — 15k/
+    50k/100k/150k/500k/2M real data points), not a round-number guess.
+
+    **The synthetic-cursor technique**: every real table-bound metric is
+    a `GROUP BY` aggregate with no natural unique row key, so a keyset/
+    cursor pagination scheme (the technique `TABLE-PANEL-PROPOSAL.md`'s
+    own §5f flagged as necessary at real scale, since naive `LIMIT`/
+    `OFFSET` measurably slows down with depth) needed a synthetic
+    tie-breaker. `panelQuery.ts`'s new `buildTableDrivenPageQuery()`
+    wraps the panel's already-resolved inner query in `ROW_NUMBER() OVER
+    (ORDER BY "<sortColumn>" <ASC|DESC>)`, then pages via `WHERE __rn >
+    page*pageSize ORDER BY __rn LIMIT pageSize` — verified live,
+    gap-free and duplicate-free across a full page-by-page walk, and
+    flat in latency (38.8–88.9ms at 250k–500k rows, every depth tested)
+    regardless of cursor position, unlike naive offset pagination's own
+    measured depth-dependent slowdown. A real refinement made during
+    implementation (`contracts/query-shapes.md`'s own "Correction, made
+    during implementation" note): when no sort column is known yet
+    (`sortState === null`, and `resolveColumns()` can't always name one
+    before any row has been fetched), `sortColumn` is `string | null`,
+    with `null` producing a fully empty `ROW_NUMBER() OVER ()` — valid
+    SQL, natural/scan-order numbering, matching client mode's own
+    existing "unsorted = natural order" default rather than forcing an
+    ordering client mode doesn't impose either. This synthetic-cursor
+    approach is a deliberate departure from a "true" keyset scheme (which
+    would lose "jump to page N"/"jump to last page"): every existing
+    First/Previous/Next/Last pagination control (`067`) keeps working
+    completely unchanged, since `ROW_NUMBER()` still supports direct
+    `WHERE __rn > N` jumps to an arbitrary page.
+
+    **Search-format parity** (`buildSearchPredicate()`, new): a
+    query-driven table's search must match the same *rendered/formatted*
+    text a viewer sees on screen (e.g. searching `"23.4"` against a
+    `,.1f`-formatted distance column), not the raw underlying value —
+    the same guarantee client-mode search already provides via
+    `formatValue.ts`. Resolved via DuckDB's own `format()` SQL function,
+    confirmed live to reproduce `formatValue.ts`'s exact Python-style
+    format-string mini-language (`{:,.0f}`, `{:.1%}`, `{:+.1f}`) once its
+    leading `{:`/trailing `}` are stripped to the bare spec `format()`
+    itself expects. Only *visible* columns (`067`'s `hiddenColumns`) get
+    a predicate, matching client-mode `filterRows()`'s own existing
+    "search only what's currently shown" behavior; an `'unknown'`-typed
+    column (`068`'s `inferColumnValueType()`) is omitted from the
+    predicate entirely — an all-null/unclassifiable column can never
+    match a real search term. Search terms are escaped for SQL safety via
+    standard quote-doubling (`term.replace(/'/g, "''")`,
+    `escapeSqlLiteral()`) — string templating only, never a new
+    parameterized-query code path (Constitution Principle III).
+
+    **A real, pre-existing bug found and fixed during this feature's own
+    live test verification, not merely anticipated**:
+    `panelQuery.ts#resolveActiveScenarios()` checked `config.scenarios`
+    (plural) but never `config.scenario` (singular) before falling
+    through to the globally-active set — even though
+    `resolveQueryAndPairs()`'s own `pairs` field (the list
+    `services/tabDataLoader.ts#ensureRegistered()` actually registers)
+    depends on this resolution unconditionally, regardless of which
+    field a panel's SQL text itself ends up using. This produced
+    over-broad scenario-registration attempts for any `scenario:`
+    (singular)-pinned panel — silently wasteful when every scenario
+    happens to share the same metrics (true for all real content today,
+    which is why this had never been noticed), but a genuine, real
+    failure otherwise (a metric that exists under only one real
+    scenario). Fixed by checking `config.scenario` first, matching
+    `services/tabDataLoader.ts`'s own already-correct sibling logic
+    (`resolveScenarioNames()`) — confirmed via a live debug script
+    showing zero errors after the fix, and a corrected, previously
+    misleading unit test whose own comment wrongly generalized
+    "`resolveActiveScenarios()` output is unused" when that's only true
+    for `buildPanelQuery()`'s SQL text, never for the `pairs` field.
+
+    **Confirmed non-issues, by direct code read, not assumed** (`research.md`
+    §4/§5, re-confirmed against the shipped code by this feature's own
+    T021/T022): a color-scaled column already requires both `color_scale`
+    *and* an author-specified `domain` before any shading applies —
+    `domain` is never auto-computed from fetched rows for `TablePanel`
+    (unlike `ZoneMapPanel`'s own different, unrelated auto-domain
+    behavior) — so moving from "every row in memory" to "only the
+    current page in memory" changes nothing about how a color scale
+    resolves; verified live via a real integration test (a query-driven
+    250,000-row table and a client-mode 50-row table, same generation
+    formula, same `color_scale`/`domain` config) proving a cell with the
+    same value renders the EXACT same computed background color in both
+    modes. `resolveQueryAndPairs()` (already unified for ordinary/
+    `comparison: diff` resolution by a prior, separate feature) is called
+    exactly once per fetch, unconditionally — no `config.comparison`
+    branch anywhere in `TablePanel.tsx` itself — and its `sql` output
+    feeds the new wrapping queries identically regardless of which
+    branch produced it.
+
+    Verification: `npx tsc --noEmit` clean; `npm run test:unit` 531/531
+    passing (up from 507 — ~24 new cases across `buildRowCountQuery()`/
+    `buildTableDrivenPageQuery()`/`escapeSqlLiteral()`/
+    `buildSearchPredicate()`/`buildSearchRowCountQuery()`/
+    `resolveTableQueryMode()`, plus the two corrected
+    `resolveActiveScenarios()` tests above); `tests/integration/
+    tablePanelOptionB.spec.ts` (the real, existing `067`/`068` suite) 6/6
+    passing, unmodified, confirming zero regression to small, real,
+    published table panels; a new `tests/integration/
+    tablePanelServerSidePagination.spec.ts` (4/4 passing) exercises a
+    real, throwaway 250,000-row synthetic Parquet file — generated via
+    the native `duckdb` CLI and placed directly under a real scenario's
+    own `summary/` folder (`services/tabDataLoader.ts#registerOnePair()`'s
+    own confirmed behavior: no upfront `summary/index.json` catalog check
+    at all, so no YAML/catalog edit was needed), deleted in `afterAll`,
+    confirmed via `git status` to leave nothing committed — covering fast
+    sort/pagination at scale (US1), search-format parity (US2), and the
+    color-scale/comparison-diff regression proof (US3).
+
+    See `specs/059-server-side-pagination/` for the full spec/plan/
+    research/tasks record, including the real, measured threshold data
+    and the depth-independence/null-sortColumn corrections made during
+    planning and implementation.
+
 ---
 
 ## Reference implementations — copy patterns, don't re-derive

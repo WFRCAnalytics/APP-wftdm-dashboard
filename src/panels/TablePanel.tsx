@@ -7,10 +7,15 @@ import {
   ChevronLast,
   ChevronLeft,
   ChevronRight,
+  CircleHelp,
   Columns3,
+  Hash,
   Search,
   SearchX,
   Table as TableIcon,
+  Text,
+  ToggleLeft,
+  type LucideIcon,
 } from 'lucide-react'
 
 import { query } from '@/services/duckdb'
@@ -20,9 +25,18 @@ import { useScenarioDisplay } from '@/hooks/useScenarioDisplay'
 import { resolveScenarioLabel } from '@/panels/scenarioDisplay'
 import { useBaseline } from '@/hooks/useBaseline'
 import { ensureRegistered } from '@/services/tabDataLoader'
-import { resolveQueryAndPairs, extractGlobalFilterIds } from '@/panels/panelQuery'
+import {
+  resolveQueryAndPairs,
+  extractGlobalFilterIds,
+  resolveTableQueryMode,
+  buildRowCountQuery,
+  buildSearchRowCountQuery,
+  buildTableDrivenPageQuery,
+  buildSearchPredicate,
+  type TableQueryMode,
+} from '@/panels/panelQuery'
 import { formatValue } from '@/panels/formatValue'
-import { cellColor, filterRows, resolveColumns, sortRows } from '@/panels/tableLogic'
+import { cellColor, filterRows, resolveColumns, sortRows, type ColumnValueType } from '@/panels/tableLogic'
 import { PanelEmptyState } from '@/panels/PanelEmptyState'
 import { PanelErrorState } from '@/panels/PanelErrorState'
 import {
@@ -43,6 +57,35 @@ type SortState = { column: string; direction: 'asc' | 'desc' } | null
 
 function initialSort(config: TablePanelConfig): SortState {
   return config.sort ? { column: config.sort.column, direction: config.sort.order } : null
+}
+
+// 059-server-side-pagination — buildRowCountQuery()/buildSearchRowCountQuery()
+// (panelQuery.ts) both alias their result as `cnt`; `Number()` handles
+// either a plain JS number or a bigint (DuckDB-WASM's own real, confirmed
+// possible return shape for a COUNT(*)-derived value over a different
+// code path than this one — 031-all-panel-demo-content's own finding —
+// guarded here defensively at zero real cost).
+function readCount(rows: Record<string, unknown>[]): number {
+  return Number(rows[0]?.cnt as number | bigint | undefined)
+}
+
+// 068-column-type-indicators — matches gropaul/dash-ui's own real,
+// confirmed convention (fetched directly, src/components/relation/
+// common/value-icon.tsx): a small, per-column type glyph, leading the
+// header label. Its own icon choices are ALREADY lucide-react (dash-ui
+// depends on the same library this app's own constitution restricts
+// icons to) — Hash/Text/ToggleLeft map 1:1, no adaptation needed;
+// CircleHelp is dash-ui's own real fallback for an unrecognized/
+// unclassifiable type, reused here for the 'unknown' case (an all-null
+// column). dash-ui's own further cases (List/Struct/Map, via a live
+// Arrow schema) are deliberately not ported — see tableLogic.ts's own
+// inferColumnValueType() doc comment for why no real case in this app's
+// query layer can ever produce one.
+const COLUMN_TYPE_ICONS: Record<ColumnValueType, LucideIcon> = {
+  number: Hash,
+  string: Text,
+  boolean: ToggleLeft,
+  unknown: CircleHelp,
 }
 
 // The third panel type — see contracts/table-panel.md and
@@ -88,6 +131,32 @@ export function TablePanel({ config }: { config: TablePanelConfig }) {
   // re-render. Resets only on an actual unmount (tab switch), same as
   // every other useState in this component.
   const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(new Set())
+  // 059-server-side-pagination — the per-panel, per-content mode decision
+  // (data-model.md's TableQueryMode) plus the CURRENT view's own real row
+  // count (the full table's count normally; a search-filtered count while
+  // a query-driven table's search box has a term in it — see
+  // fetchQueryDrivenPage() below). `null` while not yet resolved (the
+  // very first fetch for this content is still in flight).
+  const [tableQueryMode, setTableQueryMode] = useState<{ mode: TableQueryMode; rowCount: number } | null>(
+    null,
+  )
+  // Mirrors tableQueryMode for synchronous reads inside the content-fetch
+  // effect (same reason lastContentKeyRef below is a ref, not a second
+  // state variable: the effect needs the value AS OF the moment it runs,
+  // not whatever the last completed render captured).
+  const tableQueryModeRef = useRef<{ mode: TableQueryMode; rowCount: number } | null>(null)
+  // The current content's own resolved base query (resolveQueryAndPairs()'s
+  // `sql`, BEFORE any of this feature's own ROW_NUMBER()/search wrapping) —
+  // read by the imperative query-driven re-fetch helper triggered from
+  // handleSort/handleSearchChange/the pagination buttons, none of which
+  // re-run resolveQueryAndPairs() themselves.
+  const resolvedSqlRef = useRef<string | null>(null)
+  // Guards against a stale, superseded query-driven fetch overwriting a
+  // newer one's result — the same real requirement the main content
+  // effect's own `cancelled` flag protects, generalized to cover several
+  // independent imperative call sites (sort/search/page) rather than one
+  // effect's single cleanup function.
+  const fetchGenerationRef = useRef(0)
   // 009-scenario-manager (FR-008): tracks the (config, filters) pair the
   // three-way reset below was last computed against, so the reset only
   // fires for a genuine content change (a real filter/config-driven
@@ -106,6 +175,17 @@ export function TablePanel({ config }: { config: TablePanelConfig }) {
   // identical chain to ValueBoxPanel.tsx/PlotlyPanel.tsx
   // (contracts/panel-query.md), but see lastContentKeyRef above for why
   // the reset below is conditional here and not in those simpler panels.
+  //
+  // 059-server-side-pagination: gains a real, measured mode decision
+  // (data-model.md's TableQueryMode) between this existing full-fetch
+  // path (mode: 'client', completely unmodified below — every real
+  // table this app ships today stays on it) and a new query-driven path
+  // for a real large table (specs/059-server-side-pagination/{research.md,
+  // contracts/query-shapes.md}). The mode itself is only (re-)decided on
+  // a genuine content change — never mid-interaction (spec's own Edge
+  // Cases entry) — reusing the ALREADY-resolved mode on a scenario-
+  // activation-only refetch, exactly mirroring how sortState/searchTerm/
+  // currentPage already behave.
   useEffect(() => {
     let cancelled = false
     setStatus('loading')
@@ -125,7 +205,9 @@ export function TablePanel({ config }: { config: TablePanelConfig }) {
     // comment for the full story). A '$baseline' sentinel on either side
     // of config.comparison is still resolved BEFORE any query is built;
     // an unresolved baseline still shows this panel's existing error
-    // state directly, never attempting a doomed query (FR-011).
+    // state directly, never attempting a doomed query (FR-011). This
+    // whole resolution step, and everything it returns, is completely
+    // unaffected by 059 — research.md §5's own confirmed finding.
     const resolved = resolveQueryAndPairs(
       config,
       filters,
@@ -138,32 +220,108 @@ export function TablePanel({ config }: { config: TablePanelConfig }) {
       return
     }
     const { sql, pairs } = resolved
+    resolvedSqlRef.current = sql
+    const generation = ++fetchGenerationRef.current
+
+    // The effective sort/search/page for THIS fetch: on a genuine content
+    // change these are the same reset values the three-way reset below
+    // applies; on a scenario-activation-only refetch they're whatever the
+    // viewer currently has set (FR-008 — local UI state survives).
+    const effectiveSort = isContentChange ? initialSort(config) : sortState
+    const effectiveSearch = isContentChange ? '' : searchTerm
+    const effectivePage = isContentChange ? 0 : currentPage
+    const pageSize = config.pagination ?? DEFAULT_PAGE_SIZE
+
+    function applyContentChangeReset() {
+      if (isContentChange) {
+        setSortState(initialSort(config))
+        setSearchTerm('')
+        setCurrentPage(0)
+      }
+    }
 
     // 056-lazy-tab-scoped-loading: see dashboardRenderer.tsx's own
     // comment — a no-op when already loaded/in-flight, a real await
     // otherwise.
     ensureRegistered(pairs)
-      .then(() => query(sql))
-      .then((result) => {
-        if (cancelled) return
-        if (result.length === 0) {
+      .then(() => query(buildRowCountQuery(sql)))
+      .then((countRows) => {
+        if (cancelled || generation !== fetchGenerationRef.current) return
+        const fullRowCount = readCount(countRows)
+
+        // Genuinely no data at all — independent of mode, independent of
+        // any search term (a real, non-search "empty" is decided here,
+        // before either query path below ever runs).
+        if (fullRowCount === 0) {
+          setRows([])
           setStatus('empty')
+          applyContentChangeReset()
           return
         }
-        setRows(result)
-        setStatus('ready')
-        // A genuinely new result set — sortState/searchTerm/currentPage
-        // all reset together, not a subset of the three
-        // (contracts/table-panel.md's three-way reset — every client-only
-        // view state resets across a real refetch; sortState reverts to
-        // config.sort, not whatever the user last clicked). Gated on
-        // isContentChange (FR-008) — a scenario-activation-only refetch
-        // must not reset these even though it does re-fetch.
-        if (isContentChange) {
-          setSortState(initialSort(config))
-          setSearchTerm('')
-          setCurrentPage(0)
+
+        // research.md §1's own real, measured threshold — decided once
+        // per genuine content change, reused otherwise.
+        const mode = isContentChange
+          ? resolveTableQueryMode(fullRowCount)
+          : tableQueryModeRef.current?.mode ?? resolveTableQueryMode(fullRowCount)
+
+        if (mode === 'client') {
+          tableQueryModeRef.current = { mode, rowCount: fullRowCount }
+          setTableQueryMode(tableQueryModeRef.current)
+          // Today's exact, unmodified path.
+          return query(sql).then((result) => {
+            if (cancelled || generation !== fetchGenerationRef.current) return
+            setRows(result)
+            setStatus('ready')
+            applyContentChangeReset()
+          })
         }
+
+        // Query-driven mode. `columns`/`visibleColumns` are resolved from
+        // whatever `rows` already holds (the previous fetch's own page,
+        // or — on the very first fetch for this content — still empty,
+        // in which case `effectiveSearch` is always '' anyway per the
+        // isContentChange branch above, so no predicate is ever built
+        // against a not-yet-known column set).
+        const currentColumns = resolveColumns(config, rows)
+        const currentVisible = currentColumns.filter((column) => !hiddenColumns.has(column.field))
+        const searchPredicate = buildSearchPredicate(currentVisible, effectiveSearch)
+
+        const rowCountPromise = searchPredicate
+          ? query(buildSearchRowCountQuery(sql, searchPredicate)).then(readCount)
+          : Promise.resolve(fullRowCount)
+
+        return rowCountPromise.then((rowCountForView) => {
+          if (cancelled || generation !== fetchGenerationRef.current) return
+          tableQueryModeRef.current = { mode, rowCount: rowCountForView }
+          setTableQueryMode(tableQueryModeRef.current)
+
+          if (rowCountForView === 0) {
+            // A real result set exists overall — the search matched
+            // nothing. status stays 'ready' with zero rows, matching
+            // client mode's own render-body noSearchResults handling,
+            // never this file's "no data at all" empty state.
+            setRows([])
+            setStatus('ready')
+            applyContentChangeReset()
+            return
+          }
+
+          const pageSql = buildTableDrivenPageQuery({
+            innerSql: sql,
+            sortColumn: effectiveSort?.column ?? null,
+            direction: effectiveSort?.direction ?? 'asc',
+            page: effectivePage,
+            pageSize,
+            searchPredicate,
+          })
+          return query(pageSql).then((result) => {
+            if (cancelled || generation !== fetchGenerationRef.current) return
+            setRows(result)
+            setStatus('ready')
+            applyContentChangeReset()
+          })
+        })
       })
       .catch(() => {
         if (!cancelled) setStatus('error')
@@ -173,6 +331,54 @@ export function TablePanel({ config }: { config: TablePanelConfig }) {
       cancelled = true
     }
   }, [config, filters, activeScenarioNames, baseline])
+
+  // 059-server-side-pagination — the imperative re-fetch every query-
+  // driven sort/search/page interaction below triggers directly (no
+  // effect-dependency-array involvement — those interactions never touch
+  // config/filters/activeScenarioNames/baseline, so the effect above
+  // would never re-run for them on its own). A no-op when the current
+  // table isn't in query-driven mode at all (the caller checks first, but
+  // this function re-checks too, defensively).
+  async function fetchQueryDrivenPage(opts: { sort: SortState; search: string; page: number }) {
+    const sql = resolvedSqlRef.current
+    if (!sql || tableQueryModeRef.current?.mode !== 'query-driven') return
+    const generation = ++fetchGenerationRef.current
+    setStatus('loading')
+
+    const currentColumns = resolveColumns(config, rows)
+    const currentVisible = currentColumns.filter((column) => !hiddenColumns.has(column.field))
+    const searchPredicate = buildSearchPredicate(currentVisible, opts.search)
+    const pageSize = config.pagination ?? DEFAULT_PAGE_SIZE
+
+    try {
+      const countSql = searchPredicate ? buildSearchRowCountQuery(sql, searchPredicate) : buildRowCountQuery(sql)
+      const rowCountForView = readCount(await query(countSql))
+      if (generation !== fetchGenerationRef.current) return
+      tableQueryModeRef.current = { mode: 'query-driven', rowCount: rowCountForView }
+      setTableQueryMode(tableQueryModeRef.current)
+
+      if (rowCountForView === 0) {
+        setRows([])
+        setStatus('ready')
+        return
+      }
+
+      const pageSql = buildTableDrivenPageQuery({
+        innerSql: sql,
+        sortColumn: opts.sort?.column ?? null,
+        direction: opts.sort?.direction ?? 'asc',
+        page: opts.page,
+        pageSize,
+        searchPredicate,
+      })
+      const result = await query(pageSql)
+      if (generation !== fetchGenerationRef.current) return
+      setRows(result)
+      setStatus('ready')
+    } catch {
+      if (generation === fetchGenerationRef.current) setStatus('error')
+    }
+  }
 
   if (status === 'loading') {
     // wftdm-design-system skill's Skeleton section, Phase 3 requirement —
@@ -215,24 +421,36 @@ export function TablePanel({ config }: { config: TablePanelConfig }) {
   // surprise (matching TanStack Table's own default global-filter
   // behavior of excluding hidden columns, the closest real precedent).
   const visibleColumns = columns.filter((column) => !hiddenColumns.has(column.field))
+  // 059-server-side-pagination — in query-driven mode, `rows` already IS
+  // the correct, server-sorted/filtered/paginated page (data-model.md's
+  // own PagePosition — both modes use a plain page number, no separate
+  // cursor concept); every client-side derivation below is skipped
+  // entirely, matching this file's own scope: client mode gets ZERO
+  // behavior change (spec FR-002).
+  const isQueryDriven = tableQueryMode?.mode === 'query-driven'
+  const pageSize = config.pagination ?? DEFAULT_PAGE_SIZE
   // Order of operations per contracts/table-panel.md: filter the full
   // fetched set, sort the filtered subset, then paginate what's left.
-  const filtered = searchTerm ? filterRows(rows, visibleColumns, searchTerm) : rows
-  const sorted = sortState ? sortRows(filtered, sortState.column, sortState.direction) : filtered
-  const pageSize = config.pagination ?? DEFAULT_PAGE_SIZE
-  const pageCount = Math.max(1, Math.ceil(sorted.length / pageSize))
+  const filtered = !isQueryDriven && searchTerm ? filterRows(rows, visibleColumns, searchTerm) : rows
+  const sorted = !isQueryDriven && sortState ? sortRows(filtered, sortState.column, sortState.direction) : filtered
+  const totalRowCount = isQueryDriven ? tableQueryMode?.rowCount ?? 0 : sorted.length
+  const pageCount = Math.max(1, Math.ceil(totalRowCount / pageSize))
   const safePage = Math.min(currentPage, pageCount - 1)
-  const pageRows = sorted.slice(safePage * pageSize, (safePage + 1) * pageSize)
-  const noSearchResults = searchTerm.length > 0 && sorted.length === 0
+  const pageRows = isQueryDriven ? rows : sorted.slice(safePage * pageSize, (safePage + 1) * pageSize)
+  const noSearchResults = searchTerm.length > 0 && totalRowCount === 0
   const firstRowNumber = safePage * pageSize + 1
-  const lastRowNumber = Math.min((safePage + 1) * pageSize, sorted.length)
+  const lastRowNumber = Math.min((safePage + 1) * pageSize, totalRowCount)
 
   function handleSort(field: string) {
-    setSortState((prev) =>
-      prev?.column === field
-        ? { column: field, direction: prev.direction === 'asc' ? 'desc' : 'asc' }
-        : { column: field, direction: 'asc' },
-    )
+    const next: SortState =
+      sortState?.column === field
+        ? { column: field, direction: sortState.direction === 'asc' ? 'desc' : 'asc' }
+        : { column: field, direction: 'asc' }
+    setSortState(next)
+    if (isQueryDriven) {
+      setCurrentPage(0)
+      void fetchQueryDrivenPage({ sort: next, search: searchTerm, page: 0 })
+    }
   }
 
   // Guards against hiding the LAST visible column — a table with zero
@@ -259,6 +477,21 @@ export function TablePanel({ config }: { config: TablePanelConfig }) {
     // stale page index could point past the end of the now-filtered set.
     // Sorting alone doesn't do this (row count unchanged), so it doesn't
     // reset currentPage.
+    if (isQueryDriven) {
+      void fetchQueryDrivenPage({ sort: sortState, search: value, page: 0 })
+    }
+  }
+
+  // 059-server-side-pagination — every pagination control below (first/
+  // previous/next/last, 067) routes through this one place so a query-
+  // driven table's page-change re-fetches exactly the same way a sort or
+  // search change does; a client-mode table just moves `currentPage` and
+  // relies on the existing in-memory `.slice()` above, unchanged.
+  function goToPage(target: number) {
+    setCurrentPage(target)
+    if (isQueryDriven) {
+      void fetchQueryDrivenPage({ sort: sortState, search: searchTerm, page: target })
+    }
   }
 
   return (
@@ -329,7 +562,12 @@ export function TablePanel({ config }: { config: TablePanelConfig }) {
             <table className="w-full border-collapse font-body text-sm">
               <thead>
                 <tr className="border-b border-border">
-                  {visibleColumns.map((column) => (
+                  {visibleColumns.map((column) => {
+                    // 068-column-type-indicators — see COLUMN_TYPE_ICONS's
+                    // own doc comment for the gropaul/dash-ui research this
+                    // is built on.
+                    const TypeIcon = COLUMN_TYPE_ICONS[column.valueType]
+                    return (
                     <th
                       key={column.field}
                       aria-sort={
@@ -366,12 +604,21 @@ export function TablePanel({ config }: { config: TablePanelConfig }) {
                           "you can sort this" cue on hover/focus, not only
                           after the fact. The `aria-sort` attribute above
                           already carries this state to assistive tech, so
-                          every icon here is `aria-hidden`. */}
+                          every icon here is `aria-hidden`. The leading
+                          TypeIcon (068-column-type-indicators) is placed
+                          BEFORE the label, matching gropaul/dash-ui's own
+                          real header layout exactly (type glyph, then
+                          name, then the sort affordance last) — inside
+                          the same clickable button, `currentColor`-styled
+                          like the label itself rather than a distinct
+                          color, so it reads as one integrated header
+                          design, not a competing element. */}
                       <button
                         type="button"
                         onClick={() => handleSort(column.field)}
                         className="group flex cursor-pointer select-none items-center gap-1 rounded-sm hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       >
+                        <TypeIcon className="h-4 w-4 shrink-0" aria-hidden="true" />
                         {column.label}
                         {sortState?.column === column.field ? (
                           sortState.direction === 'asc' ? (
@@ -387,7 +634,8 @@ export function TablePanel({ config }: { config: TablePanelConfig }) {
                         )}
                       </button>
                     </th>
-                  ))}
+                    )
+                  })}
                 </tr>
               </thead>
               <tbody>
@@ -416,7 +664,7 @@ export function TablePanel({ config }: { config: TablePanelConfig }) {
             </table>
           </div>
 
-          {sorted.length > pageSize && (
+          {totalRowCount > pageSize && (
             // TABLE-PANEL-PROPOSAL.md §6 Option B — first/last jump
             // buttons + a "Showing X–Y of Z rows" caption alongside the
             // existing "Page X of Y", matching gropaul/dash-ui's own
@@ -425,13 +673,13 @@ export function TablePanel({ config }: { config: TablePanelConfig }) {
             // found with no icon at all).
             <div className="mt-3 flex items-center justify-between font-body text-sm text-muted-foreground">
               <span className="text-xs">
-                Showing {firstRowNumber}–{lastRowNumber} of {sorted.length} rows
+                Showing {firstRowNumber}–{lastRowNumber} of {totalRowCount} rows
               </span>
               <div className="flex items-center gap-1">
                 <button
                   type="button"
                   aria-label="First page"
-                  onClick={() => setCurrentPage(0)}
+                  onClick={() => goToPage(0)}
                   disabled={safePage === 0}
                   className="rounded-md p-1 hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
                 >
@@ -440,7 +688,7 @@ export function TablePanel({ config }: { config: TablePanelConfig }) {
                 <button
                   type="button"
                   aria-label="Previous page"
-                  onClick={() => setCurrentPage((p) => Math.max(0, p - 1))}
+                  onClick={() => goToPage(Math.max(0, safePage - 1))}
                   disabled={safePage === 0}
                   className="rounded-md p-1 hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
                 >
@@ -452,7 +700,7 @@ export function TablePanel({ config }: { config: TablePanelConfig }) {
                 <button
                   type="button"
                   aria-label="Next page"
-                  onClick={() => setCurrentPage((p) => Math.min(pageCount - 1, p + 1))}
+                  onClick={() => goToPage(Math.min(pageCount - 1, safePage + 1))}
                   disabled={safePage >= pageCount - 1}
                   className="rounded-md p-1 hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
                 >
@@ -461,7 +709,7 @@ export function TablePanel({ config }: { config: TablePanelConfig }) {
                 <button
                   type="button"
                   aria-label="Last page"
-                  onClick={() => setCurrentPage(pageCount - 1)}
+                  onClick={() => goToPage(pageCount - 1)}
                   disabled={safePage >= pageCount - 1}
                   className="rounded-md p-1 hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
                 >

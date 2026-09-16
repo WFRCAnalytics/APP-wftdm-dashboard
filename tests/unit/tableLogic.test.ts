@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { cellColor, filterRows, resolveColumns, sortRows } from '@/panels/tableLogic'
+import { cellColor, filterRows, inferColumnValueType, resolveColumns, sortRows } from '@/panels/tableLogic'
 import type { TablePanelConfig } from '@/layout/types'
 
 const BASE_CONFIG: TablePanelConfig = {
@@ -21,13 +21,21 @@ describe('resolveColumns', () => {
     const rows = [{ link_id: 'L001', pct_error: 0.1 }]
     const resolved = resolveColumns(config, rows)
     expect(resolved).toEqual([
-      { field: 'link_id', label: 'Link ID', format: undefined, colorScale: undefined, domain: undefined },
+      {
+        field: 'link_id',
+        label: 'Link ID',
+        format: undefined,
+        colorScale: undefined,
+        domain: undefined,
+        valueType: 'string',
+      },
       {
         field: 'pct_error',
         label: 'pct_error',
         format: '{:.1%}',
         colorScale: 'diverging',
         domain: [-0.5, 0.5],
+        valueType: 'number',
       },
     ])
   })
@@ -41,6 +49,40 @@ describe('resolveColumns', () => {
 
   it('returns an empty array when there are no rows to derive columns from and no config.columns', () => {
     expect(resolveColumns(BASE_CONFIG, [])).toEqual([])
+  })
+})
+
+// 068-column-type-indicators
+describe('inferColumnValueType', () => {
+  it('reports "number" for a real numeric column', () => {
+    expect(inferColumnValueType([{ v: 42 }, { v: 7.5 }], 'v')).toBe('number')
+  })
+
+  it('reports "string" for a real text column', () => {
+    expect(inferColumnValueType([{ v: 'work' }, { v: 'school' }], 'v')).toBe('string')
+  })
+
+  it('reports "boolean" for a real boolean column', () => {
+    expect(inferColumnValueType([{ v: true }, { v: false }], 'v')).toBe('boolean')
+  })
+
+  // 031-all-panel-demo-content's own real, confirmed finding: a DuckDB
+  // COUNT(*) result can arrive as a JS bigint over a different code path
+  // than TablePanel.tsx's own query() — folded into 'number' defensively.
+  it('folds a bigint value into "number", not "unknown"', () => {
+    expect(inferColumnValueType([{ v: 42n }], 'v')).toBe('number')
+  })
+
+  it('skips leading null/undefined values to find the first real one', () => {
+    expect(inferColumnValueType([{ v: null }, { v: undefined }, { v: 9 }], 'v')).toBe('number')
+  })
+
+  it('reports "unknown" for a column with no non-null value at all (e.g. an all-null $baseline diff)', () => {
+    expect(inferColumnValueType([{ v: null }, { v: null }], 'v')).toBe('unknown')
+  })
+
+  it('reports "unknown" for an empty row set', () => {
+    expect(inferColumnValueType([], 'v')).toBe('unknown')
   })
 })
 
@@ -72,8 +114,8 @@ describe('sortRows', () => {
 
 describe('filterRows', () => {
   const columns = [
-    { field: 'link_id', label: 'Link ID' },
-    { field: 'pct_error', label: '% Error', format: '{:.1%}' },
+    { field: 'link_id', label: 'Link ID', valueType: 'string' as const },
+    { field: 'pct_error', label: '% Error', format: '{:.1%}', valueType: 'number' as const },
   ]
   const rows = [
     { link_id: 'L001', pct_error: 0.12 },
