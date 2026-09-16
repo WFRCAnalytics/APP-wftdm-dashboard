@@ -755,4 +755,91 @@ layout:
       height: 320
       width:  1.0
 
+  # ── 058-hierarchical-chart-panels: real, working treemap/sunburst panels
+  #    — Observable Plot has no composition path for either diagram
+  #    (research.md §1), so both are new, dedicated D3-based panel types.
+  #    purpose_mode_flow (real, already published for every demo scenario,
+  #    already consumed by the real "Trip Purpose to Mode Flow" sankey
+  #    panel above) is a genuine two-level hierarchy — 10 real
+  #    primary_purpose values, each splitting into up to 5 real
+  #    major_trip_mode values, real non-degenerate trips counts (research.md
+  #    §2) — zero new summarize.yaml metric needed. Both chart types read
+  #    the IDENTICAL path/value grammar, proving research.md §6's own
+  #    "same real hierarchy, two ways" architectural claim directly.
+  row_treemap:
+    - type:   treemap
+      title:  "Trip Purpose to Mode Breakdown (Treemap)"
+      metric: purpose_mode_flow
+      scenario: activitysim-baseline
+      path:   [primary_purpose, major_trip_mode]
+      value:  trips
+      height: 420
+      width:  0.5
+
+    # Zero-row/broken-metric siblings — the same shared PanelEmptyState/
+    # PanelErrorState every other data-bound panel type already has,
+    # never a blank/broken treemap-specific state.
+    - type:   treemap
+      title:  "Treemap Empty Result"
+      metric: purpose_mode_flow
+      scenario: activitysim-baseline
+      filter: { primary_purpose: __no_such_purpose__ }
+      path:   [primary_purpose, major_trip_mode]
+      value:  trips
+      height: 420
+      width:  0.25
+
+    - type:   treemap
+      title:  "Broken Treemap Panel (missing metric)"
+      metric: __no_such_metric__
+      scenario: activitysim-baseline
+      path:   [primary_purpose, major_trip_mode]
+      value:  trips
+      height: 420
+      width:  0.25
+
+    # Edge case: a filter narrowing to exactly one real primary_purpose
+    # collapses the hierarchy to a single top-level branch — the same
+    # degenerate shape the rejected SD/DISTRICT geographic candidate had
+    # (research.md §2). Must still render sensibly (one region filling the
+    # view), never error or show a blank panel.
+    - type:   treemap
+      title:  "Treemap Degenerate Single Branch"
+      metric: purpose_mode_flow
+      scenario: activitysim-baseline
+      filter: { primary_purpose: work }
+      path:   [primary_purpose, major_trip_mode]
+      value:  trips
+      height: 420
+      width:  0.25
+
+  row_sunburst:
+    - type:   sunburst
+      title:  "Trip Purpose to Mode Breakdown (Sunburst)"
+      metric: purpose_mode_flow
+      scenario: activitysim-baseline
+      path:   [primary_purpose, major_trip_mode]
+      value:  trips
+      height: 420
+      width:  0.5
+
+    - type:   sunburst
+      title:  "Sunburst Empty Result"
+      metric: purpose_mode_flow
+      scenario: activitysim-baseline
+      filter: { primary_purpose: __no_such_purpose__ }
+      path:   [primary_purpose, major_trip_mode]
+      value:  trips
+      height: 420
+      width:  0.25
+
+    - type:   sunburst
+      title:  "Broken Sunburst Panel (missing metric)"
+      metric: __no_such_metric__
+      scenario: activitysim-baseline
+      path:   [primary_purpose, major_trip_mode]
+      value:  trips
+      height: 420
+      width:  0.25
+
 default_basemap: carto-positron
