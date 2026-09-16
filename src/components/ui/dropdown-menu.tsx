@@ -10,8 +10,13 @@ import { cn } from '@/lib/utils'
 // icon-trigger control; only the subset actually used (Root/Trigger/
 // Content/RadioGroup/RadioItem) is exported, matching tooltip.tsx's own
 // "only what's needed" precedent rather than the full shadcn surface
-// (Label/Separator/CheckboxItem/Sub* are all unused anywhere in this
-// project today and are left out until a real consumer needs them).
+// (Label/Separator/Sub* are still unused anywhere in this project and
+// stay left out). CheckboxItem was added by TABLE-PANEL-PROPOSAL.md's
+// Option B (TablePanel.tsx's column-visibility menu) — its own real,
+// installed Radix primitive (`DropdownMenuPrimitive.CheckboxItem`)
+// already existed in `@radix-ui/react-dropdown-menu`, just not
+// re-exported from this wrapper until it had a real consumer, matching
+// this file's own "only what's needed" convention exactly.
 const DropdownMenu = DropdownMenuPrimitive.Root
 const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger
 const DropdownMenuRadioGroup = DropdownMenuPrimitive.RadioGroup
@@ -56,10 +61,33 @@ const DropdownMenuRadioItem = React.forwardRef<
 ))
 DropdownMenuRadioItem.displayName = DropdownMenuPrimitive.RadioItem.displayName
 
+const DropdownMenuCheckboxItem = React.forwardRef<
+  React.ElementRef<typeof DropdownMenuPrimitive.CheckboxItem>,
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.CheckboxItem>
+>(({ className, children, ...props }, ref) => (
+  <DropdownMenuPrimitive.CheckboxItem
+    ref={ref}
+    className={cn(
+      'relative flex cursor-pointer select-none items-center gap-2 rounded-sm py-1.5 pl-8 pr-2 font-body text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
+      className,
+    )}
+    {...props}
+  >
+    <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
+      <DropdownMenuPrimitive.ItemIndicator>
+        <Check className="h-4 w-4" />
+      </DropdownMenuPrimitive.ItemIndicator>
+    </span>
+    {children}
+  </DropdownMenuPrimitive.CheckboxItem>
+))
+DropdownMenuCheckboxItem.displayName = DropdownMenuPrimitive.CheckboxItem.displayName
+
 export {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
+  DropdownMenuCheckboxItem,
 }

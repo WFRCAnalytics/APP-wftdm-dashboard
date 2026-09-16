@@ -37,4 +37,29 @@ describe('formatValue', () => {
     expect(formatValue(undefined, '{:.1%}')).toBe('N/A')
     expect(formatValue(null, 'not-a-format-string')).toBe('N/A')
   })
+
+  // TABLE-PANEL-PROPOSAL.md §2 — a real, confirmed bug: project-docs/GRAMMAR.md's
+  // own worked type: table example, and 29 real live table columns across
+  // public/demo-dashboard-config/*.yaml, use this BARE (unbraced) form —
+  // it silently failed to match the original braces-only regex.
+  it('applies the bare (unbraced) form GRAMMAR.md documents and real table columns use — ",.0f"', () => {
+    expect(formatValue(9200, ',.0f')).toBe('9,200')
+  })
+
+  it('applies a bare "+.1%" — sign-forcing on a positive value, no double-sign on a negative one', () => {
+    expect(formatValue(0.032, '+.1%')).toBe('+3.2%')
+    expect(formatValue(-0.032, '+.1%')).toBe('-3.2%')
+    expect(formatValue(0, '+.1%')).toBe('+0.0%')
+  })
+
+  // A real, live valuebox format string, "{:,.0f} mi" — the original
+  // implementation discarded everything outside the matched {...} span,
+  // silently dropping the " mi" suffix entirely.
+  it('preserves literal prefix/suffix text around the matched format spec', () => {
+    expect(formatValue(1500.4, '{:,.0f} mi')).toBe('1,500 mi')
+  })
+
+  it('supports a braced sign-forcing form too, not just the bare one', () => {
+    expect(formatValue(0.032, '{:+.1%}')).toBe('+3.2%')
+  })
 })

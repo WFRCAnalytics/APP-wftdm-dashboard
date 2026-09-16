@@ -1,5 +1,17 @@
 import { useEffect, useRef, useState } from 'react'
-import { Search, SearchX, Table as TableIcon } from 'lucide-react'
+import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
+  ChevronFirst,
+  ChevronLast,
+  ChevronLeft,
+  ChevronRight,
+  Columns3,
+  Search,
+  SearchX,
+  Table as TableIcon,
+} from 'lucide-react'
 
 import { query } from '@/services/duckdb'
 import { useFilterState } from '@/hooks/useFilterState'
@@ -13,6 +25,12 @@ import { formatValue } from '@/panels/formatValue'
 import { cellColor, filterRows, resolveColumns, sortRows } from '@/panels/tableLogic'
 import { PanelEmptyState } from '@/panels/PanelEmptyState'
 import { PanelErrorState } from '@/panels/PanelErrorState'
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import type { TablePanelConfig } from '@/layout/types'
 
 const ALL_FILTERS: ['*'] = ['*'] // module-level constant — stable identity,
@@ -60,6 +78,16 @@ export function TablePanel({ config }: { config: TablePanelConfig }) {
   const [sortState, setSortState] = useState<SortState>(() => initialSort(config))
   const [searchTerm, setSearchTerm] = useState('')
   const [currentPage, setCurrentPage] = useState(0)
+  // TABLE-PANEL-PROPOSAL.md Option B — a viewer's own column-visibility
+  // preference for THIS panel. Deliberately NOT included in the
+  // three-way reset below (unlike sortState/searchTerm/currentPage) —
+  // a genuine content change almost never changes the underlying column
+  // SET for the same author-configured panel, and a viewer's "I don't
+  // want to see this column" choice should survive a scenario-activation
+  // or filter-driven refetch the same way it would survive any other
+  // re-render. Resets only on an actual unmount (tab switch), same as
+  // every other useState in this component.
+  const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(new Set())
   // 009-scenario-manager (FR-008): tracks the (config, filters) pair the
   // three-way reset below was last computed against, so the reset only
   // fires for a genuine content change (a real filter/config-driven
@@ -180,15 +208,24 @@ export function TablePanel({ config }: { config: TablePanelConfig }) {
   }
 
   const columns = resolveColumns(config, rows)
+  // TABLE-PANEL-PROPOSAL.md Option B — the subset of `columns` a viewer
+  // hasn't hidden. Search/render both use this, not the full `columns`
+  // list — a hidden column contributing an invisible search match would
+  // be a real "why did this row match, I don't see the term anywhere"
+  // surprise (matching TanStack Table's own default global-filter
+  // behavior of excluding hidden columns, the closest real precedent).
+  const visibleColumns = columns.filter((column) => !hiddenColumns.has(column.field))
   // Order of operations per contracts/table-panel.md: filter the full
   // fetched set, sort the filtered subset, then paginate what's left.
-  const filtered = searchTerm ? filterRows(rows, columns, searchTerm) : rows
+  const filtered = searchTerm ? filterRows(rows, visibleColumns, searchTerm) : rows
   const sorted = sortState ? sortRows(filtered, sortState.column, sortState.direction) : filtered
   const pageSize = config.pagination ?? DEFAULT_PAGE_SIZE
   const pageCount = Math.max(1, Math.ceil(sorted.length / pageSize))
   const safePage = Math.min(currentPage, pageCount - 1)
   const pageRows = sorted.slice(safePage * pageSize, (safePage + 1) * pageSize)
   const noSearchResults = searchTerm.length > 0 && sorted.length === 0
+  const firstRowNumber = safePage * pageSize + 1
+  const lastRowNumber = Math.min((safePage + 1) * pageSize, sorted.length)
 
   function handleSort(field: string) {
     setSortState((prev) =>
@@ -196,6 +233,24 @@ export function TablePanel({ config }: { config: TablePanelConfig }) {
         ? { column: field, direction: prev.direction === 'asc' ? 'desc' : 'asc' }
         : { column: field, direction: 'asc' },
     )
+  }
+
+  // Guards against hiding the LAST visible column — a table with zero
+  // visible columns has no defined rendering (every real row would
+  // become an empty <tr>), so this is a real correctness guard, not
+  // just a UX nicety.
+  function toggleColumnVisibility(field: string, hide: boolean) {
+    setHiddenColumns((prev) => {
+      const currentlyVisible = columns.length - prev.size
+      if (hide && currentlyVisible <= 1) return prev
+      const next = new Set(prev)
+      if (hide) {
+        next.add(field)
+      } else {
+        next.delete(field)
+      }
+      return next
+    })
   }
 
   function handleSearchChange(value: string) {
@@ -208,17 +263,54 @@ export function TablePanel({ config }: { config: TablePanelConfig }) {
 
   return (
     <div>
-      {config.searchable && (
-        <div className="mb-3 flex items-center gap-2 rounded-md border border-input bg-background px-3 py-1.5">
-          <Search className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => handleSearchChange(e.target.value)}
-            placeholder="Search…"
-            aria-label={`Search ${config.title}`}
-            className="w-full bg-transparent font-body text-sm outline-none placeholder:text-muted-foreground"
-          />
+      {(config.searchable || columns.length > 0) && (
+        <div className="mb-3 flex items-center gap-2">
+          {config.searchable && (
+            <div className="flex flex-1 items-center gap-2 rounded-md border border-input bg-background px-3 py-1.5">
+              <Search className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => handleSearchChange(e.target.value)}
+                placeholder="Search…"
+                aria-label={`Search ${config.title}`}
+                className="w-full bg-transparent font-body text-sm outline-none placeholder:text-muted-foreground"
+              />
+            </div>
+          )}
+          {/* TABLE-PANEL-PROPOSAL.md Option B — column-visibility toggle.
+              Always offered when there's more than one column to hide,
+              independent of `searchable` (a display concern, not a
+              search one). `onSelect` preventDefault keeps the menu open
+              across multiple toggles in one interaction — Radix's own
+              default CheckboxItem behavior closes the menu on every
+              select, which would make hiding three columns three
+              separate open/click/close round-trips. */}
+          {columns.length > 0 && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  aria-label="Toggle column visibility"
+                  className="flex shrink-0 items-center justify-center rounded-md border border-input bg-background p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <Columns3 className="h-4 w-4" aria-hidden="true" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {columns.map((column) => (
+                  <DropdownMenuCheckboxItem
+                    key={column.field}
+                    checked={!hiddenColumns.has(column.field)}
+                    onSelect={(e) => e.preventDefault()}
+                    onCheckedChange={(checked) => toggleColumnVisibility(column.field, !checked)}
+                  >
+                    {column.label}
+                  </DropdownMenuCheckboxItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
       )}
 
@@ -237,7 +329,7 @@ export function TablePanel({ config }: { config: TablePanelConfig }) {
             <table className="w-full border-collapse font-body text-sm">
               <thead>
                 <tr className="border-b border-border">
-                  {columns.map((column) => (
+                  {visibleColumns.map((column) => (
                     <th
                       key={column.field}
                       aria-sort={
@@ -265,15 +357,34 @@ export function TablePanel({ config }: { config: TablePanelConfig }) {
                           for free — no manual onKeyDown needed — where the
                           <th>-with-onClick this replaced was mouse-only
                           (found and flagged as a real accessibility gap,
-                          not caught when this feature first shipped). */}
+                          not caught when this feature first shipped).
+                          `group` + `group-hover`/`group-focus-visible` on
+                          the neutral ArrowUpDown (TABLE-PANEL-PROPOSAL.md
+                          §6 Option B, matching gropaul/dash-ui's own real,
+                          cited discoverability pattern) — a sortable but
+                          currently-unsorted column now shows a faint
+                          "you can sort this" cue on hover/focus, not only
+                          after the fact. The `aria-sort` attribute above
+                          already carries this state to assistive tech, so
+                          every icon here is `aria-hidden`. */}
                       <button
                         type="button"
                         onClick={() => handleSort(column.field)}
-                        className="flex cursor-pointer select-none items-center gap-1 rounded-sm hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        className="group flex cursor-pointer select-none items-center gap-1 rounded-sm hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       >
                         {column.label}
-                        {sortState?.column === column.field &&
-                          (sortState.direction === 'asc' ? ' ▲' : ' ▼')}
+                        {sortState?.column === column.field ? (
+                          sortState.direction === 'asc' ? (
+                            <ArrowUp className="h-4 w-4" aria-hidden="true" />
+                          ) : (
+                            <ArrowDown className="h-4 w-4" aria-hidden="true" />
+                          )
+                        ) : (
+                          <ArrowUpDown
+                            className="h-4 w-4 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
+                            aria-hidden="true"
+                          />
+                        )}
                       </button>
                     </th>
                   ))}
@@ -282,7 +393,7 @@ export function TablePanel({ config }: { config: TablePanelConfig }) {
               <tbody>
                 {pageRows.map((row, i) => (
                   <tr key={i} className="border-b border-border last:border-0">
-                    {columns.map((column) => {
+                    {visibleColumns.map((column) => {
                       const value = row[column.field]
                       const background = cellColor(value, column.colorScale, column.domain)
                       return (
@@ -306,26 +417,57 @@ export function TablePanel({ config }: { config: TablePanelConfig }) {
           </div>
 
           {sorted.length > pageSize && (
+            // TABLE-PANEL-PROPOSAL.md §6 Option B — first/last jump
+            // buttons + a "Showing X–Y of Z rows" caption alongside the
+            // existing "Page X of Y", matching gropaul/dash-ui's own
+            // real, cited pagination-footer convention (icon buttons,
+            // not plain text — the one place in this file the §7 audit
+            // found with no icon at all).
             <div className="mt-3 flex items-center justify-between font-body text-sm text-muted-foreground">
-              <button
-                type="button"
-                onClick={() => setCurrentPage((p) => Math.max(0, p - 1))}
-                disabled={safePage === 0}
-                className="rounded-md px-2 py-1 hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
-              >
-                Previous
-              </button>
-              <span>
-                Page {safePage + 1} of {pageCount}
+              <span className="text-xs">
+                Showing {firstRowNumber}–{lastRowNumber} of {sorted.length} rows
               </span>
-              <button
-                type="button"
-                onClick={() => setCurrentPage((p) => Math.min(pageCount - 1, p + 1))}
-                disabled={safePage >= pageCount - 1}
-                className="rounded-md px-2 py-1 hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
-              >
-                Next
-              </button>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  aria-label="First page"
+                  onClick={() => setCurrentPage(0)}
+                  disabled={safePage === 0}
+                  className="rounded-md p-1 hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
+                >
+                  <ChevronFirst className="h-4 w-4" aria-hidden="true" />
+                </button>
+                <button
+                  type="button"
+                  aria-label="Previous page"
+                  onClick={() => setCurrentPage((p) => Math.max(0, p - 1))}
+                  disabled={safePage === 0}
+                  className="rounded-md p-1 hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
+                >
+                  <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+                </button>
+                <span className="px-1">
+                  Page {safePage + 1} of {pageCount}
+                </span>
+                <button
+                  type="button"
+                  aria-label="Next page"
+                  onClick={() => setCurrentPage((p) => Math.min(pageCount - 1, p + 1))}
+                  disabled={safePage >= pageCount - 1}
+                  className="rounded-md p-1 hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
+                >
+                  <ChevronRight className="h-4 w-4" aria-hidden="true" />
+                </button>
+                <button
+                  type="button"
+                  aria-label="Last page"
+                  onClick={() => setCurrentPage(pageCount - 1)}
+                  disabled={safePage >= pageCount - 1}
+                  className="rounded-md p-1 hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
+                >
+                  <ChevronLast className="h-4 w-4" aria-hidden="true" />
+                </button>
+              </div>
             </div>
           )}
         </>
