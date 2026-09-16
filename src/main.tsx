@@ -122,7 +122,7 @@ try {
 }
 toast.success('DuckDB connected', { id: duckdbToastId })
 
-const dataToastId = toast.loading('Loading data…')
+const scenariosToastId = toast.loading('Loading scenarios…')
 let dashboards: Awaited<ReturnType<typeof loadDashboards>>
 try {
   await discoverScenarios()
@@ -137,10 +137,10 @@ try {
     ...(await loadDashboards(`${import.meta.env.BASE_URL}demo-dashboard-config/`)),
   ]
 } catch (err) {
-  toast.error('Failed to load data', { id: dataToastId, description: String(err) })
+  toast.error('Failed to load scenarios', { id: scenariosToastId, description: String(err) })
   throw err
 }
-toast.success('Data loaded', { id: dataToastId })
+toast.success('Scenarios loaded', { id: scenariosToastId })
 
 // Deployer-configurable app-wide branding (title/logo) — same two-root
 // read as `dashboards` above, but PRECEDENCE, not concatenation: a real
