@@ -113,14 +113,14 @@ if ('serviceWorker' in navigator) {
 // user-facing feedback at all for a boot-time failure (a silently frozen
 // BOOT_SKELETON), a real, confirmed gap this closes for free without
 // changing the actual fail-fast behavior below it.
-const duckdbToastId = toast.loading('Loading DuckDB…')
+const duckdbToastId = toast.loading('Connecting to DuckDB…')
 try {
   await initDuckDB()
 } catch (err) {
-  toast.error('Failed to load DuckDB', { id: duckdbToastId, description: String(err) })
+  toast.error('Failed to connect to DuckDB', { id: duckdbToastId, description: String(err) })
   throw err
 }
-toast.success('DuckDB loaded', { id: duckdbToastId })
+toast.success('DuckDB connected', { id: duckdbToastId })
 
 const dataToastId = toast.loading('Loading data…')
 let dashboards: Awaited<ReturnType<typeof loadDashboards>>
