@@ -18,6 +18,13 @@ export interface ResolvedObservablePlotEncoding {
   plotOptions: Record<string, unknown>
 }
 
+// OBSERVABLE-PLOT-THEMING-PROPOSAL.md §5e — this app's own real,
+// WCAG-contrast-verified categorical palette (tokens.css), the same 5
+// tokens RechartsPanel/rechartsEncoding.ts already cycle through. Used
+// below for a non-scenario categorical fill/stroke channel, replacing
+// Plot's own raw (non-contrast-adjusted) schemeObservable10 default.
+const CHART_COLOR_TOKENS = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', 'var(--chart-4)', 'var(--chart-5)']
+
 /**
  * x/y/fill/stroke/facet_x/facet_y are literal column names — NOT
  * $metric.<column>-prefixed (research.md §4, confirmed against
@@ -61,7 +68,25 @@ export function resolveObservablePlotEncoding(
   // rather than fighting it after the fact with an external CSS override.
   // `12` is Plotly's own real, live-confirmed rendered default — not a
   // guessed pixel value in isolation.
-  plotOptions.style = { fontSize: '12px' }
+  // OBSERVABLE-PLOT-THEMING-PROPOSAL.md §5a: fontFamily added alongside
+  // the existing fontSize fix. Plot's own plot.js sets
+  // `svg.attr("font-family", "system-ui, sans-serif")` as an SVG
+  // presentation attribute (confirmed via direct source read,
+  // plot.js:254) — this establishes the *specified* value of that
+  // inherited property on the <svg> itself, which beats inheriting this
+  // app's real `body { font-family: var(--font-body) }` from further up
+  // the DOM (a presentation attribute only loses to an actual rule
+  // targeting the SAME element, never to an ancestor's inherited value).
+  // Without this, every Observable Plot panel renders in the browser's
+  // system-ui stack, never this app's real "Geist Variable" — true since
+  // 007-observable-plot-panel shipped; the fontSize-only fix above never
+  // touched font-family at all. `var(--font-body)` resolves natively
+  // wherever it's referenced (no getComputedStyle() round-trip needed,
+  // unlike the --plot-background dark-mode fix below, which resolves a
+  // token value into a literal hex string specifically because Plot's own
+  // generated stylesheet re-declares --plot-background itself and would
+  // otherwise win).
+  plotOptions.style = { fontSize: '12px', fontFamily: 'var(--font-body)' }
   if (config.grid) plotOptions.grid = config.grid
   // project-docs/GRAMMAR.md documents no legend: key at all for this panel type —
   // confirmed by a full grep of both real observable-plot examples and the
@@ -77,7 +102,37 @@ export function resolveObservablePlotEncoding(
   // produces multiple traces, keeping the two charting panel types
   // visually consistent (a real hover/legend gap found via manual visual
   // check, not covered when this feature originally shipped).
-  if (config.fill || config.stroke) plotOptions.color = { legend: true }
+  if (config.fill || config.stroke) {
+    plotOptions.color = {
+      legend: true,
+      // OBSERVABLE-PLOT-THEMING-PROPOSAL.md §5b — Plot's own legend
+      // options API, confirmed via direct source trace (plot.js →
+      // legends.js's createLegends()/legendColor() → legends/swatches.js's
+      // legendItems()): this plotOptions.color object is forwarded
+      // WHOLE to legendItems(), which destructures `style`/`swatchSize`
+      // directly off it and ends with `.call(applyInlineStyles, style)`
+      // on the legend's own container div — no DOM patching needed here,
+      // unlike the tooltip (§5c) and the swatch corner-radius fix below,
+      // neither of which has an equivalent declarative option. Before:
+      // the legend renders in its OWN self-contained, hardcoded
+      // `10px system-ui, sans-serif` (legends/swatches.js's own scoped
+      // <style> block) with no text color set at all — never touched by
+      // the chart-body fix above, since the legend is a DOM SIBLING of
+      // <svg> (Plot's own figure.append(...legends, svg)), not a
+      // descendant, so CSS inheritance never reaches it either. After:
+      // matches the chart body (fontFamily/fontSize above) and
+      // RechartsPanel's own ChartLegendContent text color
+      // (`text-muted-foreground`) exactly.
+      style: { fontFamily: 'var(--font-body)', fontSize: '12px', color: 'var(--muted-foreground)' },
+      // 15px (Plot's own legendItems() `swatchSize = 15` default) → 9px,
+      // matching RechartsPanel's own 8px `h-2 w-2` legend swatch as
+      // closely as this mark-independent, real-rendered-<svg>-per-swatch
+      // shape allows (Plot's swatch is drawn as its own <svg><rect>, not
+      // a plain CSS-sizable <div> — an odd size vs. Recharts' round 8px
+      // is not perceptible at this scale, unlike 15px vs 8px today).
+      swatchSize: 9,
+    }
+  }
 
   // Real, confirmed bug fix (grouped-vs-stacked bar investigation): Plot's
   // own documented grouped-bar recipe (bar.md — "For a grouped bar chart,
@@ -165,6 +220,54 @@ export function resolveObservablePlotEncoding(
         ...(typeof plotOptions.color === 'object' ? plotOptions.color : {}),
         domain: distinctRealNames.map((name) => resolveScenarioLabel(name, scenarioDisplay)),
         range: resolvedColors,
+      }
+    }
+  } else {
+    // OBSERVABLE-PLOT-THEMING-PROPOSAL.md §5e — the non-scenario
+    // categorical case (e.g. real, published fill: tour_mode /
+    // fill: primary_purpose / fill: school_segment panels, confirmed via
+    // a direct grep of every real public/demo-dashboard-config/*.yaml
+    // observable-plot panel before writing this branch — every one of
+    // them falls straight through the isScenarioColor branch above,
+    // untouched, since none of them uses fill/stroke: scenario).
+    // Deliberately gated on `colorField !== 'scenario'` so this can never
+    // run for a scenario-colored panel even when scenarioDisplay is
+    // undefined (e.g. a panel rendered before that hook resolves) —
+    // 035-scenario-label-color's own domain/range branch above stays the
+    // only code path that ever colors a `scenario` channel, matching its
+    // own "fall back to Plot's default when unresolved" contract
+    // (FR-008) exactly as before this feature.
+    //
+    // Without this, Plot's own implicit-ordinal default scheme
+    // ("observable10", scales/ordinal.js:42) already happens to be the
+    // SAME palette family this app's own --chart-1..5 tokens were
+    // derived from — but not byte-identical: --chart-1..5 were
+    // separately lightness-adjusted for WCAG 3:1 non-text contrast
+    // (rechartsPanel.css's own recorded history), Plot's raw
+    // schemeObservable10 was not. This branch replaces Plot's own raw
+    // scheme with this app's real, already-verified tokens whenever a
+    // categorical fill/stroke channel exists, matching RechartsPanel's
+    // own --chart-1..5 cycling (rechartsEncoding.ts) exactly, the same
+    // "all-or-nothing explicit range" mechanism the scenario branch above
+    // already established (Plot's color scale has no partial-override
+    // mode — research.md §4 of 035, re-confirmed here).
+    const colorField = config.fill ?? config.stroke
+    if (colorField && colorField !== 'scenario') {
+      const distinctValues: string[] = []
+      const seen = new Set<string>()
+      for (const row of filteredRows) {
+        const value = String(row[colorField])
+        if (!seen.has(value)) {
+          seen.add(value)
+          distinctValues.push(value)
+        }
+      }
+      if (distinctValues.length > 0) {
+        plotOptions.color = {
+          ...(typeof plotOptions.color === 'object' ? plotOptions.color : {}),
+          domain: distinctValues,
+          range: distinctValues.map((_, i) => CHART_COLOR_TOKENS[i % CHART_COLOR_TOKENS.length]),
+        }
       }
     }
   }

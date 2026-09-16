@@ -16,6 +16,14 @@ const rows = [
   { purpose: 'HBW', mode: 'HOV', share: 0.18 },
 ]
 
+// OBSERVABLE-PLOT-THEMING-PROPOSAL.md §5a/§5b — the chart-body and legend
+// style objects resolveObservablePlotEncoding() now unconditionally sets
+// (chart body) / sets alongside `legend: true` (legend), shared here so
+// every test asserting the surrounding object's exact shape doesn't retype
+// them.
+const CHART_BODY_STYLE = { fontSize: '12px', fontFamily: 'var(--font-body)' }
+const LEGEND_STYLE = { fontFamily: 'var(--font-body)', fontSize: '12px', color: 'var(--muted-foreground)' }
+
 describe('resolveObservablePlotEncoding', () => {
   it('copies markName and data through unchanged', () => {
     const result = resolveObservablePlotEncoding(baseConfig, rows)
@@ -115,9 +123,9 @@ describe('resolveObservablePlotEncoding', () => {
 
   it('passes grid through to plotOptions only when set, never into options', () => {
     const result = resolveObservablePlotEncoding({ ...baseConfig, grid: true }, rows)
-    // style: {fontSize: '12px'} is always present — see the font-size-match
-    // test below for the full finding; not this test's own concern.
-    expect(result.plotOptions).toEqual({ grid: true, style: { fontSize: '12px' } })
+    // style: {fontSize/fontFamily} is always present — see the font-size-
+    // match test below for the full finding; not this test's own concern.
+    expect(result.plotOptions).toEqual({ grid: true, style: CHART_BODY_STYLE })
     expect(result.options).not.toHaveProperty('grid')
   })
 
@@ -128,15 +136,19 @@ describe('resolveObservablePlotEncoding', () => {
   // explicit legend option shows no legend. Defaults to showing one
   // whenever a color channel exists, matching PlotlyPanel's own
   // auto-legend behavior.
-  it('sets plotOptions.color = {legend: true} when fill is set, never into options', () => {
+  it('sets plotOptions.color = {legend: true, style, swatchSize} when fill is set, never into options', () => {
     const result = resolveObservablePlotEncoding({ ...baseConfig, fill: 'mode' }, rows)
-    expect(result.plotOptions.color).toEqual({ legend: true })
+    // toMatchObject, not toEqual — 'mode' is a real, non-scenario
+    // categorical column here (rows has 'SOV'/'HOV'), so §5e's own domain/
+    // range branch also fires; that exact pairing is its own dedicated
+    // describe block below, not this test's concern (legend chrome only).
+    expect(result.plotOptions.color).toMatchObject({ legend: true, style: LEGEND_STYLE, swatchSize: 9 })
     expect(result.options).not.toHaveProperty('color')
   })
 
-  it('sets plotOptions.color = {legend: true} when stroke is set', () => {
+  it('sets plotOptions.color = {legend: true, style, swatchSize} when stroke is set', () => {
     const result = resolveObservablePlotEncoding({ ...baseConfig, stroke: 'purpose' }, rows)
-    expect(result.plotOptions.color).toEqual({ legend: true })
+    expect(result.plotOptions.color).toMatchObject({ legend: true, style: LEGEND_STYLE, swatchSize: 9 })
   })
 
   it('does not set plotOptions.color when neither fill nor stroke is set', () => {
@@ -165,7 +177,17 @@ describe('resolveObservablePlotEncoding', () => {
   // types never visibly disagree on text size.
   it('always sets plotOptions.style.fontSize to match PlotlyPanel.tsx\'s own real default (12px)', () => {
     const result = resolveObservablePlotEncoding(baseConfig, rows)
-    expect(result.plotOptions.style).toEqual({ fontSize: '12px' })
+    expect(result.plotOptions.style).toEqual(CHART_BODY_STYLE)
+  })
+
+  // OBSERVABLE-PLOT-THEMING-PROPOSAL.md §5a — the font-family half of the
+  // same fix, added alongside the fontSize fix above but previously
+  // missing entirely (Plot's own <svg> sets font-family="system-ui,
+  // sans-serif" as a presentation attribute, which wins over inheriting
+  // this app's real body { font-family: var(--font-body) }).
+  it('always sets plotOptions.style.fontFamily to this app\'s real body font token', () => {
+    const result = resolveObservablePlotEncoding(baseConfig, rows)
+    expect(result.plotOptions.style).toMatchObject({ fontFamily: 'var(--font-body)' })
   })
 
   // 019-baseline-diff-consumption (FR-014): a real, confirmed finding —
@@ -245,7 +267,11 @@ describe('resolveObservablePlotEncoding — scenario label/color resolution (Par
   it('no 3rd argument at all behaves identically to today (backward-compat)', () => {
     const result = resolveObservablePlotEncoding({ ...baseConfig, fill: 'scenario' }, scenarioRows)
     expect(result.data).toBe(scenarioRows)
-    expect(result.plotOptions.color).toEqual({ legend: true })
+    // §5e's own colorField !== 'scenario' guard: undefined scenarioDisplay
+    // means isScenarioColor is false, but colorField === 'scenario' is
+    // still excluded from the §5e branch too — domain/range stay unset
+    // either way, never populated with raw (un-labeled) scenario names.
+    expect(result.plotOptions.color).toEqual({ legend: true, style: LEGEND_STYLE, swatchSize: 9 })
   })
 
   it('every distinct scenario resolving to a color produces a matched domain/range pair', () => {
@@ -256,6 +282,8 @@ describe('resolveObservablePlotEncoding — scenario label/color resolution (Par
     const result = resolveObservablePlotEncoding({ ...baseConfig, fill: 'scenario' }, scenarioRows, display)
     expect(result.plotOptions.color).toEqual({
       legend: true,
+      style: LEGEND_STYLE,
+      swatchSize: 9,
       domain: ['observed', 'Preferred Alternative'],
       range: ['#666666', '#4e79a7'],
     })
@@ -264,6 +292,61 @@ describe('resolveObservablePlotEncoding — scenario label/color resolution (Par
   it('even one unresolved scenario leaves domain/range unset for the whole panel', () => {
     const display: ScenarioDisplayMap = new Map([['observed', { color: '#666666' }]]) // good_scenario has no color
     const result = resolveObservablePlotEncoding({ ...baseConfig, fill: 'scenario' }, scenarioRows, display)
-    expect(result.plotOptions.color).toEqual({ legend: true })
+    expect(result.plotOptions.color).toEqual({ legend: true, style: LEGEND_STYLE, swatchSize: 9 })
+  })
+})
+
+// OBSERVABLE-PLOT-THEMING-PROPOSAL.md §5e
+describe('resolveObservablePlotEncoding — non-scenario categorical fill/stroke color', () => {
+  it('assigns --chart-1..5 tokens, in first-seen order, to a non-scenario categorical fill', () => {
+    // 3 distinct categories — exercises the modulo-cycling wraparound
+    // path too (index 2 % 5 === 2 here, but the mechanism is the same
+    // one a >5-category panel would hit).
+    const threeCategoryRows = [
+      { mode: 'SOV' },
+      { mode: 'HOV' },
+      { mode: 'Transit' },
+      { mode: 'SOV' }, // a repeat — must not appear twice in domain
+    ]
+    const result = resolveObservablePlotEncoding({ ...baseConfig, fill: 'mode' }, threeCategoryRows)
+    expect(result.plotOptions.color).toEqual({
+      legend: true,
+      style: LEGEND_STYLE,
+      swatchSize: 9,
+      domain: ['SOV', 'HOV', 'Transit'],
+      range: ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)'],
+    })
+  })
+
+  it('does the same for a non-scenario categorical stroke', () => {
+    const result = resolveObservablePlotEncoding({ ...baseConfig, stroke: 'purpose' }, rows)
+    // Both real rows share purpose: 'HBW' — exactly one distinct value.
+    expect(result.plotOptions.color).toEqual({
+      legend: true,
+      style: LEGEND_STYLE,
+      swatchSize: 9,
+      domain: ['HBW'],
+      range: ['var(--chart-1)'],
+    })
+  })
+
+  it('never runs for fill: scenario, even with no scenarioDisplay map at all — 035\'s own branch stays the sole path for that field', () => {
+    const scenarioRows = [{ scenario: 'observed' }, { scenario: 'good_scenario' }]
+    const result = resolveObservablePlotEncoding({ ...baseConfig, fill: 'scenario' }, scenarioRows)
+    expect(result.plotOptions.color).not.toHaveProperty('domain')
+    expect(result.plotOptions.color).not.toHaveProperty('range')
+  })
+
+  it('cycles back to --chart-1 for a 6th distinct category', () => {
+    const sixCategoryRows = ['A', 'B', 'C', 'D', 'E', 'F'].map((mode) => ({ mode }))
+    const result = resolveObservablePlotEncoding({ ...baseConfig, fill: 'mode' }, sixCategoryRows)
+    expect((result.plotOptions.color as { range: string[] }).range).toEqual([
+      'var(--chart-1)',
+      'var(--chart-2)',
+      'var(--chart-3)',
+      'var(--chart-4)',
+      'var(--chart-5)',
+      'var(--chart-1)',
+    ])
   })
 })

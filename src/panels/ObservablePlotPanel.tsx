@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import * as Plot from '@observablehq/plot'
 import { ChartNoAxesColumn } from 'lucide-react'
 
+import '@/panels/observablePlotPanel.css'
+
 import { query, distinctValues } from '@/services/duckdb'
 import { useFilterState } from '@/hooks/useFilterState'
 import { useActiveScenarios } from '@/hooks/useActiveScenarios'
@@ -322,6 +324,25 @@ export function ObservablePlotPanel({ config }: { config: ObservablePlotPanelCon
         }
       }
 
+      // OBSERVABLE-PLOT-THEMING-PROPOSAL.md §5b/item 4 (legend swatch
+      // corner-radius) and §5c (tooltip border) both live in
+      // observablePlotPanel.css now, NOT here — see that file's own header
+      // comment for why: item 4 was first tried as a DOM patch right here
+      // (this file's own git history / PR diff still shows it, for anyone
+      // diffing), and it worked, but §5c's tooltip fix, attempted the exact
+      // same way, did NOT — a real, confirmed, empirically-traced finding:
+      // unlike the always-present legend, the Tip mark's own
+      // <path filter="..."> box does not exist in the DOM at all until the
+      // viewer's first real pointer interaction (confirmed live: zero
+      // matching elements immediately after mount/scroll/settle, one only
+      // after a real hover, and even then carrying none of a one-time
+      // post-render() patch's attributes — Plot creates it fresh, on its
+      // own schedule, independent of render()). Rather than leave the two
+      // fixes on two different, inconsistent techniques, BOTH moved to one
+      // plain external stylesheet rule, which has no such timing problem —
+      // it applies the instant a matching element enters the DOM, no matter
+      // when or how many times Plot (re)creates it.
+
       // Dark-mode tip-tooltip contrast fix — see this file's own top-of-file
       // comment for the full finding (marks/tip.js's own `fill: "var(--plot-
       // background)"` default, never theme-aware). Must be set DIRECTLY on
@@ -366,6 +387,10 @@ export function ObservablePlotPanel({ config }: { config: ObservablePlotPanelCon
           FALLBACK_CARD[colorScheme]
         svgEl.style.setProperty('--plot-background', card)
       }
+      // OBSERVABLE-PLOT-THEMING-PROPOSAL.md §5c (tooltip border): see this
+      // file's own comment above the hasLegend block for why this is a
+      // plain rule in observablePlotPanel.css instead of a DOM patch here
+      // — a real, confirmed finding, not the original plan.
 
       if (plotElementRef.current) plotElementRef.current.remove()
       el!.append(plotElement)

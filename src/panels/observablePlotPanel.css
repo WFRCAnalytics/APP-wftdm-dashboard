@@ -1,0 +1,60 @@
+/* OBSERVABLE-PLOT-THEMING-PROPOSAL.md §5c/item 4 — tooltip border +
+ * legend swatch corner-radius. Both were FIRST attempted as post-render
+ * DOM patches (the same established technique this panel's own
+ * --plot-background dark-mode fix already uses, in ObservablePlotPanel.tsx)
+ * — the legend-swatch one worked; the tooltip-stroke one did NOT, and the
+ * reason is a real, confirmed, empirically-traced finding, not assumed:
+ * unlike the legend (always-present, static UI, part of Plot.plot()'s own
+ * initial synchronous DOM build), the Tip mark's own <path filter="..."> box
+ * does not exist in the DOM AT ALL until the viewer's first real pointer
+ * interaction — confirmed live via a throwaway Playwright script:
+ * `document.querySelectorAll('path[filter]')` returned ZERO elements
+ * immediately after mount, after scroll-into-view, and after settling —
+ * only reaching one element after synthetically dispatching a real
+ * `pointermove` event, and even then the newly-created element carried
+ * none of the attributes a one-time post-render() patch had set on an
+ * EARLIER build. A one-time imperative patch, run once per render() call,
+ * can never reliably reach a DOM node Plot itself creates lazily, on its
+ * own schedule, independent of render().
+ *
+ * A plain external stylesheet rule has no such timing problem — it applies
+ * to any matching element the instant it enters the DOM, regardless of
+ * when or how many times Plot (re)creates it. No `!important` is needed
+ * for either rule below: Plot sets `stroke`/no-rx as SVG PRESENTATION
+ * ATTRIBUTES (tip.js's own `applyIndirectStyles()`, legends/swatches.js's
+ * own bare `.append("rect")` with no rx at all) — presentation attributes
+ * occupy the lowest-priority origin in the CSS cascade, below any real
+ * author-stylesheet rule at any specificity, and a rule that sets a value
+ * directly ON an element always wins over what that element would
+ * otherwise have inherited from an ancestor's own attribute-level value.
+ * `.observable-plot-chart` is this app's own stable container class
+ * (ObservablePlotPanel.tsx) — Plot's own dynamically-generated
+ * `plot-XXXXXX` class names are never referenced here.
+ */
+
+/* Tooltip border — was Plot's own "currentColor" default (marks/tip.js),
+ * a full-opacity 1px border in the tooltip's own text color. `path[filter]`
+ * is confirmed unique to the Tip mark among every mark type this app
+ * renders (grep of node_modules/@observablehq/plot/src/marks/ — no other
+ * mark ever sets a `filter` attribute), so no further scoping is needed. */
+.observable-plot-chart path[filter] {
+  stroke: var(--border);
+}
+
+/* Legend swatch corner-radius — legends/swatches.js's own legendSwatches()
+ * has no rx/corner-radius parameter in its signature at all, unlike
+ * swatchSize/style (set declaratively via plotOptions.color, see
+ * observablePlotEncoding.ts). `rx` is a real, standard CSS Geometry
+ * Property for <rect> (SVG2/CSS), not just a presentation attribute — this
+ * app already targets browsers modern enough for it (Playwright/Chromium).
+ * `> figure > div` scopes to the legend's own swatches wrapper div (a
+ * DIRECT child of the <figure> Plot.plot() returns when a legend is
+ * present, per plot.js's own `figure.append(...legends, svg)`) — the
+ * chart's own real bar/line marks render inside `> figure > svg` (or, with
+ * no legend, `.observable-plot-chart` contains a bare `<svg>` directly, no
+ * `<figure>`/`<div>` at all), never reachable by this selector, so this
+ * can never round a real data mark's own <rect>. Matches RechartsPanel's
+ * own `rounded-[2px]` legend swatch (components/ui/chart.tsx). */
+.observable-plot-chart > figure > div rect {
+  rx: 2px;
+}
