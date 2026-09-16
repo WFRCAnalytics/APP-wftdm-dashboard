@@ -23,6 +23,8 @@ import '@/styles/tokens.css'
 // sequence, not a like-for-like mechanism swap.
 import '@fontsource-variable/geist'
 import '@fontsource-variable/geist-mono'
+import { toast } from 'sonner'
+
 import { initDuckDB } from './services/duckdb.ts'
 import { discoverScenarios } from './services/scenarioDiscovery.ts'
 import { loadDashboards, loadDashboardBranding, type DashboardBranding } from './services/yamlLoader.ts'
@@ -30,6 +32,7 @@ import { setDeployerScenarioPalette } from './panels/scenarioDisplay.ts'
 import { setDeployerPmtilesUrl } from './state/protomapsSourceState.ts'
 import { parseDashboardConfig } from './layout/types.ts'
 import { Shell } from './layout/shell.tsx'
+import { Toaster } from './components/ui/sonner.tsx'
 import { get as getFilter, set as setFilter } from './state/filterState.ts'
 
 // Debug hook for manual/console verification (quickstart.md) and for the
@@ -67,6 +70,22 @@ document.documentElement.classList.toggle(
   window.matchMedia('(prefers-color-scheme: dark)').matches,
 )
 
+// 060-boot-notifications: mounted into its own root (index.html's
+// #notifications, a sibling of #app — see that file's own comment) as
+// the very first thing main.tsx does, before any boot step below starts.
+// sonner's toast() calls only reach a Toaster that has already mounted
+// and subscribed — a late-mounting one does not replay history — so this
+// must happen before the first toast.loading() call a few lines down,
+// not after the boot sequence like #app's own <Shell/> render is.
+const notificationsEl = document.getElementById('notifications')
+if (notificationsEl) {
+  ReactDOM.createRoot(notificationsEl).render(
+    <React.StrictMode>
+      <Toaster />
+    </React.StrictMode>,
+  )
+}
+
 // Fire-and-forget — deliberately NOT awaited, unlike coi-serviceworker.js's
 // own now-removed blocking reload-to-activate pattern (that one existed to
 // inject COOP/COEP headers onto the document response itself, which only
@@ -82,18 +101,46 @@ if ('serviceWorker' in navigator) {
     .catch(() => {})
 }
 
-await initDuckDB()
-await discoverScenarios()
+// 060-boot-notifications: a loading->success/error toast per real boot
+// phase (DuckDB-WASM init, then scenario/dashboard-config discovery),
+// converted in place via sonner's id-based update (toast.success(text,
+// {id}) restyles the SAME toast rather than stacking a second one) —
+// the same toast.loading()-then-convert idiom gropaul/dash-ui's own real
+// src/state/init.state.ts uses for its one connection-status toast,
+// applied here across this app's own two real, already-existing boot
+// phases rather than inventing new ones. Each also converts to an error
+// toast on failure, then rethrows unchanged — this app previously had NO
+// user-facing feedback at all for a boot-time failure (a silently frozen
+// BOOT_SKELETON), a real, confirmed gap this closes for free without
+// changing the actual fail-fast behavior below it.
+const duckdbToastId = toast.loading('Loading DuckDB…')
+try {
+  await initDuckDB()
+} catch (err) {
+  toast.error('Failed to load DuckDB', { id: duckdbToastId, description: String(err) })
+  throw err
+}
+toast.success('DuckDB loaded', { id: duckdbToastId })
 
-// 026-activitysim-demo-content: dashboards from the new, git-tracked
-// public/demo-dashboard-config/ content root are concatenated after the
-// existing public/dashboard-config/ tabs — loadDashboards() itself needs
-// no change at all, its existing `baseUrl` parameter already supports
-// this second call (research.md #4).
-const dashboards = [
-  ...(await loadDashboards()),
-  ...(await loadDashboards(`${import.meta.env.BASE_URL}demo-dashboard-config/`)),
-]
+const dataToastId = toast.loading('Loading data…')
+let dashboards: Awaited<ReturnType<typeof loadDashboards>>
+try {
+  await discoverScenarios()
+
+  // 026-activitysim-demo-content: dashboards from the new, git-tracked
+  // public/demo-dashboard-config/ content root are concatenated after the
+  // existing public/dashboard-config/ tabs — loadDashboards() itself needs
+  // no change at all, its existing `baseUrl` parameter already supports
+  // this second call (research.md #4).
+  dashboards = [
+    ...(await loadDashboards()),
+    ...(await loadDashboards(`${import.meta.env.BASE_URL}demo-dashboard-config/`)),
+  ]
+} catch (err) {
+  toast.error('Failed to load data', { id: dataToastId, description: String(err) })
+  throw err
+}
+toast.success('Data loaded', { id: dataToastId })
 
 // Deployer-configurable app-wide branding (title/logo) — same two-root
 // read as `dashboards` above, but PRECEDENCE, not concatenation: a real
