@@ -563,3 +563,162 @@ Phase 4's `valueBoxPanel`/`tablePanel`/`observablePlotPanel`/
 `scenarioManager`/`scenarioAutoActivation`/`settingsModal`, and Phase 7/8
 cleanup — each confirmed, via direct reading, to be a substantially
 larger effort than this session's own chunk.
+
+## Batch A (T023 `sankeyPanel.spec.ts`, T035 `scenarioAutoActivation.spec.ts`) — re-verification, real findings, and results
+
+**Re-verification step performed first, per this session's own explicit
+instruction not to trust the remaining-scope list as still accurate.**
+Ran the 9 files a prior audit session's own findings named as the real
+remaining scope (`valueBoxPanel`/`tablePanel`/`observablePlotPanel`/
+`rechartsPanel`/`sankeyPanel`/`scenarioAutoActivation`/`scenarioManager`/
+`settingsModal`/`graphicWalkerPanel`) together, single worker — real
+result: **56 passed, 133 failed**, per-file:
+`settingsModal` 31, `observablePlotPanel` 24, `tablePanel` 23,
+`scenarioManager` 16, `valueBoxPanel` 14, `sankeyPanel` 11,
+`rechartsPanel` 8, `scenarioAutoActivation` 6, `graphicWalkerPanel` **0**.
+
+**Real drift caught, exactly the class this session was warned to watch
+for**: `graphicWalkerPanel.spec.ts` (`tasks.md`'s own `T026`, still shown
+`[ ]`) is already fully migrated and passing — `056-lazy-tab-scoped-
+loading` rewrote it for its own, unrelated reason, at a point in this
+migration's own history later than `tasks.md`'s last real update to that
+line. `T026` is corrected to `[x]` in this same pass, no code change
+needed.
+
+**The user's own framing of `settingsModal.spec.ts`/`scenarioManager.
+spec.ts` as "a separate, already-confirmed contention-flakiness pattern"
+did not hold up under direct re-verification** — both are still
+genuinely fixture-coupled, not merely flaky under load. Sample real
+errors pulled directly from this run's own output: `scenarioManager.
+spec.ts` → `Error: ENOENT: no such file or directory, scandir
+'tests/fixtures/scenarios/good_scenario/summary'` (a hard, deterministic
+failure — `T011` deleted that directory outright); `settingsModal.
+spec.ts` → a genuine content/assertion mismatch (`T007` drag-reorder
+test expects a 2-scenario array, gets 3). Neither file was touched by
+this batch; both remain open for their own future session, corrected
+scope noted for whoever picks them up next.
+
+**Real scope, confirmed by directly reading each file before choosing
+this batch**: `sankeyPanel.spec.ts` — small, a real working panel
+("Trip Purpose to Mode Flow", `dashboard-4-mode-choice.yaml`, unpinned,
+`purpose_mode_flow`) already existed; needed retargeting + one small new
+"no color scheme" sibling panel + one small new "zero-row filter" test
+panel on `dashboard-8-test.yaml`, matching `markdownPanel.spec.ts`'s own
+"modest new content" precedent, not `zonemapPanel`/`flowmapPanel`'s own
+full-session scale. `scenarioAutoActivation.spec.ts` — small, the same
+real-scenario-name substitution `boot.spec.ts` (`T031`) already
+established, plus retargeting its one unpinned-panel assertion to
+"Accessibility by Zone" (`dashboard-6-network.yaml`, real, unpinned, 25
+zones/scenario, already carries `038`'s own established `scenario`
+discriminator column).
+
+**Real findings during migration:**
+
+- **`sankeyPanel.spec.ts`**: live `duckdb` CLI queries against the real
+  `purpose_mode_flow.parquet` files (all three real scenarios) confirmed
+  `MIN(trips) = 1` everywhere — a `COUNT(*) GROUP BY` metric can never
+  produce a zero/negative row, so the retired fixture's "excludes the
+  non-positive-value row, logs a console.warn" test has NO real trigger
+  and was retired outright, matching `zonemapPanel.spec.ts`'s (`T025`)
+  own identical "structurally impossible" precedent. The retired
+  fixture's own "SOV -> SOV same-value-row" self-loop correction test
+  also has no real analog — `primary_purpose`/`major_trip_mode` are two
+  disjoint vocabularies that can never collide — also retired outright.
+  The retired fixture's own dynamic `$filters.purpose`-reactivity test
+  was retired (zero real demo panels anywhere use the reactive
+  `$filters.` placeholder — the same real-content gap every other file
+  in this migration has already independently found). Its sibling
+  "filter change with no resize still redraws" regression test (the real
+  useRef-vs-local-variable resize-guard bug this panel type once had)
+  was KEPT, redesigned around a real, different reactive trigger this
+  panel genuinely has: toggling one active scenario's own Switch
+  (`appState.setActive`) — cross-checked against real, live-queried
+  work→SOV values (324 combined, 107 baseline-only). The "tab mixing
+  sankey with valuebox/plotly/table/markdown/observable-plot" test was
+  adapted to the REAL Mode Choice tab's own actual composition
+  (table + observable-plot ×2 + sankey — no valuebox/plotly/markdown
+  live there), matching `markdownPanel.spec.ts`'s own identical
+  adaptation precedent.
+
+  Two real bugs found and fixed during isolated-run iteration, both in
+  this migration's own new test code, neither an app bug: (1) a strict-
+  mode collision — `expandTrigger()`'s locator had no `exact: true`, so
+  adding the real "Trip Purpose to Mode Flow (No Color Scheme)" sibling
+  panel made `getByRole('button', { name: 'Expand Trip Purpose to Mode
+  Flow' })` match two elements; fixed with `exact: true`. (2) two Test-
+  tab assertions (the broken-sankey-panel and zero-row-filter cases) hit
+  the same already-documented "11+ real/broken map panels crowd the Test
+  tab" timeout class `flowmapPanel.spec.ts` (`T024`) already established
+  — fixed by raising both to the same 10s timeout that file's own
+  precedent uses, confirmed via a real full-suite run.
+
+- **`scenarioAutoActivation.spec.ts`**: a real bug found live in the
+  first isolated run, not an app bug — `realUnionCount()` (this test's
+  own direct `window.__wftdm!.query()` cross-check, bypassing
+  `ensureRegistered()` entirely) raced `056-lazy-tab-scoped-loading`'s
+  own lazy per-tab view registration, throwing `Catalog Error: Table ...
+  accessibility_summary does not exist` when called immediately after
+  navigating to the Network tab, before the real "Accessibility by Zone"
+  panel's own query had actually registered its views. Fixed by waiting
+  for the panel's own real rendered output (`waitForRealRender()`)
+  before ever issuing the test's own direct query — the same "the real
+  panel query is what triggers lazy registration, a bystander query
+  isn't" lesson, newly confirmed here. A second, real, self-caught design
+  correction made BEFORE running anything: "Accessibility by Zone" has
+  `pagination: 25`, so with 75 real rows across 3 active scenarios,
+  `tbody tr` only ever renders one page — every "how many rows total"
+  assertion was written against a live `COUNT(*)` cross-query from the
+  start, never a DOM row count, avoiding a whole class of pagination-
+  fragile assertions before they could be written wrong.
+
+**Isolated verification**: both files together, single worker — **30/30
+passed, clean**, reproduced across two separate consecutive runs after
+the fixes above.
+
+**Full-suite confirmation, one real run plus a git-stash A/B** (10
+workers each): with Batch A applied — **125 failed** total, per-file
+`settingsModal` 31 / `observablePlotPanel` 24 / `tablePanel` 23 /
+`scenarioManager` 16 / `valueBoxPanel` 14 / `rechartsPanel` 8 /
+`sankeyPanel` 2 / `flowmapPanel` 2 / `dashboardShell` 2 / `panelExpand` 1
+/ `graphicWalkerPanel` 1 / `brokenPanelStates` 1 — `scenarioAutoActivation`
+**zero**. The 2 remaining `sankeyPanel` failures were the same Test-tab-
+crowding timeout class (fixed to 10s, see above; both passed clean in
+every isolated run before and after). Stashing Batch A entirely and
+re-running the full suite on the CLEAN tree confirmed every one of
+these numbers directly: **141 failed**, with `settingsModal`/
+`observablePlotPanel`/`tablePanel`/`scenarioManager`/`valueBoxPanel`/
+`rechartsPanel` at BYTE-IDENTICAL counts to the with-Batch-A run
+(proving zero interaction), `sankeyPanel`/`scenarioAutoActivation` back
+at their full pre-migration counts (11/6, matching this same document's
+own original per-file table exactly), and the scattered single-digit
+noise (`flowmapPanel` 3, `dashboardShell` 2, `zonemapPanel` 1,
+`panelExpand` 1, `brokenPanelStates` 1) reproducing the identical
+already-documented "a different one or two early-scheduled tests each
+run" resource-contention signature on the clean tree too — conclusive
+proof none of it is caused by this batch.
+
+`npm run typecheck` clean throughout (before, mid-fix, and after
+restoring from the stash).
+
+## Batch A conclusion
+
+**T023 (`sankeyPanel.spec.ts`) and T035 (`scenarioAutoActivation.spec.ts`)
+are both DONE.** Isolated correctness is unambiguous (30/30 combined,
+reproduced clean twice). Full-suite confirmation plus a real git-stash
+A/B conclusively separates the two real, small test-authoring bugs this
+batch found and fixed (a strict-mode collision, a lazy-registration
+race) from this project's own already-extensively-documented resource-
+contention noise. `T026` (`graphicWalkerPanel.spec.ts`) is corrected to
+`[x]` — already done by an unrelated feature, not by this batch.
+Remaining scope, re-confirmed still open and still real: `T018`
+`valueBoxPanel` (large — 6 new valuebox variations needed), `T019`
+`tablePanel` (large — a new sortable/searchable/paginated dataset + 2
+new `$baseline`-diff panels), `T021` `observablePlotPanel` (large — the
+`inputs:` grammar has zero real usage anywhere in demo content today),
+`T022` `rechartsPanel` (medium — zero working `type: recharts` panels
+exist anywhere in real demo content; needs a real content-strategy
+decision on where new ones belong before authoring), `T032`
+`scenarioManager` (medium — a real structural fix needed: its
+local-folder mock reads bytes from a now-deleted fixture path), `T037`
+`settingsModal` (largest, highest collision risk, last per this file's
+own existing ordering), and Phase 7/8 cleanup.
