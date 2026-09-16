@@ -323,8 +323,11 @@ export function TablePanel({ config }: { config: TablePanelConfig }) {
           })
         })
       })
-      .catch(() => {
-        if (!cancelled) setStatus('error')
+      .catch((err) => {
+        if (!cancelled) {
+          console.error('TablePanel: failed to load panel data', err)
+          setStatus('error')
+        }
       })
 
     return () => {
@@ -375,8 +378,11 @@ export function TablePanel({ config }: { config: TablePanelConfig }) {
       if (generation !== fetchGenerationRef.current) return
       setRows(result)
       setStatus('ready')
-    } catch {
-      if (generation === fetchGenerationRef.current) setStatus('error')
+    } catch (err) {
+      if (generation === fetchGenerationRef.current) {
+        console.error('TablePanel: failed to load query-driven page', err)
+        setStatus('error')
+      }
     }
   }
 

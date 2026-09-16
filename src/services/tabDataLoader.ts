@@ -149,6 +149,20 @@ export function getMetricLoadState(scenario: string, metric: string): LoadState 
   return loadState.get(pairKey({ scenario, metric })) ?? 'not-requested'
 }
 
+// A single retry, after a short backoff, for a genuinely transient failure
+// (a real dropped connection, a real one-off 5xx from
+// registerFileURLViaFullFetch()'s fallback fetch()) — NOT a fix for the
+// DuckDB-WASM connection/worker corruption documented on registerFileURL()
+// itself (services/duckdb.ts). That failure mode was confirmed, live and
+// repeatedly, to NOT be recoverable by retrying at all — same view name,
+// a brand-new view name, and a retry after a 5s drain all failed
+// identically once triggered. Preventing that failure in the first place
+// is registerFileURL()'s own MAX_CONCURRENT_FILE_REGISTRATIONS limiter;
+// this retry exists only for whatever ordinary transient errors remain
+// once that limiter keeps registrations from ever reaching the corrupting
+// concurrency level.
+const RETRY_DELAY_MS = 300
+
 async function registerOnePair(pair: MetricPair): Promise<void> {
   const key = pairKey(pair)
   const scenarioEntry = appState.get(pair.scenario)
@@ -165,9 +179,17 @@ async function registerOnePair(pair: MetricPair): Promise<void> {
   try {
     await registerFileURL(key, url)
     loadState.set(key, 'loaded')
-  } catch (err) {
-    loadState.set(key, 'failed')
-    throw err
+  } catch (firstErr) {
+    console.warn(`tabDataLoader: registerFileURL('${key}') failed, retrying once`, firstErr)
+    await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS))
+    try {
+      await registerFileURL(key, url)
+      loadState.set(key, 'loaded')
+    } catch (err) {
+      loadState.set(key, 'failed')
+      console.error(`tabDataLoader: registerFileURL('${key}') failed again after retry`, err)
+      throw err
+    }
   }
 }
 

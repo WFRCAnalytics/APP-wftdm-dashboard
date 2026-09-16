@@ -101,8 +101,11 @@ export function ValueBoxPanel({ config }: { config: ValueBoxPanelConfig }) {
         setValue(rows[0][config.column])
         setState('ready')
       })
-      .catch(() => {
-        if (!cancelled) setState('error')
+      .catch((err) => {
+        if (!cancelled) {
+          console.error('ValueBoxPanel: failed to load panel data', err)
+          setState('error')
+        }
       })
 
     return () => {
@@ -144,8 +147,11 @@ export function ValueBoxPanel({ config }: { config: ValueBoxPanelConfig }) {
         setSparklineRows(rows)
         setSparklineStatus('ready')
       })
-      .catch(() => {
-        if (!cancelled) setSparklineStatus('error')
+      .catch((err) => {
+        if (!cancelled) {
+          console.error('ValueBoxPanel: failed to load sparkline data', err)
+          setSparklineStatus('error')
+        }
       })
 
     return () => {
@@ -213,8 +219,11 @@ export function ValueBoxPanel({ config }: { config: ValueBoxPanelConfig }) {
         })
         setTrendStatus('ready')
       })
-      .catch(() => {
-        if (!cancelled) setTrendStatus('error')
+      .catch((err) => {
+        if (!cancelled) {
+          console.error('ValueBoxPanel: failed to load baseline-trend data', err)
+          setTrendStatus('error')
+        }
       })
 
     return () => {

@@ -248,8 +248,11 @@ export function ZoneMapPanel({ config }: { config: ZoneMapPanelConfig }) {
         setRows(result)
         setStatus('ready')
       })
-      .catch(() => {
-        if (!cancelled) setStatus('error')
+      .catch((err) => {
+        if (!cancelled) {
+          console.error('ZoneMapPanel: failed to load panel data', err)
+          setStatus('error')
+        }
       })
 
     return () => {
@@ -267,8 +270,11 @@ export function ZoneMapPanel({ config }: { config: ZoneMapPanelConfig }) {
         setZoneGeometry(geometry)
         setGeometryStatus('ready')
       })
-      .catch(() => {
-        if (!cancelled) setGeometryStatus('error')
+      .catch((err) => {
+        if (!cancelled) {
+          console.error('ZoneMapPanel: failed to load zone geometry', err)
+          setGeometryStatus('error')
+        }
       })
     return () => {
       cancelled = true

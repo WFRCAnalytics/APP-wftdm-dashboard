@@ -262,8 +262,11 @@ export function SankeyPanel({ config }: { config: SankeyPanelConfig }) {
         setRows(result)
         setStatus('ready')
       })
-      .catch(() => {
-        if (!cancelled) setStatus('error')
+      .catch((err) => {
+        if (!cancelled) {
+          console.error('SankeyPanel: failed to load panel data', err)
+          setStatus('error')
+        }
       })
 
     return () => {

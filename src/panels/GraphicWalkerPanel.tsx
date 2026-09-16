@@ -230,8 +230,11 @@ export function GraphicWalkerPanel({ config }: { config: GraphicWalkerPanelConfi
         setFields(inferFields(table.schema.fields, config.fields))
         setStatus('ready')
       })
-      .catch(() => {
-        if (!cancelled) setStatus('error')
+      .catch((err) => {
+        if (!cancelled) {
+          console.error('GraphicWalkerPanel: failed to load panel data', err)
+          setStatus('error')
+        }
       })
     return () => {
       cancelled = true

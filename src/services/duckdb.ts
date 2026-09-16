@@ -281,15 +281,70 @@ async function registerFileURLViaFullFetch(
   )
 }
 
+// Concurrency limiter for the whole registerFileURL() operation below — a
+// real, confirmed DuckDB-WASM limitation found investigating live reports
+// of "Couldn't load this table" on tabs with many metrics (Tour/Mode
+// Choice/Trip). Root cause, confirmed directly against the real deployed
+// site (not assumed): GitHub Pages' Fastly CDN corrupts Range reads
+// whenever gzip is negotiated (every real browser always does), so EVERY
+// registerFileURL() call on the live site falls through to
+// registerFileURLViaFullFetch()'s slower path below — an extra
+// db.dropFile() + db.registerFileBuffer() + second CREATE VIEW round trip
+// against the one shared connection/worker (see project-docs/PIPELINE.md's
+// "GH Pages/Fastly corrupts HTTP Range requests" entry for the full CDN
+// finding). services/tabDataLoader.ts's own tab-wide batch registers every
+// metric a tab references via unbounded Promise.allSettled — firing dozens
+// of these heavier operations at once (a large tab like Tour needs ~39)
+// overwhelms the connection/worker: measured live, repeatedly, against the
+// real deployed site — concurrency 4 already corrupts 11-37 of every 60
+// calls, and once a call fails this way IT CANNOT BE RECOVERED by retrying
+// (confirmed directly: retrying the same view name, a brand-new
+// never-used view name, and a retry after a 5s drain all fail identically
+// — the underlying connection/worker itself is left in a bad state, not
+// just that one file). Concurrency 2-3 was confirmed failure-free across
+// repeated live trials (0/60, twice) — MAX_CONCURRENT_FILE_REGISTRATIONS
+// stays well under the observed cliff at 4. Never reached locally or on a
+// real range-capable server, where the fast direct-range path is used
+// throughout and this limiter is never a bottleneck.
+const MAX_CONCURRENT_FILE_REGISTRATIONS = 3
+let activeFileRegistrations = 0
+const fileRegistrationQueue: (() => void)[] = []
+
+function acquireRegistrationSlot(): Promise<void> {
+  if (activeFileRegistrations < MAX_CONCURRENT_FILE_REGISTRATIONS) {
+    activeFileRegistrations++
+    return Promise.resolve()
+  }
+  return new Promise((resolve) => fileRegistrationQueue.push(resolve))
+}
+
+// Hands the freed slot directly to the next queued waiter (the count of
+// concurrently-active registrations never changes in that case — one
+// finished, one started) rather than decrementing and letting every
+// waiter race acquireRegistrationSlot() again.
+function releaseRegistrationSlot(): void {
+  const next = fileRegistrationQueue.shift()
+  if (next) {
+    next()
+  } else {
+    activeFileRegistrations--
+  }
+}
+
 /** Registers a single Parquet/GeoParquet file reachable by URL as a view. */
 export async function registerFileURL(viewName: string, url: string): Promise<void> {
   const db = await getDB()
-  await db.registerFileURL(viewName, url, duckdb.DuckDBDataProtocol.HTTP, false)
+  await acquireRegistrationSlot()
   try {
-    await createViewOverParquet(viewName)
-  } catch (err) {
-    if (!isRangeDetectionFailure(err, viewName)) throw err
-    await registerFileURLViaFullFetch(db, viewName, url)
+    await db.registerFileURL(viewName, url, duckdb.DuckDBDataProtocol.HTTP, false)
+    try {
+      await createViewOverParquet(viewName)
+    } catch (err) {
+      if (!isRangeDetectionFailure(err, viewName)) throw err
+      await registerFileURLViaFullFetch(db, viewName, url)
+    }
+  } finally {
+    releaseRegistrationSlot()
   }
 }
 

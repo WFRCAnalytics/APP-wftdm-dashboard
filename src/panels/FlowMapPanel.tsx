@@ -217,8 +217,11 @@ export function FlowMapPanel({ config }: { config: FlowMapPanelConfig }) {
         setRows(result)
         setStatus('ready')
       })
-      .catch(() => {
-        if (!cancelled) setStatus('error')
+      .catch((err) => {
+        if (!cancelled) {
+          console.error('FlowMapPanel: failed to load panel data', err)
+          setStatus('error')
+        }
       })
 
     return () => {

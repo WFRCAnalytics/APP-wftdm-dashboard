@@ -164,8 +164,11 @@ export function ObservablePlotPanel({ config }: { config: ObservablePlotPanelCon
         setRows(result)
         setStatus('ready')
       })
-      .catch(() => {
-        if (!cancelled) setStatus('error')
+      .catch((err) => {
+        if (!cancelled) {
+          console.error('ObservablePlotPanel: failed to load panel data', err)
+          setStatus('error')
+        }
       })
 
     return () => {

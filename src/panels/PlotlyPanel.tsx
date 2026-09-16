@@ -149,8 +149,11 @@ export function PlotlyPanel({ config }: { config: PlotlyPanelConfig }) {
         Plotly.react(containerRef.current, traces, layout, { responsive: true })
         setStatus('ready')
       })
-      .catch(() => {
-        if (!cancelled) setStatus('error')
+      .catch((err) => {
+        if (!cancelled) {
+          console.error('PlotlyPanel: failed to load panel data', err)
+          setStatus('error')
+        }
       })
 
     return () => {

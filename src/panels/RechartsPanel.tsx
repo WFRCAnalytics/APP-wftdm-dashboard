@@ -147,8 +147,9 @@ export function RechartsPanel({ config }: { config: RechartsPanelConfig }) {
         setRows(result)
         setStatus('ready')
       })
-      .catch(() => {
+      .catch((err) => {
         if (cancelled) return
+        console.error('RechartsPanel: failed to load panel data', err)
         setErrorMessage("Couldn't load this chart")
         setStatus('error')
       })
