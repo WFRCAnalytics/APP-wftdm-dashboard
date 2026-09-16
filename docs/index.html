@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>WFRC TDM Calibration Dashboard</title>
-    <script type="module" crossorigin src="/APP-wftdm-dashboard/assets/index-BRIzs-Yd.js"></script>
+    <script type="module" crossorigin src="/APP-wftdm-dashboard/assets/index-B4i8RN9i.js"></script>
     <link rel="modulepreload" crossorigin href="/APP-wftdm-dashboard/assets/app-shared-CZUNAMLv.js">
     <link rel="modulepreload" crossorigin href="/APP-wftdm-dashboard/assets/react-vendor-C9aN2wcb.js">
     <link rel="modulepreload" crossorigin href="/APP-wftdm-dashboard/assets/duckdb-Bjlci3X6.js">
@@ -15,7 +15,7 @@
     <link rel="modulepreload" crossorigin href="/APP-wftdm-dashboard/assets/sqlExpander-Bv6wpbkr.js">
     <link rel="modulepreload" crossorigin href="/APP-wftdm-dashboard/assets/maps-kr575njw.js">
     <link rel="stylesheet" crossorigin href="/APP-wftdm-dashboard/assets/maps-BQlc4wYO.css">
-    <link rel="stylesheet" crossorigin href="/APP-wftdm-dashboard/assets/index-PPAYYL8H.css">
+    <link rel="stylesheet" crossorigin href="/APP-wftdm-dashboard/assets/index-BCzwH5ip.css">
   </head>
   <body>
     <div id="app">
@@ -108,6 +108,22 @@
       </main>
     </div>
 <!-- /BOOT_SKELETON -->
-    </div>
+    </div>
+    <!-- 060-boot-notifications: a SEPARATE root, sibling to #app, not a
+         child of it. main.tsx's own boot sequence (initDuckDB ->
+         discoverScenarios -> loadDashboards, see the #app comment above)
+         runs entirely before ReactDOM ever calls
+         createRoot(appEl).render(<Shell/>) — mounting the notification
+         Toaster into #app itself would collide with that later call
+         (React warns/errors calling createRoot() twice on one container).
+         This root is created, and its own tiny React tree rendered, as
+         the very first thing main.tsx does, before any boot step starts —
+         sonner's toast() calls are only ever delivered to a Toaster that
+         is ALREADY mounted and subscribed (confirmed directly against
+         sonner's own source: new toasts publish only to the subscriber
+         list at call time, a late-mounting Toaster does not replay
+         history) — and persists for the app's whole lifetime, independent
+         of whatever #app itself is doing. -->
+    <div id="notifications"></div>
   </body>
 </html>
