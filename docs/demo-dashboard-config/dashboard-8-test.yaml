@@ -274,14 +274,29 @@ layout:
       chart_type: bar
       x: major_trip_mode
       y: share
-      width: 0.5
+      width: 0.34
 
     - type:    graphic-walker
       title:   "Free-form Visual Analytics Empty"
       dataset: trip_mode_share
       scenario: activitysim-baseline
       filter:  { major_trip_mode: __no_such_mode__ }
-      width:   0.5
+      width:   0.33
+
+    # 040-test-suite-migration (T023): sankeyPanel.spec.ts's own
+    # zero-row-filter PanelEmptyState case — same literal-non-placeholder-
+    # filter convention as the two siblings above. __no_such_purpose__ is
+    # confirmed absent from the real primary_purpose domain (this file's
+    # own header comment already names it as a confirmed-absent sentinel).
+    - type:   sankey
+      title:  "Sankey Empty Result"
+      metric: purpose_mode_flow
+      scenario: activitysim-baseline
+      filter: { primary_purpose: __no_such_purpose__ }
+      source: primary_purpose
+      target: major_trip_mode
+      value:  trips
+      width:  0.33
 
   # ── Basemap precedence: panel with / without its own basemap under a
   #    tab-level default_basemap (panel > tab > global > app-default) ──

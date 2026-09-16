@@ -76,11 +76,25 @@ layout:
       # (toggle down to one scenario to see that run alone).
       description: "Combined flow across all active scenarios. Toggle scenarios on the Scenarios tab to isolate one run."
       height: 400
-      width:  1.0
+      width:  0.5
       source: primary_purpose
       target: major_trip_mode
       value:  trips
       color_scheme: Tableau10
+
+    # 040-test-suite-migration (T023): the same real metric/flow, with
+    # color_scheme omitted — sankeyPanel.spec.ts's real vehicle for the
+    # token-derived-fallback-palette case (SankeyPanel.tsx's own
+    # --chart-1..4 fallback, not a named d3-scale-chromatic scheme).
+    - type:   sankey
+      title:  "Trip Purpose to Mode Flow (No Color Scheme)"
+      metric: purpose_mode_flow
+      description: "Same combined flow as the panel to the left, using the default token-derived palette instead of a named color scheme."
+      height: 400
+      width:  0.5
+      source: primary_purpose
+      target: major_trip_mode
+      value:  trips
 
   row_trip_mode_by_period:
     - type:    observable-plot
