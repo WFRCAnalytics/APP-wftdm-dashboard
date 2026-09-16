@@ -74,6 +74,23 @@ const ChartContainer = React.forwardRef<
 })
 ChartContainer.displayName = "Chart"
 
+// 040-test-suite-migration Batch B (real, confirmed bug, PIPELINE.md's own
+// "Two real, confirmed bugs" entry): a real ChartConfig key containing a
+// space (e.g. a `series:`-derived category like "Ride Hail") produces an
+// invalid CSS custom-property name (`--color-Ride Hail`) — the browser
+// silently drops that one declaration, leaving whatever series it belongs
+// to rendered in Recharts' own black default instead of a themed color.
+// Slugified here, in the one place the property NAME is generated, so
+// every consumer that builds a matching `var(--color-...)` reference
+// (currently only RechartsPanel.tsx) must call this same function to stay
+// in sync — never re-derive the slug independently. The real, unslugged
+// key is untouched everywhere else (`config`'s own object keys, `label`,
+// `dataKey` bindings, tooltip/legend lookups) — only the CSS property
+// NAME changes, never the display label or the data-binding key.
+export function sanitizeColorKey(key: string): string {
+  return key.replace(/[^a-zA-Z0-9_-]/g, "-")
+}
+
 const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
   const colorConfig = Object.entries(config).filter(
     ([, config]) => config.theme || config.color
@@ -95,7 +112,7 @@ ${colorConfig
     const color =
       itemConfig.theme?.[theme as keyof typeof itemConfig.theme] ||
       itemConfig.color
-    return color ? `  --color-${key}: ${color};` : null
+    return color ? `  --color-${sanitizeColorKey(key)}: ${color};` : null
   })
   .join("\n")}
 }

@@ -65,11 +65,18 @@ test.describe('registerFileURL() HTTP range-request behavior', () => {
         '/APP-wftdm-dashboard/demo-scenarios/activitysim-baseline/summary/summary_kpis.parquet',
       )
       const r = await window.__wftdm!.query('SELECT total_households FROM "rangereadtest__summary_kpis"')
+      // The bigint->string replacer below is now a dead path in practice
+      // (services/duckdb.ts's global `query: { castBigIntToDouble: true }`
+      // means this COUNT(*)-derived column arrives as a real `number`,
+      // never `bigint`) — left in place as a harmless no-op rather than
+      // removed, since this test is about HTTP range-read behavior, not
+      // bigint handling.
       return JSON.parse(JSON.stringify(r, (_k, v) => (typeof v === 'bigint' ? v.toString() : v)))
     })
 
-    // Real data still resolves correctly...
-    expect(rows).toEqual([{ total_households: '5000' }])
+    // Real data still resolves correctly — a real `number` now, not the
+    // pre-fix `'5000'` string (see PIPELINE.md's own recorded finding).
+    expect(rows).toEqual([{ total_households: 5000 }])
 
     // ...but the mechanism itself is the thing under test: at least one real
     // 206 response, carrying a real Content-Range header, must have
@@ -119,8 +126,10 @@ test.describe('registerFileURL() HTTP range-request behavior', () => {
 
     // No thrown error, and correct real data despite the incapable server —
     // the manual fallback, not DuckDB-WASM's own built-in one (confirmed
-    // disabled, allowFullHTTPReads stays false), is what recovers this.
-    expect(result).toEqual([{ total_households: '5000' }])
+    // disabled, allowFullHTTPReads stays false), is what recovers this. A
+    // real `number` now, not the pre-fix `'5000'` string — see this file's
+    // own sibling test above.
+    expect(result).toEqual([{ total_households: 5000 }])
     expect(consoleWarnings.length).toBeGreaterThan(0)
     expect(consoleWarnings[0]).toContain('rangeincapabletest__x')
     expect(consoleWarnings[0]).toContain(`${realBytes.byteLength} bytes`)

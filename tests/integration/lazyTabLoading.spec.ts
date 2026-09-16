@@ -82,11 +82,12 @@ test.describe('User Story 1 - Fast landing on the tab a viewer actually opens', 
     // already covers in depth — this is a narrower, targeted re-check
     // specific to this feature's own concern: that lazy timing never
     // changes what a panel ultimately shows. Same exact-text convention
-    // that file already established (real rendered "5000", not "5,000" —
-    // a real, separate, pre-existing bigint-formatting gap unrelated to
-    // this feature, not fixed here).
+    // that file already established — "5,000", correctly comma-formatted
+    // since `services/duckdb.ts`'s global `castBigIntToDouble: true` fix
+    // (see dashboardShell.spec.ts's own updated comment, and PIPELINE.md,
+    // for the full account).
     await expect(page.getByText('Households', { exact: true })).toBeVisible({ timeout: 15_000 })
-    await expect(page.getByText('5000', { exact: true })).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByText('5,000', { exact: true })).toBeVisible({ timeout: 15_000 })
   })
 })
 

@@ -722,3 +722,140 @@ decision on where new ones belong before authoring), `T032`
 local-folder mock reads bytes from a now-deleted fixture path), `T037`
 `settingsModal` (largest, highest collision risk, last per this file's
 own existing ordering), and Phase 7/8 cleanup.
+
+## Batch B (T022 `rechartsPanel.spec.ts`) — real findings and results
+
+**Direct re-read of the file first, per this session's own explicit
+instruction not to trust the Batch A closing estimate.** Confirmed: zero
+working `type: recharts` panels exist anywhere in real demo content —
+`057-observable-plot-conversion` deliberately moved every real Recharts
+panel off the demo tabs onto Observable Plot, per this file's/CLAUDE.md's
+own on-record decision. Per direct user decision this session, rather
+than inventing an artificial "real" Recharts use on a demo tab, real
+Recharts panel(s) were added directly to `dashboard-8-test.yaml` (the
+permanent Test tab) instead — the same role that tab already serves for
+`sankeyPanel.spec.ts`'s own Batch A addition.
+
+**Fresh isolated baseline before touching anything**: `rechartsPanel.
+spec.ts` alone, single worker, pre-migration content — reproduced the
+same real fixture-coupled failures Batch A's own re-verification pass
+already recorded for this file (`rechartsPanel` 8, matching this
+document's Batch A section and CLAUDE.md item 28's own independent
+record).
+
+**Content added to `dashboard-8-test.yaml`**: two new rows.
+`row_recharts_charts` — three real, live-queried `type: recharts` panels:
+a `chart_type: bar` panel (`trip_purpose_share`, `x`/`series: primary_
+purpose`, `y: share`, 10 real categories, 5-token wraparound); a
+`chart_type: line` panel and a `chart_type: area` panel (both `trip_
+destination_summary`, `y: avg_distance_miles`). `row_plotly_legend` — one
+real `type: plotly` bar panel (`trip_mode_share`, one trace per distinct
+`major_trip_mode` via `color: $metric.major_trip_mode`) needed for the
+existing "plotly legend click-to-toggle still works" regression test,
+which had no real non-fixture Plotly panel with a genuine multi-trace
+legend to target.
+
+**Two real, confirmed, OUT-OF-SCOPE application bugs found and
+deliberately worked around, not fixed** (both root-caused via direct
+source reads, not guessed):
+
+1. **A space in a real category value breaks `components/ui/chart.tsx`'s
+   generated CSS custom property.** The bar chart's first candidate data
+   source, `trip_mode_share`, has a real category "Ride Hail" (a space).
+   `ChartStyle`'s own `` `  --color-${key}: ${color};` `` template emits
+   this verbatim — a bare space inside a CSS custom-property name is
+   invalid, silently dropping that one declaration (the bar rendered
+   `rgb(0,0,0)`, confirmed via `computedPaint()`). `chart.tsx` is kept
+   deliberately "pristine" by this project's own established convention
+   (shadcn-CLI-sourced, only ported for real compiler/runtime necessity —
+   see CLAUDE.md's `components/ui/` history) — not touched. Worked
+   around by switching the bar panel's data source to `trip_purpose_
+   share` (10 real purposes, all single words, no spaces).
+2. **DuckDB-WASM's already-documented `bigint` gap has a second, new
+   manifestation: Recharts' own internal numeric geometry computation
+   silently renders zero `<path>` elements for a `bigint` y-value** (not
+   just `formatValue.ts`'s already-known display-string gap). Confirmed
+   via a temporary, since-deleted debug spec that hit `TypeError: Do not
+   know how to serialize a BigInt` serializing the raw query result — the
+   line/area panels' first candidate y-column, `trips` (a `COUNT(*)`-
+   derived column, arrives as JS `bigint`), rendered a correct legend/axis
+   but literally no line/area geometry at all. Not fixed in app code
+   (out of scope, same "confirmed but deliberately worked around, not
+   fixed" discipline as finding 1) — worked around by switching both
+   panels' `y:` to `avg_distance_miles`, a real `DOUBLE` column.
+
+**A third, small, real bug found and fixed in this migration's own new
+test code** (not an app bug): the tooltip-value assertion asserted
+`String(rows[0].share)` (full float precision, e.g.
+`"0.10957045329262605"`) against the rendered tooltip text, which showed
+`"0.11"`. Root-caused via direct read of `chart.tsx`:
+`ChartTooltipContent` renders `item.value.toLocaleString()`, not the raw
+value. Confirmed directly (`node -e "console.log((0.10957045329262605).
+toLocaleString())"` → `"0.11"`). Fixed the assertion to
+`rows[0].share.toLocaleString()`.
+
+**A fourth, recurring bug class, fixed the same way every prior batch in
+this migration has fixed it**: a lazy-registration race — a test's own
+direct `window.__wftdm!.query()` cross-check, issued before the real
+panel's own render had triggered `ensureRegistered()`, threw a `Catalog
+Error`. Fixed by reordering every such assertion to wait for the panel's
+own real rendered output first (`bars.toHaveCount(...)`/
+`lines.toHaveCount(...)`), matching `scenarioAutoActivation.spec.ts`'s
+own Batch A precedent exactly.
+
+**Test-tab-crowding timeouts**, the same class `flowmapPanel.spec.ts`/
+`zonemapPanel.spec.ts`/`sankeyPanel.spec.ts` already established:
+`waitForChartToSettle`'s internal poll and every "first real render on
+the Test tab" assertion bumped to `{ timeout: 10_000 }`.
+
+**Isolated verification**: `rechartsPanel.spec.ts` alone, single worker —
+**8/8 passed, clean**, reproduced across two separate consecutive runs
+after the fixes above.
+
+**Full-suite confirmation plus a real git-stash A/B** (10 workers each,
+375 total tests both runs): with Batch B applied — **123 failed** total,
+per-file `settingsModal` 33 / `observablePlotPanel` 24 / `tablePanel` 23
+/ `scenarioManager` 16 / `valueBoxPanel` 14 / `rechartsPanel` **2** /
+`zonemapPanel` 3 / `flowmapPanel` 3 / `panelExpand` 1 /
+`graphicWalkerPanel` 1 / `dashboardShell` 1 / `brokenPanelStates` 1 /
+`scenarioAutoActivation` 1. The 2 remaining `rechartsPanel` failures were
+the same Test-tab-crowding timeout class (both passed clean in every
+isolated run before and after — confirmed via the error text itself:
+`toHaveCount(10)` receiving `0` under full contention, never a `Catalog
+Error` or a value mismatch). Stashing Batch B entirely and re-running the
+full suite on the CLEAN tree reproduced the identical total (**123
+failed**, 375 tests, 252 passed both runs) with `settingsModal`/
+`observablePlotPanel`/`tablePanel`/`scenarioManager`/`valueBoxPanel` at
+BYTE-IDENTICAL counts to the with-Batch-B run (31/24/23/16/14 — proving
+zero interaction), `rechartsPanel` back at its full pre-migration count
+(**8**, matching this document's own Batch A re-verification figure and
+CLAUDE.md item 28's independent record exactly), and the scattered
+single-digit noise (`flowmapPanel` 2, `zonemapPanel` 1, `panelExpand` 1,
+`graphicWalkerPanel` 1, `dashboardShell` 1, `brokenPanelStates` 1)
+reproducing the same already-documented resource-contention signature on
+the clean tree too — conclusive proof none of the remaining 121 failures
+are caused by this batch, and that Batch B's own real fix (8 → 2,
+matching Batch A's `sankeyPanel`/`scenarioAutoActivation` precedent) is
+real, not noise.
+
+`npm run typecheck` (`npx tsc --noEmit`) clean throughout — before,
+mid-fix, after the full-suite run, after the stash pop.
+
+## Batch B conclusion
+
+**T022 (`rechartsPanel.spec.ts`) is DONE.** Isolated correctness is
+unambiguous (8/8, reproduced clean twice). Full-suite confirmation plus a
+real git-stash A/B conclusively separates one real, small test-authoring
+bug this batch found and fixed (a tooltip-value precision mismatch,
+`toLocaleString()`) and one recurring bug class already fixed the same
+way in every prior batch (a lazy-registration race) from this project's
+own already-extensively-documented resource-contention noise. Two real,
+confirmed application bugs were found and deliberately worked around
+rather than fixed, per this whole effort's scope discipline: a space in a
+real category value breaking `chart.tsx`'s generated CSS custom
+property, and DuckDB-WASM's bigint gap silently breaking Recharts' own
+geometry computation (a new manifestation of an already-documented gap,
+not previously recorded for this panel type). Remaining scope, unchanged
+from the Batch A conclusion above: `T018` `valueBoxPanel`, `T019`
+`tablePanel`, `T021` `observablePlotPanel`, `T032` `scenarioManager`,
+`T037` `settingsModal` (last), and Phase 7/8 cleanup.

@@ -77,32 +77,24 @@ test.describe('User Story 2 - An analyst sees a real number, computed from real 
     await page.waitForFunction(() => window.__wftdm !== undefined, null, { timeout: 30_000 })
 
     // SC-002: real Summary-tab KPIs (dashboard-1-summary.yaml, pinned to
-    // activitysim-baseline, summary_kpis metric) — 5000 households /
+    // activitysim-baseline, summary_kpis metric) — 5,000 households /
     // 15,212 total VMT.
     //
-    // A REAL, CONFIRMED, OUT-OF-SCOPE BUG found while verifying this
-    // migration's own expected values live (not assumed from the YAML's
-    // `format: "{:,.0f}"` alone): DuckDB-WASM's Arrow results deliver
-    // COUNT(*)-derived integer columns (total_households, total_trips) as
-    // JS `bigint`, not `number` — confirmed directly via
-    // `window.__wftdm.query()` (JSON.stringify threw "Do not know how to
-    // serialize a BigInt"). panels/formatValue.ts's own `typeof value !==
-    // 'number'` guard is `true` for a bigint, so it falls through to the
-    // unformatted `String(value)` branch — the comma-grouped format string
-    // is silently skipped for these two KPIs specifically. This is the
-    // EXACT same bigint-vs-number gap CLAUDE.md already documents fixing
-    // once for ZoneMapPanel.tsx's own metric join
-    // (`typeof raw === 'number' || typeof raw === 'bigint' ? Number(raw) :
-    // null`) — that fix was never extended to the shared formatValue.ts,
-    // which ValueBoxPanel.tsx AND TablePanel.tsx both use. Real, confirmed,
-    // deliberately NOT fixed here (out of scope for a test migration) —
-    // this test asserts the REAL current rendered text ("5000", not
-    // "5,000"), not an aspirational fixed state. total_vmt is a real
-    // SUM()-derived DOUBLE, not COUNT(*)-derived, and is genuinely
-    // unaffected — it renders correctly comma-formatted, confirming the
-    // gap is specific to bigint-typed columns, not formatValue() broadly.
+    // Previously asserted the unformatted "5000" here, not "5,000" — a
+    // real, confirmed, then-out-of-scope bug (COUNT(*)-derived integer
+    // columns arriving as JS `bigint`, silently skipping formatValue.ts's
+    // comma-grouped format string) documented at length in this test's own
+    // prior comment. Fixed at its root: `services/duckdb.ts#initDuckDB()`
+    // now sets `query: { castBigIntToDouble: true }`, so total_households
+    // (and every other COUNT(*)-derived column) arrives as a real `number`
+    // — formatValue.ts's existing `{:,.0f}` handling now applies
+    // correctly, with zero change to formatValue.ts itself. See
+    // PIPELINE.md's own recorded finding for the full account (this was
+    // one of three independent panel types found hitting the same root
+    // cause). total_vmt (a SUM()-derived DOUBLE, never bigint) was already
+    // unaffected either way and stays "15,212".
     await expect(page.getByText('Households', { exact: true })).toBeVisible()
-    await expect(page.getByText('5000', { exact: true })).toBeVisible()
+    await expect(page.getByText('5,000', { exact: true })).toBeVisible()
     await expect(page.getByText('Total VMT', { exact: true })).toBeVisible()
     await expect(page.getByText('15,212', { exact: true })).toBeVisible()
   })

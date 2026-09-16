@@ -91,8 +91,36 @@ export async function initDuckDB(): Promise<void> {
       // preview and the built dist/docs output (GitHub Pages) — were all
       // directly `curl`-confirmed range-capable, so the fallback path is
       // not expected to be live in this app's own real deployments today.
+      // query.castBigIntToDouble: true — the real, root-cause fix for a
+      // bug independently found and ad hoc patched THREE times before
+      // this: ZoneMapPanel.tsx's choropleth-value join
+      // (031-all-panel-demo-content), GraphicWalkerPanel.tsx's whole-row
+      // conversion (found live on the Explore tab, same root cause), and
+      // a Recharts y-value silently rendering zero geometry
+      // (040-test-suite-migration's rechartsPanel.spec.ts Batch B,
+      // avoided by data-source substitution rather than patched). Every
+      // DuckDB BIGINT column (any COUNT(*)-derived aggregate) arrives
+      // over Arrow as a genuine JS `bigint` primitive, not `number` —
+      // confirmed, via @duckdb/duckdb-wasm's own installed
+      // DuckDBQueryConfig type and its own test suite
+      // (packages/duckdb-wasm/test/bindings.test.ts), that this option
+      // casts BIGINT to DOUBLE inside the query engine itself, before
+      // Arrow ever serializes the result — so both query() and
+      // queryArrow() receive real numbers uniformly, with no
+      // per-consumer conversion needed. `gropaul/dash-ui` (the real UI
+      // source already investigated elsewhere in this project, see
+      // PIPELINE.md's "DuckDB 'Dash' extension" entry) confirms this is
+      // a real, working pattern already in production use elsewhere,
+      // not a hypothetical: its own duckdb-wasm-provider.ts sets this
+      // (and the sibling cast options below) unconditionally on every
+      // connection it opens. castTimestampToDate/castDurationToTime64/
+      // castDecimalToDouble are deliberately NOT set here — this fix is
+      // scoped to the one confirmed, three-times-independently-found
+      // bigint problem; no timestamp/duration/decimal-typed column has
+      // ever surfaced an equivalent issue in this app.
       await db.open({
         filesystem: { allowFullHTTPReads: false, reliableHeadRequests: true, forceFullHTTPReads: false },
+        query: { castBigIntToDouble: true },
       })
       return db
     })()

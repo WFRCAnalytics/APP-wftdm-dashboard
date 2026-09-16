@@ -832,3 +832,173 @@ CORS-block reason to page script (a security boundary, confirmed directly
 — the caught error is a generic `TypeError: Failed to fetch`, nothing
 more specific), so detecting or routing around the block itself from this
 app's own code is not possible, and was not attempted.
+
+---
+
+## Two real, confirmed bugs found during `040-test-suite-migration` Batch B (`rechartsPanel.spec.ts`) — BOTH NOW FIXED
+
+**Status: RESOLVED**, in a direct follow-up request the same session this
+finding was first logged. Both were originally found while authoring
+real, live-queried Recharts panels for `dashboard-8-test.yaml` (see
+`specs/040-test-suite-migration/baseline.md`'s own "Batch B" section for
+the full migration record) and, at the time, deliberately worked around
+rather than fixed — out of scope for a test-migration task, per that
+effort's own "no observable-behavior change" discipline. The two
+sub-sections below keep the original "found and worked around" account
+intact (real history, not rewritten); the "RESOLVED" block at the end of
+each records the actual fix and its verification.
+
+**1. A real category value containing a space breaks `components/ui/
+chart.tsx`'s generated `--color-${key}` CSS custom property.**
+`trip_mode_share`'s real "Ride Hail" category (a space in the value) was
+the bar chart's first candidate `series` value. `ChartStyle`'s own
+`` `  --color-${key}: ${color};` `` template (this project's one
+deliberately "pristine," shadcn-CLI-sourced file) emits the series key
+verbatim into a CSS custom-property name — a bare space there is invalid
+CSS syntax, so that one declaration is silently dropped (confirmed live:
+the "Ride Hail" bar rendered `rgb(0,0,0)`, MapLibre/Recharts' own black
+default, not a themed `--chart-N` color). Worked around in the migration
+by switching that panel's data source to `trip_purpose_share` (10 real,
+all-single-word categories) instead of fixing `chart.tsx`.
+
+**RESOLVED.** `components/ui/chart.tsx` gained a new, exported
+`sanitizeColorKey(key)` (`key.replace(/[^a-zA-Z0-9_-]/g, "-")`), called by
+`ChartStyle` when generating the property name (`--color-
+${sanitizeColorKey(key)}`) — the one, and only, place this file was
+touched, a third small, deliberate exception to its own "keep the
+CLI-sourced source pristine" convention (alongside the two already
+recorded above it in this project's history), same real-bug-fix bar as
+those two. `RechartsPanel.tsx`'s own three `var(--color-${key})`
+references (both `<linearGradient>` stops, the mark's own `fill`/
+`stroke`) now call the same `sanitizeColorKey()` — imported, never
+re-derived independently, so the property name generated and the
+property name referenced can never drift apart. The real, unslugged key
+is untouched everywhere else: `rechartsEncoding.ts`'s own `ChartConfig`/
+`data` object keys, the `dataKey` binding, and every legend/tooltip
+lookup — only the CSS property NAME changes, never the display label or
+the data-binding key. Verified with a new, permanent regression test
+(`rechartsPanel.spec.ts`, "a real category value containing a space
+('Ride Hail') renders a genuine, distinct --chart-N color") against a
+NEW panel on `dashboard-8-test.yaml` (`row_recharts_space_in_category`)
+using the ORIGINAL real data source the bug was found on
+(`trip_mode_share`, including "Ride Hail") — not a substitute chosen to
+avoid it. Passed clean across two consecutive isolated runs and the full
+10-worker suite, with zero change to any of this migration's own
+already-passing tests (the panels that route around the bug via
+`trip_purpose_share`/`avg_distance_miles` were left as-is, not reverted
+— no need to re-expose the original trigger there once the underlying
+bug is fixed either way).
+
+**2. A third confirmed, independent manifestation of the BigInt-vs-Number
+gap: a `bigint`-typed y-value silently renders zero Recharts geometry.**
+`trip_destination_summary`'s `trips` column (`COUNT(*)`-derived, arrives
+over Arrow as a genuine JS `bigint`, never `number`) was the line/area
+charts' first candidate `y:` value — legend and axes rendered correctly,
+but literally zero `<path>` line/area geometry appeared anywhere.
+Root-caused via a temporary, since-deleted debug spec that serialized the
+raw query result and hit `TypeError: Do not know how to serialize a
+BigInt` — Recharts' own internal numeric geometry computation chokes on
+`bigint` the same silent way `formatValue.ts`'s display-string gap and
+`ZoneMapPanel.tsx`'s choropleth-fill-value gap already do. Worked around
+by switching both panels' `y:` to `avg_distance_miles` (a real `DOUBLE`
+column) instead.
+
+This is now the **third** independent panel type hit by the identical
+root cause, each fixed ad hoc, locally, after the fact:
+`ZoneMapPanel.tsx` (`typeof raw === 'number' || typeof raw === 'bigint' ?
+Number(raw) : null`, `031-all-panel-demo-content`) and
+`GraphicWalkerPanel.tsx` (`convertBigIntsToNumbers()`,
+`014-graphic-walker-panel`) both already carry their own independent
+`bigint`→`number` conversion, confirmed directly by reading both files.
+`RechartsPanel.tsx`/`rechartsEncoding.ts` still carry none — this
+migration avoided the bug by data-source choice rather than adding a
+fourth ad hoc fix.
+
+**A real, well-evidenced global fix exists and has never been attempted
+in this codebase.** `@duckdb/duckdb-wasm`'s own real, installed
+`DuckDBConfig` type (`node_modules/@duckdb/duckdb-wasm/dist/types/src/
+bindings/config.d.ts`) exposes exactly this as a first-class connection
+option: `query?: { castBigIntToDouble?: boolean; castTimestampToDate?:
+boolean; castDurationToTime64?: boolean; castDecimalToDouble?: boolean }`
+— set once, globally, at the connection level, every query result then
+arrives with real JS `number`s instead of `bigint`s. `gropaul/dash-ui`
+(the real UI source behind the `gropaul/dash` DuckDB extension already
+investigated elsewhere in this file — see "DuckDB 'Dash' extension"
+above) confirms this is a real, working pattern, not a hypothetical: its
+own `src/state/connections/duckdb-wasm/duckdb-wasm-provider.ts` sets ALL
+FOUR options to `true` unconditionally on every connection it opens
+(`castBigIntToDouble: true, castTimestampToDate: true,
+castDecimalToDouble: true, castDurationToTime64: true`) — found via a
+direct GitHub code search of that real, current repo, not assumed.
+
+**RESOLVED — the global fix above was applied.**
+`services/duckdb.ts#initDuckDB()`'s `db.open({...})` call now carries
+`query: { castBigIntToDouble: true }` alongside its existing
+`filesystem:` key — one line, at the one shared connection every panel
+type already queries through. `castTimestampToDate`/
+`castDurationToTime64`/`castDecimalToDouble` were deliberately NOT also
+set — this fix is scoped to the one confirmed, three-times-independently-
+found bigint problem; no timestamp/duration/decimal-typed column has ever
+surfaced an equivalent issue in this app.
+
+All three local workarounds this finding names were found directly and
+removed, confirmed superseded rather than left coexisting with the global
+fix: `ZoneMapPanel.tsx`'s `typeof raw === 'number' || typeof raw ===
+'bigint' ? Number(raw) : null` is now plain `typeof raw === 'number' ?
+raw : null` (a `bigint` can no longer reach this line at all);
+`GraphicWalkerPanel.tsx`'s `convertBigIntsToNumbers()` helper and its own
+call site were deleted outright (a `queryArrow()` Arrow table's own
+schema now carries `Double`, never `Int64`, for a BIGINT column — the
+cast happens inside the query engine itself, before Arrow ever
+serializes the result, confirmed via `@duckdb/duckdb-wasm`'s own test
+suite, `packages/duckdb-wasm/test/bindings.test.ts`, and via a direct
+`gh search code` hit on `duckdb/duckdb-wasm:lib/src/config.cc`'s real
+`config.query.cast_bigint_to_double` C++ field); the third manifestation
+(Recharts' `y:` value) never got a local patch in the first place — it
+was avoided by data-source substitution — and still doesn't need one.
+`panels/graphicWalkerFields.ts#inferTypesFromArrow()` needed no change:
+it already classifies `DataType.isInt`/`DataType.isFloat` identically
+(`quantitative`/`measure`), so a column becoming `Double` instead of
+`Int64` doesn't change GraphicWalker's own field-type inference.
+
+A genuine, incidental FOURTH beneficiary, found while searching for every
+consumer of this bug class before removing anything: `panels/
+formatValue.ts`'s own `typeof value !== 'number'` guard had NO dedicated
+bigint branch at all (unlike the other two files) — a bigint silently
+fell through to the unformatted `String(value)` branch, skipping its
+`format:` string entirely (e.g. rendering `"5000"` instead of the
+configured `"5,000"`). This was never patched locally (there was nothing
+to remove), so the global fix is the ONLY fix this specific gap ever
+received — confirmed via the real, previously-documented-as-a-known-bug
+`dashboardShell.spec.ts`/`lazyTabLoading.spec.ts` value-box assertions,
+both updated from the old, buggy `"5000"` to the correct, now-real
+`"5,000"` as a direct, intended consequence of this fix (not a separate
+change). Two more test assertions (`duckdbHttpRangeReads.spec.ts`, a raw
+`SELECT total_households` with no formatting involved at all) were
+updated from an expected string `'5000'` (a `bigint`→string conversion
+these tests' own `page.evaluate()` return value needed before this fix,
+since Playwright's serialization can't carry a raw `bigint` across the
+boundary) to the plain real number `5000`.
+
+**Verification**: `npx tsc --noEmit` clean; `npm run test:unit` 486/486
+passing, unchanged (no unit-tested pure module's own behavior changed —
+`rechartsEncoding.test.ts`'s own `ChartConfig`-key assertions are
+untouched, since only the CSS property name changed, never the object
+key). The three previously-patched panel types' own specs
+(`zonemapPanel.spec.ts` 30/30, `graphicWalkerPanel.spec.ts` 28/28) plus
+`rechartsPanel.spec.ts` (9/9, including the new regression test) and
+every file found to reference the old, buggy unformatted value
+(`dashboardShell.spec.ts`, `lazyTabLoading.spec.ts`,
+`duckdbHttpRangeReads.spec.ts`) — 87 tests total across all six files —
+passed clean across two separate, consecutive isolated (single-worker)
+runs. The full 10-worker suite (376 tests, one more than before this fix
+— the new regression test) then confirmed zero regression beyond the
+intended, now-correct behavior change: every one of the five known,
+pre-existing, unrelated fixture-coupled files
+(`settingsModal`/`observablePlotPanel`/`tablePanel`/`scenarioManager`/
+`valueBoxPanel`) held at byte-identical failure counts to the
+immediately-prior (pre-this-fix) full-suite run, and neither
+`duckdbHttpRangeReads.spec.ts` nor `lazyTabLoading.spec.ts` appears in
+the failure list at all. `dashboardShell.spec.ts`'s one full-suite
+failure was a genuinely different, unrelated test (`Panel error
+isolation (SC-006, FR-010)`) — the specific test this fix touched passed.

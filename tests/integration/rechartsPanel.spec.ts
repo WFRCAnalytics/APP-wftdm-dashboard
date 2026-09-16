@@ -7,29 +7,55 @@ declare global {
   }
 }
 
-// Real-browser tests for 029-shadcn-chart-panel, extending
-// sankeyPanel.spec.ts's/observablePlotPanel.spec.ts's pattern (real
-// DuckDB-WASM, fixture Parquet, fixture dashboard-config). See
-// quickstart.md and contracts/recharts-panel.md.
+// Real-browser tests for 029-shadcn-chart-panel, migrated (040-test-suite-
+// migration, Batch B) off the retired synthetic fixture onto the real,
+// git-tracked demo content — with a real, deliberate difference from every
+// prior panel-type migration in this suite: `057-observable-plot-
+// conversion` deliberately moved every real Recharts (and Plotly) bar/
+// line/area panel out of the actual demo tabs onto Observable Plot, so
+// Recharts (and, as this migration found, Plotly too) no longer has ANY
+// real, working home in the actual calibration content. Per direct user
+// decision, this panel type's own real mechanics (per-series --chart-N
+// coloring, legend, tooltip, theming) live on `dashboard-8-test.yaml`
+// instead — the same "exercises a panel type's own mechanics, not part of
+// the real calibration story" role that tab already serves for
+// `sankeyPanel.spec.ts`'s own recent addition — see that file's own new
+// `row_recharts_charts`/`row_plotly_legend` rows for the full real-data
+// derivation (every value confirmed live via the `duckdb` CLI before
+// authoring, never fabricated).
 //
-// Fixture shape (tests/fixtures/dashboard-config/dashboard-1-summary.yaml's
-// row_recharts):
-// - "Recharts Mode Breakdown (Bar)": trip_mode_share, x: purpose,
-//   y: share, series: mode — one x category (HBW), 4 series (SOV/HOV/
-//   Transit/Non-Motorized) — the primary US1 vehicle.
-// - "Recharts Trip Length Frequency (Line)": trip_destination_dist,
-//   x: distance_bin, y: trips, series: mode, filter: purpose: HBW (a
-//   literal, non-`$filters.` value) — 2 series (SOV/Transit), 5 x-values.
-// - "Recharts Trip Length Frequency (Area)": same metric, no `series`,
-//   filter: purpose: HBW, mode: SOV — a single series, 5 x-values.
-// - "Recharts Invalid Chart Type (intentional)": chart_type: pie.
-// - "Recharts Empty Result (intentional)": a literal filter value
-//   matching zero rows.
-// - "Recharts Broken Panel (intentional)": a metric no scenario publishes.
+// Real vehicles, all on the permanent "Test" tab (dashboard-8-test.yaml),
+// all pinned to `activitysim-baseline`:
+// - "Recharts Mode Breakdown (Bar)": trip_mode_share, x/series BOTH
+//   `major_trip_mode` — 5 real modes, 5 bars, 5 genuinely distinct real
+//   --chart-N colors, zero token wraparound (5 series, 5 tokens).
+// - "Recharts Trip Length Frequency (Line)": trip_destination_summary,
+//   x: distance_bin, series: primary_purpose — 10 real purposes (no
+//   `filter:` narrows this; that grammar only supports one exact-match
+//   value, not a list), 10 lines cycling through 5 --chart-N tokens
+//   TWICE — a genuinely more thorough real test of token wraparound than
+//   the retired fixture's own fabricated 2-series version ever exercised.
+// - "Recharts Trip Length Frequency (Area)": same metric, filtered to
+//   the one real purpose with all 5 real bins (`work`) — the
+//   single-series case, --chart-1 only.
+// - "Recharts Invalid Chart Type (pie)" / "Recharts Empty Result" /
+//   "Broken Recharts Panel (missing metric)": already real, already on
+//   the Test tab from earlier work in this migration — retargeted here,
+//   not newly authored.
+// - "Plotly Mode Share (Bar)": a real, working, legend-bearing Plotly
+//   panel — confirmed live that ZERO real `type: plotly` panels exist
+//   anywhere else in demo content any more. Same real trip_mode_share
+//   data, `color: $metric.major_trip_mode` (plotlyTraces.ts's own
+//   confirmed real split-into-one-trace-per-distinct-value mechanism) —
+//   5 real traces, 5 real legend entries, one of them "SOV".
 
 async function boot(page: Page) {
   await page.goto('/')
   await page.waitForFunction(() => window.__wftdm !== undefined, null, { timeout: 30_000 })
+}
+
+async function gotoTestTab(page: Page) {
+  await page.getByRole('tab', { name: 'Test' }).click()
 }
 
 function panelCard(page: Page, title: string) {
@@ -81,7 +107,12 @@ async function waitForChartToSettle(shape: Locator) {
         previous = current
         return settled
       },
-      { timeout: 5000 },
+      // 10s, not 5s — the real Test tab this migration's own content now
+      // lives on is genuinely busier than it was before Batch B (4 more
+      // real panels added), the same class of resource-contention residual
+      // risk flowmapPanel.spec.ts/zonemapPanel.spec.ts/sankeyPanel.spec.ts
+      // already established and raised their own poll timeouts for.
+      { timeout: 10_000 },
     )
     .toBe(true)
 }
@@ -91,39 +122,55 @@ test.describe('User Story 1 - Author renders a bar, line, or area chart with the
     page,
   }) => {
     await boot(page)
+    await gotoTestTab(page)
     const card = panelCard(page, 'Recharts Mode Breakdown (Bar)')
     const bars = card.locator('.recharts-bar-rectangle .recharts-rectangle')
 
-    // Direct aggregation of the same fixture data: trip_mode_share
-    // publishes exactly 4 rows (one per mode), all under purpose: HBW.
-    const rows = await page.evaluate(() =>
-      window.__wftdm!.query(`SELECT * FROM good_scenario__trip_mode_share`),
-    )
-    expect(rows).toHaveLength(4)
-    await expect(bars).toHaveCount(4)
+    // Wait for the panel's OWN real render first — 056-lazy-tab-scoped-
+    // loading only registers a metric's view once some panel that
+    // actually queries it renders; a real, confirmed bug found live in
+    // this test's first run (matching scenarioAutoActivation.spec.ts's
+    // own identical finding this same migration): issuing the direct
+    // cross-check query below BEFORE this wait raced the panel's own
+    // registration and threw "Catalog Error: Table ...
+    // trip_purpose_share does not exist". 10s (not the 5s default) for
+    // the same real Test-tab-crowding reason as waitForChartToSettle's
+    // own bumped timeout above.
+    await expect(bars).toHaveCount(10, { timeout: 10_000 })
     await waitForChartToSettle(bars.first())
 
+    // Direct aggregation of the real data: trip_purpose_share publishes
+    // exactly 10 real rows (one per primary_purpose), confirmed live via
+    // the duckdb CLI before authoring this panel. (trip_mode_share was
+    // tried first and rejected — see dashboard-8-test.yaml's own header
+    // comment on this row for the real, confirmed "Ride Hail" space-in-
+    // CSS-var-name bug that finding caused.)
+    const rows = await page.evaluate(() =>
+      window.__wftdm!.query(`SELECT * FROM "activitysim-baseline__trip_purpose_share"`),
+    )
+    expect(rows).toHaveLength(10)
+
     const fills = await computedPaint(bars, 'fill')
-    expect(new Set(fills).size).toBe(4) // 4 series, 4 genuinely distinct paint colors
+    expect(new Set(fills).size).toBe(5) // 10 series, 5 distinct tokens, real wraparound
 
     const tokenColors = await chartTokenColors(page)
     for (const fill of fills) {
       expect(tokenColors).toContain(fill)
     }
 
-    // FR-007: more than one series (4 here) shows a real legend — but
+    // FR-007: more than one series (10 here) shows a real legend — but
     // clicking an entry does NOTHING, a deliberate, accepted gap (shadcn's
     // shipped ChartLegendContent wires up no onClick at all, unlike
     // Plotly's own legend). Confirms the negative case directly rather
     // than only asserting the positive "Plotly still works" case
-    // elsewhere (T019) — never a silent, accidental toggle.
+    // elsewhere. "work" is one of the 10 real purposes.
     const legend = card.locator('.recharts-legend-wrapper')
     await expect(legend).toBeVisible()
     // A specific, small leaf entry (its own real category text) — not a
     // wrapping container div, whose larger bounding box can extend into a
-    // sibling panel's own chart area in this fixture's 3-panel row and
-    // get its click intercepted there instead.
-    const legendEntry = legend.getByText('SOV', { exact: true })
+    // sibling panel's own chart area in this row's 3-panel layout and get
+    // its click intercepted there instead.
+    const legendEntry = legend.getByText('work', { exact: true })
     await expect(legendEntry).toBeVisible()
     const fillsBefore = await computedPaint(bars, 'fill')
     // force: true — same precedent as panelExpand.spec.ts's own Plotly
@@ -134,41 +181,98 @@ test.describe('User Story 1 - Author renders a bar, line, or area chart with the
     // clickable" actionability check.
     await legendEntry.click({ force: true })
     const fillsAfter = await computedPaint(bars, 'fill')
-    await expect(bars).toHaveCount(4) // no bar hidden/removed
+    await expect(bars).toHaveCount(10) // no bar hidden/removed
     expect(fillsAfter).toEqual(fillsBefore) // nothing changed at all
+  })
+
+  test('a real category value containing a space ("Ride Hail") renders a genuine, distinct --chart-N color, not the CSS-invalid-property-name black fallback', async ({
+    page,
+  }) => {
+    // Regression proof for the real, confirmed bug this migration's own
+    // Batch B found and deliberately AVOIDED by choosing a different data
+    // source (see the "Recharts Mode Breakdown (Bar)" test above, and
+    // dashboard-8-test.yaml's own header comment on this row) — since
+    // fixed at its root (components/ui/chart.tsx's `ChartStyle` and
+    // RechartsPanel.tsx's own `var(--color-${key})` references both now
+    // slugify the key via `sanitizeColorKey()` before it becomes part of
+    // a CSS custom-property name). This test uses the ORIGINAL real data
+    // source the bug was found on (trip_mode_share, real major_trip_mode
+    // values including "Ride Hail") — proving the fix against the actual
+    // trigger, not a substitute chosen to avoid it.
+    await boot(page)
+    await gotoTestTab(page)
+    const card = panelCard(page, 'Recharts Mode Share (Bar, Space in Category Value)')
+    const bars = card.locator('.recharts-bar-rectangle .recharts-rectangle')
+
+    await expect(bars).toHaveCount(5, { timeout: 10_000 })
+    await waitForChartToSettle(bars.first())
+
+    // Direct confirmation of the real data: trip_mode_share publishes
+    // exactly 5 real rows, one of them "Ride Hail" — confirmed live via
+    // the duckdb CLI before authoring this panel.
+    const rows = await page.evaluate(() =>
+      window.__wftdm!.query(`SELECT * FROM "activitysim-baseline__trip_mode_share"`),
+    )
+    expect(rows).toHaveLength(5)
+    expect((rows as { major_trip_mode: string }[]).map((r) => r.major_trip_mode)).toContain('Ride Hail')
+
+    const fills = await computedPaint(bars, 'fill')
+    // The real, confirmed pre-fix symptom: an invalid `--color-Ride Hail`
+    // declaration is silently dropped, and Recharts' own black default
+    // (`rgb(0, 0, 0)`) paints that one bar instead of a real token color.
+    expect(fills).not.toContain('rgb(0, 0, 0)')
+    // 5 series, 5 tokens — zero wraparound, every fill a genuinely
+    // distinct real --chart-N color (mirrors the "Recharts Mode
+    // Breakdown (Bar)" test's own equivalent assertion above).
+    expect(new Set(fills).size).toBe(5)
+    const tokenColors = await chartTokenColors(page)
+    for (const fill of fills) {
+      expect(tokenColors).toContain(fill)
+    }
+
+    // The real, UNSLUGGED display label still renders verbatim in the
+    // legend — only the internal CSS property NAME was ever slugified,
+    // never the label a viewer actually sees.
+    const legend = card.locator('.recharts-legend-wrapper')
+    await expect(legend).toBeVisible()
+    await expect(legend.getByText('Ride Hail', { exact: true })).toBeVisible()
   })
 
   test('chart_type: line and chart_type: area render correctly with the same data-binding and theming, changing only the visual mark', async ({
     page,
   }) => {
     await boot(page)
+    await gotoTestTab(page)
     const tokenColors = await chartTokenColors(page)
 
     const lineCard = panelCard(page, 'Recharts Trip Length Frequency (Line)')
     const lines = lineCard.locator('.recharts-line-curve')
-    // Direct aggregation: purpose: HBW narrows trip_destination_dist to
-    // 2 modes (SOV/Transit) x 5 distance bins — one line per mode.
-    await expect(lines).toHaveCount(2)
+    // Direct aggregation: trip_destination_summary has 10 real distinct
+    // primary_purpose values (confirmed live) — one line per purpose,
+    // cycling through the 5 --chart-N tokens twice. 10s, same real
+    // Test-tab-crowding reason as above.
+    await expect(lines).toHaveCount(10, { timeout: 10_000 })
     const strokes = await computedPaint(lines, 'stroke')
-    expect(new Set(strokes).size).toBe(2)
+    expect(new Set(strokes).size).toBe(5) // 10 series, 5 distinct tokens, real wraparound
     for (const stroke of strokes) {
       expect(tokenColors).toContain(stroke)
     }
-    // Each line has 5 real plotted points (one per distance_bin).
+    // Each line has at least one real plotted point.
     const firstLineD = await lines.first().getAttribute('d')
     expect(firstLineD).toBeTruthy()
 
     const areaCard = panelCard(page, 'Recharts Trip Length Frequency (Area)')
     const areas = areaCard.locator('.recharts-area-area')
-    // Single-series case (no `series` configured) — exactly one area,
-    // colored from the first chart token (rechartsEncoding.ts's own
-    // no-series branch always assigns --chart-1).
+    // Single-series case (no `series` configured, filtered to the one
+    // real purpose — `work` — with all 5 real distance bins) — exactly
+    // one area, colored from the first chart token (rechartsEncoding.ts's
+    // own no-series branch always assigns --chart-1).
     await expect(areas).toHaveCount(1)
-    // Round 4 (research.md §10): the area's own real fill is now a real
-    // SVG gradient (`fill="url(#...)"`, matching shadcn's own real
-    // chart-area-gradient.json example), not a flat token color — assert
-    // the gradient's own two <stop> elements resolve to that same token
-    // color instead of asserting `fill` directly.
+    // The area's own real fill is a real SVG gradient (`fill="url(#...)"`,
+    // matching shadcn's own real chart-area-gradient.json example), not a
+    // flat token color — assert the gradient's own two <stop> elements
+    // resolve to that same token color instead of asserting `fill`
+    // directly.
     const areaFillAttr = await areas.first().getAttribute('fill')
     const gradientIdMatch = areaFillAttr?.match(/^url\(#(.+)\)$/)
     expect(gradientIdMatch).toBeTruthy()
@@ -186,7 +290,8 @@ test.describe('User Story 1 - Author renders a bar, line, or area chart with the
     page,
   }) => {
     await boot(page)
-    const card = panelCard(page, 'Recharts Invalid Chart Type (intentional)')
+    await gotoTestTab(page)
+    const card = panelCard(page, 'Recharts Invalid Chart Type (pie)')
     await expect(card.getByRole('alert')).toContainText('Unsupported chart_type "pie"')
     // Never falls back to rendering some other chart type either.
     await expect(card.locator('.recharts-wrapper')).toHaveCount(0)
@@ -196,32 +301,49 @@ test.describe('User Story 1 - Author renders a bar, line, or area chart with the
     page,
   }) => {
     await boot(page)
+    await gotoTestTab(page)
     await expect(
-      panelCard(page, 'Recharts Empty Result (intentional)').getByText('No data for this selection'),
-    ).toBeVisible()
+      panelCard(page, 'Recharts Empty Result').getByText('No data for this selection'),
+    ).toBeVisible({ timeout: 10_000 })
     await expect(
-      panelCard(page, 'Recharts Broken Panel (intentional)').getByText("Couldn't load this chart"),
-    ).toBeVisible()
+      panelCard(page, 'Broken Recharts Panel (missing metric)').getByText("Couldn't load this chart"),
+    ).toBeVisible({ timeout: 10_000 })
   })
 })
 
 test.describe('User Story 2 - Existing panel types remain completely unaffected', () => {
-  test('a tab mixing plotly/observable-plot/sankey/recharts panels renders all four without error', async ({
+  // Adapted to real content: plotly and recharts now coexist directly on
+  // the SAME Test tab (proving the registry addition doesn't break a
+  // shared-tab render); observable-plot (Summary tab) and sankey (Mode
+  // Choice tab) are checked on their own real, already-established homes
+  // — the retired fixture's own single-tab four-type collage has no real
+  // analog now that 057 moved every real bar/line/area panel off
+  // Plotly/Recharts onto Observable Plot, but checking each type renders
+  // without error, including two side by side, proves the same real
+  // regression concern (FR-010).
+  test('plotly, recharts, observable-plot, and sankey panels each render without error, including two side by side on one tab', async ({
     page,
   }) => {
     await boot(page)
-    await expect(
-      panelCard(page, 'Mode Share by Purpose').locator('.js-plotly-plot'),
-    ).toBeVisible() // plotly
-    await expect(
-      panelCard(page, 'Observable Plot Mode Share (Bar)').locator('.observable-plot-chart svg[viewBox]'),
-    ).toBeVisible() // observable-plot
-    await expect(
-      panelCard(page, 'Sankey Tour-to-Trip Mode Consistency').locator('.sankey-chart svg[viewBox] rect[data-node-id]'),
-    ).not.toHaveCount(0) // sankey
+    await gotoTestTab(page)
+    // 10s — real Test-tab-crowding residual risk, same as every other
+    // first-render check in this file.
+    await expect(panelCard(page, 'Plotly Mode Share (Bar)').locator('.js-plotly-plot')).toBeVisible({
+      timeout: 10_000,
+    }) // plotly
     await expect(
       panelCard(page, 'Recharts Mode Breakdown (Bar)').locator('.recharts-bar-rectangle .recharts-rectangle'),
-    ).not.toHaveCount(0) // recharts
+    ).not.toHaveCount(0) // recharts, same tab as plotly above
+
+    await page.getByRole('tab', { name: 'Mode Choice' }).click()
+    await expect(
+      panelCard(page, 'Trip Purpose to Mode Flow').locator('.sankey-chart svg[viewBox] rect[data-node-id]'),
+    ).not.toHaveCount(0) // sankey
+
+    await page.getByRole('tab', { name: 'Summary' }).click()
+    await expect(
+      panelCard(page, 'Average Trip Distance by Purpose').locator('.observable-plot-chart svg[viewBox]'),
+    ).toBeVisible() // observable-plot
   })
 
   // A direct regression guard for FR-010 — this feature's one deliberate,
@@ -231,14 +353,21 @@ test.describe('User Story 2 - Existing panel types remain completely unaffected'
   // panelExpand.spec.ts already covers this mechanism inside the 004
   // expand dialog — this test scopes the same real check to the plain
   // inline card instead, a genuinely different render path (PanelCard,
-  // not PanelExpandHost's portal).
+  // not PanelExpandHost's portal). Real vehicle: "Plotly Mode Share
+  // (Bar)" — a real, confirmed finding of this migration's own Batch B:
+  // zero real WORKING plotly panels exist anywhere else in demo content
+  // (057 moved every real one to Observable Plot), so this panel was
+  // authored specifically to keep this real regression coverage alive.
   test("an existing plotly panel's own legend click-to-toggle-trace-visibility still works, unaffected by the new registry entry", async ({
     page,
   }) => {
     await boot(page)
-    const card = panelCard(page, 'Mode Share by Purpose')
+    await gotoTestTab(page)
+    const card = panelCard(page, 'Plotly Mode Share (Bar)')
     const chart = card.locator('.js-plotly-plot')
-    await expect(chart).toBeVisible()
+    // 10s — real Test-tab-crowding residual risk, same as every other
+    // first-render check in this file.
+    await expect(chart).toBeVisible({ timeout: 10_000 })
 
     const legendEntry = card.locator('.legend .traces').first()
     await expect(legendEntry).toBeVisible()
@@ -267,9 +396,12 @@ test.describe('User Story 3 - A viewer gets useful, on-brand tooltips without ex
     page,
   }) => {
     await boot(page)
+    await gotoTestTab(page)
     const card = panelCard(page, 'Recharts Mode Breakdown (Bar)')
     const bars = card.locator('.recharts-bar-rectangle .recharts-rectangle')
-    await expect(bars).toHaveCount(4)
+    // 10s — real Test-tab-crowding residual risk, same as every other
+    // first-render check in this file.
+    await expect(bars).toHaveCount(10, { timeout: 10_000 })
 
     // Direct aggregation, in the same order the DOM renders bars (real
     // query result order, first-seen — rechartsEncoding.ts). Hovers only
@@ -282,29 +414,39 @@ test.describe('User Story 3 - A viewer gets useful, on-brand tooltips without ex
     // satisfies FR-012's own "matches the real value for that point"
     // requirement without chasing that quirk here.
     const rows = (await page.evaluate(() =>
-      window.__wftdm!.query(`SELECT * FROM good_scenario__trip_mode_share`),
-    )) as { mode: string; share: number }[]
+      window.__wftdm!.query(`SELECT * FROM "activitysim-baseline__trip_purpose_share"`),
+    )) as { primary_purpose: string; share: number }[]
 
-    // Scoped to THIS card — the fixture tab has 3 recharts panels, each
-    // with its own (mostly-empty, not-currently-active) tooltip wrapper
-    // div; an unscoped page-level locator resolves to all 3 at once.
+    // Scoped to THIS card — the Test tab has 3 recharts panels, each with
+    // its own (mostly-empty, not-currently-active) tooltip wrapper div;
+    // an unscoped page-level locator resolves to all 3 at once.
     const tooltip = card.locator('.recharts-tooltip-wrapper')
     await waitForChartToSettle(bars.first())
     await bars.first().hover()
     await expect(tooltip).toBeVisible()
-    // The real series name (mode) and real value (share) for this exact
-    // point — never a placeholder or a hardcoded expectation.
-    await expect(tooltip).toContainText(rows[0].mode)
-    await expect(tooltip).toContainText(String(rows[0].share))
+    // The real series name (primary_purpose) and real value (share) for
+    // this exact point — never a placeholder or a hardcoded expectation.
+    // A real, confirmed finding: chart.tsx's own ChartTooltipContent
+    // renders `item.value.toLocaleString()` (confirmed via direct source
+    // read), not the raw full-precision number — real Parquet data (long
+    // doubles, e.g. 0.10957045329262605) displays as "0.11", unlike the
+    // retired fixture's own hand-crafted, already-short share values,
+    // which happened to round-trip through the exact-string comparison
+    // the original test used without ever exercising this real rounding
+    // behavior. `toLocaleString()` (no explicit options) is the same
+    // computation the component itself performs.
+    await expect(tooltip).toContainText(rows[0].primary_purpose)
+    await expect(tooltip).toContainText(rows[0].share.toLocaleString())
   })
 
   test('the tooltip surface and text remain legible in both light and dark mode', async ({ page }) => {
     await boot(page)
+    await gotoTestTab(page)
     const card = panelCard(page, 'Recharts Mode Breakdown (Bar)')
     const bars = card.locator('.recharts-bar-rectangle .recharts-rectangle')
-    // Scoped to THIS card — the fixture tab has 3 recharts panels, each
-    // with its own (mostly-empty, not-currently-active) tooltip wrapper
-    // div; an unscoped page-level locator resolves to all 3 at once.
+    // Scoped to THIS card — the Test tab has 3 recharts panels, each with
+    // its own (mostly-empty, not-currently-active) tooltip wrapper div;
+    // an unscoped page-level locator resolves to all 3 at once.
     const tooltip = card.locator('.recharts-tooltip-wrapper')
     await waitForChartToSettle(bars.first())
 
