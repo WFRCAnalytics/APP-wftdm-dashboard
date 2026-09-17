@@ -48,6 +48,7 @@ that is correct and intentional.
 | Charts — default | Observable Plot (`@observablehq/plot`) — `057-observable-plot-conversion` moved every real demo bar/distribution chart off Plotly/Recharts onto it; both remain registered, supported panel types (`plotly`/`recharts`), just no longer used by the real demo content |
 | Charts — Sankey | D3 (`d3-sankey`) — confirmed no genuine Observable Plot support exists (no mark/transform, no documented composition pattern, an unresolved upstream request since 2022) |
 | Charts — Hierarchical | D3 (`d3-hierarchy`/`d3-shape`) — confirmed no genuine Observable Plot treemap/sunburst support exists either (058-hierarchical-chart-panels); SVG built via plain `document.createElementNS()`, never `d3-selection`/`d3-transition`, matching the Sankey panel's own established convention |
+| Charts — Pie/Radar | D3 (`d3-shape`) — confirmed no genuine Observable Plot pie/polar support exists either (060-radar-pie-charts); the pie chart reuses the already-pinned `d3-shape` (`d3.pie()`/`d3.arc()`), the radar chart is hand-rolled polar trigonometry with no D3 layout package — no new dependency added by this feature |
 | Explore tab | Graphic Walker (`<GraphicWalker>` component, rendered directly — not `embedGraphicWalker`, see "Graphic Walker panel" below) |
 | Maps | MapLibre GL (NOT Mapbox) |
 | O-D flows | `@flowmap.gl/layers` + `@deck.gl/mapbox` (`MapboxOverlay`) |
@@ -2746,8 +2747,40 @@ export const registry: Record<string, ComponentType<PanelProps>> = {
   'recharts':         RechartsPanel,
   'treemap':          TreemapPanel,
   'sunburst':         SunburstPanel,
+  'pie':              PieChartPanel,
+  'radar':            RadarChartPanel,
 }
 ```
+
+`pie`/`radar` (060-radar-pie-charts) are the thirteenth and fourteenth
+panel types — a single-series circular chart and a multi-series
+polygon-per-axis chart, filling the same class of gap
+Observable Plot's own missing pie/arc mark and polar coordinate system
+leave (confirmed by direct source search, matching the Sankey/
+Hierarchical rows' own established finding technique). Unlike treemap/
+sunburst, they do NOT share one host — `PieChartPanel.tsx`/
+`RadarChartPanel.tsx` are each standalone, self-contained components
+(mount-tooltip effect + fetch effect + render-and-swap effect), mirroring
+`SankeyPanel.tsx`'s own shape, since their config grammars/chart geometry
+differ enough that a forced shared host would buy nothing the treemap/
+sunburst host's identical-grammar-plus-zoom sharing does. **No new npm
+dependency** — `d3-shape` (already installed for the sunburst renderer's
+`d3.arc()`) supplies `d3.pie()`/`d3.arc()` for the pie chart; the radar
+chart needs no D3 layout package at all, just hand-rolled polar
+trigonometry (`panels/radarData.ts`), matching this app's own established
+"D3 layout math where a real algorithm exists, plain math otherwise"
+convention. New shared modules (deliberately consolidated within this one
+feature, not duplicated a 3rd/4th time the way `sankeyColor.ts`/
+`hierarchyColor.ts` already are): `panels/polarChartColor.ts` (named
+`color_scheme` resolution, used by both new types) and
+`panels/ChartLegend.tsx` (a plain color-swatch+label legend row — neither
+Sankey nor treemap/sunburst renders a legend at all, so this is genuinely
+new UI, not a refactor of an existing one). Real, first content reuses
+two already-published metrics with zero new `summarize.yaml` work:
+`trip_purpose_share` (pie, single-scenario-pinned — a pie chart is
+single-series by design) and `trip_mode_share` (radar, unpinned,
+`series: scenario` — one polygon per active scenario, a genuine "compare
+each loaded scenario's overall mode-share shape at a glance" use case).
 
 `treemap`/`sunburst` (058-hierarchical-chart-panels) are the eleventh and
 twelfth panel types — genuinely hierarchical (parent-child nested) data as
@@ -5920,8 +5953,10 @@ first cross-reference this list was built from). ✅ done,
     depend on.
 
 29. ✅ Hierarchical chart panels (`treemap`/`sunburst`) —
-    058-hierarchical-chart-panels. The eleventh and twelfth, and actual
-    final, panel types — genuinely hierarchical (parent-child nested)
+    058-hierarchical-chart-panels. The eleventh and twelfth panel types
+    (item 30 below, `060-radar-pie-charts`, later corrected this entry's
+    own "actual final" claim — `pie`/`radar` are the thirteenth and
+    fourteenth) — genuinely hierarchical (parent-child nested)
     data as an interactive, zoomable treemap or radial sunburst, a real
     gap no existing panel type (flat, tidy-row query data only) or
     charting engine (Observable Plot has no treemap/sunburst composition
@@ -6110,6 +6145,164 @@ first cross-reference this list was built from). ✅ done,
     research/tasks record, including the real, measured threshold data
     and the depth-independence/null-sortColumn corrections made during
     planning and implementation.
+
+31. ✅ Pie & radar chart panels — 060-radar-pie-charts. The thirteenth
+    and fourteenth panel types — a single-series circular chart and a
+    multi-series polygon-per-axis chart, filling a confirmed gap
+    Observable Plot cannot fill at all (direct source inspection of the
+    installed `@observablehq/plot@0.6.17` package's own `src/marks/`
+    directory: no `arc`/`pie` mark, no polar coordinate system anywhere
+    in the package — the same "full source search returns zero matches"
+    technique `058-hierarchical-chart-panels` already used for its own
+    treemap/sunburst gap). Item 29's own "eleventh and twelfth, and
+    actual final, panel types" claim is corrected by this feature — see
+    that item's own updated text.
+
+    Deliberately **NOT** a shared-host design like treemap/sunburst:
+    `PieChartPanel.tsx`/`RadarChartPanel.tsx` are each standalone,
+    self-contained components mirroring `SankeyPanel.tsx`'s own exact
+    shape (mount-only `createMapTooltip()` effect; a fetch effect calling
+    `buildPanelQuery()` + `sqlExpander.expand()` directly, NOT
+    `resolveQueryAndPairs()` — neither new config type mixes in
+    `ComparisonCapablePanelConfig`, matching `SankeyPanelConfig`'s own
+    precedent of no `comparison: diff`/baseline mode; a render-and-swap
+    effect building a fresh `<svg>` via `document.createElementNS()`) —
+    a real, deliberate architectural decision, not an oversight: pie and
+    radar have genuinely different config grammars (`category`/`value`
+    vs. `axis`/`value`/`series`) and neither has a zoom concept, so
+    `HierarchicalChartHost.tsx`'s own identical-grammar-plus-zoom sharing
+    rationale doesn't transfer.
+
+    **No new npm dependency** — `d3-shape` (already installed since
+    058, for the sunburst renderer's `d3.arc()` calls) already exports
+    `d3.pie()` too, confirmed directly against the installed package
+    before writing any code. `pieData.ts`'s `layoutPieWedges()` uses the
+    textbook `d3.pie()` + `d3.arc().innerRadius(0)` pattern (no donut).
+    The radar chart needed a real evaluation of `d3.lineRadial()`/
+    `d3.areaRadial()` (D3 has no dedicated "radar chart" layout module at
+    all) — rejected: those generators still require the caller to have
+    already computed each point's own angle/radius, so using them would
+    add a `d3-shape` import for something a handful of `Math.cos`/
+    `Math.sin` calls already does exactly as correctly. `radarData.ts`'s
+    `layoutRadarPolygons()`/`layoutRadarAxisLabels()` are hand-rolled
+    polar trigonometry instead (evenly-spaced angles starting at -π/2,
+    12 o'clock, matching Recharts'/Chart.js's own real radar-chart
+    convention; a linear 0..outerRadius scale against the shared max
+    value across every series/axis) — matching this project's own
+    established "D3 layout math where a real algorithm exists, plain
+    math/DOM otherwise" convention (`hierarchyTween.ts`'s own precedent).
+
+    Two new pure aggregation/layout modules, each mirroring
+    `sankeyGraph.ts`'s own defensive-aggregation shape (sum duplicates,
+    report what got dropped): `pieData.ts`'s `aggregatePieSlices()` sums
+    duplicate categories and EXCLUDES a negative or non-finite value
+    (counted in `excludedCount`) — but, a real, deliberate distinction
+    from Sankey's own "non-positive" convention, KEEPS a genuine zero
+    value as a real slice (still listed in the legend, a real zero-angle
+    wedge) — a negative value has no valid wedge angle, but zero
+    legitimately does. `radarData.ts`'s `aggregateRadarSeries()`
+    diverges further still: a negative value is CLAMPED to 0 rather than
+    dropped, and every series' own `valuesByAxis` Map is back-filled with
+    an explicit 0 for any axis it has no row for — dropping an axis
+    (pie's own convention) would misalign every other series' polygon,
+    since a radar's shared axis order is structural, not cosmetic.
+
+    New shared modules — deliberately consolidated WITHIN this one
+    feature rather than duplicated a third and fourth time the way
+    `sankeyColor.ts`/`hierarchyColor.ts` already are (two near-byte-
+    identical ~25-line copies from two separately-shipped features):
+    `panels/polarChartColor.ts` (the same named-`color_scheme`-to-
+    `d3-scale-chromatic`-array lookup, used by both new panel types) and
+    `panels/ChartLegend.tsx` (a plain color-swatch+label flex row —
+    genuinely NEW UI, not a refactor: neither `SankeyPanel.tsx` nor
+    `HierarchicalChartHost.tsx` renders a legend at all today, and
+    `RechartsPanel`'s/`ObservablePlotPanel`'s own legends are each tied
+    to their own charting library's payload/DOM shape, not reusable by a
+    hand-built D3/SVG chart). `ChartLegend` is rendered as a plain React
+    SIBLING of each panel's own imperative chart container — never a JSX
+    child of the same DOM node the render-and-swap effect calls
+    `appendChild()`/`remove()` on directly, which would put React's own
+    child reconciliation for that node in direct conflict with the
+    imperative DOM mutation (a real design point resolved during
+    implementation, not discovered as a bug afterward).
+
+    Real, first content reuses two already-published `summarize.yaml`
+    metrics with ZERO new post-processor work: `trip_purpose_share` (pie,
+    `dashboard-5-trip-models.yaml`, pinned to `activitysim-baseline` —
+    a pie chart is single-series by design, so an unpinned `$scenario`
+    union would combine every scenario's rows into one circle with no
+    per-scenario distinction) and `trip_mode_share` (radar,
+    `dashboard-4-mode-choice.yaml`, deliberately left UNPINNED with
+    `series: scenario` — one polygon per currently-active real scenario,
+    a genuine "compare each loaded scenario's overall mode-share shape at
+    a glance" use case; the real Test tab's own sibling "Radar Chart
+    (Trip Mode Share)" fixture stays pinned to one scenario instead, to
+    also demonstrate the single-implicit-series/no-legend case). Both
+    real demo panels bind `value: trips` (a real count), not `value:
+    share` — a real, live-caught tooltip-content finding during this
+    feature's own Playwright verification: the panel's hover tooltip
+    shows `value (percentage%)`, and since `trips`/`total` and `share`
+    are the SAME underlying fraction, binding `value: share` produced a
+    genuinely redundant "0.3657719543739134 (36.6%)" tooltip — fixed by
+    switching the real demo bindings to the more informative `trips`
+    count, not by changing the panel's own rendering logic.
+
+    **A real, confirmed test-only finding, not an app bug**: this
+    project's own three real demo scenarios (`activitysim-baseline`/
+    `-density-variant`/`-transit-variant`) are close enough on every real
+    `trip_mode_share` axis (all three scenarios' own `Non-Motorized`
+    share within ~0.005 of each other, confirmed live via the duckdb
+    CLI) that their radar polygon vertices render nearly coincident —
+    the same inherent overlapping-marker limitation any multi-series
+    radar chart has when series values are this close, not unique to
+    this implementation. `radarChartPanel.spec.ts`'s own hover test
+    targets whichever series' `<circle>` was drawn LAST (topmost in
+    z-order, so it genuinely receives the pointer event) and asserts
+    against that vertex's own real, dynamically-read `data-series`/
+    `data-value` attributes, rather than assuming a specific scenario's
+    vertex is reachable.
+
+    Both new panel types added to `panels/registry.tsx` (lazy, per
+    `042-boot-performance-fix`'s established convention — confirmed no
+    `vite.config.ts` chunking change needed, same reasoning `058`'s own
+    research already established: neither `d3-shape` nor any new module
+    has an eager consumer outside these two now-lazy panel components)
+    and `panels/expandablePanelTypes.ts`. `tests/unit/panelRegistry.test.ts`
+    updated (10→12 expandable types).
+
+    **Constitution**: a MINOR amendment (2.5.0→2.6.0) — a new
+    "Charts — Pie/Radar" Technology Stack Reference row, immediately
+    below the existing "Charts — Hierarchical" row, following that row's
+    own precedent exactly, even though (unlike every prior charting-
+    capability row) this one introduces no new pinned dependency at all.
+
+    Verification: `npx tsc --noEmit` clean throughout implementation;
+    `npm run test:unit` — 560/560 passing overall (up from 531), including
+    `pieData.test.ts` (9/9), `radarData.test.ts` (10/10),
+    `polarChartColor.test.ts` (3/3), `panelRegistry.test.ts` (15/15, up
+    from 13 — two new expandable types); `sankeyPanel.spec.ts` (14/14) and
+    `demoContentAllPanels.spec.ts` (7/7) re-run clean, confirming zero
+    regression to the existing Sankey panel or the six primary demo tabs
+    from the two new adjacent rows added to `dashboard-5-trip-models.yaml`/
+    `dashboard-4-mode-choice.yaml`. A full `npx playwright test
+    --workers=10` run (410 tests) returned 275 passed/135 failed — triaged
+    in full, not assumed: the top 5 failure clusters (`settingsModal`×32,
+    `observablePlotPanel`×24, `tablePanel`×23, `scenarioManager`×16,
+    `valueBoxPanel`×14) are BYTE-IDENTICAL to this file's own already-
+    documented, already `git stash`-A/B-verified pre-existing baseline
+    (item 28's own entry — a standing, unrelated systemic test-
+    infrastructure gap, not caused by this or any panel-type feature).
+    This feature's own two specs had exactly 2 failures in that same
+    10-worker run — both a Test-tab empty/broken-fixture assertion timing
+    out at its 10s timeout under real crowding (the same class of finding
+    `sankeyPanel.spec.ts` already documents for that tab) — fixed by
+    bumping both files' three Test-tab assertions to a 20s timeout;
+    `pieChartPanel.spec.ts`/`radarChartPanel.spec.ts` reconfirmed 11/11
+    passing together in isolation after the fix. Zero real regressions
+    attributable to this feature.
+
+    See `specs/060-radar-pie-charts/` for the full spec/plan/research/
+    tasks record.
 
 ---
 

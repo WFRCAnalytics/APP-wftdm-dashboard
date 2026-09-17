@@ -1406,6 +1406,71 @@ showing more than two sunburst layers at once (the real, canonical
 zoomable-sunburst reference's own deliberate design, reused as-is), or an
 author-configurable tiling method for the treemap.
 
+### `type: pie` / `type: radar` (060-radar-pie-charts)
+
+D3 (`d3-shape`) — Observable Plot has neither a pie/arc mark nor a polar
+coordinate system of any kind (confirmed by direct source search of the
+installed `@observablehq/plot` package — the same class of gap the
+`type: sankey`/`type: treemap`/`type: sunburst` sections above already
+document for their own diagram types), so both are dedicated, standalone
+panel types — NOT `mark:` values inside `type: observable-plot`. Unlike
+Sankey/treemap/sunburst, pie and radar do NOT share one underlying host
+architecture: their config grammars and chart geometry differ enough that
+each is its own self-contained component, following `type: sankey`'s own
+standalone shape rather than the treemap/sunburst host-sharing one.
+
+```yaml
+- type:     pie
+  title:    Trip Purpose Share
+  metric:   trip_purpose_share
+  scenario: activitysim-baseline   # a pie chart is single-series — see below
+  category: primary_purpose        # literal column — one wedge per distinct value
+  value:    trips                  # literal column — wedge size
+  color_scheme: Tableau10          # optional — falls back to --chart-1..5 cycling
+  height: 400
+```
+
+A pie chart renders exactly one series (one full circle divided into
+wedges) — no donut, no exploded wedges, no side-by-side multi-scenario
+comparison. Left unpinned, `$scenario`'s multi-scenario union still
+executes, but every scenario's rows combine into ONE circle with no
+per-scenario distinction; an author comparing scenarios should pin to one
+scenario per pie panel (or use a different panel type). A category with a
+genuine zero value still appears in the legend (a real, zero-angle
+wedge); a category with a negative value is excluded from the wedges
+entirely, rather than corrupting the other wedges' proportions.
+
+```yaml
+- type:   radar
+  title:  Trip Mode Share by Scenario
+  metric: trip_mode_share
+  axis:   major_trip_mode   # literal column — one labeled axis per distinct value
+  value:  share             # literal column — each series' distance from center
+  series: scenario          # optional — one polygon per distinct value; omit for one implicit series
+  color_scheme: Tableau10   # optional — same vocabulary as type: pie/type: sankey
+  height: 450
+```
+
+A radar (spider) chart renders one closed polygon per series, all
+sharing the same set of labeled axes — `series: scenario` against an
+unpinned `$scenario` union is the natural real use case (one polygon per
+currently-active scenario). Fewer than 3 distinct axis values still
+renders (a degenerate polygon, never an error). A series missing a value
+for one axis another series has gets an explicit 0 for that axis only —
+every series' polygon always has one vertex per shared axis, in the same
+order, never misaligned.
+
+Both types show a legend (categories for pie; series for radar — hidden
+for a radar with no configured `series`, since a single-series chart's
+own axis labels already convey everything a legend would add) and a
+hover tooltip on every wedge/vertex via this app's shared `mapTooltip.ts`
+mechanism, same as `type: sankey`.
+
+Not built by this feature (explicit non-goals): donut/hollow-center
+rendering, exploded/pulled-out pie wedges, multi-series pie comparison,
+a configurable radial-axis scale type for radar (linear only), and a
+`comparison: diff`/baseline mode for either type.
+
 ### `type: graphic-walker`
 
 Graphic Walker — full-tab free-form Tableau-style sandbox. Explore tab only.

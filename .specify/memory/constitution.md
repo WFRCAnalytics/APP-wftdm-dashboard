@@ -1,5 +1,43 @@
 <!--
 Sync Impact Report
+- Version change: 2.5.0 → 2.6.0
+- Modified principles: none
+- Modified sections:
+  - Technology Stack Reference: new row, "Charts — Pie/Radar | D3
+    (`d3-shape`)" — added directly below the existing "Charts —
+    Hierarchical" row by `060-radar-pie-charts`, which adds the app's
+    thirteenth and fourteenth panel types (`pie`, `radar`). Confirmed
+    directly (not assumed) that Observable Plot has no pie/arc mark and
+    no polar coordinate system at all (a full source search of the
+    installed `@observablehq/plot@0.6.17` package's own `src/marks/`
+    directory lists every real mark — none is `arc`/`pie`, and no polar/
+    radial coordinate system exists anywhere in the package) — the same
+    class of gap the existing "Charts — Sankey"/"Charts — Hierarchical"
+    rows already document for their own diagram types. Unlike those two
+    prior amendments, this one introduces **no new npm dependency**:
+    `d3-shape` is already a pinned, installed dependency (added by
+    `058-hierarchical-chart-panels` for the sunburst renderer's
+    `d3.arc()` calls) and already exports `d3.pie()` too, confirmed
+    directly against the installed package. The radar chart needs no D3
+    layout package at all — hand-rolled polar trigonometry (evenly-
+    spaced angles + a linear radius scale), matching this project's own
+    established "D3 layout math where a real algorithm exists, plain
+    math/DOM otherwise" convention (no `d3-selection`/`d3-transition`
+    added, same as the Sankey and Hierarchical rows).
+- MINOR, not PATCH: a new named capability row added to the Technology
+  Stack Reference table — existing guidance materially expanded (an
+  already-pinned dependency reused for a new charting capability), not a
+  non-semantic wording fix — matching this file's own established
+  precedent for the identical class of change (2.4.2→2.5.0's
+  Hierarchical-row addition; 2.3.0's own `@deck.gl/layers` addition).
+- Added principles: none
+- Added sections: none
+- Removed sections: none
+- Deferred TODOs: none
+-->
+
+<!--
+Sync Impact Report (2.5.0, superseded above)
 - Version change: 2.4.2 → 2.5.0
 - Modified principles: none
 - Modified sections:
@@ -525,6 +563,7 @@ requires amending this constitution first:
 | Charts — default | Observable Plot (`@observablehq/plot`) — `057-observable-plot-conversion` moved every real demo bar/distribution chart off Plotly.js/Recharts onto it; both remain registered, supported panel types (`plotly`/`recharts`), just no longer used by real demo content |
 | Charts — Sankey | D3 (`d3-sankey`) — no genuine Observable Plot Sankey support exists (no mark/transform, no documented composition pattern, an unresolved upstream request since 2022) |
 | Charts — Hierarchical | D3 (`d3-hierarchy`/`d3-shape`) — no genuine Observable Plot treemap/sunburst support exists either (confirmed by direct source search, not assumed); SVG is built via plain `document.createElementNS()`, never `d3-selection`/`d3-transition`, matching the Sankey panel's own established convention |
+| Charts — Pie/Radar | D3 (`d3-shape`) — no genuine Observable Plot pie/polar support exists either (confirmed by direct source search: no `arc`/`pie` mark, no polar coordinate system); the pie chart reuses the already-pinned `d3-shape` (`d3.pie()`/`d3.arc()`), the radar chart uses hand-rolled polar trigonometry with no D3 layout package at all — SVG built via plain `document.createElementNS()`, matching the Sankey/Hierarchical panels' own established convention |
 | Explore tab | Graphic Walker (`<GraphicWalker>` component, rendered directly in this app's own React tree — not `embedGraphicWalker`) |
 | Maps | MapLibre GL (never Mapbox) |
 | O-D flows | `@flowmap.gl/layers` + `@deck.gl/mapbox` (`MapboxOverlay`) |
@@ -581,4 +620,4 @@ forbidden config files, no Mapbox/Webpack/Web Storage usage. Any exception
 requires a
 prior amendment to this document, not a one-off waiver in review.
 
-**Version**: 2.5.0 | **Ratified**: 2026-08-19 | **Last Amended**: 2026-09-15
+**Version**: 2.6.0 | **Ratified**: 2026-08-19 | **Last Amended**: 2026-09-16

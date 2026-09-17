@@ -38,4 +38,9 @@ export const EXPANDABLE_PANEL_TYPES = new Set([
   // real chart/map panel type's own default.
   'treemap',
   'sunburst',
+  // 060-radar-pie-charts: both new custom-SVG chart types benefit from
+  // more working room at a larger size, matching every other real chart
+  // panel type's own default.
+  'pie',
+  'radar',
 ])

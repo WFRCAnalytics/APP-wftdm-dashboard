@@ -60,4 +60,9 @@ export const registry: Record<string, ComponentType<PanelProps<any>>> = {
   // d3-hierarchy/d3-shape once a treemap/sunburst panel actually renders).
   treemap: lazy(() => import('@/panels/TreemapPanel').then((m) => ({ default: m.TreemapPanel }))),
   sunburst: lazy(() => import('@/panels/SunburstPanel').then((m) => ({ default: m.SunburstPanel }))),
+  // 060-radar-pie-charts: the thirteenth and fourteenth panel types —
+  // two standalone, non-host-sharing components (unlike treemap/sunburst
+  // above), each lazy per-type exactly like every other entry.
+  pie: lazy(() => import('@/panels/PieChartPanel').then((m) => ({ default: m.PieChartPanel }))),
+  radar: lazy(() => import('@/panels/RadarChartPanel').then((m) => ({ default: m.RadarChartPanel }))),
 }

@@ -842,4 +842,69 @@ layout:
       height: 420
       width:  0.25
 
+  # 060-radar-pie-charts — matching row_treemap/row_sunburst's own
+  # established three-fixture convention (real working panel, zero-row
+  # empty result, broken metric), reusing the already-real, already-
+  # published trip_purpose_share metric.
+  row_pie:
+    - type:     pie
+      title:    "Pie Chart (Trip Purpose Share)"
+      metric:   trip_purpose_share
+      scenario: activitysim-baseline
+      category: primary_purpose
+      value:    trips
+      height:   380
+      width:    0.34
+
+    - type:     pie
+      title:    "Pie Empty Result"
+      metric:   trip_purpose_share
+      scenario: activitysim-baseline
+      filter:   { primary_purpose: __no_such_purpose__ }
+      category: primary_purpose
+      value:    trips
+      height:   380
+      width:    0.33
+
+    - type:     pie
+      title:    "Broken Pie Panel (missing metric)"
+      metric:   __no_such_metric__
+      scenario: activitysim-baseline
+      category: primary_purpose
+      value:    trips
+      height:   380
+      width:    0.33
+
+  # 060-radar-pie-charts — matching row_pie's own three-fixture
+  # convention, reusing the already-real, already-published
+  # trip_mode_share metric.
+  row_radar:
+    - type:     radar
+      title:    "Radar Chart (Trip Mode Share)"
+      metric:   trip_mode_share
+      scenario: activitysim-baseline
+      axis:     major_trip_mode
+      value:    share
+      height:   380
+      width:    0.34
+
+    - type:     radar
+      title:    "Radar Empty Result"
+      metric:   trip_mode_share
+      scenario: activitysim-baseline
+      filter:   { major_trip_mode: __no_such_mode__ }
+      axis:     major_trip_mode
+      value:    share
+      height:   380
+      width:    0.33
+
+    - type:     radar
+      title:    "Broken Radar Panel (missing metric)"
+      metric:   __no_such_metric__
+      scenario: activitysim-baseline
+      axis:     major_trip_mode
+      value:    share
+      height:   380
+      width:    0.33
+
 default_basemap: carto-positron

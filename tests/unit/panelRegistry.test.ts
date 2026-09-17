@@ -16,6 +16,8 @@ describe('EXPANDABLE_PANEL_TYPES', () => {
   // 058-hierarchical-chart-panels: 'treemap'/'sunburst' added — both
   // interactive, zoomable chart types benefit from 004's expand-to-dialog
   // room, matching every other real chart/map panel type's own default.
+  // 060-radar-pie-charts: 'pie'/'radar' added — same reasoning, two more
+  // custom-SVG chart types.
   const expandable = [
     'table',
     'markdown',
@@ -27,6 +29,8 @@ describe('EXPANDABLE_PANEL_TYPES', () => {
     'zonemap',
     'treemap',
     'sunburst',
+    'pie',
+    'radar',
   ]
   const notExpandable = ['valuebox', 'graphic-walker']
 
@@ -38,7 +42,7 @@ describe('EXPANDABLE_PANEL_TYPES', () => {
     expect(EXPANDABLE_PANEL_TYPES.has(type)).toBe(false)
   })
 
-  it('contains exactly the 10 documented types — no more, no fewer', () => {
+  it('contains exactly the 12 documented types — no more, no fewer', () => {
     expect(EXPANDABLE_PANEL_TYPES.size).toBe(expandable.length)
   })
 })

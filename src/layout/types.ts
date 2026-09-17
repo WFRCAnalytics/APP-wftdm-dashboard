@@ -445,6 +445,44 @@ export interface SunburstPanelConfig extends HierarchicalPanelConfigBase {
   type: 'sunburst'
 }
 
+/**
+ * The thirteenth panel type — 060-radar-pie-charts. A single-series
+ * circular chart: one wedge per distinct `category` value, sized by
+ * `value` relative to the sum of all categories present in the result.
+ * Extends DataBoundPanelConfigBase ONLY — no ComparisonCapablePanelConfig
+ * mixin, matching SankeyPanelConfig's own precedent (no comparison: diff/
+ * baseline mode for this panel type, spec.md Assumptions).
+ * `category`/`value` are literal, author-named result-set columns — never
+ * $metric.-prefixed — the same SankeyPanelConfig.source/target/value
+ * convention. No donut (innerRadius is always 0) and no exploded/
+ * pulled-out wedges (contracts/pie-panel.md's own non-goals).
+ */
+export interface PieChartPanelConfig extends DataBoundPanelConfigBase {
+  type: 'pie'
+  category: string
+  value: string
+  color_scheme?: string
+}
+
+/**
+ * The fourteenth panel type — 060-radar-pie-charts. One closed polygon
+ * per series, plotted across a shared set of labeled axes (one per
+ * distinct `axis` value). `series` is optional — omitted, the whole
+ * result is treated as one implicit series (a single polygon); present,
+ * one polygon per distinct value of that column (e.g. `series: scenario`
+ * against an unpinned $scenario union — the same real column every other
+ * scenario-colored chart panel type already reads, e.g.
+ * ObservablePlotPanelConfig's `fill: scenario`). Extends
+ * DataBoundPanelConfigBase only, same reason as PieChartPanelConfig above.
+ */
+export interface RadarChartPanelConfig extends DataBoundPanelConfigBase {
+  type: 'radar'
+  axis: string
+  value: string
+  series?: string
+  color_scheme?: string
+}
+
 /** Any panel type that participates in basemap resolution — FlowMapPanelConfig
  * and ZoneMapPanelConfig today. dashboardRenderer.tsx uses this as a type
  * guard so tab-level default_basemap injection stays generic across
@@ -489,6 +527,8 @@ export type PanelConfig =
   | RechartsPanelConfig
   | TreemapPanelConfig
   | SunburstPanelConfig
+  | PieChartPanelConfig
+  | RadarChartPanelConfig
   | UnknownPanelConfig
 
 /** 030-sidebar-navigation, FR-013/data-model.md §2: one accordion
