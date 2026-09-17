@@ -63,6 +63,12 @@ TabsList.displayName = TabsPrimitive.List.displayName
 // exactly (same hover-equals-active shape, confirmed that's shadcn's own
 // real intent for a navigation rail too). One consistent hover/active
 // language across the whole app, not a per-component special case.
+//
+// Final x2 (live user feedback): the first "final" value reused --ring
+// (neutral-400, #a1a1a1) — visible, but read as a heavy, flat gray slab
+// against a white page. tokens.css's own --accent comment has the full
+// story; this component needed no code change, only the token value
+// underneath it moved one step lighter (neutral-300, #d4d4d4).
 const TabsTrigger = React.forwardRef<
   React.ElementRef<typeof TabsPrimitive.Trigger>,
   React.ComponentPropsWithoutRef<typeof TabsPrimitive.Trigger>

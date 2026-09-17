@@ -74,16 +74,24 @@
      genuinely needs --accent itself to be visibly distinct from --muted —
      confirmed live via screenshot that a merely-hovered element was
      indistinguishable from a genuinely-selected/active one in more than
-     one real surface. Reuses this file's own --ring value (#a1a1a1,
-     already a real, present neutral step, not an invented one) — the
-     same value tried before, now kept as the deliberate, final answer
-     rather than reverted, since the fuller audit shows this app's own
-     hover/active language needs more contrast than shadcn's stock theme
-     ships, consistently, everywhere --accent is used. Dark mode
-     (--accent #404040 vs --muted #262626) was already sufficiently
-     distinct and is unchanged. See components/ui/tabs.tsx's own comment
-     for how TabsTrigger itself was simplified to match. */
-  --accent: #a1a1a1;
+     one real surface.
+
+     A SECOND real correction, made after live user feedback on the first
+     attempt: this token was initially set to reuse --ring's own value
+     (#a1a1a1, Tailwind neutral-400) — visible and consistent everywhere,
+     but a flat, fully-opaque neutral-400 fill reads as a heavy, "solid
+     concrete slab" hover/active state against a white page, not a soft
+     highlight. Replaced with Tailwind neutral-300 (#d4d4d4) instead — one
+     step lighter, still a real, distinct, deliberate step away from
+     --muted's neutral-100 (#f5f5f5), just softer. --ring itself is
+     UNCHANGED (#a1a1a1) — it's a focus-visible ring color, a different
+     design role from a hover/active fill, and was only ever reused
+     opportunistically here, never load-bearing for --ring's own purpose.
+     Dark mode (--accent #404040 vs --muted #262626) was already
+     sufficiently distinct and already liked as-is, and is unchanged. See
+     components/ui/tabs.tsx's own comment for how TabsTrigger itself was
+     simplified to match. */
+  --accent: #d4d4d4;
   --accent-foreground: #171717;
   --destructive: #e7000b;
   --destructive-foreground: #fcf3f3;
@@ -125,14 +133,16 @@
      (oklch(0.985 0 0) sidebar vs oklch(0.97 0 0) sidebar-accent) is a
      genuinely subtle step even in their own theme, confirmed live via
      screenshot to read as "barely there" for this app's own hover/active
-     sidebar rows. Reuses the same --ring-derived value as --accent for
-     one consistent hover/active language across the whole app, not a
-     sidebar-specific invention. --sidebar-accent-foreground (#171717)
-     already has strong contrast against it (see tokens.css's --accent
-     comment for the identical computed ratio). Dark mode
-     (--sidebar-accent #262626 vs --sidebar #171717) was already
-     sufficiently distinct and is unchanged. */
-  --sidebar-accent: #a1a1a1;
+     sidebar rows. Kept identical to --accent's own final value
+     (neutral-300, #d4d4d4 — see that token's own comment for the full,
+     two-attempt history) for one consistent hover/active language across
+     the whole app, not a sidebar-specific invention.
+     --sidebar-accent-foreground (#171717) already has strong contrast
+     against it (see tokens.css's --accent comment for the identical
+     computed ratio). Dark mode (--sidebar-accent #262626 vs --sidebar
+     #171717) was already sufficiently distinct and already liked as-is,
+     and is unchanged. */
+  --sidebar-accent: #d4d4d4;
   --sidebar-accent-foreground: #171717;
   --sidebar-border: #e5e5e5;
   --sidebar-ring: #a1a1a1;

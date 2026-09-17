@@ -121,15 +121,17 @@ const PAIRINGS: Array<{
   // 'muted-foreground/muted' is deliberately NOT in this list — see the
   // dedicated, separately-asserted test below this array for why.
   //
-  // 061-appearance-controls (follow-up, final): light-mode --accent is
-  // #a1a1a1, not shadcn's own stock value (#f5f5f5, == --muted) — a
-  // deliberate, final, app-wide decision made after auditing every real
-  // --accent consumer (Tabs, Sidebar, dropdown-menu, basemap tile
-  // selection), not just the one component shadcn itself special-cases.
-  // See tokens.css's own comment on this declaration for the full
-  // history (including an earlier, reverted-then-restored attempt at
-  // this same fix).
-  { name: 'accent-foreground/accent', foreground: 'accent-foreground', base: 'accent', expectedLight: 6.94, expectedDark: 9.93 },
+  // 061-appearance-controls (follow-up, final x2): light-mode --accent is
+  // #d4d4d4 (Tailwind neutral-300), not shadcn's own stock value
+  // (#f5f5f5, == --muted) — a deliberate, final, app-wide decision made
+  // after auditing every real --accent consumer (Tabs, Sidebar,
+  // dropdown-menu, basemap tile selection), not just the one component
+  // shadcn itself special-cases. A first attempt used neutral-400
+  // (#a1a1a1, reusing --ring's value) — visible, but live user feedback
+  // found it too heavy/flat for a hover/active fill; neutral-300 is one
+  // step lighter, still clearly distinct from --muted. See tokens.css's
+  // own comment on this declaration for the full, two-attempt history.
+  { name: 'accent-foreground/accent', foreground: 'accent-foreground', base: 'accent', expectedLight: 12.1, expectedDark: 9.93 },
   // 024-settings-modal-visual-redesign: --success/--success-foreground,
   // added for the Scenarios tab's "ready" status indicator (research.md
   // §2) — unchanged by this feature, values carried over verbatim.
@@ -139,12 +141,12 @@ const PAIRINGS: Array<{
   // consumed for real by sidebar.tsx (T018).
   { name: 'sidebar-foreground/sidebar', foreground: 'sidebar-foreground', base: 'sidebar', expectedLight: 20.12, expectedDark: 17.18 },
   { name: 'sidebar-primary-foreground/sidebar-primary', foreground: 'sidebar-primary-foreground', base: 'sidebar-primary', expectedLight: 17.18, expectedDark: 6.55 },
-  // 061-appearance-controls (follow-up, final): same fix, same reason as
-  // --accent above — light-mode --sidebar-accent is now #a1a1a1, not
+  // 061-appearance-controls (follow-up, final x2): same fix, same reason
+  // as --accent above — light-mode --sidebar-accent is now #d4d4d4, not
   // shadcn's own stock value (#f5f5f5), for genuine hover/active
   // visibility against --sidebar (#fafafa). See tokens.css's own comment
   // for the full history.
-  { name: 'sidebar-accent-foreground/sidebar-accent', foreground: 'sidebar-accent-foreground', base: 'sidebar-accent', expectedLight: 6.94, expectedDark: 14.5 },
+  { name: 'sidebar-accent-foreground/sidebar-accent', foreground: 'sidebar-accent-foreground', base: 'sidebar-accent', expectedLight: 12.1, expectedDark: 14.5 },
 ]
 
 // 033-shadcn-default-theme (T009): a REAL finding worth its own note —
@@ -294,10 +296,10 @@ const EXPECTED_LIGHT_HEX: Record<string, string> = {
   'secondary-foreground': '#171717',
   muted: '#f5f5f5',
   'muted-foreground': '#737373',
-  // 061-appearance-controls (follow-up, final): deliberately NOT shadcn's
-  // own stock value (== muted) — see the PAIRINGS entry above and
-  // tokens.css's own comment for the full story.
-  accent: '#a1a1a1',
+  // 061-appearance-controls (follow-up, final x2): deliberately NOT
+  // shadcn's own stock value (== muted) — see the PAIRINGS entry above
+  // and tokens.css's own comment for the full, two-attempt story.
+  accent: '#d4d4d4',
   'accent-foreground': '#171717',
   destructive: '#e7000b',
   'destructive-foreground': '#fcf3f3',
@@ -308,8 +310,8 @@ const EXPECTED_LIGHT_HEX: Record<string, string> = {
   'sidebar-foreground': '#000000',
   'sidebar-primary': '#171717',
   'sidebar-primary-foreground': '#fafafa',
-  // 061-appearance-controls (follow-up, final): same fix as accent above.
-  'sidebar-accent': '#a1a1a1',
+  // 061-appearance-controls (follow-up, final x2): same fix as accent above.
+  'sidebar-accent': '#d4d4d4',
   'sidebar-accent-foreground': '#171717',
   'sidebar-border': '#e5e5e5',
   'sidebar-ring': '#a1a1a1',
