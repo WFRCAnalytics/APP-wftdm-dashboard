@@ -261,7 +261,12 @@ describe('resolveObservablePlotEncoding — scenario label/color resolution (Par
   it('a non-scenario fill is unaffected by a populated scenarioDisplay map', () => {
     const display: ScenarioDisplayMap = new Map([['SOV', { label: 'Should Not Apply' }]])
     const result = resolveObservablePlotEncoding({ ...baseConfig, fill: 'mode' }, rows, display)
-    expect(result.data).toBe(rows)
+    // Not .toBe(rows) (reference equality) — the categorical color-data
+    // stringification fix below (isCategoricalColor) always maps a fresh
+    // array for any non-scenario fill/stroke, even when the values are
+    // already strings (a no-op in VALUE, not in reference) — see that
+    // fix's own describe block for the real bug this exists to prevent.
+    expect(result.data).toEqual(rows)
   })
 
   it('no 3rd argument at all behaves identically to today (backward-compat)', () => {
@@ -356,7 +361,11 @@ describe('resolveObservablePlotEncoding — non-scenario categorical fill/stroke
 // mode matrix) must NOT go through the categorical domain/range branch
 // above — Plot's own built-in continuous/sequential scale needs to see
 // the real numeric values untouched by an explicit categorical override.
+// Every case here uses mark: 'cell' explicitly — numeric-fill detection
+// is deliberately GATED to cell-family marks only (see the next describe
+// block for the real regression this gating fixes).
 describe('resolveObservablePlotEncoding — numeric fill/stroke (heatmap) color', () => {
+  const heatmapConfig = { ...baseConfig, mark: 'cell' }
   const heatmapRows = [
     { primary_purpose: 'HBW', major_trip_mode: 'SOV', trips: 120 },
     { primary_purpose: 'HBW', major_trip_mode: 'Transit', trips: 30 },
@@ -364,12 +373,12 @@ describe('resolveObservablePlotEncoding — numeric fill/stroke (heatmap) color'
   ]
 
   it('does not set domain/range for a numeric fill — legend:true still applies, letting Plot infer its own continuous scale', () => {
-    const result = resolveObservablePlotEncoding({ ...baseConfig, fill: 'trips' }, heatmapRows)
+    const result = resolveObservablePlotEncoding({ ...heatmapConfig, fill: 'trips' }, heatmapRows)
     expect(result.plotOptions.color).toEqual({ legend: true, style: LEGEND_STYLE, swatchSize: 9 })
   })
 
   it('does the same for a numeric stroke', () => {
-    const result = resolveObservablePlotEncoding({ ...baseConfig, stroke: 'trips' }, heatmapRows)
+    const result = resolveObservablePlotEncoding({ ...heatmapConfig, stroke: 'trips' }, heatmapRows)
     expect(result.plotOptions.color).toEqual({ legend: true, style: LEGEND_STYLE, swatchSize: 9 })
   })
 
@@ -378,13 +387,13 @@ describe('resolveObservablePlotEncoding — numeric fill/stroke (heatmap) color'
       { primary_purpose: 'HBW', major_trip_mode: 'SOV', trips: 120n },
       { primary_purpose: 'HBO', major_trip_mode: 'SOV', trips: 80n },
     ]
-    const result = resolveObservablePlotEncoding({ ...baseConfig, fill: 'trips' }, bigintRows)
+    const result = resolveObservablePlotEncoding({ ...heatmapConfig, fill: 'trips' }, bigintRows)
     expect(result.plotOptions.color).toEqual({ legend: true, style: LEGEND_STYLE, swatchSize: 9 })
   })
 
   it('coerces a bigint fill value to a real number on the returned data — Plot\'s own scale math is never handed a bigint', () => {
     const bigintRows = [{ primary_purpose: 'HBW', major_trip_mode: 'SOV', trips: 120n }]
-    const result = resolveObservablePlotEncoding({ ...baseConfig, fill: 'trips' }, bigintRows)
+    const result = resolveObservablePlotEncoding({ ...heatmapConfig, fill: 'trips' }, bigintRows)
     expect(result.data).toEqual([{ primary_purpose: 'HBW', major_trip_mode: 'SOV', trips: 120 }])
     expect(typeof (result.data[0] as { trips: unknown }).trips).toBe('number')
   })
@@ -394,7 +403,7 @@ describe('resolveObservablePlotEncoding — numeric fill/stroke (heatmap) color'
       { category: 'a', metric: 5 },
       { category: 'b', metric: 'n/a' },
     ]
-    const result = resolveObservablePlotEncoding({ ...baseConfig, fill: 'metric' }, mixedRows)
+    const result = resolveObservablePlotEncoding({ ...heatmapConfig, fill: 'metric' }, mixedRows)
     expect(result.plotOptions.color).toMatchObject({
       domain: ['5', 'n/a'],
       range: ['var(--chart-1)', 'var(--chart-2)'],
@@ -402,7 +411,69 @@ describe('resolveObservablePlotEncoding — numeric fill/stroke (heatmap) color'
   })
 
   it('an empty result set never crashes the numeric-detection check', () => {
-    const result = resolveObservablePlotEncoding({ ...baseConfig, fill: 'trips' }, [])
+    const result = resolveObservablePlotEncoding({ ...heatmapConfig, fill: 'trips' }, [])
+    expect(result.plotOptions.color).toEqual({ legend: true, style: LEGEND_STYLE, swatchSize: 9 })
+  })
+})
+
+// Real, confirmed regression found and fixed live (via a user report, not
+// caught by any test at the time — every real mark: cell fixture/demo
+// panel this feature shipped with happens to use a genuinely continuous
+// measure): a numeric SQL TYPE does not imply a continuous MEANING. The
+// real, already-published "School Location Distance Distribution" panel
+// (dashboard-2-person-household.yaml, mark: barY, fill: school_segment)
+// predates the heatmap feature entirely — school_segment is a real,
+// already-correct CATEGORICAL breakdown (K-8 / 9-12 / university), but
+// its own underlying column is stored as an integer CODE (1/2/3), not a
+// descriptive string — confirmed live via the duckdb CLI
+// (`typeof(school_segment) = 'BIGINT'`). Numeric-fill detection is
+// deliberately gated to cell-family marks only, so this bar chart's own
+// fill/stroke always stays on the categorical --chart-1..5 branch,
+// regardless of the real column's own numeric type.
+describe('resolveObservablePlotEncoding — numeric fill detection is scoped to cell-family marks only', () => {
+  const schoolSegmentRows = [
+    { school_segment: 1, distance_bin: '0.0-0.5' },
+    { school_segment: 2, distance_bin: '0.0-0.5' },
+    { school_segment: 3, distance_bin: '0.5-1.0' },
+  ]
+
+  it('a numeric fill on mark: barY stays categorical — real regression case (school_segment, an integer-coded category)', () => {
+    const result = resolveObservablePlotEncoding({ ...baseConfig, mark: 'barY', fill: 'school_segment' }, schoolSegmentRows)
+    expect(result.plotOptions.color).toMatchObject({
+      domain: ['1', '2', '3'],
+      range: ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)'],
+    })
+  })
+
+  it('the same numeric fill on mark: lineY also stays categorical', () => {
+    const result = resolveObservablePlotEncoding({ ...baseConfig, mark: 'lineY', fill: 'school_segment' }, schoolSegmentRows)
+    expect(result.plotOptions.color).toMatchObject({ domain: ['1', '2', '3'] })
+  })
+
+  it('the same numeric fill on mark: dot also stays categorical', () => {
+    const result = resolveObservablePlotEncoding({ ...baseConfig, mark: 'dot', fill: 'school_segment' }, schoolSegmentRows)
+    expect(result.plotOptions.color).toMatchObject({ domain: ['1', '2', '3'] })
+  })
+
+  it('stringifies the numeric fill value on the returned data for a non-cell mark, matching the stringified domain — the real fix for the missing-bars bug', () => {
+    // The actual real bug (confirmed via an isolated, app-independent
+    // Plot.plot() reproduction): the domain array below is always
+    // stringified, but the DATA's own fill value was previously left as
+    // a raw number — Plot's ordinal scale then matches a raw number (2)
+    // against a domain of strings (['1','2','3']) via strict equality,
+    // resolves to undefined for every row, and silently drops the WHOLE
+    // mark. Stringifying the data's own color field here too is what
+    // actually fixes it.
+    const result = resolveObservablePlotEncoding({ ...baseConfig, mark: 'barY', fill: 'school_segment' }, schoolSegmentRows)
+    expect(result.data).toEqual([
+      { school_segment: '1', distance_bin: '0.0-0.5' },
+      { school_segment: '2', distance_bin: '0.0-0.5' },
+      { school_segment: '3', distance_bin: '0.5-1.0' },
+    ])
+  })
+
+  it('the SAME numeric fill on mark: cell correctly goes numeric — proves the gate distinguishes by mark, not by disabling detection entirely', () => {
+    const result = resolveObservablePlotEncoding({ ...baseConfig, mark: 'cell', fill: 'school_segment' }, schoolSegmentRows)
     expect(result.plotOptions.color).toEqual({ legend: true, style: LEGEND_STYLE, swatchSize: 9 })
   })
 })

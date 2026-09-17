@@ -235,9 +235,30 @@ export function resolveObservablePlotEncoding(
   // JS bigint, not `number` (the same real, already-documented gap
   // ZoneMapPanel.tsx's/panels/formatValue.ts's own fixes address for
   // their own, separate code paths).
+  //
+  // Real, confirmed regression found and fixed here (a live user report,
+  // not caught by any test — every mark: cell fixture/demo panel this
+  // feature shipped with happens to use a genuinely continuous measure):
+  // a numeric SQL TYPE does not imply a continuous MEANING. The real,
+  // already-published "School Location Distance Distribution" panel
+  // (dashboard-2-person-household.yaml, mark: barY, fill: school_segment)
+  // predates this feature entirely — school_segment is a real, already-
+  // correct CATEGORICAL breakdown (K-8 / 9-12 / university), but its own
+  // underlying column is stored as an integer CODE (1/2/3), not a
+  // descriptive string. Gating this detection to CELL-FAMILY marks only
+  // — the one real, confirmed shape where a continuous color gradient is
+  // the genuinely intended visual language (a 2D matrix shaded by a
+  // measure) — means a bar/line/area/dot panel's own fill/stroke always
+  // stays on the existing categorical --chart-1..5 branch below,
+  // regardless of whether its real values happen to be numeric-typed;
+  // gating by mark shape, not by inspecting the data's own type alone,
+  // is what actually distinguishes "this number is a measure" from "this
+  // number is a category code" — the data alone cannot.
+  const CELL_FAMILY_MARKS = new Set(['cell', 'cellX', 'cellY', 'rect', 'rectX', 'rectY'])
   const colorField = config.fill ?? config.stroke
   const isNumericColorValue = (v: unknown): boolean => typeof v === 'number' || typeof v === 'bigint'
   const colorFieldIsNumeric =
+    CELL_FAMILY_MARKS.has(config.mark) &&
     Boolean(colorField) &&
     colorField !== 'scenario' &&
     filteredRows.length > 0 &&
@@ -252,6 +273,29 @@ export function resolveObservablePlotEncoding(
   // fresh row copy is built here (filteredRows itself, and the ORIGINAL
   // `rows` passed in, are never mutated).
   const isScenarioColor = (config.fill === 'scenario' || config.stroke === 'scenario') && scenarioDisplay !== undefined
+  // Real, confirmed bug found and fixed live (pre-dates this session
+  // entirely — confirmed via a direct A/B against the commit before any
+  // of today's chart-type work, so this is not a regression from that
+  // work, just a real, pre-existing defect this audit happened to
+  // surface): the categorical domain/range branch below always
+  // stringifies each distinct color value for the DOMAIN array (a clean
+  // legend display), but the underlying DATA's own fill/stroke value was
+  // left completely untouched. For a column that's genuinely numeric-
+  // TYPED but categorical-MEANING (school_segment: integer codes 1/2/3
+  // for K-8/9-12/university — a real, live, already-published panel,
+  // "School Location Distance Distribution"), that's a real type
+  // mismatch: Plot's own ordinal scale maps a raw NUMBER (2) against a
+  // domain of STRINGS (['2','1','3']) via strict equality, so every row's
+  // color channel resolves to undefined — confirmed via a direct,
+  // isolated Plot.plot() reproduction (outside this app entirely) that
+  // Plot then silently drops the WHOLE mark rather than rendering
+  // unstyled bars, exactly the real, live "chart shows only axes, zero
+  // bars, no error" symptom this fix addresses. `isCategoricalColor`
+  // stringifies the data's own color field to stay byte-for-byte
+  // consistent with the domain array built below, for the SAME reason
+  // colorFieldIsNumeric's own bigint coercion above exists — a fresh row
+  // copy, never mutating filteredRows/rows themselves.
+  const isCategoricalColor = Boolean(colorField) && colorField !== 'scenario' && !colorFieldIsNumeric
   const data = isScenarioColor
     ? filteredRows.map((row) => ({ ...row, scenario: resolveScenarioLabel(String(row.scenario), scenarioDisplay) }))
     : colorFieldIsNumeric
@@ -262,7 +306,9 @@ export function resolveObservablePlotEncoding(
         // so every row's own color value is coerced up front rather than
         // trusting Plot to handle a mixed/foreign numeric type correctly.
         filteredRows.map((row) => ({ ...row, [colorField as string]: Number(row[colorField as string]) }))
-      : filteredRows
+      : isCategoricalColor
+        ? filteredRows.map((row) => ({ ...row, [colorField as string]: String(row[colorField as string]) }))
+        : filteredRows
 
   if (isScenarioColor) {
     // Observable Plot's own color scale is all-or-nothing: an explicit
