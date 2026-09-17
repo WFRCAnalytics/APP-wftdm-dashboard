@@ -164,6 +164,29 @@ export function resolveObservablePlotEncoding(
   const xMatchesColorChannel = Boolean(config.x) && (config.x === config.fill || config.x === config.stroke)
   if (hasFacet && xMatchesColorChannel) {
     plotOptions.x = { axis: null }
+  } else if (config.x) {
+    // Real, confirmed visual bug: Plot's own default x-axis marginBottom
+    // (30px — axis.js's own `marginBottom = anchor === "bottom" ? 30 : 0`
+    // default) was sized for Plot's own 10px default tick-label font, not
+    // the 12px this panel's plotOptions.style override above renders at
+    // (matched to PlotlyPanel.tsx's own 12px default, see that assignment's
+    // own comment) — and Plot never recomputes it from the actual rendered
+    // font size. Confirmed directly against axis.js's own label-placement
+    // code (labelOptions()): for a categorical/band x-scale specifically
+    // (every real observable-plot bar chart in this app — barY's x channel
+    // is always discrete), the axis TITLE's own default labelAnchor is
+    // "center", not "right" — so it renders CENTERED DIRECTLY BELOW the
+    // tick labels, not off to the side of the axis the way it does for a
+    // continuous/quantitative scale — and its vertical offset defaults to
+    // `marginBottom - 3` (27px from the axis line) while the tick labels
+    // themselves start 9px below that same line (tickSize + tickPadding).
+    // With a 12px tick label filling most of that remaining 18px band, the
+    // title text sits only a few px below the tick text — visibly crowded.
+    // Bumped to 44px, giving clear separation for a 12px tick label (~9px
+    // start offset + ~14px real glyph height ≈ 23px) before the title's own
+    // now-later 41px offset — never applied when the x axis itself is
+    // suppressed above (no title exists to space out in that case).
+    plotOptions.marginBottom = 44
   }
 
   // 019-baseline-diff-consumption (FR-014): a real, confirmed finding —
