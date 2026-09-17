@@ -12,6 +12,7 @@ import {
   ColorPickerSelection,
 } from '@/components/ui/color-picker'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { useColorScheme } from '@/hooks/useColorScheme'
 import { useInterfaceColors } from '@/hooks/useInterfaceColors'
 import {
   clearInterfaceColorOverride,
@@ -31,10 +32,32 @@ export function InterfaceColorControl({ role, label }: { role: InterfaceColorRol
   // because this component re-renders on every override change via that
   // same subscription, without needing a second, separate one.
   const colors = useInterfaceColors()
+  // A real, confirmed bug fix: this swatch's own fallback read below
+  // (getComputedStyle) only happens IN RENDER, with no subscription of
+  // its own to theme changes — it previously only got fresh values as an
+  // incidental side effect of some UNRELATED re-render (e.g. AppearanceTab
+  // re-rendering because the Theme mode tab was clicked). That meant a
+  // genuine, live theme change with NO accompanying mode-state change —
+  // the exact case of `mode === 'system'` reacting to a REAL OS-level
+  // prefers-color-scheme flip via appearanceTab.tsx's own matchMedia
+  // listener, which mutates `.dark` directly on document.documentElement
+  // with no React state involved at all — left this swatch showing a
+  // stale color until the viewer happened to click something else that
+  // forced a re-render (e.g. switching to "Dark" explicitly), which then
+  // read the now-current value and made it LOOK like clicking the tab is
+  // what changed the color, when it was actually just correcting a stale
+  // display. useColorScheme() (already used for the identical reason in
+  // hooks/useScenarioDisplay.ts, 036-scenario-color-picker's own
+  // research.md §4 finding) observes document.documentElement's `.dark`
+  // class directly via a MutationObserver, independent of any mode/React
+  // state — calling it here, even though its own return value is unused,
+  // subscribes this component to every real theme change so the fallback
+  // read below is always current, not just usually current.
+  useColorScheme()
   const hasOverride = getInterfaceColorOverride(role) !== undefined
   // Falls back to tokens.css's own real, current value for this role when
   // neither an override nor a deployer default is configured — read at
-  // click time via getComputedStyle, the same resolution
+  // render time via getComputedStyle, the same resolution
   // hooks/useScenarioDisplay.ts's resolveEffectiveDefault() already uses
   // for its own var()-reference case.
   const effectiveColor =

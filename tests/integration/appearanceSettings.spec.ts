@@ -196,6 +196,49 @@ test.describe('User Story 3 - Primary / Secondary / Accent colors', () => {
     )
     expect(primaryAfterReload).toBe('#1447e6')
   })
+
+})
+
+test.describe('User Story 3 - live OS theme reactivity (real bug fix)', () => {
+  // Deterministic starting preference — Playwright's own default (no
+  // explicit colorScheme) is environment-dependent; this test needs a
+  // known "before" state to flip away from.
+  test.use({ colorScheme: 'light' })
+
+  // A real, confirmed bug: with no override/deployer default configured,
+  // the swatch's own tokens.css fallback (interfaceColorControl.tsx's
+  // getComputedStyle read) had no reactive subscription to theme changes
+  // at all — it only got fresh values as a side effect of some UNRELATED
+  // re-render. A live OS-level prefers-color-scheme flip while Theme mode
+  // is "System" (the app's own matchMedia listener mutates `.dark`
+  // directly on document.documentElement, no React state involved) left
+  // the swatch showing a stale color until the viewer happened to trigger
+  // some other re-render — e.g. clicking "Dark" explicitly, which then
+  // read the now-current value and made it look like the CLICK is what
+  // changed the color, not a stale display catching up. Fixed by having
+  // interfaceColorControl.tsx also call useColorScheme() (this test uses
+  // Chrome DevTools Protocol's Emulation.setEmulatedMedia to flip the
+  // real prefers-color-scheme media feature live, with zero clicks).
+  test('an unconfigured swatch reacts live to a real OS-level theme change while Theme mode is System, with no click', async ({
+    page,
+  }) => {
+    await boot(page)
+    await openAppearanceTab(page)
+    await expect(page.getByRole('tab', { name: 'System' })).toHaveAttribute('aria-selected', 'true')
+
+    const swatch = page.getByTestId('interface-color-swatch-primary')
+    const before = await swatch.evaluate((el) => getComputedStyle(el).backgroundColor)
+
+    const cdp = await page.context().newCDPSession(page)
+    await cdp.send('Emulation.setEmulatedMedia', {
+      features: [{ name: 'prefers-color-scheme', value: 'dark' }],
+    })
+
+    await expect
+      .poll(() => swatch.evaluate((el) => getComputedStyle(el).backgroundColor))
+      .not.toBe(before)
+    await expect(swatch).toHaveCSS('background-color', 'rgb(229, 229, 229)') // dark --primary, #e5e5e5
+  })
 })
 
 test.describe('User Story 4 - Fonts', () => {

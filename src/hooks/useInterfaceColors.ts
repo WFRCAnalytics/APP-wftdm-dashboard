@@ -36,12 +36,27 @@ function resolveRole(role: InterfaceColorRole): ResolvedInterfaceColor {
  * The cache is only replaced when a role's own resolved color/foreground
  * actually differs.
  *
- * Unlike useScenarioDisplay.ts, this hook does NOT need useColorScheme()
- * — a Primary/Secondary/Accent override/deployer default is a single,
- * flat value applied identically in both themes (spec.md's own
- * Assumptions); only the tokens.css fallback (color: undefined) is
- * theme-paired, and that case needs no JS-side resolution at all — the
- * ordinary stylesheet cascade already handles it.
+ * Unlike useScenarioDisplay.ts, this hook itself does NOT need
+ * useColorScheme() — an override/deployer default is a single, flat
+ * value applied identically in both themes, and the `color: undefined`
+ * ("unconfigured, defer to the cascade") case is exactly what lets
+ * appearanceTab.tsx's own inline-style effect removeProperty() instead
+ * of pinning a stale resolved value, so the app's REAL rendered UI
+ * (buttons etc., which reference `var(--primary)` via ordinary Tailwind
+ * classes) keeps tracking live theme changes with no JS involved.
+ *
+ * A real, confirmed correction: this reasoning does NOT extend to a
+ * PREVIEW SWATCH that needs a concrete color to paint (layout/settings/
+ * interfaceColorControl.tsx) — that component reads tokens.css's current
+ * value itself via a raw getComputedStyle() call when `color` here is
+ * undefined, and that read has no reactivity of its own. A live theme
+ * change with no accompanying `mode` state change (an OS-level
+ * prefers-color-scheme flip while Theme mode is "System" — the app's
+ * matchMedia listener mutates `.dark` directly on document.documentElement,
+ * no React state involved) left that swatch showing a stale color until
+ * some unrelated re-render happened to refresh it. Fixed at the
+ * component itself (not here) by having it call useColorScheme() too —
+ * see that file's own comment for the full finding.
  */
 export function useInterfaceColors(): InterfaceColorMap {
   const cache = useRef<InterfaceColorMap | null>(null)
