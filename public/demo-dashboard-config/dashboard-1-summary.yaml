@@ -60,14 +60,35 @@ layout:
       icon:   map-pin
       width:  0.2
 
+    # New chart-type coverage: ValueBoxPanelConfig's new gauge: {min, max}
+    # field — a radial "speedometer" arc showing where the real baseline
+    # total_vmt value falls within an illustrative range, plus a target
+    # tick + green/amber/red status wired to `observed`/`threshold_warn`/
+    # `threshold_fail`. Those three fields have been in this grammar
+    # since before the gauge mode existed (project-docs/GRAMMAR.md's own
+    # long-documented calibration-tolerance semantics) but had no real
+    # consumer anywhere in the app until now.
+    #
+    # `observed`/the thresholds below are ILLUSTRATIVE calibration-target
+    # figures, not a real survey/count value — this demo's own
+    # public/observed/ ships no real VMT survey data to compare against
+    # (honestly stated in the description, not presented as real ground
+    # truth). Chosen close to the real baseline value (~15,212 mi,
+    # confirmed live) so this real KPI demonstrates the gauge's own
+    # 'normal' (green, within-tolerance) status — the realistic case for
+    # an already-validated baseline model.
     - type:   valuebox
       title:  Total VMT
       metric: summary_kpis
       scenario: activitysim-baseline
-      description: "Baseline scenario. Compare runs on the charts below via the Scenarios tab."
+      description: "Baseline scenario. Gauge target (15,000 mi ±500/1,500) is an illustrative calibration tolerance, not a real survey value. Compare runs on the charts below via the Scenarios tab."
       column: total_vmt
       format: "{:,.0f} mi"
       icon:   gauge
+      gauge:  { min: 0, max: 20000 }
+      observed: 15000
+      threshold_warn: 500
+      threshold_fail: 1500
       width:  0.2
 
   # Real total trips by mode and real average trip distance by purpose —

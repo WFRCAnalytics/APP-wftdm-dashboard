@@ -79,6 +79,25 @@ export interface ValueBoxBaselineTrendConfig {
   format?: string // defaults to the panel's own `format`
 }
 
+/** A third, independent, optional value-box visual mode — a radial arc
+ * ("speedometer") gauge showing where the panel's own scalar `value`
+ * falls within [min, max]. Reuses `observed`/`threshold_warn`/
+ * `threshold_fail` below for its color-zone status (green/amber/red —
+ * `panels/gaugeGeometry.ts`'s `resolveGaugeStatus()`) — those three
+ * fields existed in this grammar since before this mode was built
+ * (project-docs/GRAMMAR.md's own long-documented "calibration target
+ * tolerance" semantics: how far the modeled value may drift from a real
+ * observed/survey value before it's considered miscalibrated) but had no
+ * real consumer anywhere in `src/` until now; a gauge is exactly the
+ * visualization that grammar was always describing. Opt-in via `gauge:
+ * {min, max}` — omitted, a panel renders exactly as before this mode
+ * existed, whether or not it also sets observed/threshold_warn/
+ * threshold_fail. */
+export interface ValueBoxGaugeConfig {
+  min: number
+  max: number
+}
+
 export interface ValueBoxPanelConfig extends DataBoundPanelConfigBase {
   type: 'valuebox'
   column: string
@@ -90,6 +109,7 @@ export interface ValueBoxPanelConfig extends DataBoundPanelConfigBase {
   threshold_fail?: number
   sparkline?: ValueBoxSparklineConfig
   baseline_trend?: ValueBoxBaselineTrendConfig
+  gauge?: ValueBoxGaugeConfig
 }
 
 export interface PlotlyTraceConfig {

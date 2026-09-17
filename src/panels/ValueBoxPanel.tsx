@@ -21,6 +21,7 @@ import {
 } from '@/panels/panelQuery'
 import { formatValue } from '@/panels/formatValue'
 import { ValueBoxSparkline } from '@/panels/valueBoxSparkline'
+import { ValueBoxGauge } from '@/panels/valueBoxGauge'
 import { Badge } from '@/components/ui/badge'
 import { PanelEmptyState } from '@/panels/PanelEmptyState'
 import { PanelErrorState } from '@/panels/PanelErrorState'
@@ -326,6 +327,25 @@ export function ValueBoxPanel({ config }: { config: ValueBoxPanelConfig }) {
           {trendBadge}
         </div>
       </div>
+      {/* Gauge zone — a third, independent, optional visual mode
+          (gaugeGeometry.ts/valueBoxGauge.tsx). Unlike sparkline/
+          baseline_trend, needs no fetch effect/status of its own: it
+          purely visualizes the SAME scalar `value` the primary effect
+          above already resolved, so it's gated on nothing but
+          `config.gauge` itself plus a real, finite numeric value (a
+          non-numeric column bound to `gauge:` — an author mistake, not a
+          reachable real-content case — renders no gauge rather than a
+          NaN-driven broken arc). */}
+      {config.gauge && typeof value === 'number' && Number.isFinite(value) && (
+        <ValueBoxGauge
+          value={value}
+          config={config.gauge}
+          format={config.format}
+          observed={config.observed}
+          thresholdWarn={config.threshold_warn}
+          thresholdFail={config.threshold_fail}
+        />
+      )}
       {/* 034-metric-panel-redesign (FR-012/FR-013, data-model.md §4 zone
           4) — the sparkline zone. Rendered for 'loading'/'ready' only;
           'idle' means the mode isn't configured at all (renders nothing,

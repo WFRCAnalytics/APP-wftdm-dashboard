@@ -397,6 +397,50 @@ layout:
         expr: "a.__missing_col__ - b.total_persons"
       width: 0.5
 
+  # New chart-type coverage: ValueBoxPanelConfig's gauge: {min, max} mode
+  # — one real gauge per status color, all bound to the same real
+  # total_trips column so any visible difference is attributable purely
+  # to observed/threshold_warn/threshold_fail, not different underlying
+  # data. `observed`/thresholds are deliberately extreme/degenerate here
+  # (0, a tiny gap, a huge gap) specifically to force each status
+  # DETERMINISTICALLY regardless of the real total_trips count's own
+  # exact value — the real demo panel on dashboard-1-summary.yaml is
+  # where a genuinely plausible illustrative target lives; this row's
+  # own job is proving all three status colors resolve correctly.
+  row_valuebox_gauge:
+    - type:   valuebox
+      title:  "Gauge — Normal (no target configured)"
+      metric: summary_kpis
+      scenario: activitysim-baseline
+      column: total_trips
+      format: "{:,.0f}"
+      gauge:  { min: 0, max: 30000 }
+      width:  0.33
+
+    - type:   valuebox
+      title:  "Gauge — Warn"
+      metric: summary_kpis
+      scenario: activitysim-baseline
+      column: total_trips
+      format: "{:,.0f}"
+      gauge:  { min: 0, max: 30000 }
+      observed: 0
+      threshold_warn: 1
+      threshold_fail: 999999999
+      width:  0.33
+
+    - type:   valuebox
+      title:  "Gauge — Fail"
+      metric: summary_kpis
+      scenario: activitysim-baseline
+      column: total_trips
+      format: "{:,.0f}"
+      gauge:  { min: 0, max: 30000 }
+      observed: 0
+      threshold_warn: 1
+      threshold_fail: 2
+      width:  0.33
+
   # ── comparison: diff whose a/b name unresolvable scenarios ──
   row_bad_diff:
     - type:   table

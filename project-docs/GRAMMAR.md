@@ -1050,6 +1050,34 @@ Single scalar KPI card with optional observed reference and threshold coloring.
 
 Multi-scenario: auto renders one column per loaded scenario + observed column.
 
+**`gauge: {min, max}`** (optional) — a radial "speedometer" arc showing
+where the panel's own value falls within `[min, max]`, rendered BELOW the
+primary number (never replacing it — the plain number stays the
+accessible, always-present source of truth):
+
+```yaml
+- type:      valuebox
+  title:     Total VMT
+  metric:    summary_kpis
+  column:    total_vmt
+  format:    "{:,.0f} mi"
+  gauge:     { min: 0, max: 20000 }
+  observed:  15000              # same field as above — now also drives the gauge's target tick
+  threshold_warn: 500           # same field as above — now also drives the gauge's arc color
+  threshold_fail: 1500
+```
+
+Reuses `observed`/`threshold_warn`/`threshold_fail` (above) for a real
+target tick + green/amber/red arc color: `observed` unset → a plain
+progress gauge (no tick, always the "normal" green); `observed` set →
+the arc colors green when `|value - observed|` is within
+`threshold_warn`, amber past `threshold_warn`, red past
+`threshold_fail` (either threshold may be set without the other — a
+fail-only or warn-only tolerance is valid). No dedicated author-facing
+color key — the three existing fields are the whole interface, matching
+`donut`/`dataset_picker`'s own "one boolean/small-object flag, sensible
+built-in behavior" convention elsewhere in this grammar.
+
 ### `type: plotly`
 
 Plotly chart — default for most calibration panels. Provides interactive legend,
