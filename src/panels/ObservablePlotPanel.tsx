@@ -310,21 +310,77 @@ export function ObservablePlotPanel({ config }: { config: ObservablePlotPanelCon
       // one — a ONE-TIME correction, not a loop, since that consumed
       // space doesn't depend on the svg's own height.
       const hasLegend = Boolean((plotOptions as { color?: { legend?: boolean } }).color?.legend)
-      if (hasLegend) {
-        // Append temporarily so layout is real — getBoundingClientRect()
-        // returns all-zero for a detached element. Replaced below by the
-        // corrected final render before this effect ever yields to paint,
-        // so this first pass is never visible.
-        el!.append(plotElement)
-        const figureEl = plotElement as HTMLElement
-        const svgEl = figureEl.querySelector(':scope > svg') as HTMLElement | null
-        const consumedAboveSvg = svgEl
-          ? svgEl.getBoundingClientRect().top - figureEl.getBoundingClientRect().top
+      // Real, confirmed left-margin bug found live (a real user report,
+      // not caught by any existing test — every prior real observable-plot
+      // panel's own y-axis is either absent or numeric with short tick
+      // text, so this never surfaced until the first two panels with a
+      // genuinely CATEGORICAL y channel and real word-length values
+      // existed: mark: cell's own y: major_trip_mode ("Non-Motorized",
+      // "Ride Hail") and mark: boxX's own y: person_type ("Part-time
+      // worker", "Pre-school child")). Plot's own axis.js sets marginLeft
+      // for a left-anchored y-axis to a FIXED 40px constant — confirmed
+      // directly against its own source, never auto-measured from the
+      // real tick text at all (unlike this block's own pre-existing
+      // legend-height measurement below, which already has to solve the
+      // identical "can't know required space in advance" problem the
+      // proper way) — tuned for short numeric labels like "0.2"/"40", not
+      // real category words. Confirmed live: the tick-label group's own
+      // rendered bounding box extended 50-80px past the panel's own left
+      // edge, genuinely clipped by the container, not merely close to it.
+      //
+      // Measured the same way the legend-height fix below already
+      // establishes: a temporary real DOM append (getBoundingClientRect()
+      // returns all-zero for a detached element), corrected with one
+      // final rebuild before this effect ever yields to paint — sharing
+      // ONE append/measure/remove cycle with the legend-height check
+      // rather than two, since both need the same temporarily-mounted
+      // chart svg.
+      el!.append(plotElement)
+      const measureEl = plotElement as HTMLElement
+      // `:scope > svg:last-of-type`, NOT a bare `:scope > svg` — a real,
+      // confirmed bug found live: for a NUMERIC (continuous/sequential)
+      // color scale specifically (heatmap panels — 057's own §5e numeric-
+      // fill branch), Plot's own legends/ramp.js builds the legend as ITS
+      // OWN top-level `<svg>` (`const svg = create("svg", context)`), a
+      // direct sibling of the real chart svg inside the SAME `<figure>` —
+      // unlike a CATEGORICAL legend, whose swatch icons are nested two
+      // levels deep inside a `<div>`. `figure.append(...legends, svg)`
+      // (plot.js) always appends the real chart svg LAST, so a bare
+      // `:scope > svg` querySelector — which returns the FIRST match —
+      // resolved to the ramp legend's own 50px-tall svg instead, measuring
+      // both fixes below from the wrong element entirely. `:last-of-type`
+      // correctly targets the chart regardless of whether the legend is
+      // div-based (no interfering svg at all), ramp-based (a second
+      // sibling svg), or absent (one svg, trivially "last").
+      const measureSvg = (
+        measureEl.tagName === 'svg' ? measureEl : measureEl.querySelector(':scope > svg:last-of-type')
+      ) as SVGGraphicsElement | null
+
+      const consumedAboveSvg =
+        hasLegend && measureSvg
+          ? measureSvg.getBoundingClientRect().top - measureEl.getBoundingClientRect().top
           : 0
-        plotElement.remove()
-        if (consumedAboveSvg > 0) {
-          plotElement = buildPlot(Math.max(0, height - consumedAboveSvg))
+
+      let marginLeftOverride: number | undefined
+      if (measureSvg) {
+        const yTickLabels = measureSvg.querySelector('[aria-label="y-axis tick label"]')
+        if (yTickLabels) {
+          const overflowPx = measureSvg.getBoundingClientRect().left - yTickLabels.getBoundingClientRect().left
+          // DEFAULT_MARGIN_LEFT (40 — axis.js's own real constant, quoted
+          // above) plus the real measured overflow plus a small breathing-
+          // room buffer, so corrected text doesn't sit flush against the
+          // panel's own edge. A non-positive overflowPx (the normal,
+          // numeric-y-axis case) leaves marginLeftOverride unset — no
+          // behavior change for every existing chart this fix doesn't
+          // need to touch.
+          if (overflowPx > 0) marginLeftOverride = 40 + overflowPx + 8
         }
+      }
+
+      measureEl.remove()
+      if (consumedAboveSvg > 0 || marginLeftOverride !== undefined) {
+        if (marginLeftOverride !== undefined) plotOptions.marginLeft = marginLeftOverride
+        plotElement = buildPlot(Math.max(0, height - consumedAboveSvg))
       }
 
       // OBSERVABLE-PLOT-THEMING-PROPOSAL.md §5b/item 4 (legend swatch
@@ -367,22 +423,30 @@ export function ObservablePlotPanel({ config }: { config: ObservablePlotPanelCon
       // the svg itself sidesteps this entirely — inline styles beat any
       // author-stylesheet rule regardless of specificity.
       //
-      // `:scope > svg`, NOT a plain unscoped `querySelector('svg')` — a
-      // real bug caught during implementation (extensive live debugging,
-      // not assumed correct on the first try): for a legend-bearing chart,
-      // `figure.append(...legends, svg)` (plot.js) appends the legend
-      // BEFORE the real chart svg — and the legend's own swatch icons are
-      // THEMSELVES tiny `<svg>` elements (one per category), nested inside
-      // the legend's swatches div, appearing EARLIER in document order
-      // than the real chart svg. An unscoped `querySelector('svg')`
-      // therefore matched the FIRST swatch icon, not the chart — this
-      // codebase's own earlier overflow-fix code (directly above, in the
-      // `hasLegend` block) already learned this exact lesson and correctly
-      // scopes to `:scope > svg`; this fix originally didn't reuse that
-      // same scoping and silently set the CSS variable on an irrelevant
-      // swatch icon instead of the chart the tip mark actually renders in.
+      // `:scope > svg:last-of-type`, NOT a plain unscoped
+      // `querySelector('svg')` OR a bare `:scope > svg` — TWO real, separate
+      // bugs caught here, not one. (1) An unscoped `querySelector('svg')`
+      // matched the legend's own tiny per-category swatch `<svg>` icons
+      // (nested inside a `<div>`, for a CATEGORICAL legend) instead of the
+      // chart — this codebase's earlier overflow-fix code (the `hasLegend`
+      // block above) already learned this and scoped to `:scope > svg`. (2)
+      // Found LATER, live, once a NUMERIC/continuous color scale existed
+      // for the first time (heatmap panels, 057's §5e numeric-fill branch):
+      // Plot's own legends/ramp.js builds that kind of legend as ITS OWN
+      // top-level `<svg>` — a direct SIBLING of the chart svg inside the
+      // figure, not nested inside a div — so a bare `:scope > svg`
+      // (returns the FIRST match) resolved to the ramp legend instead,
+      // silently setting --plot-background on the wrong element and
+      // leaving the real chart's tip box on Plot's own hardcoded white
+      // default — invisible white-on-white in dark mode specifically (the
+      // text already correctly turns light via currentColor, matching this
+      // fix's own original white-on-white finding, just on the wrong
+      // element). `figure.append(...legends, svg)` (plot.js) always
+      // appends the real chart svg LAST, so `:last-of-type` resolves
+      // correctly for every legend shape — div-based, ramp-svg-based, or
+      // absent.
       const svgEl = (
-        plotElement.tagName === 'svg' ? plotElement : plotElement.querySelector(':scope > svg')
+        plotElement.tagName === 'svg' ? plotElement : plotElement.querySelector(':scope > svg:last-of-type')
       ) as SVGSVGElement | null
       if (svgEl) {
         const card =

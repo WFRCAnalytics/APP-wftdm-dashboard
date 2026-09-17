@@ -164,6 +164,67 @@ test.describe('User Story 2 - Author a radar chart panel comparing categories ac
     await expect(tooltip).toBeHidden()
   })
 
+  // A real, confirmed bug: previously the ONLY hoverable elements on this
+  // whole chart were the r=4 (8px-diameter) vertex dots — hovering the
+  // polygon's own visibly colored fill/stroke area (what a viewer
+  // naturally tries first, matching every other chart type in this app)
+  // did nothing at all. The polygon <path> itself now responds too,
+  // showing the series name.
+  test('hovering the polygon\'s own fill area (not a vertex) shows a real tooltip naming the series', async ({
+    page,
+  }) => {
+    await boot(page)
+    await gotoModeChoiceTab(page)
+    const card = panelCard(page, REAL_RADAR_TITLE)
+    // `.last()`, matching the "hovering a vertex" test's own established
+    // reasoning above: this real data's three polygons overlap heavily
+    // (near-identical real values), so whichever path was drawn LAST is
+    // the one that actually receives the hover at its own center —
+    // proving the mousemove->tooltip mechanism itself works, not
+    // pixel-targeting a specific obscured series in this particular
+    // dataset.
+    const path = card.locator('.radar-chart svg[viewBox] path[data-series]').last()
+    await expect(path).toBeVisible()
+    const expectedSeries = await path.getAttribute('data-series')
+
+    await path.hover({ force: true })
+    const tooltip = card.locator('.map-tooltip')
+    await expect(tooltip).toBeVisible()
+    await expect(tooltip).toContainText(expectedSeries!)
+
+    await page.mouse.move(0, 0)
+    await expect(tooltip).toBeHidden()
+  })
+
+  // A real, confirmed bug: a bare 8px-diameter vertex dot is hard to hit
+  // precisely with a real mouse. A wider (r=10), fully invisible
+  // companion hit-target now sits under each visible dot — this proves a
+  // hover NEAR (not exactly on) a vertex's own center still resolves to
+  // that vertex's real tooltip.
+  test('hovering near (not exactly on) a vertex still shows its real tooltip — a widened hit target', async ({
+    page,
+  }) => {
+    await boot(page)
+    await gotoModeChoiceTab(page)
+    const card = panelCard(page, REAL_RADAR_TITLE)
+    const vertex = card.locator(`.radar-chart svg[viewBox] circle[data-axis="${REAL_TOP_MODE}"]`).last()
+    await expect(vertex).toBeVisible()
+    const [expectedSeries, expectedValue] = await Promise.all([
+      vertex.getAttribute('data-series'),
+      vertex.getAttribute('data-value'),
+    ])
+    const box = await vertex.boundingBox()
+
+    // 6px off the vertex's own center — outside the old 4px visible-dot
+    // radius, inside the new 10px invisible hit-target radius.
+    await vertex.hover({ position: { x: box!.width / 2 + 6, y: box!.height / 2 + 6 }, force: true })
+    const tooltip = card.locator('.map-tooltip')
+    await expect(tooltip).toBeVisible()
+    await expect(tooltip).toContainText(expectedSeries!)
+    await expect(tooltip).toContainText(REAL_TOP_MODE)
+    await expect(tooltip).toContainText(expectedValue!)
+  })
+
   test('a zero-row filter shows PanelEmptyState; a broken metric shows PanelErrorState', async ({ page }) => {
     await boot(page)
     await gotoTestTab(page)

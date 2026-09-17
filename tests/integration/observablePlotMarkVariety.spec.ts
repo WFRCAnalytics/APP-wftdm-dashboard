@@ -119,6 +119,32 @@ test.describe('mark: boxX — box plot (Person & Households tab, "Age Distributi
     // (category) axis is real, queried data, not placeholder ticks.
     await expect(card.getByText('Full-time worker', { exact: false })).toBeVisible({ timeout: 20_000 })
   })
+
+  // A real, confirmed bug: Plot's own axis.js sets marginLeft for a
+  // left-anchored y-axis to a FIXED 40px constant (never auto-measured
+  // from the real tick text), tuned for short numeric labels — a real
+  // category label this long ("Driving-age student") rendered clipped,
+  // extending well past the panel's own left edge (confirmed live via
+  // getBoundingClientRect() before the fix). ObservablePlotPanel.tsx now
+  // measures the real tick-label group and corrects marginLeft when it
+  // would overflow.
+  test('the longest real y-axis category label is not clipped by the panel\'s own left edge', async ({ page }) => {
+    await boot(page)
+    await clickDemoTab(page, 'Person & Households')
+    const card = panelCard(page, TITLE)
+    await expect(card.getByText('Full-time worker', { exact: false })).toBeVisible({ timeout: 20_000 })
+
+    const overflow = await card.locator('.observable-plot-chart').first().evaluate((container) => {
+      const svg = container.querySelector('svg')!
+      const containerLeft = container.getBoundingClientRect().left
+      const tickGroup = svg.querySelector('[aria-label="y-axis tick label"]')!
+      return containerLeft - tickGroup.getBoundingClientRect().left
+    })
+    // A positive value means the tick text starts to the LEFT of the
+    // container's own edge — i.e. clipped. Zero/negative means it's
+    // fully inside.
+    expect(overflow).toBeLessThanOrEqual(0)
+  })
 })
 
 test.describe('mark: cell — heatmap (Mode Choice tab, "Trip Purpose × Mode Heatmap")', () => {
@@ -175,5 +201,34 @@ test.describe('mark: cell — heatmap (Mode Choice tab, "Trip Purpose × Mode He
     // group instead.
     const tip = card.locator('.observable-plot-chart [aria-label="tip"]')
     await expect(tip).toBeVisible({ timeout: 5_000 })
+  })
+
+  // A real, confirmed bug: this panel's dark-mode tip-background fix
+  // (ObservablePlotPanel.tsx's own --plot-background resolution) picked
+  // the WRONG svg for a numeric-fill panel specifically — Plot's own
+  // legends/ramp.js renders a CONTINUOUS color scale's legend as its own
+  // top-level <svg>, a direct sibling of the real chart svg inside the
+  // same <figure>, so the pre-fix `:scope > svg` querySelector (returns
+  // the FIRST match) resolved to the ramp legend instead of the chart —
+  // leaving the real chart's tip box on Plot's own hardcoded white
+  // default, invisible white-on-white once the tip's own text correctly
+  // turned light in dark mode. Fixed via `:scope > svg:last-of-type`
+  // (the chart svg is always appended last).
+  test('the tip tooltip background is genuinely dark in dark mode, not white-on-white', async ({ page }) => {
+    await boot(page)
+    await clickDemoTab(page, 'Mode Choice')
+    await page.evaluate(() => document.documentElement.classList.add('dark'))
+    const card = panelCard(page, TITLE)
+    const cells = card.locator('.observable-plot-chart rect[fill]')
+    await expect(cells.first()).toBeVisible({ timeout: 20_000 })
+    await cells.first().hover()
+    const tip = card.locator('.observable-plot-chart [aria-label="tip"]')
+    await expect(tip).toBeVisible({ timeout: 5_000 })
+
+    const tipFill = await tip.locator('path').first().evaluate((el) => getComputedStyle(el).fill)
+    // Real dark-mode --card resolves to a near-black value — this only
+    // needs to confirm it is NOT white (rgb(255, 255, 255)), the exact
+    // symptom reported and reproduced before this fix.
+    expect(tipFill).not.toBe('rgb(255, 255, 255)')
   })
 })

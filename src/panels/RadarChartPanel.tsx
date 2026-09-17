@@ -119,9 +119,55 @@ function renderSvg(
     path.setAttribute('stroke', color)
     path.setAttribute('stroke-width', '2')
     path.setAttribute('data-series', polygon.seriesName)
+    // Real, confirmed finding: previously the ONLY hoverable elements on
+    // this whole chart were the r=4 (8px-diameter) vertex dots below —
+    // hovering the polygon's own visibly colored fill/stroke area (what a
+    // viewer naturally tries first, matching every other chart type in
+    // this app — pie wedges, heatmap cells, bars all respond across their
+    // whole visible area) did nothing at all. A real SVG <path> with a
+    // non-`none` fill already participates in pointer hit-testing by
+    // default (no `pointer-events` override needed) — this listener was
+    // simply never attached. Shows the series name only (no specific axis
+    // value — a general fill-area hover has no single (axis, value) pair
+    // to report); the more specific per-vertex tooltip below still wins
+    // for a precise hover, since the vertex circles paint on top of this
+    // path in the same group (ordinary DOM/SVG paint-order precedence,
+    // not a manual event-priority mechanism).
+    const seriesHtml = `<strong>${polygon.seriesName}</strong>`
+    path.addEventListener('mousemove', (event) => showTooltip(event, seriesHtml))
+    path.addEventListener('mouseleave', () => tooltip.hide())
     polygonsGroup.appendChild(path)
 
     for (const point of polygon.points) {
+      // Real, confirmed finding: even once found, a bare 8px-diameter dot
+      // is hard to hit precisely with a real mouse — and when two
+      // series' values are close for the same axis (a real, common case,
+      // e.g. near-identical scenario shares), their own r=4 dots can sit
+      // almost exactly on top of each other, making the one underneath
+      // essentially unreachable. A separate, fully invisible, WIDER
+      // hit-target circle (r=10, `pointer-events="all"` so an empty/
+      // transparent fill still counts for hit-testing regardless of the
+      // browser's own default `pointer-events: visiblePainted` heuristic)
+      // is added FIRST, so the small VISIBLE dot — added second, painted
+      // on top — still wins for its own precise center (existing,
+      // already-tested exact-hover behavior is unchanged), while the
+      // wider invisible ring around it catches a nearby, imprecise hover
+      // the small dot alone would have missed. Deliberately carries NONE
+      // of the visible dot's own data-series/data-axis/data-value
+      // attributes — those stay exclusively on the real, already-tested
+      // element (radarChartPanel.spec.ts's own exact circle[data-series]
+      // COUNT assertions must not double).
+      const html = `<strong>${polygon.seriesName}</strong><br/>${point.axis}: ${point.value}`
+      const hitTarget = document.createElementNS(SVG_NS, 'circle')
+      hitTarget.setAttribute('cx', String(point.x))
+      hitTarget.setAttribute('cy', String(point.y))
+      hitTarget.setAttribute('r', '10')
+      hitTarget.setAttribute('fill', 'transparent')
+      hitTarget.setAttribute('pointer-events', 'all')
+      hitTarget.addEventListener('mousemove', (event) => showTooltip(event, html))
+      hitTarget.addEventListener('mouseleave', () => tooltip.hide())
+      polygonsGroup.appendChild(hitTarget)
+
       const vertex = document.createElementNS(SVG_NS, 'circle')
       vertex.setAttribute('cx', String(point.x))
       vertex.setAttribute('cy', String(point.y))
@@ -130,7 +176,6 @@ function renderSvg(
       vertex.setAttribute('data-series', polygon.seriesName)
       vertex.setAttribute('data-axis', point.axis)
       vertex.setAttribute('data-value', String(point.value))
-      const html = `<strong>${polygon.seriesName}</strong><br/>${point.axis}: ${point.value}`
       vertex.addEventListener('mousemove', (event) => showTooltip(event, html))
       vertex.addEventListener('mouseleave', () => tooltip.hide())
       polygonsGroup.appendChild(vertex)
