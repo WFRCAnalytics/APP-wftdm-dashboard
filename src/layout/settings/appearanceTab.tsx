@@ -242,16 +242,21 @@ export function AppearanceTab() {
           see contracts/category-color-resolution.md. */}
       <div className="flex items-center justify-between gap-4">
         <div className="space-y-1">
-          <label htmlFor="colorblind-safe-toggle" className="text-sm font-medium text-foreground">
-            Prefer colorblind-safe palettes
-          </label>
+          {/* A plain <span>, not a <label htmlFor>, deliberately — a
+              `htmlFor`-associated label makes ITS OWN text a second click
+              target that toggles the control natively, widening the
+              "toggleable" surface beyond the Switch itself. Matches
+              scenarioRow.tsx's own established convention for this exact
+              control: the Switch carries its own aria-label directly,
+              rather than relying on a label-click association. */}
+          <span className="text-sm font-medium text-foreground">Prefer colorblind-safe palettes</span>
           <p className="text-xs text-muted-foreground">
             Uses colorblind-safe colors as the default for charts and scenarios that don't already
             have a specific color configured.
           </p>
         </div>
         <Switch
-          id="colorblind-safe-toggle"
+          aria-label="Prefer colorblind-safe palettes"
           checked={colorblindSafe}
           onCheckedChange={setColorblindSafe}
         />

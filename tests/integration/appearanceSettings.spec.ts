@@ -80,6 +80,23 @@ test.describe('User Story 1 - Colorblind-safe preference', () => {
     )
   })
 
+  test('only the Switch itself toggles it — clicking the label text does nothing', async ({ page }) => {
+    await boot(page)
+    await openAppearanceTab(page)
+    const toggle = page.getByRole('switch', { name: 'Prefer colorblind-safe palettes' })
+    await expect(toggle).toHaveAttribute('aria-checked', 'false')
+
+    // Clicking the visible title text must NOT toggle it — it's a plain
+    // <span>, not a <label htmlFor>, specifically so it carries no native
+    // click-to-toggle association.
+    await page.getByText('Prefer colorblind-safe palettes', { exact: true }).click()
+    await expect(toggle).toHaveAttribute('aria-checked', 'false')
+
+    // The Switch itself still works.
+    await toggle.click()
+    await expect(toggle).toHaveAttribute('aria-checked', 'true')
+  })
+
   test('also recolors an unpinned, scenario-colored chart’s own default cycling', async ({ page }) => {
     await boot(page)
     await page.getByRole('tab', { name: 'Mode Choice' }).click()
