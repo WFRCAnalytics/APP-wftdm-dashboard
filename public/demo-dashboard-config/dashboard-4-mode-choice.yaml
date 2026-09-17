@@ -19,7 +19,7 @@ sections:
     rows: [row_atwork_subtour_mode]
   - id: trip-mode-choice
     label: "Trip Mode Choice"
-    rows: [row_trip_mode_flow, row_trip_mode_radar, row_trip_mode_by_period]
+    rows: [row_trip_mode_flow, row_trip_mode_heatmap, row_trip_mode_radar, row_trip_mode_by_period]
 
 layout:
   row_tour_mode_choice:
@@ -95,6 +95,42 @@ layout:
       source: primary_purpose
       target: major_trip_mode
       value:  trips
+
+  # New chart-type coverage: type: observable-plot's mark: cell — a real
+  # matrix/heatmap view of the SAME real purpose_mode_flow data the
+  # Sankey panels above already chart. `fill: trips` is a genuinely
+  # NUMERIC channel (a real COUNT(*)), not a category —
+  # resolveObservablePlotEncoding()'s own numeric-fill detection lets Plot
+  # apply its own continuous color scale here instead of this app's
+  # categorical --chart-1..5 cycling (which would otherwise try to hand
+  # each distinct trip count its own arbitrary swatch).
+  #
+  # PINNED to one scenario — a real, confirmed reason, unlike the Sankey
+  # panel above it: Sankey's own buildFlowGraph() (sankeyGraph.ts)
+  # explicitly SUMS duplicate source-target rows before drawing, so an
+  # unpinned multi-scenario union renders as one real combined diagram.
+  # A heatmap cell has no such aggregation step and no series/facet
+  # channel to separate scenarios — x/y are BOTH already spent on
+  # purpose/mode, so an unpinned union leaves 3 raw rows (one per active
+  # scenario) stacked exactly on top of each other at the same cell
+  # position, each its own <rect>. Confirmed live: the topmost one (the
+  # last scenario in paint order) silently hides the other two, with no
+  # visual indication a union even happened. Pinning avoids the
+  # silent-data-hiding problem entirely, matching row_school_location's
+  # own "already committed, pin instead of union" precedent above.
+  row_trip_mode_heatmap:
+    - type:    observable-plot
+      title:   "Trip Purpose × Mode Heatmap"
+      metric:  purpose_mode_flow
+      scenario: activitysim-baseline
+      description: "Baseline scenario. Darker cells = more trips. Compare runs on the Sankey diagram above via the Scenarios tab."
+      mark:    cell
+      x:       primary_purpose
+      y:       major_trip_mode
+      fill:    trips
+      tip:     true
+      height:  400
+      width:   1.0
 
   # 060-radar-pie-charts — a real, first-content demo of the new `radar`
   # panel type, reusing this section's own already-real, already-

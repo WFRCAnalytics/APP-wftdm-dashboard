@@ -29,7 +29,7 @@ sections:
     rows: [row_home_workplace_flows]
   - id: land-use
     label: "Land Use / Socioeconomics"
-    rows: [row_land_use]
+    rows: [row_land_use_scatter, row_land_use]
   - id: accessibility
     label: "Accessibility"
     rows: [row_accessibility]
@@ -154,6 +154,28 @@ layout:
         - { field: work_district, label: "Workplace District" }
         - { field: workers,       label: "Workers", format: ",.0f" }
       width: 1.0
+
+  # New chart-type coverage: type: observable-plot's mark: dot — a real
+  # scatter plot, one point per zone. Every dashboard-6-network.yaml panel
+  # above this one is pinned to activitysim-baseline; this one is
+  # deliberately left UNPINNED with fill: scenario instead, since the
+  # real story here is genuinely cross-scenario: the density variant's
+  # own real +40% TAZ 1 employment increase (026-activitysim-demo-content)
+  # renders as a visibly shifted point relative to the same zone's
+  # baseline/transit-variant position.
+  row_land_use_scatter:
+    - type:    observable-plot
+      title:   "Employment vs. Households by Zone"
+      metric:  land_use_summary
+      description: "One point per zone, across every active scenario. The density variant's real +40% TAZ 1 employment increase is visible as a shifted point."
+      mark:    dot
+      x:       TOTHH
+      y:       TOTEMP
+      fill:    scenario
+      tip:     true
+      grid:    true
+      height:  380
+      width:   1.0
 
   row_land_use:
     - type:       table

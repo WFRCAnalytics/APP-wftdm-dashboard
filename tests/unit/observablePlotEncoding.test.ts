@@ -350,3 +350,59 @@ describe('resolveObservablePlotEncoding — non-scenario categorical fill/stroke
     ])
   })
 })
+
+// Heatmap support (mark: cell/cellX/cellY/rect) — a fill/stroke channel
+// bound to a genuinely numeric column (e.g. a trip count for a purpose ×
+// mode matrix) must NOT go through the categorical domain/range branch
+// above — Plot's own built-in continuous/sequential scale needs to see
+// the real numeric values untouched by an explicit categorical override.
+describe('resolveObservablePlotEncoding — numeric fill/stroke (heatmap) color', () => {
+  const heatmapRows = [
+    { primary_purpose: 'HBW', major_trip_mode: 'SOV', trips: 120 },
+    { primary_purpose: 'HBW', major_trip_mode: 'Transit', trips: 30 },
+    { primary_purpose: 'HBO', major_trip_mode: 'SOV', trips: 80 },
+  ]
+
+  it('does not set domain/range for a numeric fill — legend:true still applies, letting Plot infer its own continuous scale', () => {
+    const result = resolveObservablePlotEncoding({ ...baseConfig, fill: 'trips' }, heatmapRows)
+    expect(result.plotOptions.color).toEqual({ legend: true, style: LEGEND_STYLE, swatchSize: 9 })
+  })
+
+  it('does the same for a numeric stroke', () => {
+    const result = resolveObservablePlotEncoding({ ...baseConfig, stroke: 'trips' }, heatmapRows)
+    expect(result.plotOptions.color).toEqual({ legend: true, style: LEGEND_STYLE, swatchSize: 9 })
+  })
+
+  it('a COUNT(*)-derived bigint fill value is also treated as numeric, not categorical', () => {
+    const bigintRows = [
+      { primary_purpose: 'HBW', major_trip_mode: 'SOV', trips: 120n },
+      { primary_purpose: 'HBO', major_trip_mode: 'SOV', trips: 80n },
+    ]
+    const result = resolveObservablePlotEncoding({ ...baseConfig, fill: 'trips' }, bigintRows)
+    expect(result.plotOptions.color).toEqual({ legend: true, style: LEGEND_STYLE, swatchSize: 9 })
+  })
+
+  it('coerces a bigint fill value to a real number on the returned data — Plot\'s own scale math is never handed a bigint', () => {
+    const bigintRows = [{ primary_purpose: 'HBW', major_trip_mode: 'SOV', trips: 120n }]
+    const result = resolveObservablePlotEncoding({ ...baseConfig, fill: 'trips' }, bigintRows)
+    expect(result.data).toEqual([{ primary_purpose: 'HBW', major_trip_mode: 'SOV', trips: 120 }])
+    expect(typeof (result.data[0] as { trips: unknown }).trips).toBe('number')
+  })
+
+  it('a mixed numeric/non-numeric fill column falls back to the categorical branch, not silently dropped', () => {
+    const mixedRows = [
+      { category: 'a', metric: 5 },
+      { category: 'b', metric: 'n/a' },
+    ]
+    const result = resolveObservablePlotEncoding({ ...baseConfig, fill: 'metric' }, mixedRows)
+    expect(result.plotOptions.color).toMatchObject({
+      domain: ['5', 'n/a'],
+      range: ['var(--chart-1)', 'var(--chart-2)'],
+    })
+  })
+
+  it('an empty result set never crashes the numeric-detection check', () => {
+    const result = resolveObservablePlotEncoding({ ...baseConfig, fill: 'trips' }, [])
+    expect(result.plotOptions.color).toEqual({ legend: true, style: LEGEND_STYLE, swatchSize: 9 })
+  })
+})

@@ -1113,6 +1113,61 @@ the chart reactively. Inputs render as controls inside the panel card.
 
 Also accepts `comparison:`/`compare_on:` (019-baseline-diff-consumption) — see "Scenario comparison / diff mode" under `type: zonemap` below, the shared grammar all four comparison-capable panel types use identically. A row whose `diff_value` is `NULL` (the zero-baseline percent-diff case) is cleanly omitted from the rendered marks, never coerced to `0`.
 
+**`mark:` accepts any `@observablehq/plot` mark-constructor export**, not just `barY`/`lineY` — it's looked up dynamically (`Plot[markName]`), so `dot` (scatter), `boxX`/`boxY` (box-and-whisker), `cell`/`cellX`/`cellY`/`rect` (heatmap/matrix), `areaY`, `ruleY`, and any other real Plot mark all work with zero additional configuration:
+
+```yaml
+# Scatter — one point per row. x/y are both continuous here (unlike the
+# discrete x a bar chart's category axis uses).
+- type:    observable-plot
+  title:   Employment vs. Households by Zone
+  metric:  land_use_summary
+  mark:    dot
+  x:       TOTHH
+  y:       TOTEMP
+  fill:    scenario           # optional — colors points, same fill/stroke grammar as barY
+  tip:     true
+  width:   1.0
+
+# Box plot — boxX draws horizontal boxes (a continuous x, a categorical
+# y); boxY is the vertical mirror image (categorical x, continuous y).
+# Needs ROW-LEVEL (non-aggregated) data — a metric whose SQL does not
+# GROUP BY the category column, so d3-shape's box-and-whisker statistics
+# (median/IQR/whiskers) are computed from real individual values, not a
+# single pre-aggregated row per category.
+- type:    observable-plot
+  title:   Age Distribution by Person Type
+  metric:  person_household_profile   # one row per person — not GROUP BY'd
+  mark:    boxX
+  x:       age
+  y:       person_type
+  tip:     true
+  width:   1.0
+
+# Heatmap/matrix — cell's x/y are both categorical; fill is a NUMERIC
+# value (a real count/measure, not a category name). A numeric fill/
+# stroke channel is detected automatically (panels/observablePlotEncoding.ts)
+# and skips this app's own categorical --chart-1..5 cycling, letting Plot
+# apply its own built-in continuous/sequential color scale + gradient
+# legend instead — the same `fill:`/`legend:true` grammar as any other
+# color channel, no separate "sequential" key to set. PIN this to one
+# scenario (or otherwise ensure x+y is unique per row) — unlike a bar/dot
+# chart, a cell has no series/facet channel to separate an unpinned
+# $scenario union's multiple rows sharing the same (x, y) cell: they
+# render as fully overlapping <rect>s at the same position, and only the
+# topmost (last-drawn) one is visible — a real, confirmed silent-data-
+# hiding gotcha, not a rendering bug to work around here.
+- type:    observable-plot
+  title:   Trip Purpose × Mode Heatmap
+  metric:  purpose_mode_flow
+  scenario: activitysim-baseline   # see the note above — a cell chart needs one row per (x, y)
+  mark:    cell
+  x:       primary_purpose
+  y:       major_trip_mode
+  fill:    trips              # numeric — a real trip count, not a category
+  tip:     true
+  width:   1.0
+```
+
 ### `type: recharts` (029-shadcn-chart-panel)
 
 shadcn/ui's official chart component — a themed layer over Recharts using

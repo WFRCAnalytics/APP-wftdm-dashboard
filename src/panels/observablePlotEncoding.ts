@@ -223,6 +223,26 @@ export function resolveObservablePlotEncoding(
   const yField = config.y
   const filteredRows = yField ? rows.filter((row) => row[yField] !== null) : rows
 
+  // Heatmap support (mark: cell/cellX/cellY/rect): a fill/stroke channel
+  // bound to a genuinely NUMERIC column (e.g. a trip count) needs Plot's
+  // own built-in continuous/sequential color scale — not the categorical
+  // domain/range override the `else` branch below builds for a real
+  // categorical channel (tour_mode, primary_purpose, ...). Detected once,
+  // up front, so both the `data` coercion right below and the color-
+  // resolution branch further down agree on the same classification.
+  // `typeof === 'bigint'` counts as numeric too — a `COUNT(*)`-derived
+  // column (e.g. purpose_mode_flow's own `trips`) arrives over Arrow as a
+  // JS bigint, not `number` (the same real, already-documented gap
+  // ZoneMapPanel.tsx's/panels/formatValue.ts's own fixes address for
+  // their own, separate code paths).
+  const colorField = config.fill ?? config.stroke
+  const isNumericColorValue = (v: unknown): boolean => typeof v === 'number' || typeof v === 'bigint'
+  const colorFieldIsNumeric =
+    Boolean(colorField) &&
+    colorField !== 'scenario' &&
+    filteredRows.length > 0 &&
+    filteredRows.every((row) => isNumericColorValue(row[colorField as string]))
+
   // 035-scenario-label-color: unlike plotly/recharts, Observable Plot
   // reads legend/axis/facet text DIRECTLY from each row's own cell value
   // — there is no separate "trace name"/"chart config label" field to
@@ -234,7 +254,15 @@ export function resolveObservablePlotEncoding(
   const isScenarioColor = (config.fill === 'scenario' || config.stroke === 'scenario') && scenarioDisplay !== undefined
   const data = isScenarioColor
     ? filteredRows.map((row) => ({ ...row, scenario: resolveScenarioLabel(String(row.scenario), scenarioDisplay) }))
-    : filteredRows
+    : colorFieldIsNumeric
+      ? // A bigint color value reaches Plot itself here (not just this
+        // module's own domain/range computation below) — Plot's internal
+        // scale-domain arithmetic (min/max/interpolation) is written
+        // against plain numbers and is never verified against bigint,
+        // so every row's own color value is coerced up front rather than
+        // trusting Plot to handle a mixed/foreign numeric type correctly.
+        filteredRows.map((row) => ({ ...row, [colorField as string]: Number(row[colorField as string]) }))
+      : filteredRows
 
   if (isScenarioColor) {
     // Observable Plot's own color scale is all-or-nothing: an explicit
@@ -291,8 +319,19 @@ export function resolveObservablePlotEncoding(
     // "all-or-nothing explicit range" mechanism the scenario branch above
     // already established (Plot's color scale has no partial-override
     // mode — research.md §4 of 035, re-confirmed here).
-    const colorField = config.fill ?? config.stroke
-    if (colorField && colorField !== 'scenario') {
+    //
+    // Heatmap support: a numeric colorField (colorFieldIsNumeric, computed
+    // above alongside `data`) skips this categorical branch entirely —
+    // Plot infers its own continuous/sequential scale from real numeric
+    // values automatically (no explicit domain/range needed, and setting
+    // one here would wrongly stringify every distinct count into its own
+    // arbitrary categorical swatch instead of a smooth intensity ramp).
+    // `plotOptions.color.legend: true`, already set unconditionally above
+    // whenever fill/stroke is configured, still applies — Plot renders it
+    // as a gradient ramp for a continuous scale, the same option value
+    // producing the right legend shape for either case with no branching
+    // needed here.
+    if (colorField && colorField !== 'scenario' && !colorFieldIsNumeric) {
       const distinctValues: string[] = []
       const seen = new Set<string>()
       for (const row of filteredRows) {

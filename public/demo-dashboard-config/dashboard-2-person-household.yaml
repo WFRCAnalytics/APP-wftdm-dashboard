@@ -46,6 +46,9 @@ sections:
   - id: cdap
     label: "CDAP"
     rows: [row_cdap]
+  - id: age-profile
+    label: "Age Profile"
+    rows: [row_age_by_person_type]
   - id: explore
     label: "Explore Person/Household Data"
     rows: [row_explore]
@@ -183,6 +186,28 @@ layout:
         - { field: hhsize,           label: "HH Size" }
         - { field: persons,          label: "Persons", format: ",.0f" }
       width: 1.0
+
+  # New chart-type coverage: type: observable-plot's mark: boxX — a real
+  # box-and-whisker distribution, one box per ActivitySim person type,
+  # reusing the same real person_household_profile dataset row_explore
+  # below already queries. Pinned to baseline — the underlying synthetic
+  # population/demographics don't meaningfully differ across the density/
+  # transit-service variants (only land use and transit level-of-service
+  # change between scenarios), so an unpinned $scenario union would just
+  # triplicate the same age distribution three times over.
+  row_age_by_person_type:
+    - type:    observable-plot
+      title:   "Age Distribution by Person Type"
+      metric:  person_household_profile
+      scenario: activitysim-baseline
+      description: "Baseline scenario. One box per ActivitySim person type — real per-person ages (median line, IQR box, min/max whiskers)."
+      mark:    boxX
+      x:       age
+      y:       person_type
+      tip:     true
+      grid:    true
+      height:  420
+      width:   1.0
 
   # Not a documented CALIBRATION-SUMMARIES.md submodel — an open-ended
   # exploration sandbox over a real, rich person/household dataset
