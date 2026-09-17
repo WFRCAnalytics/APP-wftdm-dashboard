@@ -10,7 +10,7 @@ import { resolveBuiltInPreset, resolveRasterProvider } from '@/panels/basemap/re
 // comment for why this is the one real import site, not main.tsx.
 import '@/panels/basemap/pmtilesProtocol'
 import { buildProtomapsStyle, isProtomapsFlavorName } from '@/panels/basemap/protomapsStyle'
-import { getEffectivePmtilesSource } from '@/state/protomapsSourceState'
+import { getEffectiveProtomapsSource } from '@/state/protomapsSourceState'
 
 // Same background-only, zero-network style FlowMapPanel.tsx defined in
 // 010-flowmap-panel — re-exported here as the single source of truth for
@@ -116,12 +116,12 @@ async function resolvePresetName(name: string, signal?: AbortSignal): Promise<Re
   // unlike every other built-in preset above. Checked before the
   // raster-provider fallback below, contracts/basemap-resolution.md.
   if (isProtomapsFlavorName(name)) {
-    const pmtilesUrl = getEffectivePmtilesSource()
-    // FR-010 — no deployer default AND no viewer override: the same
-    // fail-soft fallback every other unconfigured/unreachable basemap
-    // case already uses, never a thrown error up to the panel.
-    if (!pmtilesUrl) return { kind: 'style', style: freshBlankStyle() }
-    return { kind: 'style', style: buildProtomapsStyle(name, pmtilesUrl) }
+    const source = getEffectiveProtomapsSource()
+    // FR-010 — no deployer-configured source at all: the same fail-soft
+    // fallback every other unconfigured/unreachable basemap case already
+    // uses, never a thrown error up to the panel.
+    if (!source) return { kind: 'style', style: freshBlankStyle() }
+    return { kind: 'style', style: buildProtomapsStyle(name, source) }
   }
 
   const raster = await resolveRasterProvider(name, signal)

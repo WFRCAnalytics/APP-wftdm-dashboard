@@ -29,7 +29,7 @@ import { initDuckDB } from './services/duckdb.ts'
 import { discoverScenarios } from './services/scenarioDiscovery.ts'
 import { loadDashboards, loadDashboardBranding, type DashboardBranding } from './services/yamlLoader.ts'
 import { setDeployerScenarioPalette } from './panels/scenarioDisplay.ts'
-import { setDeployerPmtilesUrl } from './state/protomapsSourceState.ts'
+import { setDeployerProtomapsSource } from './state/protomapsSourceState.ts'
 import { setDeployerInterfaceColor, computeForegroundFor } from './panels/interfaceColor.ts'
 import { parseDashboardConfig } from './layout/types.ts'
 import { Shell } from './layout/shell.tsx'
@@ -165,6 +165,7 @@ const branding: DashboardBranding = {
   logoUrlDark: primaryBranding.logoUrlDark ?? demoBranding.logoUrlDark,
   scenarioPalette: primaryBranding.scenarioPalette ?? demoBranding.scenarioPalette,
   protomapsPmtilesUrl: primaryBranding.protomapsPmtilesUrl ?? demoBranding.protomapsPmtilesUrl,
+  protomapsApiKey: primaryBranding.protomapsApiKey ?? demoBranding.protomapsApiKey,
   primaryColor: primaryBranding.primaryColor ?? demoBranding.primaryColor,
   secondaryColor: primaryBranding.secondaryColor ?? demoBranding.secondaryColor,
   accentColor: primaryBranding.accentColor ?? demoBranding.accentColor,
@@ -183,15 +184,26 @@ const validScenarioPalette = (branding.scenarioPalette ?? []).filter((entry) =>
   CSS.supports('color', entry),
 )
 setDeployerScenarioPalette(validScenarioPalette.length > 0 ? validScenarioPalette : undefined)
-// 041-protomaps-pmtiles-basemap: same real/demo-root precedence as every
-// other DashboardBranding field above — set once, at boot, before any
-// panel/Basemap-tab resolution could ever read it. No semantic
-// validation here (unlike scenarioPalette's CSS.supports() check above)
-// — a bad/unreachable URL is validated lazily, on first real use, by the
-// pmtiles client library itself (data-model.md E-2), the same fail-soft-
-// until-actually-used convention every other basemap source in this app
-// already follows.
-setDeployerPmtilesUrl(branding.protomapsPmtilesUrl)
+// 041-protomaps-pmtiles-basemap, revised: same real/demo-root precedence
+// as every other DashboardBranding field above — set once, at boot,
+// before any panel/Basemap-tab resolution could ever read it. A
+// deployer's own hosted-API key wins over a self-hosted PMTiles URL when
+// both happen to be set (a key needs no region/bbox prep and works for
+// any zone geometry, so it's the more capable of the two) — this mirrors
+// what the two fields' own doc comments on DashboardBranding already
+// state as the intended precedence. No semantic validation of either
+// value here (unlike scenarioPalette's CSS.supports() check above) — a
+// bad/unreachable PMTiles URL is validated lazily, on first real use, by
+// the pmtiles client library itself, and a bad/revoked API key simply
+// fails the live tile request the same way any other unreachable basemap
+// source does (FR-010's existing fail-soft-to-blank convention).
+setDeployerProtomapsSource(
+  branding.protomapsApiKey
+    ? { kind: 'hosted-api', apiKey: branding.protomapsApiKey }
+    : branding.protomapsPmtilesUrl
+      ? { kind: 'pmtiles', url: branding.protomapsPmtilesUrl }
+      : undefined,
+)
 // 061-appearance-controls: same real/demo-root precedence and
 // CSS.supports() validation as scenarioPalette above. Applied to
 // document.documentElement exactly ONCE, here, at boot — mirroring the

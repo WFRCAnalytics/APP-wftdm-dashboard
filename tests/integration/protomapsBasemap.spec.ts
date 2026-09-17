@@ -67,7 +67,64 @@ async function routeDeployerDefault(page: Page, protomapsPmtilesUrl: string | un
   )
 }
 
+// Revised design — a deployer's hosted-API key, the other real
+// deployer-config field state/protomapsSourceState.ts's getEffective
+// ProtomapsSource() resolves (checked ahead of protomapsPmtilesUrl by
+// main.tsx — see that file's own comment).
+async function routeDeployerApiKey(page: Page, protomapsApiKey: string) {
+  await page.route('**/dashboard-config/index.json', (route) =>
+    route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({ dashboards: [], protomapsApiKey }),
+    }),
+  )
+}
+
+// A real, live api.protomaps.com tile request is never made in this
+// suite — intercepted the same way the pmtiles fixture routes above
+// avoid a real network dependency. An empty (zero-byte) body is a valid,
+// if degenerate, vector tile (the same "empty protobuf message" fact
+// scripts/build-protomaps-test-fixture.py's own header comment already
+// documents for the pmtiles path) — enough to prove the source resolves
+// and a flavor's own background layer paints, with no real OSM-schema
+// tile data needed.
+async function serveHostedApiTiles(page: Page) {
+  await page.route('https://api.protomaps.com/**', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/x-protobuf', body: Buffer.alloc(0) }),
+  )
+}
+
+// The real public/demo-dashboard-config/index.json now carries a real,
+// deployer-configured protomapsApiKey (the whole point of this feature —
+// WFRC's real demo deployment gets working Protomaps flavors with no
+// viewer configuration at all). tests/global-setup.js no longer blanks
+// this file for a Playwright run (040-test-suite-migration retired that
+// blanking, replaced by testing directly against the real, permanent
+// demo content) — so every test in this file, which wants precise
+// control over exactly what IS/ISN'T configured, must strip that one
+// field from the demo root's response, not just the primary (gitignored,
+// normally-404) dashboard-config/ root. Without this, every "not
+// configured" / PMTiles-precedence assertion below would spuriously see
+// the real demo key and resolve a hosted-API source unconditionally.
+//
+// Forwards the REAL response (route.fetch()) and only deletes the
+// Protomaps fields — an earlier version of this helper fulfilled a
+// synthetic `{dashboards: []}` body instead, which discarded the real
+// demo tab list entirely and left the app with zero dashboards, so
+// nothing (including the Settings button every test needs) ever
+// rendered. The real dashboards/title/logo fields must survive.
+async function neutralizeDemoRoot(page: Page) {
+  await page.route('**/demo-dashboard-config/index.json', async (route) => {
+    const response = await route.fetch()
+    const body = (await response.json()) as Record<string, unknown>
+    delete body.protomapsApiKey
+    delete body.protomapsPmtilesUrl
+    await route.fulfill({ response, json: body })
+  })
+}
+
 async function boot(page: Page) {
+  await neutralizeDemoRoot(page)
   await page.goto('/')
   await page.waitForFunction(() => window.__wftdm !== undefined, null, { timeout: 30_000 })
   await page.waitForFunction(
@@ -80,6 +137,36 @@ async function boot(page: Page) {
 async function openBasemapTab(page: Page) {
   await page.getByRole('button', { name: 'Settings' }).click()
   await page.getByRole('tab', { name: 'Basemap' }).click()
+}
+
+// A real, confirmed MapLibre race, found while writing this describe
+// block's own tests (not specific to Protomaps): the preview map's own
+// mount effect stages the app-wide default preset (a URL-based built-in
+// preset — e.g. 'openfreemap-positron'), and `Map#setStyle(url)` fetches
+// that URL ASYNCHRONOUSLY, internally, with no cancellation hook this
+// component's own AbortController reaches (that controller only guards
+// OUR OWN loadBasemapStyle() call, not a fetch MapLibre already kicked
+// off from a PRIOR setStyle() call). If a SECOND setStyle() (e.g. a
+// flavor click) happens before that first fetch resolves, MapLibre still
+// applies the stale fetch's result once it lands — silently reverting
+// the second, newer style. Every OTHER real preset in this file's own
+// existing tests happens to dodge this by extra setup work naturally
+// giving the first fetch a head start; this test file's own more
+// tightly-timed clicks can hit it directly. Waiting for the INITIAL
+// default to finish loading before ever clicking anything closes the
+// window this race needs.
+async function waitForInitialStyleSettled(page: Page) {
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const map = window.__basemapPreviewTestMap
+        return {
+          isStyleLoaded: map?.isStyleLoaded() ?? false,
+          sourceIds: map ? Object.keys(map.getStyle().sources) : [],
+        }
+      }),
+    )
+    .toMatchObject({ isStyleLoaded: true, sourceIds: ['ne2_shaded', 'openmaptiles'] })
 }
 
 function protomapsRadioGroup(page: Page) {
@@ -129,7 +216,7 @@ test.describe('041-protomaps-pmtiles-basemap — US2: not configured (FR-010)', 
     }
     await expect(page.getByTestId('protomaps-not-configured')).toBeVisible()
     await expect(page.getByTestId('protomaps-not-configured')).toHaveText(
-      'No PMTiles source configured for this deployment.',
+      'No Protomaps source configured for this deployment.',
     )
   })
 })
@@ -240,58 +327,71 @@ test.describe('041-protomaps-pmtiles-basemap — US2: external URL behaves ident
   })
 })
 
-test.describe('041-protomaps-pmtiles-basemap — US3: viewer session override (FR-006, FR-007)', () => {
-  test('a viewer can enter their own PMTiles URL, use it immediately with no reload, and it does not persist across reload', async ({
+// Revised design: the viewer session override (US3, FR-006/FR-007) was
+// removed entirely — only a deployer can configure a Protomaps source
+// now (see state/protomapsSourceState.ts's own header comment for why).
+// This block replaces it: a deployer-configured hosted-API key resolves
+// to a live api.protomaps.com tiles source instead of a self-hosted
+// PMTiles file — the other real deployer-config field
+// getEffectiveProtomapsSource() can resolve, checked ahead of
+// protomapsPmtilesUrl (main.tsx).
+test.describe('041-protomaps-pmtiles-basemap, revised — deployer-configured hosted-API key', () => {
+  test('all 5 flavors are selectable and the resolved source is a live api.protomaps.com tiles URL carrying the key', async ({
     page,
   }) => {
-    await servePmtilesFixture(page, RELATIVE_FIXTURE_URL)
+    await serveHostedApiTiles(page)
+    await routeDeployerApiKey(page, 'test-key-123')
     await boot(page)
     await openBasemapTab(page)
 
-    await expect(page.getByTestId('protomaps-not-configured')).toBeVisible()
-    const group = protomapsRadioGroup(page)
-    for (const name of ['Light', 'Dark', 'White', 'Grayscale', 'Black']) {
-      await expect(group.getByRole('radio', { name })).toBeDisabled()
-    }
-
-    await page
-      .getByLabel('PMTiles source URL')
-      .fill('/APP-wftdm-dashboard/test-fixtures/protomaps/tiny-test-area.pmtiles')
-    await page.getByRole('button', { name: 'Use this source' }).click()
-
-    // No reload — tiles become usable immediately.
     await expect(page.getByTestId('protomaps-not-configured')).toHaveCount(0)
-    for (const name of ['Light', 'Dark', 'White', 'Grayscale', 'Black']) {
-      await expect(group.getByRole('radio', { name })).toBeEnabled()
-    }
-    await expect(page.getByRole('button', { name: 'Reset to default' })).toBeVisible()
+    await expect(page.getByTestId('protomaps-source-status')).toBeVisible()
+    await waitForInitialStyleSettled(page)
 
-    // Session-only — a reload discards it (state/protomapsSourceState.ts
-    // is a plain in-memory module, never Web Storage).
-    await boot(page)
-    await openBasemapTab(page)
-    await expect(page.getByTestId('protomaps-not-configured')).toBeVisible()
+    const group = protomapsRadioGroup(page)
+    const tile = group.getByRole('radio', { name: 'Light' })
+    await expect(tile).toBeEnabled()
+    await tile.click()
+    await expect(tile).toHaveAttribute('aria-checked', 'true')
+
+    await expect
+      .poll(() => page.evaluate(() => window.__basemapPreviewTestMap?.getStyle().sources.protomaps))
+      .toMatchObject({ tiles: ['https://api.protomaps.com/tiles/v4/{z}/{x}/{y}.mvt?key=test-key-123'] })
   })
 
-  test('an unreachable/invalid URL is rejected with a distinct error and does not disturb the prior state', async ({
+  test('a hosted-API key takes precedence over a self-hosted PMTiles URL when a deployer somehow configures both', async ({
     page,
   }) => {
-    await page.route('**/definitely-not-a-real-pmtiles-host.example/*', (route) => route.abort())
+    await serveHostedApiTiles(page)
+    await servePmtilesFixture(page, RELATIVE_FIXTURE_URL)
+    await page.route('**/dashboard-config/index.json', (route) =>
+      route.fulfill({
+        contentType: 'application/json',
+        body: JSON.stringify({
+          dashboards: [],
+          protomapsApiKey: 'test-key-123',
+          protomapsPmtilesUrl: '/APP-wftdm-dashboard/test-fixtures/protomaps/tiny-test-area.pmtiles',
+        }),
+      }),
+    )
     await boot(page)
     await openBasemapTab(page)
+    await waitForInitialStyleSettled(page)
+    // Any flavor tile needs to be staged before the preview map actually
+    // applies a Protomaps style — the tab opens on whatever was already
+    // applied (APP_DEFAULT), not a Protomaps flavor.
+    await protomapsRadioGroup(page).getByRole('radio', { name: 'Light' }).click()
 
-    await page.getByLabel('PMTiles source URL').fill('https://definitely-not-a-real-pmtiles-host.example/x.pmtiles')
-    await page.getByRole('button', { name: 'Use this source' }).click()
+    await expect
+      .poll(async () => {
+        const source = await page.evaluate(() => window.__basemapPreviewTestMap?.getStyle().sources.protomaps)
+        return (source as { tiles?: string[] } | undefined)?.tiles !== undefined
+      })
+      .toBe(true)
 
-    await expect(page.getByTestId('protomaps-source-error')).toBeVisible()
-    await expect(page.getByTestId('protomaps-source-error')).toHaveText(
-      "Couldn't open this PMTiles source. This can happen if the URL is unreachable, or if the hosting server doesn't allow cross-origin access from this site.",
-    )
-    // Distinct from the "not configured" message — and the tiles remain
-    // exactly where they were (still disabled, nothing silently applied).
-    await expect(page.getByTestId('protomaps-not-configured')).toBeVisible()
-    for (const name of ['Light', 'Dark', 'White', 'Grayscale', 'Black']) {
-      await expect(protomapsRadioGroup(page).getByRole('radio', { name })).toBeDisabled()
-    }
+    const source = await page.evaluate(() => window.__basemapPreviewTestMap?.getStyle().sources.protomaps)
+    // A `tiles` array (hosted-api), never a pmtiles:// `url` (self-hosted).
+    expect((source as { tiles?: string[] } | undefined)?.tiles).toBeTruthy()
+    expect((source as { url?: string } | undefined)?.url).toBeUndefined()
   })
 })

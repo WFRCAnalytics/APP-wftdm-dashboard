@@ -5,6 +5,7 @@
 // contracts/basemap-resolution.md.
 import type { StyleSpecification } from 'maplibre-gl'
 import { layers, namedFlavor } from '@protomaps/basemaps'
+import type { ProtomapsSource } from '@/state/protomapsSourceState'
 
 /** The 5 real, official Protomaps flavor names, exposed as
  * BasemapPresetName-compatible values (that type is already a plain
@@ -53,24 +54,49 @@ const SOURCE_ID = 'protomaps'
 // template.
 const BASEMAPS_ASSETS_BASE = 'https://protomaps.github.io/basemaps-assets'
 
+// The hosted API's own real, documented ZXY vector tile template
+// (protomaps.com/api) — `{z}/{x}/{y}` plus the `key` query parameter,
+// confirmed against Protomaps' own current docs. Same OSM-derived vector
+// schema as a self-hosted PMTiles extract of their basemaps build, so
+// layers()'s own generated source-layer references resolve identically
+// against either source kind — only the `sources.protomaps` object
+// itself differs below.
+const HOSTED_API_TILE_TEMPLATE = 'https://api.protomaps.com/tiles/v4/{z}/{x}/{y}.mvt?key='
+// Matches this build's own real max_zoom (confirmed against the
+// @protomaps/basemaps build pipeline's own tile pyramid depth) — needed
+// so MapLibre correctly over-zooms past it rather than requesting tiles
+// that don't exist.
+const HOSTED_API_MAX_ZOOM = 15
+
+function buildSource(source: ProtomapsSource): StyleSpecification['sources'][string] {
+  if (source.kind === 'pmtiles') {
+    // Both a bundled relative path and a full https:// URL are valid
+    // PMTiles protocol targets once prefixed with `pmtiles://` (the
+    // `pmtiles` client library's own real, documented URL scheme —
+    // resolved by the Protocol registered in
+    // panels/basemap/pmtilesProtocol.ts).
+    return { type: 'vector', url: `pmtiles://${source.url}`, attribution: PROTOMAPS_ATTRIBUTION }
+  }
+  return {
+    type: 'vector',
+    tiles: [`${HOSTED_API_TILE_TEMPLATE}${source.apiKey}`],
+    maxzoom: HOSTED_API_MAX_ZOOM,
+    attribution: PROTOMAPS_ATTRIBUTION,
+  }
+}
+
 /**
- * Pure — no MapLibre/browser API call, no network fetch. `pmtilesUrl` is
- * whatever `getEffectivePmtilesSource()` (state/protomapsSourceState.ts)
- * resolved — a bundled relative path or a full https:// URL, both valid
- * PMTiles protocol targets once prefixed with `pmtiles://` (the
- * `pmtiles` client library's own real, documented URL scheme — resolved
- * by the Protocol registered in panels/basemap/pmtilesProtocol.ts).
+ * Pure — no MapLibre/browser API call, no network fetch. `source` is
+ * whatever `getEffectiveProtomapsSource()`
+ * (state/protomapsSourceState.ts) resolved — a self-hosted PMTiles file
+ * or a hosted-API key, both deployer-only (no viewer override exists).
  */
-export function buildProtomapsStyle(flavorName: ProtomapsFlavorName, pmtilesUrl: string): StyleSpecification {
+export function buildProtomapsStyle(flavorName: ProtomapsFlavorName, source: ProtomapsSource): StyleSpecification {
   const flavorArg = FLAVOR_ARG[flavorName]
   return {
     version: 8,
     sources: {
-      [SOURCE_ID]: {
-        type: 'vector',
-        url: `pmtiles://${pmtilesUrl}`,
-        attribution: PROTOMAPS_ATTRIBUTION,
-      },
+      [SOURCE_ID]: buildSource(source),
     },
     // layers() returns @maplibre/maplibre-gl-style-spec's own
     // LayerSpecification[] — structurally identical to maplibre-gl's own

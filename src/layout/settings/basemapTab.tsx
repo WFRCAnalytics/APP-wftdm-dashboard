@@ -1,8 +1,7 @@
-import { useEffect, useRef, useState, useSyncExternalStore, type FormEvent } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import '@/panels/mapControls.css'
-import { PMTiles } from 'pmtiles'
 import {
   Landmark,
   Globe,
@@ -43,12 +42,6 @@ import { DEFAULT_CENTER, DEFAULT_ZOOM } from '@/panels/mapDefaults'
 import { useGlobalBasemap } from '@/hooks/useGlobalBasemap'
 import { useProtomapsSource } from '@/hooks/useProtomapsSource'
 import { setGlobalBasemap } from '@/state/basemapState'
-import {
-  subscribe as subscribeProtomapsSource,
-  getViewerPmtilesOverride,
-  setViewerPmtilesOverride,
-  clearViewerPmtilesOverride,
-} from '@/state/protomapsSourceState'
 import { PanelEmptyState } from '@/panels/PanelEmptyState'
 import { PanelErrorState } from '@/panels/PanelErrorState'
 import type { BasemapPresetName } from '@/panels/basemap/types'
@@ -186,26 +179,11 @@ const PROTOMAPS_FLAVOR_LABEL_AND_ICON: Record<(typeof PROTOMAPS_FLAVOR_NAMES)[nu
 
 export function BasemapTab() {
   const appliedBasemap = useGlobalBasemap()
-  // 041-protomaps-pmtiles-basemap — the effective PMTiles source
-  // (viewer override ?? deployer default ?? undefined). Reactive: a
-  // viewer committing/clearing their own override below re-renders this
-  // component (and the shared preview map, via its own effect
-  // dependency) immediately, no reload.
+  // 041-protomaps-pmtiles-basemap, revised — the effective Protomaps
+  // source (self-hosted PMTiles or a hosted-API key), deployer-only, or
+  // undefined. No viewer override exists anymore, so this is a plain
+  // boot-time value, not a reactive one (hooks/useProtomapsSource.ts).
   const protomapsSource = useProtomapsSource()
-  // Whether the CURRENT source is specifically a viewer override (as
-  // opposed to the deployer default, or nothing) — drives the "Reset to
-  // default" affordance (contracts/basemap-tab-ui.md). A second,
-  // independent useSyncExternalStore call against the same store/
-  // selector-free subscribe(), watching a different selector than
-  // useProtomapsSource()'s own — both are valid, ordinary React.
-  const protomapsOverrideActive = useSyncExternalStore(
-    subscribeProtomapsSource,
-    () => getViewerPmtilesOverride() !== undefined,
-  )
-  const [protomapsOverrideDraft, setProtomapsOverrideDraft] = useState('')
-  const [protomapsOverrideStatus, setProtomapsOverrideStatus] = useState<
-    { kind: 'idle' } | { kind: 'validating' } | { kind: 'error'; message: string }
-  >({ kind: 'idle' })
   // T013 — initialized ONCE to whatever is currently applied (or the
   // resolved app-default), so the preview never starts blank (FR-011).
   // Deliberately not re-synced on a later live appliedBasemap change —
@@ -397,70 +375,6 @@ export function BasemapTab() {
 
   const stagedIsRaster = isRasterProviderSelection(stagedSelection)
 
-  // 041-protomaps-pmtiles-basemap (FR-007, data-model.md E-2's
-  // validation rule): before accepting a viewer-entered URL, confirm it
-  // actually opens — the `pmtiles` client library's own real
-  // getHeader() call is the natural, already-provided validation
-  // surface, no hand-rolled byte-sniffing needed. A reachable-but-not-a-
-  // valid-PMTiles-archive URL rejects the same way an unreachable one
-  // does — both are "this source doesn't work," never a silent
-  // fallback (contracts/basemap-tab-ui.md).
-  //
-  // Real, confirmed investigation (this session, live against the actual
-  // deployed site): a URL that's reachable and CORS-open from one origin
-  // can still fail here purely because the hosting server doesn't grant
-  // CORS access to THIS app's own origin — confirmed directly against
-  // https://latest.protomaps.com/v4.pmtiles, which genuinely works end
-  // to end (validates, resolves a style, renders real tiles) from a
-  // localhost dev origin, and fails with a browser-level CORS block
-  // (`Access to fetch at '...' from origin '...' has been blocked by
-  // CORS policy: No 'Access-Control-Allow-Origin' header is present`)
-  // from this app's real production origin. Two real, confirmed, and
-  // deliberately narrow fixes follow from that:
-  //
-  // 1. The catch below used to be a bare `catch { }` — the real thrown
-  //    error was discarded entirely, unseen, which is exactly why this
-  //    investigation needed a live browser reproduction instead of a
-  //    two-second console check. Logging it costs nothing and helps the
-  //    next person debugging a rejected URL.
-  // 2. The message no longer implies "check the URL" is the likely fix —
-  //    a CORS-blocked fetch() and a genuinely broken/unreachable URL are
-  //    NOT distinguishable from caught JS error content; browsers
-  //    deliberately never expose the specific CORS-block reason to page
-  //    script (a security boundary, confirmed directly — only the
-  //    browser's own devtools console prints that string, never
-  //    anything this catch block can read). Naming both real
-  //    possibilities honestly, instead of guessing one, is the correct
-  //    fix given that real constraint — there is no way to detect or
-  //    route around the CORS block itself from here, consistent with
-  //    Protomaps' own documented guidance to copy a tileset to your own
-  //    storage rather than hotlink it.
-  async function handleCommitProtomapsOverride(e: FormEvent) {
-    e.preventDefault()
-    const url = protomapsOverrideDraft.trim()
-    if (!url) return
-    setProtomapsOverrideStatus({ kind: 'validating' })
-    try {
-      await new PMTiles(url).getHeader()
-      setViewerPmtilesOverride(url)
-      setProtomapsOverrideStatus({ kind: 'idle' })
-      setProtomapsOverrideDraft('')
-    } catch (err) {
-      console.error('Protomaps PMTiles source validation failed:', err)
-      setProtomapsOverrideStatus({
-        kind: 'error',
-        message:
-          "Couldn't open this PMTiles source. This can happen if the URL is unreachable, or if the hosting server doesn't allow cross-origin access from this site.",
-      })
-    }
-  }
-
-  function handleResetProtomapsOverride() {
-    clearViewerPmtilesOverride()
-    setProtomapsOverrideStatus({ kind: 'idle' })
-    setProtomapsOverrideDraft('')
-  }
-
   return (
     // UI polish pass: this component now owns its OWN internal scroll
     // split — settingsModal.tsx's Basemap TabsContent no longer sets
@@ -613,9 +527,10 @@ export function BasemapTab() {
             directly above Raster Tiles, after the three vector sections
             above (spec.md FR-001). Not one more SECTIONS entry — unlike
             those three static sections, whether these 5 tiles are
-            selectable at all depends on runtime state (is a PMTiles
-            source currently configured?), a genuinely different
-            rendering shape (contracts/basemap-tab-ui.md). */}
+            selectable at all depends on runtime state (is a deployer-
+            configured Protomaps source currently resolvable — a
+            self-hosted PMTiles file or a hosted-API key?), a genuinely
+            different rendering shape (contracts/basemap-tab-ui.md). */}
         <div className="flex flex-col gap-1.5">
           <h3 className="flex items-center gap-1.5 border-b border-border pb-1 font-heading text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             <Layers className="h-3.5 w-3.5" aria-hidden="true" />
@@ -638,7 +553,7 @@ export function BasemapTab() {
                   data-staged={staged || undefined}
                   disabled={!protomapsSource}
                   onClick={() => setStagedSelection(name)}
-                  title={!protomapsSource ? 'No PMTiles source configured' : undefined}
+                  title={!protomapsSource ? 'No Protomaps source configured' : undefined}
                   className={cn(
                     'flex flex-col items-center justify-center gap-1.5 rounded-lg border px-2 py-3 text-center text-sm font-medium transition-colors',
                     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
@@ -660,55 +575,17 @@ export function BasemapTab() {
               is set up here and it's broken." */}
           {!protomapsSource && (
             <p className="text-sm text-muted-foreground" data-testid="protomaps-not-configured">
-              No PMTiles source configured for this deployment.
+              No Protomaps source configured for this deployment.
             </p>
           )}
           {protomapsSource && (
+            // Deployer-only, revised — there is no viewer-facing override
+            // anymore (see state/protomapsSourceState.ts's header
+            // comment), so this is always the deployment's own
+            // configured source, self-hosted PMTiles or Protomaps'
+            // hosted API.
             <p className="text-xs text-muted-foreground" data-testid="protomaps-source-status">
-              {protomapsOverrideActive
-                ? 'Using your own session-only PMTiles source.'
-                : "Using this deployment's configured PMTiles source."}
-            </p>
-          )}
-
-          {/* FR-006 — always visible/editable, even once a deployer
-              default exists (a viewer may still override it for their
-              own session, contracts/basemap-tab-ui.md); never persists
-              beyond this session (state/protomapsSourceState.ts). */}
-          <form
-            onSubmit={handleCommitProtomapsOverride}
-            className="flex flex-col gap-1.5 sm:flex-row sm:items-center"
-          >
-            <label htmlFor="protomaps-source-override" className="sr-only">
-              PMTiles source URL
-            </label>
-            <input
-              id="protomaps-source-override"
-              type="text"
-              placeholder="https://example.com/your-region.pmtiles"
-              value={protomapsOverrideDraft}
-              onChange={(e) => setProtomapsOverrideDraft(e.target.value)}
-              className="h-9 flex-1 rounded-md border border-input bg-background px-3 text-sm"
-            />
-            <div className="flex gap-1.5">
-              <Button
-                type="submit"
-                size="sm"
-                variant="secondary"
-                disabled={protomapsOverrideStatus.kind === 'validating' || protomapsOverrideDraft.trim().length === 0}
-              >
-                {protomapsOverrideStatus.kind === 'validating' ? 'Checking…' : 'Use this source'}
-              </Button>
-              {protomapsOverrideActive && (
-                <Button type="button" size="sm" variant="ghost" onClick={handleResetProtomapsOverride}>
-                  Reset to default
-                </Button>
-              )}
-            </div>
-          </form>
-          {protomapsOverrideStatus.kind === 'error' && (
-            <p role="alert" data-testid="protomaps-source-error" className="text-sm text-destructive">
-              {protomapsOverrideStatus.message}
+              Using this deployment's configured Protomaps source.
             </p>
           )}
         </div>

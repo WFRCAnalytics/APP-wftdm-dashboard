@@ -74,6 +74,7 @@ type DashboardIndexJson =
       logoUrlDark?: unknown
       scenarioPalette?: unknown
       protomapsPmtilesUrl?: unknown
+      protomapsApiKey?: unknown
       primaryColor?: unknown
       secondaryColor?: unknown
       accentColor?: unknown
@@ -123,15 +124,36 @@ export interface DashboardBranding {
    * deployed assets or a full https:// URL — both forms behave
    * identically (FR-004), since this stays a thin, format-only parse
    * (matching every other field on this interface) and both are just
-   * strings to state/protomapsSourceState.ts's getEffectivePmtilesSource()
+   * strings to state/protomapsSourceState.ts's getEffectiveProtomapsSource()
    * and panels/basemap/protomapsStyle.ts's buildProtomapsStyle().
-   * Absent -> no deployer default; the Basemap tab's Protomaps section
-   * is "not configured" unless a viewer sets a session override
-   * (FR-010). MUST NEVER default to a Protomaps-hosted demo/daily-build/
-   * hosted-API URL (FR-005) — this field is simply left undefined when a
-   * deployer hasn't prepared their own extract; there is no fallback URL
-   * here to omit. */
+   * Absent -> no deployer default; the Basemap tab's Protomaps section is
+   * "not configured" unless `protomapsApiKey` below is set instead. There
+   * is no viewer-facing override for either field — only a deployer can
+   * configure a Protomaps source (a later, deliberate revision of this
+   * feature's own original FR-006/FR-007, which offered a viewer-entered
+   * override; removed because a client-supplied URL had no way to be
+   * vetted, whereas a deployer's own config is already trusted). MUST
+   * NEVER default to a Protomaps-hosted daily-build URL used WITHOUT a
+   * key (that specific free bucket forbids hotlinking) — this field is
+   * simply left undefined when a deployer hasn't prepared their own
+   * extract; there is no fallback URL here to omit. */
   protomapsPmtilesUrl?: string
+  /** The deployer's own Protomaps hosted-API key (protomaps.com/api-keys)
+   * — an alternative to `protomapsPmtilesUrl` above that needs no
+   * self-hosted extract at all: every Protomaps flavor resolves against
+   * `api.protomaps.com`'s live tile service directly, so it works
+   * automatically for any zone geometry a viewer loads, anywhere, with no
+   * region/bbox to prepare. Checked FIRST, ahead of `protomapsPmtilesUrl`,
+   * in main.tsx's precedence (a deployer would set one or the other, not
+   * both). This key is NOT a secret once configured here — it ships in
+   * this app's own public, served config, visible to any viewer who
+   * inspects it — the real protection is Protomaps' own server-side
+   * Origin/Referer allowlist (set per-key in their Account portal), the
+   * same public-but-origin-restricted-token pattern every browser map SDK
+   * (Mapbox GL JS, Google Maps JS) already uses for its own client key.
+   * Never commit a key here that isn't already restricted to this
+   * deployment's real origin(s). */
+  protomapsApiKey?: string
   /** 061-appearance-controls: an optional deployer-configured default for
    * each of the three Primary/Secondary/Accent visual roles — same
    * discovery/precedence rules as every other field above (the real
@@ -244,6 +266,10 @@ export async function loadDashboardBranding(
       protomapsPmtilesUrl:
         typeof parsed.protomapsPmtilesUrl === 'string' && parsed.protomapsPmtilesUrl.length > 0
           ? parsed.protomapsPmtilesUrl
+          : undefined,
+      protomapsApiKey:
+        typeof parsed.protomapsApiKey === 'string' && parsed.protomapsApiKey.length > 0
+          ? parsed.protomapsApiKey
           : undefined,
       primaryColor: typeof parsed.primaryColor === 'string' ? parsed.primaryColor : undefined,
       secondaryColor: typeof parsed.secondaryColor === 'string' ? parsed.secondaryColor : undefined,
