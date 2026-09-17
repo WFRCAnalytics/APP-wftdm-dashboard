@@ -23,6 +23,7 @@ import {
 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 import {
   resolveBuiltInPreset,
@@ -745,31 +746,46 @@ export function BasemapTab() {
             <PanelEmptyState icon={MapIcon} message="No raster tile providers available." />
           )}
           {rasterStatus.kind === 'ready' && rasterStatus.providers.length > 0 && (
-            <select
-              aria-label="Raster tile provider"
-              className="h-9 rounded-md border border-input bg-background px-3 text-sm"
-              value={stagedIsRaster ? stagedSelection : ''}
-              onChange={(e) => setStagedSelection(e.target.value)}
+            // 061-appearance-controls (follow-up): a native <select>'s own
+            // open dropdown listbox is rendered by the OS/browser, not this
+            // app's CSS — its hovered/highlighted option always used the
+            // system accent color (blue on Chromium/Windows), inconsistent
+            // with the rest of the app's now-unified --accent hover/active
+            // language everywhere else (Sidebar, Settings nav, dropdown-
+            // menu, basemap tile grid). Switched to this app's own
+            // Radix-based Select primitive (components/ui/select.tsx,
+            // 033-shadcn-default-theme) instead — a real, custom-rendered
+            // listbox this app's own CSS controls, whose SelectItem already
+            // uses `focus:bg-accent focus:text-accent-foreground` (the same
+            // token every other hover/active surface now uses). Already a
+            // real, working consumer elsewhere (color-picker.tsx's own mode
+            // switcher), not a first-time/unproven primitive.
+            <Select
+              value={stagedIsRaster ? stagedSelection : undefined}
+              onValueChange={(value) => setStagedSelection(value)}
             >
-              <option value="" disabled>
-                Select a raster provider…
-              </option>
-              {rasterStatus.providers.map((provider) =>
-                provider.variants.length === 0 ? (
-                  <option key={provider.name} value={provider.name}>
-                    {provider.name}
-                  </option>
-                ) : (
-                  <optgroup key={provider.name} label={provider.name}>
-                    {provider.variants.map((variant) => (
-                      <option key={variant} value={`${provider.name}.${variant}`}>
-                        {variant}
-                      </option>
-                    ))}
-                  </optgroup>
-                ),
-              )}
-            </select>
+              <SelectTrigger aria-label="Raster tile provider" className="h-9 w-full">
+                <SelectValue placeholder="Select a raster provider…" />
+              </SelectTrigger>
+              <SelectContent>
+                {rasterStatus.providers.map((provider) =>
+                  provider.variants.length === 0 ? (
+                    <SelectItem key={provider.name} value={provider.name}>
+                      {provider.name}
+                    </SelectItem>
+                  ) : (
+                    <SelectGroup key={provider.name}>
+                      <SelectLabel>{provider.name}</SelectLabel>
+                      {provider.variants.map((variant) => (
+                        <SelectItem key={variant} value={`${provider.name}.${variant}`}>
+                          {variant}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  ),
+                )}
+              </SelectContent>
+            </Select>
           )}
         </div>
       </div>

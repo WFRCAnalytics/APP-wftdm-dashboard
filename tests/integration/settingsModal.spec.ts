@@ -639,7 +639,8 @@ test.describe('User Story 1 - Sectioned basemap catalog with stage-then-Apply', 
 
     const requestUrls: string[] = []
     page.on('request', (req) => requestUrls.push(req.url()))
-    await dropdown.selectOption('OpenTopoMap')
+    await dropdown.click()
+    await page.getByRole('option', { name: 'OpenTopoMap' }).click()
     await trueEventually(async () => requestUrls.some((u) => u.includes('opentopomap.org')))
     await expect(page.getByText(/no live preview for raster providers/i)).toHaveCount(0)
     await expect(page.getByTestId('basemap-preview-error')).toHaveCount(0)
@@ -665,7 +666,8 @@ test.describe('User Story 1 - Sectioned basemap catalog with stage-then-Apply', 
     page.on('request', (req) => requestUrls.push(req.url()))
 
     const dropdown = page.getByRole('combobox', { name: 'Raster tile provider' })
-    await dropdown.selectOption('OpenTopoMap')
+    await dropdown.click()
+    await page.getByRole('option', { name: 'OpenTopoMap' }).click()
     await trueEventually(async () => requestUrls.some((u) => u.includes('opentopomap.org')))
 
     await sectionRadioGroup(page, 'CARTO Vector Tiles').getByRole('radio', { name: 'Voyager' }).click()
@@ -713,7 +715,8 @@ test.describe('User Story 1 - Sectioned basemap catalog with stage-then-Apply', 
     await page.getByRole('tab', { name: 'Basemap' }).click()
 
     const dropdown = page.getByRole('combobox', { name: 'Raster tile provider' })
-    await dropdown.selectOption('OpenTopoMap')
+    await dropdown.click()
+    await page.getByRole('option', { name: 'OpenTopoMap' }).click()
     await expect(page.getByTestId('basemap-preview-error')).toBeVisible({ timeout: 8_000 })
 
     // Switching to a vector entry clears the failure state — it doesn't
@@ -728,12 +731,16 @@ test.describe('User Story 1 - Sectioned basemap catalog with stage-then-Apply', 
     await page.getByRole('tab', { name: 'Basemap' }).click()
     const dropdown = page.getByRole('combobox', { name: 'Raster tile provider' })
     await expect(dropdown).toBeVisible()
-    const optionLabels = await dropdown.locator('option, optgroup').evaluateAll((els) =>
-      els.map((el) => el.getAttribute('label') ?? el.textContent ?? ''),
-    )
+    // The Radix Select's own listbox only exists in the DOM once opened
+    // (it's portaled, not always-rendered like a native <option> list).
+    await dropdown.click()
+    const optionLabels = await page
+      .locator('[role="option"], [data-slot="select-label"]')
+      .evaluateAll((els) => els.map((el) => el.textContent ?? ''))
     for (const forbidden of ['MapTiler', 'Thunderforest', 'MapBox', 'HERE', 'AzureMaps', 'CartoDB']) {
       expect(optionLabels.join(' ')).not.toContain(forbidden)
     }
+    await page.keyboard.press('Escape')
   })
 
   test('the Raster Tiles section never renders blank while loading', async ({ page }) => {
