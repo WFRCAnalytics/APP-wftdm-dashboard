@@ -174,3 +174,102 @@ test.describe('User Story 1 - Author a pie chart panel for a categorical share m
     await expect(dialog).not.toBeVisible()
   })
 })
+
+// donut: true — the real Test tab's own row_pie_donut fixture, same real
+// metric/scenario/category/value as REAL_PIE_TITLE above (dashboard-5-
+// trip-models.yaml), so any difference in the rendered wedge paths is
+// attributable to the donut hole alone, not different underlying data.
+test.describe('donut mode (donut: true)', () => {
+  const DONUT_TITLE = 'Donut Chart (Trip Purpose Share)'
+
+  test('renders a real hollow-center ring, not a solid disc — distinct path geometry from the solid pie', async ({
+    page,
+  }) => {
+    await boot(page)
+    await gotoTestTab(page)
+    const donutCard = panelCard(page, DONUT_TITLE)
+    const donutWedges = donutCard.locator('.pie-chart svg[viewBox] path[data-category]')
+    await expect(donutWedges).toHaveCount(10, { timeout: 20_000 })
+
+    // A d3.arc() path with a positive innerRadius draws two concentric arcs
+    // (outer + inner) per wedge, joined by straight edges — a real,
+    // structural signature of a hole, not just "looks different." A solid
+    // pie's own path (row_pie's "Pie Chart (Trip Purpose Share)", same tab)
+    // draws exactly one arc per wedge.
+    const donutArcCounts = await donutWedges.evaluateAll((els) =>
+      els.map((el) => (el.getAttribute('d')?.match(/A/g) ?? []).length),
+    )
+    expect(donutArcCounts.every((count) => count === 2)).toBe(true)
+
+    const solidCard = panelCard(page, 'Pie Chart (Trip Purpose Share)')
+    const solidWedges = solidCard.locator('.pie-chart svg[viewBox] path[data-category]')
+    await expect(solidWedges).toHaveCount(10, { timeout: 20_000 })
+    const solidArcCounts = await solidWedges.evaluateAll((els) =>
+      els.map((el) => (el.getAttribute('d')?.match(/A/g) ?? []).length),
+    )
+    expect(solidArcCounts.every((count) => count === 1)).toBe(true)
+  })
+
+  test('still shows the real legend and a correct hover tooltip in donut mode — unaffected by the hole', async ({
+    page,
+  }) => {
+    await boot(page)
+    await gotoTestTab(page)
+    const card = panelCard(page, DONUT_TITLE)
+    const topWedge = card.locator(`.pie-chart svg[viewBox] path[data-category="${REAL_TOP_PURPOSE}"]`)
+    await expect(topWedge).toBeVisible({ timeout: 20_000 })
+    await expect(card.getByText(REAL_TOP_PURPOSE, { exact: true })).toBeVisible()
+
+    // A real, confirmed finding: a wide-angle wedge's own SVG bounding-box
+    // CENTER — Playwright's default hover point — can legitimately fall
+    // inside a donut's hollow hole rather than on the painted ring itself.
+    // Confirmed live: "work" spans ~131.7° here (its real 36.6% share), and
+    // its bbox center sits at local radius ~69px from the chart's own
+    // center, well inside the 100.8px inner radius — so a plain
+    // `topWedge.hover()` times out with "svg ... intercepts pointer
+    // events" (the empty hole, not the wedge, is what's actually under
+    // that point). Scans the wedge's own bounding box for a real pixel
+    // where SVGGeometryElement.isPointInFill() confirms the point is
+    // genuinely inside the painted ring, then hovers there via Playwright's
+    // own `position` option — a real point on the visible shape, not a
+    // guessed offset.
+    const position = await topWedge.evaluate((el: SVGPathElement) => {
+      const rect = el.getBoundingClientRect()
+      const ctm = el.getScreenCTM()
+      if (!ctm) throw new Error('no screen CTM')
+      const inverse = ctm.inverse()
+      const svg = el.ownerSVGElement!
+      const point = svg.createSVGPoint()
+      const matches: { x: number; y: number }[] = []
+      for (let y = 0; y < rect.height; y += 2) {
+        for (let x = 0; x < rect.width; x += 2) {
+          point.x = rect.left + x
+          point.y = rect.top + y
+          const local = point.matrixTransform(inverse)
+          if (el.isPointInFill(local)) matches.push({ x, y })
+        }
+      }
+      if (matches.length === 0) throw new Error('no point inside the wedge fill was found')
+      // Pick the match closest to the centroid of every matched point, not
+      // just the first one found — a real, confirmed finding: a raw
+      // first-match raster scan (top-left to bottom-right) tends to land
+      // right on the shared boundary edge with a neighboring wedge, where
+      // that neighbor's own later-painted (later in DOM order) fill wins
+      // the real browser hit test even though isPointInFill() correctly
+      // says the point is inside THIS wedge's geometry too. The centroid-
+      // nearest match sits well inside the wedge's body, clear of any
+      // shared edge.
+      const cx = matches.reduce((sum, m) => sum + m.x, 0) / matches.length
+      const cy = matches.reduce((sum, m) => sum + m.y, 0) / matches.length
+      matches.sort((a, b) => (a.x - cx) ** 2 + (a.y - cy) ** 2 - ((b.x - cx) ** 2 + (b.y - cy) ** 2))
+      return matches[0]
+    })
+
+    await topWedge.hover({ position })
+    const tooltip = card.locator('.map-tooltip')
+    await expect(tooltip).toBeVisible()
+    await expect(tooltip).toContainText(REAL_TOP_PURPOSE)
+    await expect(tooltip).toContainText('8626')
+    await expect(tooltip).toContainText('36.6%')
+  })
+})

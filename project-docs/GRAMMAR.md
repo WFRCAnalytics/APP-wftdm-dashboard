@@ -1427,12 +1427,17 @@ standalone shape rather than the treemap/sunburst host-sharing one.
   category: primary_purpose        # literal column — one wedge per distinct value
   value:    trips                  # literal column — wedge size
   color_scheme: Tableau10          # optional — falls back to --chart-1..5 cycling
+  donut:    true                   # optional, default false — hollow-center (donut) instead of a solid disc
   height: 400
 ```
 
 A pie chart renders exactly one series (one full circle divided into
-wedges) — no donut, no exploded wedges, no side-by-side multi-scenario
-comparison. Left unpinned, `$scenario`'s multi-scenario union still
+wedges) — no exploded wedges, no side-by-side multi-scenario comparison.
+`donut: true` (panels/pieData.ts's `DEFAULT_DONUT_INNER_RADIUS_RATIO`, a
+fixed 0.6 fraction of the outer radius — no separate author-facing ratio
+key) swaps the solid disc for a ring; every other behavior (aggregation,
+zero/negative-value handling, legend, tooltip, color resolution) is
+identical between the two. Left unpinned, `$scenario`'s multi-scenario union still
 executes, but every scenario's rows combine into ONE circle with no
 per-scenario distinction; an author comparing scenarios should pin to one
 scenario per pie panel (or use a different panel type). A category with a
@@ -1466,10 +1471,12 @@ own axis labels already convey everything a legend would add) and a
 hover tooltip on every wedge/vertex via this app's shared `mapTooltip.ts`
 mechanism, same as `type: sankey`.
 
-Not built by this feature (explicit non-goals): donut/hollow-center
-rendering, exploded/pulled-out pie wedges, multi-series pie comparison,
-a configurable radial-axis scale type for radar (linear only), and a
-`comparison: diff`/baseline mode for either type.
+Not built by this feature (explicit non-goals): exploded/pulled-out pie
+wedges, multi-series pie comparison, a configurable radial-axis scale
+type for radar (linear only), and a `comparison: diff`/baseline mode for
+either type. (Donut/hollow-center rendering was a non-goal of this
+feature specifically but was added later, as a small additive `donut:`
+field on `type: pie` — see that type's own section above.)
 
 ### `type: graphic-walker`
 

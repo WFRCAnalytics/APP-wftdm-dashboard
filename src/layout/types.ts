@@ -462,6 +462,11 @@ export interface PieChartPanelConfig extends DataBoundPanelConfigBase {
   category: string
   value: string
   color_scheme?: string
+  /** Optional — renders a donut (hollow-center) chart instead of a solid
+   * pie when true, at panels/pieData.ts's own DEFAULT_DONUT_INNER_RADIUS_RATIO
+   * (0.6). Omit or false for the original solid-pie shape — every existing
+   * `type: pie` panel is unaffected. */
+  donut?: boolean
 }
 
 /**

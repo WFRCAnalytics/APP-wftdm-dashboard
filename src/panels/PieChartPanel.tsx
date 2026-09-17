@@ -15,7 +15,7 @@ import {
   extractGlobalFilterIds,
   EMPTY_SUMMARIZE_CONFIG,
 } from '@/panels/panelQuery'
-import { aggregatePieSlices, layoutPieWedges, type PieWedge } from '@/panels/pieData'
+import { aggregatePieSlices, layoutPieWedges, DEFAULT_DONUT_INNER_RADIUS_RATIO, type PieWedge } from '@/panels/pieData'
 import { resolveNamedColorScheme, resolveCategoryFallbackColors } from '@/panels/chartColor'
 import { createMapTooltip, type MapTooltip } from '@/panels/mapTooltip'
 import { ChartLegend, type ChartLegendEntry } from '@/panels/ChartLegend'
@@ -199,7 +199,7 @@ export function PieChartPanel({ config }: { config: PieChartPanelConfig }) {
           resolveNamedColorScheme(config.color_scheme, { colorblindSafe }) ??
           resolveCategoryFallbackColors(el, FALLBACK_TOKEN_VARS, FALLBACK_HEX_COLORS)
         const { svg, legendEntries: nextLegendEntries } = renderSvg(
-          layoutPieWedges(slices, size / 2),
+          layoutPieWedges(slices, size / 2, config.donut ? DEFAULT_DONUT_INNER_RADIUS_RATIO : 0),
           size,
           colors,
           tooltip,

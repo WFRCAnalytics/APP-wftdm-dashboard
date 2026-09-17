@@ -68,21 +68,33 @@ export interface PieWedge extends PieSlice {
   percentage: number
 }
 
+/** Fraction of the outer radius carved out as a donut's hollow center —
+ * a common, legible proportion (Chart.js/Highcharts-style donuts typically
+ * land in the 50-70% range; 0.6 reads clearly as "a ring," not a near-full
+ * disc and not a hairline). Only ever used as `layoutPieWedges()`'s own
+ * default `innerRadiusRatio` when a caller passes `true` for donut mode
+ * rather than a specific ratio — PieChartPanel.tsx is this constant's one
+ * real caller. */
+export const DEFAULT_DONUT_INNER_RADIUS_RATIO = 0.6
+
 /**
- * Pure d3.pie()/d3.arc() geometry (research.md §3). innerRadius is
- * always 0 — no donut (contracts/pie-panel.md's own non-goals). A
- * zero-value slice produces a real, valid zero-angle arc (a degenerate
- * but non-crashing path) — still present in the returned array so the
- * caller's legend still lists it.
+ * Pure d3.pie()/d3.arc() geometry (research.md §3). `innerRadiusRatio`
+ * (0-1, exclusive of 1) sets the donut hole as a fraction of `radius` —
+ * defaults to 0 (a solid pie, this function's original and still most
+ * common shape). A zero-value slice produces a real, valid zero-angle arc
+ * (a degenerate but non-crashing path) — still present in the returned
+ * array so the caller's legend still lists it.
  */
-export function layoutPieWedges(slices: PieSlice[], radius: number): PieWedge[] {
+export function layoutPieWedges(slices: PieSlice[], radius: number, innerRadiusRatio = 0): PieWedge[] {
   const total = slices.reduce((sum, s) => sum + s.value, 0)
 
   const pieGenerator = d3Pie<PieSlice>()
     .value((d) => d.value)
     .sort(null) // preserve input (first-seen) order, not d3's own default descending-by-value sort
 
-  const arcGenerator = d3Arc<ReturnType<typeof pieGenerator>[number]>().innerRadius(0).outerRadius(radius)
+  const arcGenerator = d3Arc<ReturnType<typeof pieGenerator>[number]>()
+    .innerRadius(radius * innerRadiusRatio)
+    .outerRadius(radius)
 
   return pieGenerator(slices).map((arcDatum) => ({
     category: arcDatum.data.category,

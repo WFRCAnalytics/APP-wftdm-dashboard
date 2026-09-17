@@ -875,6 +875,21 @@ layout:
       height:   380
       width:    0.33
 
+  # Donut mode (type: pie's new optional `donut: true` field) — the same
+  # real, already-published trip_purpose_share metric as row_pie above,
+  # rendered with a hollow center instead of a solid disc, so the two are
+  # directly comparable side by side.
+  row_pie_donut:
+    - type:     pie
+      title:    "Donut Chart (Trip Purpose Share)"
+      metric:   trip_purpose_share
+      scenario: activitysim-baseline
+      category: primary_purpose
+      value:    trips
+      donut:    true
+      height:   380
+      width:    0.5
+
   # 060-radar-pie-charts — matching row_pie's own three-fixture
   # convention, reusing the already-real, already-published
   # trip_mode_share metric.

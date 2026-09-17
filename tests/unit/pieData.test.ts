@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { aggregatePieSlices, layoutPieWedges } from '@/panels/pieData'
+import { aggregatePieSlices, layoutPieWedges, DEFAULT_DONUT_INNER_RADIUS_RATIO } from '@/panels/pieData'
 
 const CONFIG = { category: 'primary_purpose', value: 'share' }
 
@@ -110,5 +110,42 @@ describe('layoutPieWedges', () => {
       100,
     )
     expect(wedges.map((w) => w.category)).toEqual(['small', 'big'])
+  })
+
+  describe('donut mode (innerRadiusRatio)', () => {
+    const slices = [
+      { category: 'a', value: 1 },
+      { category: 'b', value: 1 },
+    ]
+
+    it('defaults to a solid pie (innerRadius 0) when no ratio is passed — unchanged from before donut support', () => {
+      const solid = layoutPieWedges(slices, 100)
+      const explicitZero = layoutPieWedges(slices, 100, 0)
+      expect(solid.map((w) => w.path)).toEqual(explicitZero.map((w) => w.path))
+    })
+
+    it('produces a real, distinct (non-solid-pie) path when given a positive innerRadiusRatio', () => {
+      const solid = layoutPieWedges(slices, 100, 0)
+      const donut = layoutPieWedges(slices, 100, DEFAULT_DONUT_INNER_RADIUS_RATIO)
+      expect(donut[0].path).not.toBe(solid[0].path)
+      // A d3.arc() donut path draws two concentric arcs (outer + inner)
+      // joined by straight edges — real evidence the inner radius was
+      // actually applied, not just a coincidentally-different string.
+      expect(donut[0].path.match(/A/g)?.length).toBe(2)
+      expect(solid[0].path.match(/A/g)?.length).toBe(1)
+    })
+
+    it('still sums percentages/angles correctly in donut mode — geometry-only change, same aggregation', () => {
+      const donut = layoutPieWedges(
+        [
+          { category: 'a', value: 25 },
+          { category: 'b', value: 75 },
+        ],
+        100,
+        DEFAULT_DONUT_INNER_RADIUS_RATIO,
+      )
+      expect(donut.find((w) => w.category === 'a')!.percentage).toBeCloseTo(0.25)
+      expect(donut.find((w) => w.category === 'b')!.percentage).toBeCloseTo(0.75)
+    })
   })
 })
