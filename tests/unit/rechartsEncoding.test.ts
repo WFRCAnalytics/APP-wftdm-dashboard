@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { encodeRechartsData } from '../../src/panels/rechartsEncoding.ts'
+import { encodeRechartsData, encodeComboRechartsData } from '../../src/panels/rechartsEncoding.ts'
 import type { ScenarioDisplayMap } from '../../src/panels/scenarioDisplay.ts'
 
 // 029-shadcn-chart-panel — see
@@ -116,5 +116,62 @@ describe('rechartsEncoding.encodeRechartsData — scenario label/color resolutio
     const display: ScenarioDisplayMap = new Map([['good_scenario', { label: 'Preferred Alternative' }]])
     const result = encodeRechartsData(rows, { x: 'purpose', y: 'share', series: 'scenario' }, display)
     expect(result.chartConfig.observed.color).toBe('var(--chart-1)')
+  })
+})
+
+// chart_type: combo — deliberately NOT a variant of the multi-series pivot
+// above: buildPanelQuery() already SELECT *s every column, so a row
+// already carries every layer's own y value side by side; this is a
+// simple x + per-layer-y pick, never a groupBy/pivot.
+describe('rechartsEncoding.encodeComboRechartsData', () => {
+  const rows = [
+    { primary_purpose: 'HBW', trips: 8626, avg_distance_miles: 12.4 },
+    { primary_purpose: 'HBO', trips: 4200, avg_distance_miles: 5.1 },
+  ]
+
+  it('picks x plus every layer\'s own y column into one wide row per query row — no pivot/grouping', () => {
+    const result = encodeComboRechartsData(
+      rows,
+      [{ y: 'trips' }, { y: 'avg_distance_miles' }],
+      'primary_purpose',
+    )
+    expect(result.data).toEqual([
+      { primary_purpose: 'HBW', trips: 8626, avg_distance_miles: 12.4 },
+      { primary_purpose: 'HBO', trips: 4200, avg_distance_miles: 5.1 },
+    ])
+  })
+
+  it('assigns --chart-1..N tokens in layer order, keyed by each layer\'s own y column', () => {
+    const result = encodeComboRechartsData(
+      rows,
+      [{ y: 'trips' }, { y: 'avg_distance_miles' }],
+      'primary_purpose',
+    )
+    expect(result.chartConfig).toEqual({
+      trips: { label: 'trips', color: 'var(--chart-1)' },
+      avg_distance_miles: { label: 'avg_distance_miles', color: 'var(--chart-2)' },
+    })
+  })
+
+  it('uses an explicit label over the bare column name when provided', () => {
+    const result = encodeComboRechartsData(
+      rows,
+      [{ y: 'trips', label: 'Trip Volume' }, { y: 'avg_distance_miles', label: 'Avg. Distance (mi)' }],
+      'primary_purpose',
+    )
+    expect(result.chartConfig.trips.label).toBe('Trip Volume')
+    expect(result.chartConfig.avg_distance_miles.label).toBe('Avg. Distance (mi)')
+  })
+
+  it('cycles back to --chart-1 for a 6th layer', () => {
+    const layers = ['a', 'b', 'c', 'd', 'e', 'f'].map((y) => ({ y }))
+    const result = encodeComboRechartsData([{ a: 1, b: 2, c: 3, d: 4, e: 5, f: 6 }], layers, 'x')
+    expect(result.chartConfig.f.color).toBe('var(--chart-1)')
+  })
+
+  it('leaves a missing value undefined, never coerced to 0 — matches encodeRechartsData\'s own contract', () => {
+    const sparseRows = [{ primary_purpose: 'HBW', trips: 8626 }] // no avg_distance_miles at all
+    const result = encodeComboRechartsData(sparseRows, [{ y: 'trips' }, { y: 'avg_distance_miles' }], 'primary_purpose')
+    expect(result.data[0].avg_distance_miles).toBeUndefined()
   })
 })

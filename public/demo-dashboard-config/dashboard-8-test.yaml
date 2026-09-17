@@ -108,7 +108,22 @@ layout:
       chart_type: pie
       x: major_trip_mode
       y: share
-      width: 1.0
+      width: 0.5
+
+    # New chart-type coverage: chart_type: combo's own runtime validation
+    # (RechartsPanel.tsx — `layers` is required, checked at runtime since
+    # YAML has no schema) — an empty/missing `layers` list is a real,
+    # reachable authoring mistake (e.g. copy-pasting a bar/line/area
+    # panel and forgetting to add layers), same "structurally unreachable
+    # through valid config, still caught defensively" convention every
+    # other runtime-only validation on this tab already covers.
+    - type:       recharts
+      title:      "Recharts Invalid Combo (no layers)"
+      metric:     trip_distance_by_purpose
+      scenario:   activitysim-baseline
+      chart_type: combo
+      x:          primary_purpose
+      width:      0.5
 
   # ── 040-test-suite-migration (rechartsPanel.spec.ts, Batch B): real
   #    working bar/line/area panels — 057-observable-plot-conversion

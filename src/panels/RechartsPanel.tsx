@@ -1,6 +1,6 @@
 import { useEffect, useId, useState } from 'react'
 import { ChartNoAxesColumn } from 'lucide-react'
-import { Bar, BarChart, Line, LineChart, Area, AreaChart, CartesianGrid, XAxis } from 'recharts'
+import { Bar, BarChart, Line, LineChart, Area, AreaChart, ComposedChart, CartesianGrid, XAxis, YAxis } from 'recharts'
 
 import '@/panels/rechartsPanel.css'
 
@@ -11,7 +11,7 @@ import { useBaseline } from '@/hooks/useBaseline'
 import { useScenarioDisplay } from '@/hooks/useScenarioDisplay'
 import { ensureRegistered } from '@/services/tabDataLoader'
 import { resolveQueryAndPairs, extractGlobalFilterIds } from '@/panels/panelQuery'
-import { encodeRechartsData } from '@/panels/rechartsEncoding'
+import { encodeRechartsData, encodeComboRechartsData } from '@/panels/rechartsEncoding'
 import {
   ChartContainer,
   ChartTooltip,
@@ -62,7 +62,7 @@ const MARK_COMPONENTS: Record<string, any> = { bar: Bar, line: Line, area: Area 
 // unintended fallback chart type) — same "resolve first, never query on
 // an unresolvable config" convention the $baseline-resolution branch
 // below already established.
-const VALID_CHART_TYPES = ['bar', 'line', 'area']
+const VALID_CHART_TYPES = ['bar', 'line', 'area', 'combo']
 
 // Builds a stable, collision-safe <linearGradient> id for one area
 // series in one panel instance — sanitized because a series value (a
@@ -108,7 +108,22 @@ export function RechartsPanel({ config }: { config: RechartsPanelConfig }) {
     setStatus('loading')
 
     if (!VALID_CHART_TYPES.includes(config.chart_type)) {
-      setErrorMessage(`Unsupported chart_type "${config.chart_type}" (expected bar, line, or area)`)
+      setErrorMessage(`Unsupported chart_type "${config.chart_type}" (expected bar, line, area, or combo)`)
+      setStatus('error')
+      return
+    }
+    // `y`/`layers` are both optional on the TS type (YAML has no runtime
+    // schema — CLAUDE.md's own non-negotiable), so the field each
+    // chart_type actually needs is checked here, the same "resolve/
+    // validate first, never query on an unresolvable config" convention
+    // the $baseline-resolution branch below already established.
+    if (config.chart_type === 'combo' && (!config.layers || config.layers.length === 0)) {
+      setErrorMessage('chart_type: combo requires a non-empty `layers` list')
+      setStatus('error')
+      return
+    }
+    if (config.chart_type !== 'combo' && !config.y) {
+      setErrorMessage(`chart_type: ${config.chart_type} requires a \`y\` field`)
       setStatus('error')
       return
     }
@@ -187,7 +202,108 @@ export function RechartsPanel({ config }: { config: RechartsPanelConfig }) {
     return <PanelErrorState message={errorMessage} />
   }
 
-  const { data, chartConfig, seriesKeys } = encodeRechartsData(rows, config, scenarioDisplay)
+  // chart_type: combo — a deliberately SEPARATE render branch, not a
+  // generalization of the bar/line/area logic below: Recharts' own
+  // ComposedChart (built for exactly this — several independently-typed
+  // marks in one chart, optionally on two Y axes) needs real per-layer
+  // dataKey/mark-type/yAxisId wiring that doesn't fit the single-
+  // ChartComponent-plus-one-mark-type-per-series shape the rest of this
+  // component is built around. Kept fully additive so the existing,
+  // carefully fidelity-tuned bar/line/area path below is untouched byte-
+  // for-byte.
+  if (config.chart_type === 'combo') {
+    const layers = config.layers!
+    const { data: comboData, chartConfig: comboChartConfig } = encodeComboRechartsData(rows, layers, config.x)
+    const hasRightAxis = layers.some((l) => l.y_axis === 'right')
+    const showLegend = layers.length > 1
+    const areaLayers = layers.filter((l) => l.chart_type === 'area')
+
+    return (
+      <ChartContainer config={comboChartConfig} className="aspect-auto w-full" style={{ height: config.height ?? 350 }}>
+        <ComposedChart accessibilityLayer data={comboData} margin={{ left: 12, right: 12 }}>
+          <CartesianGrid vertical={false} />
+          <XAxis dataKey={config.x} tickLine={false} axisLine={false} tickMargin={8} />
+          {/* `hide` on both axes — matches every non-combo chart_type's
+              own "no visible YAxis, ChartTooltip is the sole source of
+              exact values" fidelity choice above. Still real, mounted
+              YAxis elements: Recharts needs one per distinct yAxisId to
+              resolve that axis's own scale at all, visible or not — a
+              layer referencing "right" with no matching <YAxis
+              yAxisId="right"> mounted would silently fall back to the
+              left scale instead of erroring, so the right axis is only
+              rendered when at least one layer actually uses it. */}
+          <YAxis yAxisId="left" hide />
+          {hasRightAxis && <YAxis yAxisId="right" orientation="right" hide />}
+          <ChartTooltip
+            cursor={false}
+            isAnimationActive={false}
+            content={<ChartTooltipContent hideLabel={!showLegend} />}
+          />
+          {showLegend && (
+            <ChartLegend content={<ChartLegendContent className="flex-wrap gap-x-4 gap-y-1" />} />
+          )}
+          {areaLayers.length > 0 && (
+            <defs>
+              {areaLayers.map((layer) => (
+                <linearGradient
+                  key={layer.y}
+                  id={gradientId(gradientIdPrefix, layer.y)}
+                  x1="0"
+                  y1="0"
+                  x2="0"
+                  y2="1"
+                >
+                  <stop offset="5%" stopColor={`var(--color-${sanitizeColorKey(layer.y)})`} stopOpacity={0.8} />
+                  <stop offset="95%" stopColor={`var(--color-${sanitizeColorKey(layer.y)})`} stopOpacity={0.1} />
+                </linearGradient>
+              ))}
+            </defs>
+          )}
+          {layers.map((layer) => {
+            const LayerMarkComponent = MARK_COMPONENTS[layer.chart_type]
+            const color = `var(--color-${sanitizeColorKey(layer.y)})`
+            const yAxisId = layer.y_axis === 'right' ? 'right' : 'left'
+            if (layer.chart_type === 'line') {
+              return (
+                <LayerMarkComponent
+                  key={layer.y}
+                  yAxisId={yAxisId}
+                  dataKey={layer.y}
+                  type="monotone"
+                  stroke={color}
+                  strokeWidth={2}
+                  dot={false}
+                />
+              )
+            }
+            if (layer.chart_type === 'area') {
+              return (
+                <LayerMarkComponent
+                  key={layer.y}
+                  yAxisId={yAxisId}
+                  dataKey={layer.y}
+                  type="natural"
+                  fill={`url(#${gradientId(gradientIdPrefix, layer.y)})`}
+                  fillOpacity={0.4}
+                  stroke={color}
+                />
+              )
+            }
+            return (
+              <LayerMarkComponent key={layer.y} yAxisId={yAxisId} dataKey={layer.y} fill={color} radius={4} />
+            )
+          })}
+        </ComposedChart>
+      </ChartContainer>
+    )
+  }
+
+  // Non-null assertion on `config.y` — justified: the fetch effect above
+  // already validated `y` is present for every non-combo chart_type
+  // before ever reaching a successful 'ready' status, and chart_type:
+  // combo already returned its own dedicated JSX above, so this line is
+  // unreachable with `config.y` actually undefined.
+  const { data, chartConfig, seriesKeys } = encodeRechartsData(rows, { ...config, y: config.y! }, scenarioDisplay)
   const ChartComponent = CHART_COMPONENTS[config.chart_type]
   const MarkComponent = MARK_COMPONENTS[config.chart_type]
   const isMultiSeries = seriesKeys.length > 1

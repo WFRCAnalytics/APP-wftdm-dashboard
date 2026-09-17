@@ -1,5 +1,5 @@
 import type { ChartConfig } from '@/components/ui/chart'
-import type { RechartsPanelConfig } from '@/layout/types'
+import type { RechartsPanelConfig, RechartsComboLayerConfig } from '@/layout/types'
 import { resolveScenarioColor, resolveScenarioLabel, type ScenarioDisplayMap } from '@/panels/scenarioDisplay'
 
 // 029-shadcn-chart-panel — pure, DOM-free transform: tidy SQL rows (this
@@ -25,11 +25,16 @@ export interface EncodedRechartsData {
 /**
  * @param rows tidy query result rows (buildPanelQuery()'s own output)
  * @param config the panel's own x/y/series field-mapping — only those
- *   three fields are read
+ *   three fields are read. `y` is required HERE even though
+ *   RechartsPanelConfig.y itself is optional on the type (chart_type:
+ *   combo has no single shared `y` — see that field's own doc comment) —
+ *   this function is only ever called from RechartsPanel.tsx's own
+ *   non-combo render path, which validates `y` is present at runtime
+ *   before ever reaching here.
  */
 export function encodeRechartsData(
   rows: readonly Record<string, unknown>[],
-  config: Pick<RechartsPanelConfig, 'x' | 'y' | 'series'>,
+  config: Pick<RechartsPanelConfig, 'x' | 'series'> & { y: string },
   // 035-scenario-label-color: optional — every existing call site with no
   // 3rd argument behaves identically to before this feature. Only applied
   // when config.series is literally 'scenario' (the column
@@ -98,4 +103,49 @@ export function encodeRechartsData(
   })
 
   return { data: [...rowsByX.values()], chartConfig, seriesKeys }
+}
+
+export interface EncodedComboRechartsData {
+  data: WideChartRow[]
+  chartConfig: ChartConfig
+}
+
+/**
+ * chart_type: combo's own encoding — deliberately simpler than
+ * encodeRechartsData()'s multi-series pivot above, not a variant of it:
+ * `buildPanelQuery()` already `SELECT *`s every column a metric provides
+ * (panelQuery.ts — a Recharts panel has no `column`/`metric_id` field to
+ * narrow that), so a row already carries every layer's own `y` value
+ * side by side — no pivot/grouping is needed at all, just picking `x`
+ * plus each layer's own column into one wide row per query row.
+ *
+ * @param rows tidy query result rows (buildPanelQuery()'s own output)
+ * @param layers this panel's own `layers` config — only `y`/`label` are
+ *   read (chart_type/y_axis are read directly by RechartsPanel.tsx's own
+ *   render, not by this pure data-shaping step)
+ * @param x the panel's shared x field name
+ */
+export function encodeComboRechartsData(
+  rows: readonly Record<string, unknown>[],
+  layers: readonly Pick<RechartsComboLayerConfig, 'y' | 'label'>[],
+  x: string,
+): EncodedComboRechartsData {
+  const data = rows.map((row) => {
+    const wideRow: WideChartRow = { [x]: row[x] as string | number }
+    for (const layer of layers) {
+      // A missing/null value for this row+layer is left `undefined` here,
+      // same as encodeRechartsData()'s own "never coerced to 0" contract
+      // above — a genuine gap, not a fabricated zero.
+      wideRow[layer.y] = row[layer.y] as number
+    }
+    return wideRow
+  })
+
+  const chartConfig: ChartConfig = {}
+  layers.forEach((layer, index) => {
+    const tokenNumber = (index % CHART_TOKEN_COUNT) + 1
+    chartConfig[layer.y] = { label: layer.label ?? layer.y, color: `var(--chart-${tokenNumber})` }
+  })
+
+  return { data, chartConfig }
 }

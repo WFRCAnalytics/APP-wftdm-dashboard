@@ -1208,6 +1208,52 @@ plot`'s own explicit `tip: true`.
 Also accepts `comparison:`/`compare_on:` (019-baseline-diff-consumption)
 — see "Scenario comparison / diff mode" under `type: zonemap` below, the
 same shared grammar every other comparison-capable panel type uses.
+Not available for `chart_type: combo` — see that section below.
+
+**`chart_type: combo`** — several independently-typed marks (bar/line/
+area) layered into one chart, sharing the panel's own `x`, optionally on
+two Y axes. Uses `layers:` instead of `y:`/`series:`/`stacked:` (all
+three are ignored for this chart_type — a combo layer has no series
+pivot of its own, see below):
+
+```yaml
+- type:       recharts
+  title:      Trip Volume vs. Average Distance by Purpose
+  metric:     trip_distance_by_purpose
+  scenario:   activitysim-baseline   # see the note below — pin or otherwise ensure one row per x
+  chart_type: combo
+  x:          primary_purpose
+  layers:
+    - { chart_type: bar,  y: trips,             label: "Trips",              y_axis: left }
+    - { chart_type: line, y: avg_distance_miles, label: "Avg. Distance (mi)", y_axis: right }
+  height:     400
+  width:      1.0
+```
+
+Each `layers[]` entry names its own literal `y` column (the query already
+returns every column a metric provides via `SELECT *` — no separate
+query per layer). `y_axis: right` renders a second, independent Y axis
+(mounted but hidden, matching this panel type's own "no visible axis —
+the tooltip is the source of exact values" convention throughout) — only
+present at all when at least one layer requests it; every layer defaults
+to `y_axis: left`. `label` is optional, defaulting to the bare `y`
+column name in the legend/tooltip. A legend renders automatically
+whenever more than one layer is configured, same as the multi-series
+case above.
+
+No `series:` field in combo mode — combining Recharts' one-element-per-
+distinct-series-value pivot with several independently-typed layers at
+once (which layer owns which pivoted series? do they share a color
+cycle?) is a real, deliberate scope line, not an oversight; a genuine
+per-category comparison (e.g. by scenario) within ONE combo layer is
+already well served by an ordinary single-chart_type panel instead.
+
+PIN a combo panel to one scenario (or otherwise ensure `x` is unique per
+row) — the same real, confirmed gotcha `type: cell` heatmaps have above:
+a combo layer has no series/facet channel to separate an unpinned
+`$scenario` union's multiple rows sharing one `x` value, so they'd
+silently stack multiple scenarios' bars/line-points on top of each
+other at the same x position.
 
 **What this panel type does NOT do** — use `type: plotly` or `type:
 observable-plot` instead for these:
