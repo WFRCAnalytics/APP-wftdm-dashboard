@@ -524,16 +524,31 @@ export function BasemapTab() {
             responsive `grid-cols-[repeat(auto-fit,minmax(_,1fr))]` of
             square-ish tiles (icon on top, label below), the SELECTED
             tile using the accent color pair, resting tiles using the
-            card surface with muted text. That selected-state pairing
-            (`bg-accent text-accent-foreground`) is not just borrowed —
-            it's this app's OWN existing "active" convention already:
-            `components/ui/tabs.tsx`'s `TabsTrigger` already uses
-            `data-[state=active]:bg-accent
-            data-[state=active]:text-accent-foreground` for the active
-            Settings-modal tab, one file up from here. Reusing it for the
-            staged basemap tile is consistency with this app's own
-            language, not a new one borrowed wholesale from Dash.
-            No thumbnail images exist or are implied (out of scope, per
+            card surface with muted text.
+
+            061-appearance-controls (follow-up): a real, confirmed,
+            PRE-EXISTING bug found while researching shadcn's own real
+            source for a separate fix — `--accent` has been byte-identical
+            to `--muted` since 033-shadcn-default-theme shipped (shadcn's
+            own real default theme ships them identical too, confirmed
+            directly). Since a resting tile's own `hover:bg-muted` and the
+            staged tile's `bg-accent` therefore render the EXACT SAME
+            color, a merely-hovered (not staged) tile was visually
+            indistinguishable from the actually-staged one — confirmed
+            live via screenshot. `components/ui/tabs.tsx`'s own
+            `TabsTrigger` no longer uses `bg-accent` for its active state
+            either, for the identical reason (see that file's own
+            comment) — its real fix (`bg-background` + `shadow-sm`)
+            doesn't transfer here, since these tiles' own RESTING state is
+            already `bg-card` (identical to `bg-background` in this
+            theme), so a staged tile would then be indistinguishable from
+            a plain, non-hovered resting one instead. Fixed here with a
+            colored border instead (`border-primary`, same 1px width as
+            every other tile's border — no layout shift when a tile
+            becomes/stops being staged) — the border, not the fill, now
+            carries the real "this one is selected" signal, working
+            correctly regardless of whatever the accent/muted fill values
+            happen to be. No thumbnail images exist or are implied (out of scope, per
             the original spec) — each tile gets a per-entry CATEGORY icon
             instead (Sun/Moon/Satellite/Mountain/Waves/Palette/Compass,
             see the `VectorEntry` interface's own comment) — an honest
@@ -568,7 +583,7 @@ export function BasemapTab() {
                       'flex flex-col items-center justify-center gap-1.5 rounded-lg border px-2 py-3 text-center text-sm font-medium transition-colors',
                       'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                       staged
-                        ? 'border-transparent bg-accent text-accent-foreground'
+                        ? 'border-primary bg-accent text-accent-foreground'
                         : 'border-border bg-card text-muted-foreground hover:bg-muted',
                     )}
                   >
@@ -630,7 +645,7 @@ export function BasemapTab() {
                     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                     'disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-card',
                     staged
-                      ? 'border-transparent bg-accent text-accent-foreground'
+                      ? 'border-primary bg-accent text-accent-foreground'
                       : 'border-border bg-card text-muted-foreground hover:bg-muted',
                   )}
                 >

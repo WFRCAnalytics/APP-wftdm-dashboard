@@ -491,6 +491,38 @@ test.describe('User Story 1 - Sectioned basemap catalog with stage-then-Apply', 
     await expect(positron).not.toHaveCSS('background-color', before)
   })
 
+  // 061-appearance-controls (follow-up): a real, confirmed, pre-existing
+  // bug found live via screenshot while researching a separate fix —
+  // --accent has been byte-identical to --muted since 033-shadcn-default-
+  // theme shipped, so a merely-HOVERED (not staged) tile's own
+  // `hover:bg-muted` rendered the exact same background color as the
+  // actually-STAGED tile's `bg-accent`, making the two indistinguishable.
+  // Fixed with a colored border (`border-primary`) carrying the real
+  // "staged" signal instead, independent of whatever the accent/muted
+  // fill values happen to be. This test hovers a DIFFERENT, unstaged tile
+  // while another is genuinely staged and asserts the two remain visually
+  // distinct — the specific collision the fix above addresses, not just
+  // "staged differs from its own resting state" (already covered above).
+  test('a hovered-but-unstaged tile remains visually distinct from the actually-staged one (FR-010)', async ({
+    page,
+  }) => {
+    await boot(page)
+    await page.getByRole('button', { name: 'Settings' }).click()
+    await page.getByRole('tab', { name: 'Basemap' }).click()
+
+    const carto = sectionRadioGroup(page, 'CARTO Vector Tiles')
+    const voyager = carto.getByRole('radio', { name: 'Voyager' })
+    const positron = carto.getByRole('radio', { name: 'Positron' })
+
+    await voyager.click()
+    await expect(voyager).toHaveAttribute('data-staged', 'true')
+
+    await positron.hover()
+    await expect(positron).not.toHaveAttribute('data-staged', 'true')
+    // toHaveCSS polls, giving :hover's style recalculation time to land.
+    await expect(positron).not.toHaveCSS('border-left-color', await voyager.evaluate((el) => getComputedStyle(el).borderLeftColor))
+  })
+
   test('clicking a UGRC entry stages it and updates the shared preview, without applying it (FR-008, FR-009, FR-010)', async ({
     page,
   }) => {
