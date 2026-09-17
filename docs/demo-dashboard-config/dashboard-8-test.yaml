@@ -75,6 +75,121 @@ layout:
       y:      v
       width:  0.33
 
+  # ── observable-plot: panel-local inputs: (select/multiselect/range),
+  # ── lineY mark, mismatched-default empty state ──
+  # tests/integration/observablePlotPanel.spec.ts (040-test-suite-
+  # migration): a real, confirmed gap — a direct grep sweep found zero
+  # real demo-dashboard-config panels declare a panel-local `inputs:`
+  # block, or `mark: lineY`, anywhere. All four rows below use real,
+  # already-published metrics (trip_destination_summary/trip_mode_share),
+  # hand-verified via the duckdb CLI: trip_destination_summary has a real
+  # continuous distance_bin column (domain [0.0, 2.0]) and 10 real
+  # primary_purpose values; trip_mode_share has exactly 5 real
+  # major_trip_mode values (HOV/Non-Motorized/Ride Hail/SOV/Transit).
+  row_observable_plot_inputs:
+    - type:   observable-plot
+      title:  "Observable Plot Line (Select Filter)"
+      metric: trip_destination_summary
+      scenario: activitysim-baseline
+      height: 320
+      inputs:
+        - id:      purpose_select
+          label:   Purpose
+          type:    select
+          column:  primary_purpose
+          default: work
+      filter:
+        primary_purpose: $inputs.purpose_select
+      mark:   lineY
+      x:      distance_bin
+      y:      trips
+      tip:    true
+      grid:   true
+      width:  0.5
+
+    - type:   observable-plot
+      title:  "Observable Plot Bar (Multiselect Filter)"
+      metric: trip_mode_share
+      scenario: activitysim-baseline
+      height: 320
+      inputs:
+        - id:      mode_multiselect
+          label:   Mode
+          type:    multiselect
+          column:  major_trip_mode
+          default: SOV
+      filter:
+        major_trip_mode: $inputs.mode_multiselect
+      mark:   barY
+      x:      major_trip_mode
+      y:      share
+      fill:   major_trip_mode
+      tip:    true
+      width:  0.5
+
+    - type:   observable-plot
+      title:  "Observable Plot Range Filter (Distance Bin)"
+      metric: trip_destination_summary
+      scenario: activitysim-baseline
+      height: 320
+      inputs:
+        - id:      distance_range
+          label:   "Distance Bin"
+          type:    range
+          column:  distance_bin
+          default: "99" # deliberately out-of-bounds — real domain is [0.0, 2.0]
+      filter:
+        distance_bin: $inputs.distance_range
+      mark:   barY
+      x:      primary_purpose
+      y:      trips
+      width:  0.5
+
+    - type:   observable-plot
+      title:  "Observable Plot Mode Share (Mismatched Default, intentional)"
+      metric: trip_destination_summary
+      scenario: activitysim-baseline
+      height: 320
+      # Deliberately reuses input id "purpose_select" from "Observable
+      # Plot Line (Select Filter)" above — panel-local input state is
+      # isolated per COMPONENT INSTANCE (ObservablePlotPanel.tsx's own
+      # doc comment), so two panels sharing one id, each with its own
+      # independent default, must never collide. Cross-panel-isolation-
+      # under-collision coverage (observablePlotPanel.spec.ts).
+      inputs:
+        - id:      purpose_select
+          label:   Purpose
+          type:    select
+          column:  primary_purpose
+          default: NoSuchPurpose
+      filter:
+        primary_purpose: $inputs.purpose_select
+      mark:   barY
+      x:      distance_bin
+      y:      trips
+      width:  0.5
+
+  # A separate, unfiltered lineY + stroke panel — none of the four rows
+  # above keep more than one real primary_purpose/major_trip_mode value
+  # once their own input filters it down, so none can demonstrate a
+  # multi-category LINE legend (a stroke-encoded barY legend is already
+  # real, existing coverage elsewhere — "Average Trip Distance by
+  # Purpose", Summary tab). All 10 real primary_purpose values survive
+  # here.
+  row_observable_plot_line_legend:
+    - type:   observable-plot
+      title:  "Observable Plot Line Trip Distance by Purpose"
+      metric: trip_destination_summary
+      scenario: activitysim-baseline
+      height: 320
+      mark:   lineY
+      x:      distance_bin
+      y:      trips
+      stroke: primary_purpose
+      tip:    true
+      grid:   true
+      width:  1.0
+
   row_missing_metric_maps:
     - type:      flowmap
       title:     "Broken Flow Map Panel (missing metric)"
@@ -396,6 +511,90 @@ layout:
       baseline_trend:
         expr: "a.__missing_col__ - b.total_persons"
       width: 0.5
+
+  # ── valuebox: real sparkline/baseline_trend/error-state coverage ──
+  # tests/integration/valueBoxPanel.spec.ts (040-test-suite-migration): a
+  # real, confirmed gap this feature's own audit found — zero real
+  # demo-dashboard-config panels use `sparkline:`/`baseline_trend:` at
+  # all (only the two deliberately-BROKEN edge-case rows directly above
+  # do), and no real valuebox anywhere triggers the shared
+  # PanelErrorState (every real valuebox binds a real, existing metric).
+  # Real, hand-verified values throughout, confirmed via the duckdb CLI
+  # against the real summary_kpis.parquet for both scenarios used:
+  # activitysim-baseline (total_trips 23,583 / total_persons 8,212) and
+  # activitysim-density-variant (total_persons also 8,212 — the density
+  # change doesn't shift population totals). total_trips is IDENTICAL
+  # between the two real scenarios (23,583 both), so a same-COLUMN diff
+  # would be a real but unhelpful always-zero — the "ValueBox Baseline
+  # Trend"/"...Both Trends" rows below deliberately use a CROSS-column
+  # expr instead (a.total_trips - b.total_persons = 23583 - 8212 =
+  # 15,371, a real, clean, non-zero up-trend), the same technique
+  # 034-metric-panel-redesign's own CLAUDE.md history already recorded
+  # for an analogous same-fixture-data limitation. The "...Self
+  # (intentional)" row instead deliberately uses a SAME-column expr
+  # (a.total_trips - b.total_trips), which is what actually guarantees a
+  # real zero when a and b resolve to the same scenario.
+  row_valuebox_trend_coverage:
+    - type:   valuebox
+      title:  "Broken Value Box (missing metric)"
+      metric: __nonexistent_metric__
+      width:  0.25
+
+    - type:   valuebox
+      title:  "ValueBox Mode Share Sparkline"
+      metric: summary_kpis
+      scenario: activitysim-baseline
+      column: total_trips
+      format: "{:,.0f}"
+      sparkline:
+        metric: trip_mode_share
+        x: major_trip_mode
+        y: share
+      width: 0.25
+
+    - type:   valuebox
+      title:  "ValueBox Baseline Trend"
+      metric: summary_kpis
+      scenario: activitysim-baseline
+      column: total_trips
+      format: "{:,.0f}"
+      baseline_trend:
+        expr: "a.total_trips - b.total_persons"
+      width: 0.25
+
+    - type:   valuebox
+      title:  "ValueBox Baseline Trend No Scenario (intentional)"
+      metric: summary_kpis
+      column: total_trips
+      format: "{:,.0f}"
+      baseline_trend:
+        expr: "a.total_trips - b.total_persons"
+      width: 0.25
+
+  row_valuebox_trend_coverage_2:
+    - type:   valuebox
+      title:  "ValueBox Baseline Trend Self (intentional)"
+      metric: summary_kpis
+      scenario: activitysim-baseline
+      column: total_trips
+      format: "{:,.0f}"
+      baseline_trend:
+        expr: "a.total_trips - b.total_trips"
+      width: 0.34
+
+    - type:   valuebox
+      title:  "ValueBox Both Trends"
+      metric: summary_kpis
+      scenario: activitysim-baseline
+      column: total_trips
+      format: "{:,.0f}"
+      sparkline:
+        metric: trip_mode_share
+        x: major_trip_mode
+        y: share
+      baseline_trend:
+        expr: "a.total_trips - b.total_persons"
+      width: 0.33
 
   # New chart-type coverage: ValueBoxPanelConfig's gauge: {min, max} mode
   # — one real gauge per status color, all bound to the same real
@@ -980,5 +1179,123 @@ layout:
       value:    share
       height:   380
       width:    0.33
+
+  # ── table: no columns: config (derived headers) / color_scale+domain ──
+  # tests/integration/tablePanel.spec.ts (040-test-suite-migration): a real
+  # grammar shape with zero real coverage anywhere else in this repo — a
+  # direct grep sweep of every public/demo-dashboard-config/*.yaml table
+  # panel found ALL of them carry an explicit `columns:` list (038-all-
+  # loaded-scenarios prepended a `scenario` discriminator column to every
+  # one), and NONE use a per-column `color_scale:`/`domain:` (that grammar
+  # is real and documented — project-docs/GRAMMAR.md's own KPI Summary
+  # example — but every real usage in this repo today is on `type: zonemap`
+  # instead, which auto-computes its own domain; `type: table` requires an
+  # author-supplied `domain:`, per panelQuery.ts's own resolution). Both
+  # rows below bind to the real, already-published auto_ownership_summary
+  # metric, scenario-pinned for a small, deterministic result set.
+  row_table_grammar_coverage:
+    - type:   table
+      title:  "Table No Columns Config (derived headers)"
+      metric: auto_ownership_summary
+      scenario: activitysim-baseline
+      width:  0.5
+
+    - type:   table
+      title:  "Table Color Scale (households)"
+      metric: auto_ownership_summary
+      scenario: activitysim-baseline
+      sort:   { column: households, order: desc }
+      pagination: 10
+      columns:
+        - { field: auto_ownership, label: "Autos Owned" }
+        - { field: income_group,   label: "Income Group" }
+        - { field: households,     label: "Households", format: ",.0f",
+            color_scale: sequential, domain: [0, 900] }
+      width:  0.5
+
+  # ── table: comparison: diff / $baseline (019-baseline-diff-consumption)
+  # ── real coverage gap ──
+  # tests/integration/tablePanel.spec.ts (040-test-suite-migration): a
+  # second real gap this feature's own audit found (038-all-loaded-
+  # scenarios' item-25 record: "zero panels in public/demo-dashboard-
+  # config/ use comparison: diff or $baseline anywhere") — this repo's
+  # only other comparison: diff table panel, "Broken Comparison Diff"
+  # above, is deliberately UNRESOLVABLE (a/b: __nope_*__), not a real,
+  # working one. Both rows below use the real, already-published
+  # vmt_by_home_taz metric (the same one row_zonemap_diff/
+  # row_zonemap_diff_baseline already use for the zonemap panel type),
+  # `a: activitysim-baseline` fixed, `b: "$baseline"` resolved by whatever
+  # the viewer/test marks as baseline — real, hand-verified diff values
+  # confirmed directly via the duckdb CLI against the real Parquet files,
+  # not fabricated.
+  row_table_baseline_diff:
+    - type:   table
+      title:  "Table VMT Diff via $baseline"
+      metric: vmt_by_home_taz
+      comparison:
+        type: diff
+        a:    activitysim-baseline
+        b:    "$baseline"
+        expr: "a.total_vmt - b.total_vmt"
+      compare_on: [home_zone_id]
+      columns:
+        - { field: home_zone_id, label: "TAZ" }
+        - { field: diff_value,   label: "VMT Diff", format: ",.1f" }
+      width:  0.5
+
+    - type:   table
+      title:  "Table VMT Percent Diff via $baseline"
+      metric: vmt_by_home_taz
+      comparison:
+        type: diff
+        a:    activitysim-baseline
+        b:    "$baseline"
+        expr: "(a.total_vmt - b.total_vmt) / NULLIF(b.total_vmt, 0)"
+      compare_on: [home_zone_id]
+      columns:
+        - { field: home_zone_id, label: "TAZ" }
+        - { field: diff_value,   label: "% Diff", format: ".1%",
+            color_scale: diverging, domain: [-0.2, 0.2] }
+      width:  0.5
+
+  # observable-plot's own comparison: diff / $baseline coverage
+  # (tests/integration/observablePlotPanel.spec.ts) — same real gap, same
+  # real vmt_by_home_taz metric as the table rows directly above; all 25
+  # real zones have a genuinely nonzero total_vmt in every real scenario
+  # (confirmed via the duckdb CLI), so — like the table rows above — there
+  # is no real trigger for a null/omitted mark here either; Observable
+  # Plot's own real null-handling (a null y-value renders no mark at all)
+  # stays covered by direct source review + research.md §6's own record,
+  # not faked with synthetic data this migration exists to retire.
+  row_observable_plot_baseline_diff:
+    - type:   observable-plot
+      title:  "Observable Plot VMT Diff via $baseline"
+      metric: vmt_by_home_taz
+      comparison:
+        type: diff
+        a:    activitysim-baseline
+        b:    "$baseline"
+        expr: "a.total_vmt - b.total_vmt"
+      compare_on: [home_zone_id]
+      mark:   barY
+      x:      home_zone_id
+      y:      diff_value
+      height: 320
+      width:  0.5
+
+    - type:   observable-plot
+      title:  "Observable Plot VMT Percent Diff via $baseline"
+      metric: vmt_by_home_taz
+      comparison:
+        type: diff
+        a:    activitysim-baseline
+        b:    "$baseline"
+        expr: "(a.total_vmt - b.total_vmt) / NULLIF(b.total_vmt, 0)"
+      compare_on: [home_zone_id]
+      mark:   barY
+      x:      home_zone_id
+      y:      diff_value
+      height: 320
+      width:  0.5
 
 default_basemap: carto-positron
