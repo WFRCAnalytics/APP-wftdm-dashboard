@@ -283,12 +283,16 @@ export function AppearanceTab() {
       {/* 061-appearance-controls (US3): Primary/Secondary/Accent —
           two-tier (deployer default, applied once at boot in main.tsx,
           plus a viewer session override on top) color resolution, no
-          separate "brand" entity (spec.md's own Assumptions). */}
-      <div className="space-y-3">
+          separate "brand" entity (spec.md's own Assumptions). Three
+          columns, one row — each role is a compact, independent unit, not
+          a full-width row of its own. */}
+      <div className="space-y-2">
         <div className="text-sm font-medium text-foreground">Colors</div>
-        <InterfaceColorControl role="primary" label="Primary" />
-        <InterfaceColorControl role="secondary" label="Secondary" />
-        <InterfaceColorControl role="accent" label="Accent" />
+        <div className="grid grid-cols-3 gap-4">
+          <InterfaceColorControl role="primary" label="Primary" />
+          <InterfaceColorControl role="secondary" label="Secondary" />
+          <InterfaceColorControl role="accent" label="Accent" />
+        </div>
       </div>
 
       {/* 061-appearance-controls (US4): body/heading/monospace font
@@ -297,44 +301,48 @@ export function AppearanceTab() {
           viewer choosing "any Google Font" needs no enumerated catalog
           fetch to do so (research.md §9). Defaults to this dashboard's
           existing self-hosted Geist typefaces (empty input, no
-          selection) — picking a name is fully optional. */}
-      <div className="space-y-3">
+          selection) — picking a name is fully optional. Three columns,
+          one row, matching the Colors section's own layout above. */}
+      <div className="space-y-2">
         <div className="text-sm font-medium text-foreground">Fonts</div>
-        {(['body', 'heading', 'mono'] as const).map((role) => (
-          <div key={role} className="space-y-1">
-            <label htmlFor={`font-picker-${role}`} className="text-xs text-muted-foreground">
-              {FONT_ROLE_LABEL[role]}
-            </label>
-            <div className="flex items-center gap-2">
-              <Input
-                id={`font-picker-${role}`}
-                list={`google-fonts-${role}`}
-                placeholder="Default"
-                value={fontPreference[role] ?? ''}
-                onChange={(e) => {
-                  const value = e.target.value
-                  if (value.trim()) setFont(role, value)
-                  else clearFont(role)
-                }}
-              />
-              <datalist id={`google-fonts-${role}`}>
-                {GOOGLE_FONT_SHORTLIST.map((name) => (
-                  <option key={name} value={name} />
-                ))}
-              </datalist>
-              {fontPreference[role] && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  aria-label={`Clear ${FONT_ROLE_LABEL[role]} font`}
-                  onClick={() => clearFont(role)}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              )}
+        <div className="grid grid-cols-3 gap-4">
+          {(['body', 'heading', 'mono'] as const).map((role) => (
+            <div key={role} className="flex flex-col gap-1.5">
+              <label htmlFor={`font-picker-${role}`} className="text-xs text-muted-foreground">
+                {FONT_ROLE_LABEL[role]}
+              </label>
+              <div className="flex items-center gap-1">
+                <Input
+                  id={`font-picker-${role}`}
+                  list={`google-fonts-${role}`}
+                  placeholder="Default"
+                  value={fontPreference[role] ?? ''}
+                  onChange={(e) => {
+                    const value = e.target.value
+                    if (value.trim()) setFont(role, value)
+                    else clearFont(role)
+                  }}
+                />
+                <datalist id={`google-fonts-${role}`}>
+                  {GOOGLE_FONT_SHORTLIST.map((name) => (
+                    <option key={name} value={name} />
+                  ))}
+                </datalist>
+                {fontPreference[role] && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="shrink-0"
+                    aria-label={`Clear ${FONT_ROLE_LABEL[role]} font`}
+                    onClick={() => clearFont(role)}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
     </div>
   )

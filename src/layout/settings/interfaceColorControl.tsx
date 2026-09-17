@@ -43,52 +43,54 @@ export function InterfaceColorControl({ role, label }: { role: InterfaceColorRol
     '#000000'
 
   return (
-    <div className="flex items-center justify-between gap-4">
-      <label className="text-sm font-medium text-foreground">{label}</label>
-      <div className="flex items-center gap-2">
-        <Popover>
-          <PopoverTrigger asChild>
-            <button
-              type="button"
-              data-testid={`interface-color-swatch-${role}`}
-              className="h-6 w-6 shrink-0 cursor-pointer rounded border border-input"
-              style={{ backgroundColor: effectiveColor }}
-              aria-label={`Color for ${label}`}
-            />
-          </PopoverTrigger>
-          <PopoverContent className="w-64">
-            <ColorPicker
-              value={effectiveColor}
-              className="gap-3"
-              onChange={([r, g, b]) => setInterfaceColorOverride(role, Color.rgb(r, g, b).hex())}
+    // Column shape (label above, swatch below) — three of these sit side
+    // by side in a 1-row/3-column grid (appearanceTab.tsx), matching the
+    // font pickers' own column convention rather than each role getting
+    // its own full-width row.
+    <div className="flex flex-col gap-1.5">
+      <label className="text-xs text-muted-foreground">{label}</label>
+      <Popover>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            data-testid={`interface-color-swatch-${role}`}
+            className="h-8 w-full cursor-pointer rounded border border-input"
+            style={{ backgroundColor: effectiveColor }}
+            aria-label={`Color for ${label}`}
+          />
+        </PopoverTrigger>
+        <PopoverContent className="w-64">
+          <ColorPicker
+            value={effectiveColor}
+            className="gap-3"
+            onChange={([r, g, b]) => setInterfaceColorOverride(role, Color.rgb(r, g, b).hex())}
+          >
+            <ColorPickerSelection className="h-32" />
+            <div className="flex items-center gap-3">
+              <ColorPickerEyeDropper />
+              <div className="grid w-full gap-1">
+                <ColorPickerHue />
+                <ColorPickerAlpha />
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <ColorPickerOutput />
+              <ColorPickerFormat />
+            </div>
+          </ColorPicker>
+          {hasOverride && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="mt-3 w-full justify-center text-xs text-muted-foreground"
+              onClick={() => clearInterfaceColorOverride(role)}
             >
-              <ColorPickerSelection className="h-32" />
-              <div className="flex items-center gap-3">
-                <ColorPickerEyeDropper />
-                <div className="grid w-full gap-1">
-                  <ColorPickerHue />
-                  <ColorPickerAlpha />
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <ColorPickerOutput />
-                <ColorPickerFormat />
-              </div>
-            </ColorPicker>
-            {hasOverride && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="mt-3 w-full justify-center text-xs text-muted-foreground"
-                onClick={() => clearInterfaceColorOverride(role)}
-              >
-                <RotateCcw className="h-3 w-3" />
-                Reset to default
-              </Button>
-            )}
-          </PopoverContent>
-        </Popover>
-      </div>
+              <RotateCcw className="h-3 w-3" />
+              Reset to default
+            </Button>
+          )}
+        </PopoverContent>
+      </Popover>
     </div>
   )
 }
