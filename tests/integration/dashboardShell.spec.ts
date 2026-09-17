@@ -96,7 +96,11 @@ test.describe('User Story 2 - An analyst sees a real number, computed from real 
     await expect(page.getByText('Households', { exact: true })).toBeVisible()
     await expect(page.getByText('5,000', { exact: true })).toBeVisible()
     await expect(page.getByText('Total VMT', { exact: true })).toBeVisible()
-    await expect(page.getByText('15,212', { exact: true })).toBeVisible()
+    // Now rendered with a trailing unit ("15,212 mi") since a later
+    // session gave this panel a `format: "{:,.0f} mi"` + `gauge:` config
+    // (dashboard-1-summary.yaml) to demonstrate the radial-gauge valuebox
+    // mode — the underlying number is unchanged.
+    await expect(page.getByText('15,212 mi', { exact: true })).toBeVisible()
   })
 })
 
@@ -196,8 +200,15 @@ test.describe('Panel error isolation (SC-006, FR-010)', () => {
     // (row_missing_metric: metric: __nonexistent_metric__) shows a
     // scoped error — real rendered text confirmed directly (not assumed
     // from src/panels/TablePanel.tsx's own PanelErrorState message alone).
+    // A default 5s timeout is no longer reliable here — the Test tab has
+    // grown substantially crowded across several later features (each
+    // adding its own real broken/edge-case fixture rows), so this panel's
+    // own error can take longer than 5s to resolve under real DuckDB-WASM
+    // contention from every sibling panel's own concurrent query. Same
+    // class of fix sankeyPanel.spec.ts's own Test-tab assertions already
+    // use.
     const brokenCard = page.getByText('Broken Table Panel (missing metric)', { exact: true }).locator('..').locator('..')
-    await expect(brokenCard.getByText("Couldn't load this table")).toBeVisible()
+    await expect(brokenCard.getByText("Couldn't load this table")).toBeVisible({ timeout: 20_000 })
 
     // ...while a real, WORKING sibling elsewhere on the same "Test" tab
     // (row_gw_expandable's "Free-form Visual Analytics (expandable)" — a

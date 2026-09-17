@@ -322,9 +322,15 @@ test.describe('User Story 2 - Return to the dashboard without losing panel state
     // "Couldn't load this chart" string, and the Test tab has its own
     // broken recharts/plotly panels too), so scoped to this panel's own
     // card specifically, not a page-wide text search.
+    // A default 5s timeout is no longer reliable here — the Test tab has
+    // grown substantially crowded across several later features, so this
+    // panel's own error can take longer than 5s under real DuckDB-WASM
+    // contention from every sibling panel's own concurrent query. Same
+    // class of fix sankeyPanel.spec.ts's own Test-tab assertions already
+    // use.
     await expect(
       panelCard(page, 'Broken Observable Plot Panel (missing metric)').getByText("Couldn't load this chart"),
-    ).toBeVisible()
+    ).toBeVisible({ timeout: 20_000 })
 
     await expandTrigger(page, 'Broken Observable Plot Panel (missing metric)').click()
     const dialog = page.getByRole('dialog')

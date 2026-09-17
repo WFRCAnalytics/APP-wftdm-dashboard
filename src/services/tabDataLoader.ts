@@ -17,7 +17,7 @@
 // at every size this app's real tabs produce, by 43-99% — the pool and
 // its only caller (services/duckdb.ts#createLoaderInstance()) are
 // removed entirely by this feature, not conditionally kept.
-import { registerFileURL } from './duckdb.ts'
+import { hasView, registerFileURL } from './duckdb.ts'
 import * as appState from '../state/appState.ts'
 import { isComparisonDiff, resolveComparisonScenarioName } from '../panels/panelQuery.ts'
 import type { DashboardTabConfig, PanelConfig } from '../layout/types.ts'
@@ -173,6 +173,22 @@ async function registerOnePair(pair: MetricPair): Promise<void> {
     // (contracts/tab-data-loader.md).
     loadState.set(key, 'failed')
     throw new Error(`tabDataLoader: scenario "${pair.scenario}" was never registered`)
+  }
+  // A locally-loaded folder scenario (scenario/scenarioManager.ts's own
+  // registerScenario(), triggered by "Load Local Scenario") eagerly
+  // registers EVERY file it finds in one pass, entirely outside this
+  // module's own lazy per-pair tracking — its views already exist in
+  // DuckDB the moment the scenario reaches 'ready', before any tab-scoped
+  // call ever names one of its pairs. Without this check, registerFileURL()
+  // below throws "File already registered" for every such pair (a real,
+  // confirmed bug — DuckDB-WASM's own registerFileURL() has no idempotent
+  // "already registered, fine" mode), which this module previously had no
+  // way to distinguish from a genuine registration failure: it retried
+  // once, still failed the same way, and surfaced a real error that broke
+  // every unpinned panel referencing that scenario's metrics.
+  if (hasView(key)) {
+    loadState.set(key, 'loaded')
+    return
   }
   loadState.set(key, 'loading')
   const url = `${scenarioEntry.path}/${pair.metric}.parquet`

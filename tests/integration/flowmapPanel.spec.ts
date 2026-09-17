@@ -245,7 +245,13 @@ test.describe('User Story 1 - Author renders an O-D metric as a flow map', () =>
     await boot(page)
     await page.getByRole('tab', { name: 'Test' }).click()
     const card = panelCard(page, 'Broken Flow Map Panel (missing metric)')
-    await expect(card.getByText("Couldn't load this map")).toBeVisible()
+    // A default 5s timeout is no longer reliable here — the Test tab has
+    // grown substantially crowded across several later features, so this
+    // panel's own error can take longer than 5s under real DuckDB-WASM
+    // contention from every sibling panel's own concurrent query. Same
+    // class of fix sankeyPanel.spec.ts's own Test-tab assertions already
+    // use.
+    await expect(card.getByText("Couldn't load this map")).toBeVisible({ timeout: 20_000 })
     await expect(card.locator('.flowmap-chart')).toHaveCount(0)
     await expect(card.locator('canvas')).toHaveCount(0)
   })
@@ -1015,7 +1021,13 @@ test.describe('User Story 3 - Flowmap panel behaves consistently with the rest o
     await boot(page)
     await page.getByRole('tab', { name: 'Test' }).click()
     const card = panelCard(page, 'Broken Flow Map Panel (missing metric)')
-    await expect(card.getByText("Couldn't load this map")).toBeVisible()
+    // A default 5s timeout is no longer reliable here — the Test tab has
+    // grown substantially crowded across several later features, so this
+    // panel's own error can take longer than 5s under real DuckDB-WASM
+    // contention from every sibling panel's own concurrent query. Same
+    // class of fix sankeyPanel.spec.ts's own Test-tab assertions already
+    // use.
+    await expect(card.getByText("Couldn't load this map")).toBeVisible({ timeout: 20_000 })
     await expect(card.locator('.flowmap-chart')).toHaveCount(0)
     await expect(card.locator('canvas')).toHaveCount(0)
   })

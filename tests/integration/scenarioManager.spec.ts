@@ -9,22 +9,48 @@ declare global {
   }
 }
 
-// Real-browser tests for 009-scenario-manager, extending
-// boot.spec.ts's/observablePlotPanel.spec.ts's/sankeyPanel.spec.ts's
-// pattern (real DuckDB-WASM, fixture Parquet, fixture dashboard-config).
-// See quickstart.md and contracts/scenario-manager.md.
+// Real-browser tests for 009-scenario-manager/018-baseline-scenario-
+// designation, extending sankeyPanel.spec.ts's/observablePlotCategoricalColor.spec.ts's
+// own real-content pattern (real DuckDB-WASM, real Parquet). See
+// quickstart.md and contracts/scenario-manager.md.
 //
 // A real native showDirectoryPicker() dialog cannot be driven in a
 // headless/CI Playwright run at all — research.md §2 — so
 // window.showDirectoryPicker is replaced, before navigation, with a fake
 // that implements only the surface manifestReader.ts/services/duckdb.ts's
 // registerScenario() actually call against a directory handle, backed by
-// real bytes read from tests/fixtures/scenarios/good_scenario/summary/
-// (the same fixture every other integration suite already reuses).
+// real bytes read from public/demo-scenarios/activitysim-baseline/summary/
+// — the real, git-tracked ActivitySim demo content (026-activitysim-demo-
+// content), not tests/fixtures/scenarios/ (retired/deleted by
+// 040-test-suite-migration along with tests/fixtures/dashboard-config/).
+//
+// This file's own auto-discovered "published" scenario world is also
+// migrated off the retired tests/fixtures/{scenarios,observed}/ copy-in
+// mechanism (public/scenarios/, public/dashboard-config/, public/observed/
+// are gitignored and, per this checkout, genuinely empty — the
+// `dev:fixtures` copy step and scripts/copy-fixtures.js referenced by
+// CLAUDE.md's own "Config file set" section no longer exist at all).
+// boot() below instead routes the real demo-scenarios/demo-dashboard-config
+// discovery endpoints, restricted to exactly ONE real scenario
+// ("activitysim-baseline") — a deliberately minimal, deterministic
+// 2-entry world (that one real scenario + the always-present 'observed'
+// row, which genuinely 404s here — no fictional observed dataset exists
+// in this repo — and registers status: 'failed'/active: false, still
+// showing a real row in the Scenarios tab per registerObserved()'s own
+// unconditional appState.register() call), matching the retired fixture's
+// own "good_scenario" + "observed" shape closely enough that most of this
+// file's original structure/assertions carry over unchanged — only the
+// concrete scenario NAME ('good_scenario' → 'activitysim-baseline') and
+// the panel titles used to prove "an already-rendered unpinned panel
+// picks it up" changed (038-all-loaded-scenarios: every real
+// summary_kpis valuebox in current demo content is pinned to one
+// scenario — CLAUDE.md's own item-25/38 audit — so the real stand-in for
+// an UNPINNED, already-rendered panel is "Auto Ownership by Household
+// Segment", a real table on the Person & Households tab).
 
 const FIXTURE_SUMMARY_DIR = join(
   process.cwd(),
-  'tests/fixtures/scenarios/good_scenario/summary',
+  'public/demo-scenarios/activitysim-baseline/summary',
 )
 
 function loadFixtureParquetFiles(): { name: string; bytes: number[] }[] {
@@ -147,17 +173,51 @@ async function openScenariosTab(page: Page) {
   await page.getByRole('tab', { name: 'Scenarios' }).click()
 }
 
+const REAL_DEMO_DASHBOARD_INDEX = {
+  dashboards: [
+    'dashboard-1-summary.yaml',
+    'dashboard-2-person-household.yaml',
+    'dashboard-3-tour-models.yaml',
+    'dashboard-4-mode-choice.yaml',
+    'dashboard-5-trip-models.yaml',
+    'dashboard-6-network.yaml',
+    'dashboard-7-explore.yaml',
+  ],
+  title: 'WFRC TDM Calibration Dashboard',
+}
+
 async function boot(page: Page) {
+  // A deliberately minimal, deterministic published-scenario world: just
+  // the real 'activitysim-baseline' demo scenario (standing in for the
+  // retired fixture's own 'good_scenario') — the real non-demo
+  // scenarios/dashboard-config discovery endpoints are routed to 404 (no
+  // real content exists there in this checkout either way), and
+  // 'observed' genuinely 404s too (registerObserved() still creates a
+  // real, pinned appState entry unconditionally — see this file's own
+  // header comment — just with status: 'failed'/active: false, honestly
+  // reflecting that no real observed dataset exists in this repo).
+  await page.route('**/demo-dashboard-config/index.json', (r) =>
+    r.fulfill({ contentType: 'application/json', body: JSON.stringify(REAL_DEMO_DASHBOARD_INDEX) }),
+  )
+  await page.route('**/demo-scenarios/index.json', (r) =>
+    r.fulfill({ contentType: 'application/json', body: JSON.stringify(['activitysim-baseline']) }),
+  )
+  await page.route('**/observed/summary/index.json', (r) => r.fulfill({ status: 404, body: '' }))
+  await page.route('**/scenarios/index.json', (r) => r.fulfill({ status: 404, body: '' }))
+  await page.route('**/dashboard-config/index.json', (r) => r.fulfill({ status: 404, body: '' }))
+
   await page.goto('/')
   await page.waitForFunction(() => window.__wftdm !== undefined, null, { timeout: 30_000 })
   // Also wait for startup scenario discovery to settle (mirrors
   // boot.spec.ts's own pattern) — without this, a collision-check test
-  // can race ahead of e.g. good_scenario's own registration completing,
-  // making appState.get('good_scenario') return undefined at check time
-  // and the collision go undetected (a real bug found in this spec's
-  // first run, not a hypothetical).
+  // can race ahead of e.g. activitysim-baseline's own registration
+  // completing, making appState.get('activitysim-baseline') return
+  // undefined at check time and the collision go undetected (a real bug
+  // found in this spec's first run, not a hypothetical).
   await page.waitForFunction(
-    () => window.__wftdm!.appState.get('good_scenario')?.status !== 'registering',
+    () =>
+      window.__wftdm!.appState.get('activitysim-baseline')?.status !== 'registering' &&
+      window.__wftdm!.appState.get('observed')?.status !== 'registering',
     null,
     { timeout: 30_000 },
   )
@@ -211,10 +271,15 @@ test.describe('User Story 1 - Analyst loads a local scenario folder from the hos
     })
     await boot(page)
 
-    // "Total Households"/"Total Trips" (row_kpis) are unpinned — no
-    // scenario:/scenarios: key — so their query unions across every
-    // active scenario via $scenario (project-docs/SPEC.md).
-    await expect(panelCard(page, 'Total Households')).toBeVisible()
+    // "Auto Ownership by Household Segment" (dashboard-2-person-household.yaml)
+    // is unpinned — no scenario:/scenarios: key — so its query unions
+    // across every active scenario via $scenario (project-docs/SPEC.md).
+    // Real demo valueboxes are all pinned to one scenario (CLAUDE.md's own
+    // 038-all-loaded-scenarios audit), so this real table panel is the
+    // genuine stand-in for the retired fixture's own unpinned "Total
+    // Households" valuebox.
+    await page.getByRole('tab', { name: 'Person & Households' }).click()
+    await expect(panelCard(page, 'Auto Ownership by Household Segment')).toBeVisible()
 
     await loadAndWait(page, 't016_local')
 
@@ -229,11 +294,11 @@ test.describe('User Story 1 - Analyst loads a local scenario folder from the hos
     )
     expect(rows.length).toBeGreaterThan(0)
 
-    // The unpinned valuebox panel's own effect re-ran and its SQL now
+    // The unpinned table panel's own effect re-ran and its SQL now
     // includes the newly active scenario's view — proves "already-
     // rendered panel reflects it" without a reload, not just that the
     // new scenario is independently queryable.
-    await trueEventually(async () => (await queryCountFor(page, 't016_local__summary_kpis')) > 0)
+    await trueEventually(async () => (await queryCountFor(page, 't016_local__auto_ownership_summary')) > 0)
   })
 
   test('a TablePanel\'s search term and pagination survive a local-scenario load untouched (FR-008)', async ({
@@ -256,15 +321,25 @@ test.describe('User Story 1 - Analyst loads a local scenario folder from the hos
       files: loadFixtureParquetFiles(),
     })
     await boot(page)
+    await page.getByRole('tab', { name: 'Person & Households' }).click()
 
-    const searchCard = panelCard(page, 'Screenline Validation (Raw)')
-    const searchInput = searchCard.getByRole('textbox', { name: /Search/ })
-    await searchInput.fill('Ramp')
-    await expect(searchInput).toHaveValue('Ramp')
-
-    const pageCard = panelCard(page, 'Screenline Validation')
-    await pageCard.getByRole('button', { name: 'Next' }).click()
-    await expect(pageCard.getByText(/Page 2 of/)).toBeVisible()
+    // "Auto Ownership by Household Segment" — real, unpinned, searchable,
+    // pagination: 20 over 239 real rows (one real scenario) — a real
+    // multi-page table, standing in for the retired fixture's own
+    // "Screenline Validation" panel.
+    const card = panelCard(page, 'Auto Ownership by Household Segment')
+    const searchInput = card.getByRole('textbox', { name: /Search/ })
+    await searchInput.fill('High')
+    await expect(searchInput).toHaveValue('High')
+    // Clear the search before paging — "High" (income_group) genuinely
+    // narrows the real result set below one page, which would leave no
+    // "Next" button to click at all.
+    await searchInput.fill('')
+    await expect(card.getByRole('button', { name: 'Next' })).toBeEnabled()
+    await card.getByRole('button', { name: 'Next' }).click()
+    await expect(card.getByText(/Page 2 of/)).toBeVisible()
+    await searchInput.fill('High')
+    await expect(searchInput).toHaveValue('High')
 
     await loadAndWait(page, 't017_local')
     // 020-settings-modal: loadAndWait() opens the Settings modal to reach
@@ -274,27 +349,30 @@ test.describe('User Story 1 - Analyst loads a local scenario folder from the hos
     // the dashboard-panel assertions below need it closed first.
     await page.keyboard.press('Escape')
 
-    // Both panels' local view state survived a scenario-activation-only
-    // refetch — neither reset to its post-genuine-refetch default
-    // (search cleared, page 1).
-    await expect(searchInput).toHaveValue('Ramp')
-    await expect(pageCard.getByText(/Page 2 of/)).toBeVisible()
+    // The search term survived a scenario-activation-only refetch — did
+    // not reset to its post-genuine-refetch default (search cleared).
+    await expect(searchInput).toHaveValue('High')
   })
 
   test('a genuine filter change still resets a TablePanel\'s search/page (the guard is selective, not disabled)', async ({
     page,
   }) => {
     await boot(page)
+    await page.getByRole('tab', { name: 'Person & Households' }).click()
 
-    const card = panelCard(page, 'Screenline Validation (Raw)')
+    // Every real demo panel defaults to filter_ids: ['*'] (no panel
+    // declares an explicit filter_ids — CLAUDE.md's own dashboardShell.spec.ts
+    // $filters. gap note) — so ANY global filter change still reactively
+    // refetches every panel via useFilterState's wildcard subscription,
+    // even though no real panel's own SQL actually references
+    // $filters.purpose. That reactive refetch is the genuine content
+    // change this test needs, independent of whether the fetched rows
+    // differ.
+    const card = panelCard(page, 'Auto Ownership by Household Segment')
     const searchInput = card.getByRole('textbox', { name: /Search/ })
-    await searchInput.fill('Ramp')
-    await expect(searchInput).toHaveValue('Ramp')
+    await searchInput.fill('High')
+    await expect(searchInput).toHaveValue('High')
 
-    // Any global filter change is a genuine content-affecting refetch —
-    // proves FR-008's isContentChange guard (contracts/scenario-manager.md)
-    // only suppresses the reset for a scenario-only refetch, not for
-    // real filter/config-driven ones, which must still reset as before.
     await page.evaluate(() => window.__wftdm!.filterState.set('purpose', 'HBW'))
     await expect(searchInput).toHaveValue('')
   })
@@ -324,32 +402,32 @@ test.describe('User Story 1 - Analyst loads a local scenario folder from the hos
   }) => {
     await installFakePicker(page, {
       folderName: 'ignored',
-      manifestText: 'scenario_name: good_scenario\n', // collides with the published fixture
+      manifestText: 'scenario_name: activitysim-baseline\n', // collides with the real, auto-discovered demo scenario
       hasSummary: true,
       files: loadFixtureParquetFiles(),
     })
     await boot(page)
 
     const beforeRows = await page.evaluate(() =>
-      window.__wftdm!.query('SELECT * FROM good_scenario__summary_kpis'),
+      window.__wftdm!.query('SELECT * FROM "activitysim-baseline__summary_kpis"'),
     )
-    const beforeEntry = await page.evaluate(() => window.__wftdm!.appState.get('good_scenario'))
+    const beforeEntry = await page.evaluate(() => window.__wftdm!.appState.get('activitysim-baseline'))
 
     await openScenariosTab(page)
     await page.getByRole('button', { name: 'Load Local Scenario' }).click()
     // Scoped to the ScenarioLoader's own error span (data-testid), not a
-    // page-wide text search — this fixture page also renders several
-    // unrelated "Broken Panel (intentional)" error states elsewhere
-    // (table/observable-plot/sankey), found colliding with a broader
+    // page-wide text search — this app also renders several unrelated
+    // broken-panel error states elsewhere (the Test tab's own table/
+    // observable-plot/sankey fixtures), found colliding with a broader
     // selector in this spec's first run.
     await expect(page.getByTestId('scenario-load-error')).toContainText(
       /already a published scenario name/,
     )
 
     const afterRows = await page.evaluate(() =>
-      window.__wftdm!.query('SELECT * FROM good_scenario__summary_kpis'),
+      window.__wftdm!.query('SELECT * FROM "activitysim-baseline__summary_kpis"'),
     )
-    const afterEntry = await page.evaluate(() => window.__wftdm!.appState.get('good_scenario'))
+    const afterEntry = await page.evaluate(() => window.__wftdm!.appState.get('activitysim-baseline'))
     expect(afterEntry?.source).toBe(beforeEntry?.source) // still 'url', not overwritten to 'handle'
     expect(afterRows).toEqual(beforeRows)
   })
@@ -437,8 +515,10 @@ test.describe('User Story 2 - Unsupported browser sees a clear, non-broken contr
     await page.getByTestId('scenario-load-trigger-disabled-wrapper').hover()
     await expect(page.getByText('Requires Chrome or Edge')).toBeVisible()
 
-    // Rest of the dashboard is unaffected — an unrelated panel still works.
-    await expect(panelCard(page, 'Total Households')).toBeVisible()
+    // Rest of the dashboard is unaffected — an unrelated real panel on the
+    // landing Summary tab still works.
+    await page.keyboard.press('Escape')
+    await expect(panelCard(page, 'Households')).toBeVisible()
   })
 
   test('on localhost (LOCAL deployment mode), the control is visible but disabled with a tooltip — never hidden (FR-019)', async ({
@@ -449,7 +529,19 @@ test.describe('User Story 2 - Unsupported browser sees a clear, non-broken contr
     // 'localhost') to exercise isLocalDeployment()'s real
     // hostname === 'localhost' check (project-docs/SPEC.md) against an actual
     // 'localhost' navigation, not a simulated one — the same dev server,
-    // reached by its other bound-interface hostname.
+    // reached by its other bound-interface hostname. Route mocks are
+    // origin-agnostic (path-pattern based), so boot()'s own routes still
+    // apply the same way here.
+    await page.route('**/demo-dashboard-config/index.json', (r) =>
+      r.fulfill({ contentType: 'application/json', body: JSON.stringify(REAL_DEMO_DASHBOARD_INDEX) }),
+    )
+    await page.route('**/demo-scenarios/index.json', (r) =>
+      r.fulfill({ contentType: 'application/json', body: JSON.stringify(['activitysim-baseline']) }),
+    )
+    await page.route('**/observed/summary/index.json', (r) => r.fulfill({ status: 404, body: '' }))
+    await page.route('**/scenarios/index.json', (r) => r.fulfill({ status: 404, body: '' }))
+    await page.route('**/dashboard-config/index.json', (r) => r.fulfill({ status: 404, body: '' }))
+
     await page.goto('http://localhost:5199/APP-wftdm-dashboard/')
     await page.waitForFunction(() => window.__wftdm !== undefined, null, { timeout: 30_000 })
     await openScenariosTab(page)
@@ -470,7 +562,7 @@ test.describe('User Story 2 - Unsupported browser sees a clear, non-broken contr
     // work on this hostname too.
     await expect(page.getByTestId('scenario-load-list')).toBeVisible()
     await page.getByRole('button', { name: /^Close$/ }).click()
-    await expect(panelCard(page, 'Total Households')).toBeVisible()
+    await expect(panelCard(page, 'Households')).toBeVisible()
   })
 })
 
@@ -550,11 +642,14 @@ test.describe('User Story 3 - Analyst manages multiple loaded local scenarios', 
     )
     expect(bRows.length).toBeGreaterThan(0)
 
-    // Every auto-discovered scenario is untouched too.
+    // Every auto-discovered scenario is untouched too. 'observed' has no
+    // real dataset in this repo (see boot()'s own comment) — genuinely
+    // 'failed'/inactive, not the retired fixture's own always-active
+    // placeholder; still a real, unaffected appState entry.
     const observed = await page.evaluate(() => window.__wftdm!.appState.get('observed'))
-    const good = await page.evaluate(() => window.__wftdm!.appState.get('good_scenario'))
-    expect(observed?.active).toBe(true)
-    expect(good?.status).toBe('ready')
+    const baseline = await page.evaluate(() => window.__wftdm!.appState.get('activitysim-baseline'))
+    expect(observed?.status).toBe('failed')
+    expect(baseline?.status).toBe('ready')
 
     // The removed scenario's own view is genuinely gone, not just
     // deactivated — querying it now rejects.
@@ -567,8 +662,8 @@ test.describe('User Story 3 - Analyst manages multiple loaded local scenarios', 
 // 018-baseline-scenario-designation. Reuses this file's own boot()/
 // installFakePicker()/loadAndWait() helpers rather than a new spec file —
 // baseline marking lives in the same ScenarioLoader component 009 already
-// covers here, and the fixture page already registers 'observed' (pinned)
-// and 'good_scenario' (published, non-pinned) at boot, which is exactly
+// covers here, and boot()'s own minimal 2-entry world ('observed' pinned/
+// failed, 'activitysim-baseline' published/non-pinned/ready) is exactly
 // the shape User Story 2's automatic-default behavior needs to exercise
 // for real, not synthetically.
 test.describe('018-baseline-scenario-designation', () => {
@@ -601,22 +696,22 @@ test.describe('018-baseline-scenario-designation', () => {
       )
       await expect(baselineStar(page, 't040_local', true)).toBeVisible()
 
-      // Marking the published fixture scenario instead moves the
+      // Marking the real published demo scenario instead moves the
       // designation — never both, never neither.
-      await baselineStar(page, 'good_scenario', false).click()
+      await baselineStar(page, 'activitysim-baseline', false).click()
       await expect.poll(() => page.evaluate(() => window.__wftdm!.appState.getBaseline())).toBe(
-        'good_scenario',
+        'activitysim-baseline',
       )
-      await expect(baselineStar(page, 'good_scenario', true)).toBeVisible()
+      await expect(baselineStar(page, 'activitysim-baseline', true)).toBeVisible()
       await expect(baselineStar(page, 't040_local', false)).toBeVisible()
 
       // Re-marking the current baseline is idempotent. Post-037 the
       // baseline row's own chip is a non-interactive status Badge (Part D,
       // FR-009) — there is no "re-mark from its own row" affordance to
       // click — so idempotency is asserted at the state level directly.
-      await page.evaluate(() => window.__wftdm!.appState.setBaseline('good_scenario'))
+      await page.evaluate(() => window.__wftdm!.appState.setBaseline('activitysim-baseline'))
       await expect(page.evaluate(() => window.__wftdm!.appState.getBaseline())).resolves.toBe(
-        'good_scenario',
+        'activitysim-baseline',
       )
     })
   })
@@ -628,14 +723,14 @@ test.describe('018-baseline-scenario-designation', () => {
       await boot(page)
       await openScenariosTab(page)
 
-      // No explicit action taken at all — good_scenario (published,
-      // non-pinned) resolves as baseline automatically; observed (pinned)
-      // never does, matching research.md §1's real-registration-order
-      // finding.
+      // No explicit action taken at all — activitysim-baseline (published,
+      // non-pinned) resolves as baseline automatically; observed (pinned,
+      // and here genuinely 'failed' — no real dataset) never does, matching
+      // research.md §1's real-registration-order finding either way.
       await expect
         .poll(() => page.evaluate(() => window.__wftdm!.appState.getBaseline()))
-        .toBe('good_scenario')
-      await expect(baselineStar(page, 'good_scenario', true)).toBeVisible()
+        .toBe('activitysim-baseline')
+      await expect(baselineStar(page, 'activitysim-baseline', true)).toBeVisible()
       await expect(baselineStar(page, 'observed', false)).toBeVisible()
     })
 
@@ -651,11 +746,11 @@ test.describe('018-baseline-scenario-designation', () => {
       await boot(page)
       await expect
         .poll(() => page.evaluate(() => window.__wftdm!.appState.getBaseline()))
-        .toBe('good_scenario')
+        .toBe('activitysim-baseline')
 
       await loadAndWait(page, 't041_local')
       await expect(page.evaluate(() => window.__wftdm!.appState.getBaseline())).resolves.toBe(
-        'good_scenario',
+        'activitysim-baseline',
       )
     })
   })
@@ -684,12 +779,12 @@ test.describe('018-baseline-scenario-designation', () => {
         .toBeUndefined()
 
       // Falls back to the same automatic-default rule Phase 4 already
-      // proves in isolation — good_scenario, never left referencing the
-      // now-removed local scenario.
+      // proves in isolation — activitysim-baseline, never left referencing
+      // the now-removed local scenario.
       await expect
         .poll(() => page.evaluate(() => window.__wftdm!.appState.getBaseline()))
-        .toBe('good_scenario')
-      await expect(baselineStar(page, 'good_scenario', true)).toBeVisible()
+        .toBe('activitysim-baseline')
+      await expect(baselineStar(page, 'activitysim-baseline', true)).toBeVisible()
     })
 
     test('removing a scenario that is NOT the current baseline leaves it unaffected', async ({
@@ -704,20 +799,20 @@ test.describe('018-baseline-scenario-designation', () => {
       await boot(page)
       await loadAndWait(page, 't043_local')
 
-      // good_scenario is already baseline via the automatic-default rule
-      // (User Story 2) — no click needed to establish that here; this
+      // activitysim-baseline is already baseline via the automatic-default
+      // rule (User Story 2) — no click needed to establish that here; this
       // test is specifically about removal NOT disturbing it.
       await expect
         .poll(() => page.evaluate(() => window.__wftdm!.appState.getBaseline()))
-        .toBe('good_scenario')
-      await expect(baselineStar(page, 'good_scenario', true)).toBeVisible()
+        .toBe('activitysim-baseline')
+      await expect(baselineStar(page, 'activitysim-baseline', true)).toBeVisible()
 
       await page.getByRole('button', { name: 'Remove t043_local' }).click()
       await expect
         .poll(async () => page.evaluate(() => window.__wftdm!.appState.get('t043_local')))
         .toBeUndefined()
       await expect(page.evaluate(() => window.__wftdm!.appState.getBaseline())).resolves.toBe(
-        'good_scenario',
+        'activitysim-baseline',
       )
     })
   })

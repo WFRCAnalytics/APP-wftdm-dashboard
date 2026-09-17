@@ -53,9 +53,12 @@ const FALLBACK_CARD = { light: '#ffffff', dark: '#081b26' } as const
  * per panel to draw options from; picking any one active scenario is a
  * deliberate simplification, not expected to differ across scenarios of
  * the same categorical column in practice). */
+function resolveInputOptionsScenario(config: ObservablePlotPanelConfig, activeScenarios: string[]): string {
+  return config.scenario ?? resolveActiveScenarios(config, activeScenarios)[0]
+}
+
 function resolveInputOptionsView(config: ObservablePlotPanelConfig, activeScenarios: string[]): string {
-  const scenario = config.scenario ?? resolveActiveScenarios(config, activeScenarios)[0]
-  return `${scenario}__${config.metric}`
+  return `${resolveInputOptionsScenario(config, activeScenarios)}__${config.metric}`
 }
 
 // The fifth panel type — see contracts/observable-plot-panel.md and
@@ -92,6 +95,7 @@ export function ObservablePlotPanel({ config }: { config: ObservablePlotPanelCon
   // 007-observable-plot-panel).
   const activeScenarios = useActiveScenarios()
   const view = resolveInputOptionsView(config, activeScenarios)
+  const inputOptionsScenario = resolveInputOptionsScenario(config, activeScenarios)
   // 019-baseline-diff-consumption: only consulted when config.comparison
   // references the '$baseline' sentinel — included in the fetch effect's
   // own dependency array below regardless, so a live baseline change
@@ -521,6 +525,8 @@ export function ObservablePlotPanel({ config }: { config: ObservablePlotPanelCon
           key={input.id}
           config={input}
           view={view}
+          scenario={inputOptionsScenario}
+          metric={config.metric}
           value={inputValues[input.id]}
           onChange={(v) => setInputValues((prev) => ({ ...prev, [input.id]: v }))}
         />
@@ -578,15 +584,36 @@ export function ObservablePlotPanel({ config }: { config: ObservablePlotPanelCon
  * deliberately NOT filtered by any of the panel's own filter: bindings
  * (research.md §9 — a filtered options query would collapse a
  * select/multiselect's own choices down to its current selection).
+ *
+ * A real, confirmed race found via 040-test-suite-migration's own new
+ * integration coverage (project-docs/GRAMMAR.md's inputs: grammar had zero real
+ * demo-content usage before this feature, so this path was never actually
+ * exercised against 056-lazy-tab-scoped-loading's own later change):
+ * unlike the panel's own main fetch effect (which awaits
+ * ensureRegistered(pairs) before querying), this effect queried `view`
+ * directly — fine under the old eager-registration boot sequence, but
+ * under lazy per-tab loading the view may not be registered yet the
+ * moment this effect first fires, producing a genuine "Catalog Error:
+ * Table ... does not exist" — silently, since the range branch had no
+ * .catch() at all, permanently stranding `range` at null (a range
+ * input's displayed value/query filter then never leaves its configured
+ * default, even a deliberately out-of-bounds one like "99"). Fixed by
+ * awaiting the same ensureRegistered() call every other panel-data fetch
+ * already uses, keyed by the SAME (scenario, metric) pair `view` itself
+ * is built from.
  */
 function PanelLocalInput({
   config,
   view,
+  scenario,
+  metric,
   value,
   onChange,
 }: {
   config: ObservablePlotInputConfig
   view: string
+  scenario: string
+  metric: string
   value: string | string[] | undefined
   onChange: (value: string | string[]) => void
 }) {
@@ -595,23 +622,26 @@ function PanelLocalInput({
 
   useEffect(() => {
     let cancelled = false
-    if (config.type === 'range') {
-      query(`SELECT MIN("${config.column}") AS min, MAX("${config.column}") AS max FROM "${view}"`).then(
-        (rows) => {
-          if (!cancelled && rows[0]) {
-            setRange({ min: Number(rows[0].min), max: Number(rows[0].max) })
-          }
-        },
-      )
-    } else {
-      distinctValues(view, config.column).then((values) => {
-        if (!cancelled) setOptions(values.map(String))
-      })
-    }
+    ensureRegistered([{ scenario, metric }]).then(() => {
+      if (cancelled) return
+      if (config.type === 'range') {
+        query(`SELECT MIN("${config.column}") AS min, MAX("${config.column}") AS max FROM "${view}"`).then(
+          (rows) => {
+            if (!cancelled && rows[0]) {
+              setRange({ min: Number(rows[0].min), max: Number(rows[0].max) })
+            }
+          },
+        )
+      } else {
+        distinctValues(view, config.column).then((values) => {
+          if (!cancelled) setOptions(values.map(String))
+        })
+      }
+    })
     return () => {
       cancelled = true
     }
-  }, [view, config.column, config.type])
+  }, [view, scenario, metric, config.column, config.type])
 
   // Corrects research.md §9's original claim: the browser clamps only the
   // <input type="range">'s own DISPLAYED value to [min, max] — it does

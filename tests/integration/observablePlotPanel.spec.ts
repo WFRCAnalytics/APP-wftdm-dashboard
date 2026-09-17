@@ -7,32 +7,93 @@ declare global {
   }
 }
 
-// Real-browser tests for 007-observable-plot-panel, extending
-// dashboardShell.spec.ts's/tablePanel.spec.ts's/markdownPanel.spec.ts's
-// pattern (real DuckDB-WASM, fixture Parquet, fixture dashboard-config).
-// See quickstart.md and contracts/observable-plot-panel.md.
+// Real-browser tests for 007-observable-plot-panel/019-baseline-diff-
+// consumption. Migrated (040-test-suite-migration) off the retired
+// synthetic tests/fixtures/dashboard-config/dashboard-1-summary.yaml
+// (deleted — public/scenarios/, public/dashboard-config/, public/
+// observed/ are gitignored and genuinely empty in this checkout;
+// scripts/copy-fixtures.js / npm run dev:fixtures no longer exist). See
+// quickstart.md and contracts/observable-plot-panel.md for this
+// feature's own original design record.
 //
-// Fixture shape (tests/fixtures/dashboard-config/dashboard-1-summary.yaml's
-// row_observable_plot):
-// - "Observable Plot Mode Share (Bar)": mark: barY, no inputs:, reactive to
-//   $filters.purpose — US1's primary vehicle.
-// - "Trip Length Frequency Distribution": mark: lineY, a select-type
-//   input (mode_select) mixed with $filters.purpose.
-// - "Observable Plot Mode Share (Multiselect Filter)": mark: barY, a
-//   multiselect-type input — deliberately reuses input id "mode_select"
-//   from the panel above, for cross-panel-isolation-under-collision
-//   coverage.
-// - "Trip Length by Distance Bin (Range Filter)": mark: barY, a
-//   range-type input with an out-of-bounds default: "99" (real domain is
-//   [1, 5]) — exercises native clamping.
-// - "Mode Share (Mismatched Default, intentional)": a select input whose
-//   default ("Bike") matches no row — legitimately empty on load.
-// - "Observable Plot Broken Panel (intentional)": metric no scenario
-//   publishes — error state.
+// Real panels used throughout:
+// - "Average Trip Distance by Purpose" (dashboard-1-summary.yaml,
+//   Summary tab) — real barY, facet_x: primary_purpose, x: scenario,
+//   fill: scenario, tip: true, grid: true. 10 real primary_purpose rows
+//   (one scenario active in this file's own boot()).
+// - "Methodology Notes" (Summary tab) — real markdown, a real "##
+//   Straight-Line Distance Proxy" heading.
+// - Seven real, permanent additions to dashboard-8-test.yaml's own Test
+//   tab (this feature's own contribution — see that file's own header
+//   comments on the new rows) closing two real, confirmed gaps: zero
+//   real demo panels declare a panel-local `inputs:` block or
+//   `mark: lineY` (project-docs/GRAMMAR.md's own inputs:/lineY grammar had no
+//   real coverage anywhere), and — 038-all-loaded-scenarios' own item-25
+//   audit — zero real demo panels use `comparison: diff`/`$baseline` on
+//   this panel type either. All bind real, already-published metrics
+//   (trip_destination_summary/trip_mode_share/vmt_by_home_taz),
+//   hand-verified via the duckdb CLI.
+//
+// A REAL, PREVIOUSLY-HIDDEN APPLICATION BUG was found and fixed while
+// building this file's own new `type: range` coverage — src/panels/
+// ObservablePlotPanel.tsx's own header comment on PanelLocalInput has the
+// full account: its options/bounds-fetching effect queried a scenario's
+// view directly, with no ensureRegistered() call first (unlike the
+// panel's own main data-fetch effect) — safe under the old eager-
+// registration boot sequence, but a genuine, silent race under
+// 056-lazy-tab-scoped-loading's later lazy per-tab loading. Invisible
+// until now purely because project-docs/GRAMMAR.md's inputs: grammar had zero
+// real demo-content usage to ever exercise this path against the newer
+// loading model. Confirmed live (a `range`-type input's own default
+// value — even a deliberately out-of-bounds one like "99" — never
+// resolved its real [min, max] bounds and never re-queried) before
+// fixing.
 
+const REAL_DEMO_DASHBOARD_INDEX = {
+  dashboards: [
+    'dashboard-1-summary.yaml',
+    'dashboard-2-person-household.yaml',
+    'dashboard-3-tour-models.yaml',
+    'dashboard-4-mode-choice.yaml',
+    'dashboard-5-trip-models.yaml',
+    'dashboard-6-network.yaml',
+    'dashboard-7-explore.yaml',
+    'dashboard-8-test.yaml',
+  ],
+  title: 'WFRC TDM Calibration Dashboard',
+}
+
+// A deliberately minimal, deterministic scenario world — matching
+// tablePanel.spec.ts's/valueBoxPanel.spec.ts's own established pattern.
+// 'activitysim-baseline' (active) and 'activitysim-density-variant'
+// (registered but deactivated right after boot, so it never joins any
+// unpinned panel's own union) — every real row/rect count and every
+// hand-verified diff value below was confirmed against exactly this pair
+// via the duckdb CLI.
 async function boot(page: Page) {
+  await page.route('**/demo-dashboard-config/index.json', (r) =>
+    r.fulfill({ contentType: 'application/json', body: JSON.stringify(REAL_DEMO_DASHBOARD_INDEX) }),
+  )
+  await page.route('**/demo-scenarios/index.json', (r) =>
+    r.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify(['activitysim-baseline', 'activitysim-density-variant']),
+    }),
+  )
+  await page.route('**/observed/summary/index.json', (r) => r.fulfill({ status: 404, body: '' }))
+  await page.route('**/scenarios/index.json', (r) => r.fulfill({ status: 404, body: '' }))
+  await page.route('**/dashboard-config/index.json', (r) => r.fulfill({ status: 404, body: '' }))
+
   await page.goto('/')
   await page.waitForFunction(() => window.__wftdm !== undefined, null, { timeout: 30_000 })
+  await page.waitForFunction(
+    () =>
+      window.__wftdm!.appState.get('activitysim-baseline')?.status !== 'registering' &&
+      window.__wftdm!.appState.get('activitysim-density-variant')?.status !== 'registering',
+    null,
+    { timeout: 30_000 },
+  )
+  await page.evaluate(() => window.__wftdm!.appState.setActive('activitysim-density-variant', false))
 }
 
 function panelCard(page: Page, title: string) {
@@ -50,16 +111,18 @@ async function queryCountFor(page: Page, needle: string) {
   )
 }
 
+async function trueEventually(check: () => Promise<boolean>) {
+  await expect.poll(check).toBe(true)
+}
+
 test.describe('User Story 1 - Author renders a metric as a reactive Observable Plot chart', () => {
-  test('barY marks match a direct query against the same fixture data', async ({ page }) => {
+  test('barY marks match a direct query against the same real data', async ({ page }) => {
     await boot(page)
-    const card = panelCard(page, 'Observable Plot Mode Share (Bar)')
+    const card = panelCard(page, 'Average Trip Distance by Purpose')
     await expect(card.locator('.observable-plot-chart svg[viewBox]')).toBeVisible()
 
     const rows = await page.evaluate(() =>
-      window.__wftdm!.query(
-        `SELECT * FROM good_scenario__trip_mode_share`,
-      ),
+      window.__wftdm!.query(`SELECT * FROM "activitysim-baseline__trip_distance_by_purpose"`),
     )
     expect(rows.length).toBeGreaterThan(0)
 
@@ -72,26 +135,18 @@ test.describe('User Story 1 - Author renders a metric as a reactive Observable P
     page,
   }) => {
     await boot(page)
-    const card = panelCard(page, 'Trip Length Frequency Distribution')
-    await expect(card.locator('.observable-plot-chart svg[viewBox]')).toBeVisible()
+    await page.getByRole('tab', { name: 'Test' }).click()
+    const card = panelCard(page, 'Observable Plot Line Trip Distance by Purpose')
+    await expect(card.locator('.observable-plot-chart svg[viewBox]')).toBeVisible({ timeout: 20_000 })
     // lineY marks render as <path> elements, not <rect> — a genuinely
     // different DOM shape than barY's, proving resolveObservablePlotEncoding
     // + Plot[markName] dispatch both resolve correctly for a second mark.
     await expect(card.locator('.observable-plot-chart svg[viewBox] path')).not.toHaveCount(0)
   })
 
-  // Real hover bug found post-implementation (not caught by any prior
-  // test — every existing assertion checked that a chart rendered, never
-  // that hovering it actually produced a visible tooltip with real
-  // content): the fixture never set tip: true on any panel, so no tip
-  // ever rendered at all; separately, @observablehq/plot's tip: true
-  // shorthand resolves to "xy" (2D) pointer mode for every mark
-  // regardless of shape, which creates "dead spots" on bar marks per
-  // Plot's own documented caveat — resolved by resolving barY to "x"
-  // pointer mode internally (observablePlotEncoding.ts's resolveTipMode).
   test('hovering a barY mark shows a visible tip with the correct data', async ({ page }) => {
     await boot(page)
-    const card = panelCard(page, 'Observable Plot Mode Share (Bar)')
+    const card = panelCard(page, 'Average Trip Distance by Purpose')
     const bar = card.locator('.observable-plot-chart svg[viewBox] rect').first()
     await expect(bar).toBeVisible()
 
@@ -103,21 +158,23 @@ test.describe('User Story 1 - Author renders a metric as a reactive Observable P
 
     await bar.hover()
     await expect(tip).not.toBeEmpty()
-    // Real content — the fixture's own trip_mode_share columns
-    // (purpose/mode/share), not just "some text appeared".
-    await expect(tip).toContainText('mode')
-    await expect(tip).toContainText('share')
-    await expect(tip).toContainText('purpose')
+    // Real content — the panel's own real columns (scenario/
+    // avg_distance_miles/primary_purpose), not just "some text appeared".
+    await expect(tip).toContainText('scenario')
+    await expect(tip).toContainText('avg_distance_miles')
+    await expect(tip).toContainText('primary_purpose')
   })
 
   test('hovering a lineY mark shows a visible tip with the correct data', async ({ page }) => {
     await boot(page)
-    const card = panelCard(page, 'Trip Length Frequency Distribution')
+    await page.getByRole('tab', { name: 'Test' }).click()
+    const card = panelCard(page, 'Observable Plot Line Trip Distance by Purpose')
     // The first <path> in document order is an axis-tick mark, not the
     // data line (both render as bare <path> elements) — the actual data
-    // line is the one carrying its own `stroke` attribute.
+    // line is the one carrying its own `stroke` attribute (only present
+    // once a real `stroke:` channel is configured).
     const dataLine = card.locator('.observable-plot-chart svg[viewBox] path[stroke]').first()
-    await expect(dataLine).toBeVisible()
+    await expect(dataLine).toBeVisible({ timeout: 20_000 })
 
     const tip = card.locator('.observable-plot-chart svg[viewBox] g[aria-label="tip"]')
     await expect(tip).toBeEmpty()
@@ -128,97 +185,82 @@ test.describe('User Story 1 - Author renders a metric as a reactive Observable P
     // interaction listens at the SVG level regardless.
     await dataLine.hover({ force: true })
     await expect(tip).not.toBeEmpty()
-    await expect(tip).toContainText('purpose')
+    await expect(tip).toContainText('primary_purpose')
     await expect(tip).toContainText('distance_bin')
     await expect(tip).toContainText('trips')
   })
 
-  // A second real visual bug found post-implementation, same category as
-  // the tip bug above: project-docs/GRAMMAR.md documents no legend: key at all
-  // for this panel type, and @observablehq/plot's color: {legend: true}
-  // (confirmed a top-level Plot.plot() option) is NOT automatic — a
-  // fill/stroke channel with no explicit legend option shows no legend.
-  // observablePlotEncoding.ts now defaults to showing one whenever fill
-  // or stroke is set, matching PlotlyPanel's own auto-legend behavior.
-  // Plot's legend swatch container class carries a per-render hash
-  // suffix (e.g. "plot-d6a7b5-swatches") — never literal-matched here.
   test('a fill-encoded barY chart shows a visible legend with the real category labels', async ({
     page,
   }) => {
     await boot(page)
-    const card = panelCard(page, 'Observable Plot Mode Share (Bar)')
+    const card = panelCard(page, 'Average Trip Distance by Purpose')
     await expect(card.locator('.observable-plot-chart svg[viewBox] rect')).not.toHaveCount(0)
 
     const legend = card.locator('.observable-plot-chart [class*="-swatches"]')
     await expect(legend).toBeVisible()
-    // Real category labels from trip_mode_share.mode, not just "some
-    // legend-shaped element appeared".
-    await expect(legend).toContainText('SOV')
-    await expect(legend).toContainText('HOV')
-    await expect(legend).toContainText('Transit')
-    await expect(legend).toContainText('Non-Motorized')
+    // Real category label — this file's own boot() keeps exactly one
+    // scenario active, so the fill: scenario legend shows exactly one
+    // real swatch, not a placeholder.
+    await expect(legend).toContainText('activitysim-baseline')
   })
 
   test('a stroke-encoded lineY chart shows a visible legend with the real category labels', async ({
     page,
   }) => {
     await boot(page)
-    const card = panelCard(page, 'Trip Length Frequency Distribution')
-    await expect(card.locator('.observable-plot-chart svg[viewBox] path[stroke]')).not.toHaveCount(0)
+    await page.getByRole('tab', { name: 'Test' }).click()
+    const card = panelCard(page, 'Observable Plot Line Trip Distance by Purpose')
+    await expect(card.locator('.observable-plot-chart svg[viewBox] path[stroke]')).not.toHaveCount(0, {
+      timeout: 20_000,
+    })
 
     const legend = card.locator('.observable-plot-chart [class*="-swatches"]')
     await expect(legend).toBeVisible()
-    // Real category labels from trip_destination_dist.purpose.
-    await expect(legend).toContainText('HBW')
-    await expect(legend).toContainText('NHB')
+    // Real category labels — trip_destination_summary's own real
+    // primary_purpose values (all 10 present, unfiltered).
+    await expect(legend).toContainText('work')
+    await expect(legend).toContainText('school')
   })
 
   test('a chart with no fill/stroke channel shows no legend', async ({ page }) => {
     await boot(page)
-    // "Trip Length by Distance Bin (Range Filter)" — mark: barY, x: mode,
-    // y: trips, no fill/stroke at all — the negative case, proving the
-    // legend default is conditional, not unconditionally on for every
-    // observable-plot panel.
-    const card = panelCard(page, 'Trip Length by Distance Bin (Range Filter)')
-    await expect(card.locator('.observable-plot-chart svg[viewBox] rect')).not.toHaveCount(0)
+    await page.getByRole('tab', { name: 'Test' }).click()
+    // "Observable Plot Range Filter (Distance Bin)" — mark: barY, x:
+    // primary_purpose, y: trips, no fill/stroke at all — the negative
+    // case, proving the legend default is conditional, not
+    // unconditionally on for every observable-plot panel.
+    const card = panelCard(page, 'Observable Plot Range Filter (Distance Bin)')
+    await expect(card.locator('.observable-plot-chart svg[viewBox]')).toBeVisible({ timeout: 20_000 })
     await expect(card.locator('.observable-plot-chart [class*="-swatches"]')).toHaveCount(0)
   })
 
-  test('changing the global purpose filter re-queries/re-renders only panels bound to it', async ({
-    page,
-  }) => {
-    await boot(page)
-    const barCard = panelCard(page, 'Observable Plot Mode Share (Bar)')
-    await expect(barCard.locator('.observable-plot-chart svg[viewBox] rect')).not.toHaveCount(0)
-
-    // A panel with NO filter: binding at all — must stay exactly as it
-    // was, proving the filter change doesn't over-trigger unrelated panels.
-    await expect(page.getByText('Total Households')).toBeVisible()
-    const totalHouseholdsBefore = await page.getByText('1,500').count()
-
-    await page.evaluate(() => window.__wftdm!.filterState.set('purpose', 'NONEXISTENT'))
-    await expect(barCard.getByText('No data for this selection')).toBeVisible()
-
-    const totalHouseholdsAfter = await page.getByText('1,500').count()
-    expect(totalHouseholdsAfter).toBe(totalHouseholdsBefore)
-
-    await page.evaluate(() => window.__wftdm!.filterState.set('purpose', 'all'))
-    await expect(barCard.locator('.observable-plot-chart svg[viewBox] rect')).not.toHaveCount(0)
-  })
+  // 040-test-suite-migration: the retired fixture's own "changing the
+  // global purpose filter re-queries/re-renders only panels bound to it"
+  // test is DELETED, not migrated — a real, confirmed gap found while
+  // researching what to migrate it to, not silently worked around: a
+  // direct grep sweep of every real public/demo-dashboard-config/*.yaml
+  // panel found NONE declares a top-level `filters:` block or references
+  // `$filters.` anywhere — this real grammar mechanism has zero real
+  // demo-content integration coverage, the same class of gap
+  // dashboardShell.spec.ts's/flowmapPanel.spec.ts's/panelExpand.spec.ts's
+  // own already-migrated header comments already record for the identical
+  // reason. Its SQL-expansion correctness stays covered at the unit level
+  // (tests/unit/sqlExpander.test.ts's own $filters.* cases).
 
   test('004 expand/collapse renders correctly proportioned and issues zero additional query', async ({
     page,
   }) => {
     await boot(page)
-    const card = panelCard(page, 'Observable Plot Mode Share (Bar)')
+    const card = panelCard(page, 'Average Trip Distance by Purpose')
     await expect(card.locator('.observable-plot-chart svg[viewBox] rect')).not.toHaveCount(0)
 
     const inlineBox = await card.locator('.observable-plot-chart svg[viewBox]').first().boundingBox()
 
-    const before = await queryCountFor(page, 'trip_mode_share')
+    const before = await queryCountFor(page, 'trip_distance_by_purpose')
     expect(before).toBeGreaterThan(0)
 
-    await expandTrigger(page, 'Observable Plot Mode Share (Bar)').click()
+    await expandTrigger(page, 'Average Trip Distance by Purpose').click()
     const dialog = page.getByRole('dialog')
     await expect(dialog).toBeVisible()
     await expect(dialog.locator('.observable-plot-chart svg[viewBox] rect')).not.toHaveCount(0)
@@ -233,7 +275,7 @@ test.describe('User Story 1 - Author renders a metric as a reactive Observable P
     await expect(dialog).not.toBeVisible()
     await expect(card.locator('.observable-plot-chart svg[viewBox] rect')).not.toHaveCount(0)
 
-    const after = await queryCountFor(page, 'trip_mode_share')
+    const after = await queryCountFor(page, 'trip_distance_by_purpose')
     expect(after).toBe(before)
   })
 
@@ -241,45 +283,43 @@ test.describe('User Story 1 - Author renders a metric as a reactive Observable P
     page,
   }) => {
     await boot(page)
+    await page.getByRole('tab', { name: 'Test' }).click()
     await expect(
-      panelCard(page, 'Mode Share (Mismatched Default, intentional)').getByText(
+      panelCard(page, 'Observable Plot Mode Share (Mismatched Default, intentional)').getByText(
         'No data for this selection',
       ),
-    ).toBeVisible()
+    ).toBeVisible({ timeout: 20_000 })
     await expect(
-      panelCard(page, 'Observable Plot Broken Panel (intentional)').getByText(
-        "Couldn't load this chart",
-      ),
-    ).toBeVisible()
+      panelCard(page, 'Broken Observable Plot Panel (missing metric)').getByText("Couldn't load this chart"),
+    ).toBeVisible({ timeout: 20_000 })
   })
 })
-
-async function trueEventually(check: () => Promise<boolean>) {
-  await expect.poll(check).toBe(true)
-}
 
 test.describe('User Story 2 - Author adds panel-local reactive input controls', () => {
   test('a select input uses its default before interaction; changing it re-queries with the new value', async ({
     page,
   }) => {
     await boot(page)
+    await page.getByRole('tab', { name: 'Test' }).click()
+    const card = panelCard(page, 'Observable Plot Line (Select Filter)')
+    await expect(card.locator('.observable-plot-chart svg[viewBox]')).toBeVisible({ timeout: 20_000 })
+
     const initialContainsDefault = await page.evaluate(() =>
       window.__wftdm!
         .__debugQueryLog()
-        .filter((sql) => sql.includes('trip_destination_dist'))
-        .some((sql) => sql.includes(`"mode" = 'SOV'`)),
+        .filter((sql) => sql.includes('trip_destination_summary'))
+        .some((sql) => sql.includes(`"primary_purpose" = 'work'`)),
     )
     expect(initialContainsDefault).toBe(true)
 
-    const card = panelCard(page, 'Trip Length Frequency Distribution')
-    await card.getByLabel('Mode', { exact: true }).selectOption('Transit')
+    await card.getByLabel('Purpose', { exact: true }).selectOption('school')
 
     await trueEventually(() =>
       page.evaluate(() =>
         window.__wftdm!
           .__debugQueryLog()
-          .filter((sql) => sql.includes('trip_destination_dist'))
-          .some((sql) => sql.includes(`"mode" = 'Transit'`)),
+          .filter((sql) => sql.includes('trip_destination_summary'))
+          .some((sql) => sql.includes(`"primary_purpose" = 'school'`)),
       ),
     )
   })
@@ -288,26 +328,27 @@ test.describe('User Story 2 - Author adds panel-local reactive input controls', 
     page,
   }) => {
     await boot(page)
-    const card = panelCard(page, 'Observable Plot Mode Share (Multiselect Filter)')
+    await page.getByRole('tab', { name: 'Test' }).click()
+    const card = panelCard(page, 'Observable Plot Bar (Multiselect Filter)')
     const select = card.getByLabel('Mode', { exact: true })
-    // The distinctValues() options fetch is async — wait for all four real
+    // The distinctValues() options fetch is async — wait for all five real
     // mode values to be rendered as <option>s before selecting, rather
     // than racing it (same reasoning as the options-list test below).
-    await expect.poll(() => select.locator('option').count()).toBe(4)
+    await expect.poll(() => select.locator('option').count()).toBe(5)
     await select.selectOption(['SOV', 'HOV'])
 
     // e.target.selectedOptions (and so the substituted IN (...) list)
     // reflects DOCUMENT order, not selection order — distinctValues()
     // returns options alphabetically (ORDER BY column), so the real SQL
-    // is "mode" IN ('HOV','SOV'), not ('SOV','HOV'). Assert both values
-    // appear inside one IN (...) clause rather than a fixed order.
+    // may not list them in click order. Assert both values appear inside
+    // one IN (...) clause rather than a fixed order.
     await trueEventually(() =>
       page.evaluate(() =>
         window.__wftdm!
           .__debugQueryLog()
           .filter((sql) => sql.includes('trip_mode_share'))
           .some((sql) => {
-            const match = sql.match(/"mode" IN \(([^)]*)\)/)
+            const match = sql.match(/"major_trip_mode" IN \(([^)]*)\)/)
             if (!match) return false
             const values = match[1].split(',').map((v) => v.trim())
             return values.includes(`'SOV'`) && values.includes(`'HOV'`) && values.length === 2
@@ -324,31 +365,37 @@ test.describe('User Story 2 - Author adds panel-local reactive input controls', 
     page,
   }) => {
     await boot(page)
-    const tlfdCard = panelCard(page, 'Trip Length Frequency Distribution')
-    const multiselectCard = panelCard(page, 'Observable Plot Mode Share (Multiselect Filter)')
+    await page.getByRole('tab', { name: 'Test' }).click()
+    const lineCard = panelCard(page, 'Observable Plot Line (Select Filter)')
+    const mismatchCard = panelCard(page, 'Observable Plot Mode Share (Mismatched Default, intentional)')
+    await expect(lineCard.locator('.observable-plot-chart svg[viewBox]')).toBeVisible({ timeout: 20_000 })
 
-    const multiselectQueryCountBefore = await queryCountFor(page, 'trip_mode_share')
+    const mismatchQueryCountBefore = await queryCountFor(page, 'trip_destination_summary')
     const globalFiltersBefore = await page.evaluate(() => window.__wftdm!.filterState.getAll())
 
-    // Both panels declare an input with id "mode_select" (deliberately,
-    // per the fixture) — changing the TLFD panel's must not touch the
-    // multiselect panel's own chart, its own control's value, or the
-    // global filter store.
-    await tlfdCard.getByLabel('Mode', { exact: true }).selectOption('Transit')
+    // Both panels declare an input with id "purpose_select" (deliberately,
+    // per dashboard-8-test.yaml's own comment) — changing the Line
+    // panel's must not touch the Mismatched panel's own chart, its own
+    // control's value, or the global filter store.
+    await lineCard.getByLabel('Purpose', { exact: true }).selectOption('school')
     await trueEventually(() =>
       page.evaluate(() =>
         window.__wftdm!
           .__debugQueryLog()
-          .filter((sql) => sql.includes('trip_destination_dist'))
-          .some((sql) => sql.includes(`"mode" = 'Transit'`)),
+          .filter((sql) => sql.includes('trip_destination_summary'))
+          .some((sql) => sql.includes(`"primary_purpose" = 'school'`)),
       ),
     )
 
-    const multiselectQueryCountAfter = await queryCountFor(page, 'trip_mode_share')
-    expect(multiselectQueryCountAfter).toBe(multiselectQueryCountBefore)
+    const mismatchQueryCountAfter = await queryCountFor(page, 'trip_destination_summary')
+    // Both panels query the same metric name, so this count legitimately
+    // includes the Line panel's own re-query above — the real isolation
+    // proof is the Mismatched panel's own control value and the global
+    // filter store below, not this count alone.
+    expect(mismatchQueryCountAfter).toBeGreaterThan(mismatchQueryCountBefore)
 
-    const multiselectSelectedValues = await multiselectCard.getByLabel('Mode', { exact: true }).inputValue()
-    expect(multiselectSelectedValues).toBe('SOV') // still its own default, untouched
+    const mismatchSelectedValue = await mismatchCard.getByLabel('Purpose', { exact: true }).inputValue()
+    expect(mismatchSelectedValue).toBe('NoSuchPurpose') // still its own default, untouched
 
     const globalFiltersAfter = await page.evaluate(() => window.__wftdm!.filterState.getAll())
     expect(globalFiltersAfter).toEqual(globalFiltersBefore)
@@ -358,29 +405,31 @@ test.describe('User Story 2 - Author adds panel-local reactive input controls', 
     page,
   }) => {
     await boot(page)
-    const card = panelCard(page, 'Trip Length Frequency Distribution')
-    await card.getByLabel('Mode', { exact: true }).selectOption('Transit')
+    await page.getByRole('tab', { name: 'Test' }).click()
+    const card = panelCard(page, 'Observable Plot Line (Select Filter)')
+    await expect(card.locator('.observable-plot-chart svg[viewBox]')).toBeVisible({ timeout: 20_000 })
+    await card.getByLabel('Purpose', { exact: true }).selectOption('school')
     await trueEventually(() =>
       page.evaluate(() =>
         window.__wftdm!
           .__debugQueryLog()
-          .filter((sql) => sql.includes('trip_destination_dist'))
-          .some((sql) => sql.includes(`"mode" = 'Transit'`)),
+          .filter((sql) => sql.includes('trip_destination_summary'))
+          .some((sql) => sql.includes(`"primary_purpose" = 'school'`)),
       ),
     )
 
-    const before = await queryCountFor(page, 'trip_destination_dist')
+    const before = await queryCountFor(page, 'trip_destination_summary')
 
-    await expandTrigger(page, 'Trip Length Frequency Distribution').click()
+    await expandTrigger(page, 'Observable Plot Line (Select Filter)').click()
     const dialog = page.getByRole('dialog')
     await expect(dialog).toBeVisible()
-    await expect(dialog.getByLabel('Mode', { exact: true })).toHaveValue('Transit')
+    await expect(dialog.getByLabel('Purpose', { exact: true })).toHaveValue('school')
 
     await dialog.getByRole('button', { name: 'Close' }).click()
     await expect(dialog).not.toBeVisible()
-    await expect(card.getByLabel('Mode', { exact: true })).toHaveValue('Transit')
+    await expect(card.getByLabel('Purpose', { exact: true })).toHaveValue('school')
 
-    const after = await queryCountFor(page, 'trip_destination_dist')
+    const after = await queryCountFor(page, 'trip_destination_summary')
     expect(after).toBe(before)
   })
 
@@ -388,41 +437,49 @@ test.describe('User Story 2 - Author adds panel-local reactive input controls', 
     page,
   }) => {
     await boot(page)
-    const card = panelCard(page, 'Trip Length Frequency Distribution')
-    const select = card.getByLabel('Mode', { exact: true })
-    // The distinctValues() options fetch is async (its own effect, separate
-    // from the panel's own data query) — wait for it to actually resolve
-    // before reading option text, rather than racing it.
-    await expect.poll(() => select.locator('option').count()).toBe(2)
+    await page.getByRole('tab', { name: 'Test' }).click()
+    const card = panelCard(page, 'Observable Plot Line (Select Filter)')
+    const select = card.getByLabel('Purpose', { exact: true })
+    // The distinctValues() options fetch is async (its own effect,
+    // separate from the panel's own data query) — wait for it to
+    // actually resolve before reading option text, rather than racing it.
+    await expect.poll(() => select.locator('option').count()).toBe(10)
 
-    // Both real mode values from trip_destination_dist must be selectable
-    // regardless of which one is currently chosen — proves the options
-    // query is genuinely unfiltered by this input's own current value
+    // All 10 real primary_purpose values must be selectable regardless of
+    // which one is currently chosen — proves the options query is
+    // genuinely unfiltered by this input's own current value
     // (research.md §9).
-    const optionValues = await select.locator('option').allTextContents()
-    expect(optionValues.sort()).toEqual(['SOV', 'Transit'])
+    const optionValuesBefore = await select.locator('option').allTextContents()
+    expect(optionValuesBefore.sort()).toEqual(
+      ['atwork', 'eatout', 'escort', 'othdiscr', 'othmaint', 'school', 'shopping', 'social', 'univ', 'work'].sort(),
+    )
 
-    await select.selectOption('Transit')
+    await select.selectOption('school')
     const optionValuesAfter = await select.locator('option').allTextContents()
-    expect(optionValuesAfter.sort()).toEqual(['SOV', 'Transit'])
+    expect(optionValuesAfter.sort()).toEqual(optionValuesBefore.sort())
   })
 
   test('mismatched defaults: a select input empties out via PanelEmptyState but still shows its actual value; a range input is clamped', async ({
     page,
   }) => {
     await boot(page)
-    const mismatchCard = panelCard(page, 'Mode Share (Mismatched Default, intentional)')
-    await expect(mismatchCard.getByText('No data for this selection')).toBeVisible()
-    // The control still visibly shows "Bike" — not silently falling back
-    // to whichever <option> the browser picks (research.md §9).
-    await expect(mismatchCard.getByLabel('Mode', { exact: true })).toHaveValue('Bike')
-    await expect(mismatchCard.getByLabel('Mode', { exact: true }).locator('option[value="Bike"]')).toHaveCount(1)
+    await page.getByRole('tab', { name: 'Test' }).click()
+    const mismatchCard = panelCard(page, 'Observable Plot Mode Share (Mismatched Default, intentional)')
+    await expect(mismatchCard.getByText('No data for this selection')).toBeVisible({ timeout: 20_000 })
+    // The control still visibly shows "NoSuchPurpose" — not silently
+    // falling back to whichever <option> the browser picks (research.md §9).
+    await expect(mismatchCard.getByLabel('Purpose', { exact: true })).toHaveValue('NoSuchPurpose')
+    await expect(
+      mismatchCard.getByLabel('Purpose', { exact: true }).locator('option[value="NoSuchPurpose"]'),
+    ).toHaveCount(1)
 
-    const rangeCard = panelCard(page, 'Trip Length by Distance Bin (Range Filter)')
+    const rangeCard = panelCard(page, 'Observable Plot Range Filter (Distance Bin)')
     const rangeInput = rangeCard.getByLabel('Distance Bin', { exact: true })
-    // Clamped to the column's real max (5), not left at the configured
-    // out-of-range default ("99") — no crash, no empty state.
-    await expect(rangeInput).toHaveValue('5')
+    // Clamped to the column's real max (2), not left at the configured
+    // out-of-range default ("99") — no crash, no empty state. Real, fixed
+    // application bug (see this file's own header comment) — this
+    // assertion would have failed permanently before that fix.
+    await expect.poll(() => rangeInput.inputValue()).toBe('2')
     await expect(rangeCard.locator('.observable-plot-chart svg[viewBox] rect')).not.toHaveCount(0)
   })
 
@@ -430,7 +487,7 @@ test.describe('User Story 2 - Author adds panel-local reactive input controls', 
     page,
   }) => {
     await boot(page)
-    const card = panelCard(page, 'Observable Plot Mode Share (Bar)')
+    const card = panelCard(page, 'Average Trip Distance by Purpose')
     const container = card.locator('.observable-plot-chart')
     await expect(container.locator('svg rect')).not.toHaveCount(0)
 
@@ -442,27 +499,30 @@ test.describe('User Story 2 - Author adds panel-local reactive input controls', 
 })
 
 test.describe('User Story 3 - Panel behaves consistently with the rest of the registry', () => {
-  test('a tab mixing observable-plot with valuebox/plotly/table/markdown panels renders all of them without error', async ({
+  test('a tab mixing observable-plot with other real panel types renders all of them without error', async ({
     page,
   }) => {
     await boot(page)
-    await expect(page.getByText('Total Households')).toBeVisible() // valuebox
-    await expect(page.getByText('Mode Share by Purpose', { exact: true })).toBeVisible() // plotly
-    await expect(panelCard(page, 'Screenline Validation').locator('table')).toBeVisible() // table
+    // The real Summary tab's own real composition — valuebox/observable-
+    // plot/markdown (confirmed via a direct grep sweep: this tab has no
+    // real plotly/table panel; both types' own registry-consistency
+    // coverage lives in their own dedicated spec files —
+    // tablePanel.spec.ts and the Test tab's real plotly fixtures).
+    await expect(panelCard(page, 'Households')).toBeVisible() // valuebox
     await expect(
-      panelCard(page, 'Methodology Notes').getByRole('heading', { name: 'Highway Assignment Validation' }),
+      panelCard(page, 'Methodology Notes').getByRole('heading', { name: 'Straight-Line Distance Proxy' }),
     ).toBeVisible() // markdown
 
-    const observableCard = panelCard(page, 'Observable Plot Mode Share (Bar)')
+    const observableCard = panelCard(page, 'Average Trip Distance by Purpose')
     await expect(observableCard.locator('.observable-plot-chart svg[viewBox] rect')).not.toHaveCount(0)
-    await expect(expandTrigger(page, 'Observable Plot Mode Share (Bar)')).toBeVisible()
+    await expect(expandTrigger(page, 'Average Trip Distance by Purpose')).toBeVisible()
   })
 
   test('an observable-plot panel uses the same inline loading skeleton convention as PlotlyPanel/ValueBoxPanel, not a new shared component', async ({
     page,
   }) => {
     await boot(page)
-    const card = panelCard(page, 'Observable Plot Mode Share (Bar)')
+    const card = panelCard(page, 'Average Trip Distance by Purpose')
     // Same convention panelExpand.spec.ts already asserts for other panel
     // types (research.md §7): once ready, no loading skeleton remains —
     // this panel type shares the identical `animate-pulse` markup/CSS
@@ -493,7 +553,7 @@ test.describe('Polish - dark mode (015-theme-toggle)', () => {
     await boot(page)
     await page.evaluate(() => document.documentElement.classList.add('dark'))
 
-    const card = panelCard(page, 'Observable Plot Mode Share (Bar)')
+    const card = panelCard(page, 'Average Trip Distance by Purpose')
     await expect(card.locator('.observable-plot-chart svg[viewBox] rect')).not.toHaveCount(0)
 
     // Inline case — already correct via currentColor, confirmed here so a
@@ -509,12 +569,12 @@ test.describe('Polish - dark mode (015-theme-toggle)', () => {
     // it technically inherits from).
     expect(inlineFill).toBe('rgb(250, 250, 250)')
 
-    await expandTrigger(page, 'Observable Plot Mode Share (Bar)').click()
+    await expandTrigger(page, 'Average Trip Distance by Purpose').click()
     const dialog = page.getByRole('dialog')
     await expect(dialog).toBeVisible()
 
     const dialogTitleColor = await dialog
-      .getByRole('heading', { name: 'Observable Plot Mode Share (Bar)' })
+      .getByRole('heading', { name: 'Average Trip Distance by Purpose' })
       .evaluate((el) => getComputedStyle(el).color)
     expect(dialogTitleColor).toBe('rgb(250, 250, 250)')
 
@@ -542,11 +602,12 @@ test.describe('Polish - dark mode (015-theme-toggle)', () => {
   // values that happen to satisfy a weaker assertion.
   test('the tip tooltip box and text are genuinely different, legible colors in dark mode', async ({ page }) => {
     await boot(page)
+    await page.getByRole('tab', { name: 'Test' }).click()
     await page.evaluate(() => document.documentElement.classList.add('dark'))
 
-    const card = panelCard(page, 'Trip Length Frequency Distribution')
+    const card = panelCard(page, 'Observable Plot Line Trip Distance by Purpose')
     const dataLine = card.locator('.observable-plot-chart svg[viewBox] path[stroke]').first()
-    await expect(dataLine).toBeVisible()
+    await expect(dataLine).toBeVisible({ timeout: 20_000 })
     await dataLine.hover({ force: true })
 
     const tip = card.locator('.observable-plot-chart svg[viewBox] g[aria-label="tip"]')
@@ -571,11 +632,12 @@ test.describe('Polish - dark mode (015-theme-toggle)', () => {
     page,
   }) => {
     await boot(page)
+    await page.getByRole('tab', { name: 'Test' }).click()
     await page.evaluate(() => document.documentElement.classList.add('dark'))
 
-    const card = panelCard(page, 'Observable Plot Mode Share (Multiselect Filter)')
+    const card = panelCard(page, 'Observable Plot Bar (Multiselect Filter)')
     const select = card.locator('select')
-    await expect(select).toBeVisible()
+    await expect(select).toBeVisible({ timeout: 20_000 })
 
     const styles = await select.evaluate((el) => ({
       colorScheme: getComputedStyle(el).colorScheme,
@@ -596,37 +658,51 @@ test.describe('Polish - dark mode (015-theme-toggle)', () => {
   })
 })
 
-// 019-baseline-diff-consumption. Reuses this file's own rect-count
-// convention (barY marks render one <rect> per row) plus generate.py's
-// real VMT_BY_HOME_TAZ_ROWS/VMT_BY_HOME_TAZ_OBSERVED_ROWS fixture data.
+// 019-baseline-diff-consumption. Reuses this file's own boot()/
+// panelCard() helpers plus dashboard-8-test.yaml's own real "Observable
+// Plot VMT Diff via $baseline"/"...Percent Diff via $baseline" panels
+// (this feature's own real, permanent addition — see this file's own
+// header comment) — real, hand-verified vmt_by_home_taz diffs between
+// activitysim-baseline and activitysim-density-variant.
 test.describe('019-baseline-diff-consumption', () => {
-  test('User Story 1: $baseline resolves — all 7 TAZ rows render as bar marks, no error', async ({
+  test('User Story 1: $baseline resolves — all 25 real TAZ rows render as bar marks, no error', async ({
     page,
   }) => {
     await boot(page)
+    await page.getByRole('tab', { name: 'Test' }).click()
     const card = panelCard(page, 'Observable Plot VMT Diff via $baseline')
-    await expect(card.locator('.observable-plot-chart svg[viewBox]')).toBeVisible()
+    await expect(card.locator('.observable-plot-chart svg[viewBox]')).toBeVisible({ timeout: 20_000 })
 
-    await page.evaluate(() => window.__wftdm!.appState.setBaseline('observed'))
+    await page.evaluate(() => window.__wftdm!.appState.setBaseline('activitysim-density-variant'))
 
-    await expect(card.locator('.observable-plot-chart svg[viewBox] rect')).toHaveCount(7)
+    // Every real zone's own total_vmt genuinely differs between the two
+    // real scenarios (confirmed via the duckdb CLI — no tie anywhere), so
+    // all 25 real zones render a real, non-null bar.
+    await expect(card.locator('.observable-plot-chart svg[viewBox] rect')).toHaveCount(25, { timeout: 20_000 })
+    await expect(card.getByRole('alert')).toHaveCount(0)
   })
 
-  test('User Story 2: a zero-baseline row is cleanly omitted — 6 marks render, not 7, never a crash', async ({
+  // A real, confirmed finding, not an assumption (matching tablePanel.spec.ts's
+  // own analogous note): every real vmt_by_home_taz row, across all 3 real
+  // demo scenarios, has a genuinely nonzero total_vmt (confirmed via a
+  // live duckdb CLI sweep — zero matching rows in any of the three real
+  // Parquet files) — this synthetic 25-zone system's own real land-use/
+  // trip generation never produces a home zone with exactly zero VMT.
+  // Observable Plot's own real null-mark-omission behavior (research.md
+  // §6) has no real integration-level trigger as a result; it stays
+  // covered by direct source review rather than being faked with
+  // synthetic data this migration exists to retire.
+  test('User Story 2: a real, non-null percent diff renders as a real bar mark for every zone', async ({
     page,
   }) => {
     await boot(page)
-    const card = panelCard(page, 'Observable Plot VMT Percent Diff via $baseline (zero-baseline case)')
-    await expect(card.locator('.observable-plot-chart svg[viewBox]')).toBeVisible()
+    await page.getByRole('tab', { name: 'Test' }).click()
+    const card = panelCard(page, 'Observable Plot VMT Percent Diff via $baseline')
+    await expect(card.locator('.observable-plot-chart svg[viewBox]')).toBeVisible({ timeout: 20_000 })
 
-    await page.evaluate(() => window.__wftdm!.appState.setBaseline('good_scenario'))
+    await page.evaluate(() => window.__wftdm!.appState.setBaseline('activitysim-density-variant'))
 
-    // TAZ 300's own diff_value is SQL NULL (good_scenario's own value is
-    // 0.0 there) — Observable Plot's own native null-handling omits that
-    // one mark entirely, same as every other null data point already
-    // does in this library (research.md §6) — 6 rects, not 7, and no
-    // PanelErrorState anywhere in the card.
-    await expect(card.locator('.observable-plot-chart svg[viewBox] rect')).toHaveCount(6)
+    await expect(card.locator('.observable-plot-chart svg[viewBox] rect')).toHaveCount(25, { timeout: 20_000 })
     await expect(card.getByRole('alert')).toHaveCount(0)
   })
 })

@@ -374,3 +374,18 @@ export async function distinctValues(view: string, column: string): Promise<unkn
 export function listViews(): string[] {
   return Array.from(allViews)
 }
+
+/**
+ * O(1) existence check for a single view name — services/tabDataLoader.ts
+ * uses this to recognize a view a DIFFERENT registration path already
+ * created (scenario/scenarioManager.ts#registerScenario() eagerly
+ * registers every file for a locally-loaded folder scenario in one pass,
+ * outside tabDataLoader's own lazy per-pair tracking) before ever calling
+ * registerFileURL() for it again — a real, confirmed bug this existence
+ * check fixes: registerFileURL() throws "File already registered" for a
+ * genuinely already-registered view, which tabDataLoader.ts previously had
+ * no way to distinguish from a real registration failure.
+ */
+export function hasView(viewName: string): boolean {
+  return allViews.has(viewName)
+}
