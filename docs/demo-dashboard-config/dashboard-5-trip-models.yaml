@@ -11,7 +11,7 @@ header:
 sections:
   - id: trip-purpose
     label: "Trip Purpose"
-    rows: [row_trip_purpose, row_trip_purpose_pie]
+    rows: [row_trip_purpose, row_trip_purpose_pie, row_trip_purpose_combo]
   - id: trip-destination
     label: "Trip Destination"
     rows: [row_trip_destination]
@@ -55,6 +55,30 @@ layout:
       value:    trips
       height:   400
       width:    1.0
+
+  # New chart-type coverage: type: recharts's new chart_type: combo — a
+  # real dual-axis bar+line chart, one bar layer (trip volume) and one
+  # line layer (average distance) sharing the same x (primary_purpose),
+  # the line on a second, independent right-hand Y axis since trip
+  # counts and mileage live on very different scales. Pinned to one
+  # scenario — the same real, confirmed reason the new heatmap panel on
+  # dashboard-4-mode-choice.yaml is pinned: a combo layer has no series/
+  # facet channel of its own to separate an unpinned $scenario union's
+  # multiple rows sharing one x value, which would otherwise silently
+  # stack multiple scenarios' bars/line-points on top of each other.
+  row_trip_purpose_combo:
+    - type:    recharts
+      title:   "Trip Volume vs. Average Distance by Purpose"
+      metric:  trip_distance_by_purpose
+      scenario: activitysim-baseline
+      description: "Baseline scenario. Bars (left axis) show real trip counts; the line (right axis) shows real average trip distance, both by purpose."
+      chart_type: combo
+      x:       primary_purpose
+      layers:
+        - { chart_type: bar,  y: trips,              label: "Trips",             y_axis: left }
+        - { chart_type: line, y: avg_distance_miles,  label: "Avg. Distance (mi)", y_axis: right }
+      height:  400
+      width:   1.0
 
   row_trip_destination:
     - type:    observable-plot

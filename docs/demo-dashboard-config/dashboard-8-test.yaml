@@ -108,7 +108,22 @@ layout:
       chart_type: pie
       x: major_trip_mode
       y: share
-      width: 1.0
+      width: 0.5
+
+    # New chart-type coverage: chart_type: combo's own runtime validation
+    # (RechartsPanel.tsx — `layers` is required, checked at runtime since
+    # YAML has no schema) — an empty/missing `layers` list is a real,
+    # reachable authoring mistake (e.g. copy-pasting a bar/line/area
+    # panel and forgetting to add layers), same "structurally unreachable
+    # through valid config, still caught defensively" convention every
+    # other runtime-only validation on this tab already covers.
+    - type:       recharts
+      title:      "Recharts Invalid Combo (no layers)"
+      metric:     trip_distance_by_purpose
+      scenario:   activitysim-baseline
+      chart_type: combo
+      x:          primary_purpose
+      width:      0.5
 
   # ── 040-test-suite-migration (rechartsPanel.spec.ts, Batch B): real
   #    working bar/line/area panels — 057-observable-plot-conversion
@@ -381,6 +396,50 @@ layout:
       baseline_trend:
         expr: "a.__missing_col__ - b.total_persons"
       width: 0.5
+
+  # New chart-type coverage: ValueBoxPanelConfig's gauge: {min, max} mode
+  # — one real gauge per status color, all bound to the same real
+  # total_trips column so any visible difference is attributable purely
+  # to observed/threshold_warn/threshold_fail, not different underlying
+  # data. `observed`/thresholds are deliberately extreme/degenerate here
+  # (0, a tiny gap, a huge gap) specifically to force each status
+  # DETERMINISTICALLY regardless of the real total_trips count's own
+  # exact value — the real demo panel on dashboard-1-summary.yaml is
+  # where a genuinely plausible illustrative target lives; this row's
+  # own job is proving all three status colors resolve correctly.
+  row_valuebox_gauge:
+    - type:   valuebox
+      title:  "Gauge — Normal (no target configured)"
+      metric: summary_kpis
+      scenario: activitysim-baseline
+      column: total_trips
+      format: "{:,.0f}"
+      gauge:  { min: 0, max: 30000 }
+      width:  0.33
+
+    - type:   valuebox
+      title:  "Gauge — Warn"
+      metric: summary_kpis
+      scenario: activitysim-baseline
+      column: total_trips
+      format: "{:,.0f}"
+      gauge:  { min: 0, max: 30000 }
+      observed: 0
+      threshold_warn: 1
+      threshold_fail: 999999999
+      width:  0.33
+
+    - type:   valuebox
+      title:  "Gauge — Fail"
+      metric: summary_kpis
+      scenario: activitysim-baseline
+      column: total_trips
+      format: "{:,.0f}"
+      gauge:  { min: 0, max: 30000 }
+      observed: 0
+      threshold_warn: 1
+      threshold_fail: 2
+      width:  0.33
 
   # ── comparison: diff whose a/b name unresolvable scenarios ──
   row_bad_diff:
@@ -874,6 +933,21 @@ layout:
       value:    trips
       height:   380
       width:    0.33
+
+  # Donut mode (type: pie's new optional `donut: true` field) — the same
+  # real, already-published trip_purpose_share metric as row_pie above,
+  # rendered with a hollow center instead of a solid disc, so the two are
+  # directly comparable side by side.
+  row_pie_donut:
+    - type:     pie
+      title:    "Donut Chart (Trip Purpose Share)"
+      metric:   trip_purpose_share
+      scenario: activitysim-baseline
+      category: primary_purpose
+      value:    trips
+      donut:    true
+      height:   380
+      width:    0.5
 
   # 060-radar-pie-charts — matching row_pie's own three-fixture
   # convention, reusing the already-real, already-published
