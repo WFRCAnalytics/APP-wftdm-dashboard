@@ -162,30 +162,47 @@ export function resolveObservablePlotEncoding(
   // leaving the channel binding above completely untouched.
   const hasFacet = Boolean(config.facet_x || config.facet_y)
   const xMatchesColorChannel = Boolean(config.x) && (config.x === config.fill || config.x === config.stroke)
-  if (hasFacet && xMatchesColorChannel) {
+  const xAxisSuppressed = hasFacet && xMatchesColorChannel
+  if (xAxisSuppressed) {
     plotOptions.x = { axis: null }
-  } else if (config.x) {
-    // Real, confirmed visual bug: Plot's own default x-axis marginBottom
-    // (30px — axis.js's own `marginBottom = anchor === "bottom" ? 30 : 0`
-    // default) was sized for Plot's own 10px default tick-label font, not
-    // the 12px this panel's plotOptions.style override above renders at
-    // (matched to PlotlyPanel.tsx's own 12px default, see that assignment's
-    // own comment) — and Plot never recomputes it from the actual rendered
-    // font size. Confirmed directly against axis.js's own label-placement
-    // code (labelOptions()): for a categorical/band x-scale specifically
-    // (every real observable-plot bar chart in this app — barY's x channel
-    // is always discrete), the axis TITLE's own default labelAnchor is
-    // "center", not "right" — so it renders CENTERED DIRECTLY BELOW the
-    // tick labels, not off to the side of the axis the way it does for a
-    // continuous/quantitative scale — and its vertical offset defaults to
-    // `marginBottom - 3` (27px from the axis line) while the tick labels
-    // themselves start 9px below that same line (tickSize + tickPadding).
-    // With a 12px tick label filling most of that remaining 18px band, the
-    // title text sits only a few px below the tick text — visibly crowded.
-    // Bumped to 44px, giving clear separation for a 12px tick label (~9px
-    // start offset + ~14px real glyph height ≈ 23px) before the title's own
-    // now-later 41px offset — never applied when the x axis itself is
-    // suppressed above (no title exists to space out in that case).
+  }
+
+  // Real, confirmed visual bug: Plot's own default bottom-axis marginBottom
+  // (30px — axis.js's own `marginBottom = anchor === "bottom" ? 30 : 0`
+  // default) was sized for Plot's own 10px default tick-label font, not the
+  // 12px this panel's plotOptions.style override above renders at (matched
+  // to PlotlyPanel.tsx's own 12px default, see that assignment's own
+  // comment) — and Plot never recomputes it from the actual rendered font
+  // size. Confirmed directly against axis.js's own label-placement code
+  // (labelOptions()): for a categorical/band scale specifically (every real
+  // observable-plot bar chart in this app — barY's x/fx channel is always
+  // discrete), the axis TITLE's own default labelAnchor is "center", not
+  // "right" — so it renders CENTERED DIRECTLY BELOW the tick labels, not
+  // off to the side of the axis the way it does for a continuous scale —
+  // and its vertical offset defaults to `marginBottom - 3` (27px from the
+  // axis line) while the tick labels themselves start 9px below that same
+  // line (tickSize + tickPadding). With a 12px tick label filling most of
+  // that remaining 18px band, the title text sits only a few px below the
+  // tick text (confirmed empirically: a real live render measured the
+  // title's top edge 4.5px ABOVE the tick label's own bottom edge — a
+  // genuine overlap, not merely "close").
+  //
+  // A real, confirmed FIRST-DRAFT bug of this very fix, caught via a live
+  // screenshot of this app's own real, published "grouped bar chart via
+  // facet" content (facet_x + x matching fill/stroke, xAxisSuppressed
+  // above): that pattern's own bottom-anchored axis is the FACET's fx-axis
+  // (config.facet_x), not the ordinary x-axis suppressed above — Plot's
+  // axis.js reuses the exact same axisKx()/labelOptions() code path for
+  // k="x" and k="fx" verbatim, so the fx-axis title suffers the identical
+  // crowding bug, independently of whether the x-axis itself renders at
+  // all. An earlier version of this fix only bumped marginBottom in the
+  // (config.x && !xAxisSuppressed) case, silently missing every real
+  // grouped-bar-via-facet panel — exactly the case a live user report
+  // caught this on. Bumped to 44px whenever EITHER a real x-axis title
+  // (config.x, not suppressed above) OR a facet axis title (config.facet_x)
+  // will actually render — both share the same marginBottom-derived
+  // labelOffset, so both need the same extra room.
+  if ((Boolean(config.x) && !xAxisSuppressed) || Boolean(config.facet_x)) {
     plotOptions.marginBottom = 44
   }
 
