@@ -7,6 +7,7 @@ import * as filterState from '@/state/filterState'
 import { useFilterState } from '@/hooks/useFilterState'
 import { useActiveScenarios } from '@/hooks/useActiveScenarios'
 import { useColorScheme } from '@/hooks/useColorScheme'
+import { useColorblindSafePreference } from '@/hooks/useColorblindSafePreference'
 import { ensureRegistered } from '@/services/tabDataLoader'
 import {
   buildPanelQuery,
@@ -15,7 +16,7 @@ import {
   EMPTY_SUMMARIZE_CONFIG,
 } from '@/panels/panelQuery'
 import { aggregatePieSlices, layoutPieWedges, type PieWedge } from '@/panels/pieData'
-import { resolvePolarColorScheme } from '@/panels/polarChartColor'
+import { resolveNamedColorScheme, resolveCategoryFallbackColors } from '@/panels/chartColor'
 import { createMapTooltip, type MapTooltip } from '@/panels/mapTooltip'
 import { ChartLegend, type ChartLegendEntry } from '@/panels/ChartLegend'
 import { PanelEmptyState } from '@/panels/PanelEmptyState'
@@ -32,12 +33,6 @@ const ALL_FILTERS: ['*'] = ['*']
 // through).
 const FALLBACK_TOKEN_VARS = ['--chart-1', '--chart-2', '--chart-3', '--chart-4', '--chart-5']
 const FALLBACK_HEX_COLORS = ['#3358be', '#ba7f00', '#cc4330', '#008029', '#914edc']
-
-function resolveFallbackColors(el: Element): string[] {
-  const style = getComputedStyle(el)
-  const resolved = FALLBACK_TOKEN_VARS.map((v) => style.getPropertyValue(v).trim()).filter(Boolean)
-  return resolved.length > 0 ? resolved : FALLBACK_HEX_COLORS
-}
 
 const SVG_NS = 'http://www.w3.org/2000/svg'
 
@@ -102,6 +97,7 @@ export function PieChartPanel({ config }: { config: PieChartPanelConfig }) {
   const filters = useFilterState(filterIds.length ? filterIds : ALL_FILTERS)
   const activeScenarioNames = useActiveScenarios()
   const colorScheme = useColorScheme()
+  const colorblindSafe = useColorblindSafePreference()
   const containerRef = useRef<HTMLDivElement>(null)
   const tooltipRef = useRef<MapTooltip | null>(null)
   const svgRef = useRef<SVGSVGElement | null>(null)
@@ -199,7 +195,9 @@ export function PieChartPanel({ config }: { config: PieChartPanelConfig }) {
         // margin, matching how every other custom-SVG panel type in this
         // app reserves its own chrome space around the drawable area.
         const size = Math.max(0, Math.min(width, height) - 16)
-        const colors = resolvePolarColorScheme(config.color_scheme) ?? resolveFallbackColors(el)
+        const colors =
+          resolveNamedColorScheme(config.color_scheme, { colorblindSafe }) ??
+          resolveCategoryFallbackColors(el, FALLBACK_TOKEN_VARS, FALLBACK_HEX_COLORS)
         const { svg, legendEntries: nextLegendEntries } = renderSvg(
           layoutPieWedges(slices, size / 2),
           size,
@@ -225,8 +223,10 @@ export function PieChartPanel({ config }: { config: PieChartPanelConfig }) {
     // colorScheme: a theme flip carries no width/height change, but
     // forces a fresh rebuild() call to re-resolve --chart-1..5's current
     // (dark-mode) values, matching ObservablePlotPanel.tsx's/
-    // HierarchicalChartHost.tsx's own identical reasoning.
-  }, [config, rows, status, colorScheme])
+    // HierarchicalChartHost.tsx's own identical reasoning. colorblindSafe
+    // (061-appearance-controls): same reasoning, for the Appearance-tab
+    // toggle.
+  }, [config, rows, status, colorScheme, colorblindSafe])
 
   if (status === 'empty') {
     return <PanelEmptyState icon={PieChart} message="No data for this selection" />

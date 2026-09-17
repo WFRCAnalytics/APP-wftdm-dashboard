@@ -6304,6 +6304,177 @@ first cross-reference this list was built from). ✅ done,
     See `specs/060-radar-pie-charts/` for the full spec/plan/research/
     tasks record.
 
+32. ✅ Appearance settings expansion — 061-appearance-controls. Four
+    independent, additive pieces, all shipped.
+
+    **Consolidated category chart-color resolver.** `panels/sankeyColor.ts`/
+    `panels/hierarchyColor.ts`/`panels/polarChartColor.ts` — three
+    byte-for-byte identical `NAMED_SCHEMES` lookup tables, one per feature
+    that introduced a category-colored panel type — are DELETED, replaced
+    by one `panels/chartColor.ts` exporting `resolveNamedColorScheme()`
+    (now with five new real ColorBrewer schemes — `Set1`/`Set2`/`Paired`/
+    `Dark2`/`Accent`, confirmed already present in the pinned
+    `d3-scale-chromatic`, no version bump needed) and
+    `resolveCategoryFallbackColors()` (generalizing what used to be FOUR
+    separately duplicated `resolveFallbackColors()` functions — one each
+    inside `SankeyPanel.tsx`/`HierarchicalChartHost.tsx`/
+    `PieChartPanel.tsx`/`RadarChartPanel.tsx` — into one function taking
+    the caller's own token/hex arrays, preserving a real, confirmed
+    divergence: Sankey's own fallback uses 4 tokens (`--chart-1..4`),
+    deliberately, per its own already-existing comment; the other three
+    use 5). Zero visible change to any panel with an explicit
+    `color_scheme:` — confirmed via a dedicated Playwright regression spec
+    (`categoryColorConsolidation.spec.ts`) asserting exact color values
+    before/after for a Sankey panel pinned to `Tableau10`.
+
+    **"Prefer colorblind-safe palettes"** — a new Appearance-tab toggle
+    (`state/colorPreferenceState.ts` + `hooks/useColorblindSafePreference.ts`,
+    mirroring `state/themeState.ts`'s exact module-level subscribe/notify
+    shape, session-only). When on, it changes ONLY the *default* tier of
+    two otherwise-untouched mechanisms: `chartColor.ts`'s own
+    `resolveNamedColorScheme()` (an unset/unrecognized `color_scheme:`
+    resolves to the real `Set2` colorblind-safe array instead of
+    `undefined`) and `panels/scenarioDisplay.ts`'s
+    `resolveDefaultScenarioColor(index, colorblindSafe?)` (a new optional
+    2nd parameter — cycles a new `COLORBLIND_SAFE_DEFAULT_PALETTE`, the
+    same real `Set2` hex values as literals, only when true AND no
+    deployer `scenarioPalette` is configured). Neither an author's
+    explicit `color_scheme:` nor a scenario's own `colorOverride`/deployer
+    `scenarioPalette` is ever overridden by this toggle — confirmed by a
+    real Playwright assertion, not just documented as intent.
+    `hooks/useScenarioDisplay.ts` gained one precisely-scoped change:
+    calls the new preference hook alongside its existing
+    `useColorScheme()` call and folds it into the same
+    cache-invalidation check, so a toggle flip actually reaches every
+    already-rendered scenario-colored chart live.
+
+    **Primary/Secondary/Accent color overrides**, two-tier, no separate
+    "brand" entity (a deliberate terminology decision made during this
+    feature's own discussion phase — Accent already IS what this app's
+    prior single-signature-brand-color notion meant). `DashboardBranding`
+    (`services/yamlLoader.ts`) gains three new optional flat fields —
+    `primaryColor`/`secondaryColor`/`accentColor` — parsed with the exact
+    same `typeof === 'string'` coercion `logoUrl` already uses, merged
+    real-then-demo in `main.tsx` with the same `??` precedence, and
+    validated with the same `CSS.supports('color', ...)` check
+    `scenarioPalette` already established. A real, deliberate design
+    decision made during implementation, not left implicit: the deployer
+    default is applied to `document.documentElement` exactly ONCE, at
+    boot, directly in `main.tsx` — mirroring the EXISTING theme-mode
+    one-shot dark-class line's own precedent exactly (confirmed by
+    reading it first) — because `layout/settings/appearanceTab.tsx`'s own
+    live-apply effect only runs once a viewer actually opens the
+    Appearance tab, which would otherwise mean a deployer's configured
+    color never appears at all for a viewer who never opens Settings. A
+    viewer's own session override (`state/interfaceColorState.ts`,
+    written via a new `layout/settings/interfaceColorControl.tsx` —
+    mirrors `scenarioColorControl.tsx` exactly, parameterized by role
+    instead of `Scenario`, reusing `components/ui/color-picker.tsx`/
+    `popover.tsx` completely unmodified) takes precedence live once set,
+    through `hooks/useInterfaceColors.ts` (mirrors
+    `useScenarioDisplay.ts`'s memoized-`useSyncExternalStore` shape). Each
+    resolved color's paired `-foreground` is computed automatically — new
+    `panels/interfaceColor.ts#computeForegroundFor()` — via the ALREADY-
+    installed `color` package's own real `.isLight()`/`.isDark()` methods
+    (confirmed directly, live, in a Node REPL, before writing any code):
+    no WCAG contrast math needed to be hand-rolled, and no new dependency
+    was added.
+
+    **Font picker** (body/heading/monospace, `state/fontPreferenceState.ts` +
+    `hooks/useFontPreference.ts` + new `panels/googleFontLoader.ts`).
+    Defaults to this app's existing self-hosted Geist/Geist Mono typefaces
+    unchanged — picking a font is fully optional, and the default case
+    adds zero network requests. A real, load-bearing empirical finding
+    made BEFORE writing any loader code, not assumed: this app's dev
+    server sets `Cross-Origin-Embedder-Policy: require-corp`
+    (`vite.config.ts`, dev-only), which could plausibly block a
+    dynamically-injected cross-origin Google Fonts `<link>` — a live
+    `curl -I` against both `fonts.googleapis.com`'s CSS endpoint and a
+    real `fonts.gstatic.com` font file confirmed both already send
+    `Cross-Origin-Resource-Policy: cross-origin`, satisfying COEP's own
+    CORP check directly with no special `crossorigin` handling needed
+    anywhere. A SEPARATE, real, pre-existing documentation staleness was
+    found during this same check and is flagged here, not fixed (out of
+    this feature's scope): `CLAUDE.md`'s own description of
+    `public/coi-serviceworker.js`, "MUST BE FIRST" in `index.html`, no
+    longer matches reality — that file does not exist anywhere in this
+    checkout, and the real, current `index.html`'s only script tag is
+    `<script type="module" src="/src/main.tsx">`; the real production app
+    on GitHub Pages therefore runs with no cross-origin isolation at all
+    today (`@duckdb/duckdb-wasm`'s own bundle-selection logic already
+    handles this gracefully by picking a non-threaded bundle). The font
+    picker itself is a native `<input list="...">` combo box (no new
+    Radix dependency) seeded with a small, bundled shortlist of ~30
+    well-known family names for discoverability — free-text entry already
+    offers the same "any Google Font" breadth a live Developer-API-key-
+    gated catalog fetch would, without needing to embed a key at all. An
+    invalid/unreachable family name fails soft BY CONSTRUCTION, not via
+    bespoke error-handling code: Google's own CSS2 endpoint returns an
+    empty-but-200 stylesheet for an unmatched family (confirmed via the
+    same `curl` check), so the browser simply has no matching `@font-face`
+    rule to apply and falls through to the token's own trailing generic
+    family (`sans-serif`/`monospace`) — verified live via a Playwright
+    test that routes the real Google Fonts request to abort mid-selection.
+
+    **Text size** — a continuous slider (`state/textSizeState.ts`,
+    clamped `[80, 150]`, default `100`) setting
+    `document.documentElement.style.fontSize` directly; every Tailwind
+    `rem`-based interface element scales with it through the ordinary
+    cascade, with zero per-component change. New `components/ui/slider.tsx`
+    — this app's first STANDALONE Slider primitive (`@radix-ui/react-slider`
+    was already installed, used only inline inside `color-picker.tsx`'s
+    own Hue/Alpha sliders, which stay untouched). A real, confirmed bug
+    found and fixed during this feature's own Playwright verification, not
+    assumed correct: Radix's own `SliderThumbTrigger` reads `aria-label`
+    off the **Thumb** element specifically, not the `Root` — an initial
+    draft passed `aria-label` as a prop on `<Slider>` itself (spread onto
+    `Root`), which never reached the Thumb at all, leaving the control
+    with no real accessible name and failing a `getByRole('slider', {name})`
+    query; fixed by destructuring `aria-label` out of the wrapper's props
+    and applying it explicitly to `SliderPrimitive.Thumb` instead
+    (confirmed against the real, installed `@radix-ui/react-slider`
+    source, not guessed).
+
+    All four pieces reuse existing, already-pinned dependencies —
+    `d3-scale-chromatic`, `color`, `@radix-ui/react-slider`,
+    `@radix-ui/react-popover` — **zero new npm dependency**, and no
+    constitution amendment was needed (no new named technology/capability,
+    unlike `058`'s/`060`'s own Technology Stack Reference row additions).
+
+    Verification: `npm run typecheck` clean; `npm run test:unit` 589/589
+    passing (up from 560 — new `chartColor.test.ts`/
+    `colorPreferenceState.test.ts`/`textSizeState.test.ts`/
+    `interfaceColor.test.ts`/`interfaceColorState.test.ts`/
+    `fontPreferenceState.test.ts`/`googleFontLoader.test.ts`, plus 3 new
+    colorblind-safe cases added to `scenarioDisplay.test.ts`; the three
+    deleted modules' own `sankeyColor.test.ts`/`hierarchyColor.test.ts`/
+    `polarChartColor.test.ts` are gone with them, folded into
+    `chartColor.test.ts`). New `tests/integration/appearanceSettings.spec.ts`
+    (8/8 — all four user stories, real browser, real demo content, no
+    fixture dependency) and `tests/integration/categoryColorConsolidation.spec.ts`
+    (3/3 — the SC-001 zero-regression proof) both passing, confirmed
+    stable across repeated runs. A first full-suite pass surfaced 37
+    failures across 6 files; every one was individually triaged, not
+    assumed innocent: 2 were real bugs in this feature's own new code
+    (fixed — the treemap/sunburst color-consolidation test's own selector
+    was matching a `fill="transparent"` title bar instead of a real node
+    rect, and the Slider `aria-label` bug above), 1 was a wrong tab name
+    in this feature's own new test (`"Trip Models"` → the real
+    `header.tab: "Trip"`), 3 (two `sankeyPanel.spec.ts` cases, one
+    `hierarchicalChartTheming.spec.ts` case, one `sunburstPanel.spec.ts`
+    case) passed cleanly on isolated re-run — genuine multi-worker
+    resource-contention flakiness under the same large combined run, not
+    a regression — and the remaining 31 (all in `settingsModal.spec.ts`,
+    spread across its Scenarios-tab/Basemap-tab coverage) were confirmed
+    genuinely pre-existing via a real `git stash`/re-run A/B: the exact
+    same failures, byte-for-byte, reproduce on the clean, unmodified
+    `main` tree — this project's own already-extensively-documented
+    systemic test-infrastructure gap (see item 28's own CLAUDE.md entry),
+    untouched by and unrelated to this feature. Zero real regressions.
+
+    See `specs/061-appearance-controls/` for the full spec/plan/research/
+    data-model/contracts/quickstart/tasks record.
+
 ---
 
 ## Reference implementations — copy patterns, don't re-derive

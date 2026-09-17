@@ -6,6 +6,7 @@ import * as sqlExpander from '@/services/sqlExpander'
 import * as filterState from '@/state/filterState'
 import { useFilterState } from '@/hooks/useFilterState'
 import { useActiveScenarios } from '@/hooks/useActiveScenarios'
+import { useColorblindSafePreference } from '@/hooks/useColorblindSafePreference'
 import { ensureRegistered } from '@/services/tabDataLoader'
 import {
   buildPanelQuery,
@@ -14,7 +15,7 @@ import {
   EMPTY_SUMMARIZE_CONFIG,
 } from '@/panels/panelQuery'
 import { buildFlowGraph, layoutFlowGraph, type SankeyLayout } from '@/panels/sankeyGraph'
-import { resolveNamedColorScheme } from '@/panels/sankeyColor'
+import { resolveNamedColorScheme, resolveCategoryFallbackColors } from '@/panels/chartColor'
 import { createMapTooltip, type MapTooltip } from '@/panels/mapTooltip'
 import { PanelEmptyState } from '@/panels/PanelEmptyState'
 import { PanelErrorState } from '@/panels/PanelErrorState'
@@ -54,12 +55,6 @@ const FALLBACK_TOKEN_VARS = ['--chart-1', '--chart-2', '--chart-3', '--chart-4']
 // vars above (e.g. no stylesheet loaded at all), so a render never ships
 // with an empty palette.
 const FALLBACK_HEX_COLORS = ['#3358be', '#ba7f00', '#cc4330', '#008029']
-
-function resolveFallbackColors(el: HTMLElement): string[] {
-  const style = getComputedStyle(el)
-  const resolved = FALLBACK_TOKEN_VARS.map((v) => style.getPropertyValue(v).trim()).filter(Boolean)
-  return resolved.length > 0 ? resolved : FALLBACK_HEX_COLORS
-}
 
 const SVG_NS = 'http://www.w3.org/2000/svg'
 
@@ -211,6 +206,12 @@ export function SankeyPanel({ config }: { config: SankeyPanelConfig }) {
   // 009-scenario-manager (FR-008): reactive active-scenario set — see
   // ValueBoxPanel.tsx's own comment.
   const activeScenarioNames = useActiveScenarios()
+  // 061-appearance-controls: threads the Appearance-tab "prefer
+  // colorblind-safe palettes" preference into this panel's own default
+  // (no explicit `color_scheme:`) categorical fallback — an explicit
+  // scheme still always wins (chartColor.ts's own resolveNamedColorScheme
+  // contract).
+  const colorblindSafe = useColorblindSafePreference()
   const containerRef = useRef<HTMLDivElement>(null)
   const tooltipRef = useRef<MapTooltip | null>(null)
   const svgRef = useRef<SVGSVGElement | null>(null)
@@ -313,7 +314,9 @@ export function SankeyPanel({ config }: { config: SankeyPanelConfig }) {
       lastHeight = height
       try {
         const layout = layoutFlowGraph(graph, width, height)
-        const colors = resolveNamedColorScheme(config.color_scheme) ?? resolveFallbackColors(el)
+        const colors =
+          resolveNamedColorScheme(config.color_scheme, { colorblindSafe }) ??
+          resolveCategoryFallbackColors(el, FALLBACK_TOKEN_VARS, FALLBACK_HEX_COLORS)
         const svg = renderSvg(layout, width, height, colors, tooltip, el)
         // Swap ONLY the <svg> — never el.replaceChildren(svg), which would
         // also wipe the tooltip div the mount effect above appended as a
@@ -335,7 +338,11 @@ export function SankeyPanel({ config }: { config: SankeyPanelConfig }) {
     const observer = new ResizeObserver(rebuild)
     observer.observe(el)
     return () => observer.disconnect()
-  }, [config, rows, status])
+    // colorblindSafe: this panel has no other theme/colorScheme reactivity
+    // in its own deps today (unlike Pie/Radar/Hierarchical) — added here
+    // specifically so toggling colorblind-safe mode forces a redraw
+    // (FR-009: every already-rendered, affected panel updates live).
+  }, [config, rows, status, colorblindSafe])
 
   // Deliberately no separate unmount-only teardown effect (unlike
   // PlotlyPanel.tsx's Plotly.purge()/ObservablePlotPanel.tsx's

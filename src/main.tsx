@@ -30,6 +30,7 @@ import { discoverScenarios } from './services/scenarioDiscovery.ts'
 import { loadDashboards, loadDashboardBranding, type DashboardBranding } from './services/yamlLoader.ts'
 import { setDeployerScenarioPalette } from './panels/scenarioDisplay.ts'
 import { setDeployerPmtilesUrl } from './state/protomapsSourceState.ts'
+import { setDeployerInterfaceColor, computeForegroundFor } from './panels/interfaceColor.ts'
 import { parseDashboardConfig } from './layout/types.ts'
 import { Shell } from './layout/shell.tsx'
 import { Toaster } from './components/ui/sonner.tsx'
@@ -164,6 +165,9 @@ const branding: DashboardBranding = {
   logoUrlDark: primaryBranding.logoUrlDark ?? demoBranding.logoUrlDark,
   scenarioPalette: primaryBranding.scenarioPalette ?? demoBranding.scenarioPalette,
   protomapsPmtilesUrl: primaryBranding.protomapsPmtilesUrl ?? demoBranding.protomapsPmtilesUrl,
+  primaryColor: primaryBranding.primaryColor ?? demoBranding.primaryColor,
+  secondaryColor: primaryBranding.secondaryColor ?? demoBranding.secondaryColor,
+  accentColor: primaryBranding.accentColor ?? demoBranding.accentColor,
 }
 // 036-scenario-color-picker: semantic validation (is each entry a real
 // CSS color) lives here, at the one real consumption point — loadDashboardBranding()
@@ -188,6 +192,27 @@ setDeployerScenarioPalette(validScenarioPalette.length > 0 ? validScenarioPalett
 // until-actually-used convention every other basemap source in this app
 // already follows.
 setDeployerPmtilesUrl(branding.protomapsPmtilesUrl)
+// 061-appearance-controls: same real/demo-root precedence and
+// CSS.supports() validation as scenarioPalette above. Applied to
+// document.documentElement exactly ONCE, here, at boot — mirroring the
+// theme-mode one-shot dark-class line above (a deployer's own
+// configuration doesn't change during a session, so no ongoing tracking
+// is needed at this call site). A viewer's own later session override is
+// kept live by layout/settings/appearanceTab.tsx's own effect once it
+// mounts — the identical division of responsibility theme-mode already
+// established between this one-shot boot application and that later,
+// reactive one.
+for (const [role, value] of [
+  ['primary', branding.primaryColor],
+  ['secondary', branding.secondaryColor],
+  ['accent', branding.accentColor],
+] as const) {
+  if (value && CSS.supports('color', value)) {
+    setDeployerInterfaceColor(role, value)
+    document.documentElement.style.setProperty(`--${role}`, value)
+    document.documentElement.style.setProperty(`--${role}-foreground`, computeForegroundFor(value))
+  }
+}
 // Sets the browser tab's own title — independent of whether the header
 // renders it as visible text at all (shell.tsx only falls back to
 // showing it inline when no logo is configured, see that file's own

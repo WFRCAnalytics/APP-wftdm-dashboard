@@ -74,6 +74,9 @@ type DashboardIndexJson =
       logoUrlDark?: unknown
       scenarioPalette?: unknown
       protomapsPmtilesUrl?: unknown
+      primaryColor?: unknown
+      secondaryColor?: unknown
+      accentColor?: unknown
     }
 
 /**
@@ -129,6 +132,20 @@ export interface DashboardBranding {
    * deployer hasn't prepared their own extract; there is no fallback URL
    * here to omit. */
   protomapsPmtilesUrl?: string
+  /** 061-appearance-controls: an optional deployer-configured default for
+   * each of the three Primary/Secondary/Accent visual roles — same
+   * discovery/precedence rules as every other field above (the real
+   * deployment root wins over the git-tracked demo root, per-field). Not
+   * validated here — this stays a thin, format-only parse matching this
+   * interface's own existing convention; semantic validation (is each
+   * entry a real CSS color) happens once, in main.tsx, where the
+   * resolved value is actually consumed (mirrors scenarioPalette's own
+   * established CSS.supports() check, specs/036-scenario-color-picker/
+   * research.md §3). No separate "brand" field exists — these three named
+   * roles are the complete set (spec.md's own Assumptions). */
+  primaryColor?: string
+  secondaryColor?: string
+  accentColor?: string
 }
 
 function isDashboardIndexObject(
@@ -228,6 +245,9 @@ export async function loadDashboardBranding(
         typeof parsed.protomapsPmtilesUrl === 'string' && parsed.protomapsPmtilesUrl.length > 0
           ? parsed.protomapsPmtilesUrl
           : undefined,
+      primaryColor: typeof parsed.primaryColor === 'string' ? parsed.primaryColor : undefined,
+      secondaryColor: typeof parsed.secondaryColor === 'string' ? parsed.secondaryColor : undefined,
+      accentColor: typeof parsed.accentColor === 'string' ? parsed.accentColor : undefined,
     }
   } catch {
     return {}

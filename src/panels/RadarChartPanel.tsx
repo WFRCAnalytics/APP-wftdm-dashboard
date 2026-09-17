@@ -7,6 +7,7 @@ import * as filterState from '@/state/filterState'
 import { useFilterState } from '@/hooks/useFilterState'
 import { useActiveScenarios } from '@/hooks/useActiveScenarios'
 import { useColorScheme } from '@/hooks/useColorScheme'
+import { useColorblindSafePreference } from '@/hooks/useColorblindSafePreference'
 import { ensureRegistered } from '@/services/tabDataLoader'
 import {
   buildPanelQuery,
@@ -20,7 +21,7 @@ import {
   layoutRadarPolygons,
   type RadarPolygon,
 } from '@/panels/radarData'
-import { resolvePolarColorScheme } from '@/panels/polarChartColor'
+import { resolveNamedColorScheme, resolveCategoryFallbackColors } from '@/panels/chartColor'
 import { createMapTooltip, type MapTooltip } from '@/panels/mapTooltip'
 import { ChartLegend, type ChartLegendEntry } from '@/panels/ChartLegend'
 import { PanelEmptyState } from '@/panels/PanelEmptyState'
@@ -34,12 +35,6 @@ const ALL_FILTERS: ['*'] = ['*']
 // --chart-1..5 categorical set).
 const FALLBACK_TOKEN_VARS = ['--chart-1', '--chart-2', '--chart-3', '--chart-4', '--chart-5']
 const FALLBACK_HEX_COLORS = ['#3358be', '#ba7f00', '#cc4330', '#008029', '#914edc']
-
-function resolveFallbackColors(el: Element): string[] {
-  const style = getComputedStyle(el)
-  const resolved = FALLBACK_TOKEN_VARS.map((v) => style.getPropertyValue(v).trim()).filter(Boolean)
-  return resolved.length > 0 ? resolved : FALLBACK_HEX_COLORS
-}
 
 const SVG_NS = 'http://www.w3.org/2000/svg'
 const GRID_RING_COUNT = 4
@@ -154,6 +149,7 @@ export function RadarChartPanel({ config }: { config: RadarChartPanelConfig }) {
   const filters = useFilterState(filterIds.length ? filterIds : ALL_FILTERS)
   const activeScenarioNames = useActiveScenarios()
   const colorScheme = useColorScheme()
+  const colorblindSafe = useColorblindSafePreference()
   const containerRef = useRef<HTMLDivElement>(null)
   const tooltipRef = useRef<MapTooltip | null>(null)
   const svgRef = useRef<SVGSVGElement | null>(null)
@@ -236,7 +232,9 @@ export function RadarChartPanel({ config }: { config: RadarChartPanelConfig }) {
         )
         const polygons = layoutRadarPolygons(aggregated, center, outerRadius, maxValue)
         const axisLabelPositions = layoutRadarAxisLabels(aggregated.axes, center, outerRadius)
-        const colors = resolvePolarColorScheme(config.color_scheme) ?? resolveFallbackColors(el)
+        const colors =
+          resolveNamedColorScheme(config.color_scheme, { colorblindSafe }) ??
+          resolveCategoryFallbackColors(el, FALLBACK_TOKEN_VARS, FALLBACK_HEX_COLORS)
 
         const { svg, legendEntries: nextLegendEntries } = renderSvg(
           polygons,
@@ -267,7 +265,10 @@ export function RadarChartPanel({ config }: { config: RadarChartPanelConfig }) {
     const observer = new ResizeObserver(rebuild)
     observer.observe(el)
     return () => observer.disconnect()
-  }, [config, rows, status, colorScheme])
+    // colorblindSafe (061-appearance-controls): forces a redraw when the
+    // Appearance-tab toggle changes, matching colorScheme's own identical
+    // reasoning already established here.
+  }, [config, rows, status, colorScheme, colorblindSafe])
 
   if (status === 'empty') {
     return <PanelEmptyState icon={Radar} message="No data for this selection" />

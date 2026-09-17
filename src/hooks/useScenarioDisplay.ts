@@ -3,6 +3,7 @@ import { useCallback, useRef, useSyncExternalStore } from 'react'
 import { list, subscribe } from '@/state/appState'
 import { resolveDefaultScenarioColor, type ScenarioDisplay, type ScenarioDisplayMap } from '@/panels/scenarioDisplay'
 import { useColorScheme } from '@/hooks/useColorScheme'
+import { useColorblindSafePreference } from '@/hooks/useColorblindSafePreference'
 
 // 035-scenario-label-color — mirrors hooks/useActiveScenarios.ts's own
 // memoized-snapshot-over-useSyncExternalStore shape exactly (same reason:
@@ -41,17 +42,28 @@ import { useColorScheme } from '@/hooks/useColorScheme'
 // finding).
 export function useScenarioDisplay(): ScenarioDisplayMap {
   const colorScheme = useColorScheme()
+  // 061-appearance-controls: the Appearance-tab "prefer colorblind-safe
+  // palettes" toggle also affects this hook's own default-tier
+  // resolution (resolveDefaultScenarioColor's 2nd parameter) — folded
+  // into the same cache-invalidation check colorScheme already
+  // participates in, for the identical reason (a value that affects the
+  // resolved color must also affect when the memoized snapshot rebuilds).
+  const colorblindSafe = useColorblindSafePreference()
   const cache = useRef<Map<string, ScenarioDisplay>>(new Map())
   const cachedColorScheme = useRef(colorScheme)
+  const cachedColorblindSafe = useRef(colorblindSafe)
 
   const getSnapshot = useCallback(() => {
     const scenarios = list()
     const prev = cache.current
-    let changed = scenarios.length !== prev.size || colorScheme !== cachedColorScheme.current
+    let changed =
+      scenarios.length !== prev.size ||
+      colorScheme !== cachedColorScheme.current ||
+      colorblindSafe !== cachedColorblindSafe.current
     if (!changed) {
       scenarios.forEach((s, index) => {
         const prevEntry = prev.get(s.name)
-        const color = s.colorOverride ?? resolveEffectiveDefault(index)
+        const color = s.colorOverride ?? resolveEffectiveDefault(index, colorblindSafe)
         if (!prevEntry || prevEntry.label !== s.label || prevEntry.color !== color) {
           changed = true
         }
@@ -60,21 +72,26 @@ export function useScenarioDisplay(): ScenarioDisplayMap {
     if (changed) {
       const next = new Map<string, ScenarioDisplay>()
       scenarios.forEach((s, index) => {
-        next.set(s.name, { label: s.label, color: s.colorOverride ?? resolveEffectiveDefault(index) })
+        next.set(s.name, {
+          label: s.label,
+          color: s.colorOverride ?? resolveEffectiveDefault(index, colorblindSafe),
+        })
       })
       cache.current = next
       cachedColorScheme.current = colorScheme
+      cachedColorblindSafe.current = colorblindSafe
     }
     return cache.current
-  }, [colorScheme])
+  }, [colorScheme, colorblindSafe])
 
   return useSyncExternalStore(subscribe, getSnapshot)
 }
 
 /** var(--x) -> a real, concrete getComputedStyle() value; anything else
- * (a deployer's own literal hex/rgb/named color) passes through as-is. */
-function resolveEffectiveDefault(index: number): string {
-  const raw = resolveDefaultScenarioColor(index)
+ * (a deployer's own literal hex/rgb/named color, or a literal colorblind-
+ * safe hex value) passes through as-is. */
+function resolveEffectiveDefault(index: number, colorblindSafe: boolean): string {
+  const raw = resolveDefaultScenarioColor(index, colorblindSafe)
   if (!raw.startsWith('var(')) return raw
   const tokenName = raw.slice(4, -1)
   return getComputedStyle(document.documentElement).getPropertyValue(tokenName).trim()

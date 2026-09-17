@@ -68,18 +68,36 @@ let deployerPalette: readonly string[] | undefined
 /** Set once, at boot, from main.tsx — never a reactive store (a
  * deployer's own configuration is fixed for the session's lifetime).
  * `undefined` or an empty array both mean "nothing configured," falling
- * through to DEFAULT_PALETTE. */
+ * through to DEFAULT_PALETTE (or COLORBLIND_SAFE_DEFAULT_PALETTE below). */
 export function setDeployerScenarioPalette(palette: readonly string[] | undefined): void {
   deployerPalette = palette && palette.length > 0 ? palette : undefined
 }
 
+// 061-appearance-controls: the real, literal Set2 hex values (ColorBrewer's
+// own colorblind-safe qualitative scheme, research.md §2) — literal
+// strings, not `var(--chart-N)` REFERENCEs like DEFAULT_PALETTE above,
+// since there is no dedicated CSS token for this palette. Used only for
+// the shipped-default tier (never the deployer tier — a deployer's own
+// explicit scenarioPalette is already "explicit" and stays untouched by
+// the colorblind-safe preference, FR-008).
+const COLORBLIND_SAFE_DEFAULT_PALETTE: readonly string[] = [
+  '#66c2a5',
+  '#fc8d62',
+  '#8da0cb',
+  '#e78ac3',
+  '#a6d854',
+]
+
 /**
- * Cycles the effective palette (deployer-configured, else the shipped
- * default) by `index` — the scenario's stable registration-order
- * position, computed by the caller (hooks/useScenarioDisplay.ts), never
- * re-derived here.
+ * Cycles the effective palette by `index` — the scenario's stable
+ * registration-order position, computed by the caller
+ * (hooks/useScenarioDisplay.ts), never re-derived here. Precedence:
+ * deployer-configured palette (always, if set — an explicit deployer
+ * choice is never overridden by `colorblindSafe`, FR-008), else, when
+ * `colorblindSafe` is true, the real Set2 colorblind-safe pool, else the
+ * shipped `--chart-1..5` default.
  */
-export function resolveDefaultScenarioColor(index: number): string {
-  const palette = deployerPalette ?? DEFAULT_PALETTE
+export function resolveDefaultScenarioColor(index: number, colorblindSafe = false): string {
+  const palette = deployerPalette ?? (colorblindSafe ? COLORBLIND_SAFE_DEFAULT_PALETTE : DEFAULT_PALETTE)
   return palette[index % palette.length]
 }

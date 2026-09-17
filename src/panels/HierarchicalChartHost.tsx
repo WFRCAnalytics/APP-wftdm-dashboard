@@ -7,10 +7,11 @@ import { useFilterState } from '@/hooks/useFilterState'
 import { useActiveScenarios } from '@/hooks/useActiveScenarios'
 import { useBaseline } from '@/hooks/useBaseline'
 import { useColorScheme } from '@/hooks/useColorScheme'
+import { useColorblindSafePreference } from '@/hooks/useColorblindSafePreference'
 import { ensureRegistered } from '@/services/tabDataLoader'
 import { resolveQueryAndPairs, extractGlobalFilterIds } from '@/panels/panelQuery'
 import { buildHierarchy, type HierarchyNode } from '@/panels/hierarchyData'
-import { resolveHierarchyColorScheme } from '@/panels/hierarchyColor'
+import { resolveNamedColorScheme, resolveCategoryFallbackColors } from '@/panels/chartColor'
 import { PanelEmptyState } from '@/panels/PanelEmptyState'
 import { PanelErrorState } from '@/panels/PanelErrorState'
 import type { HierarchicalPanelConfigBase } from '@/layout/types'
@@ -74,12 +75,6 @@ const FALLBACK_TOKEN_VARS = ['--chart-1', '--chart-2', '--chart-3', '--chart-4',
 // none of the vars above.
 const FALLBACK_HEX_COLORS = ['#3358be', '#ba7f00', '#cc4330', '#008029', '#914edc']
 
-function resolveFallbackColors(el: Element): string[] {
-  const style = getComputedStyle(el)
-  const resolved = FALLBACK_TOKEN_VARS.map((v) => style.getPropertyValue(v).trim()).filter(Boolean)
-  return resolved.length > 0 ? resolved : FALLBACK_HEX_COLORS
-}
-
 /** Assigns one color per real, distinct top-level (depth-1) category name,
  * in first-seen (d3.hierarchy) order, cycling with wraparound past the
  * fifth — matching rechartsEncoding.ts's own identical cycling convention. */
@@ -87,8 +82,11 @@ function buildColorResolver(
   containerEl: Element,
   root: HierarchyRectangularNode<HierarchyNode>,
   colorScheme: string | undefined,
+  colorblindSafe: boolean,
 ): (topLevelCategoryName: string) => string {
-  const palette = resolveHierarchyColorScheme(colorScheme) ?? resolveFallbackColors(containerEl)
+  const palette =
+    resolveNamedColorScheme(colorScheme, { colorblindSafe }) ??
+    resolveCategoryFallbackColors(containerEl, FALLBACK_TOKEN_VARS, FALLBACK_HEX_COLORS)
   const colorByName = new Map<string, string>()
   ;(root.children ?? []).forEach((node, index) => {
     colorByName.set(node.data.name, palette[index % palette.length])
@@ -108,6 +106,7 @@ export function HierarchicalChartHost({
   const activeScenarioNames = useActiveScenarios()
   const baseline = useBaseline()
   const colorScheme = useColorScheme()
+  const colorblindSafe = useColorblindSafePreference()
   const containerRef = useRef<HTMLDivElement>(null)
   const hasMountedRendererRef = useRef(false)
   const [status, setStatus] = useState<'loading' | 'ready' | 'empty' | 'error'>('loading')
@@ -186,7 +185,7 @@ export function HierarchicalChartHost({
         width,
         height,
         root: root!,
-        resolveColor: buildColorResolver(el!, root!, config.color_scheme),
+        resolveColor: buildColorResolver(el!, root!, config.color_scheme, colorblindSafe),
       }
       if (!hasMountedRendererRef.current) {
         renderer.mount(ctx)
@@ -204,7 +203,10 @@ export function HierarchicalChartHost({
     // a fresh draw() call to re-resolve colors against the new theme's
     // real --chart-N values — matching ObservablePlotPanel.tsx's own
     // identical reasoning for including it in this effect's deps.
-  }, [config, root, status, colorScheme, renderer])
+    // colorblindSafe (061-appearance-controls): same reasoning — forces a
+    // redraw when the Appearance-tab toggle changes, with no width/height
+    // change of its own.
+  }, [config, root, status, colorScheme, colorblindSafe, renderer])
 
   // Unmount-only teardown — deliberately a second effect, empty deps,
   // matching every other panel type's own established convention.

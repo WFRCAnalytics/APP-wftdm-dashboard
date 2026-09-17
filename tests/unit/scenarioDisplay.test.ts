@@ -86,4 +86,22 @@ describe('resolveDefaultScenarioColor', () => {
     setDeployerScenarioPalette(undefined)
     expect(resolveDefaultScenarioColor(0)).toBe('var(--chart-1)')
   })
+
+  // 061-appearance-controls
+  it('with colorblindSafe true and no deployer palette configured, cycles the real Set2 colorblind-safe pool', () => {
+    expect(resolveDefaultScenarioColor(0, true)).toBe('#66c2a5')
+    expect(resolveDefaultScenarioColor(4, true)).toBe('#a6d854')
+    expect(resolveDefaultScenarioColor(5, true)).toBe('#66c2a5') // wraps
+  })
+
+  it('with colorblindSafe false or omitted, behaves exactly as before', () => {
+    expect(resolveDefaultScenarioColor(0, false)).toBe('var(--chart-1)')
+    expect(resolveDefaultScenarioColor(0)).toBe('var(--chart-1)')
+  })
+
+  it('a deployer-configured palette always wins, regardless of colorblindSafe — an explicit deployer choice is never overridden', () => {
+    setDeployerScenarioPalette(['#111111', '#222222'])
+    expect(resolveDefaultScenarioColor(0, true)).toBe('#111111')
+    expect(resolveDefaultScenarioColor(1, true)).toBe('#222222')
+  })
 })
