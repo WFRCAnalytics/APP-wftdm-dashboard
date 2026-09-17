@@ -11,7 +11,7 @@ header:
 sections:
   - id: trip-purpose
     label: "Trip Purpose"
-    rows: [row_trip_purpose]
+    rows: [row_trip_purpose, row_trip_purpose_pie]
   - id: trip-destination
     label: "Trip Destination"
     rows: [row_trip_destination]
@@ -38,6 +38,23 @@ layout:
         - { field: trips,           label: "Trips", format: ",.0f" }
         - { field: share,           label: "Share", format: ".1%" }
       width: 1.0
+
+  # 060-radar-pie-charts — a real, first-content demo of the new `pie`
+  # panel type, reusing this section's own already-real, already-
+  # published trip_purpose_share metric. Pinned to one scenario
+  # (deliberate — a pie chart is single-series by design; the table
+  # panel above already covers the multi-scenario comparison view of the
+  # same metric).
+  row_trip_purpose_pie:
+    - type:     pie
+      title:    "Trip Purpose Share"
+      metric:   trip_purpose_share
+      scenario: activitysim-baseline
+      description: "Baseline scenario. See the table above for a per-scenario comparison of the same metric."
+      category: primary_purpose
+      value:    trips
+      height:   400
+      width:    1.0
 
   row_trip_destination:
     - type:    observable-plot
