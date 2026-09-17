@@ -3,11 +3,11 @@ import * as TabsPrimitive from '@radix-ui/react-tabs'
 
 import { cn } from '@/lib/utils'
 
-// Demonstrates: muted/muted-foreground (inactive tab), background +
-// shadow-sm (active indicator — see TabsTrigger's own comment for why
-// this isn't `accent`) — data-model.md's Component table. TabsTrigger
-// uses font-heading (navigation-like label); panel content inherits
-// font-body.
+// Demonstrates: muted/muted-foreground (inactive tab), accent/
+// accent-foreground (hover + active indicator, same fill for both,
+// matching Sidebar's own convention — see TabsTrigger's own comment for
+// the full history) — data-model.md's Component table. TabsTrigger uses
+// font-heading (navigation-like label); panel content inherits font-body.
 const Tabs = TabsPrimitive.Root
 
 // 021-basemap-catalog-redesign (T025): data-[orientation=vertical]:
@@ -33,22 +33,36 @@ const TabsList = React.forwardRef<
 ))
 TabsList.displayName = TabsPrimitive.List.displayName
 
-// 061-appearance-controls (follow-up): the active-tab treatment used to be
-// `bg-accent`/`text-accent-foreground` — invisible in light mode because
-// `--accent` is byte-identical to the TabsList's own `bg-muted` track
-// there. Confirmed directly against shadcn's own real, current source
-// (both fetched live) that this is NOT how shadcn itself solves the exact
-// same collision — its own default theme has the identical --accent ==
-// --muted collision in light mode (apps/v4/app/globals.css: both
-// oklch(0.97 0 0)), and its own real TabsTrigger
-// (apps/v4/registry/new-york-v4/ui/tabs.tsx) never uses `bg-accent` for
-// the active state AT ALL, in either theme — light mode uses `bg-background`
-// (a third, genuinely distinct token) + `shadow-sm` for a "raised chip"
-// look; dark mode uses `bg-input`/`border-input` instead. Ported here
-// (light-mode classes byte-for-byte matching the real source; dark mode
-// adapted the same way) rather than the token-level workaround an earlier
-// pass tried (tokens.css's own comment on --accent has the full history) —
-// `--accent` itself is reverted to shadcn's real, intended value.
+// 061-appearance-controls (follow-up, final): went through two real
+// iterations, recorded here so the reasoning isn't lost.
+//
+// Iteration 1 tried `bg-accent`/`text-accent-foreground` for the active
+// state — invisible in light mode, since `--accent` was byte-identical to
+// the TabsList's own `bg-muted` track.
+//
+// Iteration 2 confirmed directly against shadcn's own real, current
+// source that shadcn itself has the identical --accent == --muted
+// collision in its own default theme (apps/v4/app/globals.css, both
+// oklch(0.97 0 0)) and solves it, for THIS component only, by using
+// `bg-background` + `shadow-sm` instead of `bg-accent`. Ported that
+// verbatim — but auditing every OTHER real consumer of `--accent` in this
+// app afterward (Sidebar, dropdown-menu, basemapTab's tile selection)
+// found each of those has no such escape hatch, genuinely needs
+// `--accent` itself to be visibly distinct from `--muted`, and — with
+// Tabs now speaking a completely different visual language
+// (`bg-background`/shadow) from Sidebar's own flat accent-fill hover/
+// active convention — the app read as inconsistent across its two main
+// "pick one section" navigation surfaces, plus Tabs had NO hover
+// treatment at all on an inactive trigger.
+//
+// Final: `--accent` itself is fixed (tokens.css's own comment has the
+// value/rationale), and TabsTrigger goes back to a flat
+// `bg-accent`/`text-accent-foreground` fill — now genuinely visible —
+// used for BOTH `hover:` and `data-[state=active]:`, matching
+// `components/ui/sidebar.tsx`'s own `SidebarMenuButton` convention
+// exactly (same hover-equals-active shape, confirmed that's shadcn's own
+// real intent for a navigation rail too). One consistent hover/active
+// language across the whole app, not a per-component special case.
 const TabsTrigger = React.forwardRef<
   React.ElementRef<typeof TabsPrimitive.Trigger>,
   React.ComponentPropsWithoutRef<typeof TabsPrimitive.Trigger>
@@ -56,7 +70,7 @@ const TabsTrigger = React.forwardRef<
   <TabsPrimitive.Trigger
     ref={ref}
     className={cn(
-      'inline-flex items-center justify-center whitespace-nowrap rounded-sm border border-transparent px-3 py-1.5 font-heading text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm dark:data-[state=active]:border-input dark:data-[state=active]:bg-input/30',
+      'inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 font-heading text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-accent data-[state=active]:text-accent-foreground',
       'data-[orientation=vertical]:w-full data-[orientation=vertical]:justify-start data-[orientation=vertical]:text-left',
       className,
     )}

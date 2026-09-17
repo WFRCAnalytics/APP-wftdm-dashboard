@@ -121,15 +121,15 @@ const PAIRINGS: Array<{
   // 'muted-foreground/muted' is deliberately NOT in this list — see the
   // dedicated, separately-asserted test below this array for why.
   //
-  // 061-appearance-controls (follow-up, reverted): a prior pass changed
-  // light-mode --accent to #a1a1a1 to fix the active TabsTrigger's
-  // visibility (it's byte-identical to --muted otherwise, a real,
-  // confirmed shadcn "Nova" default-theme characteristic, not unique to
-  // this app). Reverted back to shadcn's own real value (#f5f5f5) once
-  // research confirmed shadcn itself never fixes this at the token level
-  // — components/ui/tabs.tsx's own TabsTrigger comment has the full
-  // story; the real fix lives there now, not here.
-  { name: 'accent-foreground/accent', foreground: 'accent-foreground', base: 'accent', expectedLight: 16.44, expectedDark: 9.93 },
+  // 061-appearance-controls (follow-up, final): light-mode --accent is
+  // #a1a1a1, not shadcn's own stock value (#f5f5f5, == --muted) — a
+  // deliberate, final, app-wide decision made after auditing every real
+  // --accent consumer (Tabs, Sidebar, dropdown-menu, basemap tile
+  // selection), not just the one component shadcn itself special-cases.
+  // See tokens.css's own comment on this declaration for the full
+  // history (including an earlier, reverted-then-restored attempt at
+  // this same fix).
+  { name: 'accent-foreground/accent', foreground: 'accent-foreground', base: 'accent', expectedLight: 6.94, expectedDark: 9.93 },
   // 024-settings-modal-visual-redesign: --success/--success-foreground,
   // added for the Scenarios tab's "ready" status indicator (research.md
   // §2) — unchanged by this feature, values carried over verbatim.
@@ -139,7 +139,12 @@ const PAIRINGS: Array<{
   // consumed for real by sidebar.tsx (T018).
   { name: 'sidebar-foreground/sidebar', foreground: 'sidebar-foreground', base: 'sidebar', expectedLight: 20.12, expectedDark: 17.18 },
   { name: 'sidebar-primary-foreground/sidebar-primary', foreground: 'sidebar-primary-foreground', base: 'sidebar-primary', expectedLight: 17.18, expectedDark: 6.55 },
-  { name: 'sidebar-accent-foreground/sidebar-accent', foreground: 'sidebar-accent-foreground', base: 'sidebar-accent', expectedLight: 16.44, expectedDark: 14.5 },
+  // 061-appearance-controls (follow-up, final): same fix, same reason as
+  // --accent above — light-mode --sidebar-accent is now #a1a1a1, not
+  // shadcn's own stock value (#f5f5f5), for genuine hover/active
+  // visibility against --sidebar (#fafafa). See tokens.css's own comment
+  // for the full history.
+  { name: 'sidebar-accent-foreground/sidebar-accent', foreground: 'sidebar-accent-foreground', base: 'sidebar-accent', expectedLight: 6.94, expectedDark: 14.5 },
 ]
 
 // 033-shadcn-default-theme (T009): a REAL finding worth its own note —
@@ -289,10 +294,10 @@ const EXPECTED_LIGHT_HEX: Record<string, string> = {
   'secondary-foreground': '#171717',
   muted: '#f5f5f5',
   'muted-foreground': '#737373',
-  // 061-appearance-controls (follow-up, reverted): back to shadcn's own
-  // real value (== muted, confirmed intentional upstream) — see the
-  // PAIRINGS entry above and tokens.css's own comment for the full story.
-  accent: '#f5f5f5',
+  // 061-appearance-controls (follow-up, final): deliberately NOT shadcn's
+  // own stock value (== muted) — see the PAIRINGS entry above and
+  // tokens.css's own comment for the full story.
+  accent: '#a1a1a1',
   'accent-foreground': '#171717',
   destructive: '#e7000b',
   'destructive-foreground': '#fcf3f3',
@@ -303,7 +308,8 @@ const EXPECTED_LIGHT_HEX: Record<string, string> = {
   'sidebar-foreground': '#000000',
   'sidebar-primary': '#171717',
   'sidebar-primary-foreground': '#fafafa',
-  'sidebar-accent': '#f5f5f5',
+  // 061-appearance-controls (follow-up, final): same fix as accent above.
+  'sidebar-accent': '#a1a1a1',
   'sidebar-accent-foreground': '#171717',
   'sidebar-border': '#e5e5e5',
   'sidebar-ring': '#a1a1a1',

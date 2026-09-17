@@ -527,28 +527,26 @@ export function BasemapTab() {
             card surface with muted text.
 
             061-appearance-controls (follow-up): a real, confirmed,
-            PRE-EXISTING bug found while researching shadcn's own real
-            source for a separate fix — `--accent` has been byte-identical
-            to `--muted` since 033-shadcn-default-theme shipped (shadcn's
-            own real default theme ships them identical too, confirmed
-            directly). Since a resting tile's own `hover:bg-muted` and the
-            staged tile's `bg-accent` therefore render the EXACT SAME
-            color, a merely-hovered (not staged) tile was visually
-            indistinguishable from the actually-staged one — confirmed
-            live via screenshot. `components/ui/tabs.tsx`'s own
-            `TabsTrigger` no longer uses `bg-accent` for its active state
-            either, for the identical reason (see that file's own
-            comment) — its real fix (`bg-background` + `shadow-sm`)
-            doesn't transfer here, since these tiles' own RESTING state is
-            already `bg-card` (identical to `bg-background` in this
-            theme), so a staged tile would then be indistinguishable from
-            a plain, non-hovered resting one instead. Fixed here with a
-            colored border instead (`border-primary`, same 1px width as
-            every other tile's border — no layout shift when a tile
-            becomes/stops being staged) — the border, not the fill, now
-            carries the real "this one is selected" signal, working
-            correctly regardless of whatever the accent/muted fill values
-            happen to be. No thumbnail images exist or are implied (out of scope, per
+            PRE-EXISTING bug found while researching a separate fix —
+            `--accent` was byte-identical to `--muted` (a real, confirmed
+            shadcn "Nova" default-theme characteristic, not unique to this
+            app), so a resting tile's own `hover:bg-muted` and the staged
+            tile's `bg-accent` rendered the EXACT SAME color — a
+            merely-hovered (not staged) tile was visually indistinguishable
+            from the actually-staged one, confirmed live via screenshot.
+            `--accent` itself has since been fixed app-wide (tokens.css's
+            own comment on that declaration has the full, final story —
+            it's now deliberately more distinct from `--muted` than
+            shadcn's own stock value, for consistency across every real
+            `--accent` consumer, not just Tabs), so `bg-accent` alone would
+            now already look distinct from `hover:bg-muted` here too. The
+            colored border added below (`border-primary`) is kept anyway,
+            as an extra, deliberate signal specific to this grid-of-tiles
+            shape (unlike a single active tab, several tiles can sit
+            adjacent to each other, so a border reinforces which one is
+            selected at a glance, same 1px width as every other tile's
+            border — no layout shift when a tile becomes/stops being
+            staged). No thumbnail images exist or are implied (out of scope, per
             the original spec) — each tile gets a per-entry CATEGORY icon
             instead (Sun/Moon/Satellite/Mountain/Waves/Palette/Compass,
             see the `VectorEntry` interface's own comment) — an honest

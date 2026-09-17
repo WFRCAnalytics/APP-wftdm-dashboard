@@ -60,20 +60,30 @@
   --secondary-foreground: #171717;
   --muted: #f5f5f5;
   --muted-foreground: #737373;
-  /* Reverted (see components/ui/tabs.tsx's own comment for the real fix):
-     a prior pass changed this to --ring's value (#a1a1a1) to work around
-     --accent rendering identically to --muted for the active TabsTrigger.
-     Confirmed directly against shadcn's own real, current default theme
-     (apps/v4/app/globals.css, fetched live) that --accent === --muted in
-     LIGHT mode there too (oklch(0.97 0 0), both) — this is not a bug this
-     app introduced, it's how shadcn's own theme ships. shadcn does not
-     solve it at the token level at all: TabsTrigger's own active state
-     uses `bg-background` (a third, genuinely distinct token), never
-     `bg-accent`. Reverted to shadcn's real value so --accent stays
-     correct for its OTHER real consumers (dropdown-menu hover, basemap
-     tile selection) exactly as shadcn ships it, and the actual fix now
-     lives where shadcn itself puts it — the Tabs component. */
-  --accent: #f5f5f5;
+  /* 061-appearance-controls (follow-up, final): light-mode --accent is
+     DELIBERATELY NOT shadcn's own stock value (#f5f5f5, byte-identical to
+     --muted — confirmed directly against shadcn's real, current default
+     theme, apps/v4/app/globals.css, fetched live: both oklch(0.97 0 0)).
+     An earlier pass in this same follow-up chain reverted a first attempt
+     at fixing this back to shadcn's stock value, reasoning that shadcn's
+     own TabsTrigger sidesteps the collision with `bg-background` instead
+     of a token change — true for Tabs specifically, but auditing every
+     other real --accent consumer in this app (Sidebar's own
+     --sidebar-accent, dropdown-menu.tsx's hover/focus, basemapTab.tsx's
+     tile selection) found each of THOSE has no such escape hatch and
+     genuinely needs --accent itself to be visibly distinct from --muted —
+     confirmed live via screenshot that a merely-hovered element was
+     indistinguishable from a genuinely-selected/active one in more than
+     one real surface. Reuses this file's own --ring value (#a1a1a1,
+     already a real, present neutral step, not an invented one) — the
+     same value tried before, now kept as the deliberate, final answer
+     rather than reverted, since the fuller audit shows this app's own
+     hover/active language needs more contrast than shadcn's stock theme
+     ships, consistently, everywhere --accent is used. Dark mode
+     (--accent #404040 vs --muted #262626) was already sufficiently
+     distinct and is unchanged. See components/ui/tabs.tsx's own comment
+     for how TabsTrigger itself was simplified to match. */
+  --accent: #a1a1a1;
   --accent-foreground: #171717;
   --destructive: #e7000b;
   --destructive-foreground: #fcf3f3;
@@ -110,7 +120,19 @@
   --sidebar-foreground: #000000;
   --sidebar-primary: #171717;
   --sidebar-primary-foreground: #fafafa;
-  --sidebar-accent: #f5f5f5;
+  /* 061-appearance-controls (follow-up, final): same fix as --accent
+     above, same reason — shadcn's own real stock value here
+     (oklch(0.985 0 0) sidebar vs oklch(0.97 0 0) sidebar-accent) is a
+     genuinely subtle step even in their own theme, confirmed live via
+     screenshot to read as "barely there" for this app's own hover/active
+     sidebar rows. Reuses the same --ring-derived value as --accent for
+     one consistent hover/active language across the whole app, not a
+     sidebar-specific invention. --sidebar-accent-foreground (#171717)
+     already has strong contrast against it (see tokens.css's --accent
+     comment for the identical computed ratio). Dark mode
+     (--sidebar-accent #262626 vs --sidebar #171717) was already
+     sufficiently distinct and is unchanged. */
+  --sidebar-accent: #a1a1a1;
   --sidebar-accent-foreground: #171717;
   --sidebar-border: #e5e5e5;
   --sidebar-ring: #a1a1a1;
