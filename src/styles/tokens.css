@@ -60,23 +60,20 @@
   --secondary-foreground: #171717;
   --muted: #f5f5f5;
   --muted-foreground: #737373;
-  /* Light-mode-only fix: shadcn's own real "Nova"/neutral default theme
-     ships --accent identical to --muted (#f5f5f5) — confirmed directly in
-     this file before this change. --accent is this app's documented
-     "interactive hover/focus/selected background" role (wftdm-design-
-     system skill's Color tokens section: the active TabsTrigger, the
-     selected basemap tile, the focused dropdown-menu item), so an
-     accent-on-muted surface (e.g. the Theme control's TabsList) rendered
-     with NO visible highlight at all for whichever option was selected —
-     not a deliberate design choice, a real, reported bug. Reuses this
-     same file's own --ring value (already a real, distinct neutral step)
-     rather than inventing a new hex. Dark mode already has real
-     separation (--muted #262626 vs --accent #404040) and is unchanged.
-     Semantic role of --accent is unchanged — still "interactive hover/
-     focus/selected," per that skill's own "audited, not extended" rule;
-     only the VALUE moves, the same way --chart-1..5 were value-adjusted
-     for contrast without changing their role. */
-  --accent: #a1a1a1;
+  /* Reverted (see components/ui/tabs.tsx's own comment for the real fix):
+     a prior pass changed this to --ring's value (#a1a1a1) to work around
+     --accent rendering identically to --muted for the active TabsTrigger.
+     Confirmed directly against shadcn's own real, current default theme
+     (apps/v4/app/globals.css, fetched live) that --accent === --muted in
+     LIGHT mode there too (oklch(0.97 0 0), both) — this is not a bug this
+     app introduced, it's how shadcn's own theme ships. shadcn does not
+     solve it at the token level at all: TabsTrigger's own active state
+     uses `bg-background` (a third, genuinely distinct token), never
+     `bg-accent`. Reverted to shadcn's real value so --accent stays
+     correct for its OTHER real consumers (dropdown-menu hover, basemap
+     tile selection) exactly as shadcn ships it, and the actual fix now
+     lives where shadcn itself puts it — the Tabs component. */
+  --accent: #f5f5f5;
   --accent-foreground: #171717;
   --destructive: #e7000b;
   --destructive-foreground: #fcf3f3;

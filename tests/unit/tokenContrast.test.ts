@@ -121,17 +121,15 @@ const PAIRINGS: Array<{
   // 'muted-foreground/muted' is deliberately NOT in this list — see the
   // dedicated, separately-asserted test below this array for why.
   //
-  // 061-appearance-controls (follow-up): light-mode --accent was
-  // #f5f5f5 — byte-identical to --muted — a real, confirmed shadcn
-  // "Nova" default-theme characteristic, not a deliberate choice here,
-  // that left the active TabsTrigger (and every other accent-on-muted
-  // surface) with no visible highlight at all. Fixed to reuse this same
-  // file's own --ring value (#a1a1a1, a real, already-present neutral
-  // step) — see tokens.css's own comment on that declaration for the
-  // full rationale. expectedLight updated from 16.44 to the new real
-  // ratio; dark mode (#404040 vs #262626, already distinct) is
-  // unchanged.
-  { name: 'accent-foreground/accent', foreground: 'accent-foreground', base: 'accent', expectedLight: 6.94, expectedDark: 9.93 },
+  // 061-appearance-controls (follow-up, reverted): a prior pass changed
+  // light-mode --accent to #a1a1a1 to fix the active TabsTrigger's
+  // visibility (it's byte-identical to --muted otherwise, a real,
+  // confirmed shadcn "Nova" default-theme characteristic, not unique to
+  // this app). Reverted back to shadcn's own real value (#f5f5f5) once
+  // research confirmed shadcn itself never fixes this at the token level
+  // — components/ui/tabs.tsx's own TabsTrigger comment has the full
+  // story; the real fix lives there now, not here.
+  { name: 'accent-foreground/accent', foreground: 'accent-foreground', base: 'accent', expectedLight: 16.44, expectedDark: 9.93 },
   // 024-settings-modal-visual-redesign: --success/--success-foreground,
   // added for the Scenarios tab's "ready" status indicator (research.md
   // §2) — unchanged by this feature, values carried over verbatim.
@@ -291,9 +289,10 @@ const EXPECTED_LIGHT_HEX: Record<string, string> = {
   'secondary-foreground': '#171717',
   muted: '#f5f5f5',
   'muted-foreground': '#737373',
-  // 061-appearance-controls (follow-up): was '#f5f5f5' (== muted) — see
-  // the PAIRINGS entry above and tokens.css's own comment for the fix.
-  accent: '#a1a1a1',
+  // 061-appearance-controls (follow-up, reverted): back to shadcn's own
+  // real value (== muted, confirmed intentional upstream) — see the
+  // PAIRINGS entry above and tokens.css's own comment for the full story.
+  accent: '#f5f5f5',
   'accent-foreground': '#171717',
   destructive: '#e7000b',
   'destructive-foreground': '#fcf3f3',

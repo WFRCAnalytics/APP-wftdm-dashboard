@@ -3,9 +3,11 @@ import * as TabsPrimitive from '@radix-ui/react-tabs'
 
 import { cn } from '@/lib/utils'
 
-// Demonstrates: muted/muted-foreground (inactive tab), accent (active
-// indicator) — data-model.md's Component table. TabsTrigger uses
-// font-heading (navigation-like label); panel content inherits font-body.
+// Demonstrates: muted/muted-foreground (inactive tab), background +
+// shadow-sm (active indicator — see TabsTrigger's own comment for why
+// this isn't `accent`) — data-model.md's Component table. TabsTrigger
+// uses font-heading (navigation-like label); panel content inherits
+// font-body.
 const Tabs = TabsPrimitive.Root
 
 // 021-basemap-catalog-redesign (T025): data-[orientation=vertical]:
@@ -31,6 +33,22 @@ const TabsList = React.forwardRef<
 ))
 TabsList.displayName = TabsPrimitive.List.displayName
 
+// 061-appearance-controls (follow-up): the active-tab treatment used to be
+// `bg-accent`/`text-accent-foreground` — invisible in light mode because
+// `--accent` is byte-identical to the TabsList's own `bg-muted` track
+// there. Confirmed directly against shadcn's own real, current source
+// (both fetched live) that this is NOT how shadcn itself solves the exact
+// same collision — its own default theme has the identical --accent ==
+// --muted collision in light mode (apps/v4/app/globals.css: both
+// oklch(0.97 0 0)), and its own real TabsTrigger
+// (apps/v4/registry/new-york-v4/ui/tabs.tsx) never uses `bg-accent` for
+// the active state AT ALL, in either theme — light mode uses `bg-background`
+// (a third, genuinely distinct token) + `shadow-sm` for a "raised chip"
+// look; dark mode uses `bg-input`/`border-input` instead. Ported here
+// (light-mode classes byte-for-byte matching the real source; dark mode
+// adapted the same way) rather than the token-level workaround an earlier
+// pass tried (tokens.css's own comment on --accent has the full history) —
+// `--accent` itself is reverted to shadcn's real, intended value.
 const TabsTrigger = React.forwardRef<
   React.ElementRef<typeof TabsPrimitive.Trigger>,
   React.ComponentPropsWithoutRef<typeof TabsPrimitive.Trigger>
@@ -38,7 +56,7 @@ const TabsTrigger = React.forwardRef<
   <TabsPrimitive.Trigger
     ref={ref}
     className={cn(
-      'inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 font-heading text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-accent data-[state=active]:text-accent-foreground',
+      'inline-flex items-center justify-center whitespace-nowrap rounded-sm border border-transparent px-3 py-1.5 font-heading text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm dark:data-[state=active]:border-input dark:data-[state=active]:bg-input/30',
       'data-[orientation=vertical]:w-full data-[orientation=vertical]:justify-start data-[orientation=vertical]:text-left',
       className,
     )}
