@@ -10,11 +10,34 @@ finding below is read directly from this repo's own current source
 (confirmed by file:line), not assumed from `project-docs/`, plus real,
 cited prior art for the genuinely open design questions.
 
+> **Revision note (2026-09-20).** This document originally cited
+> `RechartsPanel.tsx`'s `series: scenario` mechanism as "the one real
+> working example" of multi-scenario comparison in this app, and pointed
+> §B4's pie diff-view and §C's trend-chart recommendations at `type:
+> recharts` panels. A hard, current constraint supersedes that: Recharts
+> and Plotly are treated as if they don't exist for every design decision
+> in this document — Observable Plot is this app's sole primary charting
+> library going forward, D3 direct only where Observable Plot has no
+> native support, full stop. Re-reading `ObservablePlotPanel.tsx`/
+> `observablePlotEncoding.ts` directly (not assumed from the first pass)
+> found an independently-built, EQUALLY real, EQUALLY demo-proven
+> `fill`/`stroke: scenario` mechanism already in production there — so
+> this revision doesn't downgrade any recommendation's maturity, it
+> re-points the same conclusions at the correct foundation. Changed:
+> **§A1** (new baseline description), **§A6** (table), **§B3** (citation
+> reworded, no substance change — the underlying fix was never
+> Recharts-specific), **§B4** (diff-bar rebuilt on Observable Plot, one
+> small new gap now flagged that the first pass's Recharts hand-off had
+> masked), **§C** (trend chart confirmed to need zero new rendering code
+> — not merely reassigned to a different library), **§E**, **§F**, and
+> the closing Summary. §B1/B2/B5/D were checked, not assumed, to contain
+> no Recharts/Plotly dependency and are unchanged.
+
 ---
 
 ## A. Audit — what actually compares scenarios today, panel type by panel type
 
-### A1. The one real working example: `$scenario`'s UNION-ALL + a `series`/`fill` channel (bar/line/area via Recharts, also Observable Plot)
+### A1. The real, mature multi-scenario baseline: `$scenario`'s UNION-ALL + Observable Plot's `fill`/`stroke: scenario` channel
 
 The entire mechanism is two independent, already-generic pieces that
 happen to compose into "comparison" for any chart type willing to read a
@@ -34,31 +57,54 @@ happen to compose into "comparison" for any chart type willing to read a
    literal `scenario` discriminator column. This is the single mechanism
    every multi-scenario chart in this app either already uses or could use
    — there is no second "comparison query" code path.
-2. **`RechartsPanel`'s `series: scenario`** wiring
-   (`src/panels/rechartsEncoding.ts#encodeRechartsData`, `src/panels/RechartsPanel.tsx:306`).
-   When an author sets `series: scenario` on a `type: recharts` panel,
-   `encodeRechartsData()` pivots the tidy `(x, scenario, y)` rows into one
-   wide row per `x` value with one column per distinct `scenario` — an
-   ordinary long-to-wide groupby, not comparison-specific logic — and
-   returns `seriesKeys` (scenario names, first-seen order). `RechartsPanel`
-   then renders one `<Bar>`/`<Line>`/`<Area>` per `seriesKeys` entry,
-   grouped side-by-side by default or stacked when `stacked: true`
-   (`RechartsPanel.tsx:487-503`). **Recharts' own native multi-series
-   rendering is doing 100% of the "comparison" visual work** — the app
-   code's only job is getting a `scenario` column into the tidy rows (free,
-   from `$scenario`) and pivoting it into Recharts' wide-row contract.
+2. **`ObservablePlotPanel`'s `fill`/`stroke: scenario` channel** — a real,
+   already-shipped, already-demo-proven mechanism, not something Part B
+   needs to invent. `ObservablePlotPanel.tsx` imports and calls
+   `useScenarioDisplay()` (`:11`, `:115`) and forwards the resolved
+   `ScenarioDisplayMap` as `resolveObservablePlotEncoding()`'s third
+   argument (`:268`). Inside that pure function
+   (`src/panels/observablePlotEncoding.ts`), whenever an author sets
+   `fill: scenario` or `stroke: scenario`, the `isScenarioColor` branch
+   (`:275-338`) does two real things: (a) substitutes each row's raw
+   scenario NAME with its resolved display LABEL via
+   `resolveScenarioLabel()` before the data ever reaches Plot (`:299-300`
+   — so the legend/tooltip show a viewer's custom label, not the raw
+   scenario name), and (b) builds an explicit Plot `color: {domain,
+   range}` pair from every distinct scenario's `resolveScenarioColor()`
+   result (`:322-338`), all-or-nothing (falls back to Plot's own default
+   categorical cycling only when at least one active scenario has no
+   resolved color) — the same all-or-nothing contract
+   `035-scenario-label-color`'s own spec establishes, independently
+   re-implemented for this panel type. **This is mark-agnostic, not
+   bar-chart-specific**: `config.mark` is a plain string looked up
+   directly against Plot's own export table (`ObservablePlotPanel.tsx:269`,
+   `Plot[markName]`), so `fill`/`stroke: scenario` works identically
+   whether `mark` is `barY` (published today, e.g.
+   `dashboard-1-summary.yaml`) or `lineY` (also real, already published in
+   `dashboard-8-test.yaml:103`, not merely theoretically supported) — a
+   multi-scenario LINE chart already renders correctly with per-scenario
+   color/label resolution today, with zero new rendering code required
+   for §C's trend-chart recommendation below. Observable Plot's own
+   equivalent of a "grouped bar" comparison is ALSO already real, just
+   shaped differently than a wide-pivot approach: the facet-based
+   grouped-bar recipe (`observablePlotEncoding.ts:137-167`, the
+   `xAxisSuppressed` logic) — confirmed real by its own in-code history of
+   a live, screenshot-caught bug fix against real published grouped-bar
+   content, not a theoretical/unused code path.
 
-Color/label resolution for that "comparison" **is** scenario-aware,
-uniquely among all panel types: `encodeRechartsData()` takes an optional
-`scenarioDisplay: ScenarioDisplayMap` and, when `config.series ===
-'scenario'`, calls `resolveScenarioColor()`/`resolveScenarioLabel()`
-(`src/panels/scenarioDisplay.ts:29-43`) so a viewer's Settings→Scenarios
-tab label override/color override (`035-scenario-label-color`,
-`036-scenario-color-picker`) is reflected directly in the chart legend —
-falling back to the ordinary `--chart-N` token cycle only when unresolved.
-**No other chart type in this app reads `scenarioDisplay` at all** (§A2-A5
-below) — this is the one piece of "comparison, done right" that exists
-nowhere else yet.
+Color/label resolution for this "comparison" is genuinely scenario-aware
+— matching, not merely approximating, what `035-scenario-label-color`/
+`036-scenario-color-picker` designed: a viewer's Settings→Scenarios tab
+label override/color override is reflected directly in the chart.
+**RechartsPanel has an independently-built, analogous `series: scenario`
+mechanism** (`rechartsEncoding.ts#encodeRechartsData`) — real, and still
+the panel type this app's demo bar charts currently use in production —
+but per this pass's hard constraint (Recharts/Plotly out of scope for any
+new or extended work), every recommendation from Part B onward builds on
+Observable Plot's mechanism described above, not Recharts'. **No other
+chart type in this app reads `scenarioDisplay` at all** (§A2-A5 below) —
+this is the one piece of "comparison, done right" this pass can actually
+extend elsewhere.
 
 A second, structurally separate mechanism, **`comparison: diff`**
 (`019-baseline-diff-consumption`), answers a different question — "the
@@ -76,14 +122,19 @@ not the "one working example" the task's own framing assumed. Sunburst
 and Treemap ALSO structurally receive it (§A2) — Radar, Pie, and Sankey do
 not (§A3-A5).
 
-**State flow, end to end, for a `series: scenario` recharts panel:**
-`appState.active` (viewer's Scenarios-tab `Switch` toggles) → `useActiveScenarios()` →
-`resolveQueryAndPairs()`'s `activeScenarioNames` param → `resolveActiveScenarios()`
-(`panelQuery.ts:207-213`, `config.scenario`/`config.scenarios` bypass this
-entirely — see next paragraph) → `sqlExpander.expand()`'s `$scenario`
-placeholder → the UNION-ALL query → tidy rows with a real `scenario`
-column → `encodeRechartsData()`'s pivot + `scenarioDisplay` color/label
-resolution → Recharts' own multi-series render.
+**State flow, end to end, for a `fill`/`stroke: scenario` Observable Plot
+panel:** `appState.active` (viewer's Scenarios-tab `Switch` toggles) →
+`useActiveScenarios()` → `resolveQueryAndPairs()`'s `activeScenarioNames`
+param → `resolveActiveScenarios()` (`panelQuery.ts:207-213`,
+`config.scenario`/`config.scenarios` bypass this entirely — see next
+paragraph) → `sqlExpander.expand()`'s `$scenario` placeholder → the
+UNION-ALL query → tidy rows with a real `scenario` column →
+`useScenarioDisplay()`'s resolved `ScenarioDisplayMap` →
+`observablePlotEncoding.ts`'s `isScenarioColor` branch (label
+substitution + domain/range color resolution) → `Plot.plot()`'s own
+native per-group mark rendering (grouping by the `stroke`/`fill` channel
+is the mark's own built-in behavior, e.g. `lineY`'s implicit `z` channel
+— not app code).
 
 **Explicit escape hatch, load-bearing for every recommendation below**: a
 panel with `scenario:` (singular) or `scenarios:` (list) in its config
@@ -101,7 +152,7 @@ mechanism.
 (`src/layout/types.ts:484-490`) — and `HierarchicalChartHost.tsx:122`
 (the shared host both `TreemapPanel.tsx`/`SunburstPanel.tsx` render
 through) calls `resolveQueryAndPairs()` completely unmodified, identically
-to Recharts. **This is real, confirmed latent scaffolding**: set
+to Observable Plot (§A1). **This is real, confirmed latent scaffolding**: set
 `comparison: { type: 'diff', a: 'scenario-a', b: 'scenario-b', expr: '...' }`
 on a treemap/sunburst panel today and the query layer resolves it
 correctly, no code change needed.
@@ -150,16 +201,16 @@ order — a real, working "one polygon per scenario, same axes" overlay,
 confirmed by Acceptance Scenario 2 of that spec. **This is the closest
 thing to a second working comparison pattern in the whole codebase.**
 
-The real gap: unlike Recharts, `RadarChartPanel.tsx` never imports
-`useScenarioDisplay()`/`scenarioDisplay.ts` at all. Colors come from
-`resolveNamedColorScheme()`/`resolveCategoryFallbackColors()`
+The real gap: unlike Observable Plot's own panel (§A1), `RadarChartPanel.tsx`
+never imports `useScenarioDisplay()`/`scenarioDisplay.ts` at all. Colors
+come from `resolveNamedColorScheme()`/`resolveCategoryFallbackColors()`
 (`chartColor.ts`) purely by series index (`renderSvg()`,
 `RadarChartPanel.tsx:110`), and the legend (`ChartLegend`,
 `:111`/`301`) shows the raw `scenario` column value, not a viewer's
 custom label. A radar panel using `series: scenario` today visually
-disagrees with every Recharts panel on the same dashboard about a given
-scenario's color and display name — a real, confirmed cross-panel-type
-inconsistency, not hypothetical.
+disagrees with every Observable Plot panel using `fill`/`stroke: scenario`
+on the same dashboard about a given scenario's color and display name —
+a real, confirmed cross-panel-type inconsistency, not hypothetical.
 
 ### A4. Pie (`060-radar-pie-charts`) — no scaffolding, deliberately
 
@@ -194,8 +245,9 @@ scaffolding for real comparison.
 
 | Panel type | `comparison: diff` wired? | Multi-scenario overlay today? | Scenario-aware color/label? |
 |---|---|---|---|
-| Recharts (bar/line/area) | Yes (query layer) | **Yes, real, shipped** (`series: scenario`) | **Yes** (`scenarioDisplay.ts`) |
-| Plotly / Table / ObservablePlot / ZoneMap | Yes (query layer) | Varies per type (out of this pass's chart-type list) | Plotly only, partially (not audited further — out of scope) |
+| Observable Plot (any mark — bar/line/etc.) | Yes (query layer) | **Yes, real, shipped** (`fill`/`stroke: scenario`) | **Yes** (`scenarioDisplay.ts` via `useScenarioDisplay()`) |
+| Recharts (bar/line/area) — real, shipped, production-used, but out of scope for new/extended work per this pass's hard constraint | Yes (query layer) | Yes, real, shipped (`series: scenario`) | Yes (`scenarioDisplay.ts`) |
+| Plotly / Table / ZoneMap | Yes (query layer) | Varies per type (out of this pass's chart-type list) | Plotly only, partially (not audited further — out of scope) |
 | Treemap / Sunburst | Yes (query layer only — `hierarchyData.ts` can't consume it) | **No** — scenario-blind aggregation bug-shape if left unpinned | No |
 | Radar | No | **Yes, real, shipped** (`series: scenario`) | **No** — real, confirmed gap |
 | Pie | No | No — scenario-blind aggregation bug-shape if left unpinned | No |
@@ -310,12 +362,15 @@ ships as their default multi-series behavior — no external citation
 needed beyond noting this app's OWN `060` spec already made this the
 intended design, Acceptance Scenario 2). The only real work is closing
 §A3's confirmed gap: wire `useScenarioDisplay()` into `RadarChartPanel.tsx`
-exactly the way `RechartsPanel.tsx` already does, and pass the resolved
-`ScenarioDisplayMap` into `aggregateRadarSeries()`'s caller so
-`renderSvg()`'s per-series `color`/legend label resolve through
+and pass the resolved `ScenarioDisplayMap` into `aggregateRadarSeries()`'s
+caller so `renderSvg()`'s per-series `color`/legend label resolve through
 `resolveScenarioColor()`/`resolveScenarioLabel()` when `config.series ===
-'scenario'` — same conditional shape as `encodeRechartsData()`
-(`rechartsEncoding.ts:92-102`), copied, not reinvented. A diff mode for
+'scenario'` — the identical conditional shape Observable Plot's own panel
+already established (§A1's `isScenarioColor` branch,
+`observablePlotEncoding.ts:275-338`), copied, not reinvented. (Recharts
+independently implements the same contract in
+`rechartsEncoding.ts#encodeRechartsData` — real, but out of scope to cite
+as the pattern source per this pass's hard constraint.) A diff mode for
 radar has no clean encoding (a radar axis has no natural "second
 color/texture" channel the way a treemap cell's fill does) — not
 recommended; overlay-of-2 (both scenarios' polygons, semi-transparent
@@ -347,13 +402,40 @@ change, this is a pure UI-state wrapper around `PieChartPanelConfig`
 picking which scenario name to pass through. **Diff view**: for exactly 2
 scenarios, a bar-of-differences is a better-evidenced alternative to any
 pie-shaped diff (a diverging horizontal bar per category, `value_B -
-value_A` or percent-change) — this is realistically a `type: recharts`
-panel with `chart_type: bar` fed by `comparison: diff`'s existing query
-shape (already fully wired, §A1), not new pie-specific code at all.
-Flagged explicitly: the "diff view" affordance for pie effectively hands
-off to the ALREADY-WORKING bar-chart comparison path rather than building
-a new pie-diff renderer — the most direct application of this task's own
-"extend the one thing that already works" framing.
+value_A` or percent-change) — this hands off to a `type: observable-plot`
+panel (`mark: barX`, `x: diff_value`, `y: category`) fed by `comparison:
+diff`'s existing query shape (already fully wired for ObservablePlot,
+§A1), reusing the already-real query layer, not new pie-specific code.
+
+Not fully config-only, though — flagged honestly rather than silently
+absorbed, since this is exactly the kind of gap the original Recharts
+hand-off masked: a `barX` mark with a numeric diff-value color channel
+does NOT automatically get a diverging color scale today, because
+`observablePlotEncoding.ts`'s continuous-color detection
+(`colorFieldIsNumeric`) is gated to `CELL_FAMILY_MARKS` only
+(`cell`/`cellX`/`cellY`/`rect`/`rectX`/`rectY` — `:257-265`) — a bar
+mark's `fill` currently falls straight through to the CATEGORICAL
+domain/range branch (`:380-397`), which would give every distinct
+`diff_value` its own swatch color instead of a positive/negative
+gradient. Real, small, concretely-scoped new work: extend that gate (or
+add a sibling flag) so `fill: diff_value` on a `barX`/`barY` mark gets
+Plot's own native `color: {type: 'diverging', pivot: 0}` scale option
+instead — Observable Plot supports diverging continuous scales natively,
+so this app doesn't need to build one from scratch. This mirrors the
+same DESIGN principle `zonemapColor.ts`'s `namedRampT()`/
+`tokenDerivedColor()` already establish elsewhere in this codebase (a
+zero-anchored midpoint, `zonemapColor.ts:64-82`) — reused conceptually as
+precedent that "diverging, zero-anchored" is already this app's chosen
+mental model for a diff color scale, not a literal code-share (Plot's
+native scale option and `zonemapColor.ts`'s own D3-based interpolation
+are two different implementations of the same idea, and should stay
+that way — `zonemapColor.ts` is ZoneMap-specific plumbing, not a shared
+utility for Observable Plot's encoding module to import). Flagged
+explicitly: the "diff view" affordance for pie effectively hands off to
+the Observable Plot bar-diff path rather than building a new pie-diff
+renderer — the most direct application of this task's own "extend the
+one thing that already works" framing, now correctly pointed at
+Observable Plot.
 
 ### B5. Sankey — scenario switcher (default) + a genuine diff-Sankey mode, cited from a real, close analog
 
@@ -406,16 +488,28 @@ config-only change (§F).
 
 ## C. Time-series stream (2023–2050, 8-10+ runs, No-Build vs Build) — recommendation: trend chart as the primary always-visible view, drilling into 1-2-year small multiples/switcher
 
-**Recommendation, stated directly (not a menu)**: a `type: recharts`
-line/area chart (already real, already shipped, `x: year`, `series:
-scenario` or a synthesized `<scenario_family>-<year>` series key) is the
-PRIMARY, always-visible view for the stream case — every other chart type
-(sunburst/treemap/radar/pie/sankey) only ever renders 1-2 SELECTED years
-at a time, chosen via direct interaction with the trend chart (a click on
-a year's x-position, or a paired "Year A / Year B" `<Select>` pair sitting
+**Recommendation, stated directly (not a menu)**: a `type: observable-plot`
+line chart (`mark: lineY`, `x: year`, `stroke: scenario` or a synthesized
+`<scenario_family>-<year>` series key) is the PRIMARY, always-visible view
+for the stream case. This needs **zero new rendering code**: per §A1,
+`mark: lineY` with a `stroke: scenario` channel is already real, already
+demo-published (`dashboard-8-test.yaml:103`), and already resolves
+per-scenario color/label through `observablePlotEncoding.ts`'s
+`isScenarioColor` branch; an `areaY` variant (for a shaded Build-vs-No-Build
+gap band) is mechanically identical — the same generic `Plot[markName]`
+lookup, with no code path specific to `barY`/`lineY` standing in its way
+(not yet demo-published, so flagged as unverified-but-low-risk rather than
+confirmed, unlike `lineY`). What genuinely IS new work — and is reflected
+honestly in Part F, not silently absorbed into "just swap the library" —
+is the DRILLDOWN interaction, not the chart itself: every other chart type
+(sunburst/treemap/radar/pie/sankey) only ever renders 1-2 SELECTED years at
+a time, chosen via direct interaction with the trend chart (a click on a
+year's x-position, or a paired "Year A / Year B" `<Select>` pair sitting
 alongside the trend chart, matching B4/B5's own switcher affordance
-exactly), not a continuously-scrubbing time slider driving live redraws
-of every panel on the tab.
+exactly) — that selection-state wiring (a new, small, cross-panel pub/sub
+store) is real, chart-library-agnostic work, not something Observable
+Plot's own maturity absorbs for free; not a continuously-scrubbing time
+slider driving live redraws of every panel on the tab.
 
 **Justification against the specific use case**: the real comparison task
 here is "how did the Build-vs-No-Build GAP evolve over 27 years," which is
@@ -585,11 +679,12 @@ the global Settings modal.
 
 **What differs per chart type, underneath the same control shape**:
 switcher options list scenario/run names (B4/B5/D1); small-multiples-vs-
-diff toggle options are `'Compare' | 'Diff'` (B1b/D3-D4); radar/recharts
-need no control at all in the MVP sense — their comparison is already
-"just render every active/selected scenario," no separate mode to pick
-(though a future pass could still add the same toggle purely for a diff-
-bar overlay on top of the existing grouped view, out of scope here).
+diff toggle options are `'Compare' | 'Diff'` (B1b/D3-D4); radar and
+Observable Plot's own `fill`/`stroke: scenario` panels need no control at
+all in the MVP sense — their comparison is already "just render every
+active/selected scenario," no separate mode to pick (though a future pass
+could still add the same toggle purely for a diff-bar overlay on top of
+the existing grouped/multi-series view, out of scope here).
 
 ---
 
@@ -600,11 +695,11 @@ bar overlay on top of the existing grouped view, out of scope here).
 | B1 Treemap small multiples | Medium — new multi-root state + grid in `HierarchicalChartHost.tsx`, synced-hover pub/sub; renderer itself unchanged | **No** — client-side split of the already-unioned `$scenario` rows |
 | B1b Treemap diff mode | Medium — new `hierarchyData.ts` diff-aware builder + diverging-color renderer branch | No — `comparison: diff` query already resolves; only consumption is new |
 | B2 Sunburst small multiples | Small — identical mechanism to B1, same host | No |
-| B3 Radar scenarioDisplay wiring | Small — port `RechartsPanel.tsx`'s existing `useScenarioDisplay()` call | No |
-| B4 Pie switcher + diff-via-bar | Small — `<Select>` UI state + `scenario:` pin; diff view reuses the EXISTING recharts diff path unmodified | No |
+| B3 Radar scenarioDisplay wiring | Small — port the `useScenarioDisplay()` + `isScenarioColor`-shaped wiring Observable Plot's own panel already established (§A1) into `RadarChartPanel.tsx` | No |
+| B4 Pie switcher + diff-via-bar | Small — `<Select>` UI state + `scenario:` pin; diff view reuses the EXISTING Observable Plot `comparison: diff` query path (§A1), but needs one small new diverging-scale branch in `observablePlotEncoding.ts` for the diff bar's color (§B4) — not fully config-only | No — the change is confined to `observablePlotEncoding.ts`'s color-resolution logic, not `panelQuery.ts`/`sqlExpander.ts` |
 | B5 Sankey switcher (default) | Small — same `<Select>` pattern as B4 | No |
 | B5 Sankey diff mode | **Large** — new `buildDiffFlowGraph()` + width/sign-color renderer branch, genuinely new geometry logic | **Yes, narrow** — needs `compare_on: [source, target]` support to already flow correctly through `resolveQueryAndPairs()`; confirm `buildComparisonDiffQuery()`'s existing JOIN shape handles a 2-column `compare_on` correctly for Sankey's node-pair identity (likely already works — `compareOn: string[]` is already general, `panelQuery.ts:285`, `290`-`291` — flag for verification, not a structural gap) |
-| C Trend-chart-drives-drilldown | Medium — new click/select interaction wiring on an existing recharts line/area panel, cross-panel "selected year(s)" shared state (a new small pub/sub store, `state/`-pattern) | No — reuses `scenario:`/`scenarios:` pins throughout |
+| C Trend-chart-drives-drilldown | Medium — the trend chart itself needs ZERO new rendering code (§A1/§C: `mark: lineY`/`stroke: scenario` is already real and demo-proven); the real cost is new click/select interaction wiring + a cross-panel "selected year(s)" shared state (a new small pub/sub store, `state/`-pattern) | No — reuses `scenario:`/`scenarios:` pins throughout |
 | D1 Map swipe | Medium — new component wrapping 2× existing FlowMap/ZoneMap mount logic + `maplibre-gl-compare` (new dependency — confirmed real/maintained, not evaluated for the interleaved-mode interaction empirically in this pass) | No |
 | D2 Map synced grid | Medium — N-instance camera-sync wiring, reuses existing panel mount logic per cell | No |
 | D3/D4 Map abs/pct diff | **Trivial** — already fully built; config-only | No |
@@ -636,20 +731,29 @@ per this task's own instruction, not designed further here.
 
 ## Summary
 
-The bar chart's "comparison" is not bespoke — it's a `scenario` column
-that already falls out of `$scenario`'s UNION-ALL for free, plus an
-ordinary long-to-wide pivot Recharts' own multi-series rendering already
-handles. That pattern already generalizes almost for free to Radar
-(already shipped, just missing scenario-color wiring) and, with real new
-work, to Treemap/Sunburst (small multiples, query layer already wired via
-`comparison: diff`) and Pie/Sankey (scenario switcher, reusing the
-already-real `scenario:` pin — diff mode for Sankey is the one genuinely
-new, non-trivial piece of geometry logic in this whole document). Maps
-reuse this app's existing MapLibre/deck.gl stack with one new, real,
-low-risk dependency (`maplibre-gl-compare`) for swipe; grid-sync and
-diff-color layers need no new library at all, and diff-color for ZoneMap
-specifically is already fully built. The stream case is answered by a
-single always-visible trend chart drilling into whichever 1-4 selected
+Observable Plot's own multi-scenario comparison isn't bespoke either —
+it's the same free `scenario` column from `$scenario`'s UNION-ALL, plus
+`fill`/`stroke: scenario`'s already-real, already-demo-proven,
+mark-agnostic color/label resolution (`observablePlotEncoding.ts`'s
+`isScenarioColor` branch) — a genuinely mature baseline this pass builds
+on directly, not something to construct from scratch (Recharts has an
+independently-built equivalent, real and still in production, but out of
+scope for new work per this pass's hard constraint). That baseline
+already generalizes almost for free to Radar (already shipped, just
+missing scenario-color wiring) and to the stream case's own trend chart
+(§C — zero new rendering code, same mechanism, `mark: lineY`). With real
+new work, it extends to Treemap/Sunburst (small multiples, query layer
+already wired via `comparison: diff`), Pie (scenario switcher plus a
+small new diverging-scale branch for the diff-bar view, §B4), and Sankey
+(scenario switcher, reusing the already-real `scenario:` pin — diff mode
+for Sankey is still the one genuinely new, non-trivial piece of geometry
+logic in this whole document). Maps reuse this app's existing MapLibre/
+deck.gl stack with one new, real, low-risk dependency
+(`maplibre-gl-compare`) for swipe; grid-sync and diff-color layers need
+no new library at all, and diff-color for ZoneMap specifically is already
+fully built. The stream case is answered by a single always-visible
+trend chart — built on the same real Observable Plot mechanism as every
+other recommendation here — drilling into whichever 1-4 selected
 years/scenarios feed every other chart type's own comparison mode from
 Part B — one shared selection concept composing consistently across
 every recommendation in this document, not five independent designs.
