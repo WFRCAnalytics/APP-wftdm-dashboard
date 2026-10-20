@@ -6,7 +6,7 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 
 import '@/styles/tokens.css'
-// 033-shadcn-default-theme: self-hosted Schibsted Grotesk / DM Mono/Geist Mono variable-font
+// 033-shadcn-default-theme: self-hosted Schibsted Grotesk / DM Mono font
 // side-effecting imports — the real replacement for the old Google-Fonts-
 // CDN runtime-injection module this project used to keep under
 // src/lib/ (retired/deleted entirely, T024; quickstart.md Scenario 3's
@@ -31,7 +31,8 @@ import { discoverScenarios } from './services/scenarioDiscovery.ts'
 import { loadDashboards, loadDashboardBranding, type DashboardBranding } from './services/yamlLoader.ts'
 import { setDeployerScenarioPalette } from './panels/scenarioDisplay.ts'
 import { setDeployerProtomapsSource } from './state/protomapsSourceState.ts'
-import { setDeployerInterfaceColor, computeForegroundFor } from './panels/interfaceColor.ts'
+import { setDeployerInterfaceColor } from './panels/interfaceColor.ts'
+import { startAccentSync } from './services/theme.ts'
 import { parseDashboardConfig } from './layout/types.ts'
 import { Shell } from './layout/shell.tsx'
 import { Toaster } from './components/ui/sonner.tsx'
@@ -222,10 +223,11 @@ for (const [role, value] of [
 ] as const) {
   if (value && CSS.supports('color', value)) {
     setDeployerInterfaceColor(role, value)
-    document.documentElement.style.setProperty(`--${role}`, value)
-    document.documentElement.style.setProperty(`--${role}-foreground`, computeForegroundFor(value))
   }
 }
+// Derives --c-1..3 / --brand / --chart-* from the three colors (deployer default or viewer override) and keeps them
+// current across theme and color changes (services/theme.ts).
+startAccentSync()
 // Sets the browser tab's own title — independent of whether the header
 // renders it as visible text at all (shell.tsx only falls back to
 // showing it inline when no logo is configured, see that file's own

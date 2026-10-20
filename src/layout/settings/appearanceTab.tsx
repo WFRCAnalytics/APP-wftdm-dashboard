@@ -10,7 +10,6 @@ import { useColorblindSafePreference } from '@/hooks/useColorblindSafePreference
 import { setColorblindSafe } from '@/state/colorPreferenceState'
 import { useTextSize } from '@/hooks/useTextSize'
 import { setScale } from '@/state/textSizeState'
-import { useInterfaceColors } from '@/hooks/useInterfaceColors'
 import { InterfaceColorControl } from '@/layout/settings/interfaceColorControl'
 import { useFontPreference } from '@/hooks/useFontPreference'
 import { clearFont, setFont, type FontRole } from '@/state/fontPreferenceState'
@@ -138,7 +137,6 @@ export function AppearanceTab() {
   // 061-appearance-controls
   const colorblindSafe = useColorblindSafePreference()
   const textSize = useTextSize()
-  const interfaceColors = useInterfaceColors()
   const fontPreference = useFontPreference()
 
   // US2: applies the current text-size scale live — every Tailwind
@@ -148,31 +146,8 @@ export function AppearanceTab() {
     document.documentElement.style.fontSize = `${textSize}%`
   }, [textSize])
 
-  // US3: applies each role's resolved color + auto-computed foreground
-  // live via an inline custom-property override on document.documentElement
-  // — inline styles beat any :root/.dark stylesheet rule regardless of
-  // theme (research.md §10). `color: undefined` means "nothing configured
-  // for this role" — removeProperty() lets tokens.css's own theme-paired
-  // value apply through the ordinary cascade instead. A deployer-
-  // configured default is ALSO applied once, at boot, directly in
-  // main.tsx (mirroring theme-mode's own one-shot dark-class line) — this
-  // effect re-applying the identical value on mount is a harmless no-op;
-  // it's what makes a viewer's own LATER session override take effect
-  // live, the same division of responsibility theme-mode already has
-  // between its boot-time line and this component's own effect.
-  useEffect(() => {
-    const root = document.documentElement
-    for (const role of ['primary', 'secondary', 'accent'] as const) {
-      const { color, foreground } = interfaceColors[role]
-      if (color && foreground) {
-        root.style.setProperty(`--${role}`, color)
-        root.style.setProperty(`--${role}-foreground`, foreground)
-      } else {
-        root.style.removeProperty(`--${role}`)
-        root.style.removeProperty(`--${role}-foreground`)
-      }
-    }
-  }, [interfaceColors])
+  // US3: the three colors are applied by services/theme.ts (startAccentSync, started in main.tsx), which subscribes to
+  // state/interfaceColorState.ts and the `dark` class itself — nothing to do here.
 
   // US4: reacts to a font-preference change by loading (or clearing) that
   // role's Google Font — the one place state changes turn into the actual
@@ -305,7 +280,7 @@ export function AppearanceTab() {
           list="...">) seeded with a small bundled shortlist, since a
           viewer choosing "any Google Font" needs no enumerated catalog
           fetch to do so (research.md §9). Defaults to this dashboard's
-          existing self-hosted Geist typefaces (empty input, no
+          existing self-hosted Schibsted Grotesk and DM Mono typefaces (empty input, no
           selection) — picking a name is fully optional. Three columns,
           one row, matching the Colors section's own layout above. */}
       <div className="space-y-2">

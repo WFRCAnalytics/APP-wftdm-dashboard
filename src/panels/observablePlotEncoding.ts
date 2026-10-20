@@ -9,7 +9,8 @@
 // reason for being split out of PlotlyPanel.tsx. Only ObservablePlotPanel.tsx
 // itself ever calls Plot[markName](data, options).
 import type { ObservablePlotPanelConfig } from '@/layout/types'
-import { resolveScenarioColor, resolveScenarioLabel, type ScenarioDisplayMap } from '@/panels/scenarioDisplay'
+import { resolveScenarioColor, resolveScenarioLabel, type ScenarioDisplayMap } from '@/panels/scenarioDisplay'
+import { plotBaseStyle, plotLegendStyle } from './chartTheme.ts'
 
 export interface ResolvedObservablePlotEncoding {
   markName: string
@@ -86,7 +87,7 @@ export function resolveObservablePlotEncoding(
   // token value into a literal hex string specifically because Plot's own
   // generated stylesheet re-declares --plot-background itself and would
   // otherwise win).
-  plotOptions.style = { fontSize: '12px', fontFamily: 'var(--font-body)' }
+  plotOptions.style = plotBaseStyle()
   if (config.grid) plotOptions.grid = config.grid
   // project-docs/GRAMMAR.md documents no legend: key at all for this panel type —
   // confirmed by a full grep of both real observable-plot examples and the
@@ -123,7 +124,7 @@ export function resolveObservablePlotEncoding(
       // matches the chart body (fontFamily/fontSize above) and
       // RechartsPanel's own ChartLegendContent text color
       // (`text-muted-foreground`) exactly.
-      style: { fontFamily: 'var(--font-body)', fontSize: '12px', color: 'var(--muted-foreground)' },
+      style: plotLegendStyle(),
       // 15px (Plot's own legendItems() `swatchSize = 15` default) → 9px,
       // matching RechartsPanel's own 8px `h-2 w-2` legend swatch as
       // closely as this mark-independent, real-rendered-<svg>-per-swatch

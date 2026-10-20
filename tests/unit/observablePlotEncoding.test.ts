@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
+import { plotBaseStyle, plotLegendStyle } from '../../src/panels/chartTheme'
 import { resolveObservablePlotEncoding } from '@/panels/observablePlotEncoding'
 import type { ObservablePlotPanelConfig } from '@/layout/types'
 import type { ScenarioDisplayMap } from '@/panels/scenarioDisplay'
@@ -21,8 +22,8 @@ const rows = [
 // (chart body) / sets alongside `legend: true` (legend), shared here so
 // every test asserting the surrounding object's exact shape doesn't retype
 // them.
-const CHART_BODY_STYLE = { fontSize: '12px', fontFamily: 'var(--font-body)' }
-const LEGEND_STYLE = { fontFamily: 'var(--font-body)', fontSize: '12px', color: 'var(--muted-foreground)' }
+const CHART_BODY_STYLE = plotBaseStyle()
+const LEGEND_STYLE = plotLegendStyle()
 
 describe('resolveObservablePlotEncoding', () => {
   it('copies markName and data through unchanged', () => {
@@ -175,7 +176,7 @@ describe('resolveObservablePlotEncoding', () => {
   // package's own plot.d.ts) — unconditional, applied to every observable-
   // plot chart regardless of author config, so the two charting panel
   // types never visibly disagree on text size.
-  it('always sets plotOptions.style.fontSize to match PlotlyPanel.tsx\'s own real default (12px)', () => {
+  it('always sets plotOptions.style.fontSize to match PlotlyPanel.tsx\'s own real default (chart theme size)', () => {
     const result = resolveObservablePlotEncoding(baseConfig, rows)
     expect(result.plotOptions.style).toEqual(CHART_BODY_STYLE)
   })
