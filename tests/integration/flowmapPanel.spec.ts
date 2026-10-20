@@ -592,7 +592,7 @@ test.describe('014-map-navigation-controls — NavigationControl zoom/compass ge
     // old --card and --background happened to share one literal value;
     // the new theme's --card/--background are genuinely different, so
     // this is specifically --card, not --background).
-    expect(styles.groupBg).toBe('rgb(23, 23, 23)') // --card in dark mode
+    expect(styles.groupBg).toBe('rgb(20, 25, 34)') // --card in dark mode
     expect(styles.iconFilter).toBe('invert(1)')
 
     // A second, separate real bug found live after the above: the
@@ -607,7 +607,7 @@ test.describe('014-map-navigation-controls — NavigationControl zoom/compass ge
     // than an opaque WFRC-brand hex — confirmed via a real headless-
     // Chromium round-trip that this is exactly how it computes, not
     // guessed from the hex alone.
-    expect(dividerColor).toBe('rgba(245, 255, 255, 0.1)') // --border in dark mode
+    expect(dividerColor).toBe('rgba(255, 255, 255, 0.09)') // --border in dark mode
   })
 })
 
@@ -1713,7 +1713,7 @@ test.describe('016-fix-ugrc-dark-mode — US1/US2: both UGRC panels get an injec
     // old --card and --background happened to share one literal value;
     // the new theme's --card/--background are genuinely different, so
     // this is specifically --card, not --background).
-    expect(styles.groupBg).toBe('rgb(23, 23, 23)') // --card in dark mode
+    expect(styles.groupBg).toBe('rgb(20, 25, 34)') // --card in dark mode
     expect(styles.iconFilter).toBe('invert(1)')
 
     const dividerColor = await zoomOut.evaluate((el) => getComputedStyle(el).borderTopColor)
@@ -1722,7 +1722,7 @@ test.describe('016-fix-ugrc-dark-mode — US1/US2: both UGRC panels get an injec
     // than an opaque WFRC-brand hex — confirmed via a real headless-
     // Chromium round-trip that this is exactly how it computes, not
     // guessed from the hex alone.
-    expect(dividerColor).toBe('rgba(245, 255, 255, 0.1)') // --border in dark mode
+    expect(dividerColor).toBe('rgba(255, 255, 255, 0.09)') // --border in dark mode
   })
 })
 

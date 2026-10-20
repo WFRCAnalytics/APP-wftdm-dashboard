@@ -175,7 +175,7 @@ test.describe('User Story 3 - An analyst sees a real, filter-reactive chart', ()
 
     // 033-shadcn-default-theme: --card dark is #171717 (tokens.css).
     const plotBackground = await svg.evaluate((el) => getComputedStyle(el).getPropertyValue('--plot-background').trim())
-    expect(plotBackground).toBe('#171717')
+    expect(plotBackground).toBe('#141922')
 
     // Text (axis ticks, legend labels) inherits currentColor from the
     // app's own text-foreground class — no separate fix needed for it,
@@ -390,20 +390,17 @@ test.describe('Phase 2 — shell/nav redesign (wftdm-design-system)', () => {
     const header = page.locator('[data-sidebar="sidebar"]')
     const readShadow = () => header.evaluate((el) => getComputedStyle(el).boxShadow)
 
-    // shadow-md's real, resolved computed value — not just "not none".
+    // The redesign's tier-1 elevation (--sh1): an inset highlight plus two drop layers, so a real computed
+    // box-shadow lists at least three layers (the exact rgba values differ per theme, so only the shape is asserted).
+    const layers = (s: string) => s.split(/,(?![^(]*\))/).length
     let shadow = await readShadow()
     expect(shadow).not.toBe('none')
-    expect(shadow).toContain('0.14')
+    expect(layers(shadow)).toBeGreaterThanOrEqual(3)
 
     await page.evaluate(() => document.documentElement.classList.add('dark'))
     shadow = await readShadow()
     expect(shadow).not.toBe('none')
-    expect(shadow).toContain('0.14')
-    // Dark mode's own distinct mechanism — an edge-highlight ring layered
-    // underneath the same shadow-md blur — a real computed box-shadow
-    // with a ring present lists TWO layers, not one.
-    const layerCount = shadow.split(/,(?![^(]*\))/).length
-    expect(layerCount).toBeGreaterThanOrEqual(2)
+    expect(layers(shadow)).toBeGreaterThanOrEqual(3)
   })
 
   test("DashboardBrand's text-only fallback uses the Page Title role's real computed size in both themes", async ({

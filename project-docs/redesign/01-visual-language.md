@@ -46,7 +46,7 @@ The two light blocks must contain identical values. Never define a token only in
   --primary: #3DD6C6; --secondary: #FFB454; --tertiary: #B58CFF;   /* user colors, defaults */
   --c-1: #3DD6C6; --c-2: #FFB454; --c-3: #B58CFF;    /* user colors after dark-mode adaptation (see 5.1) */
   --c-obs: #EEF1F5;       /* the color of "Observed" lines (dashed ink) */
-  --accent: #3DD6C6;      /* = --c-1 */
+  --brand: #3DD6C6;      /* = --c-1 */
   --chart-fs: 11.5;       /* chart text size in px, unitless on purpose (read by JS) */
   --chart-r: 5;           /* bar corner radius in px, unitless */
   --zoom: 1;              /* text-size setting, 0.85 .. 1.25 */
@@ -73,8 +73,19 @@ The two light blocks must contain identical values. Never define a token only in
   color-scheme: light;
 }
 ```
-`--primary/--secondary/--tertiary` keep the user's values in both themes. `--c-1..3` and `--accent` are
+`--primary/--secondary/--tertiary` keep the user's values in both themes. `--c-1..3` and `--brand` are
 recomputed by JavaScript whenever the theme or the user colors change (section 5.1).
+
+**Implementation notes (P1, as built).**
+- The alias is called `--brand` in the repo, not `--accent`: shadcn's own `--accent` is the hover/active fill used by the
+  sidebar, dropdowns and tabs, and must stay a neutral.
+- The theme mechanism is the `dark` class on `<html>` (`state/themeState.ts`); the default mode stays `system`.
+- Raw user colors are too bright for a white tile (the defaults reach only 1.5-2.6:1). `services/theme.ts`
+  (`computeAccents`, `startAccentSync`) therefore writes three grades: `--c-1..3` (chart-grade, light mode darkened to
+  3:1 on white, dark mode lightened 28%), `--brand` (= `--c-1`) and `--brand-text` (text-grade, 4.5:1 on white; equal
+  to `--brand` in dark mode). `--primary`, `--ring` and the sidebar equivalents follow the text-grade color in light mode.
+- `--ok` is `#167A4A` and `--warn` is `#95600F` in light mode so status text reaches 4.5:1.
+- The user's Secondary and Accent pickers feed `--c-2` and `--c-3`; they no longer recolor shadcn's `--secondary`/`--accent`.
 
 ### 2.3 Mapping onto the existing shadcn tokens
 
@@ -90,13 +101,13 @@ but point them at the new tokens:
 | `--muted`, `--secondary` | `var(--tile-hi)` |
 | `--muted-foreground` | `var(--mute)` |
 | `--border`, `--input` | `var(--line)` |
-| `--ring` | `var(--accent)` |
-| `--primary` (shadcn button fill) | `var(--accent)`; `--primary-foreground`: `#04161A` |
+| `--ring` | `var(--brand)` |
+| `--primary` (shadcn button fill) | `var(--brand)`; `--primary-foreground`: `#04161A` |
 | `--destructive` | `var(--fail)` |
 | `--sidebar-*` | follow `--glass`, `--ink`, `--mute`, `--line` |
 
 Important: the redesign's `--primary` is the **user color** (default teal). In shadcn, `--primary` was a
-near-black button color. Introduce `--accent` as the stable alias and make shadcn's `--primary` use it.
+near-black button color. Introduce `--brand` as the stable alias and make shadcn's `--primary` use it.
 Keep Tailwind's `@config` bridge. Add the new names to `tailwind.config.js` under `theme.extend.colors`
 (`tile`, `tile-hi`, `ink`, `mute`, `line`, `grid`, `ok`, `warn`, `fail`, `accent`).
 
@@ -182,7 +193,7 @@ for i in 1..3:
   base = user color i                      (hex)
   c_i  = isDark ? mix(base, '#FFFFFF', 0.28) : base     (RGB interpolation)
   set --c-i to hex(c_i)
-set --accent = --c-1
+set --brand = --c-1
 ```
 Everything that needs "the primary color" in JavaScript reads `--c-1`, never `--primary`.
 
@@ -310,5 +321,5 @@ Stroke icons on a 24×24 grid, stroke width 1.8, round caps and joins, `currentC
 - Status text on the page background in light mode (not on a tile) is large or bold only.
 - Chart colors are not the only carrier of meaning: legends name every series, tooltips name values, and
   hovering a legend entry isolates that series.
-- Focus ring: 2px solid `--accent`, 2px offset, on every interactive element.
+- Focus ring: 2px solid `--brand`, 2px offset, on every interactive element.
 - Provide a Table view for every chart family (see file 04) as the non-visual alternative.

@@ -21,7 +21,7 @@ import {
   layoutRadarPolygons,
   type RadarPolygon,
 } from '@/panels/radarData'
-import { resolveNamedColorScheme, resolveCategoryFallbackColors } from '@/panels/chartColor'
+import { resolveNamedColorScheme, resolveCategoryFallbackColors, CATEGORY_FALLBACK_HEX, CATEGORY_TOKEN_VARS } from '@/panels/chartColor'
 import { createMapTooltip, type MapTooltip } from '@/panels/mapTooltip'
 import { ChartLegend, type ChartLegendEntry } from '@/panels/ChartLegend'
 import { PanelEmptyState } from '@/panels/PanelEmptyState'
@@ -33,8 +33,6 @@ const ALL_FILTERS: ['*'] = ['*']
 // Token-derived categorical fallback — identical convention to
 // PieChartPanel.tsx's own resolveFallbackColors() (this app's real
 // --chart-1..5 categorical set).
-const FALLBACK_TOKEN_VARS = ['--chart-1', '--chart-2', '--chart-3', '--chart-4', '--chart-5']
-const FALLBACK_HEX_COLORS = ['#3358be', '#ba7f00', '#cc4330', '#008029', '#914edc']
 
 const SVG_NS = 'http://www.w3.org/2000/svg'
 const GRID_RING_COUNT = 4
@@ -279,7 +277,7 @@ export function RadarChartPanel({ config }: { config: RadarChartPanelConfig }) {
         const axisLabelPositions = layoutRadarAxisLabels(aggregated.axes, center, outerRadius)
         const colors =
           resolveNamedColorScheme(config.color_scheme, { colorblindSafe }) ??
-          resolveCategoryFallbackColors(el, FALLBACK_TOKEN_VARS, FALLBACK_HEX_COLORS)
+          resolveCategoryFallbackColors(el, CATEGORY_TOKEN_VARS, CATEGORY_FALLBACK_HEX)
 
         const { svg, legendEntries: nextLegendEntries } = renderSvg(
           polygons,

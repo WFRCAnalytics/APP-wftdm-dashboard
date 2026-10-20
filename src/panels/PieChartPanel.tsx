@@ -16,7 +16,7 @@ import {
   EMPTY_SUMMARIZE_CONFIG,
 } from '@/panels/panelQuery'
 import { aggregatePieSlices, layoutPieWedges, DEFAULT_DONUT_INNER_RADIUS_RATIO, type PieWedge } from '@/panels/pieData'
-import { resolveNamedColorScheme, resolveCategoryFallbackColors } from '@/panels/chartColor'
+import { resolveNamedColorScheme, resolveCategoryFallbackColors, CATEGORY_FALLBACK_HEX, CATEGORY_TOKEN_VARS } from '@/panels/chartColor'
 import { createMapTooltip, type MapTooltip } from '@/panels/mapTooltip'
 import { ChartLegend, type ChartLegendEntry } from '@/panels/ChartLegend'
 import { PanelEmptyState } from '@/panels/PanelEmptyState'
@@ -31,8 +31,6 @@ const ALL_FILTERS: ['*'] = ['*']
 // app's real, already-verified-distinct-and-accessible --chart-1..5
 // categorical set, the same lineage rechartsEncoding.ts already cycles
 // through).
-const FALLBACK_TOKEN_VARS = ['--chart-1', '--chart-2', '--chart-3', '--chart-4', '--chart-5']
-const FALLBACK_HEX_COLORS = ['#3358be', '#ba7f00', '#cc4330', '#008029', '#914edc']
 
 const SVG_NS = 'http://www.w3.org/2000/svg'
 
@@ -197,7 +195,7 @@ export function PieChartPanel({ config }: { config: PieChartPanelConfig }) {
         const size = Math.max(0, Math.min(width, height) - 16)
         const colors =
           resolveNamedColorScheme(config.color_scheme, { colorblindSafe }) ??
-          resolveCategoryFallbackColors(el, FALLBACK_TOKEN_VARS, FALLBACK_HEX_COLORS)
+          resolveCategoryFallbackColors(el, CATEGORY_TOKEN_VARS, CATEGORY_FALLBACK_HEX)
         const { svg, legendEntries: nextLegendEntries } = renderSvg(
           layoutPieWedges(slices, size / 2, config.donut ? DEFAULT_DONUT_INNER_RADIUS_RATIO : 0),
           size,

@@ -881,7 +881,7 @@ test.describe('014-map-navigation-controls — NavigationControl zoom/compass ge
     })
     // 033-shadcn-default-theme: dark --card is now #171717, not the old
     // WFRC-brand value (which happened to also equal old --background).
-    expect(styles.groupBg).toBe('rgb(23, 23, 23)') // --card in dark mode
+    expect(styles.groupBg).toBe('rgb(20, 25, 34)') // --card in dark mode
     expect(styles.iconFilter).toBe('invert(1)')
 
     // A second, separate real bug found live after the above: the
@@ -896,7 +896,7 @@ test.describe('014-map-navigation-controls — NavigationControl zoom/compass ge
     // than an opaque WFRC-brand hex — confirmed via a real headless-
     // Chromium round-trip that this is exactly how it computes, not
     // guessed from the hex alone.
-    expect(dividerColor).toBe('rgba(245, 255, 255, 0.1)') // --border in dark mode
+    expect(dividerColor).toBe('rgba(255, 255, 255, 0.09)') // --border in dark mode
   })
 })
 
@@ -1059,8 +1059,8 @@ test.describe('014-map-navigation-controls — the 3D fill-extrusion toggle', ()
     // 033-shadcn-default-theme: --foreground dark is now #fafafa and
     // --card dark is now #171717 — no longer the old WFRC-brand values
     // (which happened to share one literal for --card/--background).
-    expect(styles.text).toBe('rgb(250, 250, 250)')
-    expect(styles.groupBg).toBe('rgb(23, 23, 23)')
+    expect(styles.text).toBe('rgb(238, 241, 245)')
+    expect(styles.groupBg).toBe('rgb(20, 25, 34)')
   })
 })
 

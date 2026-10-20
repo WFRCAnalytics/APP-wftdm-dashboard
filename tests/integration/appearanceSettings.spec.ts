@@ -143,6 +143,25 @@ test.describe('User Story 2 - Text size', () => {
   })
 })
 
+// WCAG contrast helpers evaluated in the page, so colors resolve exactly as the browser sees them.
+async function contrastBetween(page: Page, a: string, b: string): Promise<number> {
+  return page.evaluate(([x, y]) => {
+    const lum = (c: string) => {
+      const ctx = document.createElement('canvas').getContext('2d')!
+      ctx.fillStyle = c
+      ctx.fillRect(0, 0, 1, 1)
+      const [r, g, bl] = Array.from(ctx.getImageData(0, 0, 1, 1).data).slice(0, 3).map((v) => {
+        const s = v / 255
+        return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4)
+      })
+      return 0.2126 * r + 0.7152 * g + 0.0722 * bl
+    }
+    const [l1, l2] = [lum(x), lum(y)]
+    return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05)
+  }, [a, b])
+}
+const contrastOnWhite = (page: Page, c: string) => contrastBetween(page, c, '#ffffff')
+
 test.describe('User Story 3 - Primary / Secondary / Accent colors', () => {
   test('a deployer default applies with no override; a viewer override takes precedence live; reset reverts; text stays legible; reload clears only the override', async ({
     page,
@@ -162,7 +181,9 @@ test.describe('User Story 3 - Primary / Secondary / Accent colors', () => {
     const primaryBefore = await page.evaluate(() =>
       getComputedStyle(document.documentElement).getPropertyValue('--primary').trim(),
     )
-    expect(primaryBefore).toBe('#1447e6')
+    // services/theme.ts adapts the deployer color for the theme: light mode darkens it to 4.5:1 on white.
+    expect(primaryBefore).toMatch(/^#[0-9a-f]{6}$/)
+    expect(await contrastOnWhite(page, primaryBefore)).toBeGreaterThanOrEqual(4.5)
 
     await openAppearanceTab(page)
     await page.getByTestId('interface-color-swatch-primary').click()
@@ -173,18 +194,19 @@ test.describe('User Story 3 - Primary / Secondary / Accent colors', () => {
     const primaryAfterOverride = await page.evaluate(() =>
       getComputedStyle(document.documentElement).getPropertyValue('--primary').trim(),
     )
-    expect(primaryAfterOverride.toLowerCase()).toBe('#00ff00')
-    // A light green background must pair with a legible (black) foreground.
+    expect(primaryAfterOverride.toLowerCase()).not.toBe(primaryBefore.toLowerCase())
+    expect(await contrastOnWhite(page, primaryAfterOverride)).toBeGreaterThanOrEqual(4.5)
+    // Whatever the adapted fill is, the foreground must be legible on it.
     const foregroundAfterOverride = await page.evaluate(() =>
       getComputedStyle(document.documentElement).getPropertyValue('--primary-foreground').trim(),
     )
-    expect(foregroundAfterOverride.toLowerCase()).toBe('#000000')
+    expect(await contrastBetween(page, foregroundAfterOverride, primaryAfterOverride)).toBeGreaterThanOrEqual(4.5)
 
     await page.getByRole('button', { name: 'Reset to default' }).click()
     const primaryAfterReset = await page.evaluate(() =>
       getComputedStyle(document.documentElement).getPropertyValue('--primary').trim(),
     )
-    expect(primaryAfterReset).toBe('#1447e6')
+    expect(primaryAfterReset).toBe(primaryBefore)
 
     // Set the override again, then reload — the override must be gone,
     // but the deployer default (re-fetched from the routed index.json)
@@ -194,7 +216,7 @@ test.describe('User Story 3 - Primary / Secondary / Accent colors', () => {
     const primaryAfterReload = await page.evaluate(() =>
       getComputedStyle(document.documentElement).getPropertyValue('--primary').trim(),
     )
-    expect(primaryAfterReload).toBe('#1447e6')
+    expect(primaryAfterReload).toBe(primaryBefore)
   })
 
 })
@@ -237,7 +259,7 @@ test.describe('User Story 3 - live OS theme reactivity (real bug fix)', () => {
     await expect
       .poll(() => swatch.evaluate((el) => getComputedStyle(el).backgroundColor))
       .not.toBe(before)
-    await expect(swatch).toHaveCSS('background-color', 'rgb(229, 229, 229)') // dark --primary, #e5e5e5
+    await expect(swatch).toHaveCSS('background-color', 'rgb(115, 225, 214)') // dark --primary, #73e1d6
   })
 })
 

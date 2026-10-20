@@ -1,3 +1,5 @@
+import Color from 'color'
+
 // 035-scenario-label-color — pure, dependency-free (no React, no
 // state/appState.ts import) resolver over an already-built
 // ScenarioDisplayMap, matching panels/expandablePanelTypes.ts's own
@@ -51,16 +53,11 @@ export function resolveScenarioColor(name: string, display: ScenarioDisplayMap):
 // with real DOM access), not this module's (specs/036-scenario-color-
 // picker/research.md §4).
 
-/** This app's own real, WCAG-verified categorical palette
- * (--chart-1..5, 029-shadcn-chart-panel), referenced by CSS custom-
- * property name rather than a copied hex literal — a future tokens.css
- * retheme carries through with zero change here. */
-const DEFAULT_PALETTE: readonly string[] = [
-  'var(--chart-1)',
-  'var(--chart-2)',
-  'var(--chart-3)',
-  'var(--chart-4)',
-  'var(--chart-5)',
+/** 15 stable default scenario colors (project-docs/redesign/01-visual-language.md §5.2). Index 0 (slate) is meant for
+ * the baseline so alternatives stand out. Adapted per theme by adaptScenarioColor(). */
+export const scenarioPalette15: readonly string[] = [
+  '#8a94a6', '#4c8bf5', '#f2994a', '#2fbf8a', '#eb5757', '#a66cff', '#18b4c8', '#e8c547',
+  '#e26ba6', '#9c7a5b', '#7bc043', '#5865f2', '#b5179e', '#00897b', '#8e9e2a',
 ]
 
 let deployerPalette: readonly string[] | undefined
@@ -73,20 +70,20 @@ export function setDeployerScenarioPalette(palette: readonly string[] | undefine
   deployerPalette = palette && palette.length > 0 ? palette : undefined
 }
 
-// 061-appearance-controls: the real, literal Set2 hex values (ColorBrewer's
-// own colorblind-safe qualitative scheme, research.md §2) — literal
-// strings, not `var(--chart-N)` REFERENCEs like DEFAULT_PALETTE above,
-// since there is no dedicated CSS token for this palette. Used only for
-// the shipped-default tier (never the deployer tier — a deployer's own
-// explicit scenarioPalette is already "explicit" and stays untouched by
-// the colorblind-safe preference, FR-008).
-const COLORBLIND_SAFE_DEFAULT_PALETTE: readonly string[] = [
-  '#66c2a5',
-  '#fc8d62',
-  '#8da0cb',
-  '#e78ac3',
-  '#a6d854',
+/** Colour-blind-safe 15 (§5.2): the first eight are Okabe-Ito based, the rest are lightness variants. Used when the
+ * Appearance-tab switch is on; never replaces a deployer's explicit palette (FR-008). */
+export const scenarioPaletteSafe15: readonly string[] = [
+  '#8c8c8c', '#0072b2', '#e69f00', '#009e73', '#d55e00', '#cc79a7', '#56b4e9', '#f0e442',
+  '#4d4d4d', '#004b7a', '#b37700', '#00694d', '#9e4400', '#a5548a', '#99d3f5',
 ]
+
+/** Theme adaptation of a DEFAULT scenario color (never a user override): in HCL, dark mode forces L >= 62 and light
+ * mode forces L <= 60, so every default stays legible on its tile. */
+export function adaptScenarioColor(hex: string, dark: boolean): string {
+  const [l, c, h] = Color(hex).lch().array()
+  const next = dark ? Math.max(l, 62) : Math.min(l, 60)
+  return next === l ? hex : Color.lch(next, c, h).hex().toLowerCase()
+}
 
 /**
  * Cycles the effective palette by `index` — the scenario's stable
@@ -97,7 +94,8 @@ const COLORBLIND_SAFE_DEFAULT_PALETTE: readonly string[] = [
  * `colorblindSafe` is true, the real Set2 colorblind-safe pool, else the
  * shipped `--chart-1..5` default.
  */
-export function resolveDefaultScenarioColor(index: number, colorblindSafe = false): string {
-  const palette = deployerPalette ?? (colorblindSafe ? COLORBLIND_SAFE_DEFAULT_PALETTE : DEFAULT_PALETTE)
-  return palette[index % palette.length]
+export function resolveDefaultScenarioColor(index: number, colorblindSafe = false, dark = false): string {
+  if (deployerPalette) return deployerPalette[index % deployerPalette.length]
+  const palette = colorblindSafe ? scenarioPaletteSafe15 : scenarioPalette15
+  return adaptScenarioColor(palette[index % palette.length], dark)
 }

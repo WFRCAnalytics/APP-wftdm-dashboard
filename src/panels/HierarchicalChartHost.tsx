@@ -11,7 +11,7 @@ import { useColorblindSafePreference } from '@/hooks/useColorblindSafePreference
 import { ensureRegistered } from '@/services/tabDataLoader'
 import { resolveQueryAndPairs, extractGlobalFilterIds } from '@/panels/panelQuery'
 import { buildHierarchy, type HierarchyNode } from '@/panels/hierarchyData'
-import { resolveNamedColorScheme, resolveCategoryFallbackColors } from '@/panels/chartColor'
+import { resolveNamedColorScheme, resolveCategoryFallbackColors, CATEGORY_FALLBACK_HEX, CATEGORY_TOKEN_VARS } from '@/panels/chartColor'
 import { PanelEmptyState } from '@/panels/PanelEmptyState'
 import { PanelErrorState } from '@/panels/PanelErrorState'
 import type { HierarchicalPanelConfigBase } from '@/layout/types'
@@ -69,11 +69,9 @@ export interface HierarchyRenderer {
 // app's real 5-token categorical set (--chart-1..5 — the same lineage
 // rechartsEncoding.ts already cycles through) rather than Sankey's own
 // 4-token choice.
-const FALLBACK_TOKEN_VARS = ['--chart-1', '--chart-2', '--chart-3', '--chart-4', '--chart-5']
 // Last-resort literal values (tokens.css's own current light-mode
 // --chart-1..5 values) — only used if getComputedStyle somehow resolves
 // none of the vars above.
-const FALLBACK_HEX_COLORS = ['#3358be', '#ba7f00', '#cc4330', '#008029', '#914edc']
 
 /** Assigns one color per real, distinct top-level (depth-1) category name,
  * in first-seen (d3.hierarchy) order, cycling with wraparound past the
@@ -86,7 +84,7 @@ function buildColorResolver(
 ): (topLevelCategoryName: string) => string {
   const palette =
     resolveNamedColorScheme(colorScheme, { colorblindSafe }) ??
-    resolveCategoryFallbackColors(containerEl, FALLBACK_TOKEN_VARS, FALLBACK_HEX_COLORS)
+    resolveCategoryFallbackColors(containerEl, CATEGORY_TOKEN_VARS, CATEGORY_FALLBACK_HEX)
   const colorByName = new Map<string, string>()
   ;(root.children ?? []).forEach((node, index) => {
     colorByName.set(node.data.name, palette[index % palette.length])

@@ -63,7 +63,7 @@ export function useScenarioDisplay(): ScenarioDisplayMap {
     if (!changed) {
       scenarios.forEach((s, index) => {
         const prevEntry = prev.get(s.name)
-        const color = s.colorOverride ?? resolveEffectiveDefault(index, colorblindSafe)
+        const color = s.colorOverride ?? resolveEffectiveDefault(index, colorblindSafe, colorScheme === 'dark')
         if (!prevEntry || prevEntry.label !== s.label || prevEntry.color !== color) {
           changed = true
         }
@@ -74,7 +74,7 @@ export function useScenarioDisplay(): ScenarioDisplayMap {
       scenarios.forEach((s, index) => {
         next.set(s.name, {
           label: s.label,
-          color: s.colorOverride ?? resolveEffectiveDefault(index, colorblindSafe),
+          color: s.colorOverride ?? resolveEffectiveDefault(index, colorblindSafe, colorScheme === 'dark'),
         })
       })
       cache.current = next
@@ -87,12 +87,7 @@ export function useScenarioDisplay(): ScenarioDisplayMap {
   return useSyncExternalStore(subscribe, getSnapshot)
 }
 
-/** var(--x) -> a real, concrete getComputedStyle() value; anything else
- * (a deployer's own literal hex/rgb/named color, or a literal colorblind-
- * safe hex value) passes through as-is. */
-function resolveEffectiveDefault(index: number, colorblindSafe: boolean): string {
-  const raw = resolveDefaultScenarioColor(index, colorblindSafe)
-  if (!raw.startsWith('var(')) return raw
-  const tokenName = raw.slice(4, -1)
-  return getComputedStyle(document.documentElement).getPropertyValue(tokenName).trim()
+/** The default-tier color for a scenario index, adapted to the active theme. */
+function resolveEffectiveDefault(index: number, colorblindSafe: boolean, dark: boolean): string {
+  return resolveDefaultScenarioColor(index, colorblindSafe, dark)
 }

@@ -51,7 +51,7 @@ Goal: the **existing** layout looks like the new visual language. No layout chan
 3. Load fonts: add Schibsted Grotesk and DM Mono (Fontsource or the existing `googleFontLoader.ts`). Keep Geist, IBM Plex Sans as the
    optional choices; wire `--font` to the existing `useFontPreference`. `--mono` is fixed.
 4. Implement `applyAccents()` (file 01 §5.1) in `src/panels/interfaceColor.ts` or a new `src/services/theme.ts`, and call it from
-   `useThemeMode` and `useInterfaceColors` whenever theme or colors change. It must write `--c-1..3` and `--accent`.
+   `useThemeMode` and `useInterfaceColors` whenever theme or colors change. It must write `--c-1..3` and `--brand`.
 5. Create `src/panels/chartTheme.ts` (`readChartTheme`, `plotBase`) per file 01 §6. Replace every hard-coded chart color/font in
    `observablePlotEncoding.ts`, `ObservablePlotPanel.tsx`, `HierarchicalChartHost.tsx`, `SankeyPanel.tsx`, `RadarChartPanel.tsx`,
    `PieChartPanel.tsx`, `chartColor.ts` with values from it. Consolidate palette helpers into `chartColor.ts` (it already
@@ -199,7 +199,7 @@ Quality
 | Plot quirks (no per-datum `ariaLabel`, `text` dx functions, color-mix) | Use `title` + `armPlot`, constants, hex resolution (file 05 §6). |
 | Year × alternative data volume | Lazy per-tile registration; trend tile loads only `summary_kpis` per milestone. |
 | Observed data policy undecided | Contract in file 06 §6 works for any source; Observed is optional everywhere. |
-| shadcn `--primary` meaning change | Introduce `--accent` alias; audit uses of `bg-primary` (buttons keep working because primary now equals accent). |
+| shadcn `--primary` meaning change | Introduce `--brand` alias; audit uses of `bg-primary` (buttons keep working because primary now equals accent). |
 
 ## What NOT to do
 - Do not add a charting library, a UI framework, or a state library.

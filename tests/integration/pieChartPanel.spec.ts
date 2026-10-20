@@ -46,7 +46,7 @@ async function currentChartTokens(page: Page): Promise<string[]> {
     const rootStyle = getComputedStyle(document.documentElement)
     const probe = document.createElement('div')
     document.body.appendChild(probe)
-    const colors = [1, 2, 3, 4, 5].map((n) => {
+    const colors = [1, 2, 3, 4, 5, 6, 7, 8].map((n) => {
       probe.style.color = rootStyle.getPropertyValue(`--chart-${n}`).trim()
       return getComputedStyle(probe).color
     })

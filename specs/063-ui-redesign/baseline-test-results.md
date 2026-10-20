@@ -142,3 +142,14 @@ Check any run for validity: it must contain **no** `EBUSY` and **no** `ERR_CONNE
 ## Notes
 
 - Nothing was changed to get these results. `git status` shows only the new P0 files.
+
+## P1 re-run (tokens, accents, chart theme)
+
+Same procedure. After updating the specs that asserted the old palette (dark card, background and foreground values, border
+alpha, chart fallback colors, scenario default colors, Card class, sidebar shadow, Primary color override), the 13 affected
+spec files ran 162 tests: 152 passed, 10 failed. Three of the ten are baseline failures. Four are the zonemap and flowmap
+border/tooltip assertions fixed afterwards and then verified passing. The remaining three zonemap tests
+(`zonemapPanel.spec.ts:535, 553, 657`) wait on `data-render-count` for the Test tab's maps, which takes about 10 s here
+against a 10 s poll. That same ~10 s appears on the P0 commit (`cc88765`, measured in a worktree), so it is a timing
+edge, not a P1 regression. The earlier recharts, sunburst, treemap and demoMultiScenario failures passed on the re-run
+(load-sensitive).

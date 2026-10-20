@@ -1,3 +1,4 @@
+import { CHART_FONT_SIZE } from './chartTheme'
 import { useEffect, useRef } from 'react'
 import * as Plot from '@observablehq/plot'
 
@@ -20,7 +21,7 @@ import type { ValueBoxSparklineConfig } from '@/layout/types'
 // that file). This mirrors the SAME "reuse the library, not the full
 // chrome" reasoning this file's own previous Recharts version already
 // established, just pointed at a different library.
-const FALLBACK_CARD = { light: '#ffffff', dark: '#081b26' } as const
+const FALLBACK_CARD = { light: '#ffffff', dark: '#141922' } as const
 
 export function ValueBoxSparkline({
   rows,
@@ -60,7 +61,7 @@ export function ValueBoxSparkline({
         height: 40,
         x: { axis: null },
         y: { axis: null },
-        style: { fontSize: '12px' },
+        style: { fontSize: CHART_FONT_SIZE },
       }) as unknown as SVGSVGElement
 
       // Same dark-mode fix ObservablePlotPanel.tsx already established and
