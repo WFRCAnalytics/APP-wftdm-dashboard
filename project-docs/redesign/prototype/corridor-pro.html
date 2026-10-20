@@ -1,0 +1,1444 @@
+<!doctype html><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><title>Corridor Pro</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700&family=Geist:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3-sankey@0.12.3/dist/d3-sankey.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@observablehq/plot@0.6.16/dist/plot.umd.min.js"></script>
+<style>
+/* Corridor Pro, round 4. Dark-first bento with layered depth. One question drives the whole page: focus on one scenario, or compare many. Compare is a global mode that every tile answers in the way that suits its chart. */
+:root{--bg:#090C11;--bg2:#0E1218;--surface:#151A23;--tile:#141922;--tile-hi:#1A202B;--ink:#EEF1F5;--mute:#8F99A9;--line:#272F3C;--grid:#1F2632;--glass:rgba(18,23,31,.84);--glass-line:rgba(255,255,255,.09);--hi:rgba(255,255,255,.06);
+--ok:#41C98F;--warn:#E8A93D;--fail:#F36B68;--primary:#3DD6C6;--secondary:#FFB454;--tertiary:#B58CFF;
+--c-1:#3DD6C6;--c-2:#FFB454;--c-3:#B58CFF;--c-obs:#EEF1F5;--accent:#3DD6C6;--chart-fs:11.5;--chart-r:5;--zoom:1;
+--sh1:0 1px 0 var(--hi) inset,0 1px 2px rgba(0,0,0,.4),0 10px 28px -14px rgba(0,0,0,.65);--sh2:0 1px 0 var(--hi) inset,0 24px 60px -16px rgba(0,0,0,.7),0 4px 12px rgba(0,0,0,.35);
+--font:'Schibsted Grotesk',system-ui,sans-serif;--mono:'DM Mono',ui-monospace,monospace;color-scheme:dark}
+@media (prefers-color-scheme:light){:root:not([data-theme="dark"]){--bg:#E6EAF0;--bg2:#EEF1F6;--surface:#FFFFFF;--tile:#FFFFFF;--tile-hi:#F6F8FB;--ink:#0E131A;--mute:#586376;--line:#DBE1E9;--grid:#E8ECF1;--glass:rgba(255,255,255,.88);--glass-line:rgba(14,19,26,.1);--hi:rgba(255,255,255,.9);--ok:#1B8D5C;--warn:#AD6F18;--fail:#D13E3B;--c-obs:#0E131A;--sh1:0 1px 0 var(--hi) inset,0 1px 2px rgba(20,30,45,.08),0 12px 28px -16px rgba(20,30,45,.28);--sh2:0 1px 0 var(--hi) inset,0 26px 60px -18px rgba(20,30,45,.4),0 4px 12px rgba(20,30,45,.12);color-scheme:light}}
+:root[data-theme="light"]{--bg:#E6EAF0;--bg2:#EEF1F6;--surface:#FFFFFF;--tile:#FFFFFF;--tile-hi:#F6F8FB;--ink:#0E131A;--mute:#586376;--line:#DBE1E9;--grid:#E8ECF1;--glass:rgba(255,255,255,.88);--glass-line:rgba(14,19,26,.1);--hi:rgba(255,255,255,.9);--ok:#1B8D5C;--warn:#AD6F18;--fail:#D13E3B;--c-obs:#0E131A;--sh1:0 1px 0 var(--hi) inset,0 1px 2px rgba(20,30,45,.08),0 12px 28px -16px rgba(20,30,45,.28);--sh2:0 1px 0 var(--hi) inset,0 26px 60px -18px rgba(20,30,45,.4),0 4px 12px rgba(20,30,45,.12);color-scheme:light}
+*{box-sizing:border-box}html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 var(--font)}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;background:radial-gradient(1100px 600px at 30% -12%,var(--hi),transparent 70%)}
+button,select,input{font:inherit;color:inherit}:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.glass{background:var(--glass);backdrop-filter:blur(20px) saturate(1.3);-webkit-backdrop-filter:blur(20px) saturate(1.3);border:1px solid var(--glass-line);box-shadow:var(--sh2)}
+.nav{position:fixed;left:14px;top:14px;bottom:14px;width:68px;border-radius:24px;padding:12px 10px;display:flex;flex-direction:column;gap:4px;z-index:30;transition:width .22s;overflow:hidden}
+.nav:hover,.nav:focus-within{width:248px}
+.ngrow{flex:1}.nbot{border-top:1px solid var(--line);margin-top:6px;padding-top:6px;display:flex;flex-direction:column;gap:4px}
+.nb{display:flex;align-items:center;gap:10px;height:46px;padding:0 6px 0 4px;margin-bottom:10px;white-space:nowrap}
+.mark{width:38px;height:38px;flex:none;border-radius:13px;background:var(--accent);display:grid;place-items:center;box-shadow:0 1px 0 rgba(255,255,255,.35) inset,0 6px 14px -6px var(--accent)}.mark svg{width:19px;height:19px;stroke:#04161A}
+.nb b{font-weight:700;letter-spacing:-.01em}.nb span{color:var(--mute);display:block;font-size:12px;font-weight:400}
+.ni{display:flex;align-items:center;gap:14px;height:46px;padding:0 13px;border-radius:15px;border:0;background:transparent;color:var(--mute);cursor:pointer;text-align:left;white-space:nowrap;width:100%;flex:none}
+.ni svg{width:20px;height:20px;flex:none}.ni span,.nb>div:last-child,.subn{opacity:0;transition:opacity .15s}.nav:hover .ni span,.nav:hover .nb>div:last-child,.nav:focus-within .ni span,.nav:focus-within .nb>div:last-child,.nav:hover .subn,.nav:focus-within .subn{opacity:1}
+.ni:hover{background:color-mix(in srgb,var(--ink) 7%,transparent);color:var(--ink)}
+.ni[aria-selected=true]{background:color-mix(in srgb,var(--accent) 16%,var(--tile));color:var(--ink);box-shadow:0 1px 0 var(--hi) inset}.ni[aria-selected=true] svg{color:var(--accent)}
+.subn{display:flex;flex-direction:column;margin:0 0 4px 33px;padding-left:10px;border-left:1px solid var(--line);flex:none}.subn button{border:0;background:transparent;color:var(--mute);text-align:left;height:30px;padding:0 10px;border-radius:8px;cursor:pointer;white-space:nowrap}.subn button:hover{color:var(--ink);background:color-mix(in srgb,var(--ink) 7%,transparent)}
+.main{margin-left:96px;padding:26px 28px 60px 14px;max-width:1760px;zoom:var(--zoom)}
+.hd{position:sticky;top:0;z-index:25;display:flex;justify-content:space-between;align-items:center;gap:14px 20px;flex-wrap:wrap;padding:14px 0 12px;margin:-14px 0 8px;transition:padding .15s}
+.hd.compact{background:color-mix(in srgb,var(--bg) 84%,transparent);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);box-shadow:0 1px 0 var(--glass-line)}.hd.compact h1{font-size:21px}.hd.compact p{display:none}.hd.compact{padding:10px 0}.hdt{min-width:0}
+h1{margin:0;font-size:clamp(28px,3.2vw,40px);line-height:1.08;font-weight:700;letter-spacing:-.025em}.hd p{margin:6px 0 0;color:var(--mute);font-size:15px}
+.hdr{display:flex;gap:10px}.pillb{height:42px;padding:0 16px;border-radius:999px;display:inline-flex;gap:9px;align-items:center;cursor:pointer;color:var(--mute)}.pillb:hover{color:var(--ink)}.pillb svg{width:16px;height:16px}
+.hero{border-radius:26px;padding:6px;display:grid;grid-template-columns:repeat(5,1fr);margin-bottom:14px;background:var(--tile-hi);border:1px solid var(--glass-line);box-shadow:var(--sh1)}
+.k{padding:16px 20px 14px;border-left:1px solid var(--line);min-width:0}.k:first-child{border-left:0}
+.k small{color:var(--mute);font-size:13px}
+.kv{font:500 clamp(30px,3vw,42px)/1.1 var(--mono);letter-spacing:-.04em;margin:8px 0 8px;font-variant-numeric:tabular-nums;white-space:nowrap}.kv i{font:400 14px var(--font);font-style:normal;color:var(--mute);letter-spacing:0;margin-left:6px}
+.kf{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--mute)}
+.dl{font:500 12.5px var(--mono);padding:2px 8px;border-radius:999px}.dl.ok{color:var(--ok);background:color-mix(in srgb,var(--ok) 14%,transparent)}.dl.warn{color:var(--warn);background:color-mix(in srgb,var(--warn) 15%,transparent)}.dl.fail{color:var(--fail);background:color-mix(in srgb,var(--fail) 15%,transparent)}.dl.info{color:var(--ink);background:color-mix(in srgb,var(--ink) 10%,transparent)}
+.kf svg{margin-left:auto;width:64px;height:22px;fill:none;stroke:var(--accent);stroke-width:2;stroke-linecap:round}
+.dots{display:flex;gap:4px;margin-top:2px}.dots i{width:14px;height:14px;border-radius:5px;background:var(--grid)}.dots i.on{background:var(--ok)}.dots i.w{background:var(--warn)}.dots i.f{background:var(--fail)}
+.grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:14px}
+.tile{background:var(--tile);border:1px solid var(--glass-line);border-radius:24px;display:flex;flex-direction:column;min-width:0;box-shadow:var(--sh1);animation:rise .4s ease both}
+@keyframes rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}@media (prefers-reduced-motion:reduce){.tile{animation:none}}
+.th{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:16px 18px 0}
+.tt{font-weight:600;font-size:15.5px;letter-spacing:-.01em;display:flex;align-items:center;gap:10px;flex-wrap:wrap}.ts{color:var(--mute);font-size:12.5px;margin-top:2px;max-width:72ch}
+.dbadge{font:500 11.5px var(--mono);padding:2px 9px;border-radius:999px;background:color-mix(in srgb,var(--accent) 16%,transparent);color:var(--accent)}
+.ibadge{font:500 11.5px var(--font);padding:2px 9px;border-radius:999px;background:color-mix(in srgb,var(--ink) 9%,transparent);color:var(--mute)}
+.xb{width:30px;height:30px;border-radius:50%;border:0;background:transparent;color:var(--mute);cursor:pointer;display:grid;place-items:center;flex:none}.xb:hover{background:color-mix(in srgb,var(--ink) 9%,transparent);color:var(--ink)}.xb svg{width:15px;height:15px}
+.tctl{display:flex;gap:10px;flex-wrap:wrap;align-items:center;padding:10px 18px 0}
+.gb{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 6px 0 12px;border-radius:999px;border:1px solid var(--glass-line);background:var(--tile-hi);box-shadow:0 1px 0 var(--hi) inset}.gb span{color:var(--mute);font-size:12.5px}.gb select{border:0;background:transparent;height:30px;cursor:pointer;font-weight:500;outline-offset:3px;padding-right:4px;max-width:180px}.gb option{background:var(--surface);color:var(--ink)}
+.sw{display:flex;padding:3px;gap:2px;border-radius:999px;background:color-mix(in srgb,var(--ink) 7%,transparent);flex-wrap:wrap}.sw button{border:0;background:transparent;border-radius:999px;padding:4px 11px;font-size:12.5px;color:var(--mute);cursor:pointer;white-space:nowrap}.sw button[aria-pressed=true]{background:var(--tile-hi);color:var(--ink);box-shadow:0 1px 0 var(--hi) inset,0 1px 3px rgba(0,0,0,.3)}
+.sw.cmp button[aria-pressed=true]{background:color-mix(in srgb,var(--accent) 22%,var(--tile-hi))}
+.sp{margin-left:auto}
+.lgd{display:flex;gap:14px;flex-wrap:wrap;padding:8px 18px 0;color:var(--mute);font-size:12.5px;min-height:26px;max-height:70px;overflow:auto}
+.lg{display:inline-flex;gap:7px;align-items:center}.lg i{width:10px;height:10px;border-radius:50%}.lg i.dash{width:14px;height:0;border-top:2px dashed var(--ink);border-radius:0}.sclg{cursor:default}.mlg{cursor:default}
+.tb{padding:8px 14px 14px;flex:none;min-height:0;position:relative}
+.map-tip{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:9px 12px;display:grid;gap:2px;font-size:12.5px;box-shadow:var(--sh2)}.map-tip span{color:var(--mute)}
+.tbl{width:100%;border-collapse:collapse}.tbl th{font-weight:500;color:var(--mute);text-align:left;font-size:12.5px;padding:6px 8px;border-bottom:1px solid var(--line)}.tbl td{padding:8px;border-bottom:1px solid var(--grid)}.tbl .num{text-align:right;font:13px var(--mono)}.tbl th.num{font:500 12.5px var(--font)}
+.tbl.score th small{display:block;color:var(--mute);font-weight:400;font-size:11px}.tbl.score th.sortable{cursor:pointer;vertical-align:bottom}.tbl.score th.sortable:hover{color:var(--ink)}.tbl.score td{padding:8px 10px;border-bottom:1px solid var(--bg2)}.tbl.score td.num{border-radius:6px}
+.tbl.score thead th{position:sticky;top:0;background:var(--tile);z-index:2}.refrow td{background:color-mix(in srgb,var(--ink) 5%,transparent)}
+.tag{font:11.5px var(--font);color:var(--mute);border:1px solid var(--line);border-radius:999px;padding:1px 8px;margin-left:6px}
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;padding:2px 9px 2px 7px;border-radius:999px}.pill::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}.pill.ok{color:var(--ok);background:color-mix(in srgb,var(--ok) 13%,transparent)}.pill.warn{color:var(--warn);background:color-mix(in srgb,var(--warn) 14%,transparent)}.pill.fail{color:var(--fail);background:color-mix(in srgb,var(--fail) 14%,transparent)}
+.mini{border:1px solid var(--glass-line);background:transparent;border-radius:999px;height:28px;padding:0 11px;cursor:pointer;color:var(--mute);font-size:12.5px}.mini:hover:not(:disabled){color:var(--ink)}.mini:disabled{opacity:.4;cursor:default}.mini[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+/* dock */
+.dock{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:999px;flex-wrap:wrap;max-width:100%}
+.dsep{width:1px;height:26px;background:var(--glass-line);flex:none}
+.dpill{display:inline-flex;align-items:center;gap:8px;height:38px;padding:0 6px 0 14px;border-radius:999px;border:1px solid var(--glass-line);background:var(--tile-hi);cursor:pointer;white-space:nowrap;box-shadow:0 1px 0 var(--hi) inset}
+.dpill small{color:var(--mute);font-size:12px}.dpill select#sel-y{max-width:none}.dpill select{border:0;background:transparent;height:34px;cursor:pointer;font-weight:500;max-width:160px;outline-offset:3px}.dpill option{background:var(--surface);color:var(--ink)}
+.dots6{display:inline-flex}.dots6 i{width:14px;height:14px;border-radius:50%;margin-left:-4px;border:2px solid var(--tile-hi)}.dots6 i:first-child{margin-left:0}
+.cnt{font-weight:600}.chev{width:28px;height:28px;display:grid;place-items:center;color:var(--mute)}.chev svg{width:14px;height:14px}
+.cmpbtn{display:inline-flex;align-items:center;gap:10px;height:38px;padding:0 14px 0 8px;border-radius:999px;border:1px solid var(--glass-line);background:transparent;cursor:pointer;color:var(--mute);font-weight:500}
+.cmpbtn .tg{width:34px;height:20px;border-radius:99px;background:color-mix(in srgb,var(--ink) 18%,transparent);position:relative;transition:background .15s}.cmpbtn .tg::after{content:"";position:absolute;top:3px;left:3px;width:14px;height:14px;border-radius:50%;background:var(--ink);transition:transform .15s}
+.cmpbtn[aria-pressed=true]{color:var(--ink);border-color:var(--accent);background:color-mix(in srgb,var(--accent) 14%,transparent)}.cmpbtn[aria-pressed=true] .tg{background:var(--accent)}.cmpbtn[aria-pressed=true] .tg::after{transform:translateX(14px);background:#04161A}
+.fseg{display:flex;padding:3px;border-radius:999px;background:color-mix(in srgb,var(--ink) 8%,transparent)}.fseg button{border:0;background:transparent;border-radius:999px;padding:7px 13px;color:var(--mute);cursor:pointer;white-space:nowrap}.fseg button[aria-pressed=true]{background:var(--tile-hi);color:var(--ink);box-shadow:0 1px 0 var(--hi) inset,0 1px 3px rgba(0,0,0,.3)}
+.picker{position:fixed;top:84px;right:28px;width:min(580px,calc(100% - 24px));max-height:min(560px,72vh);border-radius:22px;z-index:45;display:flex;flex-direction:column;overflow:hidden}
+.pk-h{padding:14px 16px 10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.pk-h input{flex:1;min-width:140px;height:36px;border-radius:999px;border:1px solid var(--glass-line);background:var(--tile-hi);padding:0 14px;outline-offset:2px}
+.pk-act{display:flex;gap:6px}.pk-act button{border:1px solid var(--glass-line);background:transparent;border-radius:999px;height:32px;padding:0 12px;cursor:pointer;color:var(--mute)}.pk-act button:hover{color:var(--ink)}
+.pk-tags{display:flex;gap:6px;padding:0 16px 8px;flex-wrap:wrap}.pk-tags button{border:1px solid var(--glass-line);background:transparent;border-radius:999px;height:28px;padding:0 11px;cursor:pointer;color:var(--mute);font-size:12.5px}.pk-tags button[aria-pressed=true]{background:color-mix(in srgb,var(--accent) 18%,transparent);color:var(--ink);border-color:var(--accent)}
+.pk-l{overflow:auto;padding:0 8px 8px}
+.pk-r{display:grid;grid-template-columns:auto auto 1fr auto auto;gap:12px;align-items:center;padding:7px 10px;border-radius:12px}
+.pk-r:hover{background:color-mix(in srgb,var(--ink) 6%,transparent)}
+.cb{width:20px;height:20px;border-radius:6px;border:1.5px solid var(--mute);background:transparent;cursor:pointer;display:grid;place-items:center;padding:0}.cb[aria-checked=true]{background:var(--c);border-color:var(--c)}.cb[aria-checked=true]::after{content:"";width:9px;height:5px;border-left:2px solid #04161A;border-bottom:2px solid #04161A;transform:rotate(-45deg) translate(1px,-1px)}
+.sdot{width:12px;height:12px;border-radius:50%}
+.pk-n b{font-weight:500}.pk-n small{display:block;color:var(--mute);font-size:12px}
+.pk-f{padding:10px 16px;border-top:1px solid var(--line);color:var(--mute);font-size:12.5px;display:flex;justify-content:space-between;gap:10px;align-items:center}.pk-f button{border:0;background:none;color:var(--accent);cursor:pointer}
+/* settings modal */
+.mscrim{position:fixed;inset:0;z-index:60;background:rgba(5,7,10,.6);backdrop-filter:blur(6px);display:grid;place-items:center;padding:3vh 3vw}
+.modal{width:min(1040px,100%);height:min(720px,94vh);border-radius:26px;display:grid;grid-template-columns:210px 1fr;overflow:hidden;background:var(--surface);border:1px solid var(--glass-line);box-shadow:var(--sh2)}
+.mnav{padding:18px 12px;border-right:1px solid var(--line);display:flex;flex-direction:column;gap:3px;background:var(--tile-hi)}
+.mnav h2{margin:0 8px 14px;font-size:17px}.mnav button{display:flex;gap:10px;align-items:center;height:40px;padding:0 12px;border:0;background:transparent;border-radius:12px;cursor:pointer;color:var(--mute);text-align:left}.mnav button svg{width:17px;height:17px}.mnav button[aria-selected=true]{background:var(--surface);color:var(--ink);box-shadow:var(--sh1)}.mnav .grow{flex:1}
+.mbody{overflow:auto;padding:24px 28px 28px;min-width:0}
+.mbody h3{margin:0 0 4px;font-size:18px;letter-spacing:-.01em}.mbody .lead{margin:0 0 20px;color:var(--mute);max-width:70ch}
+.mbody h4{margin:22px 0 8px;font-size:12.5px;color:var(--mute);font-weight:500;letter-spacing:.02em}
+.row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 0;border-bottom:1px solid var(--line)}.row:last-child{border-bottom:0}.row b{font-weight:500;display:block}.row small{color:var(--mute)}
+.sgm{display:flex;padding:3px;gap:2px;border-radius:999px;background:color-mix(in srgb,var(--ink) 8%,transparent)}.sgm button{border:0;background:transparent;border-radius:999px;padding:6px 14px;color:var(--mute);cursor:pointer}.sgm button[aria-pressed=true]{background:var(--surface);color:var(--ink);box-shadow:var(--sh1)}
+.swt{width:42px;height:24px;border-radius:99px;background:color-mix(in srgb,var(--ink) 20%,transparent);position:relative;border:0;cursor:pointer;padding:0;flex:none}.swt::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:var(--ink);transition:transform .15s}.swt[aria-checked=true]{background:var(--accent)}.swt[aria-checked=true]::after{transform:translateX(18px);background:#04161A}
+.fonts{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.fc{border:1px solid var(--line);border-radius:14px;padding:12px;cursor:pointer;background:transparent;text-align:left}.fc[aria-checked=true]{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 10%,transparent)}.fc b{display:block;font-size:22px;font-weight:600}.fc small{color:var(--mute)}
+input[type=range]{accent-color:var(--accent);width:220px}
+.te-row{display:grid;grid-template-columns:1fr 34px 76px;align-items:center;gap:10px;padding:5px 0;max-width:340px}.te-row input{width:34px;height:28px;padding:0;border:1px solid var(--glass-line);border-radius:9px;background:none;cursor:pointer}.te-row code{font:12px var(--mono);color:var(--mute)}
+.te-presets{display:flex;gap:6px;margin-top:8px;align-items:center;max-width:340px}.te-p{display:flex;border:1px solid var(--glass-line);border-radius:9px;overflow:hidden;padding:0;cursor:pointer;background:none}.te-p i{width:12px;height:22px}.te-reset{margin-left:auto;border:0;background:none;color:var(--accent);cursor:pointer}
+.srow{display:grid;grid-template-columns:22px 34px minmax(140px,1fr) auto auto auto auto;gap:12px;align-items:center;padding:8px 10px;border:1px solid var(--line);border-radius:14px;margin-bottom:8px;background:var(--tile-hi)}
+.srow.drag{opacity:.4}.srow.over{border-color:var(--accent)}
+.hnd{cursor:grab;color:var(--mute);display:grid;place-items:center}.hnd svg{width:16px;height:16px}
+.csw{width:30px;height:30px;border-radius:50%;border:2px solid var(--surface);box-shadow:0 0 0 1px var(--line);padding:0;cursor:pointer;overflow:hidden;position:relative}.csw input{position:absolute;inset:-6px;width:44px;height:44px;opacity:0;cursor:pointer}
+.srow input.lab{height:34px;border-radius:10px;border:1px solid var(--line);background:var(--surface);padding:0 10px;min-width:0;width:100%;outline-offset:2px}
+.chipb{border:1px solid var(--accent);background:color-mix(in srgb,var(--accent) 16%,transparent);color:var(--accent);border-radius:999px;height:28px;padding:0 12px;font-weight:500}
+.bmw{display:grid;grid-template-columns:minmax(0,1fr) 310px;gap:20px}
+.bmg{display:grid;grid-template-columns:repeat(auto-fill,minmax(128px,1fr));gap:10px}
+.bmc{border:2px solid transparent;border-radius:14px;padding:0;background:var(--tile-hi);cursor:pointer;text-align:left;overflow:hidden;box-shadow:0 0 0 1px var(--line)}.bmc svg{display:block;width:100%;height:76px}.bmc span{display:block;padding:7px 10px;font-size:12.5px}
+.bmc[aria-checked=true]{border-color:var(--accent)}.bmc small{display:block;color:var(--accent);padding:0 10px 7px;margin-top:-4px;font-size:11px}
+.bmp{position:sticky;top:0;align-self:start;border:1px solid var(--line);border-radius:16px;overflow:hidden;background:var(--tile-hi)}.bmp .pv{height:220px;position:relative}.bmp .pi{padding:12px 14px}.bmp .pi b{display:block}.bmp .pi small{color:var(--mute)}
+.btn{height:38px;padding:0 18px;border-radius:999px;border:1px solid var(--line);background:transparent;cursor:pointer;font-weight:500}.btn.pri{background:var(--accent);border-color:var(--accent);color:#04161A}.btn:disabled{opacity:.45;cursor:default}
+.doc table{border-collapse:collapse;width:100%;margin:6px 0 14px}.doc th{text-align:left;font-weight:500;color:var(--mute);padding:7px 10px;border-bottom:1px solid var(--line);font-size:12.5px}.doc td{padding:9px 10px;border-bottom:1px solid var(--grid);vertical-align:top}
+.doc p{max-width:72ch;margin:0 0 10px}.doc kbd{font:12px var(--mono);border:1px solid var(--line);border-radius:5px;padding:1px 6px;background:var(--tile-hi)}
+.wf-tip{position:fixed;z-index:300;pointer-events:none;min-width:168px;max-width:320px;padding:11px 13px 10px;border-radius:14px;background:var(--glass);backdrop-filter:blur(16px) saturate(1.3);-webkit-backdrop-filter:blur(16px) saturate(1.3);border:1px solid var(--glass-line);box-shadow:var(--sh2);font-size:12.5px;line-height:1.35;opacity:0;transition:opacity .08s}
+.tt-h{display:flex;align-items:center;gap:8px;font-weight:600;font-size:13px;margin-bottom:6px}.tt-h i{width:10px;height:10px;border-radius:50%;flex:none}.tt-h em{font-style:normal;font-weight:400;color:var(--mute);margin-left:auto;padding-left:12px}
+.tt-r{display:grid;grid-template-columns:10px 1fr auto auto;gap:4px 8px;align-items:center;padding:2px 0}.tt-r i{width:8px;height:8px;border-radius:50%}.tt-r i.n{background:transparent}
+.tt-k{color:var(--mute)}.tt-r.b .tt-k{color:var(--ink)}.tt-v{font:500 12.5px var(--mono);text-align:right}.tt-d{font:12px var(--mono);font-style:normal}
+.tt-f{margin-top:7px;padding-top:7px;border-top:1px solid var(--line);color:var(--mute);font-size:12px}
+.rnd{margin:8px 8px 10px;padding:12px 14px;border:1px solid var(--glass-line);border-radius:16px;background:var(--tile-hi)}.rnd-h{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:10px}.rnd-h small{display:block;color:var(--mute);font-size:12px}
+.rstrip{display:flex;gap:2px}.rs{flex:1;min-width:0;height:30px;border:0;border-radius:3px;padding:0;cursor:pointer;opacity:.4;background:var(--ok)}.rs.warn{background:var(--warn)}.rs.fail{background:var(--fail)}.rs[aria-pressed=true]{opacity:1;outline:2px solid var(--ink);outline-offset:1px}.rs:hover{opacity:.9}.rleg{display:block;margin-top:8px;color:var(--mute);font-size:12px}
+.wf-multi .sync{stroke:var(--ink)!important;stroke-width:2.4px!important}.wf-multi g.sync rect{stroke:var(--ink);stroke-width:2.4px}.wf-multi.syncing [data-key]:not(.sync){opacity:.5}
+.scrim{position:fixed;inset:0;z-index:50;background:rgba(5,7,10,.62);backdrop-filter:blur(6px);display:grid;place-items:center;padding:3vh 3vw}
+.scrim .tile{width:min(1400px,100%);height:min(88vh,100%);background:var(--surface)}
+.empty{display:grid;place-items:center;height:56vh;text-align:center;color:var(--mute)}.empty b{display:block;color:var(--ink);font-size:18px;margin-bottom:6px}
+.ynote{margin:0 0 12px;padding:10px 14px;border-radius:14px;border:1px solid var(--glass-line);background:color-mix(in srgb,var(--accent) 10%,var(--tile));color:var(--ink)}
+.foot{margin-top:18px;color:var(--mute);font-size:12.5px}
+[hidden]{display:none!important}
+@media (max-width:1100px){.hero{grid-template-columns:repeat(2,1fr)}.k:nth-child(3){border-left:0}.k:nth-child(n+3){border-top:1px solid var(--line)}.k:last-child{grid-column:span 2}.grid>*{grid-column:span 12!important}.bmw{grid-template-columns:1fr}}
+@media (max-width:900px){.dock{border-radius:22px}.modal{grid-template-columns:1fr;grid-template-rows:auto 1fr}.mnav{flex-direction:row;overflow:auto;border-right:0;border-bottom:1px solid var(--line)}.mnav h2{display:none}.fonts{grid-template-columns:1fr 1fr}.srow{grid-template-columns:22px 34px 1fr auto}}
+@media (max-width:760px){.nav{display:none}.main{margin-left:0;padding:18px 14px 130px}}
+</style>
+<nav class="nav glass" id="nav" aria-label="Pages"></nav>
+<div class="main" id="main">
+  <header class="hd" id="hd"><div class="hdt"><h1 id="h1"></h1><p id="sub"></p></div><div class="dock glass" id="dock" role="group" aria-label="Scenario controls"></div></header>
+  <div id="page"></div>
+</div>
+<div class="picker glass" id="picker" hidden role="dialog" aria-label="Choose scenarios"></div>
+<div class="mscrim" id="mscrim" hidden></div>
+<div class="scrim" id="scrim" hidden></div>
+<script>
+/* scen.js: fifteen sample scenarios defined by their effect on the baseline. Everything else is derived. */
+(function () {
+  const BASE = [64.9, 21.5, 2.8, 8.0, 1.0, 1.8], BOARD0 = [36.9, 22.8, 12.1, 18.4, 9.9, 6.6];
+  // name, tag, mode-share deltas (pp), trips M, VMT M, boardings multipliers per line, trip length x, zero-car x, zone {rail, core}, speed x, time-of-day effect, flow x
+  const DEF = [
+    ['Baseline', 'Base case', [0, 0, 0, 0, 0, 0], 9.86, 61.4, [1, 1, 1, 1, 1, 1], 1.03, 1, [0, 0], 1, {}, 1],
+    ['Frequent transit', 'Transit', [-3.7, -.5, 3.2, .6, .3, .1], 9.81, 58.9, [1.67, 1.5, 1.87, 1.62, 1.33, 1.44], 1.07, 1.28, [6.5, 0], 1.03, {}, 1.06],
+    ['Express bus', 'Transit', [-1.4, -.2, 1.3, .2, .1, 0], 9.85, 60.5, [1.05, 1.04, 1.04, 1.1, 1.5, 1.4], 1.04, 1.08, [2.2, .5], 1.01, {}, 1.02],
+    ['BRT corridor', 'Transit', [-2.2, -.3, 2.0, .4, .1, 0], 9.84, 59.9, [1.1, 1.05, 1.05, 1.12, 1.8, 1.3], 1.03, 1.12, [4.0, .6], 1.02, {}, 1.03],
+    ['Light rail extension', 'Transit', [-2.8, -.4, 2.6, .4, .2, 0], 9.84, 59.2, [1.45, 1.2, 1.2, 1.3, 1.1, 1.1], 1.04, 1.18, [5, 1.2], 1.02, {}, 1.04],
+    ['Fare-free transit', 'Pricing', [-1.6, -.3, 1.9, 0, 0, 0], 9.86, 60.2, [1.35, 1.3, 1.3, 1.25, 1.4, 1.5], 1.0, 1.12, [2.4, 1.8], 1.01, {}, 1.02],
+    ['Parking pricing', 'Pricing', [-3.0, .8, 1.1, .7, .3, .1], 9.78, 58.4, [1.22, 1.18, 1.2, 1.22, 1.2, 1.2], .97, 1.15, [1.2, 2.8], 1.02, { pm: .96 }, .99],
+    ['Congestion pricing', 'Pricing', [-3.4, .6, 1.4, 1.0, .4, 0], 9.74, 57.9, [1.3, 1.25, 1.25, 1.3, 1.35, 1.3], .96, 1.2, [1.4, 3.0], 1.06, { am: .95, pm: .94 }, 1],
+    ['Infill density', 'Land use', [-4.4, -.2, 1.6, 2.8, .6, -.4], 9.93, 57.6, [1.28, 1.18, 1.31, 1.18, 1.19, 1.26], .9, 1.22, [1.5, 3.2], .97, {}, .94],
+    ['Job-center density', 'Land use', [-2.6, -.2, 1.2, 1.4, .2, 0], 9.90, 59.1, [1.15, 1.1, 1.1, 1.1, 1.12, 1.1], .94, 1.12, [1.2, 2.2], .98, {}, .97],
+    ['Remote work', 'Behavior', [-1.0, -.2, -.1, .9, .3, .1], 9.62, 59.6, [.93, .92, .92, .9, .94, .95], 1.05, 1, [0, -.4], 1.04, { am: .88, mid: 1.15, pm: .9 }, 1],
+    ['Road diet', 'Roads', [-1.2, -.1, .5, .5, .3, 0], 9.87, 60.1, [1.08, 1.06, 1.06, 1.1, 1.12, 1.1], .98, 1.05, [.6, .8], .96, {}, 1],
+    ['Bike network', 'Roads', [-1.2, -.1, .2, .2, .9, 0], 9.88, 60.4, [1.04, 1.04, 1.04, 1.05, 1.06, 1.05], .97, 1.04, [.4, .8], 1, {}, 1],
+    ['Autonomous vehicles', 'Technology', [2.6, .9, -1.7, -1.4, -.4, 0], 10.12, 66.8, [.82, .82, .82, .8, .85, .85], 1.12, .8, [-1.5, -1], 1.08, { am: 1.05, pm: 1.06 }, 1.02],
+    ['Combined package', 'Package', [-6.4, -.6, 4.6, 1.7, .9, -.2], 9.86, 54.9, [1.9, 1.6, 1.6, 1.7, 1.9, 1.8], 1.0, 1.4, [8, 4], 1.02, {}, 1.08],
+  ];
+  const S = { SC: DEF.map((d) => d[0]), IDX: {}, SHARE: { Observed: [63.8, 22.1, 3.1, 8.4, 1.2, 1.4] }, TRIPS: { Observed: 9.82 }, VMT: { Observed: 61.9 }, BOARD: { Observed: [38.2, 21.4, 12.9, 17.6, 9.4, 7.1] },
+    TL: { Observed: 1 }, A0F: { Observed: .91 }, ZFX: { Observed: [0, 0] }, SPEED: { Observed: 1 }, TODFX: {}, TAG: {}, FLOWT: { Observed: 1 },
+    PAL: ['#8A94A6', '#4C8BF5', '#F2994A', '#2FBF8A', '#EB5757', '#A66CFF', '#18B4C8', '#E8C547', '#E26BA6', '#9C7A5B', '#7BC043', '#5865F2', '#B5179E', '#00897B', '#8E9E2A'],
+    SAFE: ['#8C8C8C', '#0072B2', '#E69F00', '#009E73', '#D55E00', '#CC79A7', '#56B4E9', '#F0E442', '#4D4D4D', '#004B7A', '#B37700', '#00694D', '#9E4400', '#A5548A', '#99D3F5'] };
+  DEF.forEach(([n, tag, d, tr, vm, bm, tl, a0, z, sp, tf, fl], i) => {
+    S.IDX[n] = i; S.SHARE[n] = BASE.map((v, k) => +(v + d[k]).toFixed(1)); S.TRIPS[n] = tr; S.VMT[n] = vm; S.BOARD[n] = BOARD0.map((v, k) => +(v * bm[k]).toFixed(1));
+    S.TL[n] = tl; S.A0F[n] = a0; S.ZFX[n] = z; S.SPEED[n] = sp; S.TODFX[n] = tf; S.TAG[n] = tag; S.FLOWT[n] = fl;
+  });
+
+  /* calibration rounds: an ordered family that converges on the base case, with noise that fades as it settles */
+  const rr = (seed) => { let q = seed; return () => { q = (q * 16807) % 2147483647; return q / 2147483647; }; };
+  const R = rr(42), N = 50, FINAL = [1.4, 2.2, 2.6, 3.9, 1.7, 4.6, 5.8, 2.9], START = [7.5, 8.2, 9.0, 10.5, 9.6, 11.8, 12.5, 8.8], DEV = [7.5, -3.2, -1.2, -1.8, -.5], CALR = {};
+  S.ROUND = {}; S.FAM = { cal: { label: 'Calibration rounds', names: [], n: N } };
+  for (let r = 1; r <= N; r++) {
+    const name = 'Round ' + r, k = Math.pow(.88, r - 1), nz = Math.sqrt(k);
+    const d = DEV.map((v) => v * k + (R() - .5) * .9 * nz), sb = -d.reduce((a, b) => a + b, 0);
+    S.SC.push(name); S.ROUND[name] = r; S.FAM.cal.names.push(name); S.TAG[name] = 'Calibration round'; S.IDX[name] = 99;
+    S.SHARE[name] = BASE.map((v, i) => +(v + (i < 5 ? d[i] : sb)).toFixed(2));
+    S.TRIPS[name] = +(9.86 * (1 + .045 * k)).toFixed(3); S.VMT[name] = +(61.4 * (1 + .08 * k)).toFixed(2); S.BOARD[name] = BOARD0.map((v) => +(v * (1 - .4 * k)).toFixed(1));
+    S.TL[name] = 1.03 * (1 + .07 * k); S.A0F[name] = 1 + .45 * k; S.ZFX[name] = [0, 0]; S.SPEED[name] = 1 - .06 * k; S.TODFX[name] = { am: 1 + .3 * k, pm: 1 - .12 * k }; S.FLOWT[name] = 1;
+    CALR[name] = FINAL.map((e, i) => Math.max(.3, +(e + (START[i] - e) * k + (R() - .5) * .5 * nz).toFixed(2)));
+  }
+  S.CALR = (n) => CALR[n] || FINAL;
+  S.OBS = { share: { src: '2023 household travel survey', n: 'n = 14,820 households', moe: [1.4, 1.1, .5, .9, .3, .4] }, boards: { src: '2023 on-board transit survey and APC counts', n: '41,300 boardings sampled' }, vmt: { src: 'UDOT traffic counts, 2023', n: '1,240 count stations' }, auto: { src: '2023 household travel survey', n: 'n = 14,820 households' } };
+
+  /* milestone years: every alternative has a run for each model year. Alternatives differ more as the plan builds out, and growth lifts every volume. */
+  S.YEARS = [{ y: 2023, label: 'Base year' }, { y: 2027, label: 'Opening year' }, { y: 2032, label: 'End of STIP' }, { y: 2036, label: 'End of RTP Phase I' }, { y: 2046, label: 'End of RTP Phase II' }, { y: 2055, label: 'Horizon year' }];
+  const GT = { 2023: 1, 2027: 1.07, 2032: 1.16, 2036: 1.24, 2046: 1.4, 2055: 1.52 }, GV = { 2023: 1, 2027: 1.08, 2032: 1.19, 2036: 1.29, 2046: 1.48, 2055: 1.63 }, GB = { 2023: 1, 2027: 1.12, 2032: 1.3, 2036: 1.45, 2046: 1.8, 2055: 2.1 }, EF = { 2023: 0, 2027: .3, 2032: .6, 2036: .85, 2046: 1.1, 2055: 1.3 };
+  S.BASEYEAR = 2023; S.year = 2023;
+  const P = {}; DEF.forEach(([n, tag, d, tr, vm, bm, tl, a0, z, sp, tf, fl]) => { P[n] = { d, tr, vm, bm, tl, a0, z, sp, tf, fl }; });
+  const at = (n, y) => { const p = P[n], e = EF[y], gt = GT[y], gv = GV[y], gb = GB[y];
+    return { share: BASE.map((v, k) => +(v + p.d[k] * e).toFixed(2)), trips: +(9.86 * gt * (1 + (p.tr / 9.86 - 1) * e)).toFixed(3), vmt: +(61.4 * gv * (1 + (p.vm / 61.4 - 1) * e)).toFixed(2), board: BOARD0.map((v, k) => +(v * gb * (1 + (p.bm[k] - 1) * e)).toFixed(1)),
+      tl: 1.03 * (1 + (p.tl / 1.03 - 1) * e) * (1 + .05 * (gt - 1)), a0: 1 + (p.a0 - 1) * e, z: [p.z[0] * e, p.z[1] * e], sp: Math.max(.6, 1 + (p.sp - 1) * e - .18 * (gv - 1)), tf: Object.fromEntries(Object.entries(p.tf).map(([k, v]) => [k, 1 + (v - 1) * e])), fl: 1 + (p.fl - 1) * e }; };
+  S.setYear = (y) => { S.year = y; DEF.forEach(([n]) => { const v = at(n, y); S.SHARE[n] = v.share; S.TRIPS[n] = v.trips; S.VMT[n] = v.vmt; S.BOARD[n] = v.board; S.TL[n] = v.tl; S.A0F[n] = v.a0; S.ZFX[n] = v.z; S.SPEED[n] = v.sp; S.TODFX[n] = v.tf; S.FLOWT[n] = v.fl; }); };
+  /* a metric for any scenario in any model year, without changing the current year */
+  S.valAt = (n, y, k) => { const v = at(n, y); return { trips: v.trips, drive: v.share[0], transit: v.share[2], active: v.share[3] + v.share[4], vmt: v.vmt, boards: d3.sum(v.board), len: 7.6 * v.tl }[k]; };
+  window.SCN = S;
+})();
+
+/* WFRC prototype core: sample data + Observable Plot / D3 chart builders.
+   All visual styling comes from CSS tokens read live from :root. */
+(function () {
+  const SC = SCN.SC, SHARE = SCN.SHARE;
+  const MODES = ['Drive alone', 'Shared ride', 'Transit', 'Walk', 'Bike', 'School bus'];
+  const CAL = [
+    ['Auto ownership', 'Households by vehicles', 1.4],
+    ['Coordinated daily activity pattern', 'Persons by pattern', 2.2],
+    ['Work location', 'Mean commute distance', 2.6],
+    ['School location', 'Mean school distance', 3.9],
+    ['Tour mode choice', 'Tours by mode', 1.7],
+    ['Tour scheduling', 'Departure by hour', 4.6],
+    ['Stop frequency', 'Stops per tour', 5.8],
+    ['Trip mode choice', 'Trips by mode', 2.9],
+  ];
+  const status = (e) => (e <= 3 ? 'ok' : e <= 5 ? 'warn' : 'fail');
+  const STATUS_LABEL = { ok: 'Within 3%', warn: 'Review', fail: 'Off target' };
+
+  /* seeded RNG */
+  function rng(seed) { return function () { seed |= 0; seed = (seed + 0x6D2B79F5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+
+  /* time of day */
+  function tod(sc) {
+    const P = { Observed: [7.5, 1, 12.5, 0.62, 16.8, 1.05], Baseline: [7.7, 1.08, 12.4, 0.6, 16.9, 1.0], 'Frequent transit': [7.6, 1.03, 12.5, 0.62, 16.8, 0.99], 'Infill density': [7.5, 0.99, 12.6, 0.64, 16.7, 1.04] };
+    const fx = SCN.TODFX[sc] || {}, p = (P[sc] || P.Baseline).slice();
+    p[1] *= fx.am || 1; p[3] *= fx.mid || 1; p[5] *= fx.pm || 1;
+    const g = (h, m, s) => Math.exp(-0.5 * ((h - m) / s) ** 2);
+    const raw = d3.range(24).map((h) => p[1] * g(h, p[0], 1.3) + p[3] * g(h, p[2], 2.6) + p[5] * g(h, p[4], 1.7) + 0.35 * g(h, 21, 2.6) + 0.06);
+    const sum = d3.sum(raw);
+    return raw.map((v, h) => ({ sc, hour: h, share: (v / sum) * 100 }));
+  }
+
+  /* synthetic zones (stand-in for TAZ geometry; the real app draws GeoParquet on MapLibre) */
+  const W = 900, H = 560;
+  const r = rng(11);
+  const pts = d3.range(190).map(() => { const a = r() * 6.283, rad = Math.pow(r(), 0.8) * 0.5; return [W * (0.5 + Math.cos(a) * rad * 0.95 + (r() - 0.5) * 0.06), H * (0.5 + Math.sin(a) * rad * 0.95 + (r() - 0.5) * 0.06)]; });
+  const vor = d3.Delaunay.from(pts).voronoi([10, 10, W - 10, H - 10]);
+  const CORE = [W * 0.46, H * 0.5];
+  const distCore = (p) => Math.hypot(p[0] - CORE[0], p[1] - CORE[1]);
+  // rail corridor: a gentle diagonal polyline
+  const RAIL = [[120, 470], [250, 410], [380, 340], [460, 285], [540, 235], [660, 170], [790, 110]];
+  const distRail = (p) => d3.min(RAIL.slice(1).map((b, i) => { const a = RAIL[i]; const dx = b[0] - a[0], dy = b[1] - a[1]; const t = Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / (dx * dx + dy * dy))); return Math.hypot(p[0] - (a[0] + t * dx), p[1] - (a[1] + t * dy)); }));
+  const noise = pts.map(() => (r() - 0.5) * 1.2);
+  function zoneVal(i, sc) {
+    const dc = distCore(pts[i]), dr = distRail(pts[i]);
+    let v = 0.4 + 7.5 * Math.exp(-dc / 130) + noise[i];
+    const z = SCN.ZFX[sc] || [0, 0]; v += z[0] * Math.exp(-dr / 55) + z[1] * Math.exp(-dc / 160);
+    return Math.max(0, v);
+  }
+  const ZONES = pts.map((p, i) => ({ id: 1000 + i * 7, i, cell: vor.renderCell(i), pop: Math.round(1800 + 5200 * Math.exp(-distCore(p) / 200) + 400 * noise[i]) }));
+
+  /* tokens */
+  function tok() {
+    const cs = getComputedStyle(document.documentElement);
+    const g = (n) => cs.getPropertyValue(n).trim();
+    return { ink: g('--ink'), mute: g('--mute'), grid: g('--grid'), surface: g('--surface'), bg: g('--bg'), line: g('--line'),
+      font: g('--font'), fs: parseFloat(g('--chart-fs')) || 12, r: parseFloat(g('--chart-r')) || 3,
+      obs: g('--c-obs'), c: Object.fromEntries(SC.map((s) => [s, scColor(s)])),
+      ok: g('--ok'), warn: g('--warn'), fail: g('--fail'), primary: g('--c-1') };
+  }
+  const tipOpt = (t) => ({ fill: t.surface, stroke: t.line, fontFamily: t.font, fontSize: t.fs });
+  const base = (t, w, h, o) => Object.assign({ width: w, height: h, style: { background: 'transparent', color: t.mute, fontFamily: t.font, fontSize: t.fs + 'px', overflow: 'visible' } }, o);
+
+  function modeBars(el, active, w, h) {
+    const t = tok(); const ids = SC.filter((s) => active.has(s));
+    const rows = []; ids.forEach((s) => MODES.forEach((m, i) => rows.push({ mode: m, sc: s, share: SHARE[s][i] })));
+    const obs = MODES.map((m, i) => ({ mode: m, share: SHARE.Observed[i] }));
+    const plot = Plot.plot(base(t, w, h, {
+      marginLeft: 36, marginBottom: 30, marginTop: 14, marginRight: 4,
+      fx: { label: null, padding: 0.14, domain: MODES }, x: { axis: null, domain: ids, paddingInner: 0.1, paddingOuter: 0.08 },
+      y: { label: null, grid: true, tickFormat: (d) => d + '%', ticks: 5 },
+      color: { domain: ids, range: ids.map((s) => t.c[s]) },
+      marks: [Plot.gridY({ stroke: t.grid, strokeOpacity: 1 }),
+        Plot.barY(rows, { fx: 'mode', x: 'sc', y: 'share', fill: 'sc', rx: t.r, insetBottom: 0, tip: tipOpt(t), channels: {} }),
+        Plot.ruleY(obs, { fx: 'mode', y: 'share', stroke: t.ink, strokeWidth: 1.6, strokeDasharray: '4 3' }),
+        Plot.ruleY([0], { stroke: t.line })],
+    }));
+    el.replaceChildren(plot);
+  }
+
+  function gapDots(el, active, w, h) {
+    const t = tok(); const ids = SC.filter((s) => active.has(s));
+    const rows = []; ids.forEach((s) => MODES.forEach((m, i) => rows.push({ mode: m, sc: s, gap: +(SHARE[s][i] - SHARE.Observed[i]).toFixed(1) })));
+    const plot = Plot.plot(base(t, w, h, {
+      marginLeft: 82, marginBottom: 34, marginTop: 8, marginRight: 14,
+      x: { domain: [-4, 4], grid: false, label: 'Percentage points vs observed', labelAnchor: 'center', labelArrow: 'none', tickFormat: (d) => (d > 0 ? '+' : '') + d, ticks: 8 },
+      y: { label: null, domain: MODES, padding: 0.5 },
+      color: { domain: ids, range: ids.map((s) => t.c[s]) },
+      marks: [Plot.rectX([{ a: -1, b: 1 }], { x1: 'a', x2: 'b', fill: t.ok, fillOpacity: 0.12 }),
+        Plot.ruleY(MODES, { stroke: t.grid, strokeOpacity: 1 }),
+        Plot.ruleX([0], { stroke: t.ink, strokeOpacity: 0.55 }),
+        Plot.dot(rows, { x: 'gap', y: 'mode', fill: 'sc', r: 5.5, stroke: t.surface, strokeWidth: 2, tip: tipOpt(t) })],
+    }));
+    el.replaceChildren(plot);
+  }
+
+  function todLine(el, active, w, h) {
+    const t = tok(); const ids = SC.filter((s) => active.has(s));
+    const rows = ids.flatMap(tod); const obs = tod('Observed');
+    const plot = Plot.plot(base(t, w, h, {
+      marginLeft: 36, marginBottom: 30, marginTop: 10, marginRight: 8,
+      x: { label: null, domain: [0, 23], ticks: [0, 3, 6, 9, 12, 15, 18, 21], tickFormat: (d) => (d % 12 || 12) + (d < 12 ? 'a' : 'p') },
+      y: { label: null, grid: true, tickFormat: (d) => d + '%', ticks: 4 },
+      color: { domain: ids, range: ids.map((s) => t.c[s]) },
+      marks: [Plot.gridY({ stroke: t.grid, strokeOpacity: 1 }),
+        Plot.areaY(obs, { x: 'hour', y: 'share', fill: t.ink, fillOpacity: 0.06, curve: 'catmull-rom' }),
+        Plot.line(obs, { x: 'hour', y: 'share', stroke: t.ink, strokeWidth: 1.5, strokeDasharray: '4 3', curve: 'catmull-rom' }),
+        Plot.line(rows, { x: 'hour', y: 'share', stroke: 'sc', strokeWidth: 2.25, curve: 'catmull-rom', strokeLinecap: 'round' }),
+        Plot.ruleX(rows, Plot.pointerX({ x: 'hour', stroke: t.line })),
+        Plot.dot(rows, Plot.pointerX({ x: 'hour', y: 'share', fill: 'sc', stroke: t.surface, strokeWidth: 2, r: 4.5 })),
+        Plot.tip(rows, Plot.pointerX({ x: 'hour', y: 'share', ...tipOpt(t), format: { y: (d) => d.toFixed(1) + '%', x: (d) => (d % 12 || 12) + (d < 12 ? ' AM' : ' PM') } }))],
+    }));
+    el.replaceChildren(plot);
+  }
+
+  /* zone map: d3 zoom + sequential scale from surface -> primary */
+  const MS = { r: {}, t: {} };
+  const mapSync = { start(g) { MS.r[g] = []; }, zoomBy(g, k) { const f = (MS.r[g] || [])[0]; if (f) f.svg.transition().duration(250).call(f.zoom.scaleBy, k); }, reset(g) { const f = (MS.r[g] || [])[0]; if (f) f.svg.transition().duration(300).call(f.zoom.transform, d3.zoomIdentity); } };
+  function zoneMap(el, sc, opts) {
+    opts = opts || {}; const t = tok();
+    const vals = ZONES.map((z) => zoneVal(z.i, sc));
+    const max = 14;
+    const color = d3.scaleSequential(d3.interpolateRgb(opts.lo || t.surface, opts.hi || t.primary)).domain([0, max]);
+    el.innerHTML = '';
+    const svg = d3.select(el).append('svg').attr('viewBox', `0 0 ${W} ${H}`).attr('preserveAspectRatio', 'xMidYMid slice').style('width', '100%').style('height', '100%').style('display', 'block').style('touch-action', 'none');
+    el.style.background = curBM().land || ''; const g = svg.append('g'); baseLayer(g);
+    const paths = g.selectAll('path.z').data(ZONES).join('path').attr('class', 'z').attr('d', (z) => z.cell).attr('fill', (z, i) => color(vals[i])).attr('fill-opacity', baseAlpha()).attr('data-key', (z) => z.id).attr('data-title', (z) => 'TAZ ' + z.id).attr('data-val', (z, i) => vals[i].toFixed(1) + '%').attr('data-num', (z, i) => vals[i]).attr('data-unit', ' pts').attr('stroke', opts.stroke || t.line).attr('stroke-width', 0.6).attr('vector-effect', 'non-scaling-stroke').style('cursor', 'pointer');
+    g.append('path').attr('d', d3.line().curve(d3.curveCatmullRom.alpha(0.5))(RAIL)).attr('fill', 'none').attr('stroke', t.ink).attr('stroke-width', 2.2).attr('stroke-dasharray', '1 0').attr('vector-effect', 'non-scaling-stroke').attr('opacity', 0.85).style('pointer-events', 'none');
+    g.selectAll('circle.st').data(RAIL).join('circle').attr('r', 4).attr('cx', (d) => d[0]).attr('cy', (d) => d[1]).attr('fill', t.surface).attr('stroke', t.ink).attr('stroke-width', 2).attr('vector-effect', 'non-scaling-stroke').style('pointer-events', 'none');
+    const me = { svg, silent: false }, grp = opts.syncGroup;
+    const zoom = d3.zoom().scaleExtent([1, 8]).on('zoom', (e) => { g.attr('transform', e.transform); if (grp) { MS.t[grp] = e.transform; if (!me.silent) (MS.r[grp] || []).forEach((o) => { if (o !== me) { o.silent = true; o.svg.call(o.zoom.transform, e.transform); o.silent = false; } }); } });
+    me.zoom = zoom; svg.call(zoom);
+    if (grp) { (MS.r[grp] = MS.r[grp] || []).push(me); if (MS.t[grp]) { me.silent = true; svg.call(zoom.transform, MS.t[grp]); me.silent = false; } }
+    let sel = null;
+    paths.on('mousemove', function (e, z) {
+      WF.TT.show({ title: 'TAZ ' + z.id, rows: [{ k: 'Transit share', v: vals[z.i].toFixed(1) + '%', c: color(vals[z.i]), b: true }, { k: 'Residents', v: z.pop.toLocaleString() }] }, e);
+      d3.select(this).attr('stroke', t.ink).attr('stroke-width', 1.4).raise();
+    }).on('mouseleave', function (e, z) { WF.TT.hide(); if (sel !== z) d3.select(this).attr('stroke', opts.stroke || t.line).attr('stroke-width', 0.6); })
+      .on('click', function (e, z) { sel = z; paths.attr('stroke', (d) => (d === z ? t.ink : opts.stroke || t.line)).attr('stroke-width', (d) => (d === z ? 2 : 0.6)); d3.select(this).raise(); if (opts.onSelect) opts.onSelect({ id: z.id, pop: z.pop, v: vals[z.i] }); });
+    return { zoom: (k) => svg.transition().duration(250).call(zoom.scaleBy, k), reset: () => svg.transition().duration(300).call(zoom.transform, d3.zoomIdentity), mean: d3.sum(ZONES.map((z, i) => vals[i] * z.pop)) / d3.sum(ZONES.map((z) => z.pop)), max };
+  }
+
+  /* scenario identity: stable default colour per scenario, viewer overrides for colour and label, colour-blind-safe alternative */
+  const over = {}; let safe = false;
+  const lab = (s) => (over[s] && over[s].label) || s;
+  const defColor = (s) => { const P = safe ? SCN.SAFE : SCN.PAL; return P[SCN.IDX[s] % P.length]; };
+  function scColor(s) {
+    if (over[s] && over[s].color) return over[s].color;
+    const rd = SCN.ROUND[s]; if (rd) { const cs = getComputedStyle(document.documentElement), P = cs.getPropertyValue('--c-1').trim(), sf = cs.getPropertyValue('--surface').trim(); return d3.color(d3.interpolateRgb(d3.interpolateRgb(sf, P)(isDark() ? .55 : .4), P)((rd - 1) / 49)).formatHex(); }
+    const h = d3.hcl(defColor(s)); h.l = isDark() ? Math.max(h.l, 62) : Math.min(h.l, 60); return h.formatHex();
+  }
+  function assign() {}
+  function palette() { const cs = getComputedStyle(document.documentElement), a = [1, 2, 3].map((i) => cs.getPropertyValue('--c-' + i).trim());
+    return [...a, ...a.map((c) => { const h = d3.hcl(c); return d3.hcl((h.h + 40) % 360, h.c * .8, h.l > 55 ? h.l - 15 : h.l + 17).formatHex(); })]; }
+  function legendHTML(active, ref) {
+    const t = tok(), on = SC.filter((s) => active.has(s));
+    return on.map((s) => `<span class="lg sclg" data-sc="${s}"><i style="background:${t.c[s]}"></i>${lab(s)}</span>`).join('') + `<span class="lg"><i class="dash"></i>${ref && ref !== 'Observed' ? 'Reference: ' + lab(ref) : 'Observed'}</span>`;
+  }
+
+  /* basemap stand-ins: stylised land, water, parks and streets drawn under the zones (the product draws real tiles on MapLibre) */
+  const BM = [
+    { id: 'theme', name: 'Zones only', group: 'Default', none: true },
+    { id: 'ugrc-light', name: 'UGRC Light', group: 'UGRC Vector Tiles', land: '#ECEAE2', water: '#BDD6E8', road: '#C8C3B3', park: '#D3E1C4' },
+    { id: 'ugrc-dark', name: 'UGRC Dark', group: 'UGRC Vector Tiles', land: '#22262D', water: '#193349', road: '#393F49', park: '#29392D', dark: true },
+    { id: 'ugrc-terrain', name: 'UGRC Terrain', group: 'UGRC Vector Tiles', land: '#E3DECE', water: '#B4CFE3', road: '#BBB39D', park: '#C9DCB2', relief: true },
+    { id: 'carto-positron', name: 'Positron', group: 'CARTO Vector Tiles', land: '#F1F1EF', water: '#D3D9DC', road: '#DCDCDC', park: '#E2EADC' },
+    { id: 'carto-dark', name: 'Dark Matter', group: 'CARTO Vector Tiles', land: '#1D1E23', water: '#13171E', road: '#2C2E35', park: '#1E2521', dark: true },
+    { id: 'carto-voyager', name: 'Voyager', group: 'CARTO Vector Tiles', land: '#F2EEE5', water: '#A9D2DE', road: '#E2DBCA', park: '#C7E5BF' },
+    { id: 'ofm-liberty', name: 'Liberty', group: 'OpenFreeMap', land: '#EEECE3', water: '#A4CBE3', road: '#D8D3C3', park: '#CEE5B7' },
+    { id: 'ofm-bright', name: 'Bright', group: 'OpenFreeMap', land: '#F4F2ED', water: '#9ECFE7', road: '#DFD7C5', park: '#C4E4AD' },
+    { id: 'ofm-positron', name: 'Positron', group: 'OpenFreeMap', land: '#F0F0EE', water: '#D1D8DB', road: '#DADADA', park: '#E1E9DB' },
+    { id: 'pm-light', name: 'Light', group: 'Protomaps', land: '#F2F0EB', water: '#CEDFEA', road: '#E0DCD1', park: '#DBE6D2', needsSource: true },
+    { id: 'pm-dark', name: 'Dark', group: 'Protomaps', land: '#1A1C21', water: '#12253A', road: '#2F333A', park: '#202923', dark: true, needsSource: true },
+    { id: 'pm-grayscale', name: 'Grayscale', group: 'Protomaps', land: '#E5E5E5', water: '#C8CDD0', road: '#D1D1D1', park: '#D9DCD7', needsSource: true },
+    { id: 'r-osm', name: 'OpenStreetMap Standard', group: 'Raster Tiles', land: '#F2EFE9', water: '#AAD3DF', road: '#E5D7BD', park: '#B7DAA8', raster: true },
+    { id: 'r-esri-sat', name: 'Esri World Imagery', group: 'Raster Tiles', land: '#49593B', water: '#1E3A50', road: '#7C7660', park: '#33502E', dark: true, raster: true, sat: true },
+    { id: 'r-esri-topo', name: 'Esri World Topographic', group: 'Raster Tiles', land: '#EAE6D6', water: '#A8CCE0', road: '#CFC6A8', park: '#C3DAA8', raster: true, relief: true },
+  ];
+  let bmId = 'theme';
+  const curBM = () => { const b = BM.find((x) => x.id === bmId) || BM[0]; return b.needsSource ? { ...BM[0], blocked: b } : b; };
+  function baseLayer(g, b) {
+    b = b || curBM(); if (b.none) return;
+    const rr = rng(5);
+    g.append('rect').attr('x', -500).attr('y', -400).attr('width', W + 1000).attr('height', H + 800).attr('fill', b.land);
+    if (b.relief) for (let i = 0; i < 26; i++) g.append('ellipse').attr('cx', rr() * W).attr('cy', rr() * H).attr('rx', 40 + rr() * 90).attr('ry', 20 + rr() * 50).attr('fill', b.road).attr('opacity', .16);
+    if (b.sat) for (let i = 0; i < 90; i++) g.append('ellipse').attr('cx', rr() * W).attr('cy', rr() * H).attr('rx', 10 + rr() * 50).attr('ry', 8 + rr() * 30).attr('fill', rr() > .5 ? b.park : '#5E5A45').attr('opacity', .45);
+    g.append('path').attr('d', 'M-60 60 C80 20 140 110 120 210 C100 310 150 380 60 440 C-20 490 -80 420 -90 300 Z').attr('fill', b.water);
+    g.append('path').attr('d', 'M520 -40 C560 60 640 90 700 150 C770 215 860 220 980 200 L980 240 C850 270 740 270 660 200 C600 140 520 100 480 -40 Z').attr('fill', b.water).attr('opacity', .85);
+    [[300, 120, 70, 44], [610, 410, 90, 50], [220, 470, 60, 34], [780, 330, 50, 36], [450, 60, 46, 26]].forEach(([x, y, rx, ry]) => g.append('ellipse').attr('cx', x).attr('cy', y).attr('rx', rx).attr('ry', ry).attr('fill', b.park));
+    if (!b.sat) {
+      const gl = g.append('g').attr('stroke', b.road).attr('fill', 'none').attr('opacity', .9);
+      for (let x = 0; x <= W; x += 34) gl.append('line').attr('x1', x).attr('x2', x + 12).attr('y1', 0).attr('y2', H).attr('stroke-width', .8).attr('vector-effect', 'non-scaling-stroke');
+      for (let y = 0; y <= H; y += 28) gl.append('line').attr('x1', 0).attr('x2', W).attr('y1', y).attr('y2', y - 8).attr('stroke-width', .8).attr('vector-effect', 'non-scaling-stroke');
+      [[0, 300, 900, 250], [180, 0, 330, 560], [560, 0, 640, 560]].forEach(([x1, y1, x2, y2]) => gl.append('line').attr('x1', x1).attr('y1', y1).attr('x2', x2).attr('y2', y2).attr('stroke-width', 2.6).attr('vector-effect', 'non-scaling-stroke'));
+    } else { g.append('path').attr('d', 'M0 300 L900 250 M180 0 L330 560').attr('stroke', b.road).attr('stroke-width', 1.4).attr('fill', 'none').attr('opacity', .6).attr('vector-effect', 'non-scaling-stroke'); }
+  }
+  const baseAlpha = () => (curBM().none ? 1 : .8);
+
+  function calRows(sc) { const E = SCN.CALR(sc); return CAL.map(([n, m], i) => ({ name: n, metric: m, err: E[i], st: status(E[i]), label: STATUS_LABEL[status(E[i])] })); }
+
+  /* three-colour theme editor; defaults restored by reset */
+  function themeEditor(root, defaults, onChange, initial) {
+    const keys = [['primary', 'Primary'], ['secondary', 'Secondary'], ['tertiary', 'Tertiary']];
+    root.innerHTML = keys.map(([k, l]) => `<label class="te-row" for="te-${k}"><span>${l}</span><input type="color" id="te-${k}" value="${defaults[k]}"><code id="te-${k}-v">${defaults[k]}</code></label>`).join('') +
+      `<div class="te-presets">${[['WFRC blue', '#2457D6', '#D98A00', '#7A4FD8'], ['Wasatch', '#0E7C7B', '#E4572E', '#5C6BC0'], ['Slate', '#334E68', '#E0A100', '#2F9E8F'], ['Plum', '#6D3FC8', '#0C8F6F', '#D9534F']].map(([n, a, b, c]) => `<button type="button" class="te-p" data-c="${a},${b},${c}" title="${n}"><i style="background:${a}"></i><i style="background:${b}"></i><i style="background:${c}"></i></button>`).join('')}<button type="button" class="te-reset">Reset</button></div>`;
+    const set = (a, b, c) => { const d = document.documentElement.style; d.setProperty('--primary', a); d.setProperty('--secondary', b); d.setProperty('--tertiary', c); accents(); keys.forEach(([k], i) => { const v = [a, b, c][i]; root.querySelector('#te-' + k).value = v; root.querySelector('#te-' + k + '-v').textContent = v; }); onChange(); };
+    keys.forEach(([k]) => root.querySelector('#te-' + k).addEventListener('input', () => set(...keys.map(([kk]) => root.querySelector('#te-' + kk).value))));
+    root.querySelectorAll('.te-p').forEach((b) => b.addEventListener('click', () => set(...b.dataset.c.split(','))));
+    root.querySelector('.te-reset').addEventListener('click', () => set(defaults.primary, defaults.secondary, defaults.tertiary));
+    const i0 = initial || defaults; set(i0.primary, i0.secondary, i0.tertiary);
+  }
+
+  function isDark() { const t = document.documentElement.dataset.theme; if (t) return t === 'dark'; return window.WF && WF.darkFirst ? !matchMedia('(prefers-color-scheme: light)').matches : matchMedia('(prefers-color-scheme: dark)').matches; }
+  function accents() { const cs = getComputedStyle(document.documentElement), d = document.documentElement.style, dark = isDark();
+    ['primary', 'secondary', 'tertiary'].forEach((k, i) => { const v = cs.getPropertyValue('--' + k).trim(); const c = dark ? d3.interpolateRgb(v, '#ffffff')(0.28) : v; d.setProperty('--c-' + (i + 1), d3.color(c).formatHex()); });
+    d.setProperty('--accent', d.getPropertyValue('--c-1')); }
+
+  function sparkPath(vals, w, h) { const x = d3.scaleLinear([0, vals.length - 1], [1, w - 1]), y = d3.scaleLinear(d3.extent(vals), [h - 2, 2]); return d3.line().x((d, i) => x(i)).y((d) => y(d)).curve(d3.curveMonotoneX)(vals); }
+
+  window.WF = { mapSync, assign, scColor, palette, scOver: over, setSafe(v) { safe = v; }, isSafe: () => safe, L: lab, BM, setBM(id) { bmId = id; }, getBM: curBM, bmId: () => bmId, baseLayer, baseAlpha, SC, MODES, SHARE, CAL, status, STATUS_LABEL, modeBars, gapDots, todLine, zoneMap, legendHTML, calRows, themeEditor, tok, sparkPath, tod, ZONES, zoneVal, RAIL, W, H,
+    box(el) { const cs = getComputedStyle(el); return [Math.floor(el.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)), Math.floor(el.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom))]; },
+    watch(el, fn) { const ro = new ResizeObserver(() => { const [w, h] = WF.box(el); if (w > 20 && h > 20) fn(w, h); }); ro.observe(el); return fn; },
+    setTheme(m) { document.documentElement.dataset.theme = m; accents(); }, accents, isDark };
+})();
+
+/* tt.js: one tooltip for every chart. A single floating element, one anatomy (title with swatch, label/value rows, optional delta, optional footer),
+   and three ways to feed it: show() for D3 handlers, arm() for Observable Plot marks, cross() for a shared crosshair on time axes. */
+(function () {
+  const WF = window.WF; let el = null;
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const node = () => { if (!el) { el = document.createElement('div'); el.className = 'wf-tip'; el.setAttribute('role', 'tooltip'); document.body.appendChild(el); } return el; };
+  const TT = {
+    html(o) {
+      return (o.title ? `<div class="tt-h">${o.swatch ? `<i style="background:${o.swatch}"></i>` : ''}<span>${esc(o.title)}</span>${o.sub ? `<em>${esc(o.sub)}</em>` : ''}</div>` : '') +
+        (o.rows || []).map((r) => `<div class="tt-r${r.b ? ' b' : ''}">${r.c ? `<i style="background:${r.c}"></i>` : '<i class="n"></i>'}<span class="tt-k">${esc(r.k || '')}</span><b class="tt-v">${esc(r.v)}</b>${r.d ? `<em class="tt-d" style="color:${r.dc || 'var(--mute)'}">${esc(r.d)}</em>` : ''}</div>`).join('') +
+        (o.foot ? `<div class="tt-f">${esc(o.foot)}</div>` : '');
+    },
+    show(spec, e) {
+      if (e && e.target && e.target.closest && e.target.closest('.wf-multi')) return;
+      const t = node(); t.innerHTML = typeof spec === 'string' ? spec : TT.html(spec); t.style.opacity = 1;
+      const pad = 16, r = t.getBoundingClientRect(); let x = e.clientX + pad, y = e.clientY + pad;
+      if (x + r.width > innerWidth - 8) x = e.clientX - r.width - pad; if (y + r.height > innerHeight - 8) y = e.clientY - r.height - pad;
+      t.style.left = Math.max(8, x) + 'px'; t.style.top = Math.max(8, y) + 'px';
+    },
+    hide() { if (el) el.style.opacity = 0; },
+    /* Observable Plot: give each mark `title: (d, i) => 'wfa:' + i`, then arm() swaps those native titles for our tooltip */
+    arm(plot, store, fn, click) {
+      plot.querySelectorAll('title').forEach((t) => { const p = t.parentNode; p.setAttribute('data-wf', t.textContent); t.remove(); });
+      plot.addEventListener('mousemove', (e) => {
+        const n = e.target.closest && e.target.closest('[data-wf]'); if (!n) { TT.hide(); return; }
+        const [k, i] = n.getAttribute('data-wf').slice(2).split(':'), rows = store[k], d = rows && rows[+i];
+        const spec = d && fn(d, k); if (!spec) { TT.hide(); return; } TT.show(spec, e);
+      });
+      plot.addEventListener('mouseleave', TT.hide);
+      if (click) plot.addEventListener('click', (e) => { const n = e.target.closest && e.target.closest('[data-wf]'); if (!n) return; const [k, i] = n.getAttribute('data-wf').slice(2).split(':'), d = store[k] && store[k][+i]; if (d) click(d, k, e); });
+    },
+    /* shared crosshair for a continuous x axis: snaps to the nearest integer, draws a guide and one dot per series */
+    cross(plot, o) {
+      const g = d3.select(plot).append('g').style('pointer-events', 'none').style('display', 'none'), line = g.append('line').attr('y1', o.mt).attr('y2', o.h - o.mb).attr('stroke', 'currentColor').attr('stroke-opacity', .4).attr('stroke-dasharray', '3 3'), dots = g.append('g');
+      const X = (v) => o.ml + (v - o.x0) / (o.x1 - o.x0) * (o.w - o.ml - o.mr);
+      plot.addEventListener('mousemove', (e) => {
+        const r = plot.getBoundingClientRect(), px = e.clientX - r.left;
+        if (px < o.ml - 4 || px > o.w - o.mr + 4) { g.style('display', 'none'); TT.hide(); return; }
+        const raw = o.x0 + (px - o.ml) / (o.w - o.ml - o.mr) * (o.x1 - o.x0), v = o.snap ? o.snap(raw) : Math.max(o.x0, Math.min(o.x1, Math.round(raw))), spec = o.spec(v);
+        g.style('display', null); line.attr('x1', X(v)).attr('x2', X(v));
+        let ys = []; try { ys = o.ys ? o.ys(v) : []; } catch (err) { ys = []; }
+        dots.selectAll('circle').data(ys).join('circle').attr('cx', X(v)).attr('cy', (d) => d.y).attr('r', 4.5).attr('fill', (d) => d.c).attr('stroke', o.bg).attr('stroke-width', 2);
+        TT.show(spec, e);
+      });
+      plot.addEventListener('mouseleave', () => { g.style('display', 'none'); TT.hide(); });
+      if (o.click) { plot.style.cursor = 'pointer'; plot.addEventListener('click', (e) => { const r = plot.getBoundingClientRect(), px = e.clientX - r.left; if (px < o.ml - 4 || px > o.w - o.mr + 4) return; const raw = o.x0 + (px - o.ml) / (o.w - o.ml - o.mr) * (o.x1 - o.x0); o.click(o.snap ? o.snap(raw) : Math.max(o.x0, Math.min(o.x1, Math.round(raw))), e); }); }
+    },
+  };
+  WF.TT = TT;
+})();
+
+/* core2: richer sample data + D3 / Plot chart library built on core.js. */
+(function () {
+  const WF = window.WF, MODES = WF.MODES, SHARE = WF.SHARE, SC = WF.SC;
+  const TRIPS = SCN.TRIPS;
+  const VMT = SCN.VMT;
+  const PURP = ['Work', 'School', 'Shopping', 'Other', 'Non-home'];
+  const PT = [1420, 980, 1310, 2540, 3610];
+  const SEED = [[84, 8, 4.2, 2.6, 1.2, 0], [9, 31, 3, 13, 1, 43], [68, 25.6, 1.6, 4, .8, 0], [66, 25.5, 1.9, 5.3, 1, .3], [69, 23, 2.1, 5, .7, .2]];
+  const INC = ['Under $35k', '$35k to $75k', '$75k to $125k', 'Over $125k'];
+  const HHK = [164, 219, 283, 246];
+  const AUTOS = ['0 cars', '1 car', '2 cars', '3 cars', '4+ cars'];
+  const AUTO_SEED = [[27, 46, 21, 5, 1], [7, 36, 41, 12, 4], [2, 21, 50, 19, 8], [1, 12, 43, 28, 16]];
+  const MODE_INC = [[48, 24, 7, 12, 1.2, 7.8], [60, 23, 3.5, 8, 1.1, 4.4], [68, 21, 2.4, 5.5, 1, 2.1], [72, 21, 1.5, 3.5, .9, 1.1]];
+  const INCSH = [.14, .23, .33, .30];
+  const BAND = ['Under 2 mi', '2 to 8 mi', 'Over 8 mi'];
+  const BANDSH = [[.18, .47, .35], [.22, .46, .32], [.04, .46, .5], [.9, .1, 0], [.5, .5, 0], [.1, .72, .18]];
+  const DIST = ['Weber', 'Davis', 'Salt Lake', 'Utah', 'Tooele'];
+  const FLOW = [[820, 120, 25, 4, .5], [118, 790, 90, 6, .7], [22, 95, 3100, 160, 22], [3, 5, 150, 1500, 3], [.4, .6, 20, 2, 140]];
+  const CAL_SHORT = ['Auto ownership', 'Activity pattern', 'Work location', 'School location', 'Tour mode', 'Tour timing', 'Stop frequency', 'Trip mode'];
+  const COUNTY = ['Salt Lake', 'Utah', 'Davis', 'Weber', 'Tooele', 'External'];
+  const COUNTY_V = [26.8, 15.1, 8.0, 6.9, 2.3, 2.3];
+  const FAC = ['Freeway', 'Arterial', 'Collector', 'Local'];
+  const FAC_SH = [[.44, .37, .12, .07], [.38, .38, .15, .09], [.46, .36, .12, .06], [.35, .4, .16, .09], [.5, .3, .12, .08], [.7, .22, .06, .02]];
+  const LINES = ['Blue Line (rail)', 'Red Line (rail)', 'Green Line (rail)', 'FrontRunner', 'Route 200 (bus)', 'Route 2 (bus)'];
+  const BOARD = SCN.BOARD;
+  const FWY = ['Freeway', 'Arterial', 'Collector', 'Local'];
+
+  const hex = (c) => d3.color(c).formatHex();
+  const mix = (a, b, t) => hex(d3.interpolateRgb(a, b)(t));
+  const onC = (c) => (d3.hcl(c).l > 62 ? '#0c1118' : '#ffffff');
+  const fmtK = (v) => (v >= 1000 ? (v / 1000).toFixed(2) + 'M' : Math.round(v) + 'k');
+  const f1 = (v) => v.toFixed(1);
+
+  function K() {
+    const t = WF.tok(), pal = WF.palette(), P = pal[0], S = pal[1], T = pal[2];
+    const mode = { 'Drive alone': mix(t.surface, t.ink, .34), 'Shared ride': mix(t.surface, t.ink, .58), Transit: P, Walk: S, Bike: T, 'School bus': mix(S, T, .5) };
+    const base3 = [P, S, T], cat = (i) => (i < 3 ? base3[i] : mix(base3[i - 3], base3[(i - 2) % 3], .5));
+    const dk = WF.isDark(), ramp = (col, n, lo) => d3.range(n).map((i) => mix(mix(col, t.surface, dk ? .5 : (lo == null ? .72 : lo)), col, i / (n - 1)));
+    return { t, P, S, T, mode, cat, ramp, neutral: (i) => mix(t.surface, t.ink, .2 + .08 * i) };
+  }
+
+  /* data */
+  function ipf(rows, cols, seed) {
+    let m = seed.map((r) => r.slice());
+    for (let it = 0; it < 80; it++) {
+      m = m.map((r, i) => { const s = d3.sum(r); return r.map((v) => (s ? v * rows[i] / s : 0)); });
+      for (let j = 0; j < cols.length; j++) { const s = d3.sum(m, (r) => r[j]); m.forEach((r) => (r[j] = s ? r[j] * cols[j] / s : 0)); }
+    }
+    return m;
+  }
+  const pmCache = {};
+  const PM = (sc) => pmCache[sc] || (pmCache[sc] = (() => { const tot = TRIPS[sc] * 1000; return ipf(PT.map((v) => v * tot / 9860), SHARE[sc].map((s) => s / 100 * tot), SEED); })());
+  const modeTrips = (sc) => MODES.map((m, j) => d3.sum(PM(sc), (r) => r[j]));
+  const A0F = SCN.A0F;
+  const autoRow = (sc, i) => { const r = AUTO_SEED[i].slice(); r[0] *= A0F[sc]; const s = d3.sum(r); return r.map((v) => v / s * 100); };
+  const autoAll = (sc) => AUTOS.map((a, j) => d3.sum(INC, (_, i) => HHK[i] * autoRow(sc, i)[j]) / d3.sum(HHK));
+  const modeInc = (sc) => MODE_INC.map((row) => { const r = row.map((v, j) => v * SHARE[sc][j] / SHARE.Baseline[j]); const s = d3.sum(r); return r.map((v) => v / s * 100); });
+  const g = (h, m, s) => Math.exp(-0.5 * ((h - m) / s) ** 2);
+  const PUR_TOD = { Work: [[7.2, 1.1, 1], [16.6, 1.5, .85], [12, 2, .18]], School: [[7.6, .7, 1], [14.8, .9, .8], [16, 2, .12]], Shopping: [[10.8, 2, .8], [17.2, 2.2, 1], [13.5, 2, .5]], Other: [[8.3, 1.4, .5], [12.5, 2.5, .6], [17.8, 2.6, 1]], 'Non-home': [[7.8, 1.3, .7], [12.2, 2.2, .85], [16.9, 1.8, 1]] };
+  const purTod = (p, h) => d3.sum(PUR_TOD[p], ([m, s, a]) => a * g(h, m, s)) + .02;
+  const modeW = {
+    'Drive alone': (h) => 1, 'Shared ride': (h) => 1 + .25 * g(h, 12.5, 3) + .2 * g(h, 19, 2),
+    Transit: (h) => .55 + 1.4 * g(h, 7.5, 1.2) + 1.6 * g(h, 17, 1.4), Walk: (h) => .7 + .9 * g(h, 12, 2.2) + .7 * g(h, 15, 1.5),
+    Bike: (h) => .5 + .9 * g(h, 16.5, 2) + .5 * g(h, 8, 1.5), 'School bus': (h) => g(h, 7.7, .7) + g(h, 14.8, .8) + .001,
+  };
+  function modeHour(sc) {
+    const td = WF.tod(sc), mt = modeTrips(sc), out = [];
+    MODES.forEach((m, j) => { const raw = td.map((d) => d.share * modeW[m](d.hour)); const k = mt[j] / d3.sum(raw); raw.forEach((v, h) => out.push({ mode: m, hour: h, v: v * k })); });
+    return out;
+  }
+  const lg = (z) => { const c = [76.18009172947146, -86.50532032941677, 24.01409824083091, -1.231739572450155, .001208650973866179, -5.395239384953e-6]; let y = z, x = z, tmp = x + 5.5; tmp -= (x + .5) * Math.log(tmp); let s = 1.000000000190015; for (let j = 0; j < 6; j++) s += c[j] / ++y; return -tmp + Math.log(2.5066282746310005 * s / x); };
+  const gam = (x, k, th) => (x <= 0 ? 0 : Math.exp((k - 1) * Math.log(x) - x / th - lg(k) - k * Math.log(th)));
+  const TL = { Work: [2.6, 4.4], School: [2.2, 2.2], Shopping: [1.9, 2.6], Other: [1.8, 3.6], 'Non-home': [1.7, 3.8] };
+  const TLadj = SCN.TL;
+  const AGES = ['0-4', '5-9', '10-14', '15-19', '20-24', '25-29', '30-34', '35-39', '40-44', '45-49', '50-54', '55-59', '60-64', '65-69', '70-74', '75-79', '80+'];
+  const AGEW = [8.2, 8.4, 8.3, 8.0, 8.6, 9.0, 8.7, 8.0, 7.0, 6.1, 5.4, 4.8, 4.2, 3.4, 2.5, 1.7, 1.5];
+  const pyr = () => { const tot = d3.sum(AGEW), P = 2731; const rnd = (() => { let s = 5; return () => { s = (s * 16807) % 2147483647; return s / 2147483647; }; })(); return AGES.map((a, i) => { const t = AGEW[i] / tot * P, mShare = i > 12 ? .5 - (i - 12) * .018 : .506; const o = { m: t * mShare, f: t * (1 - mShare) }; return { age: a, om: o.m, of: o.f, mm: o.m * (1 + (rnd() - .5) * .07), mf: o.f * (1 + (rnd() - .5) * .07) }; }); };
+  const speed = (sc, fac, h) => { const base = [62, 33, 28, 22][fac], dip = [.34, .22, .15, .08][fac]; const adj = SCN.SPEED[sc]; return base * adj * (1 - dip * (g(h, 7.7, 1.4) * .85 + g(h, 17, 1.8))); };
+
+  const D = { clearCache: () => { Object.keys(pmCache).forEach((k) => delete pmCache[k]); }, INCSH, modeHour, purTod, PUR_TOD, TLadj, TRIPS, VMT, PURP, PT, PM, modeTrips, INC, HHK, AUTOS, autoRow, autoAll, modeInc, DIST, FLOW, LINES, BOARD, COUNTY, FAC, COUNTY_V, FAC_SH, ipf };
+  WF.D = D; WF.K = K;
+
+  /* helpers */
+  function svgRoot(el, w, h) { el.innerHTML = ''; return d3.select(el).append('svg').attr('width', w).attr('height', h).style('display', 'block').style('overflow', 'visible').style('font-family', WF.tok().font).style('font-size', '12px'); }
+  const tipper = () => ({ show(h, e) { WF.TT.show(h, e); }, hide() { WF.TT.hide(); } });
+  WF.hi = (mode) => { document.querySelectorAll('[data-m]').forEach((e) => { e.style.opacity = !mode || e.dataset.m === mode ? '' : '.2'; e.style.transition = 'opacity .15s'; }); };
+  const parseLine = (x) => { if (typeof x !== 'string') return x; const i = x.lastIndexOf(': '); return i > 0 ? { k: x.slice(0, i), v: x.slice(i + 2) } : { k: '', v: x }; };
+  const tipRow = (title, lines, extra) => WF.TT.html(Object.assign({ title, rows: lines.map(parseLine) }, extra || {}));
+
+  /* hierarchy specs */
+  const specs = {
+    trips: (c) => {
+      const k = K(), t = WF.tok(), g = c.group || 'pm', m = PM(c.focus);
+      if (g === 'mp') return { groups: MODES.map((mo, j) => ({ name: mo, idx: j, children: PURP.map((p, i) => ({ name: p, v: m[i][j] })).filter((d) => d.v > 1) })), leaf: (n) => k.cat(PURP.indexOf(n)), fmt: fmtK, unit: 'daily trips', isMode: false, ofLabel: 'trips' };
+      if (g === 'im') { const mi = modeInc(c.focus); return { groups: INC.map((n, i) => ({ name: n, idx: i, children: MODES.map((mo, j) => ({ name: mo, v: TRIPS[c.focus] * 1000 * INCSH[i] * mi[i][j] / 100 })).filter((d) => d.v > 1) })), leaf: (n) => k.mode[n], fmt: fmtK, unit: 'daily trips', isMode: true, ofLabel: 'trips' }; }
+      const base = { groups: PURP.map((p, i) => ({ name: p, idx: i, children: MODES.map((mo, j) => ({ name: mo, v: m[i][j] })).filter((d) => d.v > 1) })), leaf: (n) => k.mode[n], fmt: fmtK, unit: 'daily trips', isMode: true, ofLabel: 'trips' };
+      if (c.diff && c.diff !== 'val' && c.ref && c.ref !== c.focus) {
+        const ref = PM(c.ref), pal = WF.palette(), mid = mix(t.surface, t.ink, .16), chg = (p, n, v) => { const r = ref[PURP.indexOf(p)][MODES.indexOf(n)]; return r ? v / r - 1 : 0; };
+        base.leaf = (n, p, v) => { const x = Math.max(-1, Math.min(1, chg(p, n, v) / .25)); return x < 0 ? mix(mid, pal[1], -x) : mix(mid, pal[0], x); };
+        base.delta = (p, n, v) => { const x = chg(p, n, v) * 100; return (x > 0 ? '+' : x < 0 ? '−' : '') + Math.abs(x).toFixed(1) + '%'; };
+        base.isMode = false;
+      }
+      return base;
+    },
+    hh: (c) => { const k = K(), cols = k.ramp(k.S, 5, .8); return { groups: INC.map((n, i) => ({ name: n, idx: i, children: AUTOS.map((a, j) => ({ name: a, v: HHK[i] * autoRow(c.focus, i)[j] / 100 })).filter((d) => d.v > .5) })), leaf: (n) => cols[AUTOS.indexOf(n)], fmt: (v) => Math.round(v) + 'k', unit: 'households', ofLabel: 'households' }; },
+    vmt: (c) => { const k = K(), sc = VMT[c.focus] / 61.4; return { groups: COUNTY.map((n, i) => ({ name: n, idx: i, children: FAC.map((f, j) => ({ name: f, v: COUNTY_V[i] * FAC_SH[i][j] * sc })) })), leaf: (n) => k.ramp(k.P, 4, .75)[FAC.indexOf(n)], fmt: (v) => v.toFixed(1) + 'M', unit: 'million vehicle miles', ofLabel: 'miles' }; },
+  };
+
+  function treemap(el, c, w, h, kind) {
+    const sp = specs[kind](c), t = WF.tok();
+    const root = d3.hierarchy({ name: 'all', children: sp.groups }).sum((d) => d.v || 0).sort((a, b) => b.value - a.value);
+    d3.treemap().size([w, h]).paddingInner(3).paddingTop((d) => (d.depth === 1 ? 22 : 0)).round(true)(root);
+    const svg = svgRoot(el, w, h), tp = tipper(el);
+    const grp = svg.selectAll('g.p').data(root.children).join('g');
+    grp.append('text').attr('x', (d) => d.x0 + 1).attr('y', (d) => d.y0 + 14).attr('fill', t.ink).attr('font-weight', 600).style('pointer-events', 'none')
+      .text((d) => ((d.x1 - d.x0) < 46 ? '' : d.data.name)).append('tspan').attr('fill', t.mute).attr('font-weight', 400).text((d) => ((d.x1 - d.x0) < 110 ? '' : '  ' + sp.fmt(d.value)));
+    const leaf = svg.selectAll('g.l').data(root.leaves()).join('g').attr('transform', (d) => `translate(${d.x0},${d.y0})`).attr('data-key', (d) => d.parent.data.name + '|' + d.data.name).attr('data-title', (d) => d.parent.data.name + ' · ' + d.data.name).attr('data-val', (d) => sp.fmt(d.value)).attr('data-num', (d) => d.value).attr('data-rel', '1').style('cursor', 'default');
+    if (sp.isMode) leaf.attr('data-m', (d) => d.data.name);
+    leaf.append('rect').attr('width', (d) => Math.max(0, d.x1 - d.x0)).attr('height', (d) => Math.max(0, d.y1 - d.y0)).attr('rx', 6).attr('fill', (d) => sp.leaf(d.data.name, d.parent.data.name, d.value));
+    leaf.filter((d) => d.x1 - d.x0 > 66 && d.y1 - d.y0 > 40).append('text').attr('x', 9).attr('y', 20).attr('fill', (d) => onC(sp.leaf(d.data.name, d.parent.data.name, d.value))).attr('font-weight', 600).style('pointer-events', 'none').text((d) => d.data.name)
+      .append('tspan').attr('x', 9).attr('dy', 16).attr('font-weight', 400).attr('opacity', .85).text((d) => sp.fmt(d.value) + (sp.delta ? '  ' + sp.delta(d.parent.data.name, d.data.name, d.value) : ''));
+    leaf.on('mousemove', (e, d) => { tp.show(tipRow(`${d.parent.data.name} · ${d.data.name}`, [{ k: 'Total', v: `${sp.fmt(d.value)} ${sp.ofLabel}`, b: true, c: sp.leaf(d.data.name, d.parent.data.name, d.value) }, `Share of ${d.parent.data.name.toLowerCase()}: ${f1(d.value / d.parent.value * 100)}%`].concat(sp.delta ? [`Change vs reference: ${sp.delta(d.parent.data.name, d.data.name, d.value)}`] : [])), e); if (sp.isMode) WF.hi(d.data.name); })
+      .on('mouseleave', () => { tp.hide(); if (sp.isMode) WF.hi(null); });
+  }
+
+  function sunburst(el, c, w, h, kind) {
+    const sp = specs[kind](Object.assign(Object.create(c), { diff: 'val' })), t = WF.tok(); let scope = null;
+    const svg = svgRoot(el, w, h), tp = tipper(el), R = Math.min(w, h) / 2 - 6;
+    const gg = svg.append('g').attr('transform', `translate(${w / 2},${h / 2})`);
+    function draw() {
+      gg.selectAll('*').remove();
+      const kids = scope == null ? sp.groups : sp.groups.find((x) => x.name === scope).children;
+      const root = d3.hierarchy({ name: 'all', children: kids }).sum((d) => d.v || 0);
+      d3.partition().size([2 * Math.PI, 1])(root);
+      const r0 = R * .34, n = scope == null ? 2 : 1, ring = (R - r0) / n;
+      const arc = d3.arc().startAngle((d) => d.x0).endAngle((d) => d.x1).padAngle(.012).padRadius(R / 2).cornerRadius(4).innerRadius((d) => r0 + (d.depth - 1) * ring + (d.depth > 1 ? 2 : 0)).outerRadius((d) => r0 + d.depth * ring - 2);
+      const nodes = root.descendants().filter((d) => d.depth > 0);
+      const fill = (d) => (d.children ? K().neutral(d.data.idx || 0) : sp.leaf(d.data.name, scope || (d.parent && d.parent.data.name), d.value));
+      const p = gg.selectAll('path').data(nodes).join('path').attr('d', arc).attr('fill', fill).attr('data-key', (d) => (d.children ? 'grp|' : (scope || (d.parent && d.parent.data.name)) + '|') + d.data.name).attr('data-title', (d) => (d.children ? d.data.name : (scope || (d.parent && d.parent.data.name)) + ' · ' + d.data.name)).attr('data-val', (d) => sp.fmt(d.value)).attr('data-num', (d) => d.value).attr('data-rel', '1').style('cursor', (d) => (d.children ? 'zoom-in' : 'default'));
+      if (sp.isMode) p.attr('data-m', (d) => (d.children ? null : d.data.name));
+      p.on('click', (e, d) => { if (d.children) { scope = d.data.name; tp.hide(); draw(); } })
+        .on('mousemove', (e, d) => { tp.show(tipRow(d.children ? d.data.name : `${d.parent.data.name === 'all' ? scope : d.parent.data.name} · ${d.data.name}`, [`Total: ${sp.fmt(d.value)} ${sp.ofLabel}`, d.children ? { k: '', v: 'Click to zoom in' } : `Share of ${(d.parent.data.name === 'all' ? scope : d.parent.data.name).toLowerCase()}: ${f1(d.value / (d.parent.value || 1) * 100)}%`]), e); if (sp.isMode && !d.children) WF.hi(d.data.name); })
+        .on('mouseleave', () => { tp.hide(); if (sp.isMode) WF.hi(null); });
+      gg.selectAll('text.a').data(nodes.filter((d) => d.children && d.x1 - d.x0 > .32)).join('text').attr('class', 'a').style('pointer-events', 'none').attr('text-anchor', 'middle').attr('dy', '.35em').attr('fill', t.ink).attr('font-weight', 600)
+        .attr('transform', (d) => { const a = (d.x0 + d.x1) / 2 * 180 / Math.PI - 90, r = r0 + ring * .5; return `rotate(${a}) translate(${r},0) rotate(${a > 90 ? 180 : 0})`; }).text((d) => d.data.name);
+      const cg = gg.append('g').style('cursor', scope ? 'pointer' : 'default').on('click', () => { if (scope) { scope = null; draw(); } });
+      cg.append('circle').attr('r', r0 - 6).attr('fill', 'transparent');
+      cg.append('text').attr('text-anchor', 'middle').attr('y', -2).attr('font-size', Math.max(16, R * .16)).attr('font-weight', 600).attr('fill', t.ink).text(sp.fmt(root.value));
+      cg.append('text').attr('text-anchor', 'middle').attr('y', 16).attr('fill', t.mute).attr('font-size', 11.5).text(scope ? scope + ' · tap to go back' : sp.unit);
+    }
+    draw();
+  }
+
+  function sankey(el, c, w, h) {
+    const t = WF.tok(), k = K(), m = PM(c.focus), mt = modeTrips(c.focus);
+    if (!d3.sankey) { el.textContent = 'Sankey library unavailable'; return; }
+    const nodes = [...PURP.map((p) => ({ id: 'p:' + p, name: p })), ...MODES.map((x) => ({ id: 'm:' + x, name: x, mode: x })), ...BAND.map((b) => ({ id: 'b:' + b, name: b }))];
+    const links = [];
+    PURP.forEach((p, i) => MODES.forEach((x, j) => { if (m[i][j] > 5) links.push({ source: 'p:' + p, target: 'm:' + x, value: m[i][j], mode: x }); }));
+    MODES.forEach((x, j) => BAND.forEach((b, q) => { const v = mt[j] * BANDSH[j][q]; if (v > 5) links.push({ source: 'm:' + x, target: 'b:' + b, value: v, mode: x }); }));
+    const sk = d3.sankey().nodeId((d) => d.id).nodeWidth(12).nodePadding(10).nodeSort(null).extent([[2, 6], [w - 2, h - 6]]);
+    const gr = sk({ nodes: nodes.map((d) => ({ ...d })), links: links.map((d) => ({ ...d })) });
+    const svg = svgRoot(el, w, h), tp = tipper(el);
+    const lk = svg.append('g').attr('fill', 'none').selectAll('path').data(gr.links).join('path').attr('data-m', (d) => d.mode).attr('d', d3.sankeyLinkHorizontal()).attr('stroke', (d) => k.mode[d.mode]).attr('stroke-width', (d) => Math.max(1, d.width)).attr('stroke-opacity', .4);
+    lk.on('mousemove', (e, d) => { tp.show(tipRow(`${d.source.name} → ${d.target.name}`, [`Daily trips: ${fmtK(d.value)}`, `Share of mode: ${f1(d.value / d.source.value * 100)}%`.replace(/^/, '')]), e); WF.hi(d.mode); lk.attr('stroke-opacity', (x) => (x === d ? .75 : .4)); }).on('mouseleave', () => { tp.hide(); WF.hi(null); lk.attr('stroke-opacity', .4); });
+    const nd = svg.append('g').selectAll('g').data(gr.nodes).join('g');
+    nd.append('rect').attr('x', (d) => d.x0).attr('y', (d) => d.y0).attr('width', (d) => d.x1 - d.x0).attr('height', (d) => Math.max(1, d.y1 - d.y0)).attr('rx', 3).attr('fill', (d) => (d.mode ? k.mode[d.mode] : mix(t.surface, t.ink, .5))).attr('data-m', (d) => d.mode || null);
+    nd.append('text').attr('x', (d) => (d.depth === 2 ? d.x0 - 7 : d.x1 + 7)).attr('y', (d) => (d.y0 + d.y1) / 2).attr('dy', '.35em').attr('text-anchor', (d) => (d.depth === 2 ? 'end' : 'start')).attr('fill', t.ink).attr('stroke', t.surface).attr('stroke-width', 3).attr('paint-order', 'stroke').attr('font-weight', 500).style('pointer-events', 'none').text((d) => (d.y1 - d.y0 < 9 ? '' : d.name));
+    nd.on('mouseenter', (e, d) => d.mode && WF.hi(d.mode)).on('mouseleave', () => WF.hi(null));
+  }
+
+  function donut(el, c, w, h) {
+    const t = WF.tok(), k = K(), sc = c.focus, vals = SHARE[sc];
+    const svg = svgRoot(el, w, h), tp = tipper(el), size = Math.min(h, w * (w > 420 ? .5 : 1)), R = size / 2 - 4, cx = w > 420 ? size / 2 + 4 : w / 2, cy = h / 2;
+    const gg = svg.append('g').attr('transform', `translate(${cx},${cy})`);
+    const pie = d3.pie().sort(null).value((d) => d)(vals);
+    const arc = d3.arc().innerRadius(R * .64).outerRadius(R).padAngle(.012).cornerRadius(5);
+    const big = gg.append('text').attr('text-anchor', 'middle').attr('y', 2).attr('font-size', R * .3).attr('font-weight', 600).attr('fill', t.ink).text(TRIPS[sc].toFixed(2) + 'M');
+    const sub = gg.append('text').attr('text-anchor', 'middle').attr('y', R * .22 + 6).attr('fill', t.mute).text('daily trips');
+    gg.selectAll('path').data(pie).join('path').attr('d', arc).attr('fill', (d, i) => k.mode[MODES[i]]).attr('data-m', (d, i) => MODES[i])
+      .on('mouseenter', (e, d) => { const i = d.index; WF.hi(MODES[i]); big.text(f1(vals[i]) + '%'); sub.text(MODES[i]); }).on('mouseleave', () => { WF.hi(null); big.text(TRIPS[sc].toFixed(2) + 'M'); sub.text('daily trips'); });
+    if (w > 420) {
+      const x0 = size + 40, rowH = Math.min(34, (h - 12) / 6);
+      const order = d3.range(6).sort((a, b) => vals[b] - vals[a]);
+      const L = svg.append('g').attr('transform', `translate(${x0},${(h - rowH * 6) / 2})`);
+      order.forEach((i, r) => { const row = L.append('g').attr('transform', `translate(0,${r * rowH})`).attr('data-m', MODES[i]).style('cursor', 'default');
+        row.append('circle').attr('cx', 6).attr('cy', rowH / 2).attr('r', 6).attr('fill', k.mode[MODES[i]]);
+        row.append('text').attr('x', 20).attr('y', rowH / 2).attr('dy', '.35em').attr('fill', t.ink).text(MODES[i]);
+        row.append('text').attr('x', w - x0 - 62).attr('y', rowH / 2).attr('dy', '.35em').attr('text-anchor', 'end').attr('fill', t.ink).attr('font-weight', 600).text(f1(vals[i]) + '%');
+        const gap = vals[i] - SHARE.Observed[i];
+        row.append('text').attr('x', w - x0 - 4).attr('y', rowH / 2).attr('dy', '.35em').attr('text-anchor', 'end').attr('fill', Math.abs(gap) <= 1 ? t.ok : Math.abs(gap) <= 2.5 ? t.warn : t.fail).text((gap > 0 ? '+' : '−') + Math.abs(gap).toFixed(1));
+        row.on('mouseenter', () => WF.hi(MODES[i])).on('mouseleave', () => WF.hi(null)); });
+      L.append('text').attr('x', w - x0 - 4).attr('y', -6).attr('text-anchor', 'end').attr('fill', t.mute).attr('font-size', 11).text('vs observed, pts');
+    }
+  }
+
+  function stacked(el, c, w, h, spec) {
+    const t = WF.tok(), svg = svgRoot(el, w, h), tp = tipper(el), ml = spec.ml || 100, n = spec.rows.length, step = (h - 6) / n, bh = Math.min(38, step * .66);
+    const x = d3.scaleLinear([0, 100], [ml, w - 6]);
+    [25, 50, 75].forEach((v) => svg.append('line').attr('x1', x(v)).attr('x2', x(v)).attr('y1', 0).attr('y2', h - 4).attr('stroke', t.grid));
+    spec.rows.forEach((r, i) => {
+      const yc = 3 + step * i + step / 2, tot = d3.sum(r.vals); let acc = 0;
+      svg.append('text').attr('x', ml - 12).attr('y', yc).attr('dy', '.35em').attr('text-anchor', 'end').attr('fill', t.ink).text(r.label);
+      r.vals.forEach((v, j) => { const pc = v / tot * 100, x0 = x(acc), x1 = x(acc + pc); acc += pc; if (pc < .4) return;
+        const gg = svg.append('g').attr('data-m', spec.isMode ? spec.keys[j] : null).attr('data-key', r.label + '|' + spec.keys[j]).attr('data-title', r.label + ' · ' + spec.keys[j]).attr('data-val', f1(pc) + '%').attr('data-num', pc).attr('data-unit', ' pts');
+        gg.append('rect').attr('x', x0).attr('y', yc - bh / 2).attr('width', Math.max(0, x1 - x0 - 2)).attr('height', bh).attr('rx', 5).attr('fill', spec.colors[j]);
+        if (x1 - x0 > 38) gg.append('text').attr('x', (x0 + x1) / 2 - 1).attr('y', yc).attr('dy', '.35em').attr('text-anchor', 'middle').attr('fill', onC(spec.colors[j])).attr('font-weight', 500).style('pointer-events', 'none').text(pc >= 10 ? Math.round(pc) + '%' : f1(pc) + '%');
+        gg.on('mousemove', (e) => { tp.show(tipRow(`${r.label} · ${spec.keys[j]}`, [{ k: 'Share', v: f1(pc) + '%', b: true, c: spec.colors[j] }, `Of: ${spec.of || 'trips'}`]), e); if (spec.isMode) WF.hi(spec.keys[j]); }).on('mouseleave', () => { tp.hide(); if (spec.isMode) WF.hi(null); }); });
+    });
+  }
+  const stackedTrips = (el, c, w, h) => { const k = K(), m = PM(c.focus); stacked(el, c, w, h, { rows: PURP.map((p, i) => ({ label: p, vals: m[i] })), keys: MODES, colors: MODES.map((x) => k.mode[x]), isMode: true, ml: 86, of: 'purpose trips' }); };
+  const stackedInc = (el, c, w, h) => { const k = K(), m = modeInc(c.focus); stacked(el, c, w, h, { rows: INC.map((n, i) => ({ label: n, vals: m[i] })), keys: MODES, colors: MODES.map((x) => k.mode[x]), isMode: true, ml: 104, of: 'income-group trips' }); };
+  const stackedAuto = (el, c, w, h) => { const k = K(), cols = k.ramp(k.S, 5, .8); stacked(el, c, w, h, { rows: INC.map((n, i) => ({ label: n, vals: autoRow(c.focus, i) })), keys: AUTOS, colors: cols, ml: 104, of: 'households' }); };
+
+  function radar(el, c, w, h) {
+    const t = WF.tok(), k = K(), n = WF.CAL.length, list = SC.filter((s) => c.active.has(s)).slice(0, 6), ids = list.length ? list : [c.focus];
+    const E = ids.map((s) => SCN.CALR(s)), max = Math.max(6.5, Math.ceil(d3.max(E.flat()) / 2) * 2 + 1), R = Math.min(w, h) / 2 - 56, cx = w / 2, cy = h / 2 + 4;
+    const svg = svgRoot(el, w, h), tp = tipper(el), ang = (i) => -Math.PI / 2 + i * 2 * Math.PI / n, r = d3.scaleLinear([0, max], [0, R]);
+    const pt = (i, v) => [cx + Math.cos(ang(i)) * r(v), cy + Math.sin(ang(i)) * r(v)], rings = [1, 2, 3].map((q) => Math.round(max * q / 3));
+    rings.forEach((v) => svg.append('polygon').attr('points', d3.range(n).map((i) => pt(i, v)).join(' ')).attr('fill', 'none').attr('stroke', t.grid));
+    svg.append('polygon').attr('points', d3.range(n).map((i) => pt(i, 3)).join(' ')).attr('fill', t.ok).attr('fill-opacity', .08).attr('stroke', t.ok).attr('stroke-dasharray', '4 3').attr('stroke-opacity', .8);
+    d3.range(n).forEach((i) => svg.append('line').attr('x1', cx).attr('y1', cy).attr('x2', pt(i, max)[0]).attr('y2', pt(i, max)[1]).attr('stroke', t.grid));
+    const cols = ids.map((s) => (ids.length > 1 ? WF.scColor(s) : k.P));
+    ids.forEach((s, si) => { svg.append('polygon').attr('points', E[si].map((e, i) => pt(i, e)).join(' ')).attr('fill', cols[si]).attr('fill-opacity', ids.length > 1 ? .12 : .22).attr('stroke', cols[si]).attr('stroke-width', 2).attr('stroke-linejoin', 'round');
+      E[si].forEach((e, i) => { const [px, py] = pt(i, e), st = WF.status(e); svg.append('circle').attr('cx', px).attr('cy', py).attr('r', ids.length > 1 ? 4 : 5).attr('fill', ids.length > 1 ? cols[si] : st === 'ok' ? t.ok : st === 'warn' ? t.warn : t.fail).attr('stroke', t.surface).attr('stroke-width', 2).style('pointer-events', 'none'); }); });
+    WF.CAL.forEach((d, i) => { const [lx, ly] = pt(i, max + 1.15), a = Math.cos(ang(i)), st0 = WF.status(E[0][i]), col0 = st0 === 'ok' ? t.mute : st0 === 'warn' ? t.warn : t.fail;
+      svg.append('text').attr('x', lx).attr('y', ly).attr('dy', '.35em').attr('text-anchor', Math.abs(a) < .2 ? 'middle' : a > 0 ? 'start' : 'end').attr('fill', col0).attr('font-weight', st0 === 'ok' ? 400 : 600).style('pointer-events', 'none').text(CAL_SHORT[i]);
+      svg.append('line').attr('x1', cx).attr('y1', cy).attr('x2', pt(i, max)[0]).attr('y2', pt(i, max)[1]).attr('stroke', 'transparent').attr('stroke-width', 26).style('cursor', 'default')
+        .on('mousemove', (e) => tp.show(tipRow(d[0], ids.map((s, si) => ({ k: ids.length > 1 ? WF.L(s) : 'Worst-segment error', v: f1(E[si][i]) + '%', c: ids.length > 1 ? cols[si] : null, b: si === 0, d: WF.status(E[si][i]) === 'ok' ? 'within 3%' : WF.STATUS_LABEL[WF.status(E[si][i])].toLowerCase(), dc: WF.status(E[si][i]) === 'ok' ? 'var(--ok)' : WF.status(E[si][i]) === 'warn' ? 'var(--warn)' : 'var(--fail)' })), { sub: d[1] }), e)).on('mouseleave', tp.hide); });
+    rings.forEach((v) => { const a0 = ang(0) + Math.PI / n, px = cx + Math.cos(a0) * r(v), py = cy + Math.sin(a0) * r(v); svg.append('text').attr('x', px + 3).attr('y', py - 2).attr('fill', t.mute).attr('font-size', 10.5).style('pointer-events', 'none').text(v + '%'); });
+  }
+
+  function chord(el, c, w, h) {
+    const t = WF.tok(), k = K(), svg = svgRoot(el, w, h), tp = tipper(el), R = Math.min(w, h) / 2 - 58;
+    const sc = c.focus, f = FLOW.map((r, i) => r.map((v, j) => (i === j ? 0 : v * SCN.FLOWT[sc])));
+    const ch = d3.chord().padAngle(.05).sortSubgroups(d3.descending)(f), cols = DIST.map((_, i) => k.cat(i));
+    const gg = svg.append('g').attr('transform', `translate(${w / 2},${h / 2})`);
+    const rib = gg.append('g').selectAll('path').data(ch).join('path').attr('d', d3.ribbon().radius(R - 3)).attr('fill', (d) => cols[d.source.index]).attr('fill-opacity', .55).attr('stroke', t.surface).attr('stroke-width', .6);
+    const arcs = gg.append('g').selectAll('g').data(ch.groups).join('g');
+    arcs.append('path').attr('d', d3.arc().innerRadius(R).outerRadius(R + 10).cornerRadius(3)).attr('fill', (d) => cols[d.index]);
+    arcs.append('text').each((d) => (d.angle = (d.startAngle + d.endAngle) / 2)).attr('dy', '.35em').attr('transform', (d) => `rotate(${d.angle * 180 / Math.PI - 90}) translate(${R + 20}) ${d.angle > Math.PI ? 'rotate(180)' : ''}`).attr('text-anchor', (d) => (d.angle > Math.PI ? 'end' : null)).attr('fill', t.ink).attr('font-weight', 500).text((d) => DIST[d.index]);
+    const hl = (i) => rib.attr('fill-opacity', (d) => (i == null || d.source.index === i || d.target.index === i ? (i == null ? .55 : .8) : .08));
+    arcs.on('mouseenter', (e, d) => hl(d.index)).on('mouseleave', () => hl(null));
+    rib.on('mousemove', (e, d) => { tp.show(tipRow(`${DIST[d.source.index]} → ${DIST[d.target.index]}`, [{ k: 'Daily trips', v: fmtK(f[d.source.index][d.target.index]), b: true, c: cols[d.source.index] }, `In return: ${fmtK(f[d.target.index][d.source.index])}`]), e); }).on('mouseleave', tp.hide);
+  }
+
+  function ridge(el, c, w, h) {
+    const t = WF.tok(), k = K(), svg = svgRoot(el, w, h), ml = 82, mb = 22, n = PURP.length, rowH = (h - mb - 6) / n, xs = d3.scaleLinear([0, 30], [ml, w - 10]);
+    const pts = d3.range(0, 30.01, .5), adj = TLadj[c.focus], labels = [];
+    svg.append('g').selectAll('line').data(d3.range(0, 31, 5)).join('line').attr('x1', xs).attr('x2', xs).attr('y1', 0).attr('y2', h - mb).attr('stroke', t.grid);
+    svg.append('g').selectAll('text').data(d3.range(0, 31, 5)).join('text').attr('x', xs).attr('y', h - 5).attr('text-anchor', 'middle').attr('fill', t.mute).text((d) => d + (d === 30 ? ' mi' : ''));
+    PURP.forEach((p, i) => { const [kk, th] = TL[p], base = 6 + rowH * (i + 1) - 2, mod = pts.map((x) => gam(x, kk, th * adj)), obs = pts.map((x) => gam(x, kk, th));
+      const ymax = d3.max(PURP.map((q) => d3.max(pts, (x) => gam(x, TL[q][0], TL[q][1])))), ys = d3.scaleLinear([0, ymax], [0, rowH * 1.75]);
+      const a = d3.area().x((d, j) => xs(pts[j])).y0(base).y1((d) => base - ys(d)).curve(d3.curveBasis), l = d3.line().x((d, j) => xs(pts[j])).y((d) => base - ys(d)).curve(d3.curveBasis);
+      svg.append('path').attr('d', a(mod)).attr('fill', mix(k.P, t.surface, .12 + .05 * i)).attr('fill-opacity', .92).attr('stroke', t.surface).attr('stroke-width', 1.5);
+      svg.append('path').attr('d', l(obs)).attr('fill', 'none').attr('stroke', t.ink).attr('stroke-dasharray', '3 3').attr('stroke-width', 1.3).attr('opacity', .8);
+      svg.append('text').attr('x', ml - 10).attr('y', base - 4).attr('text-anchor', 'end').attr('fill', t.ink).text(p);
+      labels.push([xs(kk * th * adj), base + 12, f1(kk * th * adj) + ' mi avg']); });
+    labels.forEach(([x, y, tx]) => svg.append('text').attr('x', x).attr('y', y).attr('text-anchor', 'middle').attr('fill', t.ink).attr('stroke', t.surface).attr('stroke-width', 3).attr('paint-order', 'stroke').attr('font-size', 10.5).style('display', rowH > 46 ? null : 'none').text(tx));
+  }
+
+  function pyramid(el, c, w, h) {
+    const t = WF.tok(), k = K(), rows = pyr();
+    const long = rows.flatMap((d) => [{ age: d.age, sex: 'Male', v: -d.mm, o: -d.om }, { age: d.age, sex: 'Female', v: d.mf, o: d.of }]);
+    const plot = Plot.plot({ width: w, height: h, marginLeft: 44, marginBottom: 26, marginTop: 6, marginRight: 6, style: { background: 'transparent', color: t.mute, fontFamily: t.font, fontSize: '11.5px', overflow: 'visible' },
+      x: { label: null, grid: false, tickFormat: (d) => Math.abs(d) + 'k', ticks: 6 }, y: { label: null, domain: AGES, padding: .22 }, color: { domain: ['Male', 'Female'], range: [k.P, k.S] },
+      marks: [Plot.barX(long, { x: 'v', y: 'age', fill: 'sex', rx: 3, title: (d, i) => 'wfa:' + i }), Plot.tickX(long, { x: 'o', y: 'age', stroke: t.ink, strokeWidth: 1.6, strokeOpacity: .85 }), Plot.ruleX([0], { stroke: t.line })] });
+    WF.TT.arm(plot, { a: long }, (d) => ({ title: 'Age ' + d.age, rows: [{ k: d.sex, v: Math.abs(Math.round(d.v)) + 'k', c: d.sex === 'Male' ? k.P : k.S, b: true }, { k: 'Census estimate', v: Math.abs(Math.round(d.o)) + 'k' }, { k: 'Difference', v: (Math.abs(d.v) - Math.abs(d.o) >= 0 ? '+' : '−') + Math.abs(Math.round(Math.abs(d.v) - Math.abs(d.o))) + 'k' }] }));
+    el.replaceChildren(plot);
+  }
+
+  function waffle(el, c, w, h) {
+    const t = WF.tok(), k = K(), svg = svgRoot(el, w, h), tp = tipper(el), sh = autoAll(c.focus), cols = k.ramp(k.S, 5, .8);
+    let counts = sh.map(Math.floor), rem = 100 - d3.sum(counts); sh.map((v, i) => [v - Math.floor(v), i]).sort((a, b) => b[0] - a[0]).slice(0, rem).forEach(([, i]) => counts[i]++);
+    const cells = []; let idx = 0; counts.forEach((n, j) => { for (let q = 0; q < n; q++) cells.push(j); });
+    const size = Math.min(h - 8, w * (w > 380 ? .5 : 1) - 4), cs = size / 10, ox = w > 380 ? 4 : (w - size) / 2;
+    const gg = svg.append('g').attr('transform', `translate(${ox},${(h - size) / 2})`);
+    const rect = gg.selectAll('rect').data(cells).join('rect').attr('x', (d, i) => (i % 10) * cs + 1.5).attr('y', (d, i) => (9 - Math.floor(i / 10)) * cs + 1.5).attr('width', cs - 3).attr('height', cs - 3).attr('rx', Math.max(2, cs * .2)).attr('data-key', (d) => AUTOS[d]).attr('data-title', (d) => AUTOS[d]).attr('data-val', (d) => f1(sh[d]) + '%').attr('data-num', (d) => sh[d]).attr('data-unit', ' pts').attr('fill', (d) => cols[d]);
+    const hl = (j) => rect.attr('opacity', (d) => (j == null || d === j ? 1 : .18));
+    rect.on('mouseenter', (e, d) => hl(d)).on('mouseleave', () => hl(null)).on('mousemove', (e, d) => tp.show(tipRow(AUTOS[d], [{ k: 'Households', v: f1(sh[d]) + '%', b: true, c: cols[d] }, `Count: ${Math.round(sh[d] / 100 * d3.sum(HHK))}k`]), e));
+    if (w > 380) { const x0 = size + 40, rh = Math.min(40, (h - 20) / 5), L = svg.append('g').attr('transform', `translate(${x0},${(h - rh * 5) / 2})`);
+      AUTOS.forEach((a, j) => { const r = L.append('g').attr('transform', `translate(0,${j * rh})`).style('cursor', 'default'); r.append('rect').attr('width', 14).attr('height', 14).attr('y', rh / 2 - 7).attr('rx', 4).attr('fill', cols[j]);
+        r.append('text').attr('x', 24).attr('y', rh / 2).attr('dy', '.35em').attr('fill', t.ink).text(a); r.append('text').attr('x', Math.min(260, w - x0 - 4)).attr('y', rh / 2).attr('dy', '.35em').attr('text-anchor', 'end').attr('fill', t.ink).attr('font-weight', 600).text(f1(sh[j]) + '%');
+        r.on('mouseenter', () => hl(j)).on('mouseleave', () => hl(null)); });
+      svg.append('text').attr('x', x0).attr('y', (h - rh * 5) / 2 - 10).attr('fill', t.mute).attr('font-size', 11.5).text('Each square is 1% of ' + Math.round(d3.sum(HHK)) + 'k households'); }
+  }
+
+  function heat(el, c, w, h, kind) {
+    const t = WF.tok(), k = K();
+    if (kind === 'speed') {
+      const rows = FWY.flatMap((f, i) => d3.range(24).map((hr) => ({ hour: hr, fac: f, v: speed(c.focus, i, hr) })));
+      const plot = Plot.plot({ width: w, height: h, marginLeft: 70, marginBottom: 26, marginTop: 4, marginRight: 6, style: { background: 'transparent', color: t.mute, fontFamily: t.font, fontSize: '11.5px', overflow: 'visible' },
+        x: { label: null, domain: d3.range(24), tickFormat: (d) => (d % 3 ? '' : (d % 12 || 12) + (d < 12 ? 'a' : 'p')), padding: .08 }, y: { label: null, domain: FWY, padding: .12 }, color: { type: 'linear', range: [k.P, mix(t.surface, k.P, .12)], domain: [10, 62], legend: false },
+        marks: [Plot.cell(rows, { x: 'hour', y: 'fac', fill: 'v', rx: 4, title: (d, i) => 'wfa:' + i })] });
+      WF.TT.arm(plot, { a: rows }, (d) => ({ title: d.fac, sub: ((h) => (h % 12 || 12) + (h < 12 ? ' AM' : ' PM'))(d.hour), rows: [{ k: 'Average speed', v: d.v.toFixed(0) + ' mph', b: true }] }));
+      el.replaceChildren(plot); return;
+    }
+    const rows = PURP.flatMap((p) => { const s = d3.sum(d3.range(24), (hr) => purTod(p, hr)); return d3.range(24).map((hr) => ({ hour: hr, purpose: p, v: purTod(p, hr) / s * 100 })); });
+    const plot = Plot.plot({ width: w, height: h, marginLeft: 76, marginBottom: 26, marginTop: 4, marginRight: 6, style: { background: 'transparent', color: t.mute, fontFamily: t.font, fontSize: '11.5px', overflow: 'visible' },
+      x: { label: null, domain: d3.range(24), tickFormat: (d) => (d % 3 ? '' : (d % 12 || 12) + (d < 12 ? 'a' : 'p')), padding: .08 }, y: { label: null, domain: PURP, padding: .12 }, color: { type: 'sqrt', range: [mix(t.surface, k.P, .1), k.P], domain: [0, 16] },
+      marks: [Plot.cell(rows, { x: 'hour', y: 'purpose', fill: 'v', rx: 4, title: (d, i) => 'wfa:' + i })] });
+    WF.TT.arm(plot, { a: rows }, (d) => ({ title: d.purpose, sub: ((h) => (h % 12 || 12) + (h < 12 ? ' AM' : ' PM'))(d.hour), rows: [{ k: 'Share of purpose trips', v: d.v.toFixed(1) + '%', b: true }] }));
+    el.replaceChildren(plot);
+  }
+
+  function stream(el, c, w, h) {
+    const t = WF.tok(), k = K(), rows = modeHour(c.focus);
+    const plot = Plot.plot({ width: w, height: h, marginLeft: 8, marginBottom: 26, marginTop: 6, marginRight: 8, style: { background: 'transparent', color: t.mute, fontFamily: t.font, fontSize: '11.5px', overflow: 'visible' },
+      x: { label: null, domain: [0, 23], ticks: [0, 3, 6, 9, 12, 15, 18, 21], tickFormat: (d) => (d % 12 || 12) + (d < 12 ? 'a' : 'p') }, y: { axis: null }, color: { domain: MODES, range: MODES.map((m) => k.mode[m]) },
+      marks: [Plot.areaY(rows, { x: 'hour', y: 'v', z: 'mode', fill: 'mode', curve: 'basis', offset: 'wiggle', order: 'inside-out', stroke: t.surface, strokeWidth: .8, tip: { fill: t.surface, stroke: t.line, fontFamily: t.font } })] });
+    el.replaceChildren(plot);
+  }
+
+  function slope(el, c, w, h) {
+    const t = WF.tok(), k = K(), a = 'Observed', b = c.focus === 'Observed' ? 'Baseline' : c.focus;
+    const rows = MODES.flatMap((m, j) => [{ x: a, mode: m, v: SHARE.Observed[j] }, { x: b, mode: m, v: SHARE[b][j] }]);
+    const plot = Plot.plot({ width: w, height: h, marginLeft: 120, marginRight: 120, marginTop: 14, marginBottom: 8, style: { background: 'transparent', color: t.mute, fontFamily: t.font, fontSize: '12px', overflow: 'visible' },
+      x: { label: null, domain: [a, b], axis: 'top', tickSize: 0, padding: 0 }, y: { type: 'log', axis: null, domain: [.8, 90] }, color: { domain: MODES, range: MODES.map((m) => k.mode[m]) },
+      marks: [Plot.line(rows, { x: 'x', y: 'v', z: 'mode', stroke: 'mode', strokeWidth: 3, strokeLinecap: 'round' }), Plot.dot(rows, { x: 'x', y: 'v', fill: 'mode', stroke: t.surface, strokeWidth: 2, r: 5.5, title: (d, i) => 'wfa:' + i }),
+        Plot.text(rows.filter((d) => d.x === a), { x: 'x', y: 'v', text: (d) => `${d.mode}  ${f1(d.v)}%`, textAnchor: 'end', dx: -12, fill: t.ink }), Plot.text(rows.filter((d) => d.x === b), { x: 'x', y: 'v', text: (d) => `${f1(d.v)}%  ${d.mode}`, textAnchor: 'start', dx: 12, fill: t.ink })] });
+    WF.TT.arm(plot, { a: rows }, (d) => ({ title: d.mode, swatch: k.mode[d.mode], rows: [{ k: d.x, v: f1(d.v) + '%', b: true }, { k: d.x === a ? b : a, v: f1(rows.find((q) => q.mode === d.mode && q.x !== d.x).v) + '%' }] }));
+    el.replaceChildren(plot);
+  }
+
+  function dumbbell(el, c, w, h, kind) {
+    const t = WF.tok(), ids = SC.filter((s) => c.active.has(s)), tkn = t.c;
+    let rows, unit, dom, label;
+    if (kind === 'boards') { unit = 'k'; label = 'Weekday boardings (thousand)'; rows = LINES.map((n, i) => ({ label: n, obs: BOARD.Observed[i], v: Object.fromEntries(SC.map((s) => [s, BOARD[s][i]])) })); }
+    else { unit = '%'; label = 'Households with no car (%)'; rows = INC.map((n, i) => ({ label: n, obs: autoRow('Observed', i)[0], v: Object.fromEntries(SC.map((s) => [s, autoRow(s, i)[0]])) })); }
+    const flat = rows.flatMap((r) => ids.map((s) => ({ label: r.label, sc: s, v: r.v[s] }))), seg = rows.map((r) => ({ label: r.label, a: Math.min(r.obs, ...ids.map((s) => r.v[s])), b: Math.max(r.obs, ...ids.map((s) => r.v[s])) }));
+    const plot = Plot.plot({ width: w, height: h, marginLeft: kind === 'boards' ? 118 : 100, marginBottom: 32, marginTop: 6, marginRight: 14, style: { background: 'transparent', color: t.mute, fontFamily: t.font, fontSize: '12px', overflow: 'visible' },
+      x: { label, labelAnchor: 'center', grid: false, tickFormat: (d) => d + (unit === '%' ? '%' : ''), nice: true }, y: { label: null, domain: rows.map((r) => r.label), padding: .6 }, color: { domain: ids, range: ids.map((s) => tkn[s]) },
+      marks: [Plot.ruleY(rows, { y: 'label', stroke: t.grid, strokeOpacity: 1 }), Plot.link(seg, { x1: 'a', x2: 'b', y1: 'label', y2: 'label', stroke: t.line, strokeWidth: 5, strokeLinecap: 'round' }),
+        Plot.dot(flat, { x: 'v', y: 'label', fill: 'sc', r: 6, stroke: t.surface, strokeWidth: 2, title: (d, i) => 'wfa:' + i }),
+        Plot.dot(rows, { x: 'obs', y: 'label', r: 7.5, fill: t.surface, stroke: t.ink, strokeWidth: 2.2, title: (d, i) => 'wfb:' + i })] });
+    const fv = (v) => v.toFixed(unit === '%' ? 1 : 0) + (unit === '%' ? '%' : 'k');
+    WF.TT.arm(plot, { a: flat, b: rows }, (d, kk) => { if (kk === 'b') return { title: d.label, rows: [{ k: 'Observed', v: fv(d.obs), b: true }] }; const o = rows.find((r) => r.label === d.label).obs, row = flat.filter((q) => q.label === d.label).sort((a, b) => b.v - a.v), meta = kind === 'boards' ? SCN.OBS.boards : SCN.OBS.auto; return { title: d.label, sub: kind === 'boards' ? 'weekday boardings' : 'households with no car', rows: row.map((q) => { const df = q.v - o; return { k: WF.L(q.sc), v: fv(q.v), c: tkn[q.sc], b: q.sc === d.sc, d: (df >= 0 ? '+' : '−') + Math.abs(df).toFixed(unit === '%' ? 1 : 0) + (unit === '%' ? ' pts' : 'k'), dc: 'var(--mute)' }; }).concat([{ k: 'Observed', v: fv(o), b: true }]), foot: 'Observed: ' + meta.src + ', ' + meta.n }; });
+    el.replaceChildren(plot);
+  }
+
+  function htmlTable(el, head, rows) {
+    el.innerHTML = `<div style="overflow:auto;height:100%"><table class="tbl"><thead><tr>${head.map((x, i) => `<th class="${i ? 'num' : ''}">${x}</th>`).join('')}</tr></thead><tbody>${rows.map((r) => `<tr>${r.map((x, i) => `<td class="${i ? 'num' : ''}">${x}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+  }
+  function modeTbl(el, c) {
+    const ids = SC.filter((s) => c.active.has(s));
+    htmlTable(el, ['Mode', 'Observed', ...ids], MODES.map((m, i) => [m, f1(SHARE.Observed[i]) + '%', ...ids.map((s) => { const d = SHARE[s][i] - SHARE.Observed[i]; const col = Math.abs(d) <= 1 ? 'var(--ok)' : Math.abs(d) <= 2.5 ? 'var(--warn)' : 'var(--fail)'; return `${f1(SHARE[s][i])}% <span style="color:${col}">${d > 0 ? '+' : '−'}${Math.abs(d).toFixed(1)}</span>`; })]));
+  }
+  function calTbl(el, c) {
+    const ids = (c ? SC.filter((s) => c.active.has(s)) : []).slice(0, 6), cols = ids.length ? ids : [(c && c.focus) || 'Baseline'];
+    el.innerHTML = `<div style="overflow:auto;height:100%"><table class="tbl"><thead><tr><th>Submodel</th>${cols.map((s) => `<th class="num">${WF.L(s)}</th>`).join('')}</tr></thead><tbody>${WF.CAL.map(([n, m], i) => `<tr><td>${n}<div style="color:var(--mute);font-size:12px">${m}</div></td>${cols.map((s) => { const e = SCN.CALR(s)[i], st = WF.status(e); return `<td class="num"><span class="pill ${st}">${f1(e)}%</span></td>`; }).join('')}</tr>`).join('')}</tbody></table></div>`;
+  }
+
+  /* legends */
+  WF.modeLegend = () => { const k = K(); return MODES.map((m) => `<span class="lg mlg" data-lm="${m}"><i style="background:${k.mode[m]}"></i>${m}</span>`).join(''); };
+
+  WF.U = { svgRoot, tipper, mix, onC, fmtK, f1, tipRow, hex };
+  WF.CH = { treemap, sunburst, sankey, donut, stacked, stackedTrips, stackedInc, stackedAuto, radar, chord, ridge, pyramid, waffle, heat, stream, slope, dumbbell, modeTbl, calTbl, htmlTable };
+})();
+
+/* core3: scenario comparison. Reference-aware charts, group-by data, difference and swipe maps, scorecard, ranked change. */
+(function () {
+  const WF = window.WF, D = WF.D, U = WF.U, MODES = WF.MODES, SHARE = WF.SHARE, SC = WF.SC, SCN = window.SCN;
+  const { svgRoot, tipper, mix, onC, fmtK, f1, tipRow } = U, TT = WF.TT;
+  const TRIPS = D.TRIPS, VMT = D.VMT, BOARD = D.BOARD, PURP = D.PURP, INC = D.INC;
+  const on = (c) => SC.filter((s) => c.active.has(s));
+  const ref = (c) => c.ref || 'Observed';
+  const dv = (a, r, m) => (m === 'abs' ? a - r : m === 'pct' ? (r ? (a / r - 1) * 100 : 0) : a);
+  const sgn = (v) => (v > 0.0049 ? '+' : v < -0.0049 ? '−' : '');
+  const fD = (v, m, dec) => (m === 'val' ? v.toFixed(dec == null ? 1 : dec) : sgn(v) + Math.abs(v).toFixed(dec == null ? 1 : dec) + (m === 'pct' ? '%' : ''));
+  const base = (t, w, h, o) => Object.assign({ width: w, height: h, style: { background: 'transparent', color: t.mute, fontFamily: t.font, fontSize: t.fs + 'px', overflow: 'visible' } }, o);
+  const tipO = (t) => ({ fill: t.surface, stroke: t.line, fontFamily: t.font, fontSize: t.fs });
+  const hourFmt = (d) => (d % 12 || 12) + (d < 12 ? 'a' : 'p');
+
+  /* ---- metrics for scorecard and ranking ---- */
+  const METRICS = [
+    { k: 'trips', label: 'Daily trips', unit: 'M', dec: 2, get: (s) => TRIPS[s] },
+    { k: 'drive', label: 'Drive-alone share', unit: '%', dec: 1, get: (s) => SHARE[s][0] },
+    { k: 'transit', label: 'Transit share', unit: '%', dec: 1, get: (s) => SHARE[s][2] },
+    { k: 'active', label: 'Walk and bike share', unit: '%', dec: 1, get: (s) => SHARE[s][3] + SHARE[s][4] },
+    { k: 'vmt', label: 'Daily VMT', unit: 'M mi', dec: 1, get: (s) => VMT[s] },
+    { k: 'boards', label: 'Transit boardings', unit: 'k', dec: 0, get: (s) => d3.sum(BOARD[s]) },
+    { k: 'len', label: 'Average trip length', unit: 'mi', dec: 1, get: (s) => 7.6 * D.TLadj[s] },
+  ];
+  WF.METRICS = METRICS;
+
+  /* ---- series for mode-share charts ---- */
+  function modeSeries(c) {
+    const k = WF.K(), g = c.group || 'scn';
+    if (g === 'purpose') { const m = D.PM(c.focus); return { names: PURP, color: (n) => k.cat(PURP.indexOf(n)), val: (n, j) => { const i = PURP.indexOf(n); return m[i][j] / d3.sum(m[i]) * 100; }, ref: (j) => SHARE[c.focus][j], refName: 'Overall ' + c.focus, self: false }; }
+    if (g === 'income') { const m = D.modeInc(c.focus), rp = k.ramp(k.P, 4, .55); return { names: INC, color: (n) => rp[INC.indexOf(n)], val: (n, j) => m[INC.indexOf(n)][j], ref: (j) => SHARE[c.focus][j], refName: 'Overall ' + c.focus, self: false }; }
+    return { names: on(c), color: (n) => WF.scColor(n), val: (n, j) => SHARE[n][j], ref: (j) => SHARE[ref(c)][j], refName: ref(c), self: true };
+  }
+
+  function modeBars(el, c, w, h) {
+    const t = WF.tok(), s = modeSeries(c), m = c.diff || 'val', names = s.names.filter((n) => !(s.self && m !== 'val' && n === ref(c)));
+    if (!names.length) { el.innerHTML = '<div style="color:var(--mute);padding:20px">Pick a scenario other than the reference to see differences.</div>'; return; }
+    const rows = names.flatMap((n) => MODES.map((mo, j) => ({ mode: mo, s: n, v: dv(s.val(n, j), s.ref(j), m) })));
+    const rl = MODES.map((mo, j) => ({ mode: mo, v: s.ref(j) }));
+    const yf = (d) => (m === 'val' ? d + '%' : sgn(d) + Math.abs(d) + (m === 'pct' ? '%' : ''));
+    const plot = Plot.plot(base(t, w, h, {
+      marginLeft: 40, marginBottom: 30, marginTop: 14, marginRight: 4,
+      fx: { label: null, padding: 0.14, domain: MODES }, x: { axis: null, domain: names, paddingInner: 0.1, paddingOuter: 0.08 }, y: { label: null, grid: true, tickFormat: yf, ticks: 5 },
+      color: { domain: names, range: names.map(s.color) },
+      marks: [Plot.gridY({ stroke: t.grid, strokeOpacity: 1 }), Plot.barY(rows, { fx: 'mode', x: 's', y: 'v', fill: 's', rx: t.r, title: (d, i) => 'wfa:' + i }),
+        m === 'val' && s.self && ref(c) === 'Observed' ? Plot.rect(MODES.map((mo, j) => ({ mode: mo, lo: s.ref(j) - SCN.OBS.share.moe[j], hi: s.ref(j) + SCN.OBS.share.moe[j] })), { fx: 'mode', y1: 'lo', y2: 'hi', fill: t.ink, fillOpacity: .12 }) : null,
+        m === 'val' ? Plot.ruleY(rl, { fx: 'mode', y: 'v', stroke: t.ink, strokeWidth: 1.6, strokeDasharray: '4 3' }) : null, Plot.ruleY([0], { stroke: m === 'val' ? t.line : t.mute })].filter(Boolean),
+    }));
+    TT.arm(plot, { a: rows }, (d) => {
+      const j = MODES.indexOf(d.mode), rv = s.ref(j), obs = s.self && ref(c) === 'Observed', moe = obs ? SCN.OBS.share.moe[j] : null;
+      const all = names.map((n) => ({ n, val: s.val(n, j), v: dv(s.val(n, j), rv, m) })).sort((x, y) => y.val - x.val), shown = all.filter((q, i) => i < 8 || q.n === d.s), more = all.length - shown.length;
+      return { title: d.mode, sub: m === 'val' ? 'share of trips' : m === 'abs' ? 'change in points' : 'percent change',
+        rows: shown.map((q) => ({ k: WF.L(q.n), v: m === 'val' ? f1(q.val) + '%' : fD(q.v, m) + (m === 'abs' ? ' pts' : ''), c: s.color(q.n), b: q.n === d.s, d: m === 'val' ? fD(q.val - rv, 'abs') + ' pts' : f1(q.val) + '%' })).concat([{ k: (s.refName === 'Observed' ? '' : 'Reference · ') + WF.L(s.refName), v: f1(rv) + '%' + (moe ? ' ±' + f1(moe) : ''), b: true }]),
+        foot: (obs ? 'Observed: ' + SCN.OBS.share.src + ', ' + SCN.OBS.share.n : '') + (more ? (obs ? '. ' : '') + more + ' more not shown' : '') || undefined };
+    });
+    el.replaceChildren(plot);
+  }
+
+  function gapDots(el, c, w, h) {
+    const t = WF.tok(), s = modeSeries(c), m = c.diff === 'pct' ? 'pct' : 'abs', names = s.names.filter((n) => !(s.self && n === ref(c)));
+    if (!names.length) { el.innerHTML = '<div style="color:var(--mute);padding:20px">Pick a scenario other than the reference to see differences.</div>'; return; }
+    const rows = names.flatMap((n) => MODES.map((mo, j) => ({ mode: mo, s: n, gap: +dv(s.val(n, j), s.ref(j), m).toFixed(1) })));
+    const L = Math.max(4, Math.ceil(d3.max(rows, (d) => Math.abs(d.gap)) / 2) * 2);
+    const plot = Plot.plot(base(t, w, h, {
+      marginLeft: 84, marginBottom: 36, marginTop: 8, marginRight: 14,
+      x: { domain: [-L, L], label: (m === 'pct' ? 'Percent change' : 'Percentage points') + ' vs ' + s.refName.toLowerCase().replace(/^./, (x) => x.toUpperCase()), labelAnchor: 'center', labelArrow: 'none', tickFormat: (d) => sgn(d) + Math.abs(d) + (m === 'pct' ? '%' : ''), ticks: 8 },
+      y: { label: null, domain: MODES, padding: 0.5 }, color: { domain: names, range: names.map(s.color) },
+      marks: [m === 'abs' && ref(c) === 'Observed' ? Plot.rectX([{ a: -1, b: 1 }], { x1: 'a', x2: 'b', fill: t.ok, fillOpacity: 0.12 }) : null, Plot.ruleY(MODES, { stroke: t.grid, strokeOpacity: 1 }), Plot.ruleX([0], { stroke: t.ink, strokeOpacity: 0.55 }),
+        Plot.dot(rows, { x: 'gap', y: 'mode', fill: 's', r: 5.5, stroke: t.surface, strokeWidth: 2, title: (d, i) => 'wfa:' + i })].filter(Boolean),
+    }));
+    TT.arm(plot, { a: rows }, (d) => {
+      const j = MODES.indexOf(d.mode), obs = s.self && ref(c) === 'Observed', moe = obs ? SCN.OBS.share.moe[j] : null;
+      const all = rows.filter((q) => q.mode === d.mode).sort((x, y) => Math.abs(y.gap) - Math.abs(x.gap));
+      return { title: d.mode, sub: m === 'pct' ? 'percent change vs reference' : 'points vs reference',
+        rows: all.map((q) => ({ k: WF.L(q.s), v: fD(q.gap, m) + (m === 'abs' ? ' pts' : ''), c: s.color(q.s), b: q.s === d.s, d: moe != null && m === 'abs' ? (Math.abs(q.gap) <= moe ? 'within error' : '') : f1(s.val(q.s, j)) + '%', dc: moe != null && m === 'abs' && Math.abs(q.gap) <= moe ? 'var(--ok)' : 'var(--mute)' })).concat([{ k: (s.refName === 'Observed' ? 'Observed' : 'Reference · ' + WF.L(s.refName)), v: f1(s.ref(j)) + '%' + (moe ? ' ±' + f1(moe) : ''), b: true }]),
+        foot: obs ? 'Observed: ' + SCN.OBS.share.src + ', ' + SCN.OBS.share.n : undefined };
+    });
+    el.replaceChildren(plot);
+  }
+
+  /* ---- time series with group-by ---- */
+  const GRP_NAMES = { mode: MODES, purpose: PURP, income: INC };
+  function tsRows(c, group) {
+    const g = group || c.group || 'scn', k = WF.K(), f = c.focus, out = [];
+    if (g === 'scn') { on(c).forEach((s) => WF.tod(s).forEach((d) => out.push({ g: s, hour: d.hour, v: d.share / 100 * TRIPS[s] * 1000 }))); return { rows: out, names: on(c), color: (n) => WF.scColor(n), unit: 'k trips' }; }
+    if (g === 'mode') { D.modeHour(f).forEach((d) => out.push({ g: d.mode, hour: d.hour, v: d.v })); return { rows: out, names: MODES, color: (n) => k.mode[n] }; }
+    if (g === 'purpose') { PURP.forEach((p, i) => { const tot = D.PT[i] * TRIPS[f] / 9.86, w = d3.range(24).map((h) => D.purTod(p, h)), sm = d3.sum(w); w.forEach((v, h) => out.push({ g: p, hour: h, v: v / sm * tot })); }); return { rows: out, names: PURP, color: (n) => k.cat(PURP.indexOf(n)) }; }
+    if (g === 'income') { const rp = k.ramp(k.P, 4, .55), td = WF.tod(f); INC.forEach((n, i) => { const w = td.map((d, h) => d.share * (1 + (1.5 - i) * .12 * (Math.exp(-.5 * ((h - 12) / 3) ** 2) - .5 * Math.exp(-.5 * ((h - 7.5) / 1.5) ** 2)))), sm = d3.sum(w), tot = TRIPS[f] * 1000 * D.INCSH[i]; w.forEach((v, h) => out.push({ g: n, hour: h, v: v / sm * tot })); }); return { rows: out, names: INC, color: (n) => rp[INC.indexOf(n)] }; }
+    WF.tod(f).forEach((d) => out.push({ g: 'All trips', hour: d.hour, v: d.share / 100 * TRIPS[f] * 1000 }));
+    return { rows: out, names: ['All trips'], color: () => WF.K().P };
+  }
+
+  function timeLines(el, c, w, h) {
+    const t = WF.tok(), g = c.group || 'scn', m = g === 'scn' ? c.diff || 'val' : 'val', ts = tsRows(c, g);
+    let rows = ts.rows, names = ts.names, refRows = null;
+    if (g === 'scn') {
+      const rr = WF.tod(ref(c)).map((d) => d.share / 100 * TRIPS[ref(c)] * 1000);
+      if (m === 'val') refRows = rr.map((v, i) => ({ hour: i, v }));
+      else { names = names.filter((n) => n !== ref(c)); rows = rows.filter((d) => d.g !== ref(c)).map((d) => ({ ...d, v: dv(d.v, rr[d.hour], m) })); }
+    }
+    const yf = (d) => (m === 'val' ? (g === 'scn' || true ? Math.round(d) + 'k' : d) : sgn(d) + Math.abs(+d.toFixed(1)) + (m === 'pct' ? '%' : 'k'));
+    const ctxN = names.filter((n) => g === 'scn' && WF.scColor(n) === WF.scColor('__none__'));
+    const plot = Plot.plot(base(t, w, h, {
+      marginLeft: 44, marginBottom: 30, marginTop: 10, marginRight: 8,
+      x: { label: null, domain: [0, 23], ticks: [0, 3, 6, 9, 12, 15, 18, 21], tickFormat: hourFmt }, y: { label: null, grid: true, tickFormat: yf, ticks: 4 },
+      color: { domain: names, range: names.map(ts.color) },
+      marks: [Plot.gridY({ stroke: t.grid, strokeOpacity: 1 }), refRows ? Plot.areaY(refRows, { x: 'hour', y: 'v', fill: t.ink, fillOpacity: .06, curve: 'catmull-rom' }) : null,
+        refRows ? Plot.line(refRows, { x: 'hour', y: 'v', stroke: t.ink, strokeWidth: 1.5, strokeDasharray: '4 3', curve: 'catmull-rom' }) : Plot.ruleY([0], { stroke: t.mute }),
+        Plot.line(rows, { x: 'hour', y: 'v', stroke: 'g', strokeWidth: 2.25, curve: 'catmull-rom', strokeLinecap: 'round' })].filter(Boolean),
+    }));
+    const at = (n, v) => rows.find((d) => d.g === n && d.hour === v), refAt = (v) => (refRows ? refRows[v].v : null);
+    TT.cross(plot, { ml: 44, mr: 8, mt: 10, mb: 30, w, h, x0: 0, x1: 23, bg: t.surface,
+      spec: (v) => ({ title: (v % 12 || 12) + (v < 12 ? ' AM' : ' PM'), sub: g === 'scn' ? 'trips per hour' : WF.L(c.focus), rows: names.map((n) => ({ n, d: at(n, v) })).filter((q) => q.d).sort((a, b) => b.d.v - a.d.v).map((q) => ({ k: g === 'scn' ? WF.L(q.n) : q.n, v: m === 'val' ? Math.round(q.d.v) + 'k' : fD(q.d.v, m, m === 'pct' ? 1 : 0) + (m === 'abs' ? 'k' : ''), c: ts.color(q.n), b: false })).concat(refRows ? [{ k: 'Reference', v: Math.round(refAt(v)) + 'k', b: true }] : []) }),
+      ys: (v) => names.map((n) => ({ n, d: at(n, v) })).filter((q) => q.d).map((q) => ({ y: plot.scale('y').apply(q.d.v), c: ts.color(q.n) })) });
+    el.replaceChildren(plot);
+  }
+
+  function streamT(el, c, w, h) {
+    const t = WF.tok(), g = c.group === 'scn' || !c.group ? 'mode' : c.group, ts = tsRows(c, g);
+    const mk = g === 'none' ? Plot.areaY(ts.rows, { x: 'hour', y: 'v', fill: ts.color(), curve: 'basis' }) : Plot.areaY(ts.rows, { x: 'hour', y: 'v', z: 'g', fill: 'g', curve: 'basis', offset: 'wiggle', order: 'inside-out', stroke: t.surface, strokeWidth: .8 });
+    const plot = Plot.plot(base(t, w, h, { marginLeft: 8, marginBottom: 26, marginTop: 6, marginRight: 8, x: { label: null, domain: [0, 23], ticks: [0, 3, 6, 9, 12, 15, 18, 21], tickFormat: hourFmt }, y: { axis: null }, color: { domain: ts.names, range: ts.names.map(ts.color) }, marks: [mk] }));
+    TT.cross(plot, { ml: 8, mr: 8, mt: 6, mb: 26, w, h, x0: 0, x1: 23, bg: t.surface,
+      spec: (v) => { const r = ts.rows.filter((d) => d.hour === v).sort((a, b) => b.v - a.v), tot = d3.sum(r, (d) => d.v); return { title: (v % 12 || 12) + (v < 12 ? ' AM' : ' PM'), sub: WF.L(c.focus), rows: r.map((d) => ({ k: d.g, v: Math.round(d.v) + 'k', c: ts.color(d.g), d: Math.round(d.v / tot * 100) + '%' })), foot: 'Total ' + Math.round(tot) + 'k trips in this hour' }; } });
+    el.replaceChildren(plot);
+  }
+
+  function heatT(el, c, w, h) {
+    const t = WF.tok(), k = WF.K(), g = c.group || 'scn', ts = tsRows(c, g), rows = [];
+    ts.names.forEach((n) => { const r = ts.rows.filter((d) => d.g === n), sm = d3.sum(r, (d) => d.v); r.forEach((d) => rows.push({ hour: d.hour, g: n, v: d.v / sm * 100 })); });
+    const plot = Plot.plot(base(t, w, h, { marginLeft: g === 'scn' ? 118 : 78, marginBottom: 26, marginTop: 4, marginRight: 6, x: { label: null, domain: d3.range(24), tickFormat: (d) => (d % 3 ? '' : hourFmt(d)), padding: .08 }, y: { label: null, domain: ts.names, padding: .12 }, color: { type: 'sqrt', range: [mix(t.surface, k.P, .1), k.P], domain: [0, 16] },
+      marks: [Plot.cell(rows, { x: 'hour', y: 'g', fill: 'v', rx: 4, title: (d, i) => 'wfa:' + i })] }));
+    TT.arm(plot, { a: rows }, (d) => ({ title: g === 'scn' ? WF.L(d.g) : d.g, sub: (d.hour % 12 || 12) + (d.hour < 12 ? ' AM' : ' PM'), rows: [{ k: 'Share of its trips', v: d.v.toFixed(1) + '%', b: true }] }));
+    el.replaceChildren(plot);
+  }
+
+  /* ---- maps: difference and swipe ---- */
+  const MW = 900, MH = 560;
+  function mapShell(el, w, h) {
+    el.innerHTML = ''; el.style.position = 'relative'; el.style.background = WF.getBM().land || '';
+    const svg = d3.select(el).append('svg').attr('width', w).attr('height', h).style('display', 'block').style('touch-action', 'none').style('font-family', WF.tok().font);
+    const k0 = Math.max(w / MW, h / MH), tx = (w - MW * k0) / 2, ty = (h - MH * k0) / 2;
+    return { svg, k0, tx, ty, w, h };
+  }
+  function drawZones(g, fill, t, tp, label) {
+    const paths = g.selectAll('path.z').data(WF.ZONES).join('path').attr('class', 'z').attr('d', (z) => z.cell).attr('fill', (z, i) => fill(i)).attr('fill-opacity', WF.baseAlpha()).attr('stroke', t.line).attr('stroke-width', .6).attr('vector-effect', 'non-scaling-stroke');
+    if (tp) paths.on('mousemove', function (e, z) { tp.show(label(z), e); d3.select(this).attr('stroke', t.ink).attr('stroke-width', 1.4).raise(); }).on('mouseleave', function () { tp.hide(); d3.select(this).attr('stroke', t.line).attr('stroke-width', .6); });
+    return paths;
+  }
+  function railLayer(g, t) {
+    g.append('path').attr('d', d3.line().curve(d3.curveCatmullRom.alpha(.5))(WF.RAIL)).attr('fill', 'none').attr('stroke', t.ink).attr('stroke-width', 2.2).attr('vector-effect', 'non-scaling-stroke').attr('opacity', .8).style('pointer-events', 'none');
+    g.selectAll('circle.st').data(WF.RAIL).join('circle').attr('r', 4).attr('cx', (d) => d[0]).attr('cy', (d) => d[1]).attr('fill', t.surface).attr('stroke', t.ink).attr('stroke-width', 2).attr('vector-effect', 'non-scaling-stroke').style('pointer-events', 'none');
+  }
+  function ctl(el, mc) {
+    const bar = document.createElement('div'); bar.style.cssText = 'position:absolute;right:10px;top:10px;display:flex;flex-direction:column;border:1px solid var(--line);border-radius:10px;background:var(--surface);overflow:hidden;z-index:6';
+    [['+', 'Zoom in', () => mc.zoom(1.6)], ['−', 'Zoom out', () => mc.zoom(1 / 1.6)], ['⌂', 'Reset view', () => mc.reset()]].forEach(([tx, a, f], i) => { const b = document.createElement('button'); b.textContent = tx; b.setAttribute('aria-label', a); b.onclick = f; b.style.cssText = 'width:30px;height:30px;border:0;background:transparent;color:var(--ink);cursor:pointer;font-size:15px' + (i ? ';border-top:1px solid var(--line)' : ''); bar.appendChild(b); });
+    el.appendChild(bar);
+  }
+  const chip = (el, txt, side) => { const d = document.createElement('div'); d.textContent = txt; d.style.cssText = `position:absolute;top:10px;${side}:12px;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:3px 11px;font-size:12px;font-weight:600;z-index:5;max-width:40%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis`; el.appendChild(d); };
+  const mapRef = (c) => (ref(c) === 'Observed' ? 'Baseline' : ref(c));
+
+  function diffMap(el, c, w, h) {
+    const t = WF.tok(), pal = WF.palette(), a = c.focus, b = mapRef(c), m = c.diff === 'pct' ? 'pct' : 'abs', S = mapShell(el, w, h), tp = tipper(el);
+    const vals = WF.ZONES.map((z) => { const va = WF.zoneVal(z.i, a), vb = WF.zoneVal(z.i, b); return m === 'pct' ? (va / Math.max(vb, .5) - 1) * 100 : va - vb; });
+    const L = Math.max(.5, d3.quantile(vals.map(Math.abs).sort(d3.ascending), .96)), mid = mix(t.surface, t.ink, .14);
+    const sc = (v) => { const x = Math.max(-1, Math.min(1, v / L)); return x < 0 ? mix(mid, pal[1], -x) : mix(mid, pal[0], x); };
+    const gz = S.svg.append('g'), gb = gz.append('g').attr('transform', `translate(${S.tx},${S.ty}) scale(${S.k0})`);
+    WF.baseLayer(gb); drawZones(gb, (i) => sc(vals[i]), t, tp, (z) => tipRow('TAZ ' + z.id, [{ k: 'Change vs ' + WF.L(b), v: fD(vals[z.i], m) + (m === 'abs' ? ' pts' : ''), b: true, c: sc(vals[z.i]) }, { k: WF.L(a), v: WF.zoneVal(z.i, a).toFixed(1) + '%' }, { k: WF.L(b), v: WF.zoneVal(z.i, b).toFixed(1) + '%' }])); railLayer(gb, t);
+    const zoom = d3.zoom().scaleExtent([1, 8]).on('zoom', (e) => gz.attr('transform', e.transform)); S.svg.call(zoom);
+    ctl(el, { zoom: (f) => S.svg.transition().duration(250).call(zoom.scaleBy, f), reset: () => S.svg.transition().duration(300).call(zoom.transform, d3.zoomIdentity) });
+    chip(el, a === b ? 'Pick a focus that differs from the reference' : `${a} minus ${b}`, 'left');
+    const rg = document.createElement('div'); rg.style.cssText = 'position:absolute;left:10px;bottom:10px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:7px 10px;font-size:11.5px;color:var(--mute);z-index:6';
+    rg.innerHTML = `<div style="width:170px;height:7px;border-radius:4px;margin-bottom:4px;background:linear-gradient(90deg,${pal[1]},${mid},${pal[0]})"></div><div style="display:flex;justify-content:space-between"><span>−${L.toFixed(1)}${m === 'pct' ? '%' : ' pts'}</span><span>0</span><span>+${L.toFixed(1)}${m === 'pct' ? '%' : ' pts'}</span></div>`; el.appendChild(rg);
+  }
+
+  function swipeMap(el, c, w, h) {
+    const t = WF.tok(), k = WF.K(), a = mapRef(c), b = c.focus, S = mapShell(el, w, h), tp = tipper(el);
+    const seq = d3.scaleSequential(d3.interpolateRgb(t.surface, k.P)).domain([0, 14]);
+    const id = 'sw' + Math.random().toString(36).slice(2, 7); let pos = c._swipe || w / 2;
+    const defs = S.svg.append('defs'), clA = defs.append('clipPath').attr('id', id + 'a').append('rect').attr('x', 0).attr('y', 0).attr('height', h), clB = defs.append('clipPath').attr('id', id + 'b').append('rect').attr('y', 0).attr('height', h);
+    const gz = S.svg.append('g'), mk = (cl, sc) => { const o = gz.append('g').attr('clip-path', `url(#${id}${cl})`); return o; };
+    const zA = S.svg.append('g').attr('clip-path', `url(#${id}a)`).append('g'), zB = S.svg.append('g').attr('clip-path', `url(#${id}b)`).append('g');
+    const bA = zA.append('g').attr('transform', `translate(${S.tx},${S.ty}) scale(${S.k0})`), bB = zB.append('g').attr('transform', `translate(${S.tx},${S.ty}) scale(${S.k0})`);
+    WF.baseLayer(bA); WF.baseLayer(bB); drawZones(bA, (i) => seq(WF.zoneVal(i, a)), t, null); drawZones(bB, (i) => seq(WF.zoneVal(i, b)), t, null); railLayer(bA, t); railLayer(bB, t);
+    const line = S.svg.append('g').attr('role', 'slider').attr('tabindex', 0).attr('aria-label', 'Swipe between scenarios').attr('aria-valuemin', 0).attr('aria-valuemax', 100).style('cursor', 'ew-resize');
+    line.append('rect').attr('y', 0).attr('height', h).attr('width', 3).attr('x', -1.5).attr('fill', t.ink);
+    line.append('circle').attr('cy', h / 2).attr('r', 15).attr('fill', t.surface).attr('stroke', t.ink).attr('stroke-width', 2.5);
+    line.append('path').attr('d', 'M-5 -5 L-10 0 L-5 5 M5 -5 L10 0 L5 5').attr('transform', `translate(0,${h / 2})`).attr('fill', 'none').attr('stroke', t.ink).attr('stroke-width', 2).attr('stroke-linecap', 'round');
+    line.append('rect').attr('x', -14).attr('width', 28).attr('y', 0).attr('height', h).attr('fill', 'transparent');
+    const set = (x) => { pos = Math.max(24, Math.min(w - 24, x)); c._swipe = pos; clA.attr('width', Math.max(0, pos)); clB.attr('x', pos).attr('width', Math.max(0, w - pos)); line.attr('transform', `translate(${pos},0)`); line.attr('aria-valuenow', Math.round(pos / w * 100)); };
+    set(pos);
+    line.call(d3.drag().on('drag', (e) => set(e.x))); line.on('keydown', (e) => { if (e.key === 'ArrowLeft') set(pos - 24); if (e.key === 'ArrowRight') set(pos + 24); });
+    const zoom = d3.zoom().scaleExtent([1, 8]).filter((e) => e.type === 'wheel' || (e.type === 'mousedown' && !e.target.closest('[role=slider]'))).on('zoom', (e) => { zA.attr('transform', e.transform); zB.attr('transform', e.transform); }); S.svg.call(zoom);
+    ctl(el, { zoom: (f) => S.svg.transition().duration(250).call(zoom.scaleBy, f), reset: () => S.svg.transition().duration(300).call(zoom.transform, d3.zoomIdentity) });
+    chip(el, a, 'left'); chip(el, b, 'right'); el.querySelectorAll('div[style*="right:12px"]').forEach((d) => (d.style.right = '52px'));
+  }
+
+  /* ---- scenario comparison tiles ---- */
+  let sortKey = null, sortDir = -1;
+  function scoreTable(el, c) {
+    const t = WF.tok(), pal = WF.palette(), m = c.diff || 'val', rf = ref(c), names = on(c).filter((n) => n !== rf), tag = SCN.TAG;
+    const cols = METRICS.map((mt) => { const rv = mt.get(rf), ds = names.map((n) => dv(mt.get(n), rv, 'pct')), mx = Math.max(.5, d3.max(ds, Math.abs) || 1); return { mt, rv, mx }; });
+    let rows = names.map((n) => ({ n }));
+    if (sortKey != null) { const cc = cols[sortKey]; rows.sort((a, b) => sortDir * (cc.mt.get(a.n) - cc.mt.get(b.n))); }
+    const cell = (cc, v) => { const p = dv(v, cc.rv, 'pct'), x = Math.max(-1, Math.min(1, p / cc.mx)), col = x < 0 ? pal[1] : pal[0], txt = m === 'val' ? v.toFixed(cc.mt.dec) : fD(dv(v, cc.rv, m), m, cc.mt.dec);
+      return `<td class="num" style="background:color-mix(in srgb,${col} ${Math.round(Math.abs(x) * 38)}%,transparent)">${txt}</td>`; };
+    const head = cols.map((cc, i) => `<th class="num sortable" data-s="${i}" role="columnheader" aria-sort="${sortKey === i ? (sortDir > 0 ? 'ascending' : 'descending') : 'none'}" tabindex="0">${cc.mt.label}<small>${cc.mt.unit}${sortKey === i ? (sortDir > 0 ? ' ▲' : ' ▼') : ''}</small></th>`).join('');
+    const dot = (n) => `<i style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${WF.scColor(n)};margin-right:9px;${WF.scColor(n) === WF.scColor('__none__') ? 'opacity:.7' : ''}"></i>`;
+    el.innerHTML = `<div style="overflow:auto;height:100%"><table class="tbl score"><thead><tr><th>Scenario</th>${head}</tr></thead><tbody>
+      <tr class="refrow"><td>${rf === 'Observed' ? '<i style="display:inline-block;width:14px;border-top:2px dashed var(--ink);margin-right:7px;vertical-align:middle"></i>' : dot(rf)}<b>${WF.L(rf)}</b> <span class="tag">Reference</span></td>${cols.map((cc) => `<td class="num"><b>${cc.rv.toFixed(cc.mt.dec)}</b></td>`).join('')}</tr>
+      ${rows.map((r) => `<tr><td>${dot(r.n)}${WF.L(r.n)} <span class="tag">${tag[r.n]}</span></td>${cols.map((cc) => cell(cc, cc.mt.get(r.n))).join('')}</tr>`).join('')}</tbody></table></div>`;
+    el.querySelectorAll('.sortable').forEach((th) => { const f = () => { const i = +th.dataset.s; if (sortKey === i) sortDir = -sortDir; else { sortKey = i; sortDir = -1; } scoreTable(el, c); }; th.onclick = f; th.onkeydown = (e) => { if (e.key === 'Enter') f(); }; });
+  }
+
+  function rank(el, c, w, h) {
+    if (w < 320) { el.innerHTML = ''; return; }
+    const t = WF.tok(), m = c.diff || 'val', mt = METRICS.find((x) => x.k === (c.group || 'transit')) || METRICS[2], rf = ref(c), rv = mt.get(rf);
+    const names = on(c).filter((n) => (m === 'val' ? true : n !== rf));
+    const rows = names.map((n) => ({ s: n, v: m === 'val' ? mt.get(n) : dv(mt.get(n), rv, m) })).sort((a, b) => b.v - a.v);
+    const lab = (d) => (m === 'val' ? d.toFixed(mt.dec) : fD(d, m, m === 'pct' ? 1 : mt.dec));
+    const xs = m === 'val' ? { label: mt.label + ' (' + mt.unit + ')', labelAnchor: 'center' } : { label: (m === 'pct' ? 'Percent change in ' : 'Change in ') + mt.label.toLowerCase() + ' vs ' + rf, labelAnchor: 'center', tickFormat: (d) => fD(d, m, m === 'pct' ? 0 : mt.dec) };
+    const plot = Plot.plot(base(t, w, h, { marginLeft: 124, marginRight: 48, marginBottom: 38, marginTop: 6, x: { grid: false, nice: true, inset: 40, ...xs }, y: { label: null, domain: rows.map((r) => r.s), padding: .32, tickFormat: (d) => WF.L(d) }, color: { domain: rows.map((r) => r.s), range: rows.map((r) => WF.scColor(r.s)) },
+      marks: [Plot.barX(rows, { x: 'v', y: 's', fill: 's', rx: 4, title: (d, i) => 'wfa:' + i }), Plot.text(rows.filter((d) => d.v >= 0), { x: 'v', y: 's', text: (d) => lab(d.v), dx: 6, textAnchor: 'start', fill: t.ink }), Plot.text(rows.filter((d) => d.v < 0), { x: 'v', y: 's', text: (d) => lab(d.v), dx: -6, textAnchor: 'end', fill: t.ink }),
+        m === 'val' ? Plot.ruleX([rv], { stroke: t.ink, strokeWidth: 1.6, strokeDasharray: '4 3' }) : Plot.ruleX([0], { stroke: t.mute }), Plot.ruleX([0], { stroke: t.line })] }));
+    TT.arm(plot, { a: rows }, (d) => ({ title: WF.L(d.s), swatch: WF.scColor(d.s), rows: [{ k: mt.label, v: m === 'val' ? d.v.toFixed(mt.dec) + ' ' + mt.unit : lab(d.v) + (m === 'abs' ? ' ' + mt.unit : ''), b: true }, { k: 'Reference', v: rv.toFixed(mt.dec) + ' ' + mt.unit }] }));
+    el.replaceChildren(plot);
+  }
+
+  function stackedScn(el, c, w, h) {
+    const k = WF.K(), rf = ref(c), ids = [rf, ...on(c).filter((n) => n !== rf)];
+    WF.CH.stacked(el, c, w, h, { rows: ids.map((n) => ({ label: WF.L(n), vals: SHARE[n] })), keys: MODES, colors: MODES.map((x) => k.mode[x]), isMode: true, ml: 124, of: 'trips' });
+  }
+
+  WF.kpis = (sc, rf) => {
+    rf = rf || 'Observed'; const pct = (a, b) => (a - b) / b * 100, rows = WF.calRows(sc), ok = rows.filter((r) => r.st === 'ok').length;
+    const bd = (s) => d3.sum(BOARD[s]), tl = (s) => 7.6 * D.TLadj[s];
+    const mk = (label, val, unit, p, spark) => ({ label, val, unit, pct: p, st: rf !== 'Observed' || sc !== 'Baseline' ? 'info' : Math.abs(p) <= 3 ? 'ok' : Math.abs(p) <= 5 ? 'warn' : 'fail', spark, sub: 'vs ' + (rf === 'Observed' ? 'observed' : rf.toLowerCase()) });
+    return [mk('Daily trips', TRIPS[sc].toFixed(2), 'M', pct(TRIPS[sc], TRIPS[rf]), [5, 5, 6, 5, 6, 7, 6]), mk('Transit boardings', bd(sc).toFixed(0), 'k', pct(bd(sc), bd(rf)), [3, 3, 4, 4, 5, 5, 6]), mk('Vehicle miles', VMT[sc].toFixed(1), 'M', pct(VMT[sc], VMT[rf]), [7, 7, 6, 6, 5, 5, 4]), mk('Average trip length', tl(sc).toFixed(1), 'mi', pct(tl(sc), tl(rf)), [4, 5, 5, 6, 6, 6, 7]),
+      { label: 'Calibration', val: String(ok), unit: 'of ' + rows.length, pct: 0, st: 'ok', spark: null, sub: 'submodels within 3%', plain: true }];
+  };
+
+
+  /* ---- calibration rounds: the model's own calibration metrics across the whole family ---- */
+  const ROUNDS = SCN.FAM.cal.names, SUBN = ['Auto ownership', 'Activity pattern', 'Work location', 'School location', 'Tour mode', 'Tour timing', 'Stop frequency', 'Trip mode'];
+  const LINEN = ['Blue Line (rail)', 'Red Line (rail)', 'Green Line (rail)', 'FrontRunner', 'Route 200 (bus)', 'Route 2 (bus)'];
+  const volOf = (n) => [TRIPS[n], VMT[n], d3.sum(BOARD[n]), 7.6 * D.TLadj[n]];
+  function traceMeta(metric) {
+    const k = WF.K(), t = WF.tok();
+    if (metric === 'vol') return { label: 'Volumes', names: ['Daily trips', 'Vehicle miles', 'Transit boardings', 'Average trip length'], color: (i) => k.cat(i), val: (n, i) => volOf(n)[i], obs: (i) => volOf('Observed')[i], pct: true, tol: 5, tolLabel: '±5% of observed', vfmt: (v, i) => [v.toFixed(2) + 'M', v.toFixed(1) + 'M mi', v.toFixed(0) + 'k', v.toFixed(1) + ' mi'][i] };
+    if (metric === 'boards') return { label: 'Boardings by line', names: LINEN, color: (i) => k.cat(i), val: (n, i) => BOARD[n][i], obs: (i) => BOARD.Observed[i], pct: true, tol: 10, tolLabel: '±10% of observed', vfmt: (v) => v.toFixed(1) + 'k' };
+    if (metric === 'err') return { label: 'Submodel error', names: SUBN, color: (i) => (i < 7 ? k.cat(i) : mix(t.surface, t.ink, .5)), val: (n, i) => SCN.CALR(n)[i], obs: () => 0, pct: false, tol: 3, tolLabel: '3% tolerance', err: true, vfmt: (v) => v.toFixed(1) + '%' };
+    return { label: 'Mode share', names: MODES, color: (i) => k.mode[MODES[i]], val: (n, i) => SHARE[n][i], obs: (i) => SHARE.Observed[i], pct: false, tol: 1, tolLabel: '±1 point of observed', vfmt: (v) => v.toFixed(1) + '%' };
+  }
+  const traceRows = (m) => ROUNDS.flatMap((n, ri) => m.names.map((nm, i) => { const v = m.val(n, i), o = m.obs(i), d = m.err ? v : m.pct ? (v / o - 1) * 100 : v - o; return { r: ri + 1, i, name: nm, v, o, d }; }));
+  const selRounds = (c) => ROUNDS.filter((n) => c.active.has(n) || n === c.focus).map((n) => ({ n, r: SCN.ROUND[n], foc: n === c.focus }));
+  const pickFn = (c) => (v, e) => c.pick && c.pick('Round ' + v, e && e.shiftKey);
+  const dfmt = (d, m) => (m.err ? d.toFixed(1) + '%' : (d > 0.005 ? '+' : d < -0.005 ? '−' : '') + Math.abs(d).toFixed(1) + (m.pct ? '%' : ' pts'));
+  function traceLines(el, c, w, h, values) {
+    const t = WF.tok(), m = traceMeta(c.group || 'mode'), rows = traceRows(m), sel = selRounds(c), yv = values ? 'v' : 'd';
+    const yTick = values ? (m.pct ? (d) => d : (d) => d + (m.names === MODES ? '%' : '')) : (d) => (m.err ? d + '%' : (d > 0 ? '+' : d < 0 ? '−' : '') + Math.abs(d) + (m.pct ? '%' : ''));
+    const marks = [Plot.gridY({ stroke: t.grid, strokeOpacity: 1 })];
+    if (!values) marks.push(Plot.rectY([{ a: m.err ? 0 : -m.tol, b: m.tol }], { y1: 'a', y2: 'b', fill: t.ok, fillOpacity: .09 }), Plot.ruleY(m.err ? [m.tol] : [-m.tol, m.tol], { stroke: t.ok, strokeDasharray: '4 3', strokeOpacity: .7 }), m.err ? null : Plot.ruleY([0], { stroke: t.mute }));
+    else marks.push(Plot.ruleY(m.names.map((nm, i) => ({ y: m.obs(i), i })), { y: 'y', stroke: (d) => m.color(d.i), strokeDasharray: '4 3', strokeOpacity: .85 }));
+    marks.push(Plot.line(rows, { x: 'r', y: yv, z: 'i', stroke: (d) => m.color(d.i), strokeWidth: 1.9, strokeOpacity: .92, curve: 'monotone-x' }), Plot.ruleX(sel, { x: 'r', stroke: (d) => (d.foc ? t.ink : WF.scColor(d.n)), strokeWidth: 2, strokeOpacity: .75 }));
+    const plot = Plot.plot(base(t, w, h, { marginLeft: 44, marginBottom: 32, marginTop: 8, marginRight: 10, x: { label: 'Calibration round', labelAnchor: 'center', domain: [1, ROUNDS.length], ticks: [1, 10, 20, 30, 40, 50] }, y: { label: null, grid: true, tickFormat: yTick, ticks: 5 }, marks: marks.filter(Boolean) }));
+    TT.cross(plot, { ml: 44, mr: 10, mt: 8, mb: 32, w, h, x0: 1, x1: ROUNDS.length, bg: t.surface, click: pickFn(c),
+      spec: (v) => { const rr = rows.filter((q) => q.r === v).sort((x, y) => Math.abs(y.d) - Math.abs(x.d)), within = rr.filter((q) => (m.err ? q.d <= m.tol : Math.abs(q.d) <= m.tol)).length;
+        return { title: 'Round ' + v, sub: m.err ? 'worst-segment error' : 'vs observed', rows: rr.map((q) => ({ k: q.name, v: values ? m.vfmt(q.v, q.i) : dfmt(q.d, m), c: m.color(q.i), d: values ? (m.err ? '' : dfmt(q.d, m)) : m.err ? '' : m.vfmt(q.v, q.i), dc: 'var(--mute)' })), foot: within + ' of ' + rr.length + ' within ' + m.tolLabel + '. Click to focus this round, shift-click to compare.' }; },
+      ys: (v) => rows.filter((q) => q.r === v).map((q) => ({ y: plot.scale('y').apply(q[yv]), c: m.color(q.i) })) });
+    el.replaceChildren(plot);
+  }
+  const traceValues = (el, c, w, h) => traceLines(el, c, w, h, true);
+  function traceHeat(el, c, w, h) {
+    const t = WF.tok(), pal = WF.palette(), m = traceMeta(c.group || 'mode'), rows = traceRows(m), sel = selRounds(c), mid = mix(t.surface, t.ink, .16), L = m.tol * 4;
+    const color = m.err ? { type: 'linear', domain: [0, 3, 6, 12], range: [t.ok, t.ok, t.warn, t.fail] } : { type: 'diverging', pivot: 0, domain: [-L, L], range: [pal[1], mid, pal[0]], interpolate: (a, b) => (x) => x };
+    const cs = m.err ? color : { type: 'linear', domain: [-L, 0, L], range: [pal[1], mid, pal[0]] };
+    const plot = Plot.plot(base(t, w, h, { marginLeft: 124, marginBottom: 32, marginTop: 8, marginRight: 8, x: { label: 'Calibration round', labelAnchor: 'center', domain: d3.range(1, ROUNDS.length + 1), ticks: [1, 10, 20, 30, 40, 50], tickFormat: (d) => d, padding: .06 }, y: { label: null, domain: m.names, padding: .12 }, color: cs,
+      marks: [Plot.cell(rows, { x: 'r', y: 'name', fill: 'd', rx: 3, title: (d, i) => 'wfa:' + i }), Plot.ruleX(sel, { x: 'r', stroke: (d) => (d.foc ? t.ink : WF.scColor(d.n)), strokeWidth: 2, strokeOpacity: .9 })] }));
+    TT.arm(plot, { a: rows }, (d) => ({ title: 'Round ' + d.r, sub: d.name, rows: [{ k: m.err ? 'Worst-segment error' : 'Difference from observed', v: dfmt(d.d, m), b: true }].concat(m.err ? [] : [{ k: 'Modeled', v: m.vfmt(d.v, d.i) }, { k: 'Observed', v: m.vfmt(d.o, d.i) }]), foot: 'Click to focus this round. Shift-click to compare.' }), (d, k, e) => pickFn(c)(d.r, e));
+    plot.style.cursor = 'pointer'; el.replaceChildren(plot);
+  }
+  WF.traceMeta = traceMeta;
+
+  /* ---- across model years: the trend that drives year selection ---- */
+  const YEARS = SCN.YEARS.map((q) => q.y), yl = (y) => SCN.YEARS.find((q) => q.y === y).label;
+  function yearsTrend(el, c, w, h) {
+    const t = WF.tok(), mt = METRICS.find((x) => x.k === (c.group || 'transit')) || METRICS[2], m = c.diff || 'val';
+    const rf = c.ref === 'Observed' || SCN.ROUND[c.ref] ? 'Baseline' : c.ref, names = on(c).filter((n) => !SCN.ROUND[n] && !(m !== 'val' && n === rf));
+    const val = (n, y) => SCN.valAt(n, y, mt.k), rows = names.flatMap((n) => YEARS.map((y) => ({ n, y, v: m === 'val' ? val(n, y) : dv(val(n, y), val(rf, y), m), raw: val(n, y) })));
+    const obs = m === 'val' ? [{ y: SCN.BASEYEAR, v: mt.get('Observed') }] : [], yf = (d) => (m === 'val' ? d + '' : sgn(d) + Math.abs(+d.toFixed(1)) + (m === 'pct' ? '%' : ''));
+    const plot = Plot.plot(base(t, w, h, { marginLeft: 46, marginBottom: 34, marginTop: 10, marginRight: 14,
+      x: { label: null, domain: [2023, 2055], ticks: YEARS, tickFormat: (d) => String(d), inset: 8 }, y: { label: null, grid: true, tickFormat: yf, ticks: 5 }, color: { domain: names, range: names.map((n) => WF.scColor(n)) },
+      marks: [Plot.gridY({ stroke: t.grid, strokeOpacity: 1 }), m === 'val' ? null : Plot.ruleY([0], { stroke: t.mute }), Plot.ruleX([c.year], { stroke: t.ink, strokeOpacity: .5, strokeDasharray: '3 3' }),
+        Plot.line(rows, { x: 'y', y: 'v', z: 'n', stroke: 'n', strokeWidth: 2.4, strokeLinecap: 'round', curve: 'monotone-x' }), Plot.dot(rows, { x: 'y', y: 'v', fill: 'n', stroke: t.surface, strokeWidth: 2, r: 4.5 }),
+        Plot.dot(obs, { x: 'y', y: 'v', r: 6.5, fill: t.surface, stroke: t.ink, strokeWidth: 2.2 })].filter(Boolean) }));
+    const snap = (raw) => YEARS.reduce((a, b) => (Math.abs(b - raw) < Math.abs(a - raw) ? b : a));
+    TT.cross(plot, { ml: 46, mr: 14, mt: 10, mb: 34, w, h, x0: 2023, x1: 2055, snap, bg: t.surface, click: (y) => c.setYear && c.setYear(y),
+      spec: (y) => ({ title: y + '', sub: yl(y), rows: rows.filter((q) => q.y === y).sort((a, b) => b.v - a.v).map((q) => ({ k: WF.L(q.n), v: m === 'val' ? q.v.toFixed(mt.dec) + ' ' + mt.unit : fD(q.v, m, m === 'pct' ? 1 : mt.dec) + (m === 'abs' ? ' ' + mt.unit : ''), c: WF.scColor(q.n), d: m === 'val' ? '' : q.raw.toFixed(mt.dec) + ' ' + mt.unit, dc: 'var(--mute)' })).concat(m !== 'val' ? [{ k: 'Reference · ' + WF.L(rf), v: val(rf, y).toFixed(mt.dec) + ' ' + mt.unit, b: true }] : y === SCN.BASEYEAR ? [{ k: 'Observed', v: mt.get('Observed').toFixed(mt.dec) + ' ' + mt.unit, b: true }] : []), foot: 'Click to switch the dashboard to ' + y + '.' }),
+      ys: (y) => rows.filter((q) => q.y === y).map((q) => ({ y: plot.scale('y').apply(q.v), c: WF.scColor(q.n) })) });
+    el.replaceChildren(plot);
+  }
+
+  Object.assign(WF.CH, { traceLines, traceValues, traceHeat, yearsTrend, modeBars, gapDots, timeLines, streamT, heatT, diffMap, swipeMap, scoreTable, rank, stackedScn });
+})();
+
+/* pages.js: shared tile catalogue. A tile can offer several chart types (views), several grouping variables (groups) and, in compare mode, a strategy suited to its chart type. */
+(function () {
+  const WF = window.WF, CH = WF.CH, D = WF.D;
+  const V = (k, label, leg, fn, o) => Object.assign({ k, label, leg, fn, cmp: ['overlay'] }, o || {});
+  const STRAT = { overlay: 'Overlay', multi: 'Side by side', diff: 'Difference', switch: 'One at a time', grid: 'Side by side', swipe: 'Swipe' };
+  WF.STRAT = STRAT;
+  const mapCell = (el, c) => { WF.zoneMap(el, c.focus, { syncGroup: c.mapGroup }); };
+  const mapView = (el, c) => {
+    const mc = WF.zoneMap(el, c.focus, {});
+    const bar = document.createElement('div');
+    bar.style.cssText = 'position:absolute;right:10px;top:10px;display:flex;flex-direction:column;border:1px solid var(--line);border-radius:10px;background:var(--surface);overflow:hidden;z-index:6';
+    [['+', 'Zoom in', () => mc.zoom(1.6)], ['−', 'Zoom out', () => mc.zoom(1 / 1.6)], ['⌂', 'Reset view', () => mc.reset()]].forEach(([t, a, f], i) => { const b = document.createElement('button'); b.textContent = t; b.setAttribute('aria-label', a); b.onclick = f; b.style.cssText = 'width:30px;height:30px;border:0;background:transparent;color:var(--ink);cursor:pointer;font-size:15px' + (i ? ';border-top:1px solid var(--line)' : ''); bar.appendChild(b); });
+    el.appendChild(bar);
+    const rp = document.createElement('div');
+    rp.style.cssText = 'position:absolute;left:10px;bottom:10px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:7px 10px;font-size:11.5px;color:var(--mute);z-index:6';
+    rp.innerHTML = '<div style="width:150px;height:7px;border-radius:4px;margin:0 0 4px;background:linear-gradient(90deg,var(--surface),var(--accent));border:1px solid var(--line)"></div><div style="display:flex;justify-content:space-between"><span>0%</span><span>14%+ transit share</span></div>';
+    el.appendChild(rp);
+    const ch = document.createElement('div'); ch.textContent = WF.L(c.focus); ch.style.cssText = 'position:absolute;top:10px;left:12px;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:3px 11px;font-size:12px;font-weight:600;z-index:5'; el.appendChild(ch);
+  };
+  const flowTable = (el) => CH.htmlTable(el, ['From \\ to', ...D.DIST], D.DIST.map((n, i) => [n, ...D.FLOW[i].map((v) => (v >= 100 ? Math.round(v) : v.toFixed(1)) + 'k')]));
+  const G = (...a) => a.map(([k, l]) => ({ k, label: l }));
+  const donutOrDiff = (e, c, w, h) => (c.diff !== 'val' ? CH.modeBars(e, Object.assign(Object.create(c), { group: 'scn' }), w, h) : CH.donut(e, c, w, h));
+
+  WF.TILES = {
+    mix: { title: 'Trips by purpose and mode', sub: 'Daily trips for the focus scenario. Hover a mode to trace it across every chart.', parquet: 'trips_by_purpose_mode.parquet', about: 'Counts every simulated trip. Area is proportional to trips. Group by changes how the rectangles nest. In compare mode the treemap can sit side by side or colour each cell by its change from the reference.',
+      groups: G(['pm', 'Purpose › Mode'], ['mp', 'Mode › Purpose'], ['im', 'Income › Mode']), groupLabel: 'Group by',
+      views: [V('tree', 'Treemap', (c) => (c.group === 'mp' ? 'purpose' : c.diff !== 'val' && (c.group || 'pm') === 'pm' ? 'diverge' : 'mode'), (e, c, w, h) => CH.treemap(e, c, w, h, 'trips'), { cmp: ['multi', 'diff'], diff: true }),
+        V('sun', 'Sunburst', (c) => (c.group === 'mp' ? 'purpose' : 'mode'), (e, c, w, h) => CH.sunburst(e, c, w, h, 'trips'), { cmp: ['multi'] }),
+        V('flow', 'Flow', 'mode', CH.sankey, { cmp: ['switch'] }), V('bars', '100% bars', 'mode', CH.stackedTrips, { cmp: ['multi'] })] },
+    share: { title: 'Mode share', sub: 'Share of daily trips. The dashed line is the reference.', parquet: 'mode_share.parquet', about: 'Trip mode share. Compare by splits the same shares by scenario, trip purpose or household income. Change mode shows differences from the reference.',
+      groups: G(['scn', 'Scenario'], ['purpose', 'Purpose'], ['income', 'Income']), groupLabel: 'Compare by',
+      views: [V('bars', 'Bars', (c) => (c.group === 'purpose' ? 'purpose' : c.group === 'income' ? 'income' : 'scn'), CH.modeBars, { diff: true }), V('gap', 'Gap', (c) => (c.group === 'purpose' ? 'purpose' : c.group === 'income' ? 'income' : 'scn'), CH.gapDots, { diff: true }),
+        V('stack', '100% bars', 'mode', CH.stackedScn), V('slope', 'Slope', null, CH.slope, { cmp: ['switch'] }), V('donut', 'Donut', null, donutOrDiff, { cmp: ['switch', 'diff'], diff: true }), V('tbl', 'Table', null, CH.modeTbl)] },
+    trace: { title: 'Calibration progress', sub: 'Your own calibration metrics across the rounds. Click a round to focus it, shift-click to compare it.', parquet: 'calibration_by_round.parquet', about: 'Every calibration round is a run in the same ordered family. Pick the metric you are tuning. Difference shows the gap to observed, with the target band shaded. Selected rounds are marked and join the comparison like any scenario.', family: true, baseOnly: true,
+      groups: G(['mode', 'Mode share'], ['vol', 'Volumes'], ['boards', 'Boardings by line'], ['err', 'Submodel error']), groupLabel: 'Metric',
+      views: [V('diff', 'Difference', 'trace', CH.traceLines, { cmp: [] }), V('vals', 'Values', 'trace', CH.traceValues, { cmp: [] }), V('heat', 'Heatmap', null, CH.traceHeat, { cmp: [] })] },
+    years: { title: 'Across model years', sub: 'How each alternative develops from the base year to the horizon year. Click a year to switch the dashboard to it.', parquet: 'scenario_summary_by_year.parquet', about: 'Every alternative has a run for each model year: base year 2023, opening year 2027, end of STIP 2032, and the RTP phases through the 2055 horizon. The open circle is the observed base-year value.', baseless: true,
+      groups: G(...WF.METRICS.map((m) => [m.k, m.label])), groupLabel: 'Metric', views: [V('lines', 'Lines', null, CH.yearsTrend, { diff: true })] },
+    fp: { title: 'Calibration fingerprint', sub: 'Worst-segment error per submodel. The dashed ring is the 3% tolerance. Compare rounds to see the shape tighten. Shows up to six.', parquet: 'calibration_errors.parquet', baseOnly: true, about: 'One axis per ActivitySim submodel. Calibration is measured on the base year, so forecast scenarios share the base-year errors. Calibration rounds each have their own.',
+      views: [V('radar', 'Radar', 'scn', CH.radar, { cmp: ['overlay'] }), V('tbl', 'Table', null, (e, c) => CH.calTbl(e, c), { cmp: ['overlay'] })] },
+    time: { title: 'Trips through the day', sub: 'Departure hour. Group by chooses what the lines or bands represent.', parquet: 'trips_by_hour.parquet', about: 'Departure time of day. Group by Scenario overlays the compared scenarios; the other groupings split one scenario. In Change mode, lines show the difference from the reference.',
+      groups: G(['scn', 'Scenario'], ['mode', 'Mode'], ['purpose', 'Purpose'], ['income', 'Income'], ['none', 'All trips']), groupLabel: 'Group by',
+      views: [V('lines', 'Lines', (c) => ({ scn: 'scn', mode: 'mode', purpose: 'purpose', income: 'income' }[c.group || 'scn'] || null), CH.timeLines, { diff: true }),
+        V('stream', 'Stream', (c) => ({ mode: 'mode', purpose: 'purpose', income: 'income' }[c.group] || 'mode'), CH.streamT, { cmp: ['switch', 'multi'] }), V('heat', 'Heatmap', null, CH.heatT)] },
+    zones: { title: 'Where transit grows', sub: 'Transit share by traffic analysis zone. Scroll to zoom.', parquet: 'zone_transit_share.geoparquet', about: 'Zone-level transit share. In compare mode: Values puts scenarios side by side (up to four), Difference fills each zone by its change from the reference, and Swipe slides between the reference and the focus scenario.',
+      views: [V('map', 'Values', null, mapView, { cmp: ['grid', 'switch'], fnCell: mapCell, cap: 4, mapSync: true }), V('diffm', 'Difference', 'diverge', CH.diffMap, { diff: true, needs: true, cmp: ['diff'] }), V('swipe', 'Swipe', null, CH.swipeMap, { needs: true, cmp: ['swipe'] })] },
+    flows: { title: 'District flows', sub: 'Daily trips between districts, leaving out trips that stay inside one. Hover a district to isolate it.', parquet: 'od_district.parquet', about: 'Origin to destination trips aggregated to five districts.', views: [V('chord', 'Chord', null, CH.chord, { cmp: ['switch'] }), V('tbl', 'Table', null, (e) => flowTable(e), { cmp: ['switch'] })] },
+    hh: { title: 'Auto ownership', sub: 'Households by number of cars for the focus scenario.', parquet: 'auto_ownership.parquet', about: 'Output of the auto ownership submodel, segmented by household income.',
+      views: [V('waffle', 'Waffle', null, CH.waffle, { cmp: ['multi'] }), V('sun', 'Sunburst', null, (e, c, w, h) => CH.sunburst(e, c, w, h, 'hh'), { cmp: ['multi'] }), V('tree', 'Treemap', null, (e, c, w, h) => CH.treemap(e, c, w, h, 'hh'), { cmp: ['multi'] }), V('bars', '100% bars', null, CH.stackedAuto, { cmp: ['multi'] }), V('db', 'Dumbbell', 'scn', (e, c, w, h) => CH.dumbbell(e, c, w, h, 'hh'))] },
+    pyramid: { title: 'Population by age and sex', sub: 'Synthetic population in bars. Ticks mark the census estimate.', parquet: 'persons_age_sex.parquet', about: 'Checks the synthetic population against ACS estimates before any model runs. The population is the same in every scenario.', indep: true, views: [V('pyr', 'Pyramid', null, CH.pyramid, { cmp: [] })] },
+    tlfd: { title: 'Trip length distribution', sub: 'Share of trips by distance. Dashed line is observed.', parquet: 'trip_length_frequency.parquet', about: 'TLFD by purpose for the focus scenario. Average length is shown under each ridge.', views: [V('ridge', 'Ridgeline', null, CH.ridge, { cmp: ['multi'] })] },
+    modeinc: { title: 'Mode share by household income', sub: 'Lower-income households use transit, walking and school buses most.', parquet: 'mode_by_income.parquet', about: 'Trip mode shares segmented by income group.', views: [V('bars', '100% bars', 'mode', CH.stackedInc, { cmp: ['multi'] })] },
+    flowbig: { title: 'From purpose to mode to distance', sub: 'Each band is a share of daily trips.', parquet: 'trips_by_purpose_mode.parquet', about: 'Follows trips from why people travel, to how, to how far.', views: [V('flow', 'Flow', 'mode', CH.sankey, { cmp: ['switch'] })] },
+    boards: { title: 'Transit boardings by line', sub: 'Weekday boardings. Open circle is observed.', parquet: 'transit_boardings.parquet', about: 'Boardings assigned to each line compared with the agency counts.', views: [V('db', 'Dumbbell', 'scn', (e, c, w, h) => CH.dumbbell(e, c, w, h, 'boards'))] },
+    speed: { title: 'Average speed by hour', sub: 'Slow hours are darkest.', parquet: 'speed_by_facility_hour.parquet', about: 'Congested speeds by facility type through the day.', views: [V('heat', 'Heatmap', null, (e, c, w, h) => CH.heat(e, c, w, h, 'speed'), { cmp: ['multi'] })] },
+    vmt: { title: 'Vehicle miles by county and road type', sub: 'Millions of miles per day.', parquet: 'vmt_county_facility.parquet', about: 'Assigned vehicle miles of travel.', views: [V('tree', 'Treemap', null, (e, c, w, h) => CH.treemap(e, c, w, h, 'vmt'), { cmp: ['multi'] }), V('sun', 'Sunburst', null, (e, c, w, h) => CH.sunburst(e, c, w, h, 'vmt'), { cmp: ['multi'] })] },
+    score: { title: 'Scenario scorecard', sub: 'Every compared scenario against the reference. Click a column to sort.', parquet: 'scenario_summary.parquet', about: 'One row per scenario, one column per headline metric. Cell shading shows how far each value is from the reference, so fifteen scenarios can be read at a glance.', needs: true, views: [V('matrix', 'Matrix', null, CH.scoreTable, { diff: true })] },
+    rank: { title: 'Ranked by metric', sub: 'Scenarios sorted by the chosen metric.', parquet: 'scenario_summary.parquet', about: 'Pick a metric to rank every compared scenario. In Change mode bars show the difference from the reference.', needs: true,
+      groups: G(...WF.METRICS.map((m) => [m.k, m.label])), groupLabel: 'Metric', views: [V('bars', 'Bars', null, CH.rank, { diff: true })] },
+  };
+  WF.viewsFor = (T, compare) => T.views.filter((v) => !v.needs || compare);
+
+  WF.NAV = [
+    { k: 'summary', label: 'Summary', icon: 'summary', title: 'Summary', sub: 'Regional totals and calibration status' },
+    { k: 'hh', label: 'Person and household', icon: 'people', title: 'Person and household models', sub: 'Who lives where, and how many cars they own', subs: [['Auto ownership', 'hh'], ['Population', 'pyramid']] },
+    { k: 'tours', label: 'Tour models', icon: 'tours', title: 'Tour models', sub: 'When, how far and between which districts people travel', subs: [['Trip length', 'tlfd'], ['Timing', 'time'], ['Districts', 'flows']] },
+    { k: 'mode', label: 'Mode choice', icon: 'mode', title: 'Mode choice', sub: 'How people choose between driving, transit, walking and biking', subs: [['Shares', 'share'], ['Segments', 'modeinc'], ['Flow', 'flowbig']] },
+    { k: 'network', label: 'Network', icon: 'map', title: 'Network', sub: 'Roads, rail and the places they serve', subs: [['Transit', 'boards'], ['Roads', 'vmt']] },
+    { k: 'explore', label: 'Explore', icon: 'explore', title: 'Explore', sub: 'Free-form analysis', stub: true },
+  ];
+  WF.PAGE_TILES = {
+    summary: [['trace', 'diff'], ['years', 'lines'], ['score', 'matrix'], ['rank', 'bars'], ['mix', 'tree'], ['share', 'bars'], ['fp', 'radar'], ['time', 'lines'], ['zones', 'map'], ['flows', 'chord']],
+    hh: [['hh', 'waffle'], ['pyramid', 'pyr'], ['modeinc', 'bars']],
+    tours: [['tlfd', 'ridge'], ['time', 'heat'], ['flows', 'chord']],
+    mode: [['share', 'bars'], ['modeinc', 'bars'], ['flowbig', 'flow'], ['time', 'stream'], ['mix', 'sun']],
+    network: [['zones', 'map'], ['boards', 'db'], ['speed', 'heat'], ['vmt', 'tree']],
+  };
+
+  /* legends */
+  WF.legendFor = (kind, c) => {
+    const k = WF.K(), t = WF.tok();
+    if (kind === 'scn') return WF.legendHTML(c.active, c.ref);
+    if (kind === 'mode') return WF.modeLegend();
+    if (kind === 'trace') { const m = WF.traceMeta(c.group || 'mode'); return m.names.map((n, i) => `<span class="lg"><i style="background:${m.color(i)}"></i>${n}</span>`).join('') + `<span class="lg"><i style="background:var(--ok)"></i>${m.tolLabel}</span>`; }
+    if (kind === 'sub') return ['Auto ownership', 'Activity pattern', 'Work location', 'School location', 'Tour mode', 'Tour timing', 'Stop frequency', 'Trip mode'].map((n, i) => `<span class="lg"><i style="background:${i < 7 ? k.cat(i) : WF.U.mix(t.surface, t.ink, .5)}"></i>${n}</span>`).join('') + '<span class="lg"><i style="background:var(--ok)"></i>3% tolerance</span>';
+    if (kind === 'purpose') return D.PURP.map((p, i) => `<span class="lg"><i style="background:${k.cat(i)}"></i>${p}</span>`).join('');
+    if (kind === 'income') { const rp = k.ramp(k.P, 4, .55); return D.INC.map((n, i) => `<span class="lg"><i style="background:${rp[i]}"></i>${n}</span>`).join(''); }
+    if (kind === 'diverge') { const pal = WF.palette(), mid = WF.U.mix(t.surface, t.ink, .16); return `<span class="lg" style="gap:8px">Lower than ${c.ref === 'Observed' ? 'observed' : WF.L(c.ref)}<i style="width:120px;height:8px;border-radius:4px;background:linear-gradient(90deg,${pal[1]},${mid},${pal[0]})"></i>Higher</span>`; }
+    return '';
+  };
+  WF.hiScn = (root, name) => {
+    const cols = new Map(); WF.SC.forEach((s) => cols.set(WF.scColor(s).toLowerCase(), s));
+    root.querySelectorAll('svg *').forEach((e) => { const sn = cols.get((e.getAttribute('fill') || '').toLowerCase()) || cols.get((e.getAttribute('stroke') || '').toLowerCase()); if (!sn) return; e.style.opacity = !name || sn === name ? '' : '.14'; e.style.transition = 'opacity .12s'; });
+  };
+
+  /* side-by-side renderer: the reference first, then the compared scenarios, a page of up to cap at a time */
+  function renderMulti(view, cc, body, w, h, st) {
+    const cap = view.cap || 4, ref = cc.ref, set = WF.SC.filter((s) => cc.active.has(s) && s !== ref);
+    const per = Math.max(1, cap - 1), pages = Math.max(1, Math.ceil(set.length / per)); st.pg = Math.min(st.pg || 0, pages - 1);
+    const items = [ref, ...set.slice(st.pg * per, st.pg * per + per)];
+    const n = items.length, pagerH = pages > 1 ? 30 : 0, gap = 10, cols = w < 480 ? 1 : n <= 2 ? n : n <= 4 ? 2 : 3, rows = Math.ceil(n / cols);
+    const cw = Math.floor((w - gap * (cols - 1)) / cols), chh = Math.max(150, Math.floor((h - pagerH - gap * (rows - 1)) / rows));
+    body.innerHTML = ''; body.style.overflow = 'auto';
+    if (view.mapSync) { st.mg = st.mg || 'mg' + Math.random().toString(36).slice(2, 7); WF.mapSync.start(st.mg); }
+    const grid = document.createElement('div'); grid.className = 'wf-multi'; grid.style.cssText = `display:grid;grid-template-columns:repeat(${cols},${cw}px);gap:${gap}px`; body.appendChild(grid);
+    items.forEach((s) => {
+      const cell = document.createElement('div'); cell.dataset.s = s; cell.dataset.c = s === 'Observed' ? 'var(--ink)' : WF.scColor(s); cell.style.cssText = `position:relative;height:${chh}px;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--tile-hi,var(--surface))`;
+      const cap2 = document.createElement('div'); cap2.style.cssText = 'position:absolute;left:10px;top:8px;z-index:7;display:flex;gap:7px;align-items:center;font-size:12px;font-weight:600;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:2px 10px 2px 8px;max-width:calc(100% - 20px)';
+      cap2.innerHTML = `<i style="width:9px;height:9px;border-radius:50%;background:${s === 'Observed' ? 'var(--ink)' : WF.scColor(s)}"></i><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${WF.L(s)}</span>${s === ref ? '<span style="color:var(--mute);font-weight:400">reference</span>' : ''}`;
+      const inner = document.createElement('div'); inner.style.cssText = `position:absolute;inset:34px 6px 6px 6px`; cell.append(inner, cap2); grid.appendChild(cell);
+      const c2 = Object.create(cc); c2.focus = s; c2.active = new Set([s]); c2.mapGroup = st.mg; c2.diff = view.cmp.includes('diff') && cc.diff !== 'val' && s !== ref ? cc.diff : 'val';
+      const ww = cw - 12, hh = chh - 40; try { (view.fnCell || view.fn)(inner, c2, ww, hh); } catch (e) { inner.textContent = e.message; }
+    });
+    if (view.mapSync) { const bar = document.createElement('div'); bar.style.cssText = 'position:absolute;right:14px;top:12px;display:flex;align-items:center;gap:8px;z-index:9';
+      bar.innerHTML = `<span style="font-size:12px;color:var(--mute);background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:3px 10px">Zoom and pan are linked</span><div style="display:flex;border:1px solid var(--line);border-radius:10px;background:var(--surface);overflow:hidden">${[['+','Zoom in'],['−','Zoom out'],['⌂','Reset view']].map(([t, a], i) => `<button data-z="${i}" aria-label="${a}" style="width:30px;height:30px;border:0;background:transparent;color:var(--ink);cursor:pointer;font-size:15px${i ? ';border-left:1px solid var(--line)' : ''}">${t}</button>`).join('')}</div>`;
+      body.style.position = 'relative'; body.appendChild(bar);
+      bar.querySelectorAll('[data-z]').forEach((b) => (b.onclick = () => { const i = +b.dataset.z; if (i === 2) WF.mapSync.reset(st.mg); else WF.mapSync.zoomBy(st.mg, i ? 1 / 1.6 : 1.6); })); }
+    const cellsEl = [...grid.children], clear = () => { grid.classList.remove('syncing'); grid.querySelectorAll('.sync').forEach((x) => x.classList.remove('sync')); WF.TT.hide(); };
+    grid.addEventListener('mousemove', (e) => {
+      const t = e.target.closest && e.target.closest('[data-key]'); if (!t || !grid.contains(t)) { clear(); return; }
+      const key = t.dataset.key, hit = cellsEl.map((cl) => [...cl.querySelectorAll('[data-key]')].filter((x) => x.dataset.key === key));
+      grid.classList.add('syncing'); grid.querySelectorAll('.sync').forEach((x) => x.classList.remove('sync')); hit.forEach((a) => a.forEach((x) => x.classList.add('sync')));
+      const ref0 = hit[0] && hit[0][0], rn = ref0 ? +ref0.dataset.num : null, rel = t.dataset.rel === '1', unit = t.dataset.unit || '';
+      const rows = cellsEl.map((cl, i) => { const el = hit[i] && hit[i][0]; if (!el) return null; const num = +el.dataset.num, d = i > 0 && rn != null && isFinite(rn) ? (rel ? (rn ? ((num / rn - 1) * 100) : 0) : num - rn) : null;
+        return { k: WF.L(cl.dataset.s) + (i === 0 ? ' · reference' : ''), v: el.dataset.val, c: cl.dataset.c, b: i === 0, d: d == null ? '' : (d > 0.005 ? '+' : d < -0.005 ? '−' : '') + Math.abs(d).toFixed(1) + (rel ? '%' : unit), dc: 'var(--mute)' }; }).filter(Boolean);
+      WF.TT.show({ title: t.dataset.title, sub: rows.length + ' scenarios', rows }, { clientX: e.clientX, clientY: e.clientY, target: document.body });
+    });
+    grid.addEventListener('mouseleave', clear);
+    if (pages > 1) { const pg = document.createElement('div'); pg.style.cssText = 'display:flex;align-items:center;gap:10px;justify-content:flex-end;margin-top:8px;font-size:12.5px;color:var(--mute)';
+      pg.innerHTML = `<span>Scenarios ${st.pg * per + 1}–${Math.min(set.length, st.pg * per + per)} of ${set.length}</span><button class="mini" ${st.pg ? '' : 'disabled'} data-pg="-1" aria-label="Previous scenarios">‹</button><button class="mini" ${st.pg < pages - 1 ? '' : 'disabled'} data-pg="1" aria-label="Next scenarios">›</button>`; body.appendChild(pg);
+      pg.querySelectorAll('[data-pg]').forEach((b) => (b.onclick = () => { st.pg += +b.dataset.pg; renderMulti(view, cc, body, w, h, st); })); }
+  }
+
+  /* mount: draws one view into body, wires legends and resize. st = per-tile state {strat, sw, pg} */
+  const reg = [];
+  WF.clearTiles = () => { reg.length = 0; };
+  WF.redrawAll = () => reg.forEach((r) => r());
+  WF.mountTile = (id, viewKey, group, body, legendEl, ctx, st) => {
+    st = st || {};
+    const tile = WF.TILES[id], vs = WF.viewsFor(tile, ctx.compare), view = vs.find((v) => v.k === viewKey) || vs[0];
+    const cmps = ctx.compare && !tile.indep ? view.cmp : [], strat = cmps.includes(st.strat) ? st.strat : cmps[0] || null;
+    const cc = Object.create(ctx); cc.group = group || (tile.groups && tile.groups[0].k) || null;
+    if (!ctx.compare) { cc.active = new Set([ctx.focus]); cc.diff = 'val'; cc.compare = false; }
+    else if (strat === 'diff') { cc.active = new Set([ctx.focus]); cc.diff = ctx.diff === 'val' ? 'abs' : ctx.diff; }
+    else if (strat === 'switch') { cc.focus = st.sw && ctx.active.has(st.sw) ? st.sw : ctx.focus; cc.active = new Set([cc.focus]); cc.diff = 'val'; }
+    else if (strat === 'multi' || strat === 'grid') { cc.diff = ctx.diff; }
+    else if (tile.indep) { cc.active = new Set([ctx.focus]); cc.diff = 'val'; }
+    const multi = strat === 'multi' || strat === 'grid';
+    const k0 = typeof view.leg === 'function' ? view.leg(cc) : view.leg, kind = multi ? (k0 === 'scn' ? null : k0) : k0;
+    if (legendEl) {
+      legendEl.innerHTML = kind ? WF.legendFor(kind, cc) : ''; legendEl.hidden = !kind;
+      legendEl.querySelectorAll('[data-lm]').forEach((l) => { l.onmouseenter = () => WF.hi(l.dataset.lm); l.onmouseleave = () => WF.hi(null); });
+      legendEl.querySelectorAll('[data-sc]').forEach((l) => { l.onmouseenter = () => WF.hiScn(body, l.dataset.sc); l.onmouseleave = () => WF.hiScn(body, null); });
+    }
+    const run = () => { const [w, h] = WF.box(body); if (w > 20 && h > 20) { try { body.style.overflow = ''; if (multi) renderMulti(view, cc, body, w, h, st); else view.fn(body, cc, w, h); } catch (e) { body.textContent = 'This chart could not be drawn: ' + e.message; console.error(e); } } };
+    run(); reg.push(run); WF.watch(body, run);
+    return { view, strat, cmps, cc };
+  };
+})();
+
+</script>
+<script>
+WF.darkFirst=true;
+const $=(s,r)=>(r||document).querySelector(s);
+const ICON={gear:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/>',moon:'<path d="M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9Z"/>',summary:'<rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/>',people:'<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><path d="M16 5.2a3.2 3.2 0 0 1 0 5.6M21 20c0-2.6-1.6-4.8-4-5.6"/>',tours:'<circle cx="6" cy="18" r="2.2"/><circle cx="18" cy="6" r="2.2"/><path d="M8 18h6a3 3 0 0 0 0-6h-4a3 3 0 0 1 0-6h6"/>',mode:'<path d="M7 7h13l-3-3M17 17H4l3 3"/>',map:'<path d="m3 6 6-2 6 2 6-2v14l-6 2-6-2-6 2Z"/><path d="M9 4v14M15 6v14"/>',explore:'<circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5Z"/>',
+ pal:'<circle cx="13.5" cy="6.5" r="1.5"/><circle cx="17.5" cy="10.5" r="1.5"/><circle cx="8.5" cy="7.5" r="1.5"/><circle cx="6.5" cy="12.5" r="1.5"/><path d="M12 22a10 10 0 1 1 10-10c0 3-2 3-4 3h-2a2 2 0 0 0-1.4 3.4c.9.9.4 3.6-2.6 3.6Z"/>',layers:'<path d="m12 2 10 5-10 5L2 7Z"/><path d="m2 12 10 5 10-5M2 17l10 5 10-5"/>',book:'<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5Z"/><path d="M4 19.5V22h16"/>',close:'<path d="M18 6 6 18M6 6l12 12"/>',grip:'<circle cx="9" cy="6" r="1.3"/><circle cx="15" cy="6" r="1.3"/><circle cx="9" cy="12" r="1.3"/><circle cx="15" cy="12" r="1.3"/><circle cx="9" cy="18" r="1.3"/><circle cx="15" cy="18" r="1.3"/>',up:'<path d="m6 15 6-6 6 6"/>',down:'<path d="m6 9 6 6 6-6"/>'};
+const svg=(p,c)=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ${c||''}>${p}</svg>`;
+const S={page:'summary',active:new Set(['Baseline','Frequent transit','Infill density']),focus:'Frequent transit',ref:'Baseline',baseline:'Baseline',year:2036,diff:'val',compare:WF.SC.filter(s=>!SCN.ROUND[s]).length>1,views:{},groups:{},tst:{},tab:'appearance',staged:null,q:'',tagf:null,font:'Schibsted Grotesk',zoom:100,theme:'system',colors:{primary:'#3DD6C6',secondary:'#FFB454',tertiary:'#B58CFF'}};
+const DEFCOL={primary:'#3DD6C6',secondary:'#FFB454',tertiary:'#B58CFF'};
+const LAY={summary_c:[['trace',12,400],['years',7,430],['rank',5,430],['score',12,560],['share',7,440],['time',5,440],['mix',7,440],['fp',5,440],['zones',8,430],['flows',4,430]],
+ summary:[['trace',12,400],['years',12,360],['mix',7,430],['share',5,430],['fp',4,410],['time',8,410],['zones',6,420],['flows',6,420]],
+ hh:[['hh',7,450],['pyramid',5,450],['modeinc',12,300]],tours:[['tlfd',7,440],['flows',5,440],['time',12,330]],
+ mode:[['share',6,420],['modeinc',6,420],['flowbig',12,460],['time',7,400],['mix',5,400]],network:[['zones',7,500],['boards',5,500],['speed',7,340],['vmt',5,340]]};
+const IND=()=>WF.SC.filter(s=>!SCN.ROUND[s]),RND=()=>WF.SC.filter(s=>SCN.ROUND[s]);
+const isBase=()=>S.year===SCN.BASEYEAR;
+const identical=()=>{const a=IND().filter(x=>S.active.has(x));if(a.length<2)return false;const f=a[0],j=(v)=>JSON.stringify(v);return a.every(x=>j(WF.SHARE[x])===j(WF.SHARE[f])&&SCN.VMT[x]===SCN.VMT[f]&&SCN.TRIPS[x]===SCN.TRIPS[f]&&j(SCN.BOARD[x])===j(SCN.BOARD[f]))};
+function setYear(y){S.year=y;SCN.setYear(y);WF.D.clearCache();if(!isBase()){RND().forEach(n=>S.active.delete(n));if(SCN.ROUND[S.focus])S.focus=S.baseline;if(S.ref==='Observed'||SCN.ROUND[S.ref])S.ref=S.baseline;if(!S.active.size)S.active.add(S.focus)}render()}
+const ctxNow=()=>({active:new Set(S.active),focus:S.focus,ref:S.compare?S.ref:(isBase()?'Observed':S.baseline),year:S.year,setYear,diff:S.compare?S.diff:'val',compare:S.compare,pick:(name,shift)=>{if(shift){if(S.active.has(name)&&S.active.size>1)S.active.delete(name);else S.active.add(name)}else{S.focus=name;S.active.add(name)}render()}});
+const L=WF.L;
+function nav(){const cur=S.page;$('#nav').innerHTML=`<div class="nb"><div class="mark"><svg viewBox="0 0 24 24" fill="none" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 18 9 9l4 6 3-5 4 8"/></svg></div><div><b>WFRC Travel Model</b><span>Calibration</span></div></div>`+WF.NAV.map(n=>`<button class="ni" role="tab" aria-selected="${cur==n.k}" data-p="${n.k}">${svg(ICON[n.icon])}<span>${n.label}</span></button>`+(cur==n.k&&n.subs?`<div class="subn">${n.subs.map(([l,t])=>`<button data-sub="${t}">${l}</button>`).join('')}</div>`:'')).join('')+`<div class="ngrow"></div><div class="nbot"><button class="ni" id="open-set" aria-label="Settings">${svg(ICON.gear)}<span>Settings</span></button><button class="ni" id="mode" aria-label="Toggle light and dark">${svg(ICON.moon)}<span>Light or dark</span></button></div>`;
+ $('#open-set').onclick=()=>openSettings();$('#mode').onclick=()=>{S.theme=WF.isDark()?'light':'dark';WF.setTheme(S.theme);render()};
+ document.querySelectorAll('.ni[data-p]').forEach(b=>b.onclick=()=>{S.page=b.dataset.p;render();scrollTo(0,0)});document.querySelectorAll('[data-sub]').forEach(b=>b.onclick=()=>{const t=$(`.tile[data-id="${b.dataset.sub}"]`);t&&t.scrollIntoView({behavior:'smooth',block:'start'})})}
+const opt1=(sel,s)=>`<option value="${s}" ${s==sel?'selected':''}>${s=='Observed'?'Observed':L(s)+(s==S.baseline?' (baseline)':'')}</option>`;
+const optHTML=(sel,withObs)=>(withObs&&isBase()?opt1(sel,'Observed'):'')+`<optgroup label="Scenarios">${IND().map(x=>opt1(sel,x)).join('')}</optgroup>`+(isBase()?`<optgroup label="Calibration rounds">${RND().map(x=>opt1(sel,x)).join('')}</optgroup>`:'');
+function dock(){const on=WF.SC.filter(s=>S.active.has(s));const multi=WF.SC.length>1;
+ $('#dock').innerHTML=`<label class="dpill"><small>Year</small><select id="sel-y" aria-label="Model year">${SCN.YEARS.map(q=>`<option value="${q.y}" ${q.y==S.year?'selected':''}>${q.y} · ${q.label}</option>`).join('')}</select></label><label class="dpill"><small>Focus</small><select id="sel-f" aria-label="Focus scenario">${optHTML(S.focus,false)}</select></label>`+(multi?`<div class="dsep"></div><button class="cmpbtn" id="cmp" aria-pressed="${S.compare}"><span class="tg"></span>Compare</button>`:'')+(multi&&S.compare?`<button class="dpill" id="open-pk" aria-haspopup="dialog"><span class="dots6">${on.slice(0,6).map(s=>`<i style="background:${WF.scColor(s)}"></i>`).join('')}</span><span class="cnt">${on.length}</span><small>selected</small><span class="chev">${svg(ICON.up)}</span></button><label class="dpill"><small>Reference</small><select id="sel-r" aria-label="Reference">${optHTML(S.ref,true)}</select></label><div class="fseg" role="group" aria-label="Show values or differences">${[['val','Values'],['abs','Change'],['pct','% change']].map(([k,l])=>`<button aria-pressed="${S.diff==k}" data-d="${k}">${l}</button>`).join('')}</div>`:'');
+ $('#sel-f').onchange=e=>{S.focus=e.target.value;render()};$('#sel-y').onchange=e=>setYear(+e.target.value);
+ const c=$('#cmp');if(c)c.onclick=()=>{S.compare=!S.compare;if(S.compare&&S.ref==='Observed')S.ref=S.baseline;if(!S.compare)$('#picker').hidden=true;render()};
+ const pk=$('#open-pk');if(pk)pk.onclick=()=>{const p=$('#picker');p.hidden=!p.hidden;if(!p.hidden)picker()};
+ const sr=$('#sel-r');if(sr)sr.onchange=e=>{S.ref=e.target.value;render()};
+ $('#dock').querySelectorAll('[data-d]').forEach(b=>b.onclick=()=>{S.diff=b.dataset.d;render()})}
+function picker(){const p=$('#picker'),tags=[...new Set(IND().map(s=>SCN.TAG[s])),...(isBase()?['Calibration round']:[])],q=S.q.toLowerCase();
+ const showR=isBase()&&(!S.tagf||S.tagf=='Calibration round')&&(!q||'calibration rounds'.includes(q)||'round'.includes(q)),list=(S.tagf=='Calibration round'?[]:IND()).filter(s=>(!S.tagf||SCN.TAG[s]==S.tagf)&&L(s).toLowerCase().includes(q));
+ p.innerHTML=`<div class="pk-h"><input id="pk-q" value="${S.q}" placeholder="Search ${IND().length} scenarios and ${RND().length} rounds" aria-label="Search scenarios"><div class="pk-act"><button id="pk-all">All</button><button id="pk-none">Clear</button><button id="pk-x" aria-label="Close">${svg(ICON.close)}</button></div></div>
+ <div class="pk-tags">${tags.map(t=>`<button aria-pressed="${S.tagf==t}" data-t="${t}">${t}</button>`).join('')}</div>
+ <div class="pk-l">${list.map(s=>{const on=S.active.has(s),col=WF.scColor(s);return `<div class="pk-r" style="--c:${col}"><button class="cb" role="checkbox" aria-checked="${on}" aria-label="Compare ${L(s)}" data-s="${s}"></button><span class="sdot" style="background:${col}"></span><div class="pk-n"><b>${L(s)}</b><small>${SCN.TAG[s]} · ${WF.SHARE[s][2].toFixed(1)}% transit · ${SCN.VMT[s].toFixed(1)}M VMT</small></div><button class="mini" data-f="${s}" aria-pressed="${S.focus==s}">Focus</button><button class="mini" data-r="${s}" aria-pressed="${S.ref==s}">Reference</button></div>`}).join('')||(showR?'':'<div style="padding:20px;color:var(--mute)">No scenario matches.</div>')}${showR?rounds():''}</div>
+ <div class="pk-f"><span>${S.active.size} of ${WF.SC.length} compared</span><button id="pk-set">Edit colours, names and order</button></div>`;
+ const q2=$('#pk-q');q2.oninput=()=>{S.q=q2.value;picker();const e=$('#pk-q');e.focus();e.setSelectionRange(S.q.length,S.q.length)};
+ $('#pk-x').onclick=()=>{p.hidden=true};$('#pk-set').onclick=()=>{p.hidden=true;S.tab='scenarios';openSettings()};
+ $('#pk-all').onclick=()=>{IND().forEach(s=>S.active.add(s));render();picker()};$('#pk-none').onclick=()=>{S.active=new Set([S.focus]);render();picker()};
+ p.querySelectorAll('.rs').forEach(b=>b.onclick=()=>{const n=b.dataset.r;if(S.active.has(n)){if(S.active.size>1)S.active.delete(n)}else S.active.add(n);render();picker()});
+ p.querySelectorAll('[data-rp]').forEach(b=>b.onclick=()=>{const R=RND(),k=b.dataset.rp;if(k=='clear'){R.forEach(n=>S.active.delete(n));if(!S.active.size)S.active.add(S.focus)}else if(k=='last')S.active.add(R[R.length-1]);else if(k=='best'){S.active.add(R.reduce((a,b)=>d3.mean(SCN.CALR(b))<d3.mean(SCN.CALR(a))?b:a))}else R.filter(n=>[1,10,20,30,40,50].includes(SCN.ROUND[n])).forEach(n=>S.active.add(n));render();picker()});
+ p.querySelectorAll('[data-t]').forEach(b=>b.onclick=()=>{S.tagf=S.tagf==b.dataset.t?null:b.dataset.t;picker()});
+ p.querySelectorAll('.cb').forEach(b=>b.onclick=()=>{const s=b.dataset.s;if(S.active.has(s)){if(S.active.size>1)S.active.delete(s)}else S.active.add(s);render();picker()});
+ p.querySelectorAll('[data-f]').forEach(b=>b.onclick=()=>{S.focus=b.dataset.f;render();picker()});
+ p.querySelectorAll('[data-r]').forEach(b=>b.onclick=()=>{S.ref=b.dataset.r;render();picker()})}
+function rounds(){const R=RND(),sel=R.filter(n=>S.active.has(n));return `<div class="rnd"><div class="rnd-h"><div><b>Calibration rounds</b><small>${R.length} rounds · ${sel.length} selected</small></div><div class="pk-act"><button data-rp="last">Last</button><button data-rp="best">Best</button><button data-rp="10">Every 10th</button><button data-rp="clear">Clear</button></div></div><div class="rstrip">${R.map(n=>{const w=d3.max(SCN.CALR(n)),st=WF.status(w);return `<button class="rs ${st}" data-r="${n}" aria-pressed="${S.active.has(n)}" aria-label="Round ${SCN.ROUND[n]}" title="Round ${SCN.ROUND[n]}: worst error ${w.toFixed(1)}%"></button>`}).join('')}</div><small class="rleg">Each tick is a round, coloured by its worst submodel error. Click to add or remove it from the comparison.</small></div>`}
+function hero(){const K=WF.kpis(S.focus,S.compare?S.ref:(isBase()?'Observed':S.baseline)),sp=WF.sparkPath;return `<section class="hero" aria-label="Headline numbers for ${L(S.focus)}">`+K.map(k=>{const sg=(k.pct>0?'+':k.pct<0?'−':'')+Math.abs(k.pct).toFixed(1)+'%',rows=WF.calRows(S.focus).map(r=>r.st);
+ return `<div class="k"><small>${k.label}</small><div class="kv">${k.val}<i>${k.unit}</i></div>`+(k.plain?`<div class="dots" title="${k.sub}">${rows.map(s=>`<i class="${s=='ok'?'on':s=='warn'?'w':'f'}"></i>`).join('')}</div>`:`<div class="kf"><span class="dl ${k.st}">${sg}</span><span>${k.sub.replace(/vs (.*)/,(m,a)=>'vs '+(a==='observed'?'observed':L(WF.SC.find(s=>s.toLowerCase()==a)||a)))}</span><svg viewBox="0 0 64 22"><path d="${sp(k.spark,64,22)}"/></svg></div>`)+`</div>`}).join('')+'</section>'}
+const key=id=>S.page+':'+id;
+const stOf=id=>S.tst[key(id)]||(S.tst[key(id)]={});
+function tile(id,def,h,w){const T=WF.TILES[id],vs=WF.viewsFor(T,S.compare),vk=S.views[key(id)]||def,v=vs.find(x=>x.k==vk)||vs[0],gk=S.groups[key(id)]||(T.groups&&T.groups[0].k),st=stOf(id);
+ const cmps=S.compare&&!T.indep?v.cmp:[],strat=cmps.includes(st.strat)?st.strat:cmps[0]||null;
+ const badge=(T.baseOnly&&!isBase()?`<span class="ibadge">Measured on the base year</span>`:'')+(v.diff&&S.compare&&S.diff!='val'&&strat!='multi'?`<span class="dbadge">${S.diff=='pct'?'% change':'Change'} vs ${S.ref=='Observed'?'observed':L(S.ref)}</span>`:'')+(S.compare&&T.indep?`<span class="ibadge">Same in every scenario</span>`:'');
+ const sw=strat=='switch'?`<label class="gb"><span>Scenario</span><select data-sw aria-label="Scenario">${WF.SC.filter(s=>S.active.has(s)).map(s=>`<option value="${s}" ${s==(st.sw&&S.active.has(st.sw)?st.sw:S.focus)?'selected':''}>${L(s)}</option>`).join('')}</select></label>`:'';
+ const cm=cmps.length>1?`<div class="sw cmp" role="group" aria-label="Compare as">${cmps.map(k=>`<button aria-pressed="${k==strat}" data-s="${k}">${WF.STRAT[k]}</button>`).join('')}</div>`:(strat&&strat!='overlay'&&cmps.length==1?`<span class="ibadge">${WF.STRAT[strat]}</span>`:'');
+ return `<section class="tile" style="grid-column:span ${w}" data-id="${id}"><div class="th"><div><div class="tt">${T.title}${badge}</div><div class="ts">${T.sub}</div></div><button class="xb" data-x aria-label="Expand">${svg('<path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>')}</button></div>
+ <div class="tctl">${T.groups?`<label class="gb"><span>${T.groupLabel}</span><select data-g aria-label="${T.groupLabel}">${T.groups.map(g=>`<option value="${g.k}" ${g.k==gk?'selected':''}>${g.label}</option>`).join('')}</select></label>`:''}${cm}${sw}${vs.length>1?`<div class="sw sp" role="group" aria-label="Chart type">${vs.map(x=>`<button aria-pressed="${x.k==v.k}" data-v="${x.k}">${x.label}</button>`).join('')}</div>`:''}</div>
+ <div class="lgd" data-l hidden></div><div class="tb" data-b style="height:${h}px"></div></section>`}
+function wire(root,redraw){root.querySelectorAll('.tile').forEach(t=>{const id=t.dataset.id,st=stOf(id);const go=redraw||render;
+ t.querySelectorAll('[data-v]').forEach(b=>b.onclick=()=>{S.views[key(id)]=b.dataset.v;go(id)});
+ t.querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>{st.strat=b.dataset.s;st.pg=0;go(id)});
+ const g=t.querySelector('[data-g]');if(g)g.onchange=()=>{S.groups[key(id)]=g.value;go(id)};
+ const sw=t.querySelector('[data-sw]');if(sw)sw.onchange=()=>{st.sw=sw.value;go(id)};
+ const x=t.querySelector('[data-x]');if(x&&!root.closest('.scrim'))x.onclick=()=>openFocus(id)})}
+function mountAll(root,items){const C=ctxNow();items.forEach(([id,def])=>{const t=$(`[data-id="${id}"]`,root);if(!t)return;WF.mountTile(id,S.views[key(id)]||def,S.groups[key(id)],$('[data-b]',t),$('[data-l]',t),C,stOf(id))})}
+function render(){WF.assign(S.active);nav();dock();const n=WF.NAV.find(x=>x.k==S.page);$('#h1').textContent=n.title;$('#sub').textContent=n.sub;WF.clearTiles();const P=$('#page');
+ if(n.stub){P.innerHTML='<div class="empty"><div><b>Explore</b>Not part of this prototype.</div></div>';return}
+ const skip=(id)=>(WF.TILES[id].needs&&!S.compare)||(WF.TILES[id].family&&!isBase()),items=WF.PAGE_TILES[S.page].filter(([id])=>!skip(id)),lay=(S.page=='summary'&&S.compare?LAY.summary_c:LAY[S.page]).filter(([id])=>!skip(id));
+ P.innerHTML=(S.page=='summary'&&S.compare&&identical()?'<div class="ynote">The compared scenarios have identical results for this year, so there is nothing to compare yet. Pick another year or add different scenarios.</div>':'')+(S.page=='summary'?hero():'')+`<div class="grid">`+lay.map(([id,w,h])=>tile(id,WF.PAGE_TILES[S.page].find(x=>x[0]==id)[1],id=='score'?Math.min(h,120+S.active.size*40):h,w)).join('')+`</div><div class="foot">Sample data for design review. Zones and basemaps are stylised stand-ins for the TAZ layer and tiles drawn on MapLibre in the product.</div>`;
+ mountAll(P,items);wire(P)}
+function openFocus(id){const s=$('#scrim'),def=WF.PAGE_TILES[S.page].find(x=>x[0]==id)[1];s.hidden=false;
+ const draw=()=>{s.innerHTML=tile(id,def,0,12).replace('style="height:0px"','style="height:calc(100% - 170px)"');const t=s.firstElementChild;t.style.gridColumn='';const x=t.querySelector('[data-x]');x.setAttribute('aria-label','Close');x.innerHTML=svg(ICON.close);
+  WF.clearTiles();WF.mountTile(id,S.views[key(id)]||def,S.groups[key(id)],t.querySelector('[data-b]'),t.querySelector('[data-l]'),ctxNow(),stOf(id));wire(s,draw);x.onclick=close};
+ const close=()=>{s.hidden=true;s.innerHTML='';render()};draw();s.onclick=e=>{if(e.target==s)close()}}
+/* ---------- settings ---------- */
+function applyFont(){document.documentElement.style.setProperty('--font',`'${S.font}',system-ui,sans-serif`);if(S.font==='System UI')document.documentElement.style.setProperty('--font','system-ui,-apple-system,Segoe UI,sans-serif')}
+function setTab(t){S.tab=t;openSettings()}
+function openSettings(){const m=$('#mscrim');m.hidden=false;const tabs=[['appearance','Appearance','pal'],['scenarios','Scenarios','layers'],['basemap','Basemap','map'],['docs','Documentation','book']];
+ m.innerHTML=`<div class="modal" role="dialog" aria-label="Settings"><div class="mnav"><h2>Settings</h2>${tabs.map(([k,l,i])=>`<button role="tab" aria-selected="${S.tab==k}" data-t="${k}">${svg(ICON[i])}${l}</button>`).join('')}<div class="grow"></div><button id="mx">${svg(ICON.close)}Close</button></div><div class="mbody" id="mb"></div></div>`;
+ m.querySelectorAll('[data-t]').forEach(b=>b.onclick=()=>setTab(b.dataset.t));$('#mx').onclick=closeSettings;m.onclick=e=>{if(e.target==m)closeSettings()};
+ ({appearance:tabApp,scenarios:tabScn,basemap:tabBm,docs:tabDocs})[S.tab]($('#mb'))}
+function closeSettings(){$('#mscrim').hidden=true;$('#mscrim').innerHTML=''}
+function tabApp(el){const fonts=['Schibsted Grotesk','Geist','IBM Plex Sans','System UI'];
+ el.innerHTML=`<h3>Appearance</h3><p class="lead">These choices apply only to you, for this session. A deployment can set its own defaults for the title, logo, colours and palette.</p>
+ <div class="row"><div><b>Theme</b><small>Follow your system, or pick one.</small></div><div class="sgm" role="group">${['light','dark','system'].map(k=>`<button aria-pressed="${S.theme==k}" data-th="${k}">${k[0].toUpperCase()+k.slice(1)}</button>`).join('')}</div></div>
+ <div class="row"><div><b>Colour-blind-safe scenario palette</b><small>Swaps the scenario colours for a set that stays distinct for common colour-vision differences.</small></div><button class="swt" role="switch" aria-checked="${WF.isSafe()}" id="safe" aria-label="Colour-blind-safe palette"></button></div>
+ <h4>Interface colours</h4><div class="row" style="align-items:flex-start"><div><b>Primary, secondary, accent</b><small>Drive highlights, selected states and the colours for transit, walking and biking.</small></div><div id="te"></div></div>
+ <h4>Type</h4><div class="fonts" role="radiogroup" aria-label="Font">${fonts.map(f=>`<button class="fc" role="radio" aria-checked="${S.font==f}" data-f="${f}"><b style="font-family:'${f}',system-ui">Aa</b><small>${f}</small></button>`).join('')}</div>
+ <div class="row"><div><b>Text size</b><small>${S.zoom}%</small></div><input type="range" min="85" max="125" step="5" value="${S.zoom}" id="zm" aria-label="Text size"></div>
+ <div class="row"><div><b>Reset appearance</b><small>Return to the deployment defaults.</small></div><button class="btn" id="rst">Reset</button></div>`;
+ el.querySelectorAll('[data-th]').forEach(b=>b.onclick=()=>{S.theme=b.dataset.th;if(S.theme=='system')delete document.documentElement.dataset.theme;else WF.setTheme(S.theme);WF.accents();render();tabApp(el)});
+ $('#safe').onclick=()=>{WF.setSafe(!WF.isSafe());render();tabApp(el)};
+ el.querySelectorAll('[data-f]').forEach(b=>b.onclick=()=>{S.font=b.dataset.f;applyFont();render();tabApp(el)});
+ $('#zm').oninput=e=>{S.zoom=+e.target.value;document.documentElement.style.setProperty('--zoom',S.zoom/100);el.querySelector('#zm').closest('.row').querySelector('small').textContent=S.zoom+'%'};$('#zm').onchange=()=>render();
+ $('#rst').onclick=()=>{S.font='Schibsted Grotesk';S.zoom=100;S.colors={...DEFCOL};WF.setSafe(false);applyFont();document.documentElement.style.setProperty('--zoom',1);WF.themeEditor($('#te'),DEFCOL,()=>{},S.colors);render();tabApp(el)};
+ WF.themeEditor($('#te'),DEFCOL,()=>{const r=n=>getComputedStyle(document.documentElement).getPropertyValue('--'+n).trim();S.colors={primary:r('primary'),secondary:r('secondary'),tertiary:r('tertiary')};if($('#page').children.length)render()},S.colors)}
+function tabScn(el){let dragI=null;
+ const draw=()=>{el.innerHTML=`<h3>Scenarios</h3><p class="lead">Choose which scenarios are in the compare set, give each a colour and a short name, reorder them, and mark the baseline. Colours stay with a scenario wherever it appears. Calibration rounds use a colour ramp and are chosen from the scenario picker.</p>
+  <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap"><button class="btn" id="rc">Reset colours and names</button><button class="btn" id="ai">Compare all</button></div>
+  <div id="sl">${IND().map((s,i)=>`<div class="srow" draggable="true" data-i="${i}" data-s="${s}"><span class="hnd" title="Drag to reorder">${svg(ICON.grip)}</span><label class="csw" style="background:${WF.scColor(s)}" title="Change colour"><input type="color" value="${WF.scColor(s)}" data-c="${s}" aria-label="Colour for ${L(s)}"></label><div><input class="lab" value="${(WF.scOver[s]&&WF.scOver[s].label)||''}" placeholder="${s}" data-l="${s}" aria-label="Display name for ${s}"><div style="color:var(--mute);font-size:12px;margin-top:3px">${SCN.TAG[s]} · ${WF.SHARE[s][2].toFixed(1)}% transit</div></div>
+   <button class="swt" role="switch" aria-checked="${S.active.has(s)}" data-i2="${s}" aria-label="Compare ${L(s)}"></button>${S.baseline==s?'<span class="chipb">Baseline</span>':`<button class="mini" data-b="${s}">Set as baseline</button>`}<button class="mini" data-m="${i}:-1" aria-label="Move up" ${i?'':'disabled'}>↑</button><button class="mini" data-m="${i}:1" aria-label="Move down" ${i<IND().length-1?'':'disabled'}>↓</button></div>`).join('')}</div>`;
+  el.querySelectorAll('[data-c]').forEach(inp=>{inp.oninput=()=>{(WF.scOver[inp.dataset.c]=WF.scOver[inp.dataset.c]||{}).color=inp.value;inp.closest('.csw').style.background=inp.value};inp.onchange=()=>{render();draw()}});
+  el.querySelectorAll('[data-l]').forEach(inp=>{inp.onchange=()=>{(WF.scOver[inp.dataset.l]=WF.scOver[inp.dataset.l]||{}).label=inp.value.trim();render();draw()}});
+  el.querySelectorAll('[data-i2]').forEach(b=>b.onclick=()=>{const s=b.dataset.i2;if(S.active.has(s)){if(S.active.size>1)S.active.delete(s)}else S.active.add(s);render();draw()});
+  el.querySelectorAll('[data-b]').forEach(b=>b.onclick=()=>{const old=S.baseline;S.baseline=b.dataset.b;if(S.ref===old)S.ref=S.baseline;render();draw()});
+  el.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{const [i,d]=b.dataset.m.split(':').map(Number);const a=WF.SC.splice(i,1)[0];WF.SC.splice(i+d,0,a);render();draw()});
+  $('#rc').onclick=()=>{Object.keys(WF.scOver).forEach(k=>delete WF.scOver[k]);render();draw()};$('#ai').onclick=()=>{IND().forEach(s=>S.active.add(s));render();draw()};
+  el.querySelectorAll('.srow').forEach(r=>{r.ondragstart=e=>{dragI=+r.dataset.i;r.classList.add('drag');e.dataTransfer.effectAllowed='move'};r.ondragend=()=>r.classList.remove('drag');r.ondragover=e=>{e.preventDefault();r.classList.add('over')};r.ondragleave=()=>r.classList.remove('over');
+   r.ondrop=e=>{e.preventDefault();const to=+r.dataset.i;if(dragI==null||dragI===to)return;const a=WF.SC.splice(dragI,1)[0];WF.SC.splice(to,0,a);dragI=null;render();draw()}})};
+ draw()}
+function thumb(b,w,h){const wrap=document.createElement('div');if(b.none){wrap.style.cssText=`height:${h}px;background:var(--tile);display:grid;place-items:center;color:var(--mute);font-size:12px`;wrap.textContent='Zones only';return wrap}
+ const s=d3.select(wrap).append('svg').attr('viewBox','0 0 900 560').attr('preserveAspectRatio','xMidYMid slice').style('width','100%').style('height',h+'px').style('display','block');const g=s.append('g');WF.baseLayer(g,b);
+ g.append('path').attr('d',d3.line().curve(d3.curveCatmullRom.alpha(.5))(WF.RAIL)).attr('fill','none').attr('stroke',b.dark?'#E8EDF3':'#243044').attr('stroke-width',6).attr('opacity',.7);return wrap}
+function tabBm(el){const groups=[...new Set(WF.BM.map(b=>b.group))];if(!S.staged)S.staged=WF.bmId();
+ const draw=()=>{const sel=WF.BM.find(b=>b.id==S.staged),applied=WF.BM.find(b=>b.id==WF.bmId());
+  el.innerHTML=`<h3>Basemap</h3><p class="lead">Choose the map underneath every zone map and swipe. Pick a style to preview it, then apply. Nothing changes until you apply.</p><div class="bmw"><div id="cat">${groups.map(g=>`<h4>${g}</h4><div class="bmg">${WF.BM.filter(b=>b.group==g).map(b=>`<button class="bmc" role="radio" aria-checked="${S.staged==b.id}" data-id="${b.id}"><span class="bth"></span><span>${b.name}</span>${b.needsSource?'<small>Needs a PMTiles source</small>':''}${b.id==WF.bmId()?'<small>In use</small>':''}</button>`).join('')}</div>`).join('')}</div>
+  <aside class="bmp"><div class="pv" id="pv"></div><div class="pi"><b>${sel.name}</b><small>${sel.group}${sel.raster?' · raster':sel.none?'':' · vector'}</small>${sel.needsSource?'<p style="margin:8px 0 0;color:var(--warn);font-size:12.5px">This style needs a PMTiles source in the deployment settings. Until one is set, it shows a blank map.</p>':''}<div style="display:flex;gap:8px;margin-top:12px"><button class="btn pri" id="ap" ${S.staged==WF.bmId()?'disabled':''}>Apply</button><button class="btn" id="rv" ${S.staged==WF.bmId()?'disabled':''}>Revert</button></div><small style="display:block;margin-top:10px">Applied now: ${applied.name}</small></div></aside></div>`;
+  el.querySelectorAll('.bmc').forEach(b=>{const bm=WF.BM.find(x=>x.id==b.dataset.id);b.querySelector(".bth").replaceWith(thumb(bm,128,76));b.onclick=()=>{S.staged=b.dataset.id;draw()}});
+  const keep=WF.bmId();WF.setBM(S.staged);const pv=$('#pv');pv.style.height='220px';WF.zoneMap(pv,S.focus,{});WF.setBM(keep);
+  $('#ap').onclick=()=>{WF.setBM(S.staged);render();draw()};$('#rv').onclick=()=>{S.staged=WF.bmId();draw()}};draw()}
+function tabDocs(el){el.innerHTML=`<div class="doc"><h3>Documentation</h3><p class="lead">How to read this dashboard.</p>
+ <h4>Focus and compare</h4><p>The dock always holds a <b>focus</b> scenario. Every chart shows that scenario on its own. Turn on <b>Compare</b> to bring in more scenarios and a <b>reference</b> to measure against. Values shows each scenario as is, Change shows the difference in the same units, and % change shows the relative difference.</p>
+ <h4>How each chart compares</h4><table><thead><tr><th>Chart</th><th>In compare mode</th></tr></thead><tbody>
+ <tr><td>Bars, lines, dumbbells, tables</td><td>Every compared scenario on the same axes, with the reference as a dashed line. Change mode centres the chart on zero.</td></tr>
+ <tr><td>Treemap</td><td>Side by side with shared scales, or one treemap coloured by each cell's change from the reference.</td></tr>
+ <tr><td>Sunburst, waffle, ridgeline</td><td>Side by side, up to four at a time, paged.</td></tr>
+ <tr><td>Donut, flow, chord, slope</td><td>One scenario at a time with a selector. In Change mode the donut turns into a difference chart.</td></tr>
+ <tr><td>Maps</td><td>Values side by side (up to four), Difference fill, or Swipe between the reference and the focus.</td></tr>
+ <tr><td>Radar and population</td><td>Do not vary by scenario, so they stay the same.</td></tr></tbody></table>
+ <h4>Model years</h4><p>Every alternative has a run for each model year: the base year 2023, the opening year 2027, the end of the STIP in 2032, the RTP phases in 2036 and 2046, and the 2055 horizon. The Year control switches every chart at once. In the base year all alternatives equal the baseline, because nothing has been built yet. Observed data and calibration rounds belong to the base year, so they appear only there. The Across model years chart shows the whole path, and clicking a year switches to it.</p>
+ <h4>Calibration rounds</h4><p>A calibration run can have fifty rounds or more. Rounds are an ordered series, so they are drawn on a colour ramp from early to late and chosen from a strip in the scenario picker. The Calibration progress chart plots the metrics you tune, such as mode share, volumes and boardings, for every round at once, with the target band shaded. Click a round to focus it, or shift-click to add it to the comparison.</p>
+ <h4>Observed data</h4><p>Observed values are published as aggregates only, each with its source and sample size. Where a margin of error is known, bars show it as a shaded band and tooltips say when a gap is within it.</p>
+ <h4>Reading many scenarios</h4><p>The scorecard shades every cell by its distance from the reference, so all compared scenarios fit in one view. Hover a name in any legend to isolate that scenario in the chart. In side-by-side views, hovering a shape highlights the same shape in every panel and one tooltip lists each scenario with its change from the reference.</p>
+ <h4>Shortcuts</h4><p><kbd>Esc</kbd> closes any open panel. Arrow keys move the swipe handle. Click a column header in the scorecard to sort.</p>
+ <h4>About the data</h4><p>The charts read post-processed Parquet summaries. Observed values come from the 2023 household travel survey. This prototype uses sample data.</p></div>`}
+addEventListener('keydown',e=>{if(e.key=='Escape'){if(!$('#mscrim').hidden)return closeSettings();if(!$('#scrim').hidden){$('#scrim').hidden=true;$('#scrim').innerHTML='';render()}$('#picker').hidden=true}});
+addEventListener('scroll',()=>$('#hd').classList.toggle('compact',scrollY>70),{passive:true});
+SCN.setYear(S.year);WF.D.clearCache();S.groups['summary:years']='transit';WF.accents();applyFont();render();
+</script>

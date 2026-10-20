@@ -1,0 +1,289 @@
+<title>Corridor Pro</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700&family=Geist:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3-sankey@0.12.3/dist/d3-sankey.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@observablehq/plot@0.6.16/dist/plot.umd.min.js"></script>
+<style>
+/* Corridor Pro, round 4. Dark-first bento with layered depth. One question drives the whole page: focus on one scenario, or compare many. Compare is a global mode that every tile answers in the way that suits its chart. */
+:root{--bg:#090C11;--bg2:#0E1218;--surface:#151A23;--tile:#141922;--tile-hi:#1A202B;--ink:#EEF1F5;--mute:#8F99A9;--line:#272F3C;--grid:#1F2632;--glass:rgba(18,23,31,.84);--glass-line:rgba(255,255,255,.09);--hi:rgba(255,255,255,.06);
+--ok:#41C98F;--warn:#E8A93D;--fail:#F36B68;--primary:#3DD6C6;--secondary:#FFB454;--tertiary:#B58CFF;
+--c-1:#3DD6C6;--c-2:#FFB454;--c-3:#B58CFF;--c-obs:#EEF1F5;--accent:#3DD6C6;--chart-fs:11.5;--chart-r:5;--zoom:1;
+--sh1:0 1px 0 var(--hi) inset,0 1px 2px rgba(0,0,0,.4),0 10px 28px -14px rgba(0,0,0,.65);--sh2:0 1px 0 var(--hi) inset,0 24px 60px -16px rgba(0,0,0,.7),0 4px 12px rgba(0,0,0,.35);
+--font:'Schibsted Grotesk',system-ui,sans-serif;--mono:'DM Mono',ui-monospace,monospace;color-scheme:dark}
+@media (prefers-color-scheme:light){:root:not([data-theme="dark"]){--bg:#E6EAF0;--bg2:#EEF1F6;--surface:#FFFFFF;--tile:#FFFFFF;--tile-hi:#F6F8FB;--ink:#0E131A;--mute:#586376;--line:#DBE1E9;--grid:#E8ECF1;--glass:rgba(255,255,255,.88);--glass-line:rgba(14,19,26,.1);--hi:rgba(255,255,255,.9);--ok:#1B8D5C;--warn:#AD6F18;--fail:#D13E3B;--c-obs:#0E131A;--sh1:0 1px 0 var(--hi) inset,0 1px 2px rgba(20,30,45,.08),0 12px 28px -16px rgba(20,30,45,.28);--sh2:0 1px 0 var(--hi) inset,0 26px 60px -18px rgba(20,30,45,.4),0 4px 12px rgba(20,30,45,.12);color-scheme:light}}
+:root[data-theme="light"]{--bg:#E6EAF0;--bg2:#EEF1F6;--surface:#FFFFFF;--tile:#FFFFFF;--tile-hi:#F6F8FB;--ink:#0E131A;--mute:#586376;--line:#DBE1E9;--grid:#E8ECF1;--glass:rgba(255,255,255,.88);--glass-line:rgba(14,19,26,.1);--hi:rgba(255,255,255,.9);--ok:#1B8D5C;--warn:#AD6F18;--fail:#D13E3B;--c-obs:#0E131A;--sh1:0 1px 0 var(--hi) inset,0 1px 2px rgba(20,30,45,.08),0 12px 28px -16px rgba(20,30,45,.28);--sh2:0 1px 0 var(--hi) inset,0 26px 60px -18px rgba(20,30,45,.4),0 4px 12px rgba(20,30,45,.12);color-scheme:light}
+*{box-sizing:border-box}html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 var(--font)}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;background:radial-gradient(1100px 600px at 30% -12%,var(--hi),transparent 70%)}
+button,select,input{font:inherit;color:inherit}:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.glass{background:var(--glass);backdrop-filter:blur(20px) saturate(1.3);-webkit-backdrop-filter:blur(20px) saturate(1.3);border:1px solid var(--glass-line);box-shadow:var(--sh2)}
+.nav{position:fixed;left:14px;top:14px;bottom:14px;width:68px;border-radius:24px;padding:12px 10px;display:flex;flex-direction:column;gap:4px;z-index:30;transition:width .22s;overflow:hidden}
+.nav:hover,.nav:focus-within{width:248px}
+.ngrow{flex:1}.nbot{border-top:1px solid var(--line);margin-top:6px;padding-top:6px;display:flex;flex-direction:column;gap:4px}
+.nb{display:flex;align-items:center;gap:10px;height:46px;padding:0 6px 0 4px;margin-bottom:10px;white-space:nowrap}
+.mark{width:38px;height:38px;flex:none;border-radius:13px;background:var(--accent);display:grid;place-items:center;box-shadow:0 1px 0 rgba(255,255,255,.35) inset,0 6px 14px -6px var(--accent)}.mark svg{width:19px;height:19px;stroke:#04161A}
+.nb b{font-weight:700;letter-spacing:-.01em}.nb span{color:var(--mute);display:block;font-size:12px;font-weight:400}
+.ni{display:flex;align-items:center;gap:14px;height:46px;padding:0 13px;border-radius:15px;border:0;background:transparent;color:var(--mute);cursor:pointer;text-align:left;white-space:nowrap;width:100%;flex:none}
+.ni svg{width:20px;height:20px;flex:none}.ni span,.nb>div:last-child,.subn{opacity:0;transition:opacity .15s}.nav:hover .ni span,.nav:hover .nb>div:last-child,.nav:focus-within .ni span,.nav:focus-within .nb>div:last-child,.nav:hover .subn,.nav:focus-within .subn{opacity:1}
+.ni:hover{background:color-mix(in srgb,var(--ink) 7%,transparent);color:var(--ink)}
+.ni[aria-selected=true]{background:color-mix(in srgb,var(--accent) 16%,var(--tile));color:var(--ink);box-shadow:0 1px 0 var(--hi) inset}.ni[aria-selected=true] svg{color:var(--accent)}
+.subn{display:flex;flex-direction:column;margin:0 0 4px 33px;padding-left:10px;border-left:1px solid var(--line);flex:none}.subn button{border:0;background:transparent;color:var(--mute);text-align:left;height:30px;padding:0 10px;border-radius:8px;cursor:pointer;white-space:nowrap}.subn button:hover{color:var(--ink);background:color-mix(in srgb,var(--ink) 7%,transparent)}
+.main{margin-left:96px;padding:26px 28px 60px 14px;max-width:1760px;zoom:var(--zoom)}
+.hd{position:sticky;top:0;z-index:25;display:flex;justify-content:space-between;align-items:center;gap:14px 20px;flex-wrap:wrap;padding:14px 0 12px;margin:-14px 0 8px;transition:padding .15s}
+.hd.compact{background:color-mix(in srgb,var(--bg) 84%,transparent);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);box-shadow:0 1px 0 var(--glass-line)}.hd.compact h1{font-size:21px}.hd.compact p{display:none}.hd.compact{padding:10px 0}.hdt{min-width:0}
+h1{margin:0;font-size:clamp(28px,3.2vw,40px);line-height:1.08;font-weight:700;letter-spacing:-.025em}.hd p{margin:6px 0 0;color:var(--mute);font-size:15px}
+.hdr{display:flex;gap:10px}.pillb{height:42px;padding:0 16px;border-radius:999px;display:inline-flex;gap:9px;align-items:center;cursor:pointer;color:var(--mute)}.pillb:hover{color:var(--ink)}.pillb svg{width:16px;height:16px}
+.hero{border-radius:26px;padding:6px;display:grid;grid-template-columns:repeat(5,1fr);margin-bottom:14px;background:var(--tile-hi);border:1px solid var(--glass-line);box-shadow:var(--sh1)}
+.k{padding:16px 20px 14px;border-left:1px solid var(--line);min-width:0}.k:first-child{border-left:0}
+.k small{color:var(--mute);font-size:13px}
+.kv{font:500 clamp(30px,3vw,42px)/1.1 var(--mono);letter-spacing:-.04em;margin:8px 0 8px;font-variant-numeric:tabular-nums;white-space:nowrap}.kv i{font:400 14px var(--font);font-style:normal;color:var(--mute);letter-spacing:0;margin-left:6px}
+.kf{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--mute)}
+.dl{font:500 12.5px var(--mono);padding:2px 8px;border-radius:999px}.dl.ok{color:var(--ok);background:color-mix(in srgb,var(--ok) 14%,transparent)}.dl.warn{color:var(--warn);background:color-mix(in srgb,var(--warn) 15%,transparent)}.dl.fail{color:var(--fail);background:color-mix(in srgb,var(--fail) 15%,transparent)}.dl.info{color:var(--ink);background:color-mix(in srgb,var(--ink) 10%,transparent)}
+.kf svg{margin-left:auto;width:64px;height:22px;fill:none;stroke:var(--accent);stroke-width:2;stroke-linecap:round}
+.dots{display:flex;gap:4px;margin-top:2px}.dots i{width:14px;height:14px;border-radius:5px;background:var(--grid)}.dots i.on{background:var(--ok)}.dots i.w{background:var(--warn)}.dots i.f{background:var(--fail)}
+.grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:14px}
+.tile{background:var(--tile);border:1px solid var(--glass-line);border-radius:24px;display:flex;flex-direction:column;min-width:0;box-shadow:var(--sh1);animation:rise .4s ease both}
+@keyframes rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}@media (prefers-reduced-motion:reduce){.tile{animation:none}}
+.th{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:16px 18px 0}
+.tt{font-weight:600;font-size:15.5px;letter-spacing:-.01em;display:flex;align-items:center;gap:10px;flex-wrap:wrap}.ts{color:var(--mute);font-size:12.5px;margin-top:2px;max-width:72ch}
+.dbadge{font:500 11.5px var(--mono);padding:2px 9px;border-radius:999px;background:color-mix(in srgb,var(--accent) 16%,transparent);color:var(--accent)}
+.ibadge{font:500 11.5px var(--font);padding:2px 9px;border-radius:999px;background:color-mix(in srgb,var(--ink) 9%,transparent);color:var(--mute)}
+.xb{width:30px;height:30px;border-radius:50%;border:0;background:transparent;color:var(--mute);cursor:pointer;display:grid;place-items:center;flex:none}.xb:hover{background:color-mix(in srgb,var(--ink) 9%,transparent);color:var(--ink)}.xb svg{width:15px;height:15px}
+.tctl{display:flex;gap:10px;flex-wrap:wrap;align-items:center;padding:10px 18px 0}
+.gb{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 6px 0 12px;border-radius:999px;border:1px solid var(--glass-line);background:var(--tile-hi);box-shadow:0 1px 0 var(--hi) inset}.gb span{color:var(--mute);font-size:12.5px}.gb select{border:0;background:transparent;height:30px;cursor:pointer;font-weight:500;outline-offset:3px;padding-right:4px;max-width:180px}.gb option{background:var(--surface);color:var(--ink)}
+.sw{display:flex;padding:3px;gap:2px;border-radius:999px;background:color-mix(in srgb,var(--ink) 7%,transparent);flex-wrap:wrap}.sw button{border:0;background:transparent;border-radius:999px;padding:4px 11px;font-size:12.5px;color:var(--mute);cursor:pointer;white-space:nowrap}.sw button[aria-pressed=true]{background:var(--tile-hi);color:var(--ink);box-shadow:0 1px 0 var(--hi) inset,0 1px 3px rgba(0,0,0,.3)}
+.sw.cmp button[aria-pressed=true]{background:color-mix(in srgb,var(--accent) 22%,var(--tile-hi))}
+.sp{margin-left:auto}
+.lgd{display:flex;gap:14px;flex-wrap:wrap;padding:8px 18px 0;color:var(--mute);font-size:12.5px;min-height:26px;max-height:70px;overflow:auto}
+.lg{display:inline-flex;gap:7px;align-items:center}.lg i{width:10px;height:10px;border-radius:50%}.lg i.dash{width:14px;height:0;border-top:2px dashed var(--ink);border-radius:0}.sclg{cursor:default}.mlg{cursor:default}
+.tb{padding:8px 14px 14px;flex:none;min-height:0;position:relative}
+.map-tip{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:9px 12px;display:grid;gap:2px;font-size:12.5px;box-shadow:var(--sh2)}.map-tip span{color:var(--mute)}
+.tbl{width:100%;border-collapse:collapse}.tbl th{font-weight:500;color:var(--mute);text-align:left;font-size:12.5px;padding:6px 8px;border-bottom:1px solid var(--line)}.tbl td{padding:8px;border-bottom:1px solid var(--grid)}.tbl .num{text-align:right;font:13px var(--mono)}.tbl th.num{font:500 12.5px var(--font)}
+.tbl.score th small{display:block;color:var(--mute);font-weight:400;font-size:11px}.tbl.score th.sortable{cursor:pointer;vertical-align:bottom}.tbl.score th.sortable:hover{color:var(--ink)}.tbl.score td{padding:8px 10px;border-bottom:1px solid var(--bg2)}.tbl.score td.num{border-radius:6px}
+.tbl.score thead th{position:sticky;top:0;background:var(--tile);z-index:2}.refrow td{background:color-mix(in srgb,var(--ink) 5%,transparent)}
+.tag{font:11.5px var(--font);color:var(--mute);border:1px solid var(--line);border-radius:999px;padding:1px 8px;margin-left:6px}
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;padding:2px 9px 2px 7px;border-radius:999px}.pill::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}.pill.ok{color:var(--ok);background:color-mix(in srgb,var(--ok) 13%,transparent)}.pill.warn{color:var(--warn);background:color-mix(in srgb,var(--warn) 14%,transparent)}.pill.fail{color:var(--fail);background:color-mix(in srgb,var(--fail) 14%,transparent)}
+.mini{border:1px solid var(--glass-line);background:transparent;border-radius:999px;height:28px;padding:0 11px;cursor:pointer;color:var(--mute);font-size:12.5px}.mini:hover:not(:disabled){color:var(--ink)}.mini:disabled{opacity:.4;cursor:default}.mini[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+/* dock */
+.dock{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:999px;flex-wrap:wrap;max-width:100%}
+.dsep{width:1px;height:26px;background:var(--glass-line);flex:none}
+.dpill{display:inline-flex;align-items:center;gap:8px;height:38px;padding:0 6px 0 14px;border-radius:999px;border:1px solid var(--glass-line);background:var(--tile-hi);cursor:pointer;white-space:nowrap;box-shadow:0 1px 0 var(--hi) inset}
+.dpill small{color:var(--mute);font-size:12px}.dpill select#sel-y{max-width:none}.dpill select{border:0;background:transparent;height:34px;cursor:pointer;font-weight:500;max-width:160px;outline-offset:3px}.dpill option{background:var(--surface);color:var(--ink)}
+.dots6{display:inline-flex}.dots6 i{width:14px;height:14px;border-radius:50%;margin-left:-4px;border:2px solid var(--tile-hi)}.dots6 i:first-child{margin-left:0}
+.cnt{font-weight:600}.chev{width:28px;height:28px;display:grid;place-items:center;color:var(--mute)}.chev svg{width:14px;height:14px}
+.cmpbtn{display:inline-flex;align-items:center;gap:10px;height:38px;padding:0 14px 0 8px;border-radius:999px;border:1px solid var(--glass-line);background:transparent;cursor:pointer;color:var(--mute);font-weight:500}
+.cmpbtn .tg{width:34px;height:20px;border-radius:99px;background:color-mix(in srgb,var(--ink) 18%,transparent);position:relative;transition:background .15s}.cmpbtn .tg::after{content:"";position:absolute;top:3px;left:3px;width:14px;height:14px;border-radius:50%;background:var(--ink);transition:transform .15s}
+.cmpbtn[aria-pressed=true]{color:var(--ink);border-color:var(--accent);background:color-mix(in srgb,var(--accent) 14%,transparent)}.cmpbtn[aria-pressed=true] .tg{background:var(--accent)}.cmpbtn[aria-pressed=true] .tg::after{transform:translateX(14px);background:#04161A}
+.fseg{display:flex;padding:3px;border-radius:999px;background:color-mix(in srgb,var(--ink) 8%,transparent)}.fseg button{border:0;background:transparent;border-radius:999px;padding:7px 13px;color:var(--mute);cursor:pointer;white-space:nowrap}.fseg button[aria-pressed=true]{background:var(--tile-hi);color:var(--ink);box-shadow:0 1px 0 var(--hi) inset,0 1px 3px rgba(0,0,0,.3)}
+.picker{position:fixed;top:84px;right:28px;width:min(580px,calc(100% - 24px));max-height:min(560px,72vh);border-radius:22px;z-index:45;display:flex;flex-direction:column;overflow:hidden}
+.pk-h{padding:14px 16px 10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.pk-h input{flex:1;min-width:140px;height:36px;border-radius:999px;border:1px solid var(--glass-line);background:var(--tile-hi);padding:0 14px;outline-offset:2px}
+.pk-act{display:flex;gap:6px}.pk-act button{border:1px solid var(--glass-line);background:transparent;border-radius:999px;height:32px;padding:0 12px;cursor:pointer;color:var(--mute)}.pk-act button:hover{color:var(--ink)}
+.pk-tags{display:flex;gap:6px;padding:0 16px 8px;flex-wrap:wrap}.pk-tags button{border:1px solid var(--glass-line);background:transparent;border-radius:999px;height:28px;padding:0 11px;cursor:pointer;color:var(--mute);font-size:12.5px}.pk-tags button[aria-pressed=true]{background:color-mix(in srgb,var(--accent) 18%,transparent);color:var(--ink);border-color:var(--accent)}
+.pk-l{overflow:auto;padding:0 8px 8px}
+.pk-r{display:grid;grid-template-columns:auto auto 1fr auto auto;gap:12px;align-items:center;padding:7px 10px;border-radius:12px}
+.pk-r:hover{background:color-mix(in srgb,var(--ink) 6%,transparent)}
+.cb{width:20px;height:20px;border-radius:6px;border:1.5px solid var(--mute);background:transparent;cursor:pointer;display:grid;place-items:center;padding:0}.cb[aria-checked=true]{background:var(--c);border-color:var(--c)}.cb[aria-checked=true]::after{content:"";width:9px;height:5px;border-left:2px solid #04161A;border-bottom:2px solid #04161A;transform:rotate(-45deg) translate(1px,-1px)}
+.sdot{width:12px;height:12px;border-radius:50%}
+.pk-n b{font-weight:500}.pk-n small{display:block;color:var(--mute);font-size:12px}
+.pk-f{padding:10px 16px;border-top:1px solid var(--line);color:var(--mute);font-size:12.5px;display:flex;justify-content:space-between;gap:10px;align-items:center}.pk-f button{border:0;background:none;color:var(--accent);cursor:pointer}
+/* settings modal */
+.mscrim{position:fixed;inset:0;z-index:60;background:rgba(5,7,10,.6);backdrop-filter:blur(6px);display:grid;place-items:center;padding:3vh 3vw}
+.modal{width:min(1040px,100%);height:min(720px,94vh);border-radius:26px;display:grid;grid-template-columns:210px 1fr;overflow:hidden;background:var(--surface);border:1px solid var(--glass-line);box-shadow:var(--sh2)}
+.mnav{padding:18px 12px;border-right:1px solid var(--line);display:flex;flex-direction:column;gap:3px;background:var(--tile-hi)}
+.mnav h2{margin:0 8px 14px;font-size:17px}.mnav button{display:flex;gap:10px;align-items:center;height:40px;padding:0 12px;border:0;background:transparent;border-radius:12px;cursor:pointer;color:var(--mute);text-align:left}.mnav button svg{width:17px;height:17px}.mnav button[aria-selected=true]{background:var(--surface);color:var(--ink);box-shadow:var(--sh1)}.mnav .grow{flex:1}
+.mbody{overflow:auto;padding:24px 28px 28px;min-width:0}
+.mbody h3{margin:0 0 4px;font-size:18px;letter-spacing:-.01em}.mbody .lead{margin:0 0 20px;color:var(--mute);max-width:70ch}
+.mbody h4{margin:22px 0 8px;font-size:12.5px;color:var(--mute);font-weight:500;letter-spacing:.02em}
+.row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 0;border-bottom:1px solid var(--line)}.row:last-child{border-bottom:0}.row b{font-weight:500;display:block}.row small{color:var(--mute)}
+.sgm{display:flex;padding:3px;gap:2px;border-radius:999px;background:color-mix(in srgb,var(--ink) 8%,transparent)}.sgm button{border:0;background:transparent;border-radius:999px;padding:6px 14px;color:var(--mute);cursor:pointer}.sgm button[aria-pressed=true]{background:var(--surface);color:var(--ink);box-shadow:var(--sh1)}
+.swt{width:42px;height:24px;border-radius:99px;background:color-mix(in srgb,var(--ink) 20%,transparent);position:relative;border:0;cursor:pointer;padding:0;flex:none}.swt::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:var(--ink);transition:transform .15s}.swt[aria-checked=true]{background:var(--accent)}.swt[aria-checked=true]::after{transform:translateX(18px);background:#04161A}
+.fonts{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.fc{border:1px solid var(--line);border-radius:14px;padding:12px;cursor:pointer;background:transparent;text-align:left}.fc[aria-checked=true]{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 10%,transparent)}.fc b{display:block;font-size:22px;font-weight:600}.fc small{color:var(--mute)}
+input[type=range]{accent-color:var(--accent);width:220px}
+.te-row{display:grid;grid-template-columns:1fr 34px 76px;align-items:center;gap:10px;padding:5px 0;max-width:340px}.te-row input{width:34px;height:28px;padding:0;border:1px solid var(--glass-line);border-radius:9px;background:none;cursor:pointer}.te-row code{font:12px var(--mono);color:var(--mute)}
+.te-presets{display:flex;gap:6px;margin-top:8px;align-items:center;max-width:340px}.te-p{display:flex;border:1px solid var(--glass-line);border-radius:9px;overflow:hidden;padding:0;cursor:pointer;background:none}.te-p i{width:12px;height:22px}.te-reset{margin-left:auto;border:0;background:none;color:var(--accent);cursor:pointer}
+.srow{display:grid;grid-template-columns:22px 34px minmax(140px,1fr) auto auto auto auto;gap:12px;align-items:center;padding:8px 10px;border:1px solid var(--line);border-radius:14px;margin-bottom:8px;background:var(--tile-hi)}
+.srow.drag{opacity:.4}.srow.over{border-color:var(--accent)}
+.hnd{cursor:grab;color:var(--mute);display:grid;place-items:center}.hnd svg{width:16px;height:16px}
+.csw{width:30px;height:30px;border-radius:50%;border:2px solid var(--surface);box-shadow:0 0 0 1px var(--line);padding:0;cursor:pointer;overflow:hidden;position:relative}.csw input{position:absolute;inset:-6px;width:44px;height:44px;opacity:0;cursor:pointer}
+.srow input.lab{height:34px;border-radius:10px;border:1px solid var(--line);background:var(--surface);padding:0 10px;min-width:0;width:100%;outline-offset:2px}
+.chipb{border:1px solid var(--accent);background:color-mix(in srgb,var(--accent) 16%,transparent);color:var(--accent);border-radius:999px;height:28px;padding:0 12px;font-weight:500}
+.bmw{display:grid;grid-template-columns:minmax(0,1fr) 310px;gap:20px}
+.bmg{display:grid;grid-template-columns:repeat(auto-fill,minmax(128px,1fr));gap:10px}
+.bmc{border:2px solid transparent;border-radius:14px;padding:0;background:var(--tile-hi);cursor:pointer;text-align:left;overflow:hidden;box-shadow:0 0 0 1px var(--line)}.bmc svg{display:block;width:100%;height:76px}.bmc span{display:block;padding:7px 10px;font-size:12.5px}
+.bmc[aria-checked=true]{border-color:var(--accent)}.bmc small{display:block;color:var(--accent);padding:0 10px 7px;margin-top:-4px;font-size:11px}
+.bmp{position:sticky;top:0;align-self:start;border:1px solid var(--line);border-radius:16px;overflow:hidden;background:var(--tile-hi)}.bmp .pv{height:220px;position:relative}.bmp .pi{padding:12px 14px}.bmp .pi b{display:block}.bmp .pi small{color:var(--mute)}
+.btn{height:38px;padding:0 18px;border-radius:999px;border:1px solid var(--line);background:transparent;cursor:pointer;font-weight:500}.btn.pri{background:var(--accent);border-color:var(--accent);color:#04161A}.btn:disabled{opacity:.45;cursor:default}
+.doc table{border-collapse:collapse;width:100%;margin:6px 0 14px}.doc th{text-align:left;font-weight:500;color:var(--mute);padding:7px 10px;border-bottom:1px solid var(--line);font-size:12.5px}.doc td{padding:9px 10px;border-bottom:1px solid var(--grid);vertical-align:top}
+.doc p{max-width:72ch;margin:0 0 10px}.doc kbd{font:12px var(--mono);border:1px solid var(--line);border-radius:5px;padding:1px 6px;background:var(--tile-hi)}
+.wf-tip{position:fixed;z-index:300;pointer-events:none;min-width:168px;max-width:320px;padding:11px 13px 10px;border-radius:14px;background:var(--glass);backdrop-filter:blur(16px) saturate(1.3);-webkit-backdrop-filter:blur(16px) saturate(1.3);border:1px solid var(--glass-line);box-shadow:var(--sh2);font-size:12.5px;line-height:1.35;opacity:0;transition:opacity .08s}
+.tt-h{display:flex;align-items:center;gap:8px;font-weight:600;font-size:13px;margin-bottom:6px}.tt-h i{width:10px;height:10px;border-radius:50%;flex:none}.tt-h em{font-style:normal;font-weight:400;color:var(--mute);margin-left:auto;padding-left:12px}
+.tt-r{display:grid;grid-template-columns:10px 1fr auto auto;gap:4px 8px;align-items:center;padding:2px 0}.tt-r i{width:8px;height:8px;border-radius:50%}.tt-r i.n{background:transparent}
+.tt-k{color:var(--mute)}.tt-r.b .tt-k{color:var(--ink)}.tt-v{font:500 12.5px var(--mono);text-align:right}.tt-d{font:12px var(--mono);font-style:normal}
+.tt-f{margin-top:7px;padding-top:7px;border-top:1px solid var(--line);color:var(--mute);font-size:12px}
+.rnd{margin:8px 8px 10px;padding:12px 14px;border:1px solid var(--glass-line);border-radius:16px;background:var(--tile-hi)}.rnd-h{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:10px}.rnd-h small{display:block;color:var(--mute);font-size:12px}
+.rstrip{display:flex;gap:2px}.rs{flex:1;min-width:0;height:30px;border:0;border-radius:3px;padding:0;cursor:pointer;opacity:.4;background:var(--ok)}.rs.warn{background:var(--warn)}.rs.fail{background:var(--fail)}.rs[aria-pressed=true]{opacity:1;outline:2px solid var(--ink);outline-offset:1px}.rs:hover{opacity:.9}.rleg{display:block;margin-top:8px;color:var(--mute);font-size:12px}
+.wf-multi .sync{stroke:var(--ink)!important;stroke-width:2.4px!important}.wf-multi g.sync rect{stroke:var(--ink);stroke-width:2.4px}.wf-multi.syncing [data-key]:not(.sync){opacity:.5}
+.scrim{position:fixed;inset:0;z-index:50;background:rgba(5,7,10,.62);backdrop-filter:blur(6px);display:grid;place-items:center;padding:3vh 3vw}
+.scrim .tile{width:min(1400px,100%);height:min(88vh,100%);background:var(--surface)}
+.empty{display:grid;place-items:center;height:56vh;text-align:center;color:var(--mute)}.empty b{display:block;color:var(--ink);font-size:18px;margin-bottom:6px}
+.ynote{margin:0 0 12px;padding:10px 14px;border-radius:14px;border:1px solid var(--glass-line);background:color-mix(in srgb,var(--accent) 10%,var(--tile));color:var(--ink)}
+.foot{margin-top:18px;color:var(--mute);font-size:12.5px}
+[hidden]{display:none!important}
+@media (max-width:1100px){.hero{grid-template-columns:repeat(2,1fr)}.k:nth-child(3){border-left:0}.k:nth-child(n+3){border-top:1px solid var(--line)}.k:last-child{grid-column:span 2}.grid>*{grid-column:span 12!important}.bmw{grid-template-columns:1fr}}
+@media (max-width:900px){.dock{border-radius:22px}.modal{grid-template-columns:1fr;grid-template-rows:auto 1fr}.mnav{flex-direction:row;overflow:auto;border-right:0;border-bottom:1px solid var(--line)}.mnav h2{display:none}.fonts{grid-template-columns:1fr 1fr}.srow{grid-template-columns:22px 34px 1fr auto}}
+@media (max-width:760px){.nav{display:none}.main{margin-left:0;padding:18px 14px 130px}}
+</style>
+<nav class="nav glass" id="nav" aria-label="Pages"></nav>
+<div class="main" id="main">
+  <header class="hd" id="hd"><div class="hdt"><h1 id="h1"></h1><p id="sub"></p></div><div class="dock glass" id="dock" role="group" aria-label="Scenario controls"></div></header>
+  <div id="page"></div>
+</div>
+<div class="picker glass" id="picker" hidden role="dialog" aria-label="Choose scenarios"></div>
+<div class="mscrim" id="mscrim" hidden></div>
+<div class="scrim" id="scrim" hidden></div>
+<script>
+/*CORE*/
+/*CORE2*/
+/*CORE3*/
+/*PAGES*/
+</script>
+<script>
+WF.darkFirst=true;
+const $=(s,r)=>(r||document).querySelector(s);
+const ICON={gear:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/>',moon:'<path d="M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9Z"/>',summary:'<rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/>',people:'<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><path d="M16 5.2a3.2 3.2 0 0 1 0 5.6M21 20c0-2.6-1.6-4.8-4-5.6"/>',tours:'<circle cx="6" cy="18" r="2.2"/><circle cx="18" cy="6" r="2.2"/><path d="M8 18h6a3 3 0 0 0 0-6h-4a3 3 0 0 1 0-6h6"/>',mode:'<path d="M7 7h13l-3-3M17 17H4l3 3"/>',map:'<path d="m3 6 6-2 6 2 6-2v14l-6 2-6-2-6 2Z"/><path d="M9 4v14M15 6v14"/>',explore:'<circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5Z"/>',
+ pal:'<circle cx="13.5" cy="6.5" r="1.5"/><circle cx="17.5" cy="10.5" r="1.5"/><circle cx="8.5" cy="7.5" r="1.5"/><circle cx="6.5" cy="12.5" r="1.5"/><path d="M12 22a10 10 0 1 1 10-10c0 3-2 3-4 3h-2a2 2 0 0 0-1.4 3.4c.9.9.4 3.6-2.6 3.6Z"/>',layers:'<path d="m12 2 10 5-10 5L2 7Z"/><path d="m2 12 10 5 10-5M2 17l10 5 10-5"/>',book:'<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5Z"/><path d="M4 19.5V22h16"/>',close:'<path d="M18 6 6 18M6 6l12 12"/>',grip:'<circle cx="9" cy="6" r="1.3"/><circle cx="15" cy="6" r="1.3"/><circle cx="9" cy="12" r="1.3"/><circle cx="15" cy="12" r="1.3"/><circle cx="9" cy="18" r="1.3"/><circle cx="15" cy="18" r="1.3"/>',up:'<path d="m6 15 6-6 6 6"/>',down:'<path d="m6 9 6 6 6-6"/>'};
+const svg=(p,c)=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ${c||''}>${p}</svg>`;
+const S={page:'summary',active:new Set(['Baseline','Frequent transit','Infill density']),focus:'Frequent transit',ref:'Baseline',baseline:'Baseline',year:2036,diff:'val',compare:WF.SC.filter(s=>!SCN.ROUND[s]).length>1,views:{},groups:{},tst:{},tab:'appearance',staged:null,q:'',tagf:null,font:'Schibsted Grotesk',zoom:100,theme:'system',colors:{primary:'#3DD6C6',secondary:'#FFB454',tertiary:'#B58CFF'}};
+const DEFCOL={primary:'#3DD6C6',secondary:'#FFB454',tertiary:'#B58CFF'};
+const LAY={summary_c:[['trace',12,400],['years',7,430],['rank',5,430],['score',12,560],['share',7,440],['time',5,440],['mix',7,440],['fp',5,440],['zones',8,430],['flows',4,430]],
+ summary:[['trace',12,400],['years',12,360],['mix',7,430],['share',5,430],['fp',4,410],['time',8,410],['zones',6,420],['flows',6,420]],
+ hh:[['hh',7,450],['pyramid',5,450],['modeinc',12,300]],tours:[['tlfd',7,440],['flows',5,440],['time',12,330]],
+ mode:[['share',6,420],['modeinc',6,420],['flowbig',12,460],['time',7,400],['mix',5,400]],network:[['zones',7,500],['boards',5,500],['speed',7,340],['vmt',5,340]]};
+const IND=()=>WF.SC.filter(s=>!SCN.ROUND[s]),RND=()=>WF.SC.filter(s=>SCN.ROUND[s]);
+const isBase=()=>S.year===SCN.BASEYEAR;
+const identical=()=>{const a=IND().filter(x=>S.active.has(x));if(a.length<2)return false;const f=a[0],j=(v)=>JSON.stringify(v);return a.every(x=>j(WF.SHARE[x])===j(WF.SHARE[f])&&SCN.VMT[x]===SCN.VMT[f]&&SCN.TRIPS[x]===SCN.TRIPS[f]&&j(SCN.BOARD[x])===j(SCN.BOARD[f]))};
+function setYear(y){S.year=y;SCN.setYear(y);WF.D.clearCache();if(!isBase()){RND().forEach(n=>S.active.delete(n));if(SCN.ROUND[S.focus])S.focus=S.baseline;if(S.ref==='Observed'||SCN.ROUND[S.ref])S.ref=S.baseline;if(!S.active.size)S.active.add(S.focus)}render()}
+const ctxNow=()=>({active:new Set(S.active),focus:S.focus,ref:S.compare?S.ref:(isBase()?'Observed':S.baseline),year:S.year,setYear,diff:S.compare?S.diff:'val',compare:S.compare,pick:(name,shift)=>{if(shift){if(S.active.has(name)&&S.active.size>1)S.active.delete(name);else S.active.add(name)}else{S.focus=name;S.active.add(name)}render()}});
+const L=WF.L;
+function nav(){const cur=S.page;$('#nav').innerHTML=`<div class="nb"><div class="mark"><svg viewBox="0 0 24 24" fill="none" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 18 9 9l4 6 3-5 4 8"/></svg></div><div><b>WFRC Travel Model</b><span>Calibration</span></div></div>`+WF.NAV.map(n=>`<button class="ni" role="tab" aria-selected="${cur==n.k}" data-p="${n.k}">${svg(ICON[n.icon])}<span>${n.label}</span></button>`+(cur==n.k&&n.subs?`<div class="subn">${n.subs.map(([l,t])=>`<button data-sub="${t}">${l}</button>`).join('')}</div>`:'')).join('')+`<div class="ngrow"></div><div class="nbot"><button class="ni" id="open-set" aria-label="Settings">${svg(ICON.gear)}<span>Settings</span></button><button class="ni" id="mode" aria-label="Toggle light and dark">${svg(ICON.moon)}<span>Light or dark</span></button></div>`;
+ $('#open-set').onclick=()=>openSettings();$('#mode').onclick=()=>{S.theme=WF.isDark()?'light':'dark';WF.setTheme(S.theme);render()};
+ document.querySelectorAll('.ni[data-p]').forEach(b=>b.onclick=()=>{S.page=b.dataset.p;render();scrollTo(0,0)});document.querySelectorAll('[data-sub]').forEach(b=>b.onclick=()=>{const t=$(`.tile[data-id="${b.dataset.sub}"]`);t&&t.scrollIntoView({behavior:'smooth',block:'start'})})}
+const opt1=(sel,s)=>`<option value="${s}" ${s==sel?'selected':''}>${s=='Observed'?'Observed':L(s)+(s==S.baseline?' (baseline)':'')}</option>`;
+const optHTML=(sel,withObs)=>(withObs&&isBase()?opt1(sel,'Observed'):'')+`<optgroup label="Scenarios">${IND().map(x=>opt1(sel,x)).join('')}</optgroup>`+(isBase()?`<optgroup label="Calibration rounds">${RND().map(x=>opt1(sel,x)).join('')}</optgroup>`:'');
+function dock(){const on=WF.SC.filter(s=>S.active.has(s));const multi=WF.SC.length>1;
+ $('#dock').innerHTML=`<label class="dpill"><small>Year</small><select id="sel-y" aria-label="Model year">${SCN.YEARS.map(q=>`<option value="${q.y}" ${q.y==S.year?'selected':''}>${q.y} · ${q.label}</option>`).join('')}</select></label><label class="dpill"><small>Focus</small><select id="sel-f" aria-label="Focus scenario">${optHTML(S.focus,false)}</select></label>`+(multi?`<div class="dsep"></div><button class="cmpbtn" id="cmp" aria-pressed="${S.compare}"><span class="tg"></span>Compare</button>`:'')+(multi&&S.compare?`<button class="dpill" id="open-pk" aria-haspopup="dialog"><span class="dots6">${on.slice(0,6).map(s=>`<i style="background:${WF.scColor(s)}"></i>`).join('')}</span><span class="cnt">${on.length}</span><small>selected</small><span class="chev">${svg(ICON.up)}</span></button><label class="dpill"><small>Reference</small><select id="sel-r" aria-label="Reference">${optHTML(S.ref,true)}</select></label><div class="fseg" role="group" aria-label="Show values or differences">${[['val','Values'],['abs','Change'],['pct','% change']].map(([k,l])=>`<button aria-pressed="${S.diff==k}" data-d="${k}">${l}</button>`).join('')}</div>`:'');
+ $('#sel-f').onchange=e=>{S.focus=e.target.value;render()};$('#sel-y').onchange=e=>setYear(+e.target.value);
+ const c=$('#cmp');if(c)c.onclick=()=>{S.compare=!S.compare;if(S.compare&&S.ref==='Observed')S.ref=S.baseline;if(!S.compare)$('#picker').hidden=true;render()};
+ const pk=$('#open-pk');if(pk)pk.onclick=()=>{const p=$('#picker');p.hidden=!p.hidden;if(!p.hidden)picker()};
+ const sr=$('#sel-r');if(sr)sr.onchange=e=>{S.ref=e.target.value;render()};
+ $('#dock').querySelectorAll('[data-d]').forEach(b=>b.onclick=()=>{S.diff=b.dataset.d;render()})}
+function picker(){const p=$('#picker'),tags=[...new Set(IND().map(s=>SCN.TAG[s])),...(isBase()?['Calibration round']:[])],q=S.q.toLowerCase();
+ const showR=isBase()&&(!S.tagf||S.tagf=='Calibration round')&&(!q||'calibration rounds'.includes(q)||'round'.includes(q)),list=(S.tagf=='Calibration round'?[]:IND()).filter(s=>(!S.tagf||SCN.TAG[s]==S.tagf)&&L(s).toLowerCase().includes(q));
+ p.innerHTML=`<div class="pk-h"><input id="pk-q" value="${S.q}" placeholder="Search ${IND().length} scenarios and ${RND().length} rounds" aria-label="Search scenarios"><div class="pk-act"><button id="pk-all">All</button><button id="pk-none">Clear</button><button id="pk-x" aria-label="Close">${svg(ICON.close)}</button></div></div>
+ <div class="pk-tags">${tags.map(t=>`<button aria-pressed="${S.tagf==t}" data-t="${t}">${t}</button>`).join('')}</div>
+ <div class="pk-l">${list.map(s=>{const on=S.active.has(s),col=WF.scColor(s);return `<div class="pk-r" style="--c:${col}"><button class="cb" role="checkbox" aria-checked="${on}" aria-label="Compare ${L(s)}" data-s="${s}"></button><span class="sdot" style="background:${col}"></span><div class="pk-n"><b>${L(s)}</b><small>${SCN.TAG[s]} · ${WF.SHARE[s][2].toFixed(1)}% transit · ${SCN.VMT[s].toFixed(1)}M VMT</small></div><button class="mini" data-f="${s}" aria-pressed="${S.focus==s}">Focus</button><button class="mini" data-r="${s}" aria-pressed="${S.ref==s}">Reference</button></div>`}).join('')||(showR?'':'<div style="padding:20px;color:var(--mute)">No scenario matches.</div>')}${showR?rounds():''}</div>
+ <div class="pk-f"><span>${S.active.size} of ${WF.SC.length} compared</span><button id="pk-set">Edit colours, names and order</button></div>`;
+ const q2=$('#pk-q');q2.oninput=()=>{S.q=q2.value;picker();const e=$('#pk-q');e.focus();e.setSelectionRange(S.q.length,S.q.length)};
+ $('#pk-x').onclick=()=>{p.hidden=true};$('#pk-set').onclick=()=>{p.hidden=true;S.tab='scenarios';openSettings()};
+ $('#pk-all').onclick=()=>{IND().forEach(s=>S.active.add(s));render();picker()};$('#pk-none').onclick=()=>{S.active=new Set([S.focus]);render();picker()};
+ p.querySelectorAll('.rs').forEach(b=>b.onclick=()=>{const n=b.dataset.r;if(S.active.has(n)){if(S.active.size>1)S.active.delete(n)}else S.active.add(n);render();picker()});
+ p.querySelectorAll('[data-rp]').forEach(b=>b.onclick=()=>{const R=RND(),k=b.dataset.rp;if(k=='clear'){R.forEach(n=>S.active.delete(n));if(!S.active.size)S.active.add(S.focus)}else if(k=='last')S.active.add(R[R.length-1]);else if(k=='best'){S.active.add(R.reduce((a,b)=>d3.mean(SCN.CALR(b))<d3.mean(SCN.CALR(a))?b:a))}else R.filter(n=>[1,10,20,30,40,50].includes(SCN.ROUND[n])).forEach(n=>S.active.add(n));render();picker()});
+ p.querySelectorAll('[data-t]').forEach(b=>b.onclick=()=>{S.tagf=S.tagf==b.dataset.t?null:b.dataset.t;picker()});
+ p.querySelectorAll('.cb').forEach(b=>b.onclick=()=>{const s=b.dataset.s;if(S.active.has(s)){if(S.active.size>1)S.active.delete(s)}else S.active.add(s);render();picker()});
+ p.querySelectorAll('[data-f]').forEach(b=>b.onclick=()=>{S.focus=b.dataset.f;render();picker()});
+ p.querySelectorAll('[data-r]').forEach(b=>b.onclick=()=>{S.ref=b.dataset.r;render();picker()})}
+function rounds(){const R=RND(),sel=R.filter(n=>S.active.has(n));return `<div class="rnd"><div class="rnd-h"><div><b>Calibration rounds</b><small>${R.length} rounds · ${sel.length} selected</small></div><div class="pk-act"><button data-rp="last">Last</button><button data-rp="best">Best</button><button data-rp="10">Every 10th</button><button data-rp="clear">Clear</button></div></div><div class="rstrip">${R.map(n=>{const w=d3.max(SCN.CALR(n)),st=WF.status(w);return `<button class="rs ${st}" data-r="${n}" aria-pressed="${S.active.has(n)}" aria-label="Round ${SCN.ROUND[n]}" title="Round ${SCN.ROUND[n]}: worst error ${w.toFixed(1)}%"></button>`}).join('')}</div><small class="rleg">Each tick is a round, coloured by its worst submodel error. Click to add or remove it from the comparison.</small></div>`}
+function hero(){const K=WF.kpis(S.focus,S.compare?S.ref:(isBase()?'Observed':S.baseline)),sp=WF.sparkPath;return `<section class="hero" aria-label="Headline numbers for ${L(S.focus)}">`+K.map(k=>{const sg=(k.pct>0?'+':k.pct<0?'−':'')+Math.abs(k.pct).toFixed(1)+'%',rows=WF.calRows(S.focus).map(r=>r.st);
+ return `<div class="k"><small>${k.label}</small><div class="kv">${k.val}<i>${k.unit}</i></div>`+(k.plain?`<div class="dots" title="${k.sub}">${rows.map(s=>`<i class="${s=='ok'?'on':s=='warn'?'w':'f'}"></i>`).join('')}</div>`:`<div class="kf"><span class="dl ${k.st}">${sg}</span><span>${k.sub.replace(/vs (.*)/,(m,a)=>'vs '+(a==='observed'?'observed':L(WF.SC.find(s=>s.toLowerCase()==a)||a)))}</span><svg viewBox="0 0 64 22"><path d="${sp(k.spark,64,22)}"/></svg></div>`)+`</div>`}).join('')+'</section>'}
+const key=id=>S.page+':'+id;
+const stOf=id=>S.tst[key(id)]||(S.tst[key(id)]={});
+function tile(id,def,h,w){const T=WF.TILES[id],vs=WF.viewsFor(T,S.compare),vk=S.views[key(id)]||def,v=vs.find(x=>x.k==vk)||vs[0],gk=S.groups[key(id)]||(T.groups&&T.groups[0].k),st=stOf(id);
+ const cmps=S.compare&&!T.indep?v.cmp:[],strat=cmps.includes(st.strat)?st.strat:cmps[0]||null;
+ const badge=(T.baseOnly&&!isBase()?`<span class="ibadge">Measured on the base year</span>`:'')+(v.diff&&S.compare&&S.diff!='val'&&strat!='multi'?`<span class="dbadge">${S.diff=='pct'?'% change':'Change'} vs ${S.ref=='Observed'?'observed':L(S.ref)}</span>`:'')+(S.compare&&T.indep?`<span class="ibadge">Same in every scenario</span>`:'');
+ const sw=strat=='switch'?`<label class="gb"><span>Scenario</span><select data-sw aria-label="Scenario">${WF.SC.filter(s=>S.active.has(s)).map(s=>`<option value="${s}" ${s==(st.sw&&S.active.has(st.sw)?st.sw:S.focus)?'selected':''}>${L(s)}</option>`).join('')}</select></label>`:'';
+ const cm=cmps.length>1?`<div class="sw cmp" role="group" aria-label="Compare as">${cmps.map(k=>`<button aria-pressed="${k==strat}" data-s="${k}">${WF.STRAT[k]}</button>`).join('')}</div>`:(strat&&strat!='overlay'&&cmps.length==1?`<span class="ibadge">${WF.STRAT[strat]}</span>`:'');
+ return `<section class="tile" style="grid-column:span ${w}" data-id="${id}"><div class="th"><div><div class="tt">${T.title}${badge}</div><div class="ts">${T.sub}</div></div><button class="xb" data-x aria-label="Expand">${svg('<path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>')}</button></div>
+ <div class="tctl">${T.groups?`<label class="gb"><span>${T.groupLabel}</span><select data-g aria-label="${T.groupLabel}">${T.groups.map(g=>`<option value="${g.k}" ${g.k==gk?'selected':''}>${g.label}</option>`).join('')}</select></label>`:''}${cm}${sw}${vs.length>1?`<div class="sw sp" role="group" aria-label="Chart type">${vs.map(x=>`<button aria-pressed="${x.k==v.k}" data-v="${x.k}">${x.label}</button>`).join('')}</div>`:''}</div>
+ <div class="lgd" data-l hidden></div><div class="tb" data-b style="height:${h}px"></div></section>`}
+function wire(root,redraw){root.querySelectorAll('.tile').forEach(t=>{const id=t.dataset.id,st=stOf(id);const go=redraw||render;
+ t.querySelectorAll('[data-v]').forEach(b=>b.onclick=()=>{S.views[key(id)]=b.dataset.v;go(id)});
+ t.querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>{st.strat=b.dataset.s;st.pg=0;go(id)});
+ const g=t.querySelector('[data-g]');if(g)g.onchange=()=>{S.groups[key(id)]=g.value;go(id)};
+ const sw=t.querySelector('[data-sw]');if(sw)sw.onchange=()=>{st.sw=sw.value;go(id)};
+ const x=t.querySelector('[data-x]');if(x&&!root.closest('.scrim'))x.onclick=()=>openFocus(id)})}
+function mountAll(root,items){const C=ctxNow();items.forEach(([id,def])=>{const t=$(`[data-id="${id}"]`,root);if(!t)return;WF.mountTile(id,S.views[key(id)]||def,S.groups[key(id)],$('[data-b]',t),$('[data-l]',t),C,stOf(id))})}
+function render(){WF.assign(S.active);nav();dock();const n=WF.NAV.find(x=>x.k==S.page);$('#h1').textContent=n.title;$('#sub').textContent=n.sub;WF.clearTiles();const P=$('#page');
+ if(n.stub){P.innerHTML='<div class="empty"><div><b>Explore</b>Not part of this prototype.</div></div>';return}
+ const skip=(id)=>(WF.TILES[id].needs&&!S.compare)||(WF.TILES[id].family&&!isBase()),items=WF.PAGE_TILES[S.page].filter(([id])=>!skip(id)),lay=(S.page=='summary'&&S.compare?LAY.summary_c:LAY[S.page]).filter(([id])=>!skip(id));
+ P.innerHTML=(S.page=='summary'&&S.compare&&identical()?'<div class="ynote">The compared scenarios have identical results for this year, so there is nothing to compare yet. Pick another year or add different scenarios.</div>':'')+(S.page=='summary'?hero():'')+`<div class="grid">`+lay.map(([id,w,h])=>tile(id,WF.PAGE_TILES[S.page].find(x=>x[0]==id)[1],id=='score'?Math.min(h,120+S.active.size*40):h,w)).join('')+`</div><div class="foot">Sample data for design review. Zones and basemaps are stylised stand-ins for the TAZ layer and tiles drawn on MapLibre in the product.</div>`;
+ mountAll(P,items);wire(P)}
+function openFocus(id){const s=$('#scrim'),def=WF.PAGE_TILES[S.page].find(x=>x[0]==id)[1];s.hidden=false;
+ const draw=()=>{s.innerHTML=tile(id,def,0,12).replace('style="height:0px"','style="height:calc(100% - 170px)"');const t=s.firstElementChild;t.style.gridColumn='';const x=t.querySelector('[data-x]');x.setAttribute('aria-label','Close');x.innerHTML=svg(ICON.close);
+  WF.clearTiles();WF.mountTile(id,S.views[key(id)]||def,S.groups[key(id)],t.querySelector('[data-b]'),t.querySelector('[data-l]'),ctxNow(),stOf(id));wire(s,draw);x.onclick=close};
+ const close=()=>{s.hidden=true;s.innerHTML='';render()};draw();s.onclick=e=>{if(e.target==s)close()}}
+/* ---------- settings ---------- */
+function applyFont(){document.documentElement.style.setProperty('--font',`'${S.font}',system-ui,sans-serif`);if(S.font==='System UI')document.documentElement.style.setProperty('--font','system-ui,-apple-system,Segoe UI,sans-serif')}
+function setTab(t){S.tab=t;openSettings()}
+function openSettings(){const m=$('#mscrim');m.hidden=false;const tabs=[['appearance','Appearance','pal'],['scenarios','Scenarios','layers'],['basemap','Basemap','map'],['docs','Documentation','book']];
+ m.innerHTML=`<div class="modal" role="dialog" aria-label="Settings"><div class="mnav"><h2>Settings</h2>${tabs.map(([k,l,i])=>`<button role="tab" aria-selected="${S.tab==k}" data-t="${k}">${svg(ICON[i])}${l}</button>`).join('')}<div class="grow"></div><button id="mx">${svg(ICON.close)}Close</button></div><div class="mbody" id="mb"></div></div>`;
+ m.querySelectorAll('[data-t]').forEach(b=>b.onclick=()=>setTab(b.dataset.t));$('#mx').onclick=closeSettings;m.onclick=e=>{if(e.target==m)closeSettings()};
+ ({appearance:tabApp,scenarios:tabScn,basemap:tabBm,docs:tabDocs})[S.tab]($('#mb'))}
+function closeSettings(){$('#mscrim').hidden=true;$('#mscrim').innerHTML=''}
+function tabApp(el){const fonts=['Schibsted Grotesk','Geist','IBM Plex Sans','System UI'];
+ el.innerHTML=`<h3>Appearance</h3><p class="lead">These choices apply only to you, for this session. A deployment can set its own defaults for the title, logo, colours and palette.</p>
+ <div class="row"><div><b>Theme</b><small>Follow your system, or pick one.</small></div><div class="sgm" role="group">${['light','dark','system'].map(k=>`<button aria-pressed="${S.theme==k}" data-th="${k}">${k[0].toUpperCase()+k.slice(1)}</button>`).join('')}</div></div>
+ <div class="row"><div><b>Colour-blind-safe scenario palette</b><small>Swaps the scenario colours for a set that stays distinct for common colour-vision differences.</small></div><button class="swt" role="switch" aria-checked="${WF.isSafe()}" id="safe" aria-label="Colour-blind-safe palette"></button></div>
+ <h4>Interface colours</h4><div class="row" style="align-items:flex-start"><div><b>Primary, secondary, accent</b><small>Drive highlights, selected states and the colours for transit, walking and biking.</small></div><div id="te"></div></div>
+ <h4>Type</h4><div class="fonts" role="radiogroup" aria-label="Font">${fonts.map(f=>`<button class="fc" role="radio" aria-checked="${S.font==f}" data-f="${f}"><b style="font-family:'${f}',system-ui">Aa</b><small>${f}</small></button>`).join('')}</div>
+ <div class="row"><div><b>Text size</b><small>${S.zoom}%</small></div><input type="range" min="85" max="125" step="5" value="${S.zoom}" id="zm" aria-label="Text size"></div>
+ <div class="row"><div><b>Reset appearance</b><small>Return to the deployment defaults.</small></div><button class="btn" id="rst">Reset</button></div>`;
+ el.querySelectorAll('[data-th]').forEach(b=>b.onclick=()=>{S.theme=b.dataset.th;if(S.theme=='system')delete document.documentElement.dataset.theme;else WF.setTheme(S.theme);WF.accents();render();tabApp(el)});
+ $('#safe').onclick=()=>{WF.setSafe(!WF.isSafe());render();tabApp(el)};
+ el.querySelectorAll('[data-f]').forEach(b=>b.onclick=()=>{S.font=b.dataset.f;applyFont();render();tabApp(el)});
+ $('#zm').oninput=e=>{S.zoom=+e.target.value;document.documentElement.style.setProperty('--zoom',S.zoom/100);el.querySelector('#zm').closest('.row').querySelector('small').textContent=S.zoom+'%'};$('#zm').onchange=()=>render();
+ $('#rst').onclick=()=>{S.font='Schibsted Grotesk';S.zoom=100;S.colors={...DEFCOL};WF.setSafe(false);applyFont();document.documentElement.style.setProperty('--zoom',1);WF.themeEditor($('#te'),DEFCOL,()=>{},S.colors);render();tabApp(el)};
+ WF.themeEditor($('#te'),DEFCOL,()=>{const r=n=>getComputedStyle(document.documentElement).getPropertyValue('--'+n).trim();S.colors={primary:r('primary'),secondary:r('secondary'),tertiary:r('tertiary')};if($('#page').children.length)render()},S.colors)}
+function tabScn(el){let dragI=null;
+ const draw=()=>{el.innerHTML=`<h3>Scenarios</h3><p class="lead">Choose which scenarios are in the compare set, give each a colour and a short name, reorder them, and mark the baseline. Colours stay with a scenario wherever it appears. Calibration rounds use a colour ramp and are chosen from the scenario picker.</p>
+  <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap"><button class="btn" id="rc">Reset colours and names</button><button class="btn" id="ai">Compare all</button></div>
+  <div id="sl">${IND().map((s,i)=>`<div class="srow" draggable="true" data-i="${i}" data-s="${s}"><span class="hnd" title="Drag to reorder">${svg(ICON.grip)}</span><label class="csw" style="background:${WF.scColor(s)}" title="Change colour"><input type="color" value="${WF.scColor(s)}" data-c="${s}" aria-label="Colour for ${L(s)}"></label><div><input class="lab" value="${(WF.scOver[s]&&WF.scOver[s].label)||''}" placeholder="${s}" data-l="${s}" aria-label="Display name for ${s}"><div style="color:var(--mute);font-size:12px;margin-top:3px">${SCN.TAG[s]} · ${WF.SHARE[s][2].toFixed(1)}% transit</div></div>
+   <button class="swt" role="switch" aria-checked="${S.active.has(s)}" data-i2="${s}" aria-label="Compare ${L(s)}"></button>${S.baseline==s?'<span class="chipb">Baseline</span>':`<button class="mini" data-b="${s}">Set as baseline</button>`}<button class="mini" data-m="${i}:-1" aria-label="Move up" ${i?'':'disabled'}>↑</button><button class="mini" data-m="${i}:1" aria-label="Move down" ${i<IND().length-1?'':'disabled'}>↓</button></div>`).join('')}</div>`;
+  el.querySelectorAll('[data-c]').forEach(inp=>{inp.oninput=()=>{(WF.scOver[inp.dataset.c]=WF.scOver[inp.dataset.c]||{}).color=inp.value;inp.closest('.csw').style.background=inp.value};inp.onchange=()=>{render();draw()}});
+  el.querySelectorAll('[data-l]').forEach(inp=>{inp.onchange=()=>{(WF.scOver[inp.dataset.l]=WF.scOver[inp.dataset.l]||{}).label=inp.value.trim();render();draw()}});
+  el.querySelectorAll('[data-i2]').forEach(b=>b.onclick=()=>{const s=b.dataset.i2;if(S.active.has(s)){if(S.active.size>1)S.active.delete(s)}else S.active.add(s);render();draw()});
+  el.querySelectorAll('[data-b]').forEach(b=>b.onclick=()=>{const old=S.baseline;S.baseline=b.dataset.b;if(S.ref===old)S.ref=S.baseline;render();draw()});
+  el.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{const [i,d]=b.dataset.m.split(':').map(Number);const a=WF.SC.splice(i,1)[0];WF.SC.splice(i+d,0,a);render();draw()});
+  $('#rc').onclick=()=>{Object.keys(WF.scOver).forEach(k=>delete WF.scOver[k]);render();draw()};$('#ai').onclick=()=>{IND().forEach(s=>S.active.add(s));render();draw()};
+  el.querySelectorAll('.srow').forEach(r=>{r.ondragstart=e=>{dragI=+r.dataset.i;r.classList.add('drag');e.dataTransfer.effectAllowed='move'};r.ondragend=()=>r.classList.remove('drag');r.ondragover=e=>{e.preventDefault();r.classList.add('over')};r.ondragleave=()=>r.classList.remove('over');
+   r.ondrop=e=>{e.preventDefault();const to=+r.dataset.i;if(dragI==null||dragI===to)return;const a=WF.SC.splice(dragI,1)[0];WF.SC.splice(to,0,a);dragI=null;render();draw()}})};
+ draw()}
+function thumb(b,w,h){const wrap=document.createElement('div');if(b.none){wrap.style.cssText=`height:${h}px;background:var(--tile);display:grid;place-items:center;color:var(--mute);font-size:12px`;wrap.textContent='Zones only';return wrap}
+ const s=d3.select(wrap).append('svg').attr('viewBox','0 0 900 560').attr('preserveAspectRatio','xMidYMid slice').style('width','100%').style('height',h+'px').style('display','block');const g=s.append('g');WF.baseLayer(g,b);
+ g.append('path').attr('d',d3.line().curve(d3.curveCatmullRom.alpha(.5))(WF.RAIL)).attr('fill','none').attr('stroke',b.dark?'#E8EDF3':'#243044').attr('stroke-width',6).attr('opacity',.7);return wrap}
+function tabBm(el){const groups=[...new Set(WF.BM.map(b=>b.group))];if(!S.staged)S.staged=WF.bmId();
+ const draw=()=>{const sel=WF.BM.find(b=>b.id==S.staged),applied=WF.BM.find(b=>b.id==WF.bmId());
+  el.innerHTML=`<h3>Basemap</h3><p class="lead">Choose the map underneath every zone map and swipe. Pick a style to preview it, then apply. Nothing changes until you apply.</p><div class="bmw"><div id="cat">${groups.map(g=>`<h4>${g}</h4><div class="bmg">${WF.BM.filter(b=>b.group==g).map(b=>`<button class="bmc" role="radio" aria-checked="${S.staged==b.id}" data-id="${b.id}"><span class="bth"></span><span>${b.name}</span>${b.needsSource?'<small>Needs a PMTiles source</small>':''}${b.id==WF.bmId()?'<small>In use</small>':''}</button>`).join('')}</div>`).join('')}</div>
+  <aside class="bmp"><div class="pv" id="pv"></div><div class="pi"><b>${sel.name}</b><small>${sel.group}${sel.raster?' · raster':sel.none?'':' · vector'}</small>${sel.needsSource?'<p style="margin:8px 0 0;color:var(--warn);font-size:12.5px">This style needs a PMTiles source in the deployment settings. Until one is set, it shows a blank map.</p>':''}<div style="display:flex;gap:8px;margin-top:12px"><button class="btn pri" id="ap" ${S.staged==WF.bmId()?'disabled':''}>Apply</button><button class="btn" id="rv" ${S.staged==WF.bmId()?'disabled':''}>Revert</button></div><small style="display:block;margin-top:10px">Applied now: ${applied.name}</small></div></aside></div>`;
+  el.querySelectorAll('.bmc').forEach(b=>{const bm=WF.BM.find(x=>x.id==b.dataset.id);b.querySelector(".bth").replaceWith(thumb(bm,128,76));b.onclick=()=>{S.staged=b.dataset.id;draw()}});
+  const keep=WF.bmId();WF.setBM(S.staged);const pv=$('#pv');pv.style.height='220px';WF.zoneMap(pv,S.focus,{});WF.setBM(keep);
+  $('#ap').onclick=()=>{WF.setBM(S.staged);render();draw()};$('#rv').onclick=()=>{S.staged=WF.bmId();draw()}};draw()}
+function tabDocs(el){el.innerHTML=`<div class="doc"><h3>Documentation</h3><p class="lead">How to read this dashboard.</p>
+ <h4>Focus and compare</h4><p>The dock always holds a <b>focus</b> scenario. Every chart shows that scenario on its own. Turn on <b>Compare</b> to bring in more scenarios and a <b>reference</b> to measure against. Values shows each scenario as is, Change shows the difference in the same units, and % change shows the relative difference.</p>
+ <h4>How each chart compares</h4><table><thead><tr><th>Chart</th><th>In compare mode</th></tr></thead><tbody>
+ <tr><td>Bars, lines, dumbbells, tables</td><td>Every compared scenario on the same axes, with the reference as a dashed line. Change mode centres the chart on zero.</td></tr>
+ <tr><td>Treemap</td><td>Side by side with shared scales, or one treemap coloured by each cell's change from the reference.</td></tr>
+ <tr><td>Sunburst, waffle, ridgeline</td><td>Side by side, up to four at a time, paged.</td></tr>
+ <tr><td>Donut, flow, chord, slope</td><td>One scenario at a time with a selector. In Change mode the donut turns into a difference chart.</td></tr>
+ <tr><td>Maps</td><td>Values side by side (up to four), Difference fill, or Swipe between the reference and the focus.</td></tr>
+ <tr><td>Radar and population</td><td>Do not vary by scenario, so they stay the same.</td></tr></tbody></table>
+ <h4>Model years</h4><p>Every alternative has a run for each model year: the base year 2023, the opening year 2027, the end of the STIP in 2032, the RTP phases in 2036 and 2046, and the 2055 horizon. The Year control switches every chart at once. In the base year all alternatives equal the baseline, because nothing has been built yet. Observed data and calibration rounds belong to the base year, so they appear only there. The Across model years chart shows the whole path, and clicking a year switches to it.</p>
+ <h4>Calibration rounds</h4><p>A calibration run can have fifty rounds or more. Rounds are an ordered series, so they are drawn on a colour ramp from early to late and chosen from a strip in the scenario picker. The Calibration progress chart plots the metrics you tune, such as mode share, volumes and boardings, for every round at once, with the target band shaded. Click a round to focus it, or shift-click to add it to the comparison.</p>
+ <h4>Observed data</h4><p>Observed values are published as aggregates only, each with its source and sample size. Where a margin of error is known, bars show it as a shaded band and tooltips say when a gap is within it.</p>
+ <h4>Reading many scenarios</h4><p>The scorecard shades every cell by its distance from the reference, so all compared scenarios fit in one view. Hover a name in any legend to isolate that scenario in the chart. In side-by-side views, hovering a shape highlights the same shape in every panel and one tooltip lists each scenario with its change from the reference.</p>
+ <h4>Shortcuts</h4><p><kbd>Esc</kbd> closes any open panel. Arrow keys move the swipe handle. Click a column header in the scorecard to sort.</p>
+ <h4>About the data</h4><p>The charts read post-processed Parquet summaries. Observed values come from the 2023 household travel survey. This prototype uses sample data.</p></div>`}
+addEventListener('keydown',e=>{if(e.key=='Escape'){if(!$('#mscrim').hidden)return closeSettings();if(!$('#scrim').hidden){$('#scrim').hidden=true;$('#scrim').innerHTML='';render()}$('#picker').hidden=true}});
+addEventListener('scroll',()=>$('#hd').classList.toggle('compact',scrollY>70),{passive:true});
+SCN.setYear(S.year);WF.D.clearCache();S.groups['summary:years']='transit';WF.accents();applyFont();render();
+</script>
