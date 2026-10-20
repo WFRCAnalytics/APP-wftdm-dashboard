@@ -1,8 +1,7 @@
 import { BookOpen } from 'lucide-react'
 
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { SidebarMenuButton, useSidebar } from '@/components/ui/sidebar'
-import { cn } from '@/lib/utils'
+import { NavButton } from '@/layout/navButton'
 import { DocumentationTab } from '@/layout/settings/documentationTab'
 
 // Post-completion correction (explicit user request): Documentation is no
@@ -16,15 +15,10 @@ import { DocumentationTab } from '@/layout/settings/documentationTab'
 // (SidebarMenuButton, sr-only label when collapsed) for visual/behavioral
 // parity between the two footer items.
 export function DocumentationModal() {
-  const { state } = useSidebar()
-  const collapsed = state === 'collapsed'
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <SidebarMenuButton>
-          <BookOpen className="h-4 w-4 shrink-0" aria-hidden="true" />
-          <span className={cn(collapsed && 'sr-only')}>Documentation</span>
-        </SidebarMenuButton>
+        <NavButton icon={<BookOpen className="h-5 w-5" aria-hidden="true" />}>Documentation</NavButton>
       </DialogTrigger>
       <DialogContent className="max-w-md">
         <DialogTitle>Documentation</DialogTitle>

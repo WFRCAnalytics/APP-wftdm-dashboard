@@ -173,22 +173,8 @@ function OrdinaryDashboardRenderer({ tab }: { tab: DashboardTabConfig }) {
   }, [tab])
 
   return (
-    <div className="flex flex-col gap-6 p-6">
-      {/* wftdm-design-system, Phase 2: header.title/description are real,
-          validated fields (layout/types.ts's parseDashboardConfig — title
-          is even REQUIRED) that had no rendering consumer anywhere in the
-          app before this — confirmed via a full src/ search finding zero
-          references to header.title/header.description outside types.ts
-          itself. This is the Page Title role's first real application
-          (previously "reserved for Phase 2, if needed" — it was needed).
-          Participates in the same gap-6 rhythm as the row grid below, not
-          a separately-spaced block. */}
-      <div>
-        <h1 className="font-heading text-xl font-semibold tracking-tight">{tab.header.title}</h1>
-        {tab.header.description && (
-          <p className="mt-1 font-body text-sm text-muted-foreground">{tab.header.description}</p>
-        )}
-      </div>
+    <div className="flex flex-col gap-[14px] px-7 pb-10 pt-2">
+      {/* The page title and description now live in the sticky PageHeader (layout/pageHeader.tsx). */}
       {rows.map(([rowName, panels]) => {
         const sectionId = sectionAnchorByRow.get(rowName)
         // FR-018: a row composed entirely of valuebox panels lays out as
@@ -204,7 +190,7 @@ function OrdinaryDashboardRenderer({ tab }: { tab: DashboardTabConfig }) {
             key={rowName}
             id={sectionId ? `section-${sectionId}` : undefined}
             data-testid={rowName}
-            className={metricStrip ? 'grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-6' : 'grid gap-6'}
+            className={metricStrip ? 'grid scroll-mt-24 grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-[14px]' : 'grid scroll-mt-24 gap-[14px]'}
             style={
               metricStrip
                 ? undefined

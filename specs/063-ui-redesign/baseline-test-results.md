@@ -153,3 +153,13 @@ border/tooltip assertions fixed afterwards and then verified passing. The remain
 against a 10 s poll. That same ~10 s appears on the P0 commit (`cc88765`, measured in a worktree), so it is a timing
 edge, not a P1 regression. The earlier recharts, sunburst, treemap and demoMultiScenario failures passed on the re-run
 (load-sensitive).
+
+## P2 re-run (floating nav, sticky header)
+
+A full pass plus retry found 22 failures outside the baseline list. Causes found and fixed: the hover-expanded nav stayed
+open after a mouse click and covered the left of the page, so hover and click targets there were blocked (the nav now
+steps aside after a mouse click and expands on keyboard focus only); a mouse press expanded the nav and inserted the
+sub-list mid-click, dropping the click (focus-based expansion is now `:focus-visible` only); specs that read nav labels
+or sub-items now hover the nav first; a Recharts combo-chart spec measured before the bar paths existed (now waits). With
+one worker the affected files finish with only timing-edge failures: `flowmapPanel.spec.ts:1743` (offline fallback, 10 s
+poll) and `zonemapPanel.spec.ts:1261` (shared boundaries file, 10 s poll), the same kind as the P1 zonemap entries.

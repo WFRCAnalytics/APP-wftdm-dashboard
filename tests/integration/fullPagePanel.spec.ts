@@ -36,7 +36,7 @@ test.describe('030-sidebar-navigation — User Story 2 (chromeless full-page pan
   }) => {
     await gotoExplore(page)
     await expect(page.locator('h1')).toHaveCount(0)
-    await expect(page.locator('[class*="rounded-[24px]"]')).toHaveCount(0)
+    await expect(page.locator('main [class*="rounded-[24px]"]')).toHaveCount(0)
     await expect(page.getByRole('button', { name: /^Expand/ })).toHaveCount(0)
     await expect(page.locator('.graphic-walker-panel-host')).toBeVisible()
   })
@@ -62,7 +62,7 @@ test.describe('030-sidebar-navigation — User Story 2 (chromeless full-page pan
   }) => {
     await gotoExplore(page)
     await expect(page.locator('h1')).toHaveCount(0)
-    await expect(page.locator('[class*="rounded-[24px]"]')).toHaveCount(0)
+    await expect(page.locator('main [class*="rounded-[24px]"]')).toHaveCount(0)
   })
 
   test('a misconfigured full_page tab (not exactly one panel) falls back to ordinary rendering with a console warning, never a blank page', async ({

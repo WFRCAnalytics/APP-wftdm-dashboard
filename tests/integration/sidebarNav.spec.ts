@@ -76,21 +76,30 @@ test.describe('030-sidebar-navigation — User Story 1 (sidebar shell)', () => {
     ])
   })
 
-  test('the sidebar collapses/expands only on manual trigger, never on scroll (FR-002, FR-006)', async ({
+  test('the floating nav is a 68px rail that expands to 248px on hover or focus, overlaying the page, never on scroll', async ({
     page,
   }) => {
     await boot(page)
     const sidebar = page.locator('[data-sidebar="sidebar"]')
-    await expect(sidebar).toHaveAttribute('data-state', 'expanded')
-
-    await page.getByRole('button', { name: /toggle sidebar/i }).click()
     await expect(sidebar).toHaveAttribute('data-state', 'collapsed')
+    await expect.poll(async () => (await sidebar.boundingBox())!.width).toBe(68)
 
+    await sidebar.hover()
+    await expect(sidebar).toHaveAttribute('data-state', 'expanded')
+    await expect.poll(async () => (await sidebar.boundingBox())!.width).toBe(248)
+
+    // The page does not reflow while the nav expands: the main column keeps its left padding.
+    const mainLeft = await page.locator('main').evaluate((el) => getComputedStyle(el).paddingLeft)
+    expect(mainLeft).toBe('96px')
+
+    await page.mouse.move(900, 400)
+    await expect(sidebar).toHaveAttribute('data-state', 'collapsed')
     await page.mouse.wheel(0, 2000)
     await page.waitForTimeout(200)
     await expect(sidebar).toHaveAttribute('data-state', 'collapsed')
 
-    await page.getByRole('button', { name: /toggle sidebar/i }).click()
+    // Keyboard focus expands it too.
+    await page.getByRole('tab', { name: 'Summary' }).focus()
     await expect(sidebar).toHaveAttribute('data-state', 'expanded')
   })
 
@@ -119,7 +128,8 @@ test.describe('030-sidebar-navigation — User Story 1 (sidebar shell)', () => {
     const labelText = await testTab.locator('span').first().textContent()
     expect((labelText ?? '').trim()).toBe('')
 
-    // Every real tab, by contrast, has a visible label.
+    // Every real tab, by contrast, has a visible label once the nav is expanded.
+    await page.locator('[data-sidebar="sidebar"]').hover()
     await expect(tabs.first().getByText('Summary', { exact: true })).toBeVisible()
   })
 })

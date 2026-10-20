@@ -88,6 +88,10 @@ test.describe('chart_type: combo (Trip tab, "Trip Volume vs. Average Distance by
     await clickDemoTab(page, 'Trip')
     const card = panelCard(page, TITLE)
     await expect(card.locator('.recharts-bar-rectangle')).toHaveCount(10, { timeout: 20_000 })
+    // The bar <path>s and the line curve are drawn after the bar groups appear (Recharts animates in); measure only once
+    // both exist, or the measurement reads an empty chart.
+    await expect(card.locator('.recharts-bar-rectangle path')).toHaveCount(10)
+    await expect(card.locator('.recharts-line-curve')).toHaveCount(1)
 
     const info = await card.locator('svg.recharts-surface').first().evaluate((svg) => {
       const linePath = svg.querySelector('.recharts-line-curve')

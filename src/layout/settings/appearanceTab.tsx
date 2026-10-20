@@ -164,22 +164,8 @@ export function AppearanceTab() {
     }
   }, [fontPreference])
 
-  // Unchanged from themeToggle.tsx — see that file's own former comment
-  // (now research.md §5/§9) for the full rationale: attached only while
-  // mode === 'system', torn down on every transition away, to avoid a
-  // stale-closure hazard a lifetime-attached listener would otherwise need
-  // a ref to work around.
-  useEffect(() => {
-    if (mode === 'system') {
-      const mq = window.matchMedia('(prefers-color-scheme: dark)')
-      const apply = () => document.documentElement.classList.toggle('dark', mq.matches)
-      apply()
-      mq.addEventListener('change', apply)
-      return () => mq.removeEventListener('change', apply)
-    }
-    document.documentElement.classList.toggle('dark', mode === 'dark')
-    return undefined
-  }, [mode])
+  // The `dark` class is applied by services/theme.ts (startThemeSync, started in main.tsx), so the nav's light/dark
+  // toggle works with this modal closed. This tab only edits the mode.
 
   return (
     <div className="space-y-6">

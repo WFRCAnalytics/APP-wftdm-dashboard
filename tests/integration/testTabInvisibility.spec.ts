@@ -99,6 +99,8 @@ test.describe('040 US1 — dashboard-8-test.yaml is a permanent, inconspicuous 8
     page,
   }) => {
     await boot(page)
+    // Labels fade in while the floating nav is expanded.
+    await page.locator('[data-sidebar="sidebar"]').hover()
     for (const name of REAL_SEVEN_TABS) {
       const tab = page.getByRole('tab', { name, exact: true })
       await expect(tab).toBeVisible()

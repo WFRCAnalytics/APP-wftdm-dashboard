@@ -11,6 +11,7 @@
 import Color from 'color'
 
 import { getInterfaceColorOverride, subscribe as subscribeToOverrides } from '@/state/interfaceColorState'
+import { getMode as getThemeMode, subscribe as subscribeToTheme } from '@/state/themeState'
 import { resolveInterfaceColor, type InterfaceColorRole } from '@/panels/interfaceColor'
 
 const ROLES: InterfaceColorRole[] = ['primary', 'secondary', 'accent']
@@ -114,4 +115,21 @@ export function startAccentSync(): void {
       applyAccents()
     }
   }).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
+}
+
+let themeStarted = false
+
+/** Applies the theme mode (state/themeState.ts) to <html>'s `dark` class and keeps it current. In 'system' mode it follows
+ * the OS preference live. Owned here, not by the Settings modal, so the nav's light/dark toggle works with Settings closed. */
+export function startThemeSync(): void {
+  if (themeStarted) return
+  themeStarted = true
+  const mq = window.matchMedia('(prefers-color-scheme: dark)')
+  const apply = () => {
+    const mode = getThemeMode()
+    document.documentElement.classList.toggle('dark', mode === 'system' ? mq.matches : mode === 'dark')
+  }
+  apply()
+  subscribeToTheme(apply)
+  mq.addEventListener('change', apply)
 }

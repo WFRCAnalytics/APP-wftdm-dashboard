@@ -32,7 +32,7 @@ import { loadDashboards, loadDashboardBranding, type DashboardBranding } from '.
 import { setDeployerScenarioPalette } from './panels/scenarioDisplay.ts'
 import { setDeployerProtomapsSource } from './state/protomapsSourceState.ts'
 import { setDeployerInterfaceColor } from './panels/interfaceColor.ts'
-import { startAccentSync } from './services/theme.ts'
+import { startAccentSync, startThemeSync } from './services/theme.ts'
 import { parseDashboardConfig } from './layout/types.ts'
 import { Shell } from './layout/shell.tsx'
 import { Toaster } from './components/ui/sonner.tsx'
@@ -227,6 +227,7 @@ for (const [role, value] of [
 }
 // Derives --c-1..3 / --brand / --chart-* from the three colors (deployer default or viewer override) and keeps them
 // current across theme and color changes (services/theme.ts).
+startThemeSync()
 startAccentSync()
 // Sets the browser tab's own title — independent of whether the header
 // renders it as visible text at all (shell.tsx only falls back to

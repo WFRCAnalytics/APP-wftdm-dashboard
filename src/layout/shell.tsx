@@ -1,70 +1,25 @@
 import { useState } from 'react'
 import { LayoutDashboard } from 'lucide-react'
 
-import { DashboardBrand } from '@/layout/dashboardBrand'
+import { cn } from '@/lib/utils'
+
+import { ControlBar } from '@/layout/controlBar'
 import { DashboardRenderer } from '@/layout/dashboardRenderer'
-import { SidebarNav } from '@/layout/sidebarNav'
-import { SettingsModal } from '@/layout/settingsModal'
-import { DocumentationModal } from '@/layout/documentationModal'
+import { findFullPagePanel } from '@/layout/dashboardLayout'
+import { FloatingNav } from '@/layout/floatingNav'
+import { PageHeader } from '@/layout/pageHeader'
 import { PanelEmptyState } from '@/panels/PanelEmptyState'
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarHeader,
-  SidebarInset,
-  SidebarMenu,
-  SidebarMenuItem,
-  SidebarProvider,
-  SidebarTrigger,
-  useSidebar,
-} from '@/components/ui/sidebar'
+import { useMediaQuery } from '@/hooks/useMediaQuery'
 import type { DashboardTabConfig } from '@/layout/types'
 import type { DashboardBranding } from '@/services/yamlLoader'
 
-// Real bug fix (post-completion): DashboardBrand doesn't shrink on its
-// own — a full logo <img> (up to 220px) or a whitespace-nowrap title span
-// rendered inside the collapsed 64px rail overflowed badly (SidebarHeader's
-// own p-4 padding alone consumes 32px, leaving 32px for BOTH the brand and
-// SidebarTrigger together). No compact icon-only asset exists in
-// DashboardBranding at all (logoUrl/logoUrlDark/title only) — matching
-// sidebarNav.tsx's own "no icon configured -> nothing shown" precedent,
-// hiding DashboardBrand ENTIRELY while collapsed (rather than fabricating
-// a synthetic mark) is the correct, evidence-based fix, not a compromise.
-// A separate component, not inlined directly in SidebarHeader's own JSX
-// below, because useSidebar() must be called from a component that is a
-// REACT-TREE descendant of <SidebarProvider> — Shell() itself renders
-// SidebarProvider as part of its own return value, so Shell's own function
-// body runs before that context exists and cannot call the hook directly.
-// DashboardBrand.tsx itself is deliberately left untouched/sidebar-unaware
-// (its own header comment: "shell.tsx itself has no need to know the
-// internals of [DashboardBrand]" — symmetric reasoning applies the other
-// way too, DashboardBrand has no need to know about Sidebar internals).
-function CollapsibleBrand({ branding }: { branding: DashboardBranding }) {
-  const { state } = useSidebar()
-  if (state === 'collapsed') return null
-  return (
-    <div className="min-w-0 flex-1">
-      <DashboardBrand branding={branding} />
-    </div>
-  )
-}
-
-// Top-level app shell — 030-sidebar-navigation: a left Sidebar replaces the
-// previous horizontal top-nav <header>. Active-tab selection is local
-// component state, not a global store — tab selection isn't a cross-cutting
-// filter (constitution's no-Web-Storage rule doesn't apply to transient UI
-// state either way), unchanged from before this feature.
+// Top-level app shell (project-docs/redesign/02-layout-and-components.md §1): a floating glass navigation at the left,
+// and a main column holding the sticky page header and the active tab. Active-tab selection is local component state,
+// not a global store: tab selection is not a cross-cutting filter.
 //
-// The ENTIRE previous ResizeObserver/headerHeight/paddingTop measurement
-// machinery is gone, not adapted (research.md §5) — that mechanism existed
-// for exactly one reason (compensating <main> for a position: fixed header
-// removed from normal document flow); SidebarProvider/Sidebar/SidebarInset
-// is an ordinary flex sibling arrangement where nothing overlaps page
-// content, so nothing needs pixel-measured compensation. Hide-on-Scroll nav
-// visibility mode (useNavBarVisibilityMode/navBarVisibilityState/
-// useScrollDirection) is also gone entirely, not adapted (FR-006) — its own
-// "Top Bar Behavior" Settings control is removed too (appearanceTab.tsx).
+// The active tab is tracked by ARRAY INDEX, not by `header.tab` name. main.tsx concatenates two dashboard-config roots
+// (a deployer's own and this repo's demo content); if both name their landing tab "Summary", a name lookup would resolve
+// to the first match and highlight both. The array never changes after boot, so the index is stable and unique.
 export function Shell({
   dashboards,
   branding = {},
@@ -72,24 +27,10 @@ export function Shell({
   dashboards: DashboardTabConfig[]
   branding?: DashboardBranding
 }) {
-  // Real, confirmed bug fix (post-completion, found via 032-six-tab-demo-
-  // content's own live test run): active tab was tracked by NAME
-  // (`header.tab`), resolved back to a tab object via `dashboards.find()`.
-  // `main.ts`'s boot sequence always concatenates TWO dashboard-config
-  // roots (a deployer's own `dashboard-config/` plus this repo's own
-  // `demo-dashboard-config/`) into one array — if both roots happen to
-  // name their own landing tab "Summary" (this app's own canonical,
-  // encouraged convention, `CLAUDE.md`'s own default 7-tab example),
-  // `.find()` always resolves to the FIRST match regardless of which of
-  // the two same-named sidebar buttons was actually clicked, while BOTH
-  // buttons render as "selected" simultaneously (`SidebarNav`'s own
-  // `isActive` comparison has the identical name-based ambiguity) — a
-  // real, reachable defect in any real deployment carrying both a
-  // deployer `dashboard-config/` and this repo's own demo content, not
-  // merely a test-harness coincidence. Fixed by tracking the ARRAY INDEX
-  // instead — stable, always unique, and array order never changes after
-  // boot (`dashboards` is a fixed prop for this component's lifetime).
   const [activeIndex, setActiveIndex] = useState(0)
+  const [menuOpen, setMenuOpen] = useState(false)
+  // Below 760px the nav is a sheet opened from the header instead of a fixed rail.
+  const mobile = useMediaQuery('(max-width: 759px)')
 
   if (dashboards.length === 0) {
     return (
@@ -104,50 +45,40 @@ export function Shell({
   }
 
   const active = dashboards[activeIndex] ?? dashboards[0]
+  // `header.full_page` tabs (Explore) are chromeless: no page header, no control bar, no tile chrome.
+  // A misconfigured full_page tab (not exactly one panel) falls back to ordinary rendering, header included.
+  const chromeless = Boolean(active.header.full_page && findFullPagePanel(active))
 
   return (
-    <SidebarProvider>
-      <Sidebar>
-        <SidebarHeader>
-          {/* 028-dashboard-branding: deployer-configurable title/logo,
-              genuinely optional — DashboardBrand itself renders nothing at
-              all when `branding` has neither field set. min-w-0 lets it
-              truncate/shrink rather than force the header to overflow at
-              the sidebar's own fixed width. Hidden entirely while
-              collapsed (CollapsibleBrand, above) — see that component's
-              own comment. */}
-          <CollapsibleBrand branding={branding} />
-          <SidebarTrigger />
-        </SidebarHeader>
-        <SidebarContent>
-          <SidebarNav tabs={dashboards} activeIndex={activeIndex} onTabChange={setActiveIndex} />
-        </SidebarContent>
-        {/* 020-settings-modal: the single dashboard-wide settings entry
-            point relocates here from the old header's top-right group
-            (FR-005) — footer-anchored, visually distinct from the primary
-            tab-item list above it, and this feature's own one legitimate,
-            deliberately hardcoded app-level exception (spec.md's Explicit
-            scope boundary point 4) — not a dashboard-*.yaml tab at all.
-            Post-completion correction (explicit user request): Documentation
-            is now its own SidebarMenuItem BELOW Settings, not a tab nested
-            inside it (see settingsModal.tsx/documentationModal.tsx's own
-            comments) — wrapped in a SidebarMenu/SidebarMenuItem pair the
-            same way the primary nav list above is, for correct list
-            semantics with two stacked items instead of one. */}
-        <SidebarFooter>
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SettingsModal />
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <DocumentationModal />
-            </SidebarMenuItem>
-          </SidebarMenu>
-        </SidebarFooter>
-      </Sidebar>
-      <SidebarInset>
+    <div className="relative z-[1] min-h-screen">
+      <FloatingNav
+        tabs={dashboards}
+        activeIndex={activeIndex}
+        onTabChange={setActiveIndex}
+        branding={branding}
+        mobile={mobile}
+        open={menuOpen}
+        onClose={() => setMenuOpen(false)}
+      />
+      {/* A chromeless full-page panel needs a DEFINITE height for its `height: 100%` chain (min-height does not give one). */}
+      <main className={cn('flex flex-col', chromeless ? 'h-screen' : 'min-h-screen', !mobile && 'pl-[96px]')}>
+        {!chromeless && (
+          <PageHeader title={active.header.title} subtitle={active.header.description} onMenu={mobile ? () => setMenuOpen(true) : undefined}>
+            <ControlBar />
+          </PageHeader>
+        )}
+        {chromeless && mobile && (
+          <button
+            type="button"
+            aria-label="Open navigation"
+            onClick={() => setMenuOpen(true)}
+            className="fixed left-3 top-3 z-30 rounded-full border border-[var(--glass-line)] bg-[var(--tile-hi)] px-3 py-2 text-sm text-[var(--ink)]"
+          >
+            Menu
+          </button>
+        )}
         <DashboardRenderer tab={active} />
-      </SidebarInset>
-    </SidebarProvider>
+      </main>
+    </div>
   )
 }

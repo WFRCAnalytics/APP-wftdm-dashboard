@@ -2,8 +2,7 @@ import { Settings } from 'lucide-react'
 
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { SidebarMenuButton, useSidebar } from '@/components/ui/sidebar'
-import { cn } from '@/lib/utils'
+import { NavButton } from '@/layout/navButton'
 import { AppearanceTab } from '@/layout/settings/appearanceTab'
 import { ScenariosTab } from '@/layout/settings/scenariosTab'
 import { BasemapTab } from '@/layout/settings/basemapTab'
@@ -51,15 +50,10 @@ import { BasemapTab } from '@/layout/settings/basemapTab'
 // same sr-only technique as before so getByRole('button', { name:
 // 'Settings' }) keeps resolving regardless of collapse state.
 export function SettingsModal() {
-  const { state } = useSidebar()
-  const collapsed = state === 'collapsed'
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <SidebarMenuButton>
-          <Settings className="h-4 w-4 shrink-0" aria-hidden="true" />
-          <span className={cn(collapsed && 'sr-only')}>Settings</span>
-        </SidebarMenuButton>
+        <NavButton icon={<Settings className="h-5 w-5" aria-hidden="true" />}>Settings</NavButton>
       </DialogTrigger>
       <DialogContent className="flex h-[600px] max-h-[85vh] w-[95vw] max-w-[720px] flex-col gap-4">
         <DialogTitle>Settings</DialogTitle>

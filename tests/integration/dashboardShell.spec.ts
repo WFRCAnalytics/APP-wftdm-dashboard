@@ -352,15 +352,15 @@ test.describe('Phase 2 — shell/nav redesign (wftdm-design-system)', () => {
         return { fontSize: cs.fontSize, fontWeight: cs.fontWeight }
       })
 
-    // wftdm-design-system's Page Title role: text-xl (20px) font-semibold
-    // (600) — real computed values, not a class-name-string assertion.
+    // Corridor Pro page title: 28px/600 at the top of the page (it turns compact, 21px, after 70px of scroll) — real
+    // computed values, not a class-name-string assertion.
     let style = await readStyle()
-    expect(style.fontSize).toBe('20px')
+    expect(style.fontSize).toBe('28px')
     expect(style.fontWeight).toBe('600')
 
     await page.evaluate(() => document.documentElement.classList.add('dark'))
     style = await readStyle()
-    expect(style.fontSize).toBe('20px')
+    expect(style.fontSize).toBe('28px')
     expect(style.fontWeight).toBe('600')
   })
 
@@ -439,5 +439,55 @@ test.describe('Phase 2 — shell/nav redesign (wftdm-design-system)', () => {
     await page.evaluate(() => document.documentElement.classList.add('dark'))
     size = await readSize()
     expect(size).toBe('20px')
+  })
+})
+
+// Redesign P2: sticky page header and the small-screen navigation sheet.
+test.describe('redesign P2 — page header and mobile navigation', () => {
+  test('the sticky page header turns compact after 70px of scroll and the title shrinks', async ({ page }) => {
+    await page.goto('/')
+    await page.waitForFunction(() => window.__wftdm !== undefined, null, { timeout: 30_000 })
+    await page.getByRole('tab', { name: 'Mode Choice' }).click()
+    const header = page.locator('header').first()
+    await expect(header).toHaveAttribute('data-compact', 'false')
+
+    await page.mouse.move(900, 400)
+    await page.mouse.wheel(0, 600)
+    await expect(header).toHaveAttribute('data-compact', 'true')
+    await expect(header.getByRole('heading', { level: 1 })).toHaveCSS('font-size', '21px')
+    // Still pinned to the top of the viewport.
+    expect((await header.boundingBox())!.y).toBe(0)
+
+    await page.mouse.wheel(0, -2000)
+    await expect(header).toHaveAttribute('data-compact', 'false')
+  })
+
+  test('below 760px the nav is a sheet opened from the header menu button', async ({ page }) => {
+    await page.setViewportSize({ width: 700, height: 800 })
+    await page.goto('/')
+    await page.waitForFunction(() => window.__wftdm !== undefined, null, { timeout: 30_000 })
+    await expect(page.locator('[data-sidebar="sidebar"]')).toHaveCount(0)
+
+    await page.getByRole('button', { name: 'Open navigation' }).click()
+    const nav = page.locator('[data-sidebar="sidebar"]')
+    await expect(nav).toBeVisible()
+    await nav.getByRole('tab', { name: 'Mode Choice' }).click()
+    // Choosing a tab closes the sheet and shows that tab.
+    await expect(nav).toHaveCount(0)
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+  })
+
+  test('the nav bottom group holds Settings, Documentation and a light/dark toggle that works with Settings closed', async ({ page }) => {
+    await page.goto('/')
+    await page.waitForFunction(() => window.__wftdm !== undefined, null, { timeout: 30_000 })
+    const nav = page.locator('[data-sidebar="sidebar"]')
+    await expect(nav.getByRole('button', { name: 'Settings' })).toBeVisible()
+    await expect(nav.getByRole('button', { name: 'Documentation' })).toBeVisible()
+
+    const before = await page.evaluate(() => document.documentElement.classList.contains('dark'))
+    await nav.getByRole('button', { name: /switch to (dark|light) mode/i }).click()
+    await expect
+      .poll(() => page.evaluate(() => document.documentElement.classList.contains('dark')))
+      .toBe(!before)
   })
 })
