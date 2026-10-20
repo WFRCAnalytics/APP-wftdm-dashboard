@@ -304,10 +304,10 @@ test.describe('User Story 1 - Author renders a bar, line, or area chart with the
     await gotoTestTab(page)
     await expect(
       panelCard(page, 'Recharts Empty Result').getByText('No data for this selection'),
-    ).toBeVisible({ timeout: 10_000 })
+    ).toBeVisible({ timeout: 20_000 })
     await expect(
       panelCard(page, 'Broken Recharts Panel (missing metric)').getByText("Couldn't load this chart"),
-    ).toBeVisible({ timeout: 10_000 })
+    ).toBeVisible({ timeout: 20_000 })
   })
 })
 
@@ -329,11 +329,11 @@ test.describe('User Story 2 - Existing panel types remain completely unaffected'
     // 10s — real Test-tab-crowding residual risk, same as every other
     // first-render check in this file.
     await expect(panelCard(page, 'Plotly Mode Share (Bar)').locator('.js-plotly-plot')).toBeVisible({
-      timeout: 10_000,
+      timeout: 20_000,
     }) // plotly
     await expect(
       panelCard(page, 'Recharts Mode Breakdown (Bar)').locator('.recharts-bar-rectangle .recharts-rectangle'),
-    ).not.toHaveCount(0) // recharts, same tab as plotly above
+    ).not.toHaveCount(0, { timeout: 20_000 }) // recharts, same tab as plotly above
 
     await page.getByRole('tab', { name: 'Mode Choice' }).click()
     await expect(

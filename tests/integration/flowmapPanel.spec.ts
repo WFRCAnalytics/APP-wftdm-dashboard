@@ -90,7 +90,8 @@ async function queryCountFor(page: Page, needle: string) {
 // here (not a growing pile of one-off per-call-site overrides) addresses
 // the actual shared root cause.
 async function trueEventually(check: () => Promise<boolean>) {
-  await expect.poll(check, { timeout: 10000 }).toBe(true)
+  // 20s: stays quick when healthy, but survives the slowdown a long single-worker run builds up (many WebGL maps created).
+  await expect.poll(check, { timeout: 20000 }).toBe(true)
 }
 
 const FLOWMAP_TITLE = 'Trip Distribution Desire Lines (Default View)'

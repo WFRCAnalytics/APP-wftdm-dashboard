@@ -124,7 +124,8 @@ async function trueEventually(check: () => Promise<boolean>) {
   // git-tracked demo content (25-zone geometry + spatial-extension
   // network fetch on first use, not the retired synthetic 8-zone fixture
   // the default 5000ms timeout was previously tuned against).
-  await expect.poll(check, { timeout: 10000 }).toBe(true)
+  // 20s: stays quick when healthy, but survives the slowdown a long single-worker run builds up (many WebGL maps created).
+  await expect.poll(check, { timeout: 20000 }).toBe(true)
 }
 
 async function waitForRender(page: Page, title: string) {
@@ -1255,7 +1256,9 @@ test.describe('User Story 4 - Registry consistency', () => {
   }) => {
     await boot(page)
     await gotoTestTab(page)
-    await expect(panelCard(page, BROKEN_TITLE).getByRole('alert')).toBeVisible()
+    // 20s, not the 5s default: the Test tab mounts ~80 panels at once and this panel's error takes 5-6s to surface
+    // (same fix as tablePanel.spec.ts's broken-panel assertion).
+    await expect(panelCard(page, BROKEN_TITLE).getByRole('alert')).toBeVisible({ timeout: 20_000 })
   })
 
   test('multiple zonemap panels sharing one boundaries file trigger exactly one geometry query', async ({
