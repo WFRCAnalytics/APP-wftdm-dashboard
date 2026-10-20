@@ -177,7 +177,7 @@ test.describe('032-six-tab-demo-content — User Story 2 (real data, honest gaps
 // Summary-tab data. This test is rewritten to state and prove that new,
 // correct invariant, not silently patched or deleted.
 test.describe('032-six-tab-demo-content — User Story 3 (panel type coverage)', () => {
-  test('eight of the ten registered panel types render real, non-empty content across the six primary tabs; plotly/recharts remain supported, exercised via the Test tab instead', async ({
+  test('eight of the registered panel types render real, non-empty content across the six primary tabs', async ({
     page,
   }) => {
     await boot(page)

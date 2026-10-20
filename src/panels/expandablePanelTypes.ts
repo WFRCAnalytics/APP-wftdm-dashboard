@@ -27,10 +27,8 @@
 export const EXPANDABLE_PANEL_TYPES = new Set([
   'table',
   'markdown',
-  'plotly',
   'observable-plot',
   'sankey',
-  'recharts',
   'flowmap',
   'zonemap',
   // 058-hierarchical-chart-panels: both new interactive, zoomable chart

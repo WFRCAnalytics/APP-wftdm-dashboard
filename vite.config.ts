@@ -149,15 +149,10 @@ export default defineConfig({
           // explicit, dedicated, always-eager chunk of its own.
           if (id.includes('src/panels/scenarioDisplay.ts')) return 'app-shared'
           if (id.includes('@duckdb/duckdb-wasm')) return 'duckdb'
-          // 003-dashboard-shell-navigation: first feature to depend on
-          // Plotly (a large library) — split per CLAUDE.md's own
-          // documented vite.config.js convention, unimplemented until now
-          // since nothing depended on it before this feature.
-          if (id.includes('plotly')) return 'plotly'
           // 010-flowmap-panel: this codebase's first real map — maplibre-gl
           // + the whole deck.gl/flowmap.gl/luma.gl family are all large,
           // previously-absent libraries, split into their own chunk for the
-          // same reason plotly got one above.
+          // same reason as the other large libraries below.
           // 041-protomaps-pmtiles-basemap: pmtiles + @protomaps/basemaps are
           // both small, dependency-light (pmtiles has one dependency,
           // fflate; @protomaps/basemaps has zero, confirmed via `npm view`)
@@ -321,46 +316,6 @@ export default defineConfig({
           // gained a second, independent real importer; see that block's
           // own comment for the full finding.
           if (id.includes('@observablehq/plot')) return 'observable-plot'
-          // 029-shadcn-chart-panel: this codebase's first dependency on
-          // recharts. UPGRADED to recharts@^3.10.1 (a deliberate, later
-          // major-version upgrade from the original ^2.15.4 the shadcn CLI
-          // itself installed — see CLAUDE.md's own recorded history and
-          // research.md §13 for the full story). Recharts v3 rewrote its
-          // own dependency chain entirely, confirmed directly via
-          // `npm ls`, not assumed: `react-smooth`/`recharts-scale` are
-          // GONE (v3 dropped both), replaced by a real, new Redux-based
-          // internal state layer (`@reduxjs/toolkit`, `es-toolkit`,
-          // `decimal.js-light`) plus a `victory-vendor` version bump
-          // (^36.6.8 → ^37.0.2). `lodash` was REMOVED from this list —
-          // confirmed via `npm ls lodash` that it was never actually a
-          // recharts dependency at all (v2 or v3): it's
-          // `@kanaries/graphic-walker`'s own transitive dependency (via
-          // `react-color`/`react-resize-detector`), a pre-existing
-          // inaccuracy in this chunk rule now fixed, not something this
-          // upgrade introduced. `immer`/`react-redux`/`reselect`/
-          // `use-sync-external-store` (also real, new-to-recharts
-          // dependencies) are deliberately NOT added here either — each
-          // is also already pulled in by an unrelated, pre-existing
-          // dependency elsewhere in this tree (`@kanaries/graphic-walker`/
-          // `@kanaries/react-beautiful-dnd` for `immer`/`react-redux`/
-          // `use-sync-external-store`, `@flowmap.gl/data` for `reselect`,
-          // confirmed via `npm ls` for each) — chunking a genuinely shared
-          // dependency under the recharts-specific lazy-load boundary
-          // would force every OTHER panel type that also needs it to pay
-          // for the whole `recharts` chunk too, defeating the point of
-          // splitting by panel type. Leaving them unmatched here lets
-          // Rollup's own default chunking place them wherever they're
-          // naturally shared. Same "large, previously-absent library gets
-          // its own chunk" reasoning as plotly/maps/graphic-walker above.
-          if (
-            id.includes('recharts') ||
-            id.includes('@reduxjs/toolkit') ||
-            id.includes('es-toolkit') ||
-            id.includes('decimal.js-light') ||
-            id.includes('victory-vendor')
-          ) {
-            return 'recharts'
-          }
         },
       },
     },

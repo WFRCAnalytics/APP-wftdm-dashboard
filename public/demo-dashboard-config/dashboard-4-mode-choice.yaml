@@ -47,7 +47,7 @@ layout:
       title:      "At-Work Subtour Mode Share by Purpose"
       metric:     atwork_subtour_mode_summary
       # 038: stays pinned — `fill` is committed to the mode split (057-
-      # observable-plot-conversion: converted from recharts; faceting to
+      # observable-plot-conversion: faceting to
       # also compare scenarios is a real, available Observable Plot
       # strength but deferred to this feature's own explicitly later
       # polish effort, contracts/panel-conversions.md). Scope stated

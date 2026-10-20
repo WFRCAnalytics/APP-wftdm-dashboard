@@ -56,7 +56,7 @@ These do not change. If a task seems to need breaking one, stop and ask.
 - **No `localStorage` / `sessionStorage`.** Session-only state lives in plain in-memory module state.
 - **No `eval()`.** YAML is parsed at runtime.
 - **Charts: Observable Plot first, D3 only where Plot cannot do it** (Sankey, hierarchy, chord, radar,
-  pie/donut, waffle, ridgeline, maps). Recharts and Plotly are legacy: do not extend them. Do not add a
+  pie/donut, waffle, ridgeline, maps). Recharts and Plotly were removed (see git history); do not bring them back. Do not add a
   new charting library.
 - **Tailwind v4 via the `@config` bridge + shadcn/ui primitives** remain the styling stack.
 - **Lazy, tab-scoped Parquet loading** (`tabDataLoader.ts`) stays. Never register every file at boot.

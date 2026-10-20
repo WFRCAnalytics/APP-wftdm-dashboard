@@ -112,30 +112,6 @@ export interface ValueBoxPanelConfig extends DataBoundPanelConfigBase {
   gauge?: ValueBoxGaugeConfig
 }
 
-export interface PlotlyTraceConfig {
-  type: string
-  x?: string
-  y?: string
-  color?: string
-  mode?: string
-  name?: string
-  text?: string
-  barmode?: string
-}
-
-// 019-baseline-diff-consumption: ComparisonCapablePanelConfig (below,
-// defined alongside ComparisonDiff) is mixed into PlotlyPanelConfig here —
-// see that interface's own doc comment for why.
-export interface PlotlyPanelConfig
-  extends DataBoundPanelConfigBase,
-    ComparisonCapablePanelConfig {
-  type: 'plotly'
-  traces: PlotlyTraceConfig[]
-  layout?: Record<string, unknown>
-  observed?: { source: string; style?: string } & Record<string, unknown>
-  reference_lines?: unknown[]
-}
-
 /** One entry in a `table` panel's `columns:` list (project-docs/GRAMMAR.md).
  * 005-table-panel, data-model.md's TableColumnConfig. */
 export interface TableColumnConfig {
@@ -239,84 +215,6 @@ export interface SankeyPanelConfig extends DataBoundPanelConfigBase {
   target: string
   value: string
   color_scheme?: string
-}
-
-/**
- * The tenth panel type — 029-shadcn-chart-panel. Extends
- * DataBoundPanelConfigBase + ComparisonCapablePanelConfig exactly like
- * PlotlyPanelConfig/TablePanelConfig/ObservablePlotPanelConfig already
- * do (spec.md Assumptions — reuses the shared comparison/compare_on
- * mechanism rather than inventing a fourth one). x/y/series are
- * author-configurable field-mapping keys naming literal columns already
- * present in the queried result set — never $metric.<column>-prefixed —
- * matching ObservablePlotPanelConfig's own x/y/fill/stroke precedent
- * (research.md §2), not PlotlyTraceConfig's older $metric.-prefixed
- * convention. `series` is deliberately NOT named `fill`/`stroke`
- * (Observable Plot's own vocabulary for a single SVG visual channel) —
- * Recharts' own real API has no equivalent single-channel concept; a
- * Recharts chart is composed of one <Bar>/<Line>/<Area> element PER
- * series, each needing its own literal dataKey. `series` names the
- * SOURCE COLUMN whose distinct values become those separate elements;
- * panels/rechartsEncoding.ts's encodeRechartsData() is what actually
- * pivots tidy rows into that one-dataKey-per-distinct-value shape
- * (data-model.md §3).
- */
-/**
- * One mark within a `chart_type: combo` panel — a real, independent
- * bar/line/area layer bound to its own literal `y` column, optionally on
- * a second (`right`) Y axis. Deliberately NO `series` field of its own —
- * combining Recharts' one-element-per-distinct-series-value pivot
- * (encodeRechartsData()'s multi-series case) with several independently-
- * typed layers at once would multiply real complexity (which layer owns
- * which pivoted series? do they share a color cycle?) for a use case
- * (comparing categories, e.g. scenarios, within ONE combo layer) already
- * well served by an ordinary single-chart-type panel — a genuine,
- * deliberate scope line, not an oversight.
- */
-export interface RechartsComboLayerConfig {
-  chart_type: 'bar' | 'line' | 'area'
-  y: string
-  /** Optional display label for the legend/tooltip — defaults to the
-   * literal `y` column name when omitted. */
-  label?: string
-  /** Optional — which Y axis this layer plots against. Defaults to
-   * 'left'. A second, real `<YAxis yAxisId="right">` only renders when at
-   * least one layer sets this to 'right' (RechartsPanel.tsx). */
-  y_axis?: 'left' | 'right'
-}
-
-export interface RechartsPanelConfig
-  extends DataBoundPanelConfigBase,
-    ComparisonCapablePanelConfig {
-  type: 'recharts'
-  /** bar/line/area/combo. pie/radar/radial remain a deliberate, explicit
-   * non-goal (spec.md FR-004 of 029-shadcn-chart-panel) — those are
-   * their own dedicated panel types (`type: pie`/`type: radar`), not a
-   * RechartsPanel chart_type. `combo` (later addition) mixes several
-   * independently-typed layers — see `layers` below — rather than
-   * repeating one mark type per distinct `series` value. */
-  chart_type: 'bar' | 'line' | 'area' | 'combo'
-  x: string
-  /** Required for chart_type bar/line/area; unused for combo (each
-   * layer names its own `y` instead) — validated at runtime
-   * (RechartsPanel.tsx), not the TypeScript type, matching this app's own
-   * "YAML has no runtime schema" convention (every other runtime-only
-   * config validation in this file works the same way). */
-  y?: string
-  /** Meaningless (ignored) for chart_type: combo — see
-   * RechartsComboLayerConfig's own doc comment for why a combo panel has
-   * no single shared series pivot. */
-  series?: string
-  /** For chart_type: bar/area with `series` set — whether multiple
-   * series stack on top of each other (true) or render side-by-side/
-   * overlaid (false, default). Meaningless with no `series` configured,
-   * and for chart_type: combo (each layer is independently one mark, not
-   * pivoted into multiple stackable series). */
-  stacked?: boolean
-  /** Required for chart_type: combo; ignored otherwise. One entry per
-   * independently-typed mark layered into the same chart, sharing this
-   * panel's own `x`. */
-  layers?: RechartsComboLayerConfig[]
 }
 
 /**
@@ -582,7 +480,6 @@ export interface UnknownPanelConfig extends PanelConfigBase {
 
 export type PanelConfig =
   | ValueBoxPanelConfig
-  | PlotlyPanelConfig
   | TablePanelConfig
   | MarkdownPanelConfig
   | ObservablePlotPanelConfig
@@ -590,7 +487,6 @@ export type PanelConfig =
   | FlowMapPanelConfig
   | ZoneMapPanelConfig
   | GraphicWalkerPanelConfig
-  | RechartsPanelConfig
   | TreemapPanelConfig
   | SunburstPanelConfig
   | PieChartPanelConfig

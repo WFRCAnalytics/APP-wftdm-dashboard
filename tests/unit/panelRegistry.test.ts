@@ -21,10 +21,8 @@ describe('EXPANDABLE_PANEL_TYPES', () => {
   const expandable = [
     'table',
     'markdown',
-    'plotly',
     'observable-plot',
     'sankey',
-    'recharts',
     'flowmap',
     'zonemap',
     'treemap',

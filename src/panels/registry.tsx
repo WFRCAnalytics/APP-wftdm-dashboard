@@ -41,13 +41,11 @@ export interface PanelProps<TConfig extends PanelConfig = PanelConfig> {
 // `ComponentType<P>`, so this map's declared value type needed no change.
 export const registry: Record<string, ComponentType<PanelProps<any>>> = {
   valuebox: lazy(() => import('@/panels/ValueBoxPanel').then((m) => ({ default: m.ValueBoxPanel }))),
-  plotly: lazy(() => import('@/panels/PlotlyPanel').then((m) => ({ default: m.PlotlyPanel }))),
   table: lazy(() => import('@/panels/TablePanel').then((m) => ({ default: m.TablePanel }))),
   markdown: lazy(() => import('@/panels/MarkdownPanel').then((m) => ({ default: m.MarkdownPanel }))),
   'observable-plot': lazy(() =>
     import('@/panels/ObservablePlotPanel').then((m) => ({ default: m.ObservablePlotPanel })),
   ),
-  recharts: lazy(() => import('@/panels/RechartsPanel').then((m) => ({ default: m.RechartsPanel }))),
   sankey: lazy(() => import('@/panels/SankeyPanel').then((m) => ({ default: m.SankeyPanel }))),
   flowmap: lazy(() => import('@/panels/FlowMapPanel').then((m) => ({ default: m.FlowMapPanel }))),
   zonemap: lazy(() => import('@/panels/ZoneMapPanel').then((m) => ({ default: m.ZoneMapPanel }))),

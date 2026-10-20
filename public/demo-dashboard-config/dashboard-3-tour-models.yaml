@@ -4,7 +4,7 @@
 # submodels here are real, confirmed computable (data-model.md §1) — no
 # gaps on this tab. 038-all-loaded-scenarios: the tables are UNPINNED
 # (each gains a `scenario` comparison column and responds to the
-# Scenarios-tab Switch); the plotly panel gains `name: $scenario`; the
+# Scenarios-tab Switch); the chart gains a scenario series; the
 # two observable-plot panels keep their `fill: primary_purpose`
 # breakdown and stay pinned to the baseline (scope stated in
 # `description`).
@@ -74,7 +74,7 @@ layout:
 
   # Real, confirmed fix during live verification: mandatory_tour_scheduling
   # groups by (primary_purpose, start, end, duration) together — even
-  # filtered to one purpose, a plotly bar keyed on `start` alone gets many
+  # filtered to one purpose, a bar keyed on `start` alone gets many
   # thin, scattered bars (one per distinct end/duration combo sharing that
   # start hour), never a clean single bar per hour. A table is the
   # genuinely correct fit for this real joint distribution (FR-012) —

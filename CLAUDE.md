@@ -47,8 +47,7 @@ reverts to a normal source tree and the built demo output is removed.
 | Build | Vite, TypeScript (ES2022 target) |
 | Query — browser | DuckDB-WASM in a Web Worker |
 | Query — offline | Python DuckDB (`uv run`) |
-| Charts — bar/line/area | `recharts` (shadcn `ChartContainer`) — primary/default |
-| Charts — most others | Observable Plot (`@observablehq/plot`) |
+| Charts — bar/line/area/dot/cell and most others | Observable Plot (`@observablehq/plot`) |
 | Charts — Sankey | D3 (`d3-sankey`) — no Observable Plot support exists |
 | Charts — Hierarchical (treemap/sunburst) | D3 (`d3-hierarchy`/`d3-shape`) |
 | Charts — Pie/Radar | D3 (`d3-shape` for pie); radar is hand-rolled polar trig, no D3 layout pkg |
@@ -63,7 +62,8 @@ TypeScript throughout; React for all UI (constitution v2.0.0+). No branch-
 per-phase migration — work lands directly on `main`. `services/`/`state/`
 stay plain `.ts` (no JSX); anything rendering JSX is `.tsx`.
 
-Full Recharts v2→v3 upgrade history, chart-engine consolidation
+Recharts and Plotly were removed in the 063 redesign (recover them from git history, commit before
+`redesign: remove Plotly and Recharts` if ever needed). Chart-engine consolidation
 (`057-observable-plot-conversion`), and every panel-type's own build
 story are in `project-docs/IMPLEMENTATION-HISTORY.md` (items 16, 21, 28–31).
 
@@ -221,12 +221,12 @@ APP-wftdm-dashboard/
     │   ├── chartColor.ts          # consolidated named-color-scheme + category-fallback resolver
     │   │                          # (replaces the old sankeyColor/hierarchyColor/polarChartColor)
     │   ├── scenarioDisplay.ts     # label/color resolution (viewer override → deployer palette → default)
-    │   ├── {ValueBox,Plotly,Table,Markdown,ObservablePlot,Sankey,FlowMap,ZoneMap,
-    │   │    GraphicWalker,Recharts,Treemap,Sunburst,Pie,Radar}Panel.tsx
+    │   ├── {ValueBox,Table,Markdown,ObservablePlot,Sankey,FlowMap,ZoneMap,
+    │   │    GraphicWalker,Treemap,Sunburst,Pie,Radar}Panel.tsx
     │   ├── basemap/               # basemap registry/resolution shared by FlowMap/ZoneMap panels
-    │   └── (pure per-panel-type helper modules: plotlyTraces, tableLogic, formatValue,
+    │   └── (pure per-panel-type helper modules: tableLogic, formatValue,
     │        observablePlotEncoding, sankeyGraph, flowmapData, zonemapColor, zoneGeometry,
-    │        rechartsEncoding, hierarchyData/hierarchyColor→chartColor, pieData, radarData)
+    │        hierarchyData/hierarchyColor→chartColor, pieData, radarData)
     ├── scenario/                  # scenarioManager.ts (local folder picker), manifestReader.ts
     ├── components/ui/             # shadcn-pattern primitives: button, card, tabs, tooltip, dialog,
     │                              # dropdown-menu, sidebar, chart, badge, color-picker, slider,
@@ -240,15 +240,15 @@ bug found in it and how it was fixed) is in
 
 ---
 
-## Panel types (14, in `panels/registry.tsx`)
+## Panel types (12, in `panels/registry.tsx`)
 
 ```tsx
 export const registry: Record<string, ComponentType<PanelProps>> = {
-  'plotly': PlotlyPanel, 'observable-plot': ObservablePlotPanel,
+  'observable-plot': ObservablePlotPanel,
   'table': TablePanel, 'valuebox': ValueBoxPanel,
   'flowmap': FlowMapPanel, 'zonemap': ZoneMapPanel,
   'sankey': SankeyPanel, 'graphic-walker': GraphicWalkerPanel,
-  'markdown': MarkdownPanel, 'recharts': RechartsPanel,
+  'markdown': MarkdownPanel,
   'treemap': TreemapPanel, 'sunburst': SunburstPanel,
   'pie': PieChartPanel, 'radar': RadarChartPanel,
 }
@@ -259,18 +259,15 @@ are lazy-loaded (`React.lazy()`, `042-boot-performance-fix`) — wrapped in
 `<Suspense fallback={<PanelLoadingState />}>` inside `PanelErrorBoundary`
 at each of `panelCard.tsx`'s and `dashboardRenderer.tsx`'s two call sites.
 
-`recharts` (`chart_type: bar|line|area`) is the default/primary engine for
-bar/line/area charts; `observable-plot` is used for everything else that
-doesn't need Sankey/hierarchical/polar-specific rendering; `plotly`
-remains fully supported (per-category legend click-to-toggle is its one
-capability `recharts` doesn't replicate). Real demo content today uses 8
-of the 14 types across the six primary tabs; `plotly`/`recharts`/`table`
-edge cases are exercised for real via `dashboard-8-test.yaml`.
+`observable-plot` is the engine for bar/line/area/dot/cell charts and everything else that
+doesn't need Sankey/hierarchical/polar-specific rendering. Real demo content today uses 8
+of the 12 types across the six primary tabs; `table` and the other edge cases are exercised
+for real via `dashboard-8-test.yaml`.
 
 **Expand-ability is scoped per type** (`034-metric-panel-redesign`):
 `EXPANDABLE_PANEL_TYPES` in `panels/expandablePanelTypes.ts` lists the
-default-expandable types (table/markdown/plotly/observable-plot/sankey/
-recharts/flowmap/zonemap — NOT valuebox or ordinary graphic-walker). A
+default-expandable types (table/markdown/observable-plot/sankey/
+flowmap/zonemap — NOT valuebox or ordinary graphic-walker). A
 per-panel `expandable?: boolean` field on `PanelConfigBase` overrides the
 default: `config.expandable ?? EXPANDABLE_PANEL_TYPES.has(config.type)`.
 
@@ -299,7 +296,7 @@ export function Panel({ config }: PanelProps) {
   }, [config, filters])
 
   // Unmount-only teardown — a second effect, empty deps
-  useEffect(() => () => { /* e.g. Plotly.purge(containerRef.current) */ }, [])
+  useEffect(() => () => { /* e.g. map.remove() */ }, [])
 
   return <div ref={containerRef} />
 }
@@ -485,11 +482,7 @@ export default defineConfig({
       if (id.includes('@deck.gl') || id.includes('@flowmap.gl') || id.includes('@luma.gl') ||
           id.includes('@math.gl') || id.includes('@loaders.gl') || id.includes('@probe.gl'))
         return 'flowmap-deck'            // lazy — only FlowMapPanel needs this
-      if (id.includes('plotly'))              return 'plotly'
       if (id.includes('graphic-walker'))      return 'graphic-walker'
-      if (id.includes('recharts') || id.includes('@reduxjs/toolkit') ||
-          id.includes('es-toolkit') || id.includes('decimal.js-light') ||
-          id.includes('victory-vendor'))      return 'recharts'
     }}}
   },
   server: { headers: {                 // dev only
@@ -545,10 +538,8 @@ gracefully. Flagged as stale-docs, not yet fixed — see history item 32.)
   "@radix-ui/react-select": "latest",
   "js-yaml": "latest",
   "maplibre-gl": "^4.7.1",
-  "plotly.js-dist-min": "latest",
-  "recharts": "^3.10.1",
   "tw-animate-css": "latest",
-  "@fontsource-variable/geist": "latest", "@fontsource-variable/geist-mono": "latest"
+  "@fontsource-variable/schibsted-grotesk": "^5.3.0", "@fontsource/dm-mono": "^5.3.0"
 }
 ```
 
@@ -565,11 +556,11 @@ a range, every version-compatibility bug found) is in
 
 ## Implementation status
 
-All 14 originally-scoped panel types are built. Sidebar navigation, lazy
+All 12 remaining panel types are built (plotly and recharts were removed in the 063 redesign). Sidebar navigation, lazy
 tab-scoped data loading, server-side table pagination (≥100k rows),
 scenario label/color overrides, deployer-configurable branding/palette/
 basemap defaults, and a full shadcn/ui default-theme adoption (Tailwind
-v4, Geist typefaces, WFRC branding suspended pending a future re-branding
+v4, WFRC branding suspended pending a future re-branding
 feature) are all shipped. Appearance settings (colorblind-safe palette
 toggle, primary/secondary/accent overrides, font picker, text-size
 slider) are shipped (`061-appearance-controls`).
@@ -582,7 +573,7 @@ slider) are shipped (`061-appearance-controls`).
 `project-docs/IMPLEMENTATION-HISTORY.md` items 26/28 for full detail):
 - A systemic pre-`056` test-infrastructure gap: ~8 Playwright spec files
   (`settingsModal`, `observablePlotPanel`, `tablePanel`,
-  `scenarioManager`, `valueBoxPanel`, `sankeyPanel`, `rechartsPanel`,
+  `scenarioManager`, `valueBoxPanel`, `sankeyPanel`,
   `scenarioAutoActivation`) still depend on the retired
   `tests/fixtures/dashboard-config/` on-disk copy mechanism and fail on a
   full-suite run — confirmed pre-existing via repeated `git stash` A/B,

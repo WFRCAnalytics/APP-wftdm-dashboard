@@ -12,10 +12,10 @@ const valueBox = (title: string): ValueBoxPanelConfig => ({
 })
 
 const plotly: PanelConfig = {
-  type: 'plotly',
+  type: 'observable-plot',
   title: 'A Chart',
   metric: 'trip_mode_share',
-  traces: [],
+  mark: 'barY',
 }
 
 const markdown: PanelConfig = { type: 'markdown', title: 'Some Text' }
