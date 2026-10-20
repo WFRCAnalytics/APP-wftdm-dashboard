@@ -106,6 +106,22 @@ them on their own (`npx playwright test <file> -g "<title>"`) before calling the
 - `zonemapPanel.spec.ts:495` User Story 1 - Author renders a zone-level metric as a choropleth › a zone with no matching metric row under a real filter shows the no-data treatment
 - `zonemapPanel.spec.ts:535` User Story 2 - Resize and basemap inheritance › a zonemap panel with no basemap: picks up the tab default; a panel-level override wins
 
+## Investigation of the eight files `CLAUDE.md` does not list
+
+`CLAUDE.md` names about eight spec files as already failing (settingsModal, observablePlotPanel, tablePanel,
+scenarioManager, valueBoxPanel, sankeyPanel, rechartsPanel, scenarioAutoActivation). At this baseline six of those fail
+and `scenarioManager` and `valueBoxPanel` pass. Eight other files also had stable failures (11 tests). Each was rerun alone:
+
+| Result when run alone | Tests |
+|---|---|
+| **Pass** (they fail only inside the full suite, so they are load or ordering dependent, not code defects) | brokenPanelStates:52, flowmapPanel:679, graphicWalkerPanel:393, hierarchicalChartTheming:46 and :75, sunburstPanel:54, treemapPanel:36, zonemapPanel:250 and :347 |
+| **Fail alone: stale expectation** | `lazyTabLoading.spec.ts:25` expects the Summary tab to register 9 views (3 metrics × 3 scenarios). The Summary KPI value boxes are pinned to `activitysim-baseline` in `dashboard-1-summary.yaml`, so `summary_kpis` registers once, giving 1 + 3 + 3 = **7**. The app is right; the test's number is out of date. |
+| **Fail alone: timing** | `zonemapPanel.spec.ts:1253` waits 5 s for the broken zone map to show its error. Measured on this machine the error appears after **5.3 to 6.3 s** (three runs), because the panel first fetches the DuckDB spatial extension over the network. The panel is correct; the test's limit is too tight here. |
+
+Conclusion: no product regression among them. Nine are load-sensitive, one test has a stale count, one has a tight timeout.
+Nothing was changed to fix them (out of scope for P0). They stay on `baseline-stable-failures.txt` so a later phase can tell
+them apart from new failures; treat the nine load-sensitive ones as flaky when a phase touches nearby code, and rerun them alone first.
+
 ## How the baseline was recorded (read this before re-running)
 
 **Do not run plain `npx playwright test` on this machine and trust the result.** Twice the full suite appeared to
@@ -125,9 +141,4 @@ Check any run for validity: it must contain **no** `EBUSY` and **no** `ERR_CONNE
 
 ## Notes
 
-- `CLAUDE.md` lists about eight spec files as already failing for a retired-fixture reason (settingsModal, observablePlotPanel,
-  tablePanel, scenarioManager, valueBoxPanel, sankeyPanel, rechartsPanel, scenarioAutoActivation). At this baseline
-  `scenarioManager` and `valueBoxPanel` pass, and eight other files also have stable failures that the note does not
-  list (zonemap, hierarchicalChartTheming, brokenPanelStates, flowmap, graphicWalker, lazyTabLoading, sunburst, treemap).
-  Some of those may depend on network access (for example basemap tiles) or on this machine. They were not investigated.
 - Nothing was changed to get these results. `git status` shows only the new P0 files.
