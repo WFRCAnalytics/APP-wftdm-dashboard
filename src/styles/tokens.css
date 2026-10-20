@@ -1,225 +1,156 @@
-/* Design tokens — 002-design-tokens. See contracts/token-contract.md for the
-   Given/When/Then this file satisfies and data-model.md/research.md for the
-   provenance and WCAG verification behind every value below.
+/* Design tokens — the "Corridor Pro" redesign (project-docs/redesign/01-visual-language.md).
 
-   033-shadcn-default-theme: this file's semantic color values are now
-   shadcn/ui's own real, current default theme (the "Nova" preset —
-   `neutral` base color, confirmed the live referent of "new-york-v4"'s
-   real default output, research.md §1/§2) — a deliberate, explicit,
-   user-directed SUSPENSION of this project's own prior WFRC-blue brand
-   identity, not a silent removal (see the `wftdm-design-system` skill's
-   own Brand Identity section for the full suspension notice, FR-009).
-   Every hex value below was converted from shadcn's real, fetched
-   `oklch()` source via a real Canvas 2D round-trip (data-model.md §1),
-   not approximated — and, not coincidentally, lands exactly on
-   Tailwind's own published Neutral palette steps. */
+   Replaces the shadcn "Nova" neutral theme that 033-shadcn-default-theme adopted. The shadcn semantic role names
+   (--background, --card, --primary, …) are KEPT so every shadcn component still works, but their values are the
+   new palette. New roles the redesign needs are added below them (--ink, --mute, --tile, --glass, --ok, --c-1 …).
 
-/* 033-shadcn-default-theme: Tailwind v4 boilerplate, replacing the
-   previous three `@tailwind base/components/utilities;` v3 directives.
-   `@config` is Tailwind v4's own real, official backward-compatibility
-   bridge — confirmed via a direct, empirical trial (research.md §3) that
-   it compiles this project's existing tailwind.config.js completely
-   UNCHANGED, producing byte-identical utility definitions
-   (`.bg-primary { background-color: var(--primary); }`, etc.) to what
-   Tailwind v3 already generated. tailwind.config.js itself is NOT
-   rewritten into CSS-native `@theme` syntax — that was the whole point
-   of choosing this path over a full config migration. */
+   Theme mechanism is unchanged: the `dark` class on <html> (state/themeState.ts + appearanceTab.tsx). Light values
+   live in the first block, dark values in the `dark` block, and every token the tests read is a literal hex (or a
+   simple var() alias) so tests/unit/tokenContrast.test.ts can resolve it.
+
+   Naming note: the spec's brand alias is called --brand here, not --accent, because shadcn's own --accent is the
+   hover/active fill used by the sidebar, dropdowns and tabs.
+
+   Accent colors come in three grades in light mode, because the default teal/amber/violet are bright:
+     --c-N         chart-grade: darkened until it reaches 3:1 against the white tile (WCAG non-text contrast)
+     --brand-text  text-grade:  darkened until it reaches 4.5:1 against white (labels, icons, focus ring)
+   In dark mode both are the same lightened color. utils/theme (services/theme.ts applyAccents) recomputes --c-1..3,
+   --brand, --brand-text and --chart-1..8 at runtime from the user's three colors; the values below are the static
+   defaults that apply before that runs. */
+
 @import "tailwindcss";
 @config "../../tailwind.config.js";
-/* 033-shadcn-default-theme (T034): tw-animate-css — the real, current
-   Tailwind v4-compatible replacement for tailwindcss-animate (which this
-   project never had installed at all — confirmed by direct grep before
-   adding this). Provides the `animate-in`/`fade-in-0`/`zoom-in-95`/
-   `slide-in-from-*` utilities the new Select primitive's real, fetched
-   new-york-v4 source uses for its open/close transitions — without this,
-   those classes would generate no CSS and Select would pop open/closed
-   with zero transition. Scoped to this one new primitive; existing
-   components (Dialog, DropdownMenu) are NOT retrofitted with these
-   classes — that would be adding a feature neither ever had, out of this
-   feature's own re-theme/new-primitive scope. */
 @import "tw-animate-css";
 
 :root {
-  /* Tier 2 — shadcn semantic roles (light values). The previous Tier-1
-     raw WFRC brand tokens this tier used to alias (blue/secondary-blue/
-     yellow/gray, plus white/black/background-dark) are DELETED
-     (data-model.md §1) — every real,
-     direct consumer of one of those variables by name (SankeyPanel.tsx's
-     FALLBACK_TOKEN_VARS, tableLogic.ts's/zonemapColor.ts's cellColor()
-     anchor) was updated to a semantic token instead (data-model.md §3),
-     not left dangling. */
-  --background: #ffffff;
-  --foreground: #000000;
+  /* shadcn semantic roles — light */
+  --background: #e6eaf0;
+  --foreground: #0e131a;
   --card: #ffffff;
-  --card-foreground: #000000;
+  --card-foreground: #0e131a;
   --popover: #ffffff;
-  --popover-foreground: #000000;
-  --primary: #000000;
-  --primary-foreground: #fafafa;
-  --secondary: #f5f5f5;
-  --secondary-foreground: #171717;
-  --muted: #f5f5f5;
-  --muted-foreground: #737373;
-  /* 061-appearance-controls (follow-up, final): light-mode --accent is
-     DELIBERATELY NOT shadcn's own stock value (#f5f5f5, byte-identical to
-     --muted — confirmed directly against shadcn's real, current default
-     theme, apps/v4/app/globals.css, fetched live: both oklch(0.97 0 0)).
-     An earlier pass in this same follow-up chain reverted a first attempt
-     at fixing this back to shadcn's stock value, reasoning that shadcn's
-     own TabsTrigger sidesteps the collision with `bg-background` instead
-     of a token change — true for Tabs specifically, but auditing every
-     other real --accent consumer in this app (Sidebar's own
-     --sidebar-accent, dropdown-menu.tsx's hover/focus, basemapTab.tsx's
-     tile selection) found each of THOSE has no such escape hatch and
-     genuinely needs --accent itself to be visibly distinct from --muted —
-     confirmed live via screenshot that a merely-hovered element was
-     indistinguishable from a genuinely-selected/active one in more than
-     one real surface.
-
-     A SECOND real correction, made after live user feedback on the first
-     attempt: this token was initially set to reuse --ring's own value
-     (#a1a1a1, Tailwind neutral-400) — visible and consistent everywhere,
-     but a flat, fully-opaque neutral-400 fill reads as a heavy, "solid
-     concrete slab" hover/active state against a white page, not a soft
-     highlight. Replaced with Tailwind neutral-300 (#d4d4d4) — one step
-     lighter, still a real, distinct step away from --muted's neutral-100
-     (#f5f5f5).
-
-     A THIRD real correction: live user feedback found even neutral-300
-     still reads as too dark a gray for a hover/active fill. Moved one
-     more step lighter, to Tailwind neutral-200 (#e5e5e5) — not a new,
-     invented value, but this file's own EXISTING --border/--input value
-     (declared further below), already proven visible-but-soft in this
-     exact palette (form-control borders read clearly against
-     --background/--muted at this value) — reusing a value already known
-     to work here, rather than guessing a fourth new one. Still a real,
-     distinct step away from --muted (16 levels apart per channel, not
-     zero, unlike the original bug this whole chain started from). --ring
-     itself is UNCHANGED (#a1a1a1) — a focus-visible ring color, a
-     different design role from a hover/active fill, only ever reused
-     opportunistically here, never load-bearing for --ring's own purpose.
-     Dark mode (--accent #404040 vs --muted #262626) was already
-     sufficiently distinct and already liked as-is, and is unchanged. See
-     components/ui/tabs.tsx's own comment for how TabsTrigger itself was
-     simplified to match. */
-  --accent: #e5e5e5;
-  --accent-foreground: #171717;
-  --destructive: #e7000b;
-  --destructive-foreground: #fcf3f3;
-  /* 024-settings-modal-visual-redesign: the Scenarios tab's status
-     indicator needs a "ready"/success color to pair with the existing
-     --destructive ("failed") — this app's own real addition, with no
-     directly corresponding shadcn default token, kept as-is
-     (tokenContrast.test.ts asserts this directly against tokens.css's
-     real values, not a hardcoded copy). */
-  --success: #15803d;
+  --popover-foreground: #0e131a;
+  --primary: #26847a;
+  --primary-foreground: #ffffff;
+  --secondary: #f6f8fb;
+  --secondary-foreground: #0e131a;
+  --muted: #f6f8fb;
+  --muted-foreground: #586376;
+  --accent: #e8ecf1;
+  --accent-foreground: #0e131a;
+  --destructive: #d13e3b;
+  --destructive-foreground: #ffffff;
+  --success: #167a4a;
   --success-foreground: #ffffff;
-  /* 029-shadcn-chart-panel: five categorical series-color tokens for the
-     `recharts` panel type's shadcn ChartConfig — drawn from Observable
-     Plot's own real default categorical scheme (schemeObservable10), NOT
-     from any WFRC brand token and NOT from shadcn's own real default
-     --chart-1..5 (a monochrome-blue set, research.md §2/§7) — a
-     separate, prior, explicit exception on record, correctly OUT of
-     scope for this feature and left completely unchanged here. */
-  --chart-1: #3358be;
-  --chart-2: #ba7f00;
-  --chart-3: #cc4330;
-  --chart-4: #008029;
-  --chart-5: #914edc;
-  --border: #e5e5e5;
-  --input: #e5e5e5;
-  --ring: #a1a1a1;
+  --border: #dbe1e9;
+  --input: #dbe1e9;
+  --ring: #26847a;
   --radius: 0.625rem;
-  /* 030-sidebar-navigation: the app's persistent left Sidebar's own real
-     token set — this app's `sidebar.tsx` previously reused the main
-     --background/--border/etc. tokens directly (no dedicated --sidebar-*
-     tokens existed at all, confirmed by direct grep, research.md §2) —
-     added here for the first time. */
-  --sidebar: #fafafa;
-  --sidebar-foreground: #000000;
-  --sidebar-primary: #171717;
-  --sidebar-primary-foreground: #fafafa;
-  /* 061-appearance-controls (follow-up, final): same fix as --accent
-     above, same reason — shadcn's own real stock value here
-     (oklch(0.985 0 0) sidebar vs oklch(0.97 0 0) sidebar-accent) is a
-     genuinely subtle step even in their own theme, confirmed live via
-     screenshot to read as "barely there" for this app's own hover/active
-     sidebar rows. Kept identical to --accent's own final value
-     (neutral-200, #e5e5e5 — see that token's own comment for the full,
-     three-attempt history) for one consistent hover/active language
-     across the whole app, not a sidebar-specific invention.
-     --sidebar-accent-foreground (#171717) already has strong contrast
-     against it (see tokens.css's --accent comment for the identical
-     computed ratio). Dark mode (--sidebar-accent #262626 vs --sidebar
-     #171717) was already sufficiently distinct and already liked as-is,
-     and is unchanged. */
-  --sidebar-accent: #e5e5e5;
-  --sidebar-accent-foreground: #171717;
-  --sidebar-border: #e5e5e5;
-  --sidebar-ring: #a1a1a1;
-  /* 015-theme-toggle: real bug found live — native form controls (the
-     bare <select>/<option> in ObservablePlotPanel.tsx's PanelLocalInput,
-     any future one) are rendered by the OS/browser itself, not by this
-     app's own CSS — their default light/dark appearance follows the
-     color-scheme property specifically, not var(--background)/
-     var(--foreground) or any class. Confirmed empirically: with no
-     color-scheme declared anywhere, a <select multiple> rendered with a
-     plain white dropdown and (depending on OS) illegible text once the
-     surrounding app went dark, since nothing told the browser dark
-     styling was appropriate here. This is also what themes native
-     scrollbars, date pickers, and any other future unstyled native
-     control — not narrowly scoped to <select>. */
+
+  /* shadcn sidebar roles — the redesign's floating navigation uses these */
+  --sidebar: #ffffff;
+  --sidebar-foreground: #0e131a;
+  --sidebar-primary: #26847a;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #e8ecf1;
+  --sidebar-accent-foreground: #0e131a;
+  --sidebar-border: #dbe1e9;
+  --sidebar-ring: #26847a;
+
+  /* redesign roles — surfaces and text */
+  --bg: #e6eaf0;
+  --bg2: #eef1f6;
+  --surface: #ffffff;
+  --tile: #ffffff;
+  --tile-hi: #f6f8fb;
+  --ink: #0e131a;
+  --mute: #586376;
+  --line: #dbe1e9;
+  --grid: #e8ecf1;
+  --glass: rgba(255, 255, 255, 0.88);
+  --glass-line: rgba(14, 19, 26, 0.1);
+  --hi: rgba(255, 255, 255, 0.9);
+
+  /* calibration status — only ever for calibration status, never for series */
+  --ok: #167a4a;
+  --warn: #95600f;
+  --fail: #d13e3b;
+
+  /* user colors (primary, secondary, tertiary) after light-mode adaptation */
+  --c-1: #2fa598;
+  --c-2: #c28940;
+  --c-3: #a781eb;
+  --brand: #2fa598;
+  --brand-text: #26847a;
+  --c-obs: #0e131a;
+
+  /* categorical series colors derived from the three user colors: cat(0..7), see 01-visual-language.md §5.4 */
+  --chart-1: #2fa598;
+  --chart-2: #c28940;
+  --chart-3: #a781eb;
+  --chart-4: #78976c;
+  --chart-5: #b48596;
+  --chart-6: #6b93c2;
+  --chart-7: #237c72;
+  --chart-8: #926730;
+
+  /* chart theme values read by JavaScript (unitless on purpose) */
+  --chart-fs: 11.5;
+  --chart-r: 5;
+  --zoom: 1;
+
   color-scheme: light;
 
-  /* Tier 3 — typography. 033-shadcn-default-theme: shadcn's own real
-     current default font stack (the "Nova" preset — Geist for both body
-     AND heading roles, since Nova has no separate heading face at all,
-     research.md §5 — Geist Mono for code), replacing the three previous
-     WFRC brand typefaces (data-model.md §2 names them by role/source).
-     Loaded via self-hosted @fontsource-variable/geist(-mono) side-
-     effecting imports in src/main.tsx AND src/demo/main.tsx — the old
-     Google-Fonts-CDN runtime-injection module this project used to keep
-     under src/lib/ is retired entirely, not adapted (quickstart.md
-     Scenario 3's own grep sweep checks no literal reference to the old
-     typeface names or that old module's name remains anywhere in src/,
-     so neither is spelled out here). */
-  --font-body: "Geist Variable", sans-serif;
-  --font-heading: "Geist Variable", sans-serif;
-  --font-mono: "Geist Mono Variable", monospace;
+  /* typography — Schibsted Grotesk for text, DM Mono for numerals (self-hosted via @fontsource, imported in main.tsx) */
+  --font-body: "Schibsted Grotesk Variable", sans-serif;
+  --font-heading: "Schibsted Grotesk Variable", sans-serif;
+  --font-mono: "DM Mono", monospace;
 
-  /* Tier 4 — elevation (research.md §9) — this app's own elevation
-     system, not a shadcn default-theme concern, unchanged by this
-     feature. --shadow-color's light-mode value (8 27 38) is a fixed,
-     literal RGB triplet in its own right (not derived from any token) —
-     kept exactly as-is. */
+  /* elevation: tier 1 (tiles) and tier 2 (floating glass, modals). The older --shadow-* names stay for existing consumers. */
+  --sh1: 0 1px 0 var(--hi) inset, 0 1px 2px rgba(20, 30, 45, 0.08), 0 12px 28px -16px rgba(20, 30, 45, 0.28);
+  --sh2: 0 1px 0 var(--hi) inset, 0 26px 60px -18px rgba(20, 30, 45, 0.4), 0 4px 12px rgba(20, 30, 45, 0.12);
   --shadow-color: 8 27 38;
-  --shadow-ring: 0 0 0 0 transparent; /* no-op in light mode */
+  --shadow-ring: 0 0 0 0 transparent;
   --shadow-sm: var(--shadow-ring), 0 1px 3px rgb(var(--shadow-color) / 0.12);
-  --shadow-md: var(--shadow-ring), 0 4px 12px rgb(var(--shadow-color) / 0.14);
-  --shadow-lg: var(--shadow-ring), 0 12px 32px rgb(var(--shadow-color) / 0.22);
+  --shadow-md: var(--sh1);
+  --shadow-lg: var(--sh2);
 }
 
 body {
   font-family: var(--font-body);
+  background: var(--background);
+  color: var(--foreground);
 }
 
-/* 021-basemap-catalog-redesign: a single, simple, token-driven custom
-   scrollbar style — confirmed via a full codebase search (grep for
-   scrollbar-thin/::-webkit-scrollbar/scrollbar-color across src/) that NO
-   custom scrollbar styling existed anywhere in this app before this.
-   Applied consistently to every significant scrollable region found
-   during that same search (this feature's own new Basemap-tab sections
-   region, the Settings modal's other per-tab scroll regions, and
-   TablePanel.tsx's horizontal table scroll) rather than only this
-   feature's own — a one-off scrollbar style here would just relocate the
-   inconsistency, not fix it. Plain custom properties, not a Tailwind
-   plugin: `scrollbar-width`/`scrollbar-color` (Firefox) and the
-   `::-webkit-scrollbar*` pseudo-elements (Chromium/WebKit) have no
-   Tailwind utility equivalents at all in this project's pinned Tailwind
-   v3 — `tailwindcss-scrollbar`-style plugins exist but would be a new
-   dependency for four rules. Colors reference the SAME --border/
-   --muted-foreground tokens already used everywhere else, so this
-   automatically follows the app's light/dark theme with no extra rule. */
+/* The one allowed gradient: a neutral, subtle light behind the page. Never an accent-colored gradient. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background: radial-gradient(1100px 600px at 30% -12%, var(--hi), transparent 70%);
+}
+
+/* Floating glass tier (navigation, control bar, picker, tooltip). Use together with a radius utility. */
+.glass {
+  background: var(--glass);
+  backdrop-filter: blur(20px) saturate(1.3);
+  -webkit-backdrop-filter: blur(20px) saturate(1.3);
+  border: 1px solid var(--glass-line);
+  box-shadow: var(--sh2);
+}
+
+/* Tile tier: the card surface of a panel. */
+.tile-surface {
+  background: var(--tile);
+  border: 1px solid var(--glass-line);
+  box-shadow: var(--sh1);
+}
+
+/* 021-basemap-catalog-redesign: a single, simple, token-driven custom scrollbar style, applied to every
+   significant scrollable region. Plain custom properties, not a Tailwind plugin. Colors reference the same
+   --border/--muted-foreground tokens used everywhere else, so it follows the theme automatically. */
 .scrollbar-thin {
   scrollbar-width: thin;
   scrollbar-color: var(--border) transparent;
@@ -239,57 +170,90 @@ body {
   background-color: var(--muted-foreground);
 }
 
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 .dark {
-  --background: #0a0a0a;
-  --foreground: #fafafa;
-  --card: #171717;
-  --card-foreground: #fafafa;
-  --popover: #171717;
-  --popover-foreground: #fafafa;
-  --primary: #e5e5e5;
-  --primary-foreground: #171717;
-  --secondary: #262626;
-  --secondary-foreground: #fafafa;
-  --muted: #262626;
-  --muted-foreground: #a1a1a1;
-  --accent: #404040;
-  --accent-foreground: #fafafa;
-  --destructive: #ff6467;
-  --destructive-foreground: #df2225;
-  /* Same identical-in-both-modes value as :root — see that block's own comment. */
-  --success: #15803d;
-  --success-foreground: #ffffff;
-  /* See :root's own comment — the SAME 5 real Observable10 hues as light
-     mode, unaffected by this feature. */
-  --chart-1: #517ae3;
-  --chart-2: #efb118;
-  --chart-3: #ff725c;
-  --chart-4: #3ca951;
-  --chart-5: #a463f2;
-  --border: #f5ffff1a; /* real shadcn value: oklch(1 0 0 / 10%), i.e. 10% white */
-  --input: #ffffff26; /* real shadcn value: oklch(1 0 0 / 15%), i.e. 15% white */
-  --ring: #737373;
-  /* --radius, --font-* not redeclared — not theme-dependent */
-  --sidebar: #171717;
-  --sidebar-foreground: #fafafa;
-  /* The one real non-neutral accent in shadcn's own current default dark
-     theme — a genuine, confirmed Blue-600 hue (data-model.md §1), not an
-     authoring error. */
-  --sidebar-primary: #1447e6;
-  --sidebar-primary-foreground: #fafafa;
-  --sidebar-accent: #262626;
-  --sidebar-accent-foreground: #fafafa;
-  --sidebar-border: #f5ffff1a;
-  --sidebar-ring: #525252;
+  /* shadcn semantic roles — dark */
+  --background: #090c11;
+  --foreground: #eef1f5;
+  --card: #141922;
+  --card-foreground: #eef1f5;
+  --popover: #151a23;
+  --popover-foreground: #eef1f5;
+  --primary: #73e1d6;
+  --primary-foreground: #04161a;
+  --secondary: #1a202b;
+  --secondary-foreground: #eef1f5;
+  --muted: #1a202b;
+  --muted-foreground: #8f99a9;
+  --accent: #222a36;
+  --accent-foreground: #eef1f5;
+  --destructive: #f36b68;
+  --destructive-foreground: #ffffff;
+  --success: #41c98f;
+  --success-foreground: #04161a;
+  --border: #ffffff17;
+  --input: #ffffff1f;
+  --ring: #73e1d6;
+
+  --sidebar: #141922;
+  --sidebar-foreground: #eef1f5;
+  --sidebar-primary: #73e1d6;
+  --sidebar-primary-foreground: #04161a;
+  --sidebar-accent: #222a36;
+  --sidebar-accent-foreground: #eef1f5;
+  --sidebar-border: #ffffff17;
+  --sidebar-ring: #73e1d6;
+
+  /* redesign roles — dark */
+  --bg: #090c11;
+  --bg2: #0e1218;
+  --surface: #151a23;
+  --tile: #141922;
+  --tile-hi: #1a202b;
+  --ink: #eef1f5;
+  --mute: #8f99a9;
+  --line: #272f3c;
+  --grid: #1f2632;
+  --glass: rgba(18, 23, 31, 0.84);
+  --glass-line: rgba(255, 255, 255, 0.09);
+  --hi: rgba(255, 255, 255, 0.06);
+
+  --ok: #41c98f;
+  --warn: #e8a93d;
+  --fail: #f36b68;
+
+  --c-1: #73e1d6;
+  --c-2: #ffc984;
+  --c-3: #caacff;
+  --brand: #73e1d6;
+  --brand-text: #73e1d6;
+  --c-obs: #eef1f5;
+
+  --chart-1: #73e1d6;
+  --chart-2: #ffc984;
+  --chart-3: #caacff;
+  --chart-4: #b9d5ad;
+  --chart-5: #e4bac2;
+  --chart-6: #9ec6ea;
+  --chart-7: #a4ece4;
+  --chart-8: #ffdcaf;
+
   color-scheme: dark;
 
-  /* Elevation: dark mode — different mechanism, not just different colors
-     (edge-highlight ring, since a drop shadow alone reads too weakly
-     against an already-dark page — research.md §9). Unchanged by this
-     feature. */
+  --sh1: 0 1px 0 var(--hi) inset, 0 1px 2px rgba(0, 0, 0, 0.4), 0 10px 28px -14px rgba(0, 0, 0, 0.65);
+  --sh2: 0 1px 0 var(--hi) inset, 0 24px 60px -16px rgba(0, 0, 0, 0.7), 0 4px 12px rgba(0, 0, 0, 0.35);
   --shadow-color: 0 0 0;
   --shadow-ring: 0 0 0 1px color-mix(in srgb, var(--foreground) 12%, transparent);
   --shadow-sm: var(--shadow-ring), 0 1px 3px rgb(var(--shadow-color) / 0.12);
-  --shadow-md: var(--shadow-ring), 0 4px 12px rgb(var(--shadow-color) / 0.14);
-  --shadow-lg: var(--shadow-ring), 0 12px 32px rgb(var(--shadow-color) / 0.22);
+  --shadow-md: var(--sh1);
+  --shadow-lg: var(--sh2);
 }

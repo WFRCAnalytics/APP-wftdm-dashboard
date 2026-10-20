@@ -113,11 +113,11 @@ const PAIRINGS: Array<{
   expectedLight: number
   expectedDark: number
 }> = [
-  { name: 'foreground/background', foreground: 'foreground', base: 'background', expectedLight: 21.0, expectedDark: 18.97 },
-  { name: 'card-foreground/card', foreground: 'card-foreground', base: 'card', expectedLight: 21.0, expectedDark: 17.18 },
-  { name: 'popover-foreground/popover', foreground: 'popover-foreground', base: 'popover', expectedLight: 21.0, expectedDark: 17.18 },
-  { name: 'primary-foreground/primary', foreground: 'primary-foreground', base: 'primary', expectedLight: 20.12, expectedDark: 14.23 },
-  { name: 'secondary-foreground/secondary', foreground: 'secondary-foreground', base: 'secondary', expectedLight: 16.44, expectedDark: 14.5 },
+  { name: 'foreground/background', foreground: 'foreground', base: 'background', expectedLight: 15.44, expectedDark: 17.29 },
+  { name: 'card-foreground/card', foreground: 'card-foreground', base: 'card', expectedLight: 18.64, expectedDark: 15.55 },
+  { name: 'popover-foreground/popover', foreground: 'popover-foreground', base: 'popover', expectedLight: 18.64, expectedDark: 15.4 },
+  { name: 'primary-foreground/primary', foreground: 'primary-foreground', base: 'primary', expectedLight: 4.5, expectedDark: 11.87 },
+  { name: 'secondary-foreground/secondary', foreground: 'secondary-foreground', base: 'secondary', expectedLight: 17.52, expectedDark: 14.42 },
   // 'muted-foreground/muted' is deliberately NOT in this list — see the
   // dedicated, separately-asserted test below this array for why.
   //
@@ -132,22 +132,22 @@ const PAIRINGS: Array<{
   // neutral-200 reuses this file's own already-proven --border/--input
   // value rather than guessing a fourth new one. See tokens.css's own
   // comment on this declaration for the full, three-attempt history.
-  { name: 'accent-foreground/accent', foreground: 'accent-foreground', base: 'accent', expectedLight: 14.2, expectedDark: 9.93 },
+  { name: 'accent-foreground/accent', foreground: 'accent-foreground', base: 'accent', expectedLight: 15.71, expectedDark: 12.76 },
   // 024-settings-modal-visual-redesign: --success/--success-foreground,
   // added for the Scenarios tab's "ready" status indicator (research.md
   // §2) — unchanged by this feature, values carried over verbatim.
-  { name: 'success-foreground/success', foreground: 'success-foreground', base: 'success', expectedLight: 5.02, expectedDark: 5.02 },
+  { name: 'success-foreground/success', foreground: 'success-foreground', base: 'success', expectedLight: 5.36, expectedDark: 8.79 },
   // 030-sidebar-navigation's own --sidebar-* token group — new real
   // pairings this feature added token values for (data-model.md §1),
   // consumed for real by sidebar.tsx (T018).
-  { name: 'sidebar-foreground/sidebar', foreground: 'sidebar-foreground', base: 'sidebar', expectedLight: 20.12, expectedDark: 17.18 },
-  { name: 'sidebar-primary-foreground/sidebar-primary', foreground: 'sidebar-primary-foreground', base: 'sidebar-primary', expectedLight: 17.18, expectedDark: 6.55 },
+  { name: 'sidebar-foreground/sidebar', foreground: 'sidebar-foreground', base: 'sidebar', expectedLight: 18.64, expectedDark: 15.55 },
+  { name: 'sidebar-primary-foreground/sidebar-primary', foreground: 'sidebar-primary-foreground', base: 'sidebar-primary', expectedLight: 4.5, expectedDark: 11.87 },
   // 061-appearance-controls (follow-up, final x3): same fix, same reason
   // as --accent above — light-mode --sidebar-accent is now #e5e5e5, not
   // shadcn's own stock value (#f5f5f5), for genuine hover/active
   // visibility against --sidebar (#fafafa). See tokens.css's own comment
   // for the full history.
-  { name: 'sidebar-accent-foreground/sidebar-accent', foreground: 'sidebar-accent-foreground', base: 'sidebar-accent', expectedLight: 14.2, expectedDark: 14.5 },
+  { name: 'sidebar-accent-foreground/sidebar-accent', foreground: 'sidebar-accent-foreground', base: 'sidebar-accent', expectedLight: 15.71, expectedDark: 12.76 },
 ]
 
 // 033-shadcn-default-theme (T009): a REAL finding worth its own note —
@@ -197,15 +197,16 @@ describe('token contrast (WCAG 2.1 AA)', () => {
   // real, known 4.35:1 value directly, with no floor requirement, so this
   // stays a disclosed, tracked gap rather than a silently-passing or
   // permanently-red test.
-  it('muted-foreground/muted: light mode is a real, disclosed shadcn-default AA near-miss (~4.35:1, not >=4.5:1)', () => {
+  it('muted-foreground/muted: light mode meets WCAG AA (the redesign palette closes the old shadcn near-miss)', () => {
     const ratio = contrastRatio(resolveColor(rootMap, 'muted-foreground'), resolveColor(rootMap, 'muted'))
-    expect(ratio).toBeCloseTo(4.35, 1)
+    expect(ratio).toBeGreaterThanOrEqual(WCAG_AA_MIN_CONTRAST)
+    expect(ratio).toBeCloseTo(5.7, 1)
   })
 
   it('muted-foreground/muted: dark mode meets WCAG AA (>=4.5:1)', () => {
     const ratio = contrastRatio(resolveColor(darkMap, 'muted-foreground'), resolveColor(darkMap, 'muted'))
     expect(ratio).toBeGreaterThanOrEqual(WCAG_AA_MIN_CONTRAST)
-    expect(ratio).toBeCloseTo(5.86, 1)
+    expect(ratio).toBeCloseTo(5.68, 1)
   })
 })
 
@@ -232,11 +233,11 @@ const WCAG_NON_TEXT_MIN_CONTRAST = 3.0
 // WFRC-brand dark background to shadcn's real #0a0a0a) — the chart hues
 // they're measured against are the same values as before this feature.
 const CHART_TOKENS: Array<{ name: string; expectedLight: number; expectedDark: number }> = [
-  { name: 'chart-1', expectedLight: 6.4, expectedDark: 4.94 },
-  { name: 'chart-2', expectedLight: 3.43, expectedDark: 10.34 },
-  { name: 'chart-3', expectedLight: 4.76, expectedDark: 7.37 },
-  { name: 'chart-4', expectedLight: 5.1, expectedDark: 6.59 },
-  { name: 'chart-5', expectedLight: 4.85, expectedDark: 5.32 },
+  { name: 'chart-1', expectedLight: 3.02, expectedDark: 11.3 },
+  { name: 'chart-2', expectedLight: 3.02, expectedDark: 11.7 },
+  { name: 'chart-3', expectedLight: 3.01, expectedDark: 9.11 },
+  { name: 'chart-4', expectedLight: 3.26, expectedDark: 11.06 },
+  { name: 'chart-5', expectedLight: 3.12, expectedDark: 10.15 },
 ]
 
 describe('chart-color contrast (WCAG 2.1 non-text minimum, 3:1)', () => {
@@ -245,18 +246,18 @@ describe('chart-color contrast (WCAG 2.1 non-text minimum, 3:1)', () => {
   const darkMap = { ...rootMap, ...parseDeclarations(extractBlock(css, '.dark')) }
 
   it.each(CHART_TOKENS)(
-    '--$name vs --background meets the non-text minimum in light mode (>=3:1)',
+    '--$name vs --card meets the non-text minimum in light mode (>=3:1)',
     ({ name, expectedLight }) => {
-      const ratio = contrastRatio(resolveColor(rootMap, name), resolveColor(rootMap, 'background'))
+      const ratio = contrastRatio(resolveColor(rootMap, name), resolveColor(rootMap, 'card'))
       expect(ratio).toBeGreaterThanOrEqual(WCAG_NON_TEXT_MIN_CONTRAST)
       expect(ratio).toBeCloseTo(expectedLight, 1)
     },
   )
 
   it.each(CHART_TOKENS)(
-    '--$name vs --background meets the non-text minimum in dark mode (>=3:1)',
+    '--$name vs --card meets the non-text minimum in dark mode (>=3:1)',
     ({ name, expectedDark }) => {
-      const ratio = contrastRatio(resolveColor(darkMap, name), resolveColor(darkMap, 'background'))
+      const ratio = contrastRatio(resolveColor(darkMap, name), resolveColor(darkMap, 'card'))
       expect(ratio).toBeGreaterThanOrEqual(WCAG_NON_TEXT_MIN_CONTRAST)
       expect(ratio).toBeCloseTo(expectedDark, 1)
     },
@@ -285,70 +286,66 @@ describe('chart-color contrast (WCAG 2.1 non-text minimum, 3:1)', () => {
 // --chart-1..5/--success/--success-foreground are deliberately excluded
 // (unchanged by this feature, already covered by their own tests above).
 const EXPECTED_LIGHT_HEX: Record<string, string> = {
-  background: '#ffffff',
-  foreground: '#000000',
+  background: '#e6eaf0',
+  foreground: '#0e131a',
   card: '#ffffff',
-  'card-foreground': '#000000',
+  'card-foreground': '#0e131a',
   popover: '#ffffff',
-  'popover-foreground': '#000000',
-  primary: '#000000',
-  'primary-foreground': '#fafafa',
-  secondary: '#f5f5f5',
-  'secondary-foreground': '#171717',
-  muted: '#f5f5f5',
-  'muted-foreground': '#737373',
-  // 061-appearance-controls (follow-up, final x3): deliberately NOT
-  // shadcn's own stock value (== muted) — see the PAIRINGS entry above
-  // and tokens.css's own comment for the full, three-attempt story.
-  accent: '#e5e5e5',
-  'accent-foreground': '#171717',
-  destructive: '#e7000b',
-  'destructive-foreground': '#fcf3f3',
-  border: '#e5e5e5',
-  input: '#e5e5e5',
-  ring: '#a1a1a1',
-  sidebar: '#fafafa',
-  'sidebar-foreground': '#000000',
-  'sidebar-primary': '#171717',
-  'sidebar-primary-foreground': '#fafafa',
-  // 061-appearance-controls (follow-up, final x3): same fix as accent above.
-  'sidebar-accent': '#e5e5e5',
-  'sidebar-accent-foreground': '#171717',
-  'sidebar-border': '#e5e5e5',
-  'sidebar-ring': '#a1a1a1',
+  'popover-foreground': '#0e131a',
+  primary: '#26847a',
+  'primary-foreground': '#ffffff',
+  secondary: '#f6f8fb',
+  'secondary-foreground': '#0e131a',
+  muted: '#f6f8fb',
+  'muted-foreground': '#586376',
+  accent: '#e8ecf1',
+  'accent-foreground': '#0e131a',
+  destructive: '#d13e3b',
+  'destructive-foreground': '#ffffff',
+  border: '#dbe1e9',
+  input: '#dbe1e9',
+  ring: '#26847a',
+  sidebar: '#ffffff',
+  'sidebar-foreground': '#0e131a',
+  'sidebar-primary': '#26847a',
+  'sidebar-primary-foreground': '#ffffff',
+  'sidebar-accent': '#e8ecf1',
+  'sidebar-accent-foreground': '#0e131a',
+  'sidebar-border': '#dbe1e9',
+  'sidebar-ring': '#26847a',
 }
 
 const EXPECTED_DARK_HEX: Record<string, string> = {
-  background: '#0a0a0a',
-  foreground: '#fafafa',
-  card: '#171717',
-  'card-foreground': '#fafafa',
-  popover: '#171717',
-  'popover-foreground': '#fafafa',
-  primary: '#e5e5e5',
-  'primary-foreground': '#171717',
-  secondary: '#262626',
-  'secondary-foreground': '#fafafa',
-  muted: '#262626',
-  'muted-foreground': '#a1a1a1',
-  accent: '#404040',
-  'accent-foreground': '#fafafa',
-  destructive: '#ff6467',
-  'destructive-foreground': '#df2225',
-  border: '#f5ffff1a',
-  input: '#ffffff26',
-  ring: '#737373',
-  sidebar: '#171717',
-  'sidebar-foreground': '#fafafa',
-  'sidebar-primary': '#1447e6',
-  'sidebar-primary-foreground': '#fafafa',
-  'sidebar-accent': '#262626',
-  'sidebar-accent-foreground': '#fafafa',
-  'sidebar-border': '#f5ffff1a',
-  'sidebar-ring': '#525252',
+  background: '#090c11',
+  foreground: '#eef1f5',
+  card: '#141922',
+  'card-foreground': '#eef1f5',
+  popover: '#151a23',
+  'popover-foreground': '#eef1f5',
+  primary: '#73e1d6',
+  'primary-foreground': '#04161a',
+  secondary: '#1a202b',
+  'secondary-foreground': '#eef1f5',
+  muted: '#1a202b',
+  'muted-foreground': '#8f99a9',
+  accent: '#222a36',
+  'accent-foreground': '#eef1f5',
+  destructive: '#f36b68',
+  'destructive-foreground': '#ffffff',
+  border: '#ffffff17',
+  input: '#ffffff1f',
+  ring: '#73e1d6',
+  sidebar: '#141922',
+  'sidebar-foreground': '#eef1f5',
+  'sidebar-primary': '#73e1d6',
+  'sidebar-primary-foreground': '#04161a',
+  'sidebar-accent': '#222a36',
+  'sidebar-accent-foreground': '#eef1f5',
+  'sidebar-border': '#ffffff17',
+  'sidebar-ring': '#73e1d6',
 }
 
-describe('token literal hex values match data-model.md §1 exactly', () => {
+describe('token literal hex values match the 063 redesign palette (project-docs/redesign/01-visual-language.md)', () => {
   const css = readFileSync(TOKENS_CSS_PATH, 'utf-8')
   const rootMap = parseDeclarations(extractBlock(css, ':root'))
   const darkDeclared = parseDeclarations(extractBlock(css, '.dark'))

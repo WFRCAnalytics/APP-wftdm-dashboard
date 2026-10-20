@@ -6,7 +6,7 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 
 import '@/styles/tokens.css'
-// 033-shadcn-default-theme: self-hosted Geist/Geist Mono variable-font
+// 033-shadcn-default-theme: self-hosted Schibsted Grotesk / DM Mono/Geist Mono variable-font
 // side-effecting imports — the real replacement for the old Google-Fonts-
 // CDN runtime-injection module this project used to keep under
 // src/lib/ (retired/deleted entirely, T024; quickstart.md Scenario 3's
@@ -21,8 +21,9 @@ import '@/styles/tokens.css'
 // own --font-* values naming them. This import is therefore a genuine,
 // first-time wiring of real font loading into the production boot
 // sequence, not a like-for-like mechanism swap.
-import '@fontsource-variable/geist'
-import '@fontsource-variable/geist-mono'
+import '@fontsource-variable/schibsted-grotesk'
+import '@fontsource/dm-mono/400.css'
+import '@fontsource/dm-mono/500.css'
 import { toast } from 'sonner'
 
 import { initDuckDB } from './services/duckdb.ts'
