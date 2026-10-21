@@ -18,7 +18,7 @@ import { PanelEmptyState } from '@/panels/PanelEmptyState'
 import { PanelErrorState } from '@/panels/PanelErrorState'
 import { resolveScenarioColor } from '@/panels/scenarioDisplay'
 import type { PanelProps } from '@/panels/registry'
-import { alternativeOf, runNameFor, viewManifest } from '@/services/runResolution'
+import { alternativeOf, runKindOf, runNameFor, viewManifest } from '@/services/runResolution'
 import { getDeployment } from '@/state/compareState'
 import { get as getScenario } from '@/state/appState'
 import { tooltip } from '@/services/tooltip'
@@ -52,7 +52,11 @@ export function ChartPanel({ config }: PanelProps<ChartPanelConfig>) {
     return buildChartPlan({
       config,
       view,
-      active: view.active,
+      // Observed is a reference, never a series
+      active: view.active.filter((run) => {
+        const s = getScenario(run)
+        return !s || runKindOf(s) !== 'observed'
+      }),
       referenceLabel,
       years: getDeployment().years,
       label: (run) => display.get(run)?.label ?? getScenario(run)?.label ?? run,

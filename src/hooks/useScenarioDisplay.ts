@@ -1,7 +1,7 @@
 import { useCallback, useRef, useSyncExternalStore } from 'react'
 
 import { list, subscribe } from '@/state/appState'
-import { alternativeOf } from '@/services/runResolution'
+import { alternativeOf, runKindOf } from '@/services/runResolution'
 import { resolveDefaultScenarioColor, type ScenarioDisplay, type ScenarioDisplayMap } from '@/panels/scenarioDisplay'
 import { useColorScheme } from '@/hooks/useColorScheme'
 import { useColorblindSafePreference } from '@/hooks/useColorblindSafePreference'
@@ -67,7 +67,7 @@ export function useScenarioDisplay(): ScenarioDisplayMap {
         const index = colorIndex.get(s.name) ?? 0
         const prevEntry = prev.get(s.name)
         const color = s.colorOverride ?? resolveEffectiveDefault(index, colorblindSafe, colorScheme === 'dark')
-        if (!prevEntry || prevEntry.label !== s.label || prevEntry.color !== color) {
+        if (!prevEntry || prevEntry.label !== (s.label ?? s.displayName) || prevEntry.color !== color) {
           changed = true
         }
       })
@@ -77,7 +77,7 @@ export function useScenarioDisplay(): ScenarioDisplayMap {
       scenarios.forEach((s) => {
         const index = colorIndex.get(s.name) ?? 0
         next.set(s.name, {
-          label: s.label,
+          label: s.label ?? s.displayName,
           color: s.colorOverride ?? resolveEffectiveDefault(index, colorblindSafe, colorScheme === 'dark'),
         })
       })
@@ -102,6 +102,11 @@ function alternativeIndexes(scenarios: ReturnType<typeof list>): Map<string, num
   const byName = new Map<string, number>()
   for (const s of scenarios) {
     const alt = alternativeOf(s)
+    // only independent scenarios take a palette slot; rounds, Observed and hidden runs do not shift the others
+    if (runKindOf(s) !== 'scenario') {
+      byName.set(s.name, 0)
+      continue
+    }
     if (!order.has(alt)) order.set(alt, order.size)
     byName.set(s.name, order.get(alt)!)
   }

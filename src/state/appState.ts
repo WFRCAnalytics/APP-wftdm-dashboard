@@ -23,6 +23,8 @@ export type ScenarioKind = 'scenario' | 'round' | 'observed' | 'hidden'
 /** 063 redesign: optional manifest identity (alternative, model year, tag, calibration family). A run without
  * `alternative`/`year` is a single-year run and counts for every year. */
 export interface ScenarioIdentity {
+  /** Manifest `display_name`: the label used until a viewer sets their own. */
+  displayName?: string
   kind?: ScenarioKind
   alternative?: string
   year?: number
@@ -184,6 +186,7 @@ export function register(name: string, metadata: ScenarioMetadata): void {
     colorOverride: undefined,
     failedFiles: undefined,
     availableMetrics: undefined,
+    displayName: metadata.displayName,
     kind: metadata.kind,
     alternative: metadata.alternative,
     year: metadata.year,

@@ -58,7 +58,8 @@ export function viewInput(): ViewInput {
   const runs = appState.listByDisplayOrder()
   // An alternative is in the compare set when its run for the current year is active; with no run for this year, when
   // any of its runs is (so the choice still shows once a year that has one is selected).
-  const compareSet = alternativesOf(runs.map(runInfoOf)).filter((alt) => {
+  const hidden = new Set(runs.filter((s) => runKindOf(s) === 'hidden').map(alternativeOf))
+  const compareSet = alternativesOf(runs.map(runInfoOf)).filter((alt) => !hidden.has(alt)).filter((alt) => {
     const mine = runs.filter((s) => alternativeOf(s) === alt)
     const forYear = resolveRun(mine.map(runInfoOf), alt, state.year)
     return forYear ? Boolean(appState.get(forYear.name)?.active) : mine.some((s) => s.active)

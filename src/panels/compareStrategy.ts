@@ -198,6 +198,8 @@ export function planCompare(
       return { kind: 'cells', cells, page, pages, total: others.length, firstShown: page * perPage + 1, lastShown: page * perPage + shown.length }
     }
     case 'diff': {
+      // a catalogue chart draws its own differences from the focus, the reference and the Show mode
+      if (panel.type === 'chart') return { kind: 'single', config: panel }
       const shown = focus
       const ref = inputs.referenceKind === 'self-base-year' ? inputs.selfBaseRun : inputs.referenceRun
       if (!shown) return { kind: 'empty', message: 'The focus scenario has no run for this year.' }
