@@ -127,92 +127,64 @@ function readDashboardRoot(rootDir: string): SkeletonRoot {
   return { tabs, branding }
 }
 
-const PULSE = 'animate-pulse rounded-md bg-muted'
-
-function tabRowHtml(tab: SkeletonTab): string {
-  // Real per-label width variance (clamped) — a small, honest touch of
-  // fidelity beyond a uniform bar: a short tab name ("Explore") and a
-  // long one ("Person/Household Models") shouldn't skeleton-render
-  // identically when the real content won't either. Not exact text
-  // measurement (this runs with no DOM/canvas available) — a reasonable,
-  // deliberately approximate proxy, not a claim of pixel accuracy.
-  const widthPx = Math.max(56, Math.min(168, tab.label.length * 7))
-  const icon = tab.hasIcon
-    ? `<div class="h-4 w-4 shrink-0 ${PULSE} rounded-full"></div>`
-    : ''
-  return `<li class="list-none"><div class="flex w-full items-center gap-3 rounded-md px-2.5 py-2" role="tab" aria-label="${escapeHtml(tab.label)}">${icon}<div class="h-4 ${PULSE}" style="width:${widthPx}px"></div></div></li>`
-}
+// A neutral bar that reads on both the glass surfaces and the page background in either theme.
+const BAR = 'animate-pulse bg-[color-mix(in_srgb,var(--ink)_12%,transparent)] motion-reduce:animate-none'
 
 function escapeHtml(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 }
 
-/**
- * The real sidebar skeleton — structurally mirrors layout/shell.tsx's
- * own composition (SidebarHeader[brand+trigger] / SidebarContent[nav
- * rows] / SidebarFooter[Settings+Documentation]) and
- * components/ui/sidebar.tsx's own real widths/tokens/paddings
- * (SIDEBAR_WIDTH_EXPANDED='w-64', the --sidebar/--sidebar-foreground/
- * --sidebar-border token set, SidebarMenuButton's own `px-2.5 py-2
- * gap-3` row shape) — consulted directly from that file, not
- * approximated from memory, per the wftdm-design-system skill's own
- * "ground every skeleton in the real component it stands in for"
- * convention. Assumes the sidebar's own real DEFAULT state
- * (`defaultOpen = true`, expanded) — a narrow-viewport visitor briefly
- * sees the expanded shape before SidebarProvider's own mount-time
- * media-query check collapses it, an acceptable, bounded mismatch (the
- * real Shell settles it within one paint) rather than duplicating that
- * check's own logic here via a CSS media query this generator would
- * then have to keep in sync by hand.
- */
-function buildSkeletonHtml(tabs: SkeletonTab[], branding: SkeletonBranding): string {
-  const brand = branding.hasLogo
-    ? `<div class="h-8 w-32 ${PULSE}"></div>`
-    : branding.title
-      ? `<div class="h-6 ${PULSE}" style="width:${Math.max(64, Math.min(180, branding.title.length * 9))}px"></div>`
-      : ''
+/** One rail row of the collapsed floating nav (layout/navButton.tsx: 46px tall, 14px side padding, 20px icon). */
+function tabRowHtml(tab: SkeletonTab): string {
+  return `<div role="tab" aria-label="${escapeHtml(tab.label)}" class="flex h-[46px] w-full items-center rounded-[15px] px-[14px]"><div class="h-5 w-5 shrink-0 rounded-md ${BAR}"></div></div>`
+}
 
+/**
+ * The boot skeleton: the real app shell in its resting state, taken from layout/shell.tsx, floatingNav.tsx, pageHeader.tsx
+ * and dashboardRenderer.tsx rather than approximated: the collapsed floating glass nav (68px rail, 14px inset, 24px radius,
+ * brand mark on top, one row per configured tab, Settings and Theme at the bottom), then, at 96px in from the left, the page
+ * header (title and subtitle at the left, the glass control bar at the right) and the page body (the hero KPI band, then a
+ * row of two tiles). The nav is hidden and the content starts at the edge below 760px, where the real nav is a sheet.
+ * Only the number of tab rows comes from the build's dashboard config, as before; the branding title/logo cannot show in a
+ * collapsed rail so it no longer affects the markup.
+ */
+function buildSkeletonHtml(tabs: SkeletonTab[]): string {
   const tabRows = tabs.map(tabRowHtml).join('')
+  const kpiCell = (last: boolean) =>
+    `<div class="flex h-[148px] flex-col gap-3 px-[22px] py-5 ${last ? 'max-[1100px]:col-span-2' : 'min-[1101px]:border-r min-[1101px]:border-[var(--glass-line)]'}"><div class="h-3 w-24 rounded-full ${BAR}"></div><div class="h-9 w-28 rounded-lg ${BAR}"></div><div class="h-4 w-36 rounded-full ${BAR}"></div></div>`
+  const tile = `<div class="h-[320px] rounded-[22px] border border-[var(--glass-line)] bg-card p-[18px] shadow-[var(--sh1)]"><div class="h-4 w-40 rounded-full ${BAR}"></div><div class="mt-2 h-3 w-64 max-w-full rounded-full ${BAR}"></div></div>`
 
   return `
-    <div role="status" aria-label="Loading dashboard" class="flex min-h-screen bg-background text-foreground">
-      <aside class="sticky top-0 flex h-screen w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar shadow-md">
-        <div class="flex flex-col">
-          <div class="flex items-center justify-between gap-2 p-4">
-            ${brand || '<div></div>'}
-            <div class="h-8 w-8 shrink-0 ${PULSE}"></div>
-          </div>
-          <div class="border-b border-sidebar-border"></div>
+    <div role="status" aria-label="Loading dashboard" class="relative z-[1] min-h-screen">
+      <span class="sr-only">Loading dashboard…</span>
+      <nav aria-hidden="true" class="glass fixed bottom-[14px] left-[14px] top-[14px] z-40 flex w-[68px] flex-col overflow-hidden rounded-[24px] px-[10px] py-3 max-[759px]:hidden">
+        <div class="mb-[14px] flex min-h-[46px] items-center px-[3px]"><div class="h-[38px] w-[38px] shrink-0 rounded-[13px] ${BAR}"></div></div>
+        <div class="flex min-h-0 flex-1 flex-col gap-1 overflow-hidden">${tabRows}</div>
+        <div class="mt-2 flex flex-col gap-1 border-t border-[var(--line)] pt-2">
+          <div class="flex h-[46px] items-center px-[14px]"><div class="h-5 w-5 rounded-md ${BAR}"></div></div>
+          <div class="flex h-[46px] items-center px-[14px]"><div class="h-5 w-5 rounded-md ${BAR}"></div></div>
         </div>
-        <div class="flex min-h-0 flex-1 flex-col gap-0.5 overflow-hidden px-2 py-2">
-          <ul role="tablist" class="flex flex-col gap-0.5">${tabRows}</ul>
-        </div>
-        <div class="flex flex-col">
-          <div class="border-b border-sidebar-border"></div>
-          <div class="flex flex-col gap-0.5 p-4">
-            <div class="flex w-full items-center gap-3 rounded-md px-2.5 py-2">
-              <div class="h-4 w-4 shrink-0 ${PULSE} rounded-full"></div>
-              <div class="h-4 w-16 ${PULSE}"></div>
-            </div>
-            <div class="flex w-full items-center gap-3 rounded-md px-2.5 py-2">
-              <div class="h-4 w-4 shrink-0 ${PULSE} rounded-full"></div>
-              <div class="h-4 w-24 ${PULSE}"></div>
+      </nav>
+      <main class="flex min-h-screen flex-col pl-[96px] max-[759px]:pl-0">
+        <header class="flex flex-wrap items-center justify-between gap-x-5 gap-y-[14px] pb-3 pl-[14px] pr-7 pt-[26px]">
+          <div class="flex min-w-0 items-center gap-3">
+            <div class="hidden h-10 w-10 shrink-0 rounded-full ${BAR} max-[759px]:block"></div>
+            <div class="min-w-0">
+              <div class="h-10 w-[min(280px,60vw)] rounded-xl ${BAR}"></div>
+              <div class="mt-[10px] h-4 w-[min(360px,70vw)] rounded-full ${BAR}"></div>
             </div>
           </div>
-        </div>
-      </aside>
-      <main class="flex min-h-screen min-w-0 flex-1 flex-col">
-        <div class="flex flex-col gap-6 p-6">
-          <div class="h-7 w-56 ${PULSE}"></div>
-          <div class="grid gap-6" style="grid-template-columns: repeat(3, 1fr)">
-            <div class="h-32 ${PULSE} rounded-lg border border-border shadow-md"></div>
-            <div class="h-32 ${PULSE} rounded-lg border border-border shadow-md"></div>
-            <div class="h-32 ${PULSE} rounded-lg border border-border shadow-md"></div>
+          <div class="glass flex h-[52px] w-[min(620px,100%)] items-center gap-2 rounded-[26px] px-2">
+            <div class="h-9 flex-1 rounded-full ${BAR}"></div>
+            <div class="h-9 flex-1 rounded-full ${BAR}"></div>
+            <div class="h-9 w-[120px] rounded-full ${BAR}"></div>
           </div>
-          <div class="grid gap-6" style="grid-template-columns: repeat(2, 1fr)">
-            <div class="h-64 ${PULSE} rounded-lg border border-border shadow-md"></div>
-            <div class="h-64 ${PULSE} rounded-lg border border-border shadow-md"></div>
+        </header>
+        <div class="flex flex-col gap-[14px] pb-[60px] pl-[14px] pr-7 pt-2">
+          <div class="grid grid-cols-5 rounded-[26px] border border-[var(--glass-line)] bg-[var(--tile-hi)] p-[6px] shadow-[var(--sh1)] max-[1100px]:grid-cols-2">
+            ${[0, 1, 2, 3, 4].map((i) => kpiCell(i === 4)).join('')}
           </div>
+          <div class="grid grid-cols-2 gap-[14px] max-[900px]:grid-cols-1">${tile}${tile}</div>
         </div>
       </main>
     </div>`.trim()
@@ -241,18 +213,10 @@ export function bootSkeletonPlugin(): Plugin {
       const primary = readDashboardRoot(resolve(process.cwd(), 'public/dashboard-config'))
       const demo = readDashboardRoot(resolve(process.cwd(), 'public/demo-dashboard-config'))
 
-      // Same precedence as main.tsx's real boot sequence: tabs
-      // CONCATENATE (deployer's own tabs first, demo tabs after —
-      // `[...(await loadDashboards()), ...(await loadDashboards(demoRoot))]`),
-      // branding fields resolve deployer-value ?? demo-value per field
-      // (`primaryBranding.title ?? demoBranding.title`, etc.).
+      // Tabs concatenate like main.tsx's real boot sequence: the deployer's own first, then the demo's.
       const tabs = [...primary.tabs, ...demo.tabs]
-      const branding: SkeletonBranding = {
-        title: primary.branding.title ?? demo.branding.title,
-        hasLogo: primary.branding.hasLogo || demo.branding.hasLogo,
-      }
 
-      const generated = `${MARKER_START}\n${buildSkeletonHtml(tabs, branding)}\n${MARKER_END}`
+      const generated = `${MARKER_START}\n${buildSkeletonHtml(tabs)}\n${MARKER_END}`
       return html.slice(0, startIdx) + generated + html.slice(endIdx + MARKER_END.length)
     },
   }
