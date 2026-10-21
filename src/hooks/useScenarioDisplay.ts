@@ -120,8 +120,8 @@ function alternativeIndexes(scenarios: ReturnType<typeof list>): Map<string, num
   for (const s of scenarios) {
     const alt = alternativeOf(s)
     // only independent scenarios take a palette slot; rounds, Observed and hidden runs do not shift the others
-    // (a legacy pinned `observed` dataset, which has no manifest `kind`, keeps its slot as before)
-    if (s.kind === 'observed' || runKindOf(s) === 'round' || runKindOf(s) === 'hidden') {
+    // (a legacy pinned `observed` dataset keeps its slot as before unless it failed to load, as in a deployment with no observed folder)
+    if (s.kind === 'observed' || s.status === 'failed' || runKindOf(s) === 'round' || runKindOf(s) === 'hidden') {
       byName.set(s.name, 0)
       continue
     }
