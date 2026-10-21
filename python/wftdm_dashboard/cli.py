@@ -13,6 +13,7 @@ from pathlib import Path
 
 import click
 
+from wftdm_dashboard.observed import validate_observed
 from wftdm_dashboard.postprocessor.config import parse_summarize_yaml
 from wftdm_dashboard.postprocessor.errors import PostprocessorError
 from wftdm_dashboard.postprocessor.manifest import generate_manifest, write_manifest
@@ -86,6 +87,25 @@ def summarize(
     except PostprocessorError as exc:
         click.echo(str(exc), err=True)
         sys.exit(1)
+
+
+@main.command("validate-observed")
+@click.argument("folder", type=click.Path(exists=True, file_okay=False, path_type=Path))
+def validate_observed_command(folder: Path) -> None:
+    """Check a published observed-data folder (public/observed layout) before it is published.
+
+    Fails (exit 1) listing every problem: a missing source.yaml key, a table whose columns do not match its metric,
+    a row backed by fewer observations than the source's suppression.min_cell_n, or a registry entry that points at
+    a source or file that does not exist.
+    """
+    report = validate_observed(folder)
+    if report.ok:
+        click.echo(f"observed data OK ({report.checked_files} tables checked)")
+        return
+    for error in report.errors:
+        click.echo(error, err=True)
+    click.echo(f"{len(report.errors)} problem(s); nothing may be published from this folder.", err=True)
+    sys.exit(1)
 
 
 if __name__ == "__main__":
