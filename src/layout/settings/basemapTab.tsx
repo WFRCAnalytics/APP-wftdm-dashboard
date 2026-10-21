@@ -386,77 +386,69 @@ export function BasemapTab() {
         you apply.
       </TabHeader>
       <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_310px] gap-5 max-[1100px]:grid-cols-1">
-        <div
-          data-testid="basemap-sections-scroll"
-          className="scrollbar-thin flex min-h-0 flex-col overflow-y-auto pr-1 max-[1100px]:overflow-visible"
-        >
-          {SECTIONS.map((section) => (
-            <div key={section.heading}>
-              <GroupHeading>{section.heading}</GroupHeading>
-              <div className="grid grid-cols-[repeat(auto-fill,minmax(104px,1fr))] gap-2.5" role="radiogroup" aria-label={section.heading}>
-                {section.entries.map((entry) => (
-                  <StyleCard
-                    key={entry.name}
-                    name={entry.name}
-                    label={entry.label}
-                    icon={entry.icon}
-                    staged={stagedSelection === entry.name}
-                    inUse={effectiveApplied === entry.name}
-                    recommended={entry.recommended}
-                    onPick={() => setStagedSelection(entry.name)}
-                  />
-                ))}
+        <div className="flex min-h-0 flex-col gap-2">
+          <div
+            data-testid="basemap-sections-scroll"
+            className="scrollbar-thin flex min-h-0 flex-1 flex-col overflow-y-auto pr-1 max-[1100px]:overflow-visible"
+          >
+            {SECTIONS.map((section) => (
+              <div key={section.heading}>
+                <GroupHeading>{section.heading}</GroupHeading>
+                <div className="grid grid-cols-[repeat(auto-fill,minmax(104px,1fr))] gap-2.5" role="radiogroup" aria-label={section.heading}>
+                  {section.entries.map((entry) => (
+                    <StyleCard
+                      key={entry.name}
+                      name={entry.name}
+                      label={entry.label}
+                      icon={entry.icon}
+                      staged={stagedSelection === entry.name}
+                      inUse={effectiveApplied === entry.name}
+                      recommended={entry.recommended}
+                      onPick={() => setStagedSelection(entry.name)}
+                    />
+                  ))}
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
 
-          {/* Protomaps needs a configured PMTiles source; without one its styles stay disabled, as before. */}
-          <div>
-            <GroupHeading>Protomaps</GroupHeading>
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(104px,1fr))] gap-2.5" role="radiogroup" aria-label="Protomaps">
-              {PROTOMAPS_FLAVOR_NAMES.map((name) => {
-                const { label, icon } = PROTOMAPS_FLAVOR_LABEL_AND_ICON[name]
-                return (
-                  <StyleCard
-                    key={name}
-                    name={name}
-                    label={label}
-                    icon={icon}
-                    staged={stagedSelection === name}
-                    inUse={effectiveApplied === name}
-                    disabled={!protomapsSource}
-                    note={!protomapsSource ? 'Needs a PMTiles source' : undefined}
-                    onPick={() => setStagedSelection(name)}
-                  />
-                )
-              })}
+            {/* Protomaps needs a configured PMTiles source; without one its styles stay disabled, as before. */}
+            <div>
+              <GroupHeading>Protomaps</GroupHeading>
+              <div className="grid grid-cols-[repeat(auto-fill,minmax(104px,1fr))] gap-2.5" role="radiogroup" aria-label="Protomaps">
+                {PROTOMAPS_FLAVOR_NAMES.map((name) => {
+                  const { label, icon } = PROTOMAPS_FLAVOR_LABEL_AND_ICON[name]
+                  return (
+                    <StyleCard
+                      key={name}
+                      name={name}
+                      label={label}
+                      icon={icon}
+                      staged={stagedSelection === name}
+                      inUse={effectiveApplied === name}
+                      disabled={!protomapsSource}
+                      note={!protomapsSource ? 'Needs a PMTiles source' : undefined}
+                      onPick={() => setStagedSelection(name)}
+                    />
+                  )
+                })}
+              </div>
+              {!protomapsSource ? (
+                <p className="mt-2 text-sm text-[var(--mute)]" data-testid="protomaps-not-configured">
+                  No Protomaps source configured for this deployment.
+                </p>
+              ) : (
+                <p className="mt-2 text-xs text-[var(--mute)]" data-testid="protomaps-source-status">
+                  Using this deployment's configured Protomaps source.
+                </p>
+              )}
             </div>
-            {!protomapsSource ? (
-              <p className="mt-2 text-sm text-[var(--mute)]" data-testid="protomaps-not-configured">
-                No Protomaps source configured for this deployment.
-              </p>
-            ) : (
-              <p className="mt-2 text-xs text-[var(--mute)]" data-testid="protomaps-source-status">
-                Using this deployment's configured Protomaps source.
-              </p>
-            )}
           </div>
-
-          {/* Raster Tiles: loading / error / empty / ready; part of the same stage-then-Apply flow. */}
-          <div className="pb-1">
-            <div className="flex items-center justify-between gap-2">
-              <GroupHeading>Raster Tiles</GroupHeading>
-              <a
-                href="https://leaflet-extras.github.io/leaflet-providers/preview/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-3 rounded text-[12.5px] text-[var(--brand-text)] underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-text)]"
-              >
-                Explore options
-              </a>
-            </div>
+          {/* Raster Tiles: pinned under the scrolling vector styles so the picker is always reachable. Loading / error /
+              empty / ready; part of the same stage-then-Apply flow. */}
+          <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-[var(--line)] pt-3">
+            <span className="text-[12.5px] font-medium text-[var(--ink)]">Raster tiles</span>
             {rasterStatus.kind === 'loading' && (
-              <div data-testid="raster-loading-skeleton" className="h-9 w-full animate-pulse rounded-md bg-muted motion-reduce:animate-none" />
+              <div data-testid="raster-loading-skeleton" className="h-9 flex-1 animate-pulse rounded-md bg-muted motion-reduce:animate-none" />
             )}
             {rasterStatus.kind === 'error' && <PanelErrorState message={rasterStatus.message} />}
             {rasterStatus.kind === 'ready' && rasterStatus.providers.length === 0 && (
@@ -465,7 +457,7 @@ export function BasemapTab() {
             {rasterStatus.kind === 'ready' && rasterStatus.providers.length > 0 && (
               // The app's own Radix Select, not a native one: a native listbox is drawn by the OS with its own accent.
               <Select value={stagedIsRaster ? stagedSelection : undefined} onValueChange={(value) => setStagedSelection(value)}>
-                <SelectTrigger aria-label="Raster tile provider" className="h-9 w-full">
+                <SelectTrigger aria-label="Raster tile provider" className="h-9 flex-1">
                   <SelectValue placeholder="Select a raster provider…" />
                 </SelectTrigger>
                 <SelectContent>
@@ -488,6 +480,14 @@ export function BasemapTab() {
                 </SelectContent>
               </Select>
             )}
+            <a
+              href="https://leaflet-extras.github.io/leaflet-providers/preview/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded text-[12.5px] text-[var(--brand-text)] underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-text)]"
+            >
+              Explore options
+            </a>
           </div>
         </div>
 
