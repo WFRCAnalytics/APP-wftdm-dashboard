@@ -317,3 +317,32 @@
   opacity: 0.4;
   cursor: not-allowed;
 }
+
+/* Attribution control: MapLibre hardcodes a white pill with black text and a fixed dark-gray info icon, so it ignored the
+   app theme. Same card/foreground tokens as the zoom controls above; the icon is inverted in dark mode like theirs. */
+.maplibregl-ctrl-attrib {
+  background-color: color-mix(in srgb, var(--card) 80%, transparent);
+  color: var(--foreground);
+}
+.maplibregl-ctrl-attrib.maplibregl-compact {
+  background-color: var(--card);
+  color: var(--foreground);
+  box-shadow: 0 0 0 1px var(--border);
+}
+.maplibregl-ctrl-attrib a {
+  color: var(--muted-foreground);
+}
+.maplibregl-ctrl-attrib a:hover {
+  color: var(--foreground);
+}
+.maplibregl-ctrl-attrib-button,
+.maplibregl-ctrl-attrib.maplibregl-compact-show .maplibregl-ctrl-attrib-button {
+  background-color: transparent;
+  /* MapLibre draws this icon in pure black but the zoom icons in #333; invert(.2) lifts it to #333 so both read the
+     same. In dark mode invert(.8) gives #ccc, the exact value invert(1) makes of the zoom icons' #333. */
+  filter: invert(0.2);
+}
+.dark .maplibregl-ctrl-attrib-button,
+.dark .maplibregl-ctrl-attrib.maplibregl-compact-show .maplibregl-ctrl-attrib-button {
+  filter: invert(0.8);
+}
