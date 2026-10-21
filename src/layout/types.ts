@@ -530,6 +530,8 @@ export interface MultiViewPanelConfig extends PanelConfigBase {
   scenarios?: string[]
   filter?: string | Record<string, string>
   group_by?: MultiViewGroupBy
+  /** Height that grows with the number of compared scenarios: `min(max, base + per x scenarios)` (the scorecard). */
+  height_rows?: { base: number; per: number; max: number }
   /** The view shown first (default: the first listed). */
   default_view?: string
   views: MultiViewViewConfig[]

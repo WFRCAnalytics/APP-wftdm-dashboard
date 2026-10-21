@@ -124,6 +124,8 @@ export function bootCompareState(config: {
     const set = new Set([...initial, focus])
     for (const alt of independentAlternatives(runs)) compareState.setAlternativeActive(alt, set.has(alt))
   }
+  // calibration rounds join the comparison only when a viewer picks them
+  for (const alt of alternativesOf(runs)) if (runs.find((r) => r.alternative === alt)?.kind === 'round') compareState.setAlternativeActive(alt, false)
   const reference = config.compareReference
   if (reference === 'observed') compareState.setReference({ kind: 'observed' })
   else if (reference && known.has(reference)) compareState.setReference({ kind: 'scenario', name: reference })

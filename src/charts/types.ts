@@ -16,6 +16,8 @@ export interface ChartScenario {
   /** Resolved colour, a concrete hex. */
   color: string
   isFocus: boolean
+  /** Calibration round number (1-based) when the run is a round of a family. */
+  round?: number
 }
 
 export interface ChartReference {
@@ -83,6 +85,8 @@ export interface ChartPlan {
   pinned: boolean
   /** The run name of a compared alternative in a given year, when it exists. */
   runFor(alternative: string, year: number): string | undefined
+  /** Every calibration round of the deployment (base year), in round order, selected or not. */
+  rounds: { round: number; run: string; alternative: string; label: string; color: string }[]
   /** The Observed run (base year), when the deployment has one. */
   observedRun?: string
 }
@@ -98,6 +102,10 @@ export interface ChartEnv extends ChartPlan {
   setYear(year: number): void
   /** Focus an alternative (picker semantics), e.g. a click on a legend or row. */
   focusAlternative(alternative: string): void
+  /** Shift-click semantics: toggle an alternative in the compare set. */
+  toggleCompare(alternative: string): void
+  /** Whatever the kind's `loadExtra` returned (e.g. the calibration roll-up rows). */
+  extra: unknown
 }
 
 export interface LegendItem {
@@ -132,6 +140,8 @@ export interface ChartKind {
   /** Draws into `el`, replacing its children. May return a legend, a disposer and an aria label. A kind that owns an
    * expensive object (a MapLibre map) keeps it in `env.state` and reuses it on the next draw. */
   draw(el: HTMLElement, env: ChartEnv): ChartResult | void
+  /** Loads data that is not a per-run table (a family roll-up); handed to `draw` as `env.extra`. */
+  loadExtra?(plan: ChartPlan): Promise<unknown>
   /** Called once when the panel unmounts, with the panel's persistent `state` (e.g. `map.remove()`). */
   destroy?(state: Record<string, unknown>): void
 }

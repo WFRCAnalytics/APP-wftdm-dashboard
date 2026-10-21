@@ -17,6 +17,10 @@ export interface PlanInput {
   /** `alternative`'s run in `year`. */
   runFor(alternative: string, year: number): string | undefined
   observedRun?: string
+  /** Every calibration round of the deployment, in round order. */
+  rounds?: ChartPlan['rounds']
+  /** Round number of a run, when it is a calibration round. */
+  roundOf?(run: string): number | undefined
   /** The kind's default group when the config sets none. */
   defaultGroup?: string
 }
@@ -34,6 +38,7 @@ export function buildChartPlan(i: PlanInput): ChartPlan {
     label: i.label(run),
     color: i.color(run),
     isFocus: run === focusRun,
+    round: i.roundOf?.(run),
   }))
   const focus = scenarios.find((s) => s.isFocus)
 
@@ -62,6 +67,7 @@ export function buildChartPlan(i: PlanInput): ChartPlan {
     group: config.group ?? i.defaultGroup ?? 'scn',
     pinned,
     runFor: i.runFor,
+    rounds: i.rounds ?? [],
     observedRun: i.observedRun,
   }
 }

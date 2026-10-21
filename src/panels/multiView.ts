@@ -182,6 +182,13 @@ export function resolveMultiView(
   return { view, visibleViews, groupOption, panel: merged as unknown as PanelConfig, strategies, strategy, scenarioIndependent }
 }
 
+/** The tile with a `height_rows` rule resolved to a plain `height` for `scenarioCount` compared scenarios. */
+export function withRowHeight(config: MultiViewPanelConfig, scenarioCount: number): MultiViewPanelConfig {
+  const r = config.height_rows
+  if (!r) return config
+  return { ...config, height: Math.min(r.max, r.base + r.per * Math.max(1, scenarioCount)) }
+}
+
 /** Every view as a panel config (default group): what a tab will need to load. */
 export function allViewConfigs(config: MultiViewPanelConfig): PanelConfig[] {
   if (validateMultiView(config) !== null) return []

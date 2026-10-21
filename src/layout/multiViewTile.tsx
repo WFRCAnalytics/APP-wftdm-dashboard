@@ -12,7 +12,7 @@ import type { CompareStrategy, MultiViewPanelConfig } from '@/layout/types'
 import { PanelLoadingState } from '@/panels/PanelLoadingState'
 import { registry } from '@/panels/registry'
 import { effectiveStrategy } from '@/panels/compareStrategy'
-import { isBaseYearOnly, isCalibrationFamily, resolveMultiView, validateMultiView } from '@/panels/multiView'
+import { isBaseYearOnly, isCalibrationFamily, resolveMultiView, validateMultiView, withRowHeight } from '@/panels/multiView'
 
 // The tile for `type: multi-view`: the chrome (badges, group-by, compare-as, view switcher) around MultiViewPanel,
 // which draws the active view. Hidden entirely when the tile only makes sense in another mode.
@@ -26,8 +26,9 @@ const STRATEGY_LABEL: Record<CompareStrategy, string> = {
   swipe: 'Swipe',
 }
 
-export function MultiViewTile({ config, tileKey }: { config: MultiViewPanelConfig; tileKey: string }) {
+export function MultiViewTile({ config: rawConfig, tileKey }: { config: MultiViewPanelConfig; tileKey: string }) {
   const ctx = useResolvedView()
+  const config = useMemo(() => withRowHeight(rawConfig, ctx.active.length), [rawConfig, ctx.active.length])
   const { inputs, referenceLabel } = useCompareInputs()
   const [tile, setTile] = useTileState(tileKey)
   const error = useMemo(() => validateMultiView(config), [config])
@@ -41,7 +42,7 @@ export function MultiViewTile({ config, tileKey }: { config: MultiViewPanelConfi
   const panel = Body ? (
     <PanelErrorBoundary panelTitle={config.title}>
       <Suspense fallback={<PanelLoadingState height={config.height} />}>
-        <Body config={config} />
+        <Body config={rawConfig} />
       </Suspense>
     </PanelErrorBoundary>
   ) : null

@@ -1,6 +1,7 @@
 import { useCallback, useRef, useSyncExternalStore } from 'react'
 
 import { list, subscribe } from '@/state/appState'
+import { mixHex } from '@/panels/chartColor'
 import { alternativeOf, runKindOf } from '@/services/runResolution'
 import { resolveDefaultScenarioColor, type ScenarioDisplay, type ScenarioDisplayMap } from '@/panels/scenarioDisplay'
 import { useColorScheme } from '@/hooks/useColorScheme'
@@ -56,6 +57,13 @@ export function useScenarioDisplay(): ScenarioDisplayMap {
 
   const getSnapshot = useCallback(() => {
     const scenarios = list()
+    const roundCounts = new Map<string, number>()
+    for (const s of scenarios) if (runKindOf(s) === 'round') roundCounts.set(s.family ?? '', (roundCounts.get(s.family ?? '') ?? 0) + 1)
+    const colorFor = (s: (typeof scenarios)[number], index: number): string => {
+      if (s.colorOverride) return s.colorOverride
+      if (runKindOf(s) === 'round') return roundColor(s.familyIndex ?? 1, roundCounts.get(s.family ?? '') ?? 1, colorScheme === 'dark')
+      return resolveEffectiveDefault(index, colorblindSafe, colorScheme === 'dark')
+    }
     const colorIndex = alternativeIndexes(scenarios)
     const prev = cache.current
     let changed =
@@ -66,7 +74,7 @@ export function useScenarioDisplay(): ScenarioDisplayMap {
       scenarios.forEach((s) => {
         const index = colorIndex.get(s.name) ?? 0
         const prevEntry = prev.get(s.name)
-        const color = s.colorOverride ?? resolveEffectiveDefault(index, colorblindSafe, colorScheme === 'dark')
+        const color = colorFor(s, index)
         if (!prevEntry || prevEntry.label !== (s.label ?? s.displayName) || prevEntry.color !== color) {
           changed = true
         }
@@ -78,7 +86,7 @@ export function useScenarioDisplay(): ScenarioDisplayMap {
         const index = colorIndex.get(s.name) ?? 0
         next.set(s.name, {
           label: s.label ?? s.displayName,
-          color: s.colorOverride ?? resolveEffectiveDefault(index, colorblindSafe, colorScheme === 'dark'),
+          color: colorFor(s, index),
         })
       })
       cache.current = next
@@ -89,6 +97,15 @@ export function useScenarioDisplay(): ScenarioDisplayMap {
   }, [colorScheme, colorblindSafe])
 
   return useSyncExternalStore(subscribe, getSnapshot)
+}
+
+/** Calibration rounds use a sequential ramp, dim early rounds to the full accent last (01-visual-language.md 5.3). */
+function roundColor(r: number, n: number, dark: boolean): string {
+  const style = getComputedStyle(document.documentElement)
+  const surface = style.getPropertyValue('--surface').trim() || '#ffffff'
+  const c1 = style.getPropertyValue('--c-1').trim() || '#2fa598'
+  const start = mixHex(surface, c1, dark ? 0.55 : 0.4)
+  return mixHex(start, c1, n <= 1 ? 1 : (r - 1) / (n - 1))
 }
 
 /** The default-tier color for a scenario index, adapted to the active theme. */

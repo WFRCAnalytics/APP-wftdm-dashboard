@@ -20,7 +20,7 @@ import { resolveScenarioColor } from '@/panels/scenarioDisplay'
 import type { PanelProps } from '@/panels/registry'
 import { alternativeOf, runKindOf, runNameFor, viewManifest } from '@/services/runResolution'
 import { getDeployment } from '@/state/compareState'
-import { get as getScenario } from '@/state/appState'
+import { get as getScenario, list as listScenarios } from '@/state/appState'
 import { tooltip } from '@/services/tooltip'
 
 // One component for every chart of the catalogue (project-docs/redesign/04-chart-catalogue.md): resolves which runs to
@@ -41,7 +41,7 @@ export function ChartPanel({ config }: PanelProps<ChartPanelConfig>) {
   const containerRef = useRef<HTMLDivElement>(null)
   const stateRef = useRef<Record<string, unknown>>({})
   const [kind, setKind] = useState<ChartKind | null>(null)
-  const [data, setData] = useState<{ plan: ChartPlan; data: ChartEnv['data'] } | null>(null)
+  const [data, setData] = useState<{ plan: ChartPlan; data: ChartEnv['data']; extra: unknown } | null>(null)
   const [status, setStatus] = useState<Status>('loading')
   const [message, setMessage] = useState<string>('')
   const [legend, setLegend] = useState<LegendSpec | undefined>()
@@ -66,6 +66,14 @@ export function ChartPanel({ config }: PanelProps<ChartPanelConfig>) {
         return s ? alternativeOf(s) : run
       },
       runFor: runNameFor,
+      rounds: listScenarios()
+        .filter((s) => runKindOf(s) === 'round')
+        .sort((a, b) => (a.familyIndex ?? 0) - (b.familyIndex ?? 0))
+        .map((s) => ({ round: s.familyIndex ?? 0, run: s.name, alternative: alternativeOf(s), label: display.get(s.name)?.label ?? s.name, color: resolveScenarioColor(s.name, display) ?? '#8a94a6' })),
+      roundOf: (run) => {
+        const s = getScenario(run)
+        return s && runKindOf(s) === 'round' ? s.familyIndex : undefined
+      },
       observedRun: manifest.runs.find((r) => r.kind === 'observed' && r.ready)?.name,
     })
   }, [config, view, referenceLabel, display])
@@ -97,10 +105,10 @@ export function ChartPanel({ config }: PanelProps<ChartPanelConfig>) {
     setStatus('loading')
     const tables = kind.tables(plan)
     const runs = runsToLoad(plan, kind.extraRuns?.(plan) ?? [])
-    loadChartData(runs, tables)
-      .then((loaded) => {
+    Promise.all([loadChartData(runs, tables), kind.loadExtra ? kind.loadExtra(plan) : Promise.resolve(undefined)])
+      .then(([loaded, extra]) => {
         if (cancelled) return
-        setData({ plan, data: loaded })
+        setData({ plan, data: loaded, extra })
         setStatus('ready')
       })
       .catch((err) => {
@@ -149,6 +157,8 @@ export function ChartPanel({ config }: PanelProps<ChartPanelConfig>) {
         redraw: () => setTick((t) => t + 1),
         setYear: view.setYear,
         focusAlternative: (alt) => view.pickScenario(alt, false),
+        toggleCompare: (alt) => view.pickScenario(alt, true),
+        extra: data.extra,
       }
       try {
         const result = kind.draw(el, env)

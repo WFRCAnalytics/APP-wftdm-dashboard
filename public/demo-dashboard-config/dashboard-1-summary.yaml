@@ -247,6 +247,7 @@ layout:
       description: "Every compared scenario against the reference. Click a column to sort."
       needs_compare: true
       show_when: compare
+      height_rows: { base: 120, per: 40, max: 560 }
       height: 560
       width: 1.0
       views:

@@ -103,8 +103,8 @@ export function ControlBar() {
 
   const yearOptions = deployment.years.map((y) => ({ value: String(y.year), label: y.label ? `${y.year} · ${y.label}` : String(y.year) }))
   const focusOptions = [
-    ...scenarios.map((s) => ({ value: s.id, label: s.label })),
-    ...rounds.map((s) => ({ value: s.id, label: s.label, group: 'Calibration rounds' })),
+    ...scenarios.map((s) => ({ value: s.id, label: labelOf(s.id) })),
+    ...rounds.map((s) => ({ value: s.id, label: labelOf(s.id), group: 'Calibration rounds' })),
   ]
 
   return (

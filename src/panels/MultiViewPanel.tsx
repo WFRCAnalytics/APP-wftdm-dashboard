@@ -8,14 +8,15 @@ import { CompareHost } from '@/panels/CompareHost'
 import { effectiveStrategy } from '@/panels/compareStrategy'
 import { PanelErrorState } from '@/panels/PanelErrorState'
 import type { PanelProps } from '@/panels/registry'
-import { resolveMultiView, validateMultiView } from '@/panels/multiView'
+import { resolveMultiView, validateMultiView, withRowHeight } from '@/panels/multiView'
 
 // The body of a `multi-view` tile: the active view rendered as an ordinary panel. The view, group and strategy
 // controls live in the tile chrome (layout/multiViewTile.tsx) and share this component's state through the tile store.
-export function MultiViewPanel({ config }: PanelProps<MultiViewPanelConfig>) {
-  const key = useTileKey() || `multi-view:${config.title}`
+export function MultiViewPanel({ config: rawConfig }: PanelProps<MultiViewPanelConfig>) {
+  const key = useTileKey() || `multi-view:${rawConfig.title}`
   const [tile] = useTileState(key)
   const ctx = useResolvedView()
+  const config = useMemo(() => withRowHeight(rawConfig, ctx.active.length), [rawConfig, ctx.active.length])
   const error = useMemo(() => validateMultiView(config), [config])
   const resolved = useMemo(
     () => (error ? null : resolveMultiView(config, tile, { compare: ctx.compare })),
