@@ -116,7 +116,7 @@ const PAIRINGS: Array<{
   { name: 'foreground/background', foreground: 'foreground', base: 'background', expectedLight: 15.44, expectedDark: 17.29 },
   { name: 'card-foreground/card', foreground: 'card-foreground', base: 'card', expectedLight: 18.64, expectedDark: 15.55 },
   { name: 'popover-foreground/popover', foreground: 'popover-foreground', base: 'popover', expectedLight: 18.64, expectedDark: 15.4 },
-  { name: 'primary-foreground/primary', foreground: 'primary-foreground', base: 'primary', expectedLight: 4.5, expectedDark: 11.87 },
+  { name: 'primary-foreground/primary', foreground: 'primary-foreground', base: 'primary', expectedLight: 14.3, expectedDark: 12.75 },
   { name: 'secondary-foreground/secondary', foreground: 'secondary-foreground', base: 'secondary', expectedLight: 17.52, expectedDark: 14.42 },
   // 'muted-foreground/muted' is deliberately NOT in this list — see the
   // dedicated, separately-asserted test below this array for why.
@@ -141,7 +141,7 @@ const PAIRINGS: Array<{
   // pairings this feature added token values for (data-model.md §1),
   // consumed for real by sidebar.tsx (T018).
   { name: 'sidebar-foreground/sidebar', foreground: 'sidebar-foreground', base: 'sidebar', expectedLight: 18.64, expectedDark: 15.55 },
-  { name: 'sidebar-primary-foreground/sidebar-primary', foreground: 'sidebar-primary-foreground', base: 'sidebar-primary', expectedLight: 4.5, expectedDark: 11.87 },
+  { name: 'sidebar-primary-foreground/sidebar-primary', foreground: 'sidebar-primary-foreground', base: 'sidebar-primary', expectedLight: 14.3, expectedDark: 12.75 },
   // 061-appearance-controls (follow-up, final x3): same fix, same reason
   // as --accent above — light-mode --sidebar-accent is now #e5e5e5, not
   // shadcn's own stock value (#f5f5f5), for genuine hover/active
@@ -233,7 +233,7 @@ const WCAG_NON_TEXT_MIN_CONTRAST = 3.0
 // WFRC-brand dark background to shadcn's real #0a0a0a) — the chart hues
 // they're measured against are the same values as before this feature.
 const CHART_TOKENS: Array<{ name: string; expectedLight: number; expectedDark: number }> = [
-  { name: 'chart-1', expectedLight: 3.02, expectedDark: 11.3 },
+  { name: 'chart-1', expectedLight: 3.02, expectedDark: 12.07 },
   { name: 'chart-2', expectedLight: 3.02, expectedDark: 11.7 },
   { name: 'chart-3', expectedLight: 3.01, expectedDark: 9.11 },
   { name: 'chart-4', expectedLight: 3.26, expectedDark: 11.06 },
@@ -292,7 +292,7 @@ const EXPECTED_LIGHT_HEX: Record<string, string> = {
   'card-foreground': '#0e131a',
   popover: '#ffffff',
   'popover-foreground': '#0e131a',
-  primary: '#26847a',
+  primary: '#1b2a47',
   'primary-foreground': '#ffffff',
   secondary: '#f6f8fb',
   'secondary-foreground': '#0e131a',
@@ -304,15 +304,15 @@ const EXPECTED_LIGHT_HEX: Record<string, string> = {
   'destructive-foreground': '#ffffff',
   border: '#dbe1e9',
   input: '#dbe1e9',
-  ring: '#26847a',
+  ring: '#1b2a47',
   sidebar: '#ffffff',
   'sidebar-foreground': '#0e131a',
-  'sidebar-primary': '#26847a',
+  'sidebar-primary': '#1b2a47',
   'sidebar-primary-foreground': '#ffffff',
   'sidebar-accent': '#e8ecf1',
   'sidebar-accent-foreground': '#0e131a',
   'sidebar-border': '#dbe1e9',
-  'sidebar-ring': '#26847a',
+  'sidebar-ring': '#1b2a47',
 }
 
 const EXPECTED_DARK_HEX: Record<string, string> = {
@@ -322,8 +322,8 @@ const EXPECTED_DARK_HEX: Record<string, string> = {
   'card-foreground': '#eef1f5',
   popover: '#151a23',
   'popover-foreground': '#eef1f5',
-  primary: '#73e1d6',
-  'primary-foreground': '#04161a',
+  primary: '#c9d6f2',
+  'primary-foreground': '#0e131c',
   secondary: '#1a202b',
   'secondary-foreground': '#eef1f5',
   muted: '#1a202b',
@@ -334,15 +334,15 @@ const EXPECTED_DARK_HEX: Record<string, string> = {
   'destructive-foreground': '#ffffff',
   border: '#ffffff17',
   input: '#ffffff1f',
-  ring: '#73e1d6',
+  ring: '#c9d6f2',
   sidebar: '#141922',
   'sidebar-foreground': '#eef1f5',
-  'sidebar-primary': '#73e1d6',
-  'sidebar-primary-foreground': '#04161a',
+  'sidebar-primary': '#c9d6f2',
+  'sidebar-primary-foreground': '#0e131c',
   'sidebar-accent': '#222a36',
   'sidebar-accent-foreground': '#eef1f5',
   'sidebar-border': '#ffffff17',
-  'sidebar-ring': '#73e1d6',
+  'sidebar-ring': '#c9d6f2',
 }
 
 describe('token literal hex values match the 063 redesign palette (project-docs/redesign/01-visual-language.md)', () => {
