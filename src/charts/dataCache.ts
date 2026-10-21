@@ -1,12 +1,15 @@
-// Loads the whole table of one run for the chart panels: `SELECT *` from the registered view, cached per (run, table).
-// The chart tables are small aggregates, so charts aggregate them in JavaScript; registration stays lazy and goes
-// through the shared ensureRegistered(), so only tiles that are drawn load their files.
+// Loads the tables of one run for the chart panels: `SELECT *` from the registered view, cached per (run, table). The
+// chart tables are small aggregates, so charts aggregate them in JavaScript; registration stays lazy and goes through the
+// shared ensureRegistered(), so only tiles that are drawn load their files. A logical table the run does not publish is
+// derived from its source tables, and raw category values are mapped onto the display vocabulary (charts/data/adapt.ts).
 import { get as getScenario } from '@/state/appState'
 import { query } from '@/services/duckdb'
 import { ensureRegistered } from '@/services/tabDataLoader'
+import { adaptTable } from '@/charts/data/adapt'
 import type { ChartData, Row } from '@/charts/types'
 
-const cache = new Map<string, Promise<Row[]>>()
+const rawCache = new Map<string, Promise<Row[]>>()
+const adaptedCache = new Map<string, Promise<Row[]>>()
 
 const key = (run: string, table: string) => `${run}__${table}`
 
@@ -16,19 +19,34 @@ export function runHasTable(run: string, table: string): boolean {
   return !catalog || catalog.includes(table)
 }
 
-export function loadRows(run: string, table: string): Promise<Row[]> {
+function loadRaw(run: string, table: string): Promise<Row[]> {
   const k = key(run, table)
-  const hit = cache.get(k)
+  const hit = rawCache.get(k)
   if (hit) return hit
-  if (!runHasTable(run, table)) return Promise.resolve([])
   const p = ensureRegistered([{ scenario: run, metric: table }])
     .then(() => query(`SELECT * FROM "${k}"`))
     .catch((err) => {
-      cache.delete(k)
+      rawCache.delete(k)
       console.error(`chart data: failed to load ${k}`, err)
       return [] as Row[]
     })
-  cache.set(k, p)
+  rawCache.set(k, p)
+  return p
+}
+
+/** Rows of a logical table for a run: native, adapted from the run's own tables, or [] when it has neither. */
+export function loadRows(run: string, table: string): Promise<Row[]> {
+  const k = key(run, table)
+  const hit = adaptedCache.get(k)
+  if (hit) return hit
+  const p = adaptTable(table, { has: (t) => runHasTable(run, t), rows: (t) => loadRaw(run, t) })
+    .then((rows) => rows ?? [])
+    .catch((err) => {
+      adaptedCache.delete(k)
+      console.error(`chart data: failed to prepare ${k}`, err)
+      return [] as Row[]
+    })
+  adaptedCache.set(k, p)
   return p
 }
 
@@ -46,5 +64,6 @@ export async function loadChartData(runs: readonly string[], tables: readonly st
 
 /** Test hook: forget cached tables. */
 export function clearChartDataCache(): void {
-  cache.clear()
+  rawCache.clear()
+  adaptedCache.clear()
 }

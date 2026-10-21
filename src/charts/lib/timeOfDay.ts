@@ -1,5 +1,6 @@
 // Shared data and interaction helpers for the "trips through the day" kinds (time-lines, time-stream, time-heat) and the
 // speed heatmap. The builders are pure (no DOM, no stores) so their numbers are unit-tested.
+import { TRIPS_UNIT } from '@/charts/units'
 import { select } from 'd3-selection'
 
 import { FACILITIES, INCOMES, MODES, PURPOSES } from '@/charts/vocab'
@@ -46,7 +47,7 @@ export function hourlyThousands(rows: readonly Row[]): number[] {
   const out = new Array<number>(HOURS).fill(0)
   for (const r of rows) {
     const h = num(r, 'hour')
-    if (h >= 0 && h < HOURS) out[h] += num(r, 'trips') / 1000
+    if (h >= 0 && h < HOURS) out[h] += num(r, 'trips') / TRIPS_UNIT.divisor
   }
   return out
 }
@@ -77,7 +78,7 @@ export function buildTodSeries(
   for (const r of rows(focusRun, todTable(group))) {
     const arr = grid.get(str(r, col))
     const h = num(r, 'hour')
-    if (arr && h >= 0 && h < HOURS) arr[h] += num(r, 'trips') / 1000
+    if (arr && h >= 0 && h < HOURS) arr[h] += num(r, 'trips') / TRIPS_UNIT.divisor
   }
   for (const n of names) grid.get(n)!.forEach((v, hour) => out.push({ g: n, hour, v }))
   return { names, rows: out }
@@ -139,9 +140,9 @@ export const hourTickEvery3 = (h: number): string => (h % 3 ? '' : hourTick(h))
 /** Lines y tick: "200k" for values, signed "+12k" / "−3.5%" in Change / % change. */
 export function lineTickFormat(display: 'val' | 'abs' | 'pct'): (d: number) => string {
   return (d) => {
-    if (display === 'val') return `${Math.round(d)}k`
+    if (display === 'val') return `${Math.round(d)}${TRIPS_UNIT.suffix}`
     const sign = d > 0.0049 ? '+' : d < -0.0049 ? '−' : ''
-    return `${sign}${Math.abs(+d.toFixed(1))}${display === 'pct' ? '%' : 'k'}`
+    return `${sign}${Math.abs(+d.toFixed(1))}${display === 'pct' ? '%' : TRIPS_UNIT.suffix}`
   }
 }
 

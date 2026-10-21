@@ -5,11 +5,11 @@ to deterministic Python and writes REAL Parquet files, so the real app
 (DuckDB-WASM reading Parquet) can draw every chart in the prototype.
 
 Writes (all under public/):
-  demo-scenarios/<slug>[-<year>]/        15 alternatives x 6 model years = 90 scenario runs
-  demo-scenarios/observed-2023/          the Observed reference (kind: observed)
-  demo-scenarios/round-01 .. round-50/   calibration rounds (kind: round, family: calibration)
-  demo-scenarios/families/calibration/calibration_by_round.parquet   roll-up (NOT a run)
-  demo-scenarios/index.json              new runs first, then the six real activitysim-* runs
+  demo-synthetic/scenarios/<slug>[-<year>]/        15 alternatives x 6 model years = 90 scenario runs
+  demo-synthetic/scenarios/observed-2023/          the Observed reference (kind: observed)
+  demo-synthetic/scenarios/round-01 .. round-50/   calibration rounds (kind: round, family: calibration)
+  demo-synthetic/scenarios/families/calibration/calibration_by_round.parquet   roll-up (NOT a run)
+  demo-synthetic/scenarios/index.json              new runs first, then the six real activitysim-* runs
   demo-geometry/wasatch-zones.geoparquet 150-ish jittered-grid TAZ polygons (WKB, WGS84)
   demo-geometry/wasatch-rail.geoparquet  rail polyline + station points
 
@@ -36,7 +36,7 @@ import numpy as np
 import yaml
 
 ROOT = Path(__file__).resolve().parent.parent
-SCEN_DIR = ROOT / "public" / "demo-scenarios"
+SCEN_DIR = ROOT / "public" / "demo-synthetic" / "scenarios"
 GEO_DIR = ROOT / "public" / "demo-geometry"
 EXISTING = [
     "activitysim-baseline", "activitysim-density-variant", "activitysim-transit-variant",

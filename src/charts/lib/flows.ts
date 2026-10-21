@@ -32,34 +32,42 @@ export function buildSankey(rows: readonly Row[]): SankeyData {
   const pm = new Map<string, number>()
   const md = new Map<string, number>()
   const total = new Map<string, number>()
+  let hasBands = false
+  let grand = 0
   const add = (m: Map<string, number>, k: string, v: number) => m.set(k, (m.get(k) ?? 0) + v)
   for (const r of rows) {
     const v = num(r, 'trips') / 1000
     if (!Number.isFinite(v)) continue
     const p = str(r, 'primary_purpose')
     const m = str(r, 'major_trip_mode')
-    const b = str(r, 'distance_band')
+    const b = r.distance_band === undefined ? null : str(r, 'distance_band')
     add(pm, `${p}|${m}`, v)
-    add(md, `${m}|${b}`, v)
+    if (b !== null) {
+      hasBands = true
+      add(md, `${m}|${b}`, v)
+      add(total, `b:${b}`, v)
+    }
     add(total, `p:${p}`, v)
     add(total, `m:${m}`, v)
-    add(total, `b:${b}`, v)
+    grand += v
   }
+  // links of 5k daily trips or fewer are dropped (regional scale); a small model drops only the thinnest 0.05% slivers
+  const minLink = grand >= 500 ? MIN_SANKEY_LINK : grand * 0.0005
   const nodes: SankeyNode[] = [
     ...PURPOSES.map((p) => ({ id: `p:${p}`, name: p })),
     ...MODES.map((m) => ({ id: `m:${m}`, name: m, mode: m })),
-    ...DISTANCE_BANDS.map((b) => ({ id: `b:${b}`, name: b })),
+    ...(hasBands ? DISTANCE_BANDS.map((b) => ({ id: `b:${b}`, name: b })) : []),
   ]
   const links: SankeyLink[] = []
   for (const p of PURPOSES)
     for (const m of MODES) {
       const v = pm.get(`${p}|${m}`) ?? 0
-      if (v > MIN_SANKEY_LINK) links.push({ source: `p:${p}`, target: `m:${m}`, value: v, mode: m })
+      if (v > minLink) links.push({ source: `p:${p}`, target: `m:${m}`, value: v, mode: m })
     }
   for (const m of MODES)
     for (const b of DISTANCE_BANDS) {
       const v = md.get(`${m}|${b}`) ?? 0
-      if (v > MIN_SANKEY_LINK) links.push({ source: `m:${m}`, target: `b:${b}`, value: v, mode: m })
+      if (hasBands && v > minLink) links.push({ source: `m:${m}`, target: `b:${b}`, value: v, mode: m })
     }
   return { nodes, links, totals: total }
 }

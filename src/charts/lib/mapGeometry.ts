@@ -52,13 +52,17 @@ async function loadRail(file: string | null): Promise<RailFeatures> {
 }
 
 /** Zones plus rail. A missing rail file is not an error (the line is decoration); missing zones are. */
-export function loadMapGeometry(zonesFile: string = DEFAULT_ZONES_FILE, railFile: string | null = DEFAULT_RAIL_FILE): Promise<MapGeometry> {
-  const key = `${zonesFile}|${railFile ?? ''}`
+export function loadMapGeometry(
+  zonesFile: string = DEFAULT_ZONES_FILE,
+  railFile: string | null = DEFAULT_RAIL_FILE,
+  idColumn: string = ZONE_ID_COLUMN,
+): Promise<MapGeometry> {
+  const key = `${zonesFile}|${railFile ?? ''}|${idColumn}`
   let p = cache.get(key)
   if (!p) {
     p = (async () => {
       const [geom, rail] = await Promise.all([
-        loadZoneGeometry(zonesFile, ZONE_ID_COLUMN),
+        loadZoneGeometry(zonesFile, idColumn),
         loadRail(railFile).catch((err) => {
           console.warn('zone map: rail geometry unavailable', err)
           return { lines: [], stations: [] } as RailFeatures

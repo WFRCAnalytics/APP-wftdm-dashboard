@@ -1,0 +1,31 @@
+{
+  "dashboards": [
+    "dashboard-1-summary.yaml",
+    "dashboard-2-person-household.yaml",
+    "dashboard-3-tour-models.yaml",
+    "dashboard-4-mode-choice.yaml",
+    "dashboard-6-network.yaml",
+    "dashboard-7-explore.yaml",
+    "dashboard-8-test.yaml"
+  ],
+  "title": "WFRC TDM Calibration Dashboard",
+  "logoUrl": "https://raw.githubusercontent.com/WFRCAnalytics/wfrc-brand/main/_extensions/wfrc-brand/assets/logo/horizontal/WFRC_logo_horizontal_color_transparent.png",
+  "logoUrlDark": "https://raw.githubusercontent.com/WFRCAnalytics/wfrc-brand/main/_extensions/wfrc-brand/assets/logo/horizontal/WFRC_logo_horizontal_white_transparent.png",
+  "protomapsApiKey": "2c497b58fdc8c210",
+  "years": [
+    { "year": 2023, "label": "Base year" },
+    { "year": 2027, "label": "Opening year" },
+    { "year": 2032, "label": "End of STIP" },
+    { "year": 2036, "label": "End of RTP Phase I" },
+    { "year": 2046, "label": "End of RTP Phase II" },
+    { "year": 2055, "label": "Horizon year" }
+  ],
+  "baseYear": 2023,
+  "defaultYear": 2036,
+  "compare": {
+    "default": "auto",
+    "scenarios": ["baseline", "frequent-transit", "infill-density"],
+    "focus": "frequent-transit",
+    "reference": "baseline"
+  }
+}

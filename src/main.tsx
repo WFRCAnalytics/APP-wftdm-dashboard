@@ -6,6 +6,9 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 
 import '@/styles/tokens.css'
+import { configureVocab } from '@/charts/vocab'
+import { configureMetrics } from '@/charts/lib/metrics'
+import { configureUnits } from '@/charts/units'
 // 033-shadcn-default-theme: self-hosted Schibsted Grotesk / DM Mono font
 // side-effecting imports — the real replacement for the old Google-Fonts-
 // CDN runtime-injection module this project used to keep under
@@ -180,7 +183,14 @@ const branding: DashboardBranding = {
   compareScenarios: primaryBranding.compareScenarios ?? demoBranding.compareScenarios,
   compareFocus: primaryBranding.compareFocus ?? demoBranding.compareFocus,
   compareReference: primaryBranding.compareReference ?? demoBranding.compareReference,
+  vocab: primaryBranding.vocab ?? demoBranding.vocab,
+  metrics: primaryBranding.metrics ?? demoBranding.metrics,
+  units: primaryBranding.units ?? demoBranding.units,
 }
+// 063 redesign: this deployment's category vocabulary (modes, purposes, income groups) for the chart kinds.
+configureVocab(branding.vocab)
+configureMetrics(branding.metrics)
+configureUnits(branding.units)
 // 063 redesign: model years, focus and Compare defaults (project-docs/redesign/03-state-and-compare.md §1.1). Needs the
 // discovered runs and the merged config above; every tile and the control bar read the result.
 bootCompareState(branding)

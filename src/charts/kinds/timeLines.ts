@@ -1,5 +1,6 @@
 // Trips through the day, Lines (project-docs/redesign/04-chart-catalogue.md section 10). Observable Plot lines with the
 // shared crosshair; the dashed line (with a faint area) is the reference, Change modes draw differences around zero.
+import { TRIPS_UNIT } from '@/charts/units'
 import * as Plot from '@observablehq/plot'
 
 import { emptyNote } from '@/charts/util'
@@ -91,10 +92,10 @@ const kind: ChartKind = {
             .sort((a, b) => b.d!.v - a.d!.v)
             .map((q) => ({
               k: labelOf(q.n),
-              v: m === 'val' ? `${Math.round(q.d!.v)}k` : `${formatDelta(q.d!.v, m, { decimals: m === 'pct' ? 1 : 0 })}${m === 'abs' ? 'k' : ''}`,
+              v: m === 'val' ? `${Math.round(q.d!.v)}${TRIPS_UNIT.suffix}` : `${formatDelta(q.d!.v, m, { decimals: m === 'pct' ? 1 : 0 })}${m === 'abs' ? TRIPS_UNIT.suffix : ''}`,
               c: color(q.n),
             })),
-          ...(refRows ? [{ k: refLabel, v: `${Math.round(refRows[h].v)}k`, b: true }] : []),
+          ...(refRows ? [{ k: refLabel, v: `${Math.round(refRows[h].v)}${TRIPS_UNIT.suffix}`, b: true }] : []),
         ],
       }),
       ys: (h) => names.map((n) => at(n, h)).filter(Boolean).map((d) => ({ y: plot.scale('y').apply(d!.v), c: color(d!.g) })),

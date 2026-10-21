@@ -1,7 +1,7 @@
 // Plumbing common to the zone-map kinds: the per-panel host kept in `env.state` (so the MapLibre maps survive redraws),
 // the lazy geometry load, the data rows, the Observed-reference fallback and cleanup in `destroy`.
 import '@/charts/lib/mapChrome.css'
-import { DEFAULT_RAIL_FILE, DEFAULT_ZONES_FILE, loadMapGeometry, type MapGeometry } from '@/charts/lib/mapGeometry'
+import { DEFAULT_RAIL_FILE, DEFAULT_ZONES_FILE, loadMapGeometry, ZONE_ID_COLUMN, type MapGeometry } from '@/charts/lib/mapGeometry'
 import type { ZoneMap } from '@/charts/lib/zoneMapView'
 import { num } from '@/charts/util'
 import type { ChartEnv, ChartPlan } from '@/charts/types'
@@ -115,7 +115,7 @@ export function needGeometry(el: HTMLElement, env: ChartEnv, host: ZoneHost): Ma
   showNote(el, 'Loading the map…')
   if (!host.geoLoading) {
     host.geoLoading = true
-    loadMapGeometry(option(env, 'boundaries', DEFAULT_ZONES_FILE) ?? DEFAULT_ZONES_FILE, option(env, 'rail', DEFAULT_RAIL_FILE)).then(
+    loadMapGeometry(option(env, 'boundaries', DEFAULT_ZONES_FILE) ?? DEFAULT_ZONES_FILE, option(env, 'rail', DEFAULT_RAIL_FILE), option(env, 'boundaries_id', ZONE_ID_COLUMN) ?? ZONE_ID_COLUMN).then(
       (geo) => {
         host.geoLoading = false
         if (host.destroyed) return

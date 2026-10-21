@@ -10,6 +10,9 @@ export interface MetricDef {
   /** Unit shown under a scorecard header and after a value in a tooltip. */
   unit: string
   decimals: number
+  /** The `summary_kpis` column the metric reads and the factor that takes it to its display unit. */
+  column: string
+  factor: number
   /** The metric's value in its display unit from a `summary_kpis` row, or null when the row lacks it. */
   get(row: Row): number | null
 }
@@ -20,24 +23,67 @@ const col = (row: Row, c: string): number | null => {
   const n = Number(v)
   return Number.isFinite(n) ? n : null
 }
-const scaled = (c: string, k: number) => (row: Row): number | null => {
-  const v = col(row, c)
-  return v === null ? null : v * k
+
+function def(id: string, label: string, unit: string, decimals: number, column: string, factor = 1): MetricDef {
+  const m: MetricDef = {
+    id,
+    label,
+    unit,
+    decimals,
+    column,
+    factor,
+    get: (row) => {
+      const v = col(row, m.column)
+      return v === null ? null : v * m.factor
+    },
+  }
+  return m
 }
 
-export const METRICS: readonly MetricDef[] = [
-  { id: 'trips', label: 'Daily trips', unit: 'M', decimals: 2, get: scaled('total_trips', 1e-6) },
-  { id: 'drive', label: 'Drive-alone share', unit: '%', decimals: 1, get: scaled('drive_share', 100) },
-  { id: 'transit', label: 'Transit share', unit: '%', decimals: 1, get: scaled('transit_share', 100) },
-  { id: 'active', label: 'Walk and bike share', unit: '%', decimals: 1, get: scaled('active_share', 100) },
-  { id: 'vmt', label: 'Daily VMT', unit: 'M mi', decimals: 1, get: scaled('total_vmt', 1e-6) },
-  { id: 'boards', label: 'Transit boardings', unit: 'k', decimals: 0, get: scaled('transit_boardings', 1e-3) },
-  { id: 'len', label: 'Average trip length', unit: 'mi', decimals: 1, get: (row) => col(row, 'avg_trip_length_miles') },
+const DEFAULT_METRICS = (): MetricDef[] => [
+  def('trips', 'Daily trips', 'M', 2, 'total_trips', 1e-6),
+  def('drive', 'Drive-alone share', '%', 1, 'drive_share', 100),
+  def('transit', 'Transit share', '%', 1, 'transit_share', 100),
+  def('active', 'Walk and bike share', '%', 1, 'active_share', 100),
+  def('vmt', 'Daily VMT', 'M mi', 1, 'total_vmt', 1e-6),
+  def('boards', 'Transit boardings', 'k', 0, 'transit_boardings', 1e-3),
+  def('len', 'Average trip length', 'mi', 1, 'avg_trip_length_miles'),
 ]
+
+/** The headline metrics. Live: `configureMetrics` adjusts them in place for a deployment whose runs are on another scale. */
+export const METRICS: MetricDef[] = DEFAULT_METRICS()
+
+export interface MetricOverride {
+  label?: string
+  unit?: string
+  decimals?: number
+  /** Multiplier from the stored column to the display unit (1 shows the raw value). */
+  scale?: number
+  /** Drop the metric (the deployment's runs do not publish it). */
+  hidden?: boolean
+}
+
+/** Applies a deployment's per-metric overrides (dashboard-config `metrics`). Call once at boot. */
+export function configureMetrics(overrides: Record<string, MetricOverride> | undefined): void {
+  const next = DEFAULT_METRICS()
+  const kept: MetricDef[] = []
+  for (const m of next) {
+    const o = overrides?.[m.id]
+    if (o?.hidden) continue
+    if (o) {
+      if (o.label !== undefined) m.label = o.label
+      if (o.unit !== undefined) m.unit = o.unit
+      if (o.decimals !== undefined) m.decimals = o.decimals
+      if (o.scale !== undefined) m.factor = o.scale
+    }
+    kept.push(m)
+  }
+  METRICS.splice(0, METRICS.length, ...kept)
+}
 
 /** The metric with this id; unknown or missing ids fall back to Transit share (the tiles' default). */
 export function metricOf(id: string | undefined): MetricDef {
-  return METRICS.find((m) => m.id === id) ?? METRICS[2]
+  return METRICS.find((m) => m.id === id) ?? METRICS.find((m) => m.id === 'transit') ?? METRICS[0]
 }
 
 /** One run's value of `metric` from the rows of its summary_kpis table; null when the run has none. */

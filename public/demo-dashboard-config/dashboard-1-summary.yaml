@@ -1,110 +1,22 @@
-# 063 redesign: the Summary page of the Corridor Pro design (project-docs/redesign/02-layout-and-components.md section 3).
-# Every tile is a `multi-view` wrapper around the catalogue's `chart` kinds (src/charts/kinds). The page lays out
-# differently with Compare off and on, so each tile appears once per mode: the compare variants reuse the tile through a
-# YAML anchor and override `width`, `height` and `show_when`. A shared `id` keeps a tile's chosen view and group when
-# Compare is toggled.
+# 063 redesign: the Summary page on the real ActivitySim example runs (activitysim-baseline, -density-variant,
+# -transit-variant; a single model year, no observed or calibration-round data). Tiles whose data these runs do not
+# publish (model years, calibration, boardings, speeds) are not part of this deployment's pages.
 
 header:
   tab: Summary
   title: Summary
-  description: "Regional totals and calibration status"
+  description: "Regional totals for the example scenarios"
   icon: layout-dashboard
 
 layout:
   row_kpis:
-    - type: valuebox
-      variant: hero
-      title: Daily trips
-      metric: summary_kpis
-      column: total_trips
-      scale: 0.000001
-      format: ",.2f"
-      unit: M
-      width: 0.2
-    - type: valuebox
-      variant: hero
-      title: Transit boardings
-      metric: summary_kpis
-      column: transit_boardings
-      scale: 0.001
-      format: ",.0f"
-      unit: k
-      width: 0.2
-    - type: valuebox
-      variant: hero
-      title: Vehicle miles
-      metric: summary_kpis
-      column: total_vmt
-      scale: 0.000001
-      format: ",.1f"
-      unit: M
-      width: 0.2
-    - type: valuebox
-      variant: hero
-      title: Average trip length
-      metric: summary_kpis
-      column: avg_trip_length_miles
-      format: ",.1f"
-      unit: mi
-      width: 0.2
-    - type: valuebox
-      variant: hero
-      title: Calibration
-      kpi: calibration
-      metric: calibration_errors
-      column: worst_segment_error_pct
-      format: ",.0f"
-      tolerance: 3
-      width: 0.2
+    - { type: valuebox, variant: hero, title: Trips, metric: summary_kpis, column: total_trips, format: ",.0f", width: 0.2 }
+    - { type: valuebox, variant: hero, title: Households, metric: summary_kpis, column: total_households, format: ",.0f", width: 0.2 }
+    - { type: valuebox, variant: hero, title: Vehicle miles, metric: summary_kpis, column: total_vmt, format: ",.0f", unit: mi, width: 0.2 }
+    - { type: valuebox, variant: hero, title: Average trip length, metric: summary_kpis, column: avg_trip_length_miles, format: ",.2f", unit: mi, width: 0.2 }
+    - { type: valuebox, variant: hero, title: Trips per household, metric: summary_kpis, column: trips_per_household, format: ",.2f", width: 0.2 }
 
   # ---- Compare off ----
-  row_trace:
-    - &trace
-      id: trace
-      show_when: single
-      type: multi-view
-      title: "Calibration progress"
-      description: "Your own calibration metrics across the rounds. Click a round to focus it, shift-click to compare it."
-      family: calibration
-      base_year_only: true
-      height: 400
-      width: 1.0
-      group_by:
-        label: Metric
-        default: mode
-        options:
-          - { id: mode, label: "Mode share", fields: { group: mode } }
-          - { id: vol, label: "Volumes", fields: { group: vol } }
-          - { id: boards, label: "Boardings by line", fields: { group: boards } }
-          - { id: err, label: "Submodel error", fields: { group: err } }
-      views:
-        - { id: diff, label: Difference, type: chart, kind: trace-lines, compare: [] }
-        - { id: vals, label: Values, type: chart, kind: trace-values, compare: [] }
-        - { id: heat, label: Heatmap, type: chart, kind: trace-heat, compare: [] }
-
-  row_years:
-    - &years
-      id: years
-      show_when: single
-      type: multi-view
-      title: "Across model years"
-      description: "How each alternative develops from the base year to the horizon year. Click a year to switch the dashboard to it."
-      height: 360
-      width: 1.0
-      group_by:
-        label: Metric
-        default: transit
-        options:
-          - { id: trips, label: "Daily trips", fields: { group: trips } }
-          - { id: drive, label: "Drive-alone share", fields: { group: drive } }
-          - { id: transit, label: "Transit share", fields: { group: transit } }
-          - { id: active, label: "Walk and bike share", fields: { group: active } }
-          - { id: vmt, label: "Daily VMT", fields: { group: vmt } }
-          - { id: boards, label: "Transit boardings", fields: { group: boards } }
-          - { id: len, label: "Average trip length", fields: { group: len } }
-      views:
-        - { id: lines, label: Lines, type: chart, kind: years-trend, diff: true, compare: [overlay] }
-
   row_mix_share:
     - &mix
       id: mix
@@ -120,7 +32,6 @@ layout:
         options:
           - { id: pm, label: "Purpose › Mode", fields: { group: pm } }
           - { id: mp, label: "Mode › Purpose", fields: { group: mp } }
-          - { id: im, label: "Income › Mode", fields: { group: im } }
       views:
         - { id: tree, label: Treemap, type: chart, kind: treemap, variant: trips, compare: [multi, diff] }
         - { id: sun, label: Sunburst, type: chart, kind: sunburst, variant: trips, compare: [multi] }
@@ -140,7 +51,6 @@ layout:
         options:
           - { id: scn, label: Scenario, fields: { group: scn } }
           - { id: purpose, label: Purpose, fields: { group: purpose } }
-          - { id: income, label: Income, fields: { group: income } }
       views:
         - { id: bars, label: Bars, type: chart, kind: mode-bars, diff: true, compare: [overlay] }
         - { id: gap, label: Gap, type: chart, kind: gap-dots, diff: true, compare: [overlay] }
@@ -149,19 +59,7 @@ layout:
         - { id: donut, label: Donut, type: chart, kind: donut, compare: [switch, diff] }
         - { id: tbl, label: Table, type: chart, kind: mode-table, compare: [overlay] }
 
-  row_fp_time:
-    - &fp
-      id: fp
-      show_when: single
-      type: multi-view
-      title: "Calibration fingerprint"
-      description: "Worst-segment error per submodel. The dashed ring is the 3% tolerance. Compare rounds to see the shape tighten. Shows up to six."
-      base_year_only: true
-      height: 410
-      width: 0.3333
-      views:
-        - { id: radar, label: Radar, type: chart, kind: radar, compare: [overlay] }
-        - { id: tbl, label: Table, type: chart, kind: calibration-table, compare: [overlay] }
+  row_time_zones:
     - &time
       id: time
       show_when: single
@@ -175,72 +73,72 @@ layout:
         default: scn
         options:
           - { id: scn, label: Scenario, fields: { group: scn } }
-          - { id: mode, label: Mode, fields: { group: mode } }
           - { id: purpose, label: Purpose, fields: { group: purpose } }
-          - { id: income, label: Income, fields: { group: income } }
           - { id: none, label: "All trips", fields: { group: none } }
       views:
         - { id: lines, label: Lines, type: chart, kind: time-lines, diff: true, compare: [overlay] }
         - { id: stream, label: Stream, type: chart, kind: time-stream, compare: [switch, multi] }
         - { id: heat, label: Heatmap, type: chart, kind: time-heat, compare: [overlay] }
-
-  row_zones_flows:
     - &zones
       id: zones
       show_when: single
       type: multi-view
-      title: "Where transit grows"
-      description: "Transit share by traffic analysis zone. Scroll to zoom."
-      height: 420
-      width: 0.5
+      title: "Where transit is used"
+      description: "Transit share of trip ends by traffic analysis zone. Scroll to zoom."
+      height: 410
+      width: 0.3333
       views:
-        - { id: map, label: Values, type: chart, kind: zone-map, compare: [grid, switch] }
-        - { id: diffm, label: Difference, type: chart, kind: zone-diff-map, compare: [diff], needs_compare: true }
-        - { id: swipe, label: Swipe, type: chart, kind: zone-swipe-map, compare: [swipe], needs_compare: true }
+        - { id: map, label: Values, type: chart, kind: zone-map, boundaries: taz25.geoparquet, boundaries_id: TAZ1454, rail: null, compare: [grid, switch] }
+        - { id: diffm, label: Difference, type: chart, kind: zone-diff-map, boundaries: taz25.geoparquet, boundaries_id: TAZ1454, rail: null, compare: [diff], needs_compare: true }
+        - { id: swipe, label: Swipe, type: chart, kind: zone-swipe-map, boundaries: taz25.geoparquet, boundaries_id: TAZ1454, rail: null, compare: [swipe], needs_compare: true }
+
+  row_flows:
     - &flows
       id: flows
       show_when: single
       type: multi-view
-      title: "District flows"
-      description: "Daily trips between districts, leaving out trips that stay inside one. Hover a district to isolate it."
-      height: 420
-      width: 0.5
+      title: "Trip desire lines"
+      description: "Daily trips between zones, one scenario at a time."
+      height: 460
+      width: 1.0
       views:
-        - { id: chord, label: Chord, type: chart, kind: chord, compare: [switch] }
-        - { id: tbl, label: Table, type: chart, kind: flow-table, compare: [switch] }
+        - id: lines
+          label: Desire lines
+          type: flowmap
+          metric: od_flows
+          origin: orig_taz
+          origin_lat: orig_lat
+          origin_lon: orig_lon
+          destination: dest_taz
+          dest_lat: dest_lat
+          dest_lon: dest_lon
+          value: trips
+          clustering: true
+          clustering_auto: true
+          compare: [switch]
 
-  # ---- Compare on: the same tiles, re-spanned, plus the two compare-only tiles ----
-  # Each tile below reuses its anchor and only changes the layout keys.
-  row_trace_compare:
-    - { <<: *trace, show_when: compare }
-  row_years_rank_compare:
-    - <<: *years
-      height: 430
-      width: 0.5833
-      show_when: compare
-    - &rank
-      id: rank
+  # ---- Compare on: the same tiles re-spanned, plus the two compare-only tiles ----
+  row_rank_score_compare:
+    - id: rank
       type: multi-view
       title: "Ranked by metric"
       description: "Scenarios sorted by the chosen metric."
       needs_compare: true
       show_when: compare
-      height: 430
+      height: 300
       width: 0.4167
       group_by:
         label: Metric
         default: transit
         options:
-          - { id: trips, label: "Daily trips", fields: { group: trips } }
+          - { id: trips, label: "Trips", fields: { group: trips } }
           - { id: drive, label: "Drive-alone share", fields: { group: drive } }
           - { id: transit, label: "Transit share", fields: { group: transit } }
           - { id: active, label: "Walk and bike share", fields: { group: active } }
-          - { id: vmt, label: "Daily VMT", fields: { group: vmt } }
-          - { id: boards, label: "Transit boardings", fields: { group: boards } }
+          - { id: vmt, label: "Vehicle miles", fields: { group: vmt } }
           - { id: len, label: "Average trip length", fields: { group: len } }
       views:
         - { id: bars, label: Bars, type: chart, kind: rank-bars, diff: true, compare: [overlay] }
-  row_score_compare:
     - id: score
       type: multi-view
       title: "Scenario scorecard"
@@ -248,8 +146,8 @@ layout:
       needs_compare: true
       show_when: compare
       height_rows: { base: 120, per: 40, max: 560 }
-      height: 560
-      width: 1.0
+      height: 300
+      width: 0.5833
       views:
         - { id: matrix, label: Matrix, type: chart, kind: scorecard, diff: true, compare: [overlay] }
   row_share_time_compare:
@@ -261,21 +159,15 @@ layout:
       height: 440
       width: 0.4167
       show_when: compare
-  row_mix_fp_compare:
+  row_mix_zones_compare:
     - <<: *mix
       height: 440
       width: 0.5833
       show_when: compare
-    - <<: *fp
+    - <<: *zones
       height: 440
       width: 0.4167
       show_when: compare
-  row_zones_flows_compare:
-    - <<: *zones
-      height: 430
-      width: 0.6667
-      show_when: compare
+  row_flows_compare:
     - <<: *flows
-      height: 430
-      width: 0.3333
       show_when: compare

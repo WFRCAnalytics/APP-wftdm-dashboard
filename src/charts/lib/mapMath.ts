@@ -3,7 +3,7 @@
 // it is unit-tested (tests/unit/zoneMaps.test.ts).
 
 /** Transit share colour domain in percent: 0 to 14, the legend reads "0%" ... "14%+ transit share". */
-export const SHARE_DOMAIN: readonly [number, number] = [0, 14]
+export const SHARE_DOMAIN: [number, number] = [0, 14]
 
 /** Linear-interpolated quantile of an ascending-sorted array (d3.quantile's R-7 rule); NaN when empty. */
 export function quantileSorted(sorted: readonly number[], p: number): number {

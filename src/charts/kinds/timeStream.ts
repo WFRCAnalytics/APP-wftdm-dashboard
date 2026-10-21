@@ -1,5 +1,6 @@
 // Trips through the day, Stream (04-chart-catalogue.md section 11): a wiggle streamgraph of the focus scenario by mode,
 // purpose or income. The Scenario group falls back to Mode (stacking scenarios means nothing).
+import { TRIPS_UNIT } from '@/charts/units'
 import * as Plot from '@observablehq/plot'
 import { select } from 'd3-selection'
 
@@ -72,7 +73,7 @@ const kind: ChartKind = {
           .attr('fill', 'transparent')
           .attr('data-key', `h${h}`)
           .attr('data-title', hourTitle(h))
-          .attr('data-val', `${Math.round(total(h))}k trips`)
+          .attr('data-val', `${Math.round(total(h))}${TRIPS_UNIT.suffix} trips`)
           .attr('data-num', total(h))
           .attr('data-rel', '1')
       }
@@ -90,8 +91,8 @@ const kind: ChartKind = {
         return {
           title: hourTitle(h),
           sub: env.focus?.label ?? '',
-          rows: r.map((d) => ({ k: d.g, v: `${Math.round(d.v)}k`, c: color(d.g), d: `${tot ? Math.round((d.v / tot) * 100) : 0}%` })),
-          foot: `Total ${Math.round(tot)}k trips in this hour`,
+          rows: r.map((d) => ({ k: d.g, v: `${Math.round(d.v)}${TRIPS_UNIT.suffix}`, c: color(d.g), d: `${tot ? Math.round((d.v / tot) * 100) : 0}%` })),
+          foot: `Total ${Math.round(tot)}${TRIPS_UNIT.suffix} trips in this hour`,
         }
       },
     })

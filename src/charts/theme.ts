@@ -1,6 +1,7 @@
 // Reads the chart theme from the mounted element (the tokens follow theme, text size and zoom) and builds the colour
 // helpers from project-docs/redesign/01-visual-language.md section 5.4. Called once per draw.
-import { cat, diverging, mixHex, modeColors, ramp, type ColorTokens } from '@/panels/chartColor'
+import { cat, diverging, mixHex, ramp, type ColorTokens } from '@/panels/chartColor'
+import { modeColorKey, MODES } from '@/charts/vocab'
 import { readChartRadius, readColorTokens } from '@/panels/chartTheme'
 import type { ChartTheme } from '@/charts/types'
 
@@ -19,7 +20,14 @@ export function buildChartTheme(
   tokens: ColorTokens,
   extra: { mute: string; line: string; grid: string; font: string; fs: number; r: number },
 ): ChartTheme {
-  const modes = modeColors(tokens)
+  const byKey = {
+    'car-1': mixHex(tokens.surface, tokens.ink, 0.34),
+    'car-2': mixHex(tokens.surface, tokens.ink, 0.58),
+    c1: tokens.c1,
+    c2: tokens.c2,
+    c3: tokens.c3,
+    c23: mixHex(tokens.c2, tokens.c3, 0.5),
+  }
   return {
     ink: tokens.ink,
     mute: extra.mute,
@@ -31,7 +39,12 @@ export function buildChartTheme(
     r: extra.r,
     dark: Boolean(tokens.dark),
     tokens,
-    mode: (name) => modes[name] ?? mixHex(tokens.surface, tokens.ink, 0.45),
+    mode: (name) => {
+      const key = modeColorKey(name)
+      if (key) return byKey[key]
+      const i = MODES.indexOf(name)
+      return i >= 0 ? cat(i, tokens) : mixHex(tokens.surface, tokens.ink, 0.45)
+    },
     cat: (i) => cat(i, tokens),
     ramp: (color, n, lo) => ramp(color, n, tokens, lo),
     neutral: (i) => mixHex(tokens.surface, tokens.ink, 0.2 + 0.08 * i),

@@ -5,9 +5,8 @@ import { useResolvedView } from '@/hooks/useViewContext'
 import type { ValueBoxPanelConfig } from '@/layout/types'
 import { deltaValue, formatDelta } from '@/panels/compareMath'
 import { formatValue } from '@/panels/formatValue'
-import { query } from '@/services/duckdb'
+import { loadRows } from '@/charts/dataCache'
 import { runNameFor } from '@/services/runResolution'
-import { ensureRegistered } from '@/services/tabDataLoader'
 import { getDeployment } from '@/state/compareState'
 import { cn } from '@/lib/utils'
 
@@ -16,9 +15,9 @@ import { cn } from '@/lib/utils'
 // model year. The delta is neutral ink; only "calibrated against Observed in the base year" uses status colours.
 
 async function readColumn(run: string, metric: string, column: string, scale = 1): Promise<number | null> {
-  await ensureRegistered([{ scenario: run, metric }])
-  const rows = await query(`SELECT "${column}" AS v FROM "${run}__${metric}" LIMIT 1`)
-  const v = rows[0]?.v
+  // through the chart data adapters, so derived columns (shares, average trip length) exist for runs that do not publish them
+  const rows = await loadRows(run, metric)
+  const v = rows[0]?.[column]
   return v === null || v === undefined || !Number.isFinite(Number(v)) ? null : Number(v) * scale
 }
 

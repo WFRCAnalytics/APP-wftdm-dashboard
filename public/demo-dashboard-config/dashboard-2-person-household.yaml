@@ -1,4 +1,4 @@
-# 063 redesign: Person and household page (project-docs/redesign/02-layout-and-components.md section 3).
+# 063 redesign: Person and household page on the real ActivitySim example runs.
 
 header:
   tab: "Person and household"
@@ -27,19 +27,9 @@ layout:
     - id: pyramid
       type: multi-view
       title: "Population by age and sex"
-      description: "Synthetic population in bars. Ticks mark the census estimate."
+      description: "The synthetic population of the focus scenario."
       scenario_independent: true
       height: 450
       width: 0.4167
       views:
         - { id: pyr, label: Pyramid, type: chart, kind: pyramid, compare: [] }
-
-  row_modeinc:
-    - id: modeinc
-      type: multi-view
-      title: "Mode share by household income"
-      description: "Lower-income households use transit, walking and school buses most."
-      height: 300
-      width: 1.0
-      views:
-        - { id: bars, label: "100% bars", type: chart, kind: stacked-bars, variant: income, compare: [multi] }

@@ -82,6 +82,9 @@ type DashboardIndexJson =
       baseYear?: unknown
       defaultYear?: unknown
       compare?: unknown
+      vocab?: unknown
+      metrics?: unknown
+      units?: unknown
     }
 
 /**
@@ -184,6 +187,12 @@ export interface DashboardBranding {
   /** `compare.focus` / `compare.reference`: the focus alternative and the reference (an alternative id or `observed`). */
   compareFocus?: string
   compareReference?: string
+  /** `vocab`: this deployment's category labels and the raw data values that map onto them (charts/vocab.ts). */
+  vocab?: import('../charts/vocab.ts').VocabConfig
+  /** `metrics`: per-metric label/unit/decimals/scale overrides for the scorecard, ranking and trend charts. */
+  metrics?: Record<string, import('../charts/lib/metrics.ts').MetricOverride>
+  /** `units.trips`: divisor and suffix for trip counts in the time-of-day charts (default thousands, "k"). */
+  units?: { trips?: { divisor?: number; suffix?: string }; transit_share_max?: number }
 }
 
 export interface ModelYear {
@@ -315,6 +324,9 @@ export async function loadDashboardBranding(
       defaultYear: typeof parsed.defaultYear === 'number' ? parsed.defaultYear : undefined,
       compareDefault: parseCompareDefault(parsed.compare),
       ...parseCompareInitial(parsed.compare),
+      units: typeof parsed.units === 'object' && parsed.units !== null ? (parsed.units as DashboardBranding['units']) : undefined,
+      metrics: typeof parsed.metrics === 'object' && parsed.metrics !== null ? (parsed.metrics as DashboardBranding['metrics']) : undefined,
+      vocab: typeof parsed.vocab === 'object' && parsed.vocab !== null ? (parsed.vocab as DashboardBranding['vocab']) : undefined,
     }
   } catch {
     return {}

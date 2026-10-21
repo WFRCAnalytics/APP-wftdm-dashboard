@@ -52,4 +52,8 @@ export function pyramidDifference(v: number, o: number): string {
 }
 
 /** x tick label: absolute thousands, so a symmetric axis reads 100k 50k 0k 50k 100k. */
-export const pyramidTick = (d: number): string => `${Math.abs(d)}k`
+export const pyramidTick = (d: number): string => {
+  const a = Math.abs(d)
+  // a small population (a few hundred per band) reads in persons, not fractions of a thousand
+  return a > 0 && a < 1 ? String(Math.round(a * 1000)) : `${a}k`
+}
