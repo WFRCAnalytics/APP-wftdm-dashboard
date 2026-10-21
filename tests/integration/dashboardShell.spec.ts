@@ -355,13 +355,13 @@ test.describe('Phase 2 — shell/nav redesign (wftdm-design-system)', () => {
     // Corridor Pro page title: 28px/600 at the top of the page (it turns compact, 21px, after 70px of scroll) — real
     // computed values, not a class-name-string assertion.
     let style = await readStyle()
-    expect(style.fontSize).toBe('28px')
-    expect(style.fontWeight).toBe('600')
+    expect(style.fontSize).toBe('40px') // clamp(28px, 3.2vw, 40px) at the test viewport
+    expect(style.fontWeight).toBe('700')
 
     await page.evaluate(() => document.documentElement.classList.add('dark'))
     style = await readStyle()
-    expect(style.fontSize).toBe('28px')
-    expect(style.fontWeight).toBe('600')
+    expect(style.fontSize).toBe('40px') // clamp(28px, 3.2vw, 40px) at the test viewport
+    expect(style.fontWeight).toBe('700')
   })
 
   test('panel titles render smaller than the page title in both themes — the correct hierarchy, not inverted', async ({
@@ -371,7 +371,7 @@ test.describe('Phase 2 — shell/nav redesign (wftdm-design-system)', () => {
     await page.waitForFunction(() => window.__wftdm !== undefined, null, { timeout: 30_000 })
 
     const pageTitle = page.getByRole('heading', { level: 1, name: 'Summary' })
-    const panelTitle = page.getByText('Households', { exact: true })
+    const panelTitle = page.getByRole('heading', { level: 3, name: 'Total Trips by Mode' })
     const readPx = (locator: typeof pageTitle) =>
       locator.evaluate((el) => parseFloat(getComputedStyle(el).fontSize))
 

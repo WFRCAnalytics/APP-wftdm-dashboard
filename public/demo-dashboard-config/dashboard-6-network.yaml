@@ -12,6 +12,7 @@
 header:
   tab: Network
   title: Network
+  description: "Zone accessibility and network measures"
   icon: network
 
 sections:

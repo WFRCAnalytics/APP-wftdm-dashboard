@@ -14,6 +14,11 @@ export function isMetricStripRow(panels: PanelConfig[]): boolean {
   return panels.length > 0 && panels.every((p) => p.type === 'valuebox')
 }
 
+/** A hero KPI band row (063 redesign): every panel is a `type: valuebox` with `variant: hero`. */
+export function isHeroRow(panels: PanelConfig[]): boolean {
+  return isMetricStripRow(panels) && panels.every((p) => (p as { variant?: string }).variant === 'hero')
+}
+
 /**
  * FR-008/data-model.md §3: resolves whether `tab` qualifies for the
  * chromeless full-page rendering mode. Flattens every row in `tab.layout`

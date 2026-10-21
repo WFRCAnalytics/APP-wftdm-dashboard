@@ -143,13 +143,13 @@ describe('resolveObservablePlotEncoding', () => {
     // categorical column here (rows has 'SOV'/'HOV'), so §5e's own domain/
     // range branch also fires; that exact pairing is its own dedicated
     // describe block below, not this test's concern (legend chrome only).
-    expect(result.plotOptions.color).toMatchObject({ legend: true, style: LEGEND_STYLE, swatchSize: 9 })
+    expect(result.plotOptions.color).toMatchObject({ legend: true, style: LEGEND_STYLE, swatchSize: 10 })
     expect(result.options).not.toHaveProperty('color')
   })
 
   it('sets plotOptions.color = {legend: true, style, swatchSize} when stroke is set', () => {
     const result = resolveObservablePlotEncoding({ ...baseConfig, stroke: 'purpose' }, rows)
-    expect(result.plotOptions.color).toMatchObject({ legend: true, style: LEGEND_STYLE, swatchSize: 9 })
+    expect(result.plotOptions.color).toMatchObject({ legend: true, style: LEGEND_STYLE, swatchSize: 10 })
   })
 
   it('does not set plotOptions.color when neither fill nor stroke is set', () => {
@@ -277,7 +277,7 @@ describe('resolveObservablePlotEncoding — scenario label/color resolution (Par
     // means isScenarioColor is false, but colorField === 'scenario' is
     // still excluded from the §5e branch too — domain/range stay unset
     // either way, never populated with raw (un-labeled) scenario names.
-    expect(result.plotOptions.color).toEqual({ legend: true, style: LEGEND_STYLE, swatchSize: 9 })
+    expect(result.plotOptions.color).toEqual({ legend: true, style: LEGEND_STYLE, swatchSize: 10 })
   })
 
   it('every distinct scenario resolving to a color produces a matched domain/range pair', () => {
@@ -289,7 +289,7 @@ describe('resolveObservablePlotEncoding — scenario label/color resolution (Par
     expect(result.plotOptions.color).toEqual({
       legend: true,
       style: LEGEND_STYLE,
-      swatchSize: 9,
+      swatchSize: 10,
       domain: ['observed', 'Preferred Alternative'],
       range: ['#666666', '#4e79a7'],
     })
@@ -298,7 +298,7 @@ describe('resolveObservablePlotEncoding — scenario label/color resolution (Par
   it('even one unresolved scenario leaves domain/range unset for the whole panel', () => {
     const display: ScenarioDisplayMap = new Map([['observed', { color: '#666666' }]]) // good_scenario has no color
     const result = resolveObservablePlotEncoding({ ...baseConfig, fill: 'scenario' }, scenarioRows, display)
-    expect(result.plotOptions.color).toEqual({ legend: true, style: LEGEND_STYLE, swatchSize: 9 })
+    expect(result.plotOptions.color).toEqual({ legend: true, style: LEGEND_STYLE, swatchSize: 10 })
   })
 })
 
@@ -318,7 +318,7 @@ describe('resolveObservablePlotEncoding — non-scenario categorical fill/stroke
     expect(result.plotOptions.color).toEqual({
       legend: true,
       style: LEGEND_STYLE,
-      swatchSize: 9,
+      swatchSize: 10,
       domain: ['SOV', 'HOV', 'Transit'],
       range: ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)'],
     })
@@ -330,7 +330,7 @@ describe('resolveObservablePlotEncoding — non-scenario categorical fill/stroke
     expect(result.plotOptions.color).toEqual({
       legend: true,
       style: LEGEND_STYLE,
-      swatchSize: 9,
+      swatchSize: 10,
       domain: ['HBW'],
       range: ['var(--chart-1)'],
     })
@@ -375,12 +375,12 @@ describe('resolveObservablePlotEncoding — numeric fill/stroke (heatmap) color'
 
   it('does not set domain/range for a numeric fill — legend:true still applies, letting Plot infer its own continuous scale', () => {
     const result = resolveObservablePlotEncoding({ ...heatmapConfig, fill: 'trips' }, heatmapRows)
-    expect(result.plotOptions.color).toEqual({ legend: true, style: LEGEND_STYLE, swatchSize: 9 })
+    expect(result.plotOptions.color).toEqual({ legend: true, style: LEGEND_STYLE, swatchSize: 10 })
   })
 
   it('does the same for a numeric stroke', () => {
     const result = resolveObservablePlotEncoding({ ...heatmapConfig, stroke: 'trips' }, heatmapRows)
-    expect(result.plotOptions.color).toEqual({ legend: true, style: LEGEND_STYLE, swatchSize: 9 })
+    expect(result.plotOptions.color).toEqual({ legend: true, style: LEGEND_STYLE, swatchSize: 10 })
   })
 
   it('a COUNT(*)-derived bigint fill value is also treated as numeric, not categorical', () => {
@@ -389,7 +389,7 @@ describe('resolveObservablePlotEncoding — numeric fill/stroke (heatmap) color'
       { primary_purpose: 'HBO', major_trip_mode: 'SOV', trips: 80n },
     ]
     const result = resolveObservablePlotEncoding({ ...heatmapConfig, fill: 'trips' }, bigintRows)
-    expect(result.plotOptions.color).toEqual({ legend: true, style: LEGEND_STYLE, swatchSize: 9 })
+    expect(result.plotOptions.color).toEqual({ legend: true, style: LEGEND_STYLE, swatchSize: 10 })
   })
 
   it('coerces a bigint fill value to a real number on the returned data — Plot\'s own scale math is never handed a bigint', () => {
@@ -413,7 +413,7 @@ describe('resolveObservablePlotEncoding — numeric fill/stroke (heatmap) color'
 
   it('an empty result set never crashes the numeric-detection check', () => {
     const result = resolveObservablePlotEncoding({ ...heatmapConfig, fill: 'trips' }, [])
-    expect(result.plotOptions.color).toEqual({ legend: true, style: LEGEND_STYLE, swatchSize: 9 })
+    expect(result.plotOptions.color).toEqual({ legend: true, style: LEGEND_STYLE, swatchSize: 10 })
   })
 })
 
@@ -475,6 +475,6 @@ describe('resolveObservablePlotEncoding — numeric fill detection is scoped to 
 
   it('the SAME numeric fill on mark: cell correctly goes numeric — proves the gate distinguishes by mark, not by disabling detection entirely', () => {
     const result = resolveObservablePlotEncoding({ ...baseConfig, mark: 'cell', fill: 'school_segment' }, schoolSegmentRows)
-    expect(result.plotOptions.color).toEqual({ legend: true, style: LEGEND_STYLE, swatchSize: 9 })
+    expect(result.plotOptions.color).toEqual({ legend: true, style: LEGEND_STYLE, swatchSize: 10 })
   })
 })

@@ -79,6 +79,7 @@ function PlainTile({ config }: { config: PanelConfig }) {
   return (
     <Tile
       title={config.title}
+      subtitle={config.description}
       height={config.height}
       expandable={isExpandable}
       panel={panelElement}

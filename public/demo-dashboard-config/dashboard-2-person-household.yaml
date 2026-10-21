@@ -19,6 +19,7 @@
 header:
   tab: "Person & Households"
   title: Person & Households
+  description: "Household and person submodels"
   icon: users
 
 sections:

@@ -18,11 +18,13 @@ export interface PillSelectProps {
   onChange: (value: string) => void
   /** 32px instead of 38px, for tile control rows. */
   compact?: boolean
+  /** Lift the 160px cap on the select (the Year select shows a long label). */
+  wide?: boolean
   className?: string
   'data-testid'?: string
 }
 
-export function PillSelect({ label, value, options, onChange, compact, className, 'data-testid': testId }: PillSelectProps) {
+export function PillSelect({ label, value, options, onChange, compact, wide, className, 'data-testid': testId }: PillSelectProps) {
   const id = useId()
   const groups = [...new Set(options.map((o) => o.group).filter((g): g is string => Boolean(g)))]
   const ungrouped = options.filter((o) => !o.group)
@@ -41,7 +43,7 @@ export function PillSelect({ label, value, options, onChange, compact, className
         data-testid={testId}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="cursor-pointer rounded-full bg-transparent py-1 pl-1 pr-2 font-body text-[13px] font-medium text-[var(--ink)] outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-text)]"
+        className={cn('cursor-pointer rounded-full bg-transparent py-1 pl-1 pr-2 font-body text-sm font-medium text-[var(--ink)] outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-text)]', wide ? '' : 'max-w-[160px]')}
       >
         {ungrouped.map((o) => (
           <option key={o.value} value={o.value} className="bg-[var(--surface)] text-[var(--ink)]">

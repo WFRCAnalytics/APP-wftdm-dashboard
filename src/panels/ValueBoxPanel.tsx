@@ -289,6 +289,42 @@ export function ValueBoxPanel({ config }: { config: ValueBoxPanelConfig }) {
     trendBadge = <Badge variant="destructive">Trend unavailable</Badge>
   }
 
+  // The hero KPI band presentation (layout/heroCell.tsx supplies the label): a large mono value with its unit, then the
+  // trend as a neutral delta pill. Icons are not drawn here; a gauge or sparkline, when configured, still shows below.
+  if ((config as { _hero?: boolean })._hero) {
+    return (
+      <div className="flex flex-col">
+        <div className="my-2 whitespace-nowrap font-mono text-[clamp(30px,3vw,42px)] font-medium leading-[1.1] tracking-[-0.04em] tabular-nums text-[var(--ink)]">
+          {formatValue(value, config.format)}
+          {config.unit && (
+            <i className="ml-[6px] font-body text-sm font-normal not-italic tracking-normal text-[var(--mute)]">{config.unit}</i>
+          )}
+        </div>
+        <div className="flex min-h-[22px] items-center gap-2 text-[12.5px] text-[var(--mute)]">
+          {trendBadge}
+          {/* a gauge or sparkline takes the slot the prototype gives its 64x22 sparkline */}
+          {config.gauge && typeof value === 'number' && Number.isFinite(value) && (
+            <div className="ml-auto w-[52px] [&>div>div]:hidden [&_svg]:h-auto [&_svg]:w-full">
+              <ValueBoxGauge
+                value={value}
+                config={config.gauge}
+                format={config.format}
+                observed={config.observed}
+                thresholdWarn={config.threshold_warn}
+                thresholdFail={config.threshold_fail}
+              />
+            </div>
+          )}
+          {sparklineStatus === 'ready' && config.sparkline && (
+            <div className="ml-auto w-[76px]">
+              <ValueBoxSparkline rows={sparklineRows} config={config.sparkline} />
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center gap-3">

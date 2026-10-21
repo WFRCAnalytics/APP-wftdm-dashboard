@@ -1,3 +1,5 @@
+import { useSyncExternalStore } from 'react'
+import { getSettingsUi, setSettingsOpen, setSettingsTab, subscribe as subscribeSettings, type SettingsTab } from '@/state/settingsState'
 import { Settings } from 'lucide-react'
 
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
@@ -50,14 +52,15 @@ import { BasemapTab } from '@/layout/settings/basemapTab'
 // same sr-only technique as before so getByRole('button', { name:
 // 'Settings' }) keeps resolving regardless of collapse state.
 export function SettingsModal() {
+  const ui = useSyncExternalStore(subscribeSettings, getSettingsUi)
   return (
-    <Dialog>
+    <Dialog open={ui.open} onOpenChange={setSettingsOpen}>
       <DialogTrigger asChild>
         <NavButton icon={<Settings className="h-5 w-5" aria-hidden="true" />}>Settings</NavButton>
       </DialogTrigger>
       <DialogContent className="flex h-[600px] max-h-[85vh] w-[95vw] max-w-[720px] flex-col gap-4">
         <DialogTitle>Settings</DialogTitle>
-        <Tabs defaultValue="appearance" orientation="vertical" className="flex min-h-0 flex-1 flex-row gap-4">
+        <Tabs value={ui.tab} onValueChange={(v) => setSettingsTab(v as SettingsTab)} orientation="vertical" className="flex min-h-0 flex-1 flex-row gap-4">
           {/* 024-settings-modal-visual-redesign (US4, FR-013): the
               Appearance tab's own System/Light/Dark control is now ALSO a
               Tabs instance (appearanceTab.tsx), nesting a second

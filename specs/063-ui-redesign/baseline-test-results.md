@@ -170,6 +170,15 @@ for the current year, so deactivating one run deactivates its alternative), `sec
 multi-view row got its own section, and the scroll test waits for the page height to settle). All pass after the fixes.
 New: `multiView.test.ts` (validation, `$group` substitution, resolution, tile state) and `multiViewTile.spec.ts` (8 tests).
 
+## Fidelity pass against the Corridor Pro prototype (P5 paused)
+
+Control bar, page header, picker, tile subtitle, chart anatomy and the hero KPI band were rebuilt to match
+`prototype/corridor-pro.html` (measured: header, dock, nav and tile geometry now match to the pixel at 1500x900). Specs
+updated: Year and Focus are native selects (`modelYears`), the page title is 40px/700 and tile titles 15.5px
+(`dashboardShell`), hero cells draw no icon and keep the gauge labels in the DOM (`valueBoxPanel`, `valueBoxGauge`), the
+legend swatch is 10px (`observablePlotEncoding`). A row of `variant: hero` value boxes is the hero band; any other
+all-valuebox row keeps the cards (the Test tab depends on that).
+
 ## P2 re-run (floating nav, sticky header)
 
 A full pass plus retry found 22 failures outside the baseline list. Causes found and fixed: the hover-expanded nav stayed

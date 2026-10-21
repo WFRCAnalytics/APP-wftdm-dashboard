@@ -1,6 +1,5 @@
 import { useMemo, useSyncExternalStore } from 'react'
 
-import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useResolvedView } from '@/hooks/useViewContext'
 import { useScenarioList } from '@/hooks/useScenarioList'
 import { PillSelect } from '@/components/ui/pill-select'
@@ -37,48 +36,28 @@ function CompareToggle({ on, onChange }: { on: boolean; onChange: (on: boolean) 
       data-testid="control-compare"
       onClick={() => onChange(!on)}
       className={cn(
-        'inline-flex h-[38px] items-center gap-2 rounded-full border bg-[var(--tile-hi)] pl-[14px] pr-3 font-body text-[13px] font-medium text-[var(--ink)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-text)]',
-        on ? 'border-[var(--brand)] bg-[color-mix(in_srgb,var(--brand)_14%,var(--tile-hi))]' : 'border-[var(--glass-line)]',
+        'inline-flex h-[38px] items-center gap-[10px] rounded-full border pl-2 pr-[14px] font-body text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-text)]',
+        on
+          ? 'border-[var(--brand)] bg-[color-mix(in_srgb,var(--brand)_14%,transparent)] text-[var(--ink)]'
+          : 'border-[var(--glass-line)] bg-transparent text-[var(--mute)] hover:text-[var(--ink)]',
       )}
     >
+      <span
+        aria-hidden="true"
+        className={cn(
+          'relative h-5 w-[34px] shrink-0 rounded-full transition-colors',
+          on ? 'bg-[var(--brand)]' : 'bg-[color-mix(in_srgb,var(--ink)_18%,transparent)]',
+        )}
+      >
+        <span
+          className={cn(
+            'absolute left-[3px] top-[3px] size-[14px] rounded-full transition-transform',
+            on ? 'translate-x-[14px] bg-[#04161A]' : 'bg-[var(--ink)]',
+          )}
+        />
+      </span>
       Compare
-      <span aria-hidden="true" className={cn('relative h-5 w-[34px] rounded-full', on ? 'bg-[var(--brand)]' : 'bg-[color-mix(in_srgb,var(--ink)_22%,transparent)]')}>
-        <span className={cn('absolute left-[3px] top-[3px] size-[14px] rounded-full transition-transform', on ? 'translate-x-[14px] bg-[#04161A]' : 'bg-white')} />
-      </span>
     </button>
-  )
-}
-
-function ControlSelect({
-  label,
-  value,
-  onChange,
-  testId,
-  children,
-}: {
-  label: string
-  value: string
-  onChange: (value: string) => void
-  testId: string
-  children: React.ReactNode
-}) {
-  return (
-    <div className="flex items-center gap-2">
-      <span className="font-body text-xs font-medium text-[var(--mute)]" aria-hidden="true">
-        {label}
-      </span>
-      <Select value={value} onValueChange={onChange}>
-        <SelectTrigger
-          size="sm"
-          aria-label={label}
-          data-testid={testId}
-          className="rounded-full border-[var(--glass-line)] bg-[var(--tile-hi)] font-semibold text-[var(--ink)]"
-        >
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>{children}</SelectContent>
-      </Select>
-    </div>
   )
 }
 
@@ -122,39 +101,24 @@ export function ControlBar() {
   const refValue = view.referenceKind === 'observed' ? 'observed' : view.referenceKind === 'self-base-year' ? 'self-base-year' : `scenario:${view.reference}`
   if (!showYear && !showFocus && !showCompare) return null
 
+  const yearOptions = deployment.years.map((y) => ({ value: String(y.year), label: y.label ? `${y.year} · ${y.label}` : String(y.year) }))
+  const focusOptions = [
+    ...scenarios.map((s) => ({ value: s.id, label: s.label })),
+    ...rounds.map((s) => ({ value: s.id, label: s.label, group: 'Calibration rounds' })),
+  ]
+
   return (
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-2" data-testid="control-bar">
+    <div
+      className="glass flex max-w-full flex-wrap items-center gap-2 rounded-[22px] px-2 py-[7px] min-[1300px]:rounded-full"
+      data-testid="control-bar"
+    >
       {showYear && (
-        <ControlSelect label="Year" value={String(view.year)} onChange={(v) => setYear(Number(v))} testId="control-year">
-          {deployment.years.map((y) => (
-            <SelectItem key={y.year} value={String(y.year)}>
-              {y.label ? `${y.year} · ${y.label}` : String(y.year)}
-            </SelectItem>
-          ))}
-        </ControlSelect>
+        <PillSelect label="Year" value={String(view.year)} options={yearOptions} onChange={(v) => setYear(Number(v))} data-testid="control-year" wide />
       )}
-      {showFocus && (
-        <ControlSelect label="Focus" value={view.focus} onChange={setFocus} testId="control-focus">
-          {scenarios.map((s) => (
-            <SelectItem key={s.id} value={s.id}>
-              {s.label}
-            </SelectItem>
-          ))}
-          {rounds.length > 0 && (
-            <SelectGroup>
-              <SelectLabel>Calibration rounds</SelectLabel>
-              {rounds.map((s) => (
-                <SelectItem key={s.id} value={s.id}>
-                  {s.label}
-                </SelectItem>
-              ))}
-            </SelectGroup>
-          )}
-        </ControlSelect>
-      )}
+      {showFocus && <PillSelect label="Focus" value={view.focus} options={focusOptions} onChange={setFocus} data-testid="control-focus" />}
       {showCompare && (
         <>
-          <span aria-hidden="true" className="h-6 w-px bg-[var(--line)]" />
+          {(showYear || showFocus) && <span aria-hidden="true" className="h-[26px] w-px flex-none bg-[var(--glass-line)]" />}
           <CompareToggle on={compareState.compare} onChange={setCompare} />
           {compareState.compare && (
             <>
@@ -167,6 +131,7 @@ export function ControlBar() {
                 data-testid="control-reference"
               />
               <Segmented
+                size="lg"
                 label="Show"
                 value={compareState.display}
                 options={[

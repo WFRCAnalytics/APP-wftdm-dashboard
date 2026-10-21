@@ -14,10 +14,12 @@ export interface SegmentedProps {
   value: string
   onChange: (id: string) => void
   variant?: 'view' | 'compare'
+  /** `lg` is the control bar's Show control (7px 13px, 14px text); `md` is the tile control. */
+  size?: 'md' | 'lg'
   className?: string
 }
 
-export function Segmented({ label, options, value, onChange, variant = 'view', className }: SegmentedProps) {
+export function Segmented({ label, options, value, onChange, variant = 'view', size = 'md', className }: SegmentedProps) {
   return (
     <div
       role="group"
@@ -34,7 +36,8 @@ export function Segmented({ label, options, value, onChange, variant = 'view', c
             disabled={o.disabled}
             onClick={() => onChange(o.id)}
             className={cn(
-              'rounded-full px-[13px] py-[7px] font-body text-[12.5px] font-medium leading-none transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-text)] disabled:opacity-40',
+              size === 'lg' ? 'px-[13px] py-[7px] text-sm' : 'px-[11px] py-1 text-[12.5px]',
+              'rounded-full font-body leading-[1.45] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-text)] disabled:opacity-40',
               pressed
                 ? cn(
                     'text-[var(--ink)] shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_1px_3px_rgba(0,0,0,0.18)]',

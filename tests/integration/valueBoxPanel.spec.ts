@@ -93,7 +93,8 @@ test.describe('User Story 2 - Value-box panels adopt a cleaner, more polished me
     // total_households) and the configured icon (`home`) both still
     // render, unaffected by the visual redesign — FR-007/FR-022.
     await expect(card.getByText('5,000')).toBeVisible()
-    await expect(card.locator('svg.lucide-house')).toBeVisible()
+    // the Summary row is the hero KPI band (`variant: hero`), which draws no icon (063 redesign)
+    await expect(card.locator('svg.lucide-house')).toHaveCount(0)
 
     // The label (config.title) still renders somewhere in the card,
     // above the value visually — FR-005. Real DOM order, not just visual
@@ -125,7 +126,9 @@ test.describe('User Story 2 - Value-box panels adopt a cleaner, more polished me
     // doesn't need).
     const card = panelCard(page, 'Trips')
     await expect(card).toBeVisible()
-    await expect(card.locator('svg.lucide-map-pin')).toBeVisible()
+    // hero cells carry no icon at all, so there is no empty gap either
+    await expect(card.locator('svg.lucide-map-pin')).toHaveCount(0)
+    await expect(card.getByText('23,583')).toBeVisible()
   })
 
   test('dark mode: label, value, and icon all remain legible', async ({ page }) => {
@@ -139,12 +142,11 @@ test.describe('User Story 2 - Value-box panels adopt a cleaner, more polished me
     const labelColor = await card
       .getByText('Households', { exact: true })
       .evaluate((el) => getComputedStyle(el).color)
-    const iconColor = await card.locator('svg.lucide-house').evaluate((el) => getComputedStyle(el).color)
 
     // Real, non-transparent, non-black-on-black colors — matching this
     // app's own established dual-theme verification convention
     // (getComputedStyle-based, not a screenshot).
-    for (const color of [valueColor, labelColor, iconColor]) {
+    for (const color of [valueColor, labelColor]) {
       expect(color).not.toBe('rgba(0, 0, 0, 0)')
       expect(color).not.toBe('')
     }
@@ -160,7 +162,8 @@ test.describe('User Story 2 - Value-box panels adopt a cleaner, more polished me
     // type (out of this feature's scope) or duplicating the title text
     // inside this component (worse: two visible titles per card). FR-005's
     // "secondary label" is satisfied by size/weight alone.
-    expect(valueColor).toBe(labelColor)
+    // The hero KPI band (063 redesign) mutes its label (--mute) under an --ink value, so the two now differ.
+    expect(valueColor).not.toBe(labelColor)
   })
 
   test('loading/empty/error states are restyled but behaviorally unchanged', async ({ page }) => {

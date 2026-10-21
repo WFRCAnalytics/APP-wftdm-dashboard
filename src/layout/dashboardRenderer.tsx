@@ -1,9 +1,10 @@
 import { Suspense, useEffect, useMemo } from 'react'
 import { PanelCard, PanelErrorBoundary } from '@/layout/panelCard'
+import { HeroCell } from '@/layout/heroCell'
 import { registry } from '@/panels/registry'
 import { PanelErrorState } from '@/panels/PanelErrorState'
 import { PanelLoadingState } from '@/panels/PanelLoadingState'
-import { findFullPagePanel, isMetricStripRow, resolveSections } from '@/layout/dashboardLayout'
+import { findFullPagePanel, isHeroRow, isMetricStripRow, resolveSections } from '@/layout/dashboardLayout'
 import { isMapRenderingPanel, type DashboardTabConfig, type PanelConfig } from '@/layout/types'
 import { computeTabDataRequirement, ensureRegistered } from '@/services/tabDataLoader'
 import { useActiveScenarios } from '@/hooks/useActiveScenarios'
@@ -176,7 +177,7 @@ function OrdinaryDashboardRenderer({ tab }: { tab: DashboardTabConfig }) {
   }, [tab])
 
   return (
-    <div className="flex flex-col gap-[14px] px-7 pb-10 pt-2">
+    <div className="flex flex-col gap-[14px] pb-[60px] pl-[14px] pr-7 pt-2">
       {/* The page title and description now live in the sticky PageHeader (layout/pageHeader.tsx). */}
       {rows.map(([rowName, panels]) => {
         const sectionId = sectionAnchorByRow.get(rowName)
@@ -188,23 +189,38 @@ function OrdinaryDashboardRenderer({ tab }: { tab: DashboardTabConfig }) {
         // concept; FR-020 requires every other row's existing fraction
         // layout to stay completely unchanged.
         const metricStrip = isMetricStripRow(panels)
+        const hero = isHeroRow(panels)
         return (
           <div
             key={rowName}
             id={sectionId ? `section-${sectionId}` : undefined}
             data-testid={rowName}
-            className={metricStrip ? 'grid scroll-mt-24 grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-[14px]' : 'grid scroll-mt-24 gap-[14px]'}
+            className={
+              hero
+                ? // the hero KPI band (project-docs/redesign/02-layout-and-components.md section 1.4): one raised container,
+                  // equal columns split by hairlines, two columns below 1100px with the last cell spanning both
+                  'grid scroll-mt-24 grid-cols-[repeat(var(--n),minmax(0,1fr))] rounded-[26px] border border-[var(--glass-line)] bg-[var(--tile-hi)] p-[6px] shadow-[var(--sh1)] max-[1100px]:grid-cols-2'
+                : metricStrip
+                  ? 'grid scroll-mt-24 grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-[14px]'
+                  : 'grid scroll-mt-24 gap-[14px]'
+            }
             style={
-              metricStrip
-                ? undefined
-                : { gridTemplateColumns: panels.map((p) => `${(p.width ?? 1) * 100}fr`).join(' ') }
+              hero
+                ? ({ '--n': panels.length } as React.CSSProperties)
+                : metricStrip
+                  ? undefined
+                  : { gridTemplateColumns: panels.map((p) => `${(p.width ?? 1) * 100}fr`).join(' ') }
             }
           >
-            {panels.map((panel, index) => (
-              <div key={`${rowName}-${index}`} className="min-w-0">
-                <PanelCard config={panel} tileKey={tileKey(tab.header.tab, `${rowName}-${index}`)} />
-              </div>
-            ))}
+            {panels.map((panel, index) =>
+              hero ? (
+                <HeroCell key={`${rowName}-${index}`} config={panel} />
+              ) : (
+                <div key={`${rowName}-${index}`} className="min-w-0">
+                  <PanelCard config={panel} tileKey={tileKey(tab.header.tab, `${rowName}-${index}`)} />
+                </div>
+              ),
+            )}
           </div>
         )
       })}

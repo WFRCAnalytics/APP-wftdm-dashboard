@@ -8,6 +8,7 @@
 header:
   tab: "Mode Choice"
   title: Mode Choice
+  description: "How trips and tours split across modes"
   icon: shuffle
 
 sections:
@@ -68,14 +69,13 @@ layout:
 
   # 063 redesign (P4): one tile, four views of the same purpose_mode_flow data, with a Group by control for the
   # hierarchy order. The Sankey and heatmap panels below stay as their own tiles (their specs and the Test tab
-  # depend on them). Pinned to one scenario: a treemap, sunburst or Sankey has no series channel, so an unpinned
-  # $scenario union would silently sum scenarios. Per-scenario comparison strategies arrive with CompareHost (P5).
+  # depend on them). Not pinned: CompareHost draws a treemap, sunburst or Sankey for one scenario at a time (the
+  # focus, or one panel per compared scenario), never an unpinned union that would silently sum scenarios.
   row_trips_purpose_mode:
     - type: multi-view
       title: "Trips by Purpose and Mode"
-      description: "Baseline scenario. The same trips drawn four ways; Group by sets which level comes first."
+      description: "The same trips drawn four ways. Group by sets which level comes first; with Compare on, each compared scenario gets its own panel."
       metric: purpose_mode_flow
-      scenario: activitysim-baseline
       height: 430
       width: 1.0
       group_by:

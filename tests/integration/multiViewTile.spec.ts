@@ -87,11 +87,11 @@ test.describe('063 P4 — multi-view tile', () => {
     await gotoTab(page, 'Mode Choice')
     const card = tile(page)
     // Purpose > Mode: top level is a purpose
-    await expect(card.locator('g[data-node-name="work"]')).toBeVisible({ timeout: 20_000 })
+    await expect(card.locator('g[data-node-name="work"]').first()).toBeVisible({ timeout: 20_000 })
     await expect(card.locator('g[data-node-name="SOV"]')).toHaveCount(0)
 
     await card.getByLabel('Group by').selectOption('mp')
-    await expect(card.locator('g[data-node-name="SOV"]')).toBeVisible({ timeout: 20_000 })
+    await expect(card.locator('g[data-node-name="SOV"]').first()).toBeVisible({ timeout: 20_000 })
     await expect(card.locator('g[data-node-name="work"]')).toHaveCount(0)
   })
 

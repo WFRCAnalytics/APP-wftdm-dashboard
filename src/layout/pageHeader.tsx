@@ -28,10 +28,10 @@ export function PageHeader({ title, subtitle, children, onMenu }: PageHeaderProp
     <header
       data-compact={compact ? 'true' : 'false'}
       className={cn(
-        'sticky top-0 z-30 flex flex-wrap items-center justify-between gap-x-6 gap-y-3 px-7 transition-[padding,background-color] duration-200',
+        'sticky top-0 z-30 flex flex-wrap items-center justify-between gap-x-5 gap-y-[14px] pl-[14px] pr-7 transition-[padding,background-color] duration-200',
         compact
           ? 'bg-[color-mix(in_srgb,var(--bg)_84%,transparent)] py-[10px] shadow-[0_1px_0_var(--glass-line)] backdrop-blur-[14px]'
-          : 'py-6',
+          : 'pb-3 pt-[26px]',
       )}
     >
       <div className="flex min-w-0 items-center gap-3">
@@ -46,8 +46,8 @@ export function PageHeader({ title, subtitle, children, onMenu }: PageHeaderProp
           </button>
         )}
         <div className="min-w-0">
-          <h1 className={cn('font-heading font-semibold tracking-tight text-[var(--ink)]', compact ? 'text-[21px]' : 'text-[28px]')}>{title}</h1>
-          {subtitle && !compact && <p className="mt-1 font-body text-sm text-[var(--mute)]">{subtitle}</p>}
+          <h1 style={{ lineHeight: 1.08 }} className={cn('font-heading font-bold tracking-[-0.025em] text-[var(--ink)]', compact ? 'text-[21px]' : 'text-[clamp(28px,3.2vw,40px)]')}>{title}</h1>
+          {subtitle && !compact && <p className="mt-[6px] font-body text-[15px] text-[var(--mute)]">{subtitle}</p>}
         </div>
       </div>
       {children}

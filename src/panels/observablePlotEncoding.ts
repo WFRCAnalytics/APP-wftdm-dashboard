@@ -131,7 +131,7 @@ export function resolveObservablePlotEncoding(
       // shape allows (Plot's swatch is drawn as its own <svg><rect>, not
       // a plain CSS-sizable <div> — an odd size vs. Recharts' round 8px
       // is not perceptible at this scale, unlike 15px vs 8px today).
-      swatchSize: 9,
+      swatchSize: 10,
     }
   }
 

@@ -12,6 +12,7 @@
 header:
   tab: "Tour"
   title: Tour
+  description: "Tour frequency, destination and scheduling"
   icon: route
 
 sections:

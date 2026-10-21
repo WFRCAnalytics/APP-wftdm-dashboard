@@ -24,6 +24,8 @@ export interface FilterDefinition {
 // exist (data-model.md).
 export interface PanelConfigBase {
   title: string
+  /** A short note shown under the tile title (63 redesign). */
+  description?: string
   height?: number
   width?: number
   // 034-metric-panel-redesign, Part A addendum (spec.md FR-023–FR-025):
@@ -100,6 +102,9 @@ export interface ValueBoxGaugeConfig {
 
 export interface ValueBoxPanelConfig extends DataBoundPanelConfigBase {
   type: 'valuebox'
+  /** `hero`: a row made only of `variant: hero` value boxes draws as the hero KPI band (063 redesign): label, large value,
+   * delta against the reference and a per-year sparkline for the focus scenario. Any other value-box row keeps the cards. */
+  variant?: 'hero'
   column: string
   format: string
   unit?: string

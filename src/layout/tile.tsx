@@ -54,7 +54,7 @@ export function Tile({ title, subtitle, badges, controls, height, expandable, pa
         <span className="flex-1" />
         {hasPanel && expandable && trigger}
       </CardHeader>
-      {subtitle && <p className="px-[18px] pt-1 font-body text-[12.5px] text-[var(--mute)]">{subtitle}</p>}
+      {subtitle && <p className="max-w-[72ch] px-[18px] pt-0.5 font-body text-[12.5px] text-[var(--mute)]">{subtitle}</p>}
       {controls && <div className="flex flex-wrap items-center gap-[10px] px-[18px] pt-[10px]">{controls}</div>}
       <div
         ref={setLegendEl}

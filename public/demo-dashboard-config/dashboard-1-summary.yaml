@@ -8,6 +8,7 @@
 header:
   tab: Summary
   title: Summary
+  description: "Regional totals and calibration status"
   icon: layout-dashboard
 
 layout:
@@ -21,6 +22,7 @@ layout:
   # scenario's row. Each states its baseline scope in `description`.
   row_kpis:
     - type:   valuebox
+      variant: hero
       title:  Households
       metric: summary_kpis
       scenario: activitysim-baseline
@@ -31,6 +33,7 @@ layout:
       width:  0.2
 
     - type:   valuebox
+      variant: hero
       title:  Persons
       metric: summary_kpis
       scenario: activitysim-baseline
@@ -41,6 +44,7 @@ layout:
       width:  0.2
 
     - type:   valuebox
+      variant: hero
       title:  Tours
       metric: summary_kpis
       scenario: activitysim-baseline
@@ -51,6 +55,7 @@ layout:
       width:  0.2
 
     - type:   valuebox
+      variant: hero
       title:  Trips
       metric: summary_kpis
       scenario: activitysim-baseline
@@ -78,6 +83,7 @@ layout:
     # 'normal' (green, within-tolerance) status — the realistic case for
     # an already-validated baseline model.
     - type:   valuebox
+      variant: hero
       title:  Total VMT
       metric: summary_kpis
       scenario: activitysim-baseline

@@ -70,11 +70,15 @@ export function FloatingNav({ tabs, activeIndex, onTabChange, branding, mobile =
           if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setEngaged(false)
         }}
       >
-        <div className="mb-3 flex min-h-[46px] items-center gap-3 overflow-hidden px-[3px]">
+        <div className="mb-[14px] flex min-h-[46px] items-center gap-3 overflow-hidden px-[3px]">
           <span
             aria-hidden="true"
-            className="h-[38px] w-[38px] shrink-0 rounded-[13px] bg-[var(--brand)] shadow-[0_1px_0_var(--hi)_inset,0_6px_14px_-6px_var(--brand)]"
-          />
+            className="grid h-[38px] w-[38px] shrink-0 place-items-center rounded-[13px] bg-[var(--brand)] shadow-[0_1px_0_rgba(255,255,255,0.35)_inset,0_6px_14px_-6px_var(--brand)]"
+          >
+            <svg viewBox="0 0 24 24" className="h-[19px] w-[19px]" fill="none" stroke="#04161A" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M4 18 9 9l4 6 3-5 4 8" />
+            </svg>
+          </span>
           <div className={cn('min-w-0 transition-opacity duration-150', expanded ? 'opacity-100' : 'opacity-0')}>
             <DashboardBrand branding={branding} />
           </div>

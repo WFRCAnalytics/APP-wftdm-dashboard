@@ -56,5 +56,18 @@
  * can never round a real data mark's own <rect>. Matches RechartsPanel's
  * own `rounded-[2px]` legend swatch (components/ui/chart.tsx). */
 .observable-plot-chart > figure > div rect {
-  rx: 2px;
+  rx: 50%;
+}
+
+/* Corridor Pro chart anatomy (project-docs/redesign/04-chart-catalogue.md, prototype corridor-pro.html): the legend row
+ * above the chart names the series, so axis titles and tick marks are dropped, tick labels stay. Data ends are rounded. */
+.observable-plot-chart [aria-label$="axis label"],
+.observable-plot-chart [aria-label$="axis tick"] {
+  display: none;
+}
+.observable-plot-chart [aria-label="bar"] rect {
+  rx: calc(var(--chart-r) * 1px);
+}
+.observable-plot-chart > figure > div {
+  gap: 14px;
 }

@@ -63,7 +63,9 @@ export function CompareHost({ panel, strategy, tileKey, title }: CompareHostProp
   const cols = total <= 2 ? total : 2
   const rows = Math.ceil(total / cols)
   const bodyHeight = (panel.height ?? 400) - (plan.pages > 1 ? PAGER_HEIGHT : 0)
-  const cellHeight = Math.max(120, Math.floor(bodyHeight / rows) - CAPTION_HEIGHT - 8)
+  // each cell: 1px borders, 8px padding, the caption row and its 4px margin
+  const cellChrome = 2 + 16 + CAPTION_HEIGHT
+  const cellHeight = Math.max(100, Math.floor((bodyHeight - (rows - 1) * 10) / rows) - cellChrome)
 
   return (
     <div className="flex flex-col gap-2" data-testid="compare-cells">
