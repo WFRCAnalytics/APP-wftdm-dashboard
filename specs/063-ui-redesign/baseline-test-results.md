@@ -188,3 +188,10 @@ sub-list mid-click, dropping the click (focus-based expansion is now `:focus-vis
 or sub-items now hover the nav first; a Recharts combo-chart spec measured before the bar paths existed (now waits). With
 one worker the affected files finish with only timing-edge failures: `flowmapPanel.spec.ts:1743` (offline fallback, 10 s
 poll) and `zonemapPanel.spec.ts:1261` (shared boundaries file, 10 s poll), the same kind as the P1 zonemap entries.
+
+## Redesign complete (P5-P12): suite structure
+Playwright now has two projects (see `playwright.config.js`): `chromium` runs the older specs against the pre-redesign
+demo content served from `tests/fixtures/legacy-demo` (dev server on 5199 with `WFTDM_LEGACY_DEMO=1`,
+`scripts/viteLegacyDemoPlugin.ts`), and `redesign` runs `chart*.spec.ts` and `settingsRedesign.spec.ts` against the real
+Corridor Pro demo (dev server on 5198). Full-suite result at this point: older specs fail only where they already failed
+at the P0 baseline plus a few timing-flaky Observable Plot tip tests; all redesign specs pass.
