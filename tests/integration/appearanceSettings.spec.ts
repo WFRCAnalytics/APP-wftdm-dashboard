@@ -259,7 +259,7 @@ test.describe('User Story 3 - live OS theme reactivity (real bug fix)', () => {
     await expect
       .poll(() => swatch.evaluate((el) => getComputedStyle(el).backgroundColor))
       .not.toBe(before)
-    await expect(swatch).toHaveCSS('background-color', 'rgb(115, 225, 214)') // dark --primary, #73e1d6
+    await expect(swatch).toHaveCSS('background-color', 'rgb(201, 214, 242)') // dark --primary, #c9d6f2
   })
 })
 

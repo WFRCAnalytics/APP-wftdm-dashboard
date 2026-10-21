@@ -1,0 +1,182 @@
+# 032-six-tab-demo-content — Summary tab (Level 1 / landing page).
+# Replaces the old dashboard-1-overview.yaml entirely (FR-001 — content
+# not preserved). Real KPIs + charts from project-docs/CALIBRATION-SUMMARIES.md's
+# own "Level 1 — High-Level Summary" table. No sections: this tab is a
+# single flat KPI + chart page, matching this project's own established
+# Summary-tab convention (CLAUDE.md's Navigation model).
+
+header:
+  tab: Summary
+  title: Summary
+  description: "Regional totals and calibration status"
+  icon: layout-dashboard
+
+layout:
+  # 038-all-loaded-scenarios: every `status === 'ready'` scenario now
+  # auto-activates, and an unpinned `$scenario` union no longer breaks on
+  # an empty `observed` (a `failed` scenario is never auto-active). So the
+  # charts below are UNPINNED — they read as a real multi-scenario
+  # comparison and respond to the Scenarios-tab Switch. The KPI value
+  # boxes stay pinned to `activitysim-baseline`: a value box renders one
+  # number (`rows[0]`), so an unpinned union would surface an arbitrary
+  # scenario's row. Each states its baseline scope in `description`.
+  row_kpis:
+    - type:   valuebox
+      variant: hero
+      title:  Households
+      metric: summary_kpis
+      scenario: activitysim-baseline
+      description: "Baseline scenario. Compare runs on the charts below via the Scenarios tab."
+      column: total_households
+      format: "{:,.0f}"
+      icon:   home
+      width:  0.2
+
+    - type:   valuebox
+      variant: hero
+      title:  Persons
+      metric: summary_kpis
+      scenario: activitysim-baseline
+      description: "Baseline scenario. Compare runs on the charts below via the Scenarios tab."
+      column: total_persons
+      format: "{:,.0f}"
+      icon:   users
+      width:  0.2
+
+    - type:   valuebox
+      variant: hero
+      title:  Tours
+      metric: summary_kpis
+      scenario: activitysim-baseline
+      description: "Baseline scenario. Compare runs on the charts below via the Scenarios tab."
+      column: total_tours
+      format: "{:,.0f}"
+      icon:   route
+      width:  0.2
+
+    - type:   valuebox
+      variant: hero
+      title:  Trips
+      metric: summary_kpis
+      scenario: activitysim-baseline
+      description: "Baseline scenario. Compare runs on the charts below via the Scenarios tab."
+      column: total_trips
+      format: "{:,.0f}"
+      icon:   map-pin
+      width:  0.2
+
+    # New chart-type coverage: ValueBoxPanelConfig's new gauge: {min, max}
+    # field — a radial "speedometer" arc showing where the real baseline
+    # total_vmt value falls within an illustrative range, plus a target
+    # tick + green/amber/red status wired to `observed`/`threshold_warn`/
+    # `threshold_fail`. Those three fields have been in this grammar
+    # since before the gauge mode existed (project-docs/GRAMMAR.md's own
+    # long-documented calibration-tolerance semantics) but had no real
+    # consumer anywhere in the app until now.
+    #
+    # `observed`/the thresholds below are ILLUSTRATIVE calibration-target
+    # figures, not a real survey/count value — this demo's own
+    # public/observed/ ships no real VMT survey data to compare against
+    # (honestly stated in the description, not presented as real ground
+    # truth). Chosen close to the real baseline value (~15,212 mi,
+    # confirmed live) so this real KPI demonstrates the gauge's own
+    # 'normal' (green, within-tolerance) status — the realistic case for
+    # an already-validated baseline model.
+    - type:   valuebox
+      variant: hero
+      title:  Total VMT
+      metric: summary_kpis
+      scenario: activitysim-baseline
+      description: "Baseline scenario. Gauge target (15,000 mi ±500/1,500) is an illustrative calibration tolerance, not a real survey value. Compare runs on the charts below via the Scenarios tab."
+      column: total_vmt
+      format: "{:,.0f} mi"
+      icon:   gauge
+      gauge:  { min: 0, max: 20000 }
+      observed: 15000
+      threshold_warn: 500
+      threshold_fail: 1500
+      width:  0.2
+
+  # Real total trips by mode and real average trip distance by purpose —
+  # both ★ Level-1 summaries, both observable-plot (057-observable-plot-
+  # conversion). Unpinned (038): the dynamic `$scenario` union spans every
+  # active scenario, split per scenario by `fill: scenario`.
+  row_charts:
+    - type:    observable-plot
+      title:   Total Trips by Mode
+      metric:  trip_mode_share
+      mark:    barY
+      # Grouped (side-by-side), not stacked — real, confirmed bug fix.
+      # Observable Plot's own documented pattern for a grouped bar chart
+      # (no groupX-style transform exists; a bare `x: category, fill:
+      # scenario` with no facet triggers Plot's implicit stackY transform
+      # whenever a fill channel is present — its own docs: "For a grouped
+      # bar chart, use faceting"). facet_x carries the real category (the
+      # same field `x` held before this fix); x now holds the comparison
+      # dimension (scenario) — genuinely side-by-side bars within each
+      # category's own facet, colored by the same `fill: scenario`
+      # unchanged. Same query, same columns, only the encoding changed.
+      facet_x: major_trip_mode
+      x:       scenario
+      y:       share
+      fill:    scenario
+      tip:     true
+      grid:    true
+      height:  400
+      width:   0.5
+
+    - type:    observable-plot
+      title:   Average Trip Distance by Purpose
+      metric:  trip_distance_by_purpose
+      mark:    barY
+      # Grouped, not stacked — see "Total Trips by Mode" above for the
+      # full rationale.
+      facet_x: primary_purpose
+      x:       scenario
+      y:       avg_distance_miles
+      fill:    scenario
+      tip:     true
+      grid:    true
+      height:  400
+      width:   0.5
+
+  # 040-test-suite-migration (T020) — a real, rich Methodology Notes
+  # panel, richer than every other real demo markdown panel (which are
+  # all plain-paragraph gap notes) — headings/emphasis/lists/a link/a
+  # GFM table/a code span, exercising markdown-panel.spec.ts's own
+  # typography and rendering coverage against genuine content.
+  row_methodology:
+    - type:  markdown
+      title: "Methodology Notes"
+      width: 1.0
+      content: |
+        ## Straight-Line Distance Proxy
+
+        Several distance-based metrics in this demo (Trip Destination,
+        Non-Mandatory Tour Destination, VMT by Home TAZ) use a
+        **haversine straight-line distance** between real zone centroids
+        rather than a modeled network distance — this project's
+        `prototype_mtc` synthetic 25-zone system has no calibrated
+        network skim available. Reported distances are therefore
+        *approximate, not authoritative*.
+
+        Real data sources feeding these metrics:
+
+        1. ActivitySim's own `final_trips.csv` output
+        2. The real `zone_centroids` lookup table (25 MTC TAZ ids)
+        3. The post-processor's own `summarize.yaml` SQL fragments
+
+        Known caveats:
+
+        - Six real submodel gaps have no computable data in this
+          deployment — see each gap note on its own tab.
+        - Same-zone (intrazonal) trips are clamped to avoid a domain
+          error in the underlying distance computation.
+
+        | Check | Tolerance |
+        | --- | --- |
+        | Trip length distribution | ±10% |
+        | Mode share by purpose | ±5 percentage points |
+
+        See the [ActivitySim documentation](https://activitysim.github.io/activitysim/)
+        for the underlying travel model framework.

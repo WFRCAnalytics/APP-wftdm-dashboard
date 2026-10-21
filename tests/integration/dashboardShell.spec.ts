@@ -486,9 +486,12 @@ test.describe('redesign P2 — page header and mobile navigation', () => {
     await expect(nav.getByRole('button', { name: 'Documentation' })).toHaveCount(0)
 
     const before = await page.evaluate(() => document.documentElement.classList.contains('dark'))
-    await nav.getByRole('button', { name: /switch to (dark|light) mode/i }).click()
-    await expect
-      .poll(() => page.evaluate(() => document.documentElement.classList.contains('dark')))
-      .toBe(!before)
+    // the theme button cycles System, Light, Dark: within three presses the resolved theme must have flipped
+    let flipped = false
+    for (let i = 0; i < 3 && !flipped; i++) {
+      await nav.getByRole('button', { name: /^Theme:/ }).click()
+      flipped = (await page.evaluate(() => document.documentElement.classList.contains('dark'))) !== before
+    }
+    expect(flipped).toBe(true)
   })
 })

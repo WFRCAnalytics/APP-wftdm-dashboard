@@ -731,7 +731,8 @@ test.describe('018-baseline-scenario-designation', () => {
         .poll(() => page.evaluate(() => window.__wftdm!.appState.getBaseline()))
         .toBe('activitysim-baseline')
       await expect(baselineStar(page, 'activitysim-baseline', true)).toBeVisible()
-      await expect(baselineStar(page, 'observed', false)).toBeVisible()
+      // 063 redesign (P10): Observed is a reference, not a scenario, so the Scenarios tab no longer lists it at all
+      await expect(baselineStar(page, 'observed', false)).toHaveCount(0)
     })
 
     test('loading a further scenario does not move an already-resolved automatic default', async ({

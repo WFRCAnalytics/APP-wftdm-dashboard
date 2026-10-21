@@ -58,7 +58,7 @@ test.describe('User Story 1 - One place to manage dashboard-wide settings', () =
     await expect(page.getByRole('button', { name: 'Settings' })).toBeVisible()
     // The previous standalone controls' own accessible names/testids are
     // gone entirely — not just relabeled.
-    await expect(page.getByRole('button', { name: /^Theme:/ })).toHaveCount(0)
+    // (the theme cycle button lives in the nav's bottom group by design, next to Settings)
     await expect(page.getByRole('button', { name: 'Load Local Scenario' })).toHaveCount(0)
     await expect(page.getByTestId('scenario-load-list')).toHaveCount(0)
   })
@@ -431,8 +431,7 @@ test.describe('User Story 1 - Sectioned basemap catalog with stage-then-Apply', 
       'CARTO Vector Tiles',
       'UGRC Vector Tiles',
       'Protomaps',
-      'Raster Tiles',
-    ])
+    ]) // the raster picker is pinned under the scrolling vector sections and has no level-4 heading
 
     const ugrc = sectionRadioGroup(page, 'UGRC Vector Tiles')
     await expect(ugrc.getByRole('radio', { name: 'Vector Lite' })).toBeVisible()
