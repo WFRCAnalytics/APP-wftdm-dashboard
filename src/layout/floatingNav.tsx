@@ -4,7 +4,6 @@ import { Moon, Sun } from 'lucide-react'
 import { DashboardBrand } from '@/layout/dashboardBrand'
 import { NavButton } from '@/layout/navButton'
 import { SettingsModal } from '@/layout/settingsModal'
-import { DocumentationModal } from '@/layout/documentationModal'
 import { resolveSections } from '@/layout/dashboardLayout'
 import { iconComponentFor } from '@/lib/iconComponentFor'
 import { useColorScheme } from '@/hooks/useColorScheme'
@@ -137,7 +136,6 @@ export function FloatingNav({ tabs, activeIndex, onTabChange, branding, mobile =
 
         <div className="mt-2 flex flex-col gap-1 border-t border-[var(--line)] pt-2">
           <SettingsModal />
-          <DocumentationModal />
           <NavButton
             aria-label={scheme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
             icon={scheme === 'dark' ? <Sun className="h-5 w-5" aria-hidden="true" /> : <Moon className="h-5 w-5" aria-hidden="true" />}

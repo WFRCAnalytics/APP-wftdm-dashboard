@@ -17,7 +17,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 
-import { Button } from '@/components/ui/button'
+import { PillButton, TabHeader } from '@/layout/settings/settingsParts'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import {
   isLocalDeployment,
@@ -29,7 +29,8 @@ import { useScenarioList } from '@/hooks/useScenarioList'
 import { ScenarioRow } from '@/layout/settings/scenarioRow'
 import * as appState from '@/state/appState'
 import { useResolvedView } from '@/hooks/useViewContext'
-import { isRunInYear } from '@/services/runResolution'
+import { alternativeOf, isRunInYear, runKindOf } from '@/services/runResolution'
+import { setAlternativeActive } from '@/state/compareState'
 
 // 020-settings-modal: relocated from layout/scenarioLoader.tsx (deleted by
 // that feature) — list/add/remove/baseline-mark logic and behavior are
@@ -63,7 +64,11 @@ export function ScenariosTab() {
   const everyRun = useScenarioList()
   // A scenario is one row however many model years it has: the list shows the runs of the current year.
   const { year, baseYear } = useResolvedView()
-  const allScenarios = useMemo(() => everyRun.filter((s) => isRunInYear(s, year, baseYear)), [everyRun, year, baseYear])
+  // Only independent scenarios are listed: calibration rounds, observed data and hidden runs are not.
+  const allScenarios = useMemo(
+    () => everyRun.filter((s) => runKindOf(s) === 'scenario' && isRunInYear(s, year, baseYear)),
+    [everyRun, year, baseYear],
+  )
 
   const local = isLocalDeployment()
   const supported = supportsLocalFolderLoading()
@@ -119,28 +124,55 @@ export function ScenariosTab() {
       ? 'Requires Chrome or Edge'
       : null
 
+  function resetColoursAndNames() {
+    for (const s of allScenarios) {
+      appState.clearLabel(s.name)
+      appState.clearColorOverride(s.name)
+    }
+  }
+
+  function compareAll() {
+    for (const s of allScenarios) setAlternativeActive(alternativeOf(s), true)
+  }
+
+  // The up/down buttons move a scenario past its neighbour in the LISTED order; the index passed on is that neighbour's
+  // place in the full display order, so unlisted runs (rounds, hidden runs) in between never swallow a click.
+  function moveBy(name: string, delta: -1 | 1) {
+    const at = allScenarios.findIndex((s) => s.name === name)
+    const neighbour = allScenarios[at + delta]
+    if (!neighbour) return
+    const targetIndex = everyRun.findIndex((s) => s.name === neighbour.name)
+    if (targetIndex >= 0) appState.reorderScenario(name, targetIndex)
+  }
+
+  const failedCount = allScenarios.filter((s) => s.status === 'failed').length
+
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex items-center gap-2">
+    <div>
+      <TabHeader title="Scenarios">
+        Choose which scenarios are in the compare set, give each a colour and a short name, reorder them, and mark the
+        baseline. Colours stay with a scenario wherever it appears. Calibration rounds use a colour ramp and are chosen
+        from the scenario picker.
+      </TabHeader>
+      <div className="mb-3.5 flex flex-wrap items-center gap-2.5">
+        <PillButton onClick={resetColoursAndNames}>Reset colours and names</PillButton>
+        <PillButton onClick={compareAll}>Compare all</PillButton>
         {disabledReason === null ? (
-          <Button variant="outline" size="sm" onClick={handleClick} disabled={busy}>
-            <FolderOpen className="h-4 w-4" />
+          <PillButton onClick={handleClick} disabled={busy} className="inline-flex items-center gap-2">
+            <FolderOpen className="h-4 w-4" aria-hidden="true" />
             Load Local Scenario
-          </Button>
+          </PillButton>
         ) : (
-          // Visibly present but disabled, with an explanation (FR-019).
-          // TooltipProvider wraps this locally, scoped to just this branch.
+          // Visibly present but disabled, with an explanation. The wrapping span is the hoverable surface, since a
+          // disabled button receives no pointer events.
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                {/* A disabled native <button> carries Tailwind's own
-                    disabled:pointer-events-none, so this wrapping <span>,
-                    not the button inside it, is the hoverable surface. */}
                 <span data-testid="scenario-load-trigger-disabled-wrapper">
-                  <Button variant="outline" size="sm" disabled>
-                    <FolderOpen className="h-4 w-4" />
+                  <PillButton disabled className="inline-flex items-center gap-2">
+                    <FolderOpen className="h-4 w-4" aria-hidden="true" />
                     Load Local Scenario
-                  </Button>
+                  </PillButton>
                 </span>
               </TooltipTrigger>
               <TooltipContent>{disabledReason}</TooltipContent>
@@ -154,26 +186,16 @@ export function ScenariosTab() {
         )}
       </div>
       {allScenarios.length > 0 && (
-        <div className="flex flex-col overflow-hidden rounded-xl border border-border bg-card">
-          {/* Summary band — "surface the summary before the detail." */}
-          <div className="border-b border-border bg-muted px-3 py-1.5">
-            <span className="text-xs font-medium text-muted-foreground">
-              {allScenarios.length} scenario{allScenarios.length === 1 ? '' : 's'} loaded
-              {(() => {
-                const failedCount = allScenarios.filter((s) => s.status === 'failed').length
-                return (
-                  failedCount > 0 && (
-                    <>
-                      {' · '}
-                      <span className="font-semibold text-destructive">
-                        {failedCount} need attention
-                      </span>
-                    </>
-                  )
-                )
-              })()}
-            </span>
-          </div>
+        <>
+          <p className="mb-2 text-[12.5px] text-[var(--mute)]">
+            {allScenarios.length} scenario{allScenarios.length === 1 ? '' : 's'} loaded
+            {failedCount > 0 && (
+              <>
+                {' · '}
+                <span className="font-semibold text-destructive">{failedCount} need attention</span>
+              </>
+            )}
+          </p>
           <DndContext
             sensors={sensors}
             collisionDetection={closestCenter}
@@ -190,12 +212,13 @@ export function ScenariosTab() {
                     index={index}
                     total={allScenarios.length}
                     baselineName={baseline}
+                    onMove={moveBy}
                   />
                 ))}
               </div>
             </SortableContext>
           </DndContext>
-        </div>
+        </>
       )}
     </div>
   )

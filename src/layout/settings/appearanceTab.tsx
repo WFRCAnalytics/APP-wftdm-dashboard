@@ -1,59 +1,70 @@
 import { useEffect } from 'react'
-import { Monitor, Moon, Sun } from 'lucide-react'
+import { X } from 'lucide-react'
 
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Segmented } from '@/components/ui/segmented'
 import { Switch } from '@/components/ui/switch'
 import { Slider } from '@/components/ui/slider'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 import { useThemeMode } from '@/hooks/useThemeMode'
 import { setMode, type ThemeMode } from '@/state/themeState'
 import { useColorblindSafePreference } from '@/hooks/useColorblindSafePreference'
 import { setColorblindSafe } from '@/state/colorPreferenceState'
 import { useTextSize } from '@/hooks/useTextSize'
-import { setScale } from '@/state/textSizeState'
+import { DEFAULT_SCALE, MAX_SCALE, MIN_SCALE, setScale } from '@/state/textSizeState'
 import { InterfaceColorControl } from '@/layout/settings/interfaceColorControl'
+import { GroupHeading, PillButton, SettingsRow, TabHeader } from '@/layout/settings/settingsParts'
 import { useFontPreference } from '@/hooks/useFontPreference'
 import { clearFont, setFont, type FontRole } from '@/state/fontPreferenceState'
+import { clearInterfaceColorOverride, setInterfaceColorOverride } from '@/state/interfaceColorState'
 import { clearGoogleFont, ensureGoogleFontLoaded } from '@/panels/googleFontLoader'
-import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
-import { X } from 'lucide-react'
+import type { InterfaceColorRole } from '@/panels/interfaceColor'
 
-// 061-appearance-controls (US4): a small, bundled shortlist for
-// discoverability — free-text entry (via the <input list="...">
-// combo-box pattern below) already offers the same "any Google Font"
-// breadth this shortlist alone doesn't limit (research.md §9); no
-// Developer API key is needed to populate it.
+// The Appearance tab (project-docs/redesign/02-layout-and-components.md section 4.1): theme, colour-blind-safe palette,
+// interface colours, type, text size and a reset. Everything is session-only state (no storage of any kind).
+
+export type { ThemeMode } from '@/state/themeState'
+
+const THEME_OPTIONS: { id: ThemeMode; label: string }[] = [
+  { id: 'light', label: 'Light' },
+  { id: 'dark', label: 'Dark' },
+  { id: 'system', label: 'System' },
+]
+
+const ROLES: { role: InterfaceColorRole; label: string }[] = [
+  { role: 'primary', label: 'Primary' },
+  { role: 'secondary', label: 'Secondary' },
+  { role: 'accent', label: 'Tertiary' },
+]
+
+// Four presets, each a primary / secondary / tertiary triple (the prototype's own set).
+const PRESETS: { name: string; colors: [string, string, string] }[] = [
+  { name: 'WFRC blue', colors: ['#2457D6', '#D98A00', '#7A4FD8'] },
+  { name: 'Wasatch', colors: ['#0E7C7B', '#E4572E', '#5C6BC0'] },
+  { name: 'Slate', colors: ['#334E68', '#E0A100', '#2F9E8F'] },
+  { name: 'Plum', colors: ['#6D3FC8', '#0C8F6F', '#D9534F'] },
+]
+
+// The four type cards. Schibsted Grotesk is the self-hosted default (selecting it clears the preference); Geist and IBM
+// Plex Sans load from Google Fonts like any custom font; System UI is the platform's own font, loaded from nowhere.
+const DEFAULT_FONT = 'Schibsted Grotesk'
+const SYSTEM_FONT = 'System UI'
+const SYSTEM_STACK = 'system-ui, -apple-system, "Segoe UI", sans-serif'
+const FONT_CARDS: { name: string; family: string }[] = [
+  { name: DEFAULT_FONT, family: '"Schibsted Grotesk Variable", sans-serif' },
+  { name: 'Geist', family: '"Geist", system-ui, sans-serif' },
+  { name: 'IBM Plex Sans', family: '"IBM Plex Sans", system-ui, sans-serif' },
+  { name: SYSTEM_FONT, family: SYSTEM_STACK },
+]
+const PREVIEW_FONTS = ['Geist', 'IBM Plex Sans']
+
+// A small, bundled shortlist for the custom-font inputs; free text is accepted too (any Google Font).
 const GOOGLE_FONT_SHORTLIST = [
-  'Roboto',
-  'Open Sans',
-  'Lato',
-  'Montserrat',
-  'Poppins',
-  'Source Sans Pro',
-  'Merriweather',
-  'Playfair Display',
-  'Nunito',
-  'Raleway',
-  'Ubuntu',
-  'Rubik',
-  'Work Sans',
-  'Inter',
-  'Mulish',
-  'Quicksand',
-  'Karla',
-  'DM Sans',
-  'Fira Sans',
-  'PT Sans',
-  'Noto Sans',
-  'Josefin Sans',
-  'Oswald',
-  'Libre Baskerville',
-  'Crimson Text',
-  'IBM Plex Sans',
-  'Fira Code',
-  'JetBrains Mono',
-  'Space Mono',
-  'Source Code Pro',
+  'Roboto', 'Open Sans', 'Lato', 'Montserrat', 'Poppins', 'Source Sans Pro', 'Merriweather', 'Playfair Display', 'Nunito',
+  'Raleway', 'Ubuntu', 'Rubik', 'Work Sans', 'Inter', 'Mulish', 'Quicksand', 'Karla', 'DM Sans', 'Fira Sans', 'PT Sans',
+  'Noto Sans', 'Josefin Sans', 'Oswald', 'Libre Baskerville', 'Crimson Text', 'IBM Plex Sans', 'Fira Code', 'JetBrains Mono',
+  'Space Mono', 'Source Code Pro',
 ]
 
 const FONT_ROLE_LABEL: Record<FontRole, string> = {
@@ -62,219 +73,169 @@ const FONT_ROLE_LABEL: Record<FontRole, string> = {
   mono: 'Monospace',
 }
 
-// 020-settings-modal: relocated from layout/themeToggle.tsx (deleted by
-// this feature) — the mount/mode effect (applying `.dark` to
-// document.documentElement, managing the matchMedia listener's lifecycle)
-// is reused completely UNCHANGED (FR-004). The only thing that changes is
-// presentation: three directly visible options instead of themeToggle.tsx's
-// own later DropdownMenu redesign. That redesign was driven specifically
-// by header-crowding next to ScenarioLoader's own variable width in the
-// shared header row (see themeToggle.tsx's own former header comment,
-// quoted in research.md §9) — a constraint that doesn't exist inside this
-// modal tab's own dedicated body. A true Radix Switch remains rejected for
-// the same reason themeToggle.tsx's own comment already recorded: strictly
-// binary, cannot represent "System" as a third state.
-//
-// UI polish pass (post-merge correction): `mode` itself is no longer local
-// useState — confirmed directly (live Playwright reproduction) that
-// switching Settings tabs away from Appearance and back genuinely
-// unmounts/remounts this component (Radix Tabs tears down inactive
-// content), which was silently resetting a Light/Dark choice back to
-// System on every round trip. Now sourced from state/themeState.ts
-// (module-level, survives the remount) via hooks/useThemeMode.ts — see
-// that module's own comment for the full finding. Re-exports ThemeMode
-// from state/themeState.ts unchanged so no other import site needs to
-// change.
-//
-// 024-settings-modal-visual-redesign (US4): rebuilt on this app's shared
-// Tabs/TabsList/TabsTrigger primitive (already used by settingsModal.tsx's
-// own outer navigation) instead of a plain <Button> row — a real
-// keyboard-navigable, role="tab" control instead of three independently-
-// clickable buttons. `mode`/`setMode()` wiring and the mount/matchMedia
-// effect below are UNCHANGED — only the rendered control shape changes
-// (research.md §5, data-model.md). No `orientation` prop is passed, so
-// this renders horizontally (Tabs' own default orientation).
-//
-// This nests a SECOND role="tablist" region inside settingsModal.tsx's own
-// outer one while the modal is open on this tab. Distinguished via
-// aria-label — this TabsList is "Theme" (the exact label the previous
-// plain `role="group"` wrapper already used, so the accessible name a
-// screen-reader user hears does not change across this rebuild),
-// settingsModal.tsx's own outer TabsList is "Settings sections"
-// (research.md §3, FR-013). Confirmed via direct grep of this project's
-// own test suite that no existing query relies on an unscoped, name-less
-// tablist/tab lookup against this modal — every existing by-name query
-// ("Appearance"/"Scenarios"/"Basemap"/"Documentation" vs. "System"/
-// "Light"/"Dark") already resolves unambiguously since the two sets of
-// names are disjoint; only the assertions that queried System/Light/Dark
-// by role="button"+aria-pressed needed migrating to role="tab"+
-// aria-selected (settingsModal.spec.ts, this feature's own test changes).
-export type { ThemeMode } from '@/state/themeState'
-
-const MODE_ICON: Record<ThemeMode, typeof Monitor> = {
-  system: Monitor,
-  light: Sun,
-  dark: Moon,
+function applyFont(role: FontRole, name: string | undefined) {
+  if (name === SYSTEM_FONT) {
+    clearGoogleFont(role)
+    document.documentElement.style.setProperty(`--font-${role}`, SYSTEM_STACK)
+  } else if (name) {
+    ensureGoogleFontLoaded(role, name)
+  } else {
+    clearGoogleFont(role)
+  }
 }
 
-const MODE_LABEL: Record<ThemeMode, string> = {
-  system: 'System',
-  light: 'Light',
-  dark: 'Dark',
-}
-
-const MODES: ThemeMode[] = ['system', 'light', 'dark']
-
-// 030-sidebar-navigation, FR-006: the "Top Bar Behavior" control (Hide on
-// Scroll / Always Visible) that used to live below the Theme control on
-// this same tab is REMOVED entirely, not adapted — its own underlying
-// nav-bar visibility mode (hooks/useNavBarVisibilityMode.ts,
-// state/navBarVisibilityState.ts) no longer exists at all: a Sidebar-based
-// layout has no position: fixed header to hide/show in the first place
-// (research.md §5).
 export function AppearanceTab() {
   const mode = useThemeMode()
-  // 061-appearance-controls
   const colorblindSafe = useColorblindSafePreference()
   const textSize = useTextSize()
   const fontPreference = useFontPreference()
 
-  // US2: applies the current text-size scale live — every Tailwind
-  // rem-based interface element resizes proportionally through the
-  // ordinary CSS cascade, with no per-component change (research.md §10).
+  // Applies the text-size scale: every rem-based element resizes through the ordinary cascade.
   useEffect(() => {
     document.documentElement.style.fontSize = `${textSize}%`
   }, [textSize])
 
-  // US3: the three colors are applied by services/theme.ts (startAccentSync, started in main.tsx), which subscribes to
-  // state/interfaceColorState.ts and the `dark` class itself — nothing to do here.
+  // The accent colours are applied by services/theme.ts (startAccentSync), and the `dark` class by startThemeSync
+  // (which follows prefers-color-scheme live while the mode is System); nothing to do here for either.
 
-  // US4: reacts to a font-preference change by loading (or clearing) that
-  // role's Google Font — the one place state changes turn into the actual
-  // <link>/--font-* DOM side effect (panels/googleFontLoader.ts), mirroring
-  // the interface-color effect above's own state-drives-DOM shape.
+  // Turns a font-preference change into the real <link>/--font-* DOM side effect.
   useEffect(() => {
-    for (const role of ['body', 'heading', 'mono'] as const) {
-      const name = fontPreference[role]
-      if (name) {
-        ensureGoogleFontLoaded(role, name)
-      } else {
-        clearGoogleFont(role)
-      }
-    }
+    for (const role of ['body', 'heading', 'mono'] as const) applyFont(role, fontPreference[role])
   }, [fontPreference])
 
-  // The `dark` class is applied by services/theme.ts (startThemeSync, started in main.tsx), so the nav's light/dark
-  // toggle works with this modal closed. This tab only edits the mode.
+  // Loads the two Google-hosted card fonts so their "Aa" previews render in them. Offline it just falls back.
+  useEffect(() => {
+    const links = PREVIEW_FONTS.map((name) => {
+      const link = document.createElement('link')
+      link.rel = 'stylesheet'
+      link.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(name).replace(/%20/g, '+')}:wght@600&display=swap`
+      document.head.appendChild(link)
+      return link
+    })
+    return () => links.forEach((l) => l.remove())
+  }, [])
+
+  const selectedFont = fontPreference.body ?? DEFAULT_FONT
+
+  function chooseFont(name: string) {
+    if (name === DEFAULT_FONT) {
+      clearFont('body')
+      clearFont('heading')
+    } else {
+      setFont('body', name)
+      setFont('heading', name)
+    }
+  }
+
+  function resetAppearance() {
+    setColorblindSafe(false)
+    for (const { role } of ROLES) clearInterfaceColorOverride(role)
+    for (const role of ['body', 'heading', 'mono'] as const) clearFont(role)
+    setScale(DEFAULT_SCALE)
+  }
 
   return (
-    <div className="space-y-6">
-      {/* A visible text label above the control itself — previously this
-          control's only name was its aria-label ("Theme"), fine for
-          assistive tech but leaving nothing on screen distinguishing it
-          once a second control (below) exists on the same tab. Added here
-          rather than left implicit, matching this feature's own explicit
-          "clear label distinguishing it from the theme control" ask for
-          the new control below — parity between the two, not one labeled
-          and one not. */}
-      <div className="space-y-2">
-        <div className="text-sm font-medium text-foreground">Theme</div>
-        <Tabs value={mode} onValueChange={(value) => setMode(value as ThemeMode)}>
-          <TabsList aria-label="Theme">
-            {MODES.map((m) => {
-              const Icon = MODE_ICON[m]
-              return (
-                <TabsTrigger key={m} value={m} className="gap-1.5">
-                  <Icon className="h-4 w-4" />
-                  {MODE_LABEL[m]}
-                </TabsTrigger>
-              )
-            })}
-          </TabsList>
-        </Tabs>
-      </div>
+    <div>
+      <TabHeader title="Appearance">
+        These choices apply only to you, for this session. A deployment can set its own defaults for the title, logo,
+        colours and palette.
+      </TabHeader>
 
-      {/* 061-appearance-controls (US1): a single, dashboard-wide switch —
-          changes only the DEFAULT palette both the category-color
-          resolver (panels/chartColor.ts) and the scenario-color chain
-          (panels/scenarioDisplay.ts) fall back to when nothing more
-          specific (an author's own color_scheme:, a scenario's own
-          colorOverride/deployer scenarioPalette) is already configured —
-          see contracts/category-color-resolution.md. */}
-      <div className="flex items-center justify-between gap-4">
-        <div className="space-y-1">
-          {/* A plain <span>, not a <label htmlFor>, deliberately — a
-              `htmlFor`-associated label makes ITS OWN text a second click
-              target that toggles the control natively, widening the
-              "toggleable" surface beyond the Switch itself. Matches
-              scenarioRow.tsx's own established convention for this exact
-              control: the Switch carries its own aria-label directly,
-              rather than relying on a label-click association. */}
-          <span className="text-sm font-medium text-foreground">Prefer colorblind-safe palettes</span>
-          <p className="text-xs text-muted-foreground">
-            Uses colorblind-safe colors as the default for charts and scenarios that don't already
-            have a specific color configured.
-          </p>
-        </div>
+      <SettingsRow title="Theme" help="Follow your system, or pick one.">
+        <Segmented
+          label="Theme"
+          size="lg"
+          options={THEME_OPTIONS}
+          value={mode}
+          onChange={(id) => setMode(id as ThemeMode)}
+        />
+      </SettingsRow>
+
+      <SettingsRow
+        title={<span>Colour-blind-safe scenario palette</span>}
+        help="Swaps the scenario colours for a set that stays distinct for common colour-vision differences."
+      >
+        {/* The title is a plain span (not a label for the switch), so clicking the text never toggles it. */}
         <Switch
-          aria-label="Prefer colorblind-safe palettes"
+          size="lg"
+          aria-label="Colour-blind-safe scenario palette"
           checked={colorblindSafe}
           onCheckedChange={setColorblindSafe}
         />
-      </div>
+      </SettingsRow>
 
-      {/* 061-appearance-controls (US2): a continuous slider scaling
-          document.documentElement's root font size — every Tailwind
-          rem-based interface element scales with it automatically
-          (research.md §10). Deliberately does not affect text drawn
-          directly inside a chart's own SVG/D3 render call (FR-012). */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <label htmlFor="text-size-slider" className="text-sm font-medium text-foreground">
-            Text size
-          </label>
-          <span className="text-xs text-muted-foreground">{textSize}%</span>
+      <GroupHeading>Interface colours</GroupHeading>
+      <SettingsRow
+        align="start"
+        title="Primary, secondary, tertiary"
+        help="Drive highlights, selected states and the colours for transit, walking and biking."
+      >
+        <div>
+          {ROLES.map(({ role, label }) => (
+            <InterfaceColorControl key={role} role={role} label={label} />
+          ))}
+          <div className="mt-2 flex max-w-[340px] items-center gap-1.5">
+            {PRESETS.map((p) => (
+              <button
+                key={p.name}
+                type="button"
+                title={p.name}
+                aria-label={`Use the ${p.name} colours`}
+                onClick={() => ROLES.forEach(({ role }, i) => setInterfaceColorOverride(role, p.colors[i]))}
+                className="flex overflow-hidden rounded-[9px] border border-[var(--glass-line)] p-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-text)]"
+              >
+                {p.colors.map((c) => (
+                  <i key={c} className="h-[22px] w-3" style={{ background: c }} />
+                ))}
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={() => ROLES.forEach(({ role }) => clearInterfaceColorOverride(role))}
+              className="ml-auto rounded text-[var(--brand-text)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-text)]"
+            >
+              Reset
+            </button>
+          </div>
         </div>
-        <Slider
-          id="text-size-slider"
-          aria-label="Text size"
-          min={80}
-          max={150}
-          step={5}
-          value={[textSize]}
-          onValueChange={([next]) => setScale(next)}
-        />
-      </div>
+      </SettingsRow>
 
-      {/* 061-appearance-controls (US3): Primary/Secondary/Accent —
-          two-tier (deployer default, applied once at boot in main.tsx,
-          plus a viewer session override on top) color resolution, no
-          separate "brand" entity (spec.md's own Assumptions). Three
-          columns, one row — each role is a compact, independent unit, not
-          a full-width row of its own. */}
-      <div className="space-y-2">
-        <div className="text-sm font-medium text-foreground">Colors</div>
-        <div className="grid grid-cols-3 gap-4">
-          <InterfaceColorControl role="primary" label="Primary" />
-          <InterfaceColorControl role="secondary" label="Secondary" />
-          <InterfaceColorControl role="accent" label="Accent" />
-        </div>
+      <GroupHeading>Type</GroupHeading>
+      <div role="radiogroup" aria-label="Font" className="grid grid-cols-4 gap-2.5 max-[900px]:grid-cols-2">
+        {FONT_CARDS.map((f) => {
+          const checked = selectedFont === f.name
+          return (
+            <button
+              key={f.name}
+              type="button"
+              role="radio"
+              aria-checked={checked}
+              onClick={() => chooseFont(f.name)}
+              className={cn(
+                'rounded-[14px] border p-3 text-left transition-colors motion-reduce:transition-none',
+                'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-text)]',
+                checked
+                  ? 'border-[var(--brand-text)] bg-[color-mix(in_srgb,var(--brand)_10%,transparent)]'
+                  : 'border-[var(--line)] hover:border-[var(--mute)]',
+              )}
+            >
+              <b className="block text-[22px] font-semibold" style={{ fontFamily: f.family }}>
+                Aa
+              </b>
+              <small className="text-[var(--mute)]">{f.name}</small>
+            </button>
+          )
+        })}
       </div>
-
-      {/* 061-appearance-controls (US4): body/heading/monospace font
-          pickers — a free-text-capable combo box (native <input
-          list="...">) seeded with a small bundled shortlist, since a
-          viewer choosing "any Google Font" needs no enumerated catalog
-          fetch to do so (research.md §9). Defaults to this dashboard's
-          existing self-hosted Schibsted Grotesk and DM Mono typefaces (empty input, no
-          selection) — picking a name is fully optional. Three columns,
-          one row, matching the Colors section's own layout above. */}
-      <div className="space-y-2">
-        <div className="text-sm font-medium text-foreground">Fonts</div>
-        <div className="grid grid-cols-3 gap-4">
+      {/* Any Google Font by name, per role: kept from the earlier design for deployments that want a specific face. */}
+      <details className="mt-3 text-[var(--mute)]">
+        <summary className="w-fit cursor-pointer rounded text-[12.5px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-text)]">
+          Custom fonts
+        </summary>
+        <div className="mt-3 grid grid-cols-3 gap-4 max-[900px]:grid-cols-1">
           {(['body', 'heading', 'mono'] as const).map((role) => (
             <div key={role} className="flex flex-col gap-1.5">
-              <label htmlFor={`font-picker-${role}`} className="text-xs text-muted-foreground">
+              <label htmlFor={`font-picker-${role}`} className="text-xs">
                 {FONT_ROLE_LABEL[role]}
               </label>
               <div className="flex items-center gap-1">
@@ -309,6 +270,23 @@ export function AppearanceTab() {
             </div>
           ))}
         </div>
+      </details>
+
+      <div className="mt-3">
+        <SettingsRow title="Text size" help={`${textSize}%`}>
+          <Slider
+            aria-label="Text size"
+            className="w-[220px]"
+            min={MIN_SCALE}
+            max={MAX_SCALE}
+            step={5}
+            value={[textSize]}
+            onValueChange={([next]) => setScale(next)}
+          />
+        </SettingsRow>
+        <SettingsRow title="Reset appearance" help="Return to the deployment defaults.">
+          <PillButton onClick={resetAppearance}>Reset</PillButton>
+        </SettingsRow>
       </div>
     </div>
   )

@@ -21,63 +21,43 @@ import {
 } from '@/state/interfaceColorState'
 import type { InterfaceColorRole } from '@/panels/interfaceColor'
 
-// 061-appearance-controls — mirrors layout/settings/scenarioColorControl.tsx
-// exactly (research.md §6): a small swatch trigger opening a Popover
-// hosting the SAME adapted ColorPicker, writing a hex string on change,
-// showing a conditional Reset button. components/ui/color-picker.tsx
-// itself needs zero changes — it is already role-agnostic.
+// 061-appearance-controls, restyled for the Corridor Pro redesign (project-docs/redesign/prototype `.te-row`): one row per
+// role, label left, a 34x28 swatch that opens the popover picker, and the hex readout. The picker itself
+// (components/ui/color-picker.tsx) is unchanged.
+
+/** The stylesheet custom property that holds each role's current (adapted) colour when nothing is configured. */
+const FALLBACK_VAR: Record<InterfaceColorRole, string> = {
+  primary: '--primary',
+  secondary: '--c-2',
+  accent: '--c-3',
+}
+
+function toHex(value: string): string {
+  try {
+    return Color(value).hex().toLowerCase()
+  } catch {
+    return value
+  }
+}
+
 export function InterfaceColorControl({ role, label }: { role: InterfaceColorRole; label: string }) {
-  // useInterfaceColors() already subscribes to state/interfaceColorState.ts
-  // — reading getInterfaceColorOverride() directly here stays fresh
-  // because this component re-renders on every override change via that
-  // same subscription, without needing a second, separate one.
+  // Re-renders on any override change (and, via the colour-scheme hook, on a real theme flip, which changes the
+  // stylesheet fallback read below with no React state involved).
   const colors = useInterfaceColors()
-  // A real, confirmed bug fix: this swatch's own fallback read below
-  // (getComputedStyle) only happens IN RENDER, with no subscription of
-  // its own to theme changes — it previously only got fresh values as an
-  // incidental side effect of some UNRELATED re-render (e.g. AppearanceTab
-  // re-rendering because the Theme mode tab was clicked). That meant a
-  // genuine, live theme change with NO accompanying mode-state change —
-  // the exact case of `mode === 'system'` reacting to a REAL OS-level
-  // prefers-color-scheme flip via appearanceTab.tsx's own matchMedia
-  // listener, which mutates `.dark` directly on document.documentElement
-  // with no React state involved at all — left this swatch showing a
-  // stale color until the viewer happened to click something else that
-  // forced a re-render (e.g. switching to "Dark" explicitly), which then
-  // read the now-current value and made it LOOK like clicking the tab is
-  // what changed the color, when it was actually just correcting a stale
-  // display. useColorScheme() (already used for the identical reason in
-  // hooks/useScenarioDisplay.ts, 036-scenario-color-picker's own
-  // research.md §4 finding) observes document.documentElement's `.dark`
-  // class directly via a MutationObserver, independent of any mode/React
-  // state — calling it here, even though its own return value is unused,
-  // subscribes this component to every real theme change so the fallback
-  // read below is always current, not just usually current.
   useColorScheme()
   const hasOverride = getInterfaceColorOverride(role) !== undefined
-  // Falls back to tokens.css's own real, current value for this role when
-  // neither an override nor a deployer default is configured — read at
-  // render time via getComputedStyle, the same resolution
-  // hooks/useScenarioDisplay.ts's resolveEffectiveDefault() already uses
-  // for its own var()-reference case.
   const effectiveColor =
-    colors[role].color ??
-    getComputedStyle(document.documentElement).getPropertyValue(`--${role}`).trim() ??
-    '#000000'
+    colors[role].color ?? (getComputedStyle(document.documentElement).getPropertyValue(FALLBACK_VAR[role]).trim() || '#000000')
 
   return (
-    // Column shape (label above, swatch below) — three of these sit side
-    // by side in a 1-row/3-column grid (appearanceTab.tsx), matching the
-    // font pickers' own column convention rather than each role getting
-    // its own full-width row.
-    <div className="flex flex-col gap-1.5">
-      <label className="text-xs text-muted-foreground">{label}</label>
+    <div className="grid max-w-[340px] grid-cols-[1fr_34px_76px] items-center gap-2.5 py-[5px]">
+      <span>{label}</span>
       <Popover>
         <PopoverTrigger asChild>
           <button
             type="button"
             data-testid={`interface-color-swatch-${role}`}
-            className="h-8 w-full cursor-pointer rounded border border-input"
+            className="h-7 w-[34px] cursor-pointer rounded-[9px] border border-[var(--glass-line)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-text)]"
             style={{ backgroundColor: effectiveColor }}
             aria-label={`Color for ${label}`}
           />
@@ -114,6 +94,9 @@ export function InterfaceColorControl({ role, label }: { role: InterfaceColorRol
           )}
         </PopoverContent>
       </Popover>
+      <code className="font-mono text-xs text-[var(--mute)]" data-testid={`interface-color-hex-${role}`}>
+        {toHex(effectiveColor)}
+      </code>
     </div>
   )
 }

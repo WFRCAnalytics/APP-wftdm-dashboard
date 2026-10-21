@@ -477,12 +477,13 @@ test.describe('redesign P2 — page header and mobile navigation', () => {
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
   })
 
-  test('the nav bottom group holds Settings, Documentation and a light/dark toggle that works with Settings closed', async ({ page }) => {
+  test('the nav bottom group holds Settings and a light/dark toggle that works with Settings closed', async ({ page }) => {
     await page.goto('/')
     await page.waitForFunction(() => window.__wftdm !== undefined, null, { timeout: 30_000 })
     const nav = page.locator('[data-sidebar="sidebar"]')
     await expect(nav.getByRole('button', { name: 'Settings' })).toBeVisible()
-    await expect(nav.getByRole('button', { name: 'Documentation' })).toBeVisible()
+    // 063 redesign (P10): Documentation moved into the Settings modal as its fourth tab.
+    await expect(nav.getByRole('button', { name: 'Documentation' })).toHaveCount(0)
 
     const before = await page.evaluate(() => document.documentElement.classList.contains('dark'))
     await nav.getByRole('button', { name: /switch to (dark|light) mode/i }).click()

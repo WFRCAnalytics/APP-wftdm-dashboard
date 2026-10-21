@@ -2,8 +2,8 @@
 // module-level mutable value + subscribe()/notify(), no persistence
 // across a page reload (constitution Principle VI). A fresh module load
 // always starts at the default, 100 (percent).
-export const MIN_SCALE = 80
-export const MAX_SCALE = 150
+export const MIN_SCALE = 85
+export const MAX_SCALE = 125
 export const DEFAULT_SCALE = 100
 
 let scale = DEFAULT_SCALE

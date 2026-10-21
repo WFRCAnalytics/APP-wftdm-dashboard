@@ -50,7 +50,7 @@ test.describe('User Story 1 - Colorblind-safe preference', () => {
       .getAttribute('fill')
 
     await openAppearanceTab(page)
-    const toggle = page.getByRole('switch', { name: 'Prefer colorblind-safe palettes' })
+    const toggle = page.getByRole('switch', { name: 'Colour-blind-safe scenario palette' })
     await expect(toggle).toHaveAttribute('aria-checked', 'false')
     await toggle.click()
     await expect(toggle).toHaveAttribute('aria-checked', 'true')
@@ -74,7 +74,7 @@ test.describe('User Story 1 - Colorblind-safe preference', () => {
     // Reload — the preference is session-only, never persisted.
     await boot(page)
     await openAppearanceTab(page)
-    await expect(page.getByRole('switch', { name: 'Prefer colorblind-safe palettes' })).toHaveAttribute(
+    await expect(page.getByRole('switch', { name: 'Colour-blind-safe scenario palette' })).toHaveAttribute(
       'aria-checked',
       'false',
     )
@@ -83,13 +83,13 @@ test.describe('User Story 1 - Colorblind-safe preference', () => {
   test('only the Switch itself toggles it — clicking the label text does nothing', async ({ page }) => {
     await boot(page)
     await openAppearanceTab(page)
-    const toggle = page.getByRole('switch', { name: 'Prefer colorblind-safe palettes' })
+    const toggle = page.getByRole('switch', { name: 'Colour-blind-safe scenario palette' })
     await expect(toggle).toHaveAttribute('aria-checked', 'false')
 
     // Clicking the visible title text must NOT toggle it — it's a plain
     // <span>, not a <label htmlFor>, specifically so it carries no native
     // click-to-toggle association.
-    await page.getByText('Prefer colorblind-safe palettes', { exact: true }).click()
+    await page.getByText('Colour-blind-safe scenario palette', { exact: true }).click()
     await expect(toggle).toHaveAttribute('aria-checked', 'false')
 
     // The Switch itself still works.
@@ -104,7 +104,7 @@ test.describe('User Story 1 - Colorblind-safe preference', () => {
     await expect(card).toBeVisible()
 
     await openAppearanceTab(page)
-    await page.getByRole('switch', { name: 'Prefer colorblind-safe palettes' }).click()
+    await page.getByRole('switch', { name: 'Colour-blind-safe scenario palette' }).click()
     await page.keyboard.press('Escape')
 
     const firstVertexFill = await card.locator('.radar-chart circle[data-series]').first().getAttribute('fill')
@@ -123,14 +123,14 @@ test.describe('User Story 2 - Text size', () => {
 
     const slider = page.getByRole('slider', { name: 'Text size' })
     await slider.focus()
-    await page.keyboard.press('End') // jumps to max (150)
-    await expect(page.getByText('150%')).toBeVisible()
+    await page.keyboard.press('End') // jumps to max (125)
+    await expect(page.getByText('125%')).toBeVisible()
 
     const maxFontSize = await page.evaluate(() => getComputedStyle(document.documentElement).fontSize)
     expect(parseFloat(maxFontSize)).toBeGreaterThan(parseFloat(baselineFontSize))
 
-    await page.keyboard.press('Home') // jumps to min (80)
-    await expect(page.getByText('80%')).toBeVisible()
+    await page.keyboard.press('Home') // jumps to min (85)
+    await expect(page.getByText('85%')).toBeVisible()
     const minFontSize = await page.evaluate(() => getComputedStyle(document.documentElement).fontSize)
     expect(parseFloat(minFontSize)).toBeLessThan(parseFloat(baselineFontSize))
 
@@ -246,7 +246,7 @@ test.describe('User Story 3 - live OS theme reactivity (real bug fix)', () => {
   }) => {
     await boot(page)
     await openAppearanceTab(page)
-    await expect(page.getByRole('tab', { name: 'System' })).toHaveAttribute('aria-selected', 'true')
+    await expect(page.getByRole('group', { name: 'Theme' }).getByRole('button', { name: 'System' })).toHaveAttribute('aria-pressed', 'true')
 
     const swatch = page.getByTestId('interface-color-swatch-primary')
     const before = await swatch.evaluate((el) => getComputedStyle(el).backgroundColor)
@@ -270,6 +270,8 @@ test.describe('User Story 4 - Fonts', () => {
     await boot(page)
     await openAppearanceTab(page)
 
+    // The custom-font inputs sit in a disclosure under the four type cards.
+    await page.getByText('Custom fonts', { exact: true }).click()
     const bodyInput = page.locator('#font-picker-body')
     await bodyInput.fill('Merriweather')
 
@@ -292,6 +294,7 @@ test.describe('User Story 4 - Fonts', () => {
 
     await boot(page)
     await openAppearanceTab(page)
+    await page.getByText('Custom fonts', { exact: true }).click()
     await expect(page.locator('#font-picker-body')).toHaveValue('')
     await expect(page.locator('#font-picker-heading')).toHaveValue('')
   })

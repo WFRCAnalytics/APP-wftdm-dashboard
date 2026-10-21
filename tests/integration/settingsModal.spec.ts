@@ -63,14 +63,13 @@ test.describe('User Story 1 - One place to manage dashboard-wide settings', () =
     await expect(page.getByTestId('scenario-load-list')).toHaveCount(0)
   })
 
-  test('opens a modal with all three tabs (FR-003)', async ({ page }) => {
+  test('opens a modal with all four tabs (FR-003)', async ({ page }) => {
     await boot(page)
     await page.getByRole('button', { name: 'Settings' }).click()
     await expect(page.getByRole('dialog')).toBeVisible()
-    // Documentation is no longer one of this modal's tabs (post-completion
-    // correction) — it's its own standalone SidebarFooter entry now, see
-    // "User Story 5 - Documentation placeholder" below.
-    for (const name of ['Appearance', 'Scenarios', 'Basemap']) {
+    // 063 redesign (P10): Documentation is the fourth tab of this modal again, and the nav no longer has a separate
+    // Documentation button.
+    for (const name of ['Appearance', 'Scenarios', 'Basemap', 'Documentation']) {
       await expect(page.getByRole('tab', { name })).toBeVisible()
     }
   })
@@ -89,21 +88,23 @@ test.describe('User Story 1 - One place to manage dashboard-wide settings', () =
     // "Theme" tablist specifically — the dialog now also contains the
     // Settings modal's own outer "Settings sections" tablist, and both
     // expose role="tab" children.
-    const themeTabs = page.getByRole('tablist', { name: 'Theme' })
+    // 063 redesign (P10): the Theme control is the shared Segmented control, a group of toggle buttons
+    // (role=button, aria-pressed), no longer a nested tablist.
+    const themeTabs = page.getByRole('group', { name: 'Theme' })
     // All three are visible simultaneously — no dropdown/menu interaction
     // needed to reveal Light/Dark, unlike the deleted ThemeToggle.
     for (const name of ['System', 'Light', 'Dark']) {
-      await expect(themeTabs.getByRole('tab', { name })).toBeVisible()
+      await expect(themeTabs.getByRole('button', { name })).toBeVisible()
     }
 
-    await themeTabs.getByRole('tab', { name: 'Dark' }).click()
+    await themeTabs.getByRole('button', { name: 'Dark' }).click()
     await expect(page.locator('html')).toHaveClass(/dark/)
-    await expect(themeTabs.getByRole('tab', { name: 'Dark' })).toHaveAttribute('aria-selected', 'true')
+    await expect(themeTabs.getByRole('button', { name: 'Dark' })).toHaveAttribute('aria-pressed', 'true')
 
-    await themeTabs.getByRole('tab', { name: 'Light' }).click()
+    await themeTabs.getByRole('button', { name: 'Light' }).click()
     await expect(page.locator('html')).not.toHaveClass(/dark/)
-    await expect(themeTabs.getByRole('tab', { name: 'Light' })).toHaveAttribute('aria-selected', 'true')
-    await expect(themeTabs.getByRole('tab', { name: 'Dark' })).toHaveAttribute('aria-selected', 'false')
+    await expect(themeTabs.getByRole('button', { name: 'Light' })).toHaveAttribute('aria-pressed', 'true')
+    await expect(themeTabs.getByRole('button', { name: 'Dark' })).toHaveAttribute('aria-pressed', 'false')
   })
 
   // UI polish pass (post-merge correction): a REAL regression, confirmed
@@ -122,15 +123,15 @@ test.describe('User Story 1 - One place to manage dashboard-wide settings', () =
     await page.getByRole('tab', { name: 'Appearance' }).click()
     // 024-settings-modal-visual-redesign (US4): role="tab"/aria-selected,
     // migrated from role="button"/aria-pressed — see research.md §3.
-    const themeTabs = page.getByRole('tablist', { name: 'Theme' })
-    await themeTabs.getByRole('tab', { name: 'Light' }).click()
-    await expect(themeTabs.getByRole('tab', { name: 'Light' })).toHaveAttribute('aria-selected', 'true')
+    const themeTabs = page.getByRole('group', { name: 'Theme' })
+    await themeTabs.getByRole('button', { name: 'Light' }).click()
+    await expect(themeTabs.getByRole('button', { name: 'Light' })).toHaveAttribute('aria-pressed', 'true')
 
     await page.getByRole('tab', { name: 'Scenarios' }).click()
     await page.getByRole('tab', { name: 'Appearance' }).click()
 
-    await expect(themeTabs.getByRole('tab', { name: 'Light' })).toHaveAttribute('aria-selected', 'true')
-    await expect(themeTabs.getByRole('tab', { name: 'System' })).toHaveAttribute('aria-selected', 'false')
+    await expect(themeTabs.getByRole('button', { name: 'Light' })).toHaveAttribute('aria-pressed', 'true')
+    await expect(themeTabs.getByRole('button', { name: 'System' })).toHaveAttribute('aria-pressed', 'false')
     await expect(page.locator('html')).not.toHaveClass(/dark/)
   })
 
@@ -142,7 +143,7 @@ test.describe('User Story 1 - One place to manage dashboard-wide settings', () =
   // Each must resolve to exactly ONE element by its own accessible name —
   // a Playwright strict-mode violation here would mean the two are not
   // actually distinguishable.
-  test('the outer Settings navigation and the inner Theme control are two distinguishable tablist regions (FR-013)', async ({
+  test('the outer Settings navigation is one tablist, and the inner Theme control is a distinct, named group (FR-013)', async ({
     page,
   }) => {
     await boot(page)
@@ -151,11 +152,11 @@ test.describe('User Story 1 - One place to manage dashboard-wide settings', () =
 
     const dialog = page.getByRole('dialog')
     await expect(dialog.getByRole('tablist', { name: 'Settings sections' })).toHaveCount(1)
-    await expect(dialog.getByRole('tablist', { name: 'Theme' })).toHaveCount(1)
+    await expect(dialog.getByRole('group', { name: 'Theme' })).toHaveCount(1)
 
     // The outer tablist's own tabs are still reachable by name with no
     // collision against the inner "System"/"Light"/"Dark" names.
-    for (const name of ['Appearance', 'Scenarios', 'Basemap']) {
+    for (const name of ['Appearance', 'Scenarios', 'Basemap', 'Documentation']) {
       await expect(dialog.getByRole('tablist', { name: 'Settings sections' }).getByRole('tab', { name })).toHaveCount(
         1,
       )
@@ -177,16 +178,14 @@ test.describe('User Story 1 - One place to manage dashboard-wide settings', () =
       'placeholder',
       'good_scenario',
     )
-    await expect(page.getByRole('textbox', { name: 'Custom label for observed' })).toHaveAttribute(
-      'placeholder',
-      'observed',
-    )
+    // 063 redesign (P10): only independent scenarios are listed; observed data is not.
+    await expect(page.getByRole('textbox', { name: 'Custom label for observed' })).toHaveCount(0)
     // Path is plain text, unaffected. Status is no longer literal
     // "(ready)"/"(failed)" text, and since 037 item 5 there is no status
     // DOT either — the row's own left-border colour + background wash
     // (036 Part C, FR-017/FR-018) is the sole ready/failed channel.
     await expect(list).toContainText('scenarios/good_scenario/summary')
-    await expect(list).toContainText('observed/summary')
+    await expect(list).not.toContainText('observed/summary')
     const readyBorder = await page
       .getByTestId('scenario-row-good_scenario')
       .evaluate((el) => getComputedStyle(el).borderLeftColor)
@@ -260,7 +259,7 @@ test.describe('User Story 1 - One place to manage dashboard-wide settings', () =
     await page.getByRole('tab', { name: 'Appearance' }).click()
     // 024-settings-modal-visual-redesign (US4): role="tab", migrated from
     // role="button" — see research.md §3.
-    await page.getByRole('tablist', { name: 'Theme' }).getByRole('tab', { name: 'Dark' }).click()
+    await page.getByRole('group', { name: 'Theme' }).getByRole('button', { name: 'Dark' }).click()
     await page.getByRole('button', { name: /^Close$/ }).click()
     await expect(page.locator('html')).toHaveClass(/dark/)
   })
@@ -278,7 +277,7 @@ test.describe('User Story 3 - A settings modal that does not resize or rearrange
     const dialog = page.getByRole('dialog')
 
     const sizes: string[] = []
-    for (const name of ['Appearance', 'Scenarios', 'Basemap']) {
+    for (const name of ['Appearance', 'Scenarios', 'Basemap', 'Documentation']) {
       await page.getByRole('tab', { name }).click()
       const box = await dialog.boundingBox()
       sizes.push(`${box!.width}x${box!.height}`)
@@ -313,7 +312,7 @@ test.describe('User Story 3 - A settings modal that does not resize or rearrange
     const dialog = page.getByRole('dialog')
 
     const widths: number[] = []
-    for (const name of ['Appearance', 'Scenarios', 'Basemap']) {
+    for (const name of ['Appearance', 'Scenarios', 'Basemap', 'Documentation']) {
       await page.getByRole('tab', { name }).click()
       const panel = dialog.locator('[role="tabpanel"]:not([hidden])')
       const box = await panel.boundingBox()
@@ -324,16 +323,9 @@ test.describe('User Story 3 - A settings modal that does not resize or rearrange
     // tab is currently active below this shared value.
     for (const w of widths) expect(Math.abs(w - widths[0])).toBeLessThan(2)
 
-    // Every inactive tabpanel (within this modal) must be genuinely
-    // display:none, not merely visually offscreen — confirms the fix,
-    // not just its side effect.
-    const inactiveDisplays = await dialog.evaluate((dialogEl) =>
-      Array.from(dialogEl.querySelectorAll('[role="tabpanel"][hidden]')).map(
-        (el) => getComputedStyle(el).display,
-      ),
-    )
-    expect(inactiveDisplays.length).toBeGreaterThan(0)
-    for (const d of inactiveDisplays) expect(d).toBe('none')
+    // 063 redesign (P10): the modal renders only the active tab's panel (an inactive one is unmounted, not hidden), so no
+    // hidden sibling can take part in the layout: exactly one tabpanel exists in the dialog.
+    await expect(dialog.locator('[role="tabpanel"]')).toHaveCount(1)
   })
 
   test('the three tab triggers stack vertically, to the left of the active content (FR-020)', async ({ page }) => {
@@ -397,11 +389,11 @@ test.describe('User Story 3 - A settings modal that does not resize or rearrange
     await page.getByRole('tab', { name: 'Appearance' }).click()
     // 024-settings-modal-visual-redesign (US4): role="tab", migrated from
     // role="button" — see research.md §3.
-    const themeTabs = page.getByRole('tablist', { name: 'Theme' })
+    const themeTabs = page.getByRole('group', { name: 'Theme' })
     for (const name of ['System', 'Light', 'Dark']) {
-      await expect(themeTabs.getByRole('tab', { name })).toBeVisible()
+      await expect(themeTabs.getByRole('button', { name })).toBeVisible()
     }
-    await themeTabs.getByRole('tab', { name: 'Dark' }).click()
+    await themeTabs.getByRole('button', { name: 'Dark' }).click()
     await expect(page.locator('html')).toHaveClass(/dark/)
   })
 })
@@ -427,7 +419,8 @@ test.describe('User Story 1 - Sectioned basemap catalog with stage-then-Apply', 
     await page.getByRole('button', { name: 'Settings' }).click()
     await page.getByRole('tab', { name: 'Basemap' }).click()
 
-    const headings = page.getByRole('heading', { level: 3 })
+    // 063 redesign (P10): the tab title ("Basemap") is the level-3 heading; the five source groups are level 4.
+    const headings = page.getByRole('heading', { level: 4 })
     // Section order: OpenFreeMap first (most universal, and the source of
     // the app-default 'openfreemap-positron'), then CARTO, then the
     // Utah-specific UGRC compositions, then Raster Tiles last.
@@ -890,7 +883,8 @@ test.describe('User Story 3 - Reorder loaded scenarios', () => {
   // public/scenarios/index.json lists — this fixture set's own
   // index.json (tests/fixtures/scenarios) lists good_scenario then
   // broken_scenario.
-  const DEFAULT_ORDER = ['observed', 'good_scenario', 'broken_scenario']
+  // 063 redesign (P10): observed data is not listed in the Scenarios tab, so only the two independent scenarios remain.
+  const DEFAULT_ORDER = ['good_scenario', 'broken_scenario']
 
   test('moving a scenario up changes display order, boundary buttons stay correctly disabled (FR-007)', async ({
     page,
@@ -900,22 +894,19 @@ test.describe('User Story 3 - Reorder loaded scenarios', () => {
     await page.getByRole('tab', { name: 'Scenarios' }).click()
 
     await expect.poll(() => scenarioNamesInOrder(page)).toEqual(DEFAULT_ORDER)
-    await expect(page.getByRole('button', { name: 'Move observed up' })).toBeDisabled()
-    await expect(page.getByRole('button', { name: 'Move broken_scenario down' })).toBeDisabled()
-    await expect(page.getByRole('button', { name: 'Move observed down' })).toBeEnabled()
-    await expect(page.getByRole('button', { name: 'Move good_scenario up' })).toBeEnabled()
-    await expect(page.getByRole('button', { name: 'Move good_scenario down' })).toBeEnabled()
-
-    // Move the middle entry up — swaps with 'observed'.
-    await page.getByRole('button', { name: 'Move good_scenario up' }).click()
-
-    await expect
-      .poll(() => scenarioNamesInOrder(page))
-      .toEqual(['good_scenario', 'observed', 'broken_scenario'])
-    // Boundary state follows the NEW order, not the old one.
     await expect(page.getByRole('button', { name: 'Move good_scenario up' })).toBeDisabled()
-    await expect(page.getByRole('button', { name: 'Move observed down' })).toBeEnabled()
     await expect(page.getByRole('button', { name: 'Move broken_scenario down' })).toBeDisabled()
+    await expect(page.getByRole('button', { name: 'Move good_scenario down' })).toBeEnabled()
+    await expect(page.getByRole('button', { name: 'Move broken_scenario up' })).toBeEnabled()
+
+    // Move the second entry up — swaps with good_scenario.
+    await page.getByRole('button', { name: 'Move broken_scenario up' }).click()
+
+    await expect.poll(() => scenarioNamesInOrder(page)).toEqual(['broken_scenario', 'good_scenario'])
+    // Boundary state follows the NEW order, not the old one.
+    await expect(page.getByRole('button', { name: 'Move broken_scenario up' })).toBeDisabled()
+    await expect(page.getByRole('button', { name: 'Move good_scenario down' })).toBeDisabled()
+    await expect(page.getByRole('button', { name: 'Move good_scenario up' })).toBeEnabled()
   })
 
   test('reordering never changes the automatic-default baseline (FR-008)', async ({ page }) => {
@@ -926,10 +917,8 @@ test.describe('User Story 3 - Reorder loaded scenarios', () => {
 
     await page.getByRole('button', { name: 'Settings' }).click()
     await page.getByRole('tab', { name: 'Scenarios' }).click()
-    await page.getByRole('button', { name: 'Move good_scenario up' }).click()
-    await expect
-      .poll(() => scenarioNamesInOrder(page))
-      .toEqual(['good_scenario', 'observed', 'broken_scenario'])
+    await page.getByRole('button', { name: 'Move broken_scenario up' }).click()
+    await expect.poll(() => scenarioNamesInOrder(page)).toEqual(['broken_scenario', 'good_scenario'])
 
     // UNCHANGED — getBaseline() never reads display order (research.md §3).
     await expect(page.evaluate(() => window.__wftdm!.appState.getBaseline())).resolves.toBe(
@@ -1624,29 +1613,25 @@ test.describe('User Story (037-scenarios-tab-redesign)', () => {
 // Settings, opening its own small Dialog. FR-014's own "clearly labeled
 // placeholder, no broken link" requirement is unchanged; only its
 // container/entry-point moved.
-test.describe('User Story 5 - Documentation placeholder', () => {
-  test('Documentation is its own standalone control, separate from and below Settings, opening a clearly labeled placeholder with no broken link (FR-014)', async ({
+test.describe('User Story 5 - Documentation tab', () => {
+  test('Documentation is the fourth Settings tab (no separate nav button) and shows the written guide with the compare table', async ({
     page,
   }) => {
     await boot(page)
 
-    // Two distinct controls, not one nested inside the other's dialog.
-    const settingsButton = page.getByRole('button', { name: 'Settings' })
-    const documentationButton = page.getByRole('button', { name: 'Documentation' })
-    await expect(settingsButton).toBeVisible()
-    await expect(documentationButton).toBeVisible()
-    const settingsBox = await settingsButton.boundingBox()
-    const documentationBox = await documentationButton.boundingBox()
-    expect(documentationBox!.y).toBeGreaterThan(settingsBox!.y)
+    // 063 redesign (P10, spec 4.4): the nav's bottom group holds Settings and the light/dark toggle only.
+    await expect(page.getByRole('button', { name: 'Documentation' })).toHaveCount(0)
 
-    await documentationButton.click()
+    await page.getByRole('button', { name: 'Settings' }).click()
+    await page.getByRole('tab', { name: 'Documentation' }).click()
     const dialog = page.getByRole('dialog')
-    await expect(dialog).toBeVisible()
-    await expect(dialog.getByRole('heading', { name: 'Documentation' })).toBeVisible()
-    // Not the Settings modal — no Settings-only tabs leaked in alongside it.
-    await expect(dialog.getByRole('tab', { name: 'Appearance' })).toHaveCount(0)
-
-    await expect(page.getByText(/not yet published/i)).toBeVisible()
-    await expect(page.getByRole('link')).toHaveCount(0)
+    await expect(dialog.getByRole('heading', { name: 'Documentation', level: 3 })).toBeVisible()
+    await expect(dialog.getByRole('heading', { name: 'How each chart compares' })).toBeVisible()
+    await expect(dialog.getByRole('table')).toBeVisible()
+    await expect(dialog.getByRole('columnheader', { name: 'In compare mode' })).toBeVisible()
+    for (const topic of ['Focus and compare', 'Model years', 'Calibration rounds', 'Observed data', 'Reading many scenarios', 'Shortcuts', 'About the data']) {
+      await expect(dialog.getByRole('heading', { name: topic })).toBeVisible()
+    }
+    await expect(page.getByText(/not yet published/i)).toHaveCount(0)
   })
 })
