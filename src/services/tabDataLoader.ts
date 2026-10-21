@@ -69,6 +69,10 @@ export function computeTabDataRequirement(
 
   function add(scenario: string | undefined, metric: string | undefined): void {
     if (!scenario || !metric) return
+    // the proactive batch skips a run whose catalog is known to lack the metric (slim runs, Observed); a panel that
+    // really needs it still surfaces its own error when it queries
+    const catalog = appState.get(scenario)?.availableMetrics
+    if (catalog && !catalog.includes(metric)) return
     const pair = { scenario, metric }
     seen.set(pairKey(pair), pair)
   }

@@ -19,7 +19,8 @@ export function rollupUrl(family: string, file = 'calibration_by_round'): string
   const round = list().find((s) => s.kind === 'round' && (s.family ?? '') === family)
   const path = round && get(round.name)?.path
   if (!path) return undefined
-  const parent = path.replace(/\/[^/]+\/?$/, '')
+  // the run's served folder may end in /summary; the families folder sits beside the run folders
+  const parent = path.replace(/\/+$/, '').replace(/\/summary$/, '').replace(/\/[^/]+$/, '')
   return `${parent}/families/${family}/${file}.parquet`
 }
 

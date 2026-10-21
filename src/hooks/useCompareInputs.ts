@@ -2,7 +2,8 @@ import { useCallback, useMemo } from 'react'
 
 import { useScenarioDisplay } from '@/hooks/useScenarioDisplay'
 import { useResolvedView } from '@/hooks/useViewContext'
-import { runNameFor } from '@/services/runResolution'
+import { runKindOf, runNameFor } from '@/services/runResolution'
+import { get as getScenario } from '@/state/appState'
 import { resolveScenarioLabel } from '@/panels/scenarioDisplay'
 import type { CompareInputs } from '@/panels/compareStrategy'
 import { OBSERVED_LABEL } from '@/services/viewContext'
@@ -22,7 +23,11 @@ export function useCompareInputs(): { inputs: CompareInputs; referenceLabel: str
       referenceKind: view.referenceKind,
       referenceRun: view.referenceRun,
       selfBaseRun,
-      active: view.active,
+      // Observed is a reference, never a compared scenario
+      active: view.active.filter((run) => {
+        const s = getScenario(run)
+        return !s || runKindOf(s) !== 'observed'
+      }),
       label,
     }
     const referenceLabel =

@@ -68,7 +68,7 @@ export function MultiViewTile({ config: rawConfig, tileKey }: { config: MultiVie
   } else if (ctx.compare && ctx.display !== 'val' && !resolved.scenarioIndependent && resolved.strategies.length > 0) {
     badges.push(<Badge key="values" variant="neutral">Shows values</Badge>)
   }
-  if (ctx.compare && resolved.scenarioIndependent) {
+  if (ctx.compare && Boolean(resolved.view.scenario_independent ?? config.scenario_independent)) {
     badges.push(<Badge key="same" variant="neutral">Same in every scenario</Badge>)
   }
   if (isBaseYearOnly(config, resolved.view) && !ctx.isBaseYear) {
