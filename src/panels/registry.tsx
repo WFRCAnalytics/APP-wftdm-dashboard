@@ -64,5 +64,7 @@ export const registry: Record<string, ComponentType<PanelProps<any>>> = {
   pie: lazy(() => import('@/panels/PieChartPanel').then((m) => ({ default: m.PieChartPanel }))),
   radar: lazy(() => import('@/panels/RadarChartPanel').then((m) => ({ default: m.RadarChartPanel }))),
   // 063 redesign: several views of one dataset in a single tile (project-docs/redesign/06-data-and-config.md section 7).
+  // 063 redesign: the catalogue's compare-aware charts, one component dispatching to src/charts/kinds/*.
+  chart: lazy(() => import('@/panels/ChartPanel').then((m) => ({ default: m.ChartPanel }))),
   'multi-view': lazy(() => import('@/panels/MultiViewPanel').then((m) => ({ default: m.MultiViewPanel }))),
 }

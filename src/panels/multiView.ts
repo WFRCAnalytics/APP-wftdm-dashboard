@@ -21,6 +21,7 @@ const DEFAULT_STRATEGIES: Record<string, CompareStrategy[]> = {
   table: ['overlay'],
   zonemap: ['grid', 'switch'],
   flowmap: ['switch'],
+  chart: ['overlay'],
   valuebox: [],
   markdown: [],
 }

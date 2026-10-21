@@ -7,6 +7,7 @@
 import type { DashboardConfig } from '@/services/yamlLoader'
 import type { FilterId, FilterValue } from '@/state/filterState'
 import * as filterState from '@/state/filterState'
+import * as appState from '@/state/appState'
 import * as sqlExpander from '@/services/sqlExpander'
 import type { ResolvedColumn } from '@/panels/tableLogic'
 import type {
@@ -209,7 +210,16 @@ export function resolveActiveScenarios(
   globallyActive: string[],
 ): string[] {
   if (config.scenario) return [config.scenario]
-  return config.scenarios ?? globallyActive
+  if (config.scenarios) return config.scenarios
+  // A run whose metric catalog is known and lacks this panel's metric would make the whole union fail (063 redesign:
+  // deployments mix full runs with slim ones), so it is left out. Unknown catalogs and an empty result are unchanged.
+  const metric = (config as { metric?: string }).metric
+  if (!metric) return globallyActive
+  const withMetric = globallyActive.filter((name) => {
+    const catalog = appState.get(name)?.availableMetrics
+    return !catalog || catalog.includes(metric)
+  })
+  return withMetric.length > 0 ? withMetric : globallyActive
 }
 
 /**

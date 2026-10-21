@@ -7,3 +7,4 @@ pinned: false
 alternative: activitysim-transit-variant
 year: 2036
 notes: 'DEMO DATA: synthetic 2036 run, counts scaled x1.20 from the 2023 run. AM/PM WLK_LOC_WLK_TOTIVT x0.80, WLK_LOC_WLK_IWAIT x0.50'
+hidden: true

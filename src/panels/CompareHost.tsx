@@ -1,4 +1,4 @@
-import { Suspense, useMemo } from 'react'
+import { Suspense, useEffect, useMemo, useRef } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 import { useCompareInputs } from '@/hooks/useCompareInputs'
@@ -13,6 +13,7 @@ import { registry } from '@/panels/registry'
 import { planCompare, type Cell } from '@/panels/compareStrategy'
 import { resolveScenarioColor } from '@/panels/scenarioDisplay'
 import { Layers } from 'lucide-react'
+import { syncGrid } from '@/panels/gridSync'
 
 // Renders one view of a tile according to its compare strategy
 // (project-docs/redesign/03-state-and-compare.md section 4.3). It hands the real panel component a plain config
@@ -45,11 +46,20 @@ export function CompareHost({ panel, strategy, tileKey, title }: CompareHostProp
   const { inputs } = useCompareInputs()
   const display = useScenarioDisplay()
   const [tile, setTile] = useTileState(tileKey)
+  const gridRef = useRef<HTMLDivElement>(null)
 
   const plan = useMemo(
     () => planCompare(panel, strategy, inputs, { scenario: tile.scenario, page: tile.page }),
     [panel, strategy, inputs, tile.scenario, tile.page],
   )
+
+  const cellKey = plan.kind === 'cells' ? plan.cells.map((c) => c.run).join('|') : ''
+  useEffect(() => {
+    const grid = gridRef.current
+    if (!grid) return
+    return syncGrid(grid, (run) => inputs.label(run))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cellKey])
 
   if (plan.kind === 'empty') {
     return <PanelEmptyState icon={Layers} message={plan.message} />
@@ -70,13 +80,16 @@ export function CompareHost({ panel, strategy, tileKey, title }: CompareHostProp
   return (
     <div className="flex flex-col gap-2" data-testid="compare-cells">
       <div
-        className="grid gap-[10px]"
+        ref={gridRef}
+        className="wf-multi grid gap-[10px]"
         style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
       >
         {plan.cells.map((cell: Cell) => (
           <div
             key={cell.run}
             data-testid={`compare-cell-${cell.run}`}
+            data-s={cell.run}
+            data-c={resolveScenarioColor(cell.run, display) ?? 'var(--mute)'}
             className="min-w-0 rounded-[14px] border border-[var(--glass-line)] p-2"
           >
             <div className="mb-1 flex items-center gap-2 font-body text-[12.5px] text-[var(--ink)]" style={{ height: CAPTION_HEIGHT - 4 }}>

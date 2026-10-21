@@ -529,7 +529,29 @@ export interface MultiViewPanelConfig extends PanelConfigBase {
   family?: string
 }
 
+/**
+ * 063 redesign (project-docs/redesign/04-chart-catalogue.md): one of the catalogue's compare-aware charts. `kind` picks
+ * the drawing module in src/charts/kinds; everything else is that kind's own options. Reads the scenario run
+ * tables named by `tables` (default `[metric]`) for every compared run, the reference and the focus.
+ */
+export interface ChartPanelConfig extends PanelConfigBase {
+  type: 'chart'
+  kind: string
+  metric?: string
+  tables?: string[]
+  scenario?: string
+  scenarios?: string[]
+  /** What the series are (Scenario, Mode, Purpose, Income, ...): set from a multi-view `$group.group`. */
+  group?: string
+  /** Which headline metric (rank, years): set from a multi-view `$group.metric`. */
+  metric_id?: string
+  /** Kind-specific options. */
+  options?: Record<string, unknown>
+  [key: string]: unknown
+}
+
 export type PanelConfig =
+  | ChartPanelConfig
   | MultiViewPanelConfig
   | ValueBoxPanelConfig
   | TablePanelConfig

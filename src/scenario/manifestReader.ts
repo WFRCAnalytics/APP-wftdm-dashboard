@@ -71,7 +71,12 @@ export function manifestFromObject(obj: Record<string, unknown>): ParsedManifest
     runDate: asDateString(obj.run_date),
     color: typeof obj.color === 'string' ? obj.color : undefined,
     notes: typeof obj.notes === 'string' ? obj.notes : undefined,
-    kind: obj.kind === 'scenario' || obj.kind === 'round' || obj.kind === 'observed' ? obj.kind : undefined,
+    kind:
+      obj.hidden === true
+        ? 'hidden'
+        : obj.kind === 'scenario' || obj.kind === 'round' || obj.kind === 'observed'
+          ? obj.kind
+          : undefined,
     alternative: typeof obj.alternative === 'string' && obj.alternative ? obj.alternative : undefined,
     year: typeof obj.year === 'number' && Number.isInteger(obj.year) ? obj.year : undefined,
     tag: typeof obj.tag === 'string' ? obj.tag : undefined,

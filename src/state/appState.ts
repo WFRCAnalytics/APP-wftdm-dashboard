@@ -16,7 +16,9 @@
 export type ScenarioSource = 'url' | 'handle'
 export type ScenarioStatus = 'registering' | 'ready' | 'failed'
 /** project-docs/redesign/06-data-and-config.md §1. `observed` runs are legacy pinned scenarios until P11. */
-export type ScenarioKind = 'scenario' | 'round' | 'observed'
+/** `hidden` (manifest `hidden: true`): a run that stays loadable and pinnable by a panel but is never offered in the
+ * picker, the Scenarios tab or the compare set (the legacy ActivitySim example runs the Test tab pins). */
+export type ScenarioKind = 'scenario' | 'round' | 'observed' | 'hidden'
 
 /** 063 redesign: optional manifest identity (alternative, model year, tag, calibration family). A run without
  * `alternative`/`year` is a single-year run and counts for every year. */

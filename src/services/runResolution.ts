@@ -38,6 +38,7 @@ function baselineAlternative(): string | undefined {
  * run belongs to every year. */
 export function isRunInYear(s: appState.Scenario, year: number, baseYear: number): boolean {
   const kind = runKindOf(s)
+  if (kind === 'hidden') return false
   if (year !== baseYear && (kind === 'observed' || kind === 'round')) return false
   return s.year === undefined || s.year === year
 }
