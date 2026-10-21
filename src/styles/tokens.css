@@ -183,6 +183,21 @@ body::before {
   }
 }
 
+/* The control bar re-flows between two rows and one when the page header turns compact on scroll; layout can't be tweened,
+   so it settles in instead (distinct names so each state change restarts the animation). */
+@keyframes control-bar-expand {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+}
+@keyframes control-bar-collapse {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+}
+
 .dark {
   /* shadcn semantic roles — dark */
   --background: #090c11;

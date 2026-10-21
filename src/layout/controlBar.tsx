@@ -107,43 +107,50 @@ export function ControlBar() {
     ...rounds.map((s) => ({ value: s.id, label: labelOf(s.id), group: 'Calibration rounds' })),
   ]
 
+  const compareOn = showCompare && compareState.compare
+
+  // Two fixed rows so the bar never wraps arbitrarily: what scopes the page (Year, Focus, Compare), then, with Compare on,
+  // what is being compared (scenarios, Reference, Show). Each row only wraps internally on a narrow screen.
   return (
     <div
-      className="glass flex max-w-full flex-wrap items-center gap-2 rounded-[22px] px-2 py-[7px] min-[1300px]:rounded-full"
+      className="glass flex max-w-full origin-top-right flex-col [animation:control-bar-expand_260ms_cubic-bezier(0.2,0.8,0.2,1)] group-data-[compact=true]/header:[animation:control-bar-collapse_260ms_cubic-bezier(0.2,0.8,0.2,1)] gap-[7px] rounded-[26px] px-2 py-[7px] group-data-[compact=true]/header:flex-row group-data-[compact=true]/header:flex-wrap group-data-[compact=true]/header:items-center group-data-[compact=true]/header:gap-2"
       data-testid="control-bar"
     >
-      {showYear && (
-        <PillSelect label="Year" value={String(view.year)} options={yearOptions} onChange={(v) => setYear(Number(v))} data-testid="control-year" wide />
-      )}
-      {showFocus && <PillSelect label="Focus" value={view.focus} options={focusOptions} onChange={setFocus} data-testid="control-focus" />}
-      {showCompare && (
-        <>
-          {(showYear || showFocus) && <span aria-hidden="true" className="h-[26px] w-px flex-none bg-[var(--glass-line)]" />}
-          <CompareToggle on={compareState.compare} onChange={setCompare} />
-          {compareState.compare && (
-            <>
-              <ScenarioPicker />
-              <PillSelect
-                label="Reference"
-                value={refValue}
-                options={refOptions}
-                onChange={(v) => setReference(decodeReference(v))}
-                data-testid="control-reference"
-              />
-              <Segmented
-                size="lg"
-                label="Show"
-                value={compareState.display}
-                options={[
-                  { id: 'val', label: 'Values' },
-                  { id: 'abs', label: 'Change' },
-                  { id: 'pct', label: '% change' },
-                ]}
-                onChange={(v) => setDisplay(v as DisplayMode)}
-              />
-            </>
-          )}
-        </>
+      <div className="flex flex-wrap items-center gap-2 group-data-[compact=true]/header:contents">
+        {showYear && (
+          <PillSelect label="Year" value={String(view.year)} options={yearOptions} onChange={(v) => setYear(Number(v))} data-testid="control-year" wide />
+        )}
+        {showFocus && <PillSelect label="Focus" value={view.focus} options={focusOptions} onChange={setFocus} data-testid="control-focus" />}
+        {showCompare && (
+          <>
+            {(showYear || showFocus) && <span aria-hidden="true" className="h-[26px] w-px flex-none bg-[var(--glass-line)]" />}
+            <CompareToggle on={compareState.compare} onChange={setCompare} />
+          </>
+        )}
+      </div>
+      {compareOn && (
+        <div className="flex flex-wrap items-center gap-2 border-t border-[var(--glass-line)] pt-[7px] group-data-[compact=true]/header:contents">
+          <span aria-hidden="true" className="hidden h-[26px] w-px flex-none bg-[var(--glass-line)] group-data-[compact=true]/header:block" />
+          <ScenarioPicker />
+          <PillSelect
+            label="Reference"
+            value={refValue}
+            options={refOptions}
+            onChange={(v) => setReference(decodeReference(v))}
+            data-testid="control-reference"
+          />
+          <Segmented
+            size="lg"
+            label="Show"
+            value={compareState.display}
+            options={[
+              { id: 'val', label: 'Values' },
+              { id: 'abs', label: 'Change' },
+              { id: 'pct', label: '% change' },
+            ]}
+            onChange={(v) => setDisplay(v as DisplayMode)}
+          />
+        </div>
       )}
     </div>
   )

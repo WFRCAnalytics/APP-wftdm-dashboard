@@ -1,13 +1,13 @@
-import { useState, type MouseEvent } from 'react'
-import { Moon, Sun } from 'lucide-react'
+import { useState, type MouseEvent, type ReactNode } from 'react'
+import { Monitor, Moon, Sun } from 'lucide-react'
 
 import { DashboardBrand } from '@/layout/dashboardBrand'
 import { NavButton } from '@/layout/navButton'
 import { SettingsModal } from '@/layout/settingsModal'
 import { resolveSections } from '@/layout/dashboardLayout'
 import { iconComponentFor } from '@/lib/iconComponentFor'
-import { useColorScheme } from '@/hooks/useColorScheme'
-import { setMode } from '@/state/themeState'
+import { useThemeMode } from '@/hooks/useThemeMode'
+import { setMode, type ThemeMode } from '@/state/themeState'
 import { cn } from '@/lib/utils'
 import type { DashboardTabConfig } from '@/layout/types'
 import type { DashboardBranding } from '@/services/yamlLoader'
@@ -27,6 +27,16 @@ export interface FloatingNavProps {
   onClose?: () => void
 }
 
+// The theme button cycles System -> Light -> Dark and always shows the mode that is set (the Settings modal offers the
+// same three). A System pick follows the OS live, so the icon is the mode, not the scheme currently in effect.
+const THEME_LABEL: Record<ThemeMode, string> = { system: 'System', light: 'Light', dark: 'Dark' }
+const NEXT_THEME: Record<ThemeMode, ThemeMode> = { system: 'light', light: 'dark', dark: 'system' }
+const THEME_ICON: Record<ThemeMode, ReactNode> = {
+  system: <Monitor className="h-5 w-5" aria-hidden="true" />,
+  light: <Sun className="h-5 w-5" aria-hidden="true" />,
+  dark: <Moon className="h-5 w-5" aria-hidden="true" />,
+}
+
 export function FloatingNav({ tabs, activeIndex, onTabChange, branding, mobile = false, open = false, onClose }: FloatingNavProps) {
   const [engaged, setEngaged] = useState(false)
   // After a mouse click on a tab or section the overlay steps aside until the pointer leaves and comes back, so it never
@@ -38,7 +48,7 @@ export function FloatingNav({ tabs, activeIndex, onTabChange, branding, mobile =
     setDismissed(true)
     setEngaged(false)
   }
-  const scheme = useColorScheme()
+  const themeMode = useThemeMode()
   const expanded = mobile ? open : engaged
 
   if (mobile && !open) return null
@@ -137,11 +147,11 @@ export function FloatingNav({ tabs, activeIndex, onTabChange, branding, mobile =
         <div className="mt-2 flex flex-col gap-1 border-t border-[var(--line)] pt-2">
           <SettingsModal />
           <NavButton
-            aria-label={scheme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-            icon={scheme === 'dark' ? <Sun className="h-5 w-5" aria-hidden="true" /> : <Moon className="h-5 w-5" aria-hidden="true" />}
-            onClick={() => setMode(scheme === 'dark' ? 'light' : 'dark')}
+            aria-label={`Theme: ${THEME_LABEL[themeMode]}. Switch to ${THEME_LABEL[NEXT_THEME[themeMode]]}`}
+            icon={THEME_ICON[themeMode]}
+            onClick={() => setMode(NEXT_THEME[themeMode])}
           >
-            Light or dark
+            Theme: {THEME_LABEL[themeMode]}
           </NavButton>
         </div>
       </nav>
