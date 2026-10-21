@@ -30,7 +30,7 @@
   --card-foreground: #0e131a;
   --popover: #ffffff;
   --popover-foreground: #0e131a;
-  --primary: #26847a;
+  --primary: #1b2a47;
   --primary-foreground: #ffffff;
   --secondary: #f6f8fb;
   --secondary-foreground: #0e131a;
@@ -44,18 +44,18 @@
   --success-foreground: #ffffff;
   --border: #dbe1e9;
   --input: #dbe1e9;
-  --ring: #26847a;
+  --ring: #1b2a47;
   --radius: 0.625rem;
 
   /* shadcn sidebar roles — the redesign's floating navigation uses these */
   --sidebar: #ffffff;
   --sidebar-foreground: #0e131a;
-  --sidebar-primary: #26847a;
+  --sidebar-primary: #1b2a47;
   --sidebar-primary-foreground: #ffffff;
   --sidebar-accent: #e8ecf1;
   --sidebar-accent-foreground: #0e131a;
   --sidebar-border: #dbe1e9;
-  --sidebar-ring: #26847a;
+  --sidebar-ring: #1b2a47;
 
   /* redesign roles — surfaces and text */
   --bg: #e6eaf0;
@@ -80,8 +80,8 @@
   --c-1: #2fa598;
   --c-2: #c28940;
   --c-3: #a781eb;
-  --brand: #2fa598;
-  --brand-text: #26847a;
+  --brand: #1b2a47;
+  --brand-text: #1b2a47;
   --c-obs: #0e131a;
 
   /* categorical series colors derived from the three user colors: cat(0..7), see 01-visual-language.md §5.4 */
@@ -191,8 +191,8 @@ body::before {
   --card-foreground: #eef1f5;
   --popover: #151a23;
   --popover-foreground: #eef1f5;
-  --primary: #73e1d6;
-  --primary-foreground: #04161a;
+  --primary: #c9d6f2;
+  --primary-foreground: #0e131c;
   --secondary: #1a202b;
   --secondary-foreground: #eef1f5;
   --muted: #1a202b;
@@ -202,19 +202,19 @@ body::before {
   --destructive: #f36b68;
   --destructive-foreground: #ffffff;
   --success: #41c98f;
-  --success-foreground: #04161a;
+  --success-foreground: #0e131c;
   --border: #ffffff17;
   --input: #ffffff1f;
-  --ring: #73e1d6;
+  --ring: #c9d6f2;
 
   --sidebar: #141922;
   --sidebar-foreground: #eef1f5;
-  --sidebar-primary: #73e1d6;
-  --sidebar-primary-foreground: #04161a;
+  --sidebar-primary: #c9d6f2;
+  --sidebar-primary-foreground: #0e131c;
   --sidebar-accent: #222a36;
   --sidebar-accent-foreground: #eef1f5;
   --sidebar-border: #ffffff17;
-  --sidebar-ring: #73e1d6;
+  --sidebar-ring: #c9d6f2;
 
   /* redesign roles — dark */
   --bg: #090c11;
@@ -234,14 +234,14 @@ body::before {
   --warn: #e8a93d;
   --fail: #f36b68;
 
-  --c-1: #73e1d6;
+  --c-1: #c9d6f2;
   --c-2: #ffc984;
   --c-3: #caacff;
-  --brand: #73e1d6;
-  --brand-text: #73e1d6;
+  --brand: #c9d6f2;
+  --brand-text: #c9d6f2;
   --c-obs: #eef1f5;
 
-  --chart-1: #73e1d6;
+  --chart-1: #c9d6f2;
   --chart-2: #ffc984;
   --chart-3: #caacff;
   --chart-4: #b9d5ad;

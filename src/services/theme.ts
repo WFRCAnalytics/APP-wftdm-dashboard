@@ -75,7 +75,7 @@ function effectiveColors(): [string, string, string] | null {
   const resolved = ROLES.map((role) => resolveInterfaceColor(role, getInterfaceColorOverride(role)))
   if (resolved.every((v) => !v)) return null
   // A role the user did not set falls back to the static default: read it from the stylesheet's own light palette.
-  const fallback = ['#3dd6c6', '#ffb454', '#b58cff']
+  const fallback = ['#1b2a47', '#ffb454', '#b58cff']
   return resolved.map((v, i) => (v && CSS.supports('color', v) ? Color(v).hex() : fallback[i])) as [string, string, string]
 }
 

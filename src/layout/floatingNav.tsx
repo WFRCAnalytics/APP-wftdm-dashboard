@@ -74,7 +74,7 @@ export function FloatingNav({ tabs, activeIndex, onTabChange, branding, mobile =
             aria-hidden="true"
             className="grid h-[38px] w-[38px] shrink-0 place-items-center rounded-[13px] bg-[var(--brand)] shadow-[0_1px_0_rgba(255,255,255,0.35)_inset,0_6px_14px_-6px_var(--brand)]"
           >
-            <svg viewBox="0 0 24 24" className="h-[19px] w-[19px]" fill="none" stroke="#04161A" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+            <svg viewBox="0 0 24 24" className="h-[19px] w-[19px]" fill="none" stroke="var(--primary-foreground)" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
               <path d="M4 18 9 9l4 6 3-5 4 8" />
             </svg>
           </span>

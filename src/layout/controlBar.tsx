@@ -52,7 +52,7 @@ function CompareToggle({ on, onChange }: { on: boolean; onChange: (on: boolean) 
         <span
           className={cn(
             'absolute left-[3px] top-[3px] size-[14px] rounded-full transition-transform',
-            on ? 'translate-x-[14px] bg-[#04161A]' : 'bg-[var(--ink)]',
+            on ? 'translate-x-[14px] bg-[var(--primary-foreground)]' : 'bg-[var(--ink)]',
           )}
         />
       </span>
