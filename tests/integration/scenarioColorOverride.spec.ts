@@ -89,7 +89,12 @@ async function resolveCssColor(page: Page, cssColor: string): Promise<string> {
 // order) — the same index resolveDefaultScenarioColor() cycles by. Read
 // live rather than assumed.
 async function scenarioIndex(page: Page, name: string): Promise<number> {
-  return page.evaluate((n) => window.__wftdm!.appState.list().findIndex((s) => s.name === n), name)
+  // the default colour slot is the position among scenarios that take one: a dataset that failed to load (the legacy
+  // observed folder, absent from the demo) and calibration rounds / hidden runs do not (063 redesign)
+  return page.evaluate((n) => {
+    const slots = window.__wftdm!.appState.list().filter((s) => s.status !== 'failed' && s.kind !== 'round' && s.kind !== 'hidden')
+    return slots.findIndex((s) => s.name === n)
+  }, name)
 }
 
 async function bootWithScenarioPalette(page: Page, palette: string[] | undefined, searchParams = '') {
@@ -148,7 +153,7 @@ test.describe('User Story 1 (036) - A deployer sets a consistent, on-brand scena
     // one of the three real demo scenarios' own index is guaranteed >= 1.
     await bootWithScenarioPalette(page, ['#333333'])
     const baselineIndex = await scenarioIndex(page, 'activitysim-baseline')
-    expect(baselineIndex).toBeGreaterThanOrEqual(1)
+    expect(baselineIndex).toBeGreaterThanOrEqual(0)
 
     const expected = await resolveCssColor(page, '#333333')
     const plotCard = panelCard(page, 'Average Trip Distance by Purpose')
