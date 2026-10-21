@@ -187,7 +187,8 @@ APP-wftdm-dashboard/
 │   └── tests/                    # pytest suite, separate from repo-root tests/ (Vitest/Playwright)
 └── src/
     ├── main.tsx                  # boot sequence
-    ├── state/                    # appState.ts, filterState.ts, basemapState.ts,
+    ├── state/                    # appState.ts, compareState.ts (year/focus/compare/reference/display),
+    │                              # filterState.ts, basemapState.ts,
     │                              # protomapsSourceState.ts, colorPreferenceState.ts,
     │                              # interfaceColorState.ts, fontPreferenceState.ts, textSizeState.ts
     ├── services/
@@ -196,12 +197,15 @@ APP-wftdm-dashboard/
     │   │                          # fetches each scenario's metric catalog only (lazy loading, see below)
     │   ├── tabDataLoader.ts       # computeTabDataRequirement()/ensureRegistered() — lazy,
     │   │                          # per-active-tab Parquet file registration
+    │   ├── viewContext.ts         # pure resolveViewContext(): compare state + run catalog -> what every tile shows
+    │   ├── runResolution.ts       # stores -> viewContext; getBaselineForYear(), bootCompareState()
     │   ├── yamlLoader.ts          # fetch + parse dashboard-*.yaml, DashboardBranding
     │   └── sqlExpander.ts         # expand $mappings/$bins/$sql/$filters/$scenario/$inputs/$baseline
     ├── hooks/                     # useFilterState, useActiveScenarios, useColorScheme, useBaseline,
     │                              # useGlobalBasemap, useScenarioList, useProtomapsSource,
     │                              # useScenarioDisplay, useInterfaceColors, useFontPreference,
-    │                              # useColorblindSafePreference
+    │                              # useColorblindSafePreference, useViewContext (useActiveScenarios and
+    │                              # useBaseline both read it: runs resolved for the current model year)
     ├── layout/
     │   ├── shell.tsx              # SidebarProvider > Sidebar + SidebarInset[DashboardRenderer]
     │   ├── sidebarNav.tsx         # sidebar tab list + accordion sub-nav (role="tablist"/"tab")

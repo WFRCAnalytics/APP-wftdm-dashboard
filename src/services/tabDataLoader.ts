@@ -19,6 +19,7 @@
 // removed entirely by this feature, not conditionally kept.
 import { hasView, registerFileURL } from './duckdb.ts'
 import * as appState from '../state/appState.ts'
+import { getBaselineForYear } from './runResolution.ts'
 import { isComparisonDiff, resolveComparisonScenarioName } from '../panels/panelQuery.ts'
 import type { DashboardTabConfig, PanelConfig } from '../layout/types.ts'
 
@@ -62,7 +63,7 @@ export function computeTabDataRequirement(
   tab: DashboardTabConfig,
   activeScenarios: readonly string[],
 ): MetricPair[] {
-  const baseline = appState.getBaseline()
+  const baseline = getBaselineForYear()
   const seen = new Map<string, MetricPair>()
 
   function add(scenario: string | undefined, metric: string | undefined): void {

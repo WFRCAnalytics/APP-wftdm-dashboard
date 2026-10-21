@@ -1,6 +1,7 @@
 import { useCallback, useRef, useSyncExternalStore } from 'react'
 
 import { list, subscribe } from '@/state/appState'
+import { alternativeOf } from '@/services/runResolution'
 import { resolveDefaultScenarioColor, type ScenarioDisplay, type ScenarioDisplayMap } from '@/panels/scenarioDisplay'
 import { useColorScheme } from '@/hooks/useColorScheme'
 import { useColorblindSafePreference } from '@/hooks/useColorblindSafePreference'
@@ -55,13 +56,15 @@ export function useScenarioDisplay(): ScenarioDisplayMap {
 
   const getSnapshot = useCallback(() => {
     const scenarios = list()
+    const colorIndex = alternativeIndexes(scenarios)
     const prev = cache.current
     let changed =
       scenarios.length !== prev.size ||
       colorScheme !== cachedColorScheme.current ||
       colorblindSafe !== cachedColorblindSafe.current
     if (!changed) {
-      scenarios.forEach((s, index) => {
+      scenarios.forEach((s) => {
+        const index = colorIndex.get(s.name) ?? 0
         const prevEntry = prev.get(s.name)
         const color = s.colorOverride ?? resolveEffectiveDefault(index, colorblindSafe, colorScheme === 'dark')
         if (!prevEntry || prevEntry.label !== s.label || prevEntry.color !== color) {
@@ -71,7 +74,8 @@ export function useScenarioDisplay(): ScenarioDisplayMap {
     }
     if (changed) {
       const next = new Map<string, ScenarioDisplay>()
-      scenarios.forEach((s, index) => {
+      scenarios.forEach((s) => {
+        const index = colorIndex.get(s.name) ?? 0
         next.set(s.name, {
           label: s.label,
           color: s.colorOverride ?? resolveEffectiveDefault(index, colorblindSafe, colorScheme === 'dark'),
@@ -90,4 +94,16 @@ export function useScenarioDisplay(): ScenarioDisplayMap {
 /** The default-tier color for a scenario index, adapted to the active theme. */
 function resolveEffectiveDefault(index: number, colorblindSafe: boolean, dark: boolean): string {
   return resolveDefaultScenarioColor(index, colorblindSafe, dark)
+}
+
+/** Default colors follow the alternative, not the run: Frequent transit keeps its color in every model year. */
+function alternativeIndexes(scenarios: ReturnType<typeof list>): Map<string, number> {
+  const order = new Map<string, number>()
+  const byName = new Map<string, number>()
+  for (const s of scenarios) {
+    const alt = alternativeOf(s)
+    if (!order.has(alt)) order.set(alt, order.size)
+    byName.set(s.name, order.get(alt)!)
+  }
+  return byName
 }

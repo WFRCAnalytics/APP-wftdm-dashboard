@@ -1,0 +1,9 @@
+scenario_name: activitysim-baseline-2036
+display_name: ActivitySim Baseline
+engine: activitysim
+run_date: '2026-09-08'
+color: '#59A14F'
+pinned: false
+alternative: activitysim-baseline
+year: 2036
+notes: 'DEMO DATA: synthetic 2036 run, counts scaled x1.18 from the 2023 run. '

@@ -28,6 +28,7 @@ import { toast } from 'sonner'
 
 import { initDuckDB } from './services/duckdb.ts'
 import { discoverScenarios } from './services/scenarioDiscovery.ts'
+import { bootCompareState } from './services/runResolution.ts'
 import { loadDashboards, loadDashboardBranding, type DashboardBranding } from './services/yamlLoader.ts'
 import { setDeployerScenarioPalette } from './panels/scenarioDisplay.ts'
 import { setDeployerProtomapsSource } from './state/protomapsSourceState.ts'
@@ -44,6 +45,7 @@ import { get as getFilter, set as setFilter } from './state/filterState.ts'
 // below (duckdb.ts's exports spread flat, the rest namespaced).
 export type WftdmDebugHook = typeof import('./services/duckdb.ts') & {
   appState: typeof import('./state/appState.ts')
+  compareState: typeof import('./state/compareState.ts')
   filterState: typeof import('./state/filterState.ts')
   sqlExpander: typeof import('./services/sqlExpander.ts')
   yamlLoader: typeof import('./services/yamlLoader.ts')
@@ -171,7 +173,14 @@ const branding: DashboardBranding = {
   primaryColor: primaryBranding.primaryColor ?? demoBranding.primaryColor,
   secondaryColor: primaryBranding.secondaryColor ?? demoBranding.secondaryColor,
   accentColor: primaryBranding.accentColor ?? demoBranding.accentColor,
+  years: primaryBranding.years ?? demoBranding.years,
+  baseYear: primaryBranding.baseYear ?? demoBranding.baseYear,
+  defaultYear: primaryBranding.defaultYear ?? demoBranding.defaultYear,
+  compareDefault: primaryBranding.compareDefault ?? demoBranding.compareDefault,
 }
+// 063 redesign: model years, focus and Compare defaults (project-docs/redesign/03-state-and-compare.md §1.1). Needs the
+// discovered runs and the merged config above; every tile and the control bar read the result.
+bootCompareState(branding)
 // 036-scenario-color-picker: semantic validation (is each entry a real
 // CSS color) lives here, at the one real consumption point — loadDashboardBranding()
 // itself stays a thin, format-only parse, matching its own existing
@@ -280,11 +289,13 @@ if (typeof window !== 'undefined') {
   const duckdbService = await import('./services/duckdb.ts')
   const appState = await import('./state/appState.ts')
   const filterState = await import('./state/filterState.ts')
+  const compareState = await import('./state/compareState.ts')
   const sqlExpander = await import('./services/sqlExpander.ts')
   const yamlLoader = await import('./services/yamlLoader.ts')
   window.__wftdm = {
     ...duckdbService,
     appState,
+    compareState,
     filterState,
     sqlExpander,
     yamlLoader,

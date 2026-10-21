@@ -1,18 +1,24 @@
 import { useSyncExternalStore } from 'react'
 
-import { getBaseline, subscribe } from '@/state/appState'
+import { subscribe as subscribeApp } from '@/state/appState'
+import { subscribe as subscribeCompare } from '@/state/compareState'
+import { getBaselineForYear } from '@/services/runResolution'
+
+function subscribe(fn: () => void): () => void {
+  const a = subscribeApp(fn)
+  const b = subscribeCompare(fn)
+  return () => {
+    a()
+    b()
+  }
+}
 
 /**
- * Subscribes to appState's baseline designation (018-baseline-scenario-
- * designation), re-rendering only when the RESOLVED baseline scenario name
- * actually changes. Mirrors useActiveScenarios.ts's useSyncExternalStore-
- * over-subscribe() shape — but, unlike that hook, needs no memoized cache:
- * getBaseline() returns a primitive (string | undefined), which
- * useSyncExternalStore's default Object.is comparison already handles
- * correctly by value. useActiveScenarios() only needs its own cache because
- * getActive() builds a new ARRAY every call, and array identity would
- * differ on every render without one (research.md §7).
+ * Subscribes to the resolved baseline run: appState's baseline designation (018-baseline-scenario-designation),
+ * mapped to that alternative's run for the current model year. getBaselineForYear() returns a primitive
+ * (string | undefined), which useSyncExternalStore's default Object.is comparison handles by value, so no
+ * memoized cache is needed here.
  */
 export function useBaseline(): string | undefined {
-  return useSyncExternalStore(subscribe, getBaseline)
+  return useSyncExternalStore(subscribe, getBaselineForYear)
 }

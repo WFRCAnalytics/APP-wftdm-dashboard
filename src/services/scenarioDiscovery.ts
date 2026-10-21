@@ -166,6 +166,12 @@ async function registerScenarioGroup(
       color: manifest.color,
       runDate: manifest.runDate,
       notes: manifest.notes,
+      kind: manifest.kind,
+      alternative: manifest.alternative,
+      year: manifest.year,
+      tag: manifest.tag,
+      family: manifest.family,
+      familyIndex: manifest.familyIndex,
     })
   }
 

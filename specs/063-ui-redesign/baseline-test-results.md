@@ -154,6 +154,13 @@ against a 10 s poll. That same ~10 s appears on the P0 commit (`cc88765`, measur
 edge, not a P1 regression. The earlier recharts, sunburst, treemap and demoMultiScenario failures passed on the re-run
 (load-sensitive).
 
+## P3 (model years, compare state)
+
+New unit tests: `viewContext.test.ts` (every rule in file 03 section 2 and the edge cases in section 9),
+`runResolution.test.ts` (boot defaults, year change, baseline per year, compare-set toggles), manifest identity fields.
+New integration spec: `modelYears.spec.ts` (6 tests). The demo gained a synthetic 2036 run per alternative
+(`activitysim-*-2036`, counts scaled, marked DEMO DATA in each manifest's notes).
+
 ## P2 re-run (floating nav, sticky header)
 
 A full pass plus retry found 22 failures outside the baseline list. Causes found and fixed: the hover-expanded nav stayed

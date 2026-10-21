@@ -38,6 +38,10 @@ const READY_SET = [
 const ZONES_PER_SCENARIO = 25
 
 async function boot(page: Page, searchParams = '') {
+  // The demo also ships synthetic 2036 runs (063 P3); this spec is about activation of one year's runs.
+  await page.route('**/demo-scenarios/index.json', (r) =>
+    r.fulfill({ contentType: 'application/json', body: JSON.stringify(READY_SET) }),
+  )
   await page.goto('/' + searchParams)
   await page.waitForFunction(() => window.__wftdm !== undefined, null, { timeout: 30_000 })
   await page.waitForFunction(

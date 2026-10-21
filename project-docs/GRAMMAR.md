@@ -1603,7 +1603,18 @@ pinned:         false               # observed/reference entry marker — exclud
                                     # first. Does NOT control activation: every
                                     # `status: ready` scenario is active by default
                                     # (038-all-loaded-scenarios).
+# Optional identity fields (063 redesign). A manifest without alternative/year is a single-year run:
+alternative:    freq-transit        # groups the runs of one alternative across model years (UI identity)
+year:           2036                # model year of this run; the Year control appears when two or more exist
+kind:           scenario            # scenario | round | observed (default scenario; pinned implies observed)
+tag:            Transit             # free text, for picker chips
+family:         calibration         # rounds only: the family id
+family_index:   12                  # rounds only: 1-based position in the family
 ```
+
+`dashboard-config/index.json` may also carry `years` (`[{year, label}]`), `baseYear`, `defaultYear` and
+`compare: {default: auto|on|off}`. When `years` is absent the years are taken from the manifests' `year` values and the
+base year is the earliest. Rounds and Observed exist only in the base year; a run without a `year` belongs to every year.
 
 **Observed manifest** (`public/observed/manifest.yaml`):
 ```yaml

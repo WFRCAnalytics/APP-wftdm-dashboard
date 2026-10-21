@@ -78,6 +78,10 @@ type DashboardIndexJson =
       primaryColor?: unknown
       secondaryColor?: unknown
       accentColor?: unknown
+      years?: unknown
+      baseYear?: unknown
+      defaultYear?: unknown
+      compare?: unknown
     }
 
 /**
@@ -168,6 +172,33 @@ export interface DashboardBranding {
   primaryColor?: string
   secondaryColor?: string
   accentColor?: string
+  /** 063 redesign (project-docs/redesign/06-data-and-config.md §2): model years, in display order. Absent or empty
+   * means a single-year deployment (the Year control is hidden). */
+  years?: ModelYear[]
+  baseYear?: number
+  defaultYear?: number
+  /** `compare.default`: 'auto' (on when there are two or more independent scenarios), 'on' or 'off'. */
+  compareDefault?: 'auto' | 'on' | 'off'
+}
+
+export interface ModelYear {
+  year: number
+  label?: string
+}
+
+function parseYears(value: unknown): ModelYear[] | undefined {
+  if (!Array.isArray(value)) return undefined
+  const years: ModelYear[] = []
+  for (const entry of value) {
+    if (typeof entry === 'number' && Number.isInteger(entry)) years.push({ year: entry })
+    else if (typeof entry === 'object' && entry !== null) {
+      const { year, label } = entry as { year?: unknown; label?: unknown }
+      if (typeof year === 'number' && Number.isInteger(year)) {
+        years.push({ year, label: typeof label === 'string' ? label : undefined })
+      }
+    }
+  }
+  return years.length > 0 ? years : undefined
 }
 
 function isDashboardIndexObject(
@@ -274,8 +305,17 @@ export async function loadDashboardBranding(
       primaryColor: typeof parsed.primaryColor === 'string' ? parsed.primaryColor : undefined,
       secondaryColor: typeof parsed.secondaryColor === 'string' ? parsed.secondaryColor : undefined,
       accentColor: typeof parsed.accentColor === 'string' ? parsed.accentColor : undefined,
+      years: parseYears(parsed.years),
+      baseYear: typeof parsed.baseYear === 'number' ? parsed.baseYear : undefined,
+      defaultYear: typeof parsed.defaultYear === 'number' ? parsed.defaultYear : undefined,
+      compareDefault: parseCompareDefault(parsed.compare),
     }
   } catch {
     return {}
   }
+}
+
+function parseCompareDefault(value: unknown): 'auto' | 'on' | 'off' | undefined {
+  const d = typeof value === 'object' && value !== null ? (value as { default?: unknown }).default : undefined
+  return d === 'auto' || d === 'on' || d === 'off' ? d : undefined
 }

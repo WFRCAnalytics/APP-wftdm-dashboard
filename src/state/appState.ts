@@ -15,8 +15,21 @@
 
 export type ScenarioSource = 'url' | 'handle'
 export type ScenarioStatus = 'registering' | 'ready' | 'failed'
+/** project-docs/redesign/06-data-and-config.md §1. `observed` runs are legacy pinned scenarios until P11. */
+export type ScenarioKind = 'scenario' | 'round' | 'observed'
 
-export interface Scenario {
+/** 063 redesign: optional manifest identity (alternative, model year, tag, calibration family). A run without
+ * `alternative`/`year` is a single-year run and counts for every year. */
+export interface ScenarioIdentity {
+  kind?: ScenarioKind
+  alternative?: string
+  year?: number
+  tag?: string
+  family?: string
+  familyIndex?: number
+}
+
+export interface Scenario extends ScenarioIdentity {
   name: string
   runDate?: string
   color?: string
@@ -94,7 +107,7 @@ export interface Scenario {
   availableMetrics?: string[]
 }
 
-export interface ScenarioMetadata {
+export interface ScenarioMetadata extends ScenarioIdentity {
   runDate?: string
   color?: string
   notes?: string
@@ -169,6 +182,12 @@ export function register(name: string, metadata: ScenarioMetadata): void {
     colorOverride: undefined,
     failedFiles: undefined,
     availableMetrics: undefined,
+    kind: metadata.kind,
+    alternative: metadata.alternative,
+    year: metadata.year,
+    tag: metadata.tag,
+    family: metadata.family,
+    familyIndex: metadata.familyIndex,
   })
   notify()
 }

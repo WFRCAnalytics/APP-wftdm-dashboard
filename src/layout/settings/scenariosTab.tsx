@@ -28,6 +28,8 @@ import { useBaseline } from '@/hooks/useBaseline'
 import { useScenarioList } from '@/hooks/useScenarioList'
 import { ScenarioRow } from '@/layout/settings/scenarioRow'
 import * as appState from '@/state/appState'
+import { useResolvedView } from '@/hooks/useViewContext'
+import { isRunInYear } from '@/services/runResolution'
 
 // 020-settings-modal: relocated from layout/scenarioLoader.tsx (deleted by
 // that feature) — list/add/remove/baseline-mark logic and behavior are
@@ -58,7 +60,10 @@ export function ScenariosTab() {
   const baseline = useBaseline()
   // hooks/useScenarioList.ts — re-renders on ANY scenario field changing
   // (order/label/path/status/pinned/active/source/colorOverride).
-  const allScenarios = useScenarioList()
+  const everyRun = useScenarioList()
+  // A scenario is one row however many model years it has: the list shows the runs of the current year.
+  const { year, baseYear } = useResolvedView()
+  const allScenarios = useMemo(() => everyRun.filter((s) => isRunInYear(s, year, baseYear)), [everyRun, year, baseYear])
 
   const local = isLocalDeployment()
   const supported = supportsLocalFolderLoading()
@@ -89,7 +94,7 @@ export function ScenariosTab() {
 
   function handleDragEnd({ active, over }: DragEndEvent) {
     if (!over || active.id === over.id) return
-    const targetIndex = orderedNames.indexOf(String(over.id))
+    const targetIndex = everyRun.findIndex((s) => s.name === String(over.id))
     if (targetIndex >= 0) appState.reorderScenario(String(active.id), targetIndex)
   }
 

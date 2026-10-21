@@ -11,6 +11,8 @@ import { removeLocalScenario } from '@/scenario/scenarioManager'
 import { scenarioStatusTreatment } from '@/layout/settings/scenarioStatusColor'
 import { ScenarioColorControl } from '@/layout/settings/scenarioColorControl'
 import * as appState from '@/state/appState'
+import { setAlternativeActive } from '@/state/compareState'
+import { alternativeOf } from '@/services/runResolution'
 import type { Scenario } from '@/state/appState'
 
 // 037-scenarios-tab-redesign: one Scenarios-tab row, extracted from
@@ -201,7 +203,7 @@ export function ScenarioRow({ scenario: s, index, total, baselineName }: Scenari
                 <Switch
                   size="sm"
                   checked={s.active}
-                  onCheckedChange={(checked) => appState.setActive(s.name, checked)}
+                  onCheckedChange={(checked) => setAlternativeActive(alternativeOf(s), checked)}
                   aria-label={
                     s.active ? `Exclude ${s.name} from queries` : `Include ${s.name} in queries`
                   }
