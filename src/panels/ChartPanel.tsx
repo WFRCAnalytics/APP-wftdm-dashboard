@@ -31,6 +31,9 @@ const DEFAULT_HEIGHT = 360
 
 type Status = 'loading' | 'ready' | 'empty' | 'error'
 
+// Side-by-side cells all return the same legend; only the first cell to render claims the tile's legend row.
+const legendOwners = new WeakMap<HTMLElement, symbol>()
+
 export function ChartPanel({ config }: PanelProps<ChartPanelConfig>) {
   const view = useViewContext()
   const { referenceLabel } = useCompareInputs()
@@ -39,6 +42,7 @@ export function ChartPanel({ config }: PanelProps<ChartPanelConfig>) {
   const legendSlot = useTileLegendSlot()
 
   const containerRef = useRef<HTMLDivElement>(null)
+  const idRef = useRef(Symbol('chart'))
   const stateRef = useRef<Record<string, unknown>>({})
   const [kind, setKind] = useState<ChartKind | null>(null)
   const [data, setData] = useState<{ plan: ChartPlan; data: ChartEnv['data']; extra: unknown } | null>(null)
@@ -196,7 +200,17 @@ export function ChartPanel({ config }: PanelProps<ChartPanelConfig>) {
     return m
   }, [plan])
 
-  const legendNode = legend && (
+  if (legendSlot && !legendOwners.has(legendSlot)) legendOwners.set(legendSlot, idRef.current)
+  const ownsLegend = !legendSlot || legendOwners.get(legendSlot) === idRef.current
+  useEffect(() => {
+    const slot = legendSlot
+    const id = idRef.current
+    return () => {
+      if (slot && legendOwners.get(slot) === id) legendOwners.delete(slot)
+    }
+  }, [legendSlot])
+
+  const legendNode = legend && ownsLegend && (
     <ChartLegend spec={legend} chartEl={containerRef.current} runColors={runColors} />
   )
 

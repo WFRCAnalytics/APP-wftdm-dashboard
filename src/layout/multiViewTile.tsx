@@ -65,6 +65,13 @@ export function MultiViewTile({ config: rawConfig, tileKey }: { config: MultiVie
         {ctx.display === 'pct' ? '% change' : 'Change'} vs {referenceLabel}
       </Badge>,
     )
+  } else if (ctx.compare && ctx.display !== 'val' && Boolean(resolved.view.diff) && strategy !== 'multi' && strategy !== 'grid') {
+    // the chart draws its own differences (view flag `diff: true`)
+    badges.push(
+      <Badge key="diff" variant="accent">
+        {ctx.display === 'pct' ? '% change' : 'Change'} vs {referenceLabel}
+      </Badge>,
+    )
   } else if (ctx.compare && ctx.display !== 'val' && !resolved.scenarioIndependent && resolved.strategies.length > 0) {
     badges.push(<Badge key="values" variant="neutral">Shows values</Badge>)
   }

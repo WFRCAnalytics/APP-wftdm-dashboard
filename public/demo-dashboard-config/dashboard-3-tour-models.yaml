@@ -49,6 +49,6 @@ layout:
           - { id: income, label: Income, fields: { group: income } }
           - { id: none, label: "All trips", fields: { group: none } }
       views:
-        - { id: lines, label: Lines, type: chart, kind: time-lines, compare: [overlay] }
+        - { id: lines, label: Lines, type: chart, kind: time-lines, diff: true, compare: [overlay] }
         - { id: stream, label: Stream, type: chart, kind: time-stream, compare: [switch, multi] }
         - { id: heat, label: Heatmap, type: chart, kind: time-heat, compare: [overlay] }

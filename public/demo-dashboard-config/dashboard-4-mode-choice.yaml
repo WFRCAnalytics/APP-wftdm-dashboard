@@ -27,8 +27,8 @@ layout:
           - { id: purpose, label: Purpose, fields: { group: purpose } }
           - { id: income, label: Income, fields: { group: income } }
       views:
-        - { id: bars, label: Bars, type: chart, kind: mode-bars, compare: [overlay] }
-        - { id: gap, label: Gap, type: chart, kind: gap-dots, compare: [overlay] }
+        - { id: bars, label: Bars, type: chart, kind: mode-bars, diff: true, compare: [overlay] }
+        - { id: gap, label: Gap, type: chart, kind: gap-dots, diff: true, compare: [overlay] }
         - { id: stack, label: "100% bars", type: chart, kind: stacked-bars, variant: scenario, compare: [overlay] }
         - { id: slope, label: Slope, type: chart, kind: slope, compare: [switch] }
         - { id: donut, label: Donut, type: chart, kind: donut, compare: [switch, diff] }
@@ -70,7 +70,7 @@ layout:
           - { id: income, label: Income, fields: { group: income } }
           - { id: none, label: "All trips", fields: { group: none } }
       views:
-        - { id: lines, label: Lines, type: chart, kind: time-lines, compare: [overlay] }
+        - { id: lines, label: Lines, type: chart, kind: time-lines, diff: true, compare: [overlay] }
         - { id: stream, label: Stream, type: chart, kind: time-stream, compare: [switch, multi] }
         - { id: heat, label: Heatmap, type: chart, kind: time-heat, compare: [overlay] }
     - id: mix

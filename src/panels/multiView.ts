@@ -33,7 +33,7 @@ export function defaultStrategies(type: string): CompareStrategy[] {
 const GROUP_REF = /^\$group\.([A-Za-z_][\w]*)$/
 
 /** Keys a view carries for the wrapper only; they never reach the panel component. */
-const VIEW_ONLY_KEYS = new Set(['id', 'label', 'compare', 'scenario_independent', 'base_year_only', 'family', 'needs_compare'])
+const VIEW_ONLY_KEYS = new Set(['id', 'label', 'compare', 'scenario_independent', 'base_year_only', 'family', 'needs_compare', 'diff'])
 
 function groupRefsIn(value: unknown, out: Set<string>): void {
   if (typeof value === 'string') {
