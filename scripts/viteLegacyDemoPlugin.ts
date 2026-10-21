@@ -37,8 +37,18 @@ export function legacyDemoPlugin(): Plugin {
             return send(readFileSync(resolve(root, 'tests/fixtures/legacy-demo/scenarios-index.json'), 'utf8'), 'application/json')
           }
           if (realManifest) {
-            const file = resolve(root, 'public/demo-scenarios', realManifest, 'manifest.yaml')
-            if (existsSync(file)) return send(readFileSync(file, 'utf8').replace(/^display_name:.*$/m, ''), 'text/yaml')
+            const real = resolve(root, 'public/demo-scenarios', realManifest, 'manifest.yaml')
+            const file = existsSync(real) ? real : resolve(root, 'public/demo-synthetic/scenarios', realManifest, 'manifest.yaml')
+            if (existsSync(file)) {
+              return send(readFileSync(file, 'utf8').replace(/^display_name:.*$/m, '').replace(/^hidden: true\s*$/m, ''), 'text/yaml')
+            }
+          }
+          // the synthetic 2036 copies of the real runs (the older multi-year specs use them) live in the synthetic set
+          if (url.startsWith(`${BASE}demo-scenarios/`)) {
+            const rel = url.slice(`${BASE}demo-scenarios/`.length)
+            if (!existsSync(resolve(root, 'public/demo-scenarios', rel)) && existsSync(resolve(root, 'public/demo-synthetic/scenarios', rel))) {
+              req.url = `${BASE}demo-synthetic/scenarios/${rel}${query}`
+            }
           }
           return next()
         }
