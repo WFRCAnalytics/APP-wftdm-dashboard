@@ -111,6 +111,13 @@ export function ChartPanel({ config }: PanelProps<ChartPanelConfig>) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [kind, plan])
 
+  useEffect(
+    () => () => {
+      if (kind?.destroy) kind.destroy(stateRef.current)
+    },
+    [kind],
+  )
+
   // Draw, and redraw on resize, theme or data change.
   useEffect(() => {
     const el = containerRef.current

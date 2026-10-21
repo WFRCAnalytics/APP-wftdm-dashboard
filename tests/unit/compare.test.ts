@@ -186,3 +186,22 @@ describe('reference options', () => {
     }
   })
 })
+
+import { allIdentical, resultSignature } from '../../src/layout/identicalNote.tsx'
+
+describe('identical results detection', () => {
+  const a = [[{ total_trips: 100, share: 0.5 }], [{ major_trip_mode: 'Walk', share: 0.1 }, { major_trip_mode: 'Bike', share: 0.2 }]]
+  it('ignores row order and float noise', () => {
+    const b = [[{ share: 0.5000000001, total_trips: 100 }], [{ major_trip_mode: 'Bike', share: 0.2 }, { major_trip_mode: 'Walk', share: 0.1 }]]
+    expect(resultSignature(a)).toBe(resultSignature(b))
+  })
+  it('differs when a value differs', () => {
+    expect(resultSignature(a)).not.toBe(resultSignature([[{ total_trips: 101, share: 0.5 }], a[1]]))
+  })
+  it('needs two or more non-empty equal signatures', () => {
+    expect(allIdentical(['x'])).toBe(false)
+    expect(allIdentical(['x', 'x'])).toBe(true)
+    expect(allIdentical(['x', 'y'])).toBe(false)
+    expect(allIdentical(['', ''])).toBe(false)
+  })
+})

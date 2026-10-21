@@ -14,6 +14,26 @@ export function isMetricStripRow(panels: PanelConfig[]): boolean {
   return panels.length > 0 && panels.every((p) => p.type === 'valuebox')
 }
 
+/** What decides whether a tile is drawn at all: Compare on/off and whether the selected year is the base year. */
+export interface VisibilityContext {
+  compare: boolean
+  isBaseYear: boolean
+}
+
+/**
+ * 063 redesign: tiles that only make sense in one mode are left out of the layout entirely (so the row's columns
+ * re-divide), not drawn empty: `show_when`, a multi-view's `needs_compare`, and calibration-family tiles outside the
+ * base year.
+ */
+export function isPanelVisible(panel: PanelConfig, ctx: VisibilityContext): boolean {
+  const p = panel as { show_when?: string; needs_compare?: boolean; family?: string; base_year_only?: boolean }
+  if (p.show_when === 'compare' && !ctx.compare) return false
+  if (p.show_when === 'single' && ctx.compare) return false
+  if (p.needs_compare && !ctx.compare) return false
+  if (p.family === 'calibration' && !ctx.isBaseYear) return false
+  return true
+}
+
 /** A hero KPI band row (063 redesign): every panel is a `type: valuebox` with `variant: hero`. */
 export function isHeroRow(panels: PanelConfig[]): boolean {
   return isMetricStripRow(panels) && panels.every((p) => (p as { variant?: string }).variant === 'hero')
@@ -44,6 +64,8 @@ export interface ResolvedSection {
    * order is `layout`'s alone (data-model.md §2: "sections never reorders
    * rows"). */
   rows: string[]
+  /** Anchor on the tile with this `id` rather than the first row. */
+  tile?: string
 }
 
 /**
@@ -85,7 +107,7 @@ export function resolveSections(tab: DashboardTabConfig): ResolvedSection[] {
     // never reorders rows" guarantee.
     const orderedRows = Object.keys(tab.layout).filter((rowName) => validRows.includes(rowName))
     if (orderedRows.length === 0) continue
-    resolved.push({ id: section.id, label: section.label, rows: orderedRows })
+    resolved.push({ id: section.id, label: section.label, rows: orderedRows, tile: typeof section.tile === 'string' ? section.tile : undefined })
   }
 
   return resolved

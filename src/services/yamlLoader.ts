@@ -179,6 +179,11 @@ export interface DashboardBranding {
   defaultYear?: number
   /** `compare.default`: 'auto' (on when there are two or more independent scenarios), 'on' or 'off'. */
   compareDefault?: 'auto' | 'on' | 'off'
+  /** `compare.scenarios`: the alternatives compared at first load (default: every loaded one). */
+  compareScenarios?: string[]
+  /** `compare.focus` / `compare.reference`: the focus alternative and the reference (an alternative id or `observed`). */
+  compareFocus?: string
+  compareReference?: string
 }
 
 export interface ModelYear {
@@ -309,9 +314,20 @@ export async function loadDashboardBranding(
       baseYear: typeof parsed.baseYear === 'number' ? parsed.baseYear : undefined,
       defaultYear: typeof parsed.defaultYear === 'number' ? parsed.defaultYear : undefined,
       compareDefault: parseCompareDefault(parsed.compare),
+      ...parseCompareInitial(parsed.compare),
     }
   } catch {
     return {}
+  }
+}
+
+function parseCompareInitial(value: unknown): Pick<DashboardBranding, 'compareScenarios' | 'compareFocus' | 'compareReference'> {
+  const o = typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : {}
+  const scenarios = Array.isArray(o.scenarios) ? o.scenarios.filter((s): s is string => typeof s === 'string') : undefined
+  return {
+    compareScenarios: scenarios && scenarios.length > 0 ? scenarios : undefined,
+    compareFocus: typeof o.focus === 'string' ? o.focus : undefined,
+    compareReference: typeof o.reference === 'string' ? o.reference : undefined,
   }
 }
 

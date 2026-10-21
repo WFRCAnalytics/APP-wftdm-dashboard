@@ -37,6 +37,9 @@ export interface PanelConfigBase {
   // resolved via `??`, not `||`, specifically so an explicit `false`
   // (a real, meaningful override) is never confused with "unset."
   expandable?: boolean
+  /** 063 redesign: render this tile only with Compare on (`compare`) or off (`single`). Lets one page lay out its tiles
+   * differently per mode (project-docs/redesign/02-layout-and-components.md section 3). */
+  show_when?: 'compare' | 'single'
 }
 
 // Fields only a *querying* panel type needs. Everything that reads
@@ -105,6 +108,12 @@ export interface ValueBoxPanelConfig extends DataBoundPanelConfigBase {
   /** `hero`: a row made only of `variant: hero` value boxes draws as the hero KPI band (063 redesign): label, large value,
    * delta against the reference and a per-year sparkline for the focus scenario. Any other value-box row keeps the cards. */
   variant?: 'hero'
+  /** Hero cells: multiply the stored value before formatting (trips 1e-6 for millions, boardings 1e-3 for thousands). */
+  scale?: number
+  /** Hero cells: `calibration` draws "N of M submodels within tolerance" from the `calibration_errors` table. */
+  kpi?: 'calibration'
+  /** Calibration cell: the within-tolerance threshold in percent (default 3). */
+  tolerance?: number
   column: string
   format: string
   unit?: string
@@ -521,6 +530,8 @@ export interface MultiViewPanelConfig extends PanelConfigBase {
   scenarios?: string[]
   filter?: string | Record<string, string>
   group_by?: MultiViewGroupBy
+  /** The view shown first (default: the first listed). */
+  default_view?: string
   views: MultiViewViewConfig[]
   scenario_independent?: boolean
   /** Hides the tile when Compare is off (scorecard, ranking). */
@@ -579,6 +590,8 @@ export interface SectionConfig {
   id: string
   label: string
   rows: string[]
+  /** 063 redesign: scroll to the tile with this `id` instead of the section's first row (two tiles can share a row). */
+  tile?: string
 }
 
 export interface DashboardTabConfig {

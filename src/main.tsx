@@ -177,6 +177,9 @@ const branding: DashboardBranding = {
   baseYear: primaryBranding.baseYear ?? demoBranding.baseYear,
   defaultYear: primaryBranding.defaultYear ?? demoBranding.defaultYear,
   compareDefault: primaryBranding.compareDefault ?? demoBranding.compareDefault,
+  compareScenarios: primaryBranding.compareScenarios ?? demoBranding.compareScenarios,
+  compareFocus: primaryBranding.compareFocus ?? demoBranding.compareFocus,
+  compareReference: primaryBranding.compareReference ?? demoBranding.compareReference,
 }
 // 063 redesign: model years, focus and Compare defaults (project-docs/redesign/03-state-and-compare.md §1.1). Needs the
 // discovered runs and the merged config above; every tile and the control bar read the result.

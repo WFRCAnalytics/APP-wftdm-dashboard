@@ -3,6 +3,7 @@ import { Suspense } from 'react'
 import { PanelErrorBoundary } from '@/layout/panelCard'
 import type { PanelConfig, ValueBoxPanelConfig } from '@/layout/types'
 import { PanelErrorState } from '@/panels/PanelErrorState'
+import { HeroCalibration } from '@/panels/HeroCalibration'
 import { HeroKpi } from '@/panels/HeroKpi'
 import { PanelLoadingState } from '@/panels/PanelLoadingState'
 import { registry } from '@/panels/registry'
@@ -21,7 +22,11 @@ export function HeroCell({ config }: { config: PanelConfig }) {
       <div>
         <small className="font-body text-[13px] text-[var(--mute)]">{config.title}</small>
         {/* a plain value (no gauge) follows the focus scenario and shows its delta and sparkline */}
-        {config.type === 'valuebox' && isPlainKpi(config as ValueBoxPanelConfig) ? (
+        {config.type === 'valuebox' && (config as ValueBoxPanelConfig).kpi === 'calibration' ? (
+          <PanelErrorBoundary panelTitle={config.title}>
+            <HeroCalibration config={config as ValueBoxPanelConfig} />
+          </PanelErrorBoundary>
+        ) : config.type === 'valuebox' && isPlainKpi(config as ValueBoxPanelConfig) ? (
           <PanelErrorBoundary panelTitle={config.title}>
             <HeroKpi config={config as ValueBoxPanelConfig} />
           </PanelErrorBoundary>

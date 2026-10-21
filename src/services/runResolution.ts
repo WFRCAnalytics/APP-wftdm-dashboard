@@ -102,6 +102,9 @@ export function bootCompareState(config: {
   baseYear?: number
   defaultYear?: number
   compareDefault?: 'auto' | 'on' | 'off'
+  compareScenarios?: string[]
+  compareFocus?: string
+  compareReference?: string
 }): void {
   const runs = appState.listByDisplayOrder().map(runInfoOf)
   const deployment = deriveDeployment(runs, config)
@@ -111,5 +114,16 @@ export function bootCompareState(config: {
   // later from a local folder), so Compare starts on; with several years, Compare needs two independent scenarios.
   const auto = deployment.years.length < 2 || independents.length >= 2
   const compare = config.compareDefault === 'on' ? true : config.compareDefault === 'off' ? false : auto
-  compareState.initCompareState({ deployment, focus: baseline, compare, baseline })
+  const known = new Set(alternativesOf(runs))
+  const focus = config.compareFocus && known.has(config.compareFocus) ? config.compareFocus : baseline
+  compareState.initCompareState({ deployment, focus, compare, baseline })
+  // the initial compare set, when the deployment names one: those alternatives on, the other independent ones off
+  const initial = (config.compareScenarios ?? []).filter((a) => known.has(a))
+  if (initial.length > 0) {
+    const set = new Set([...initial, focus])
+    for (const alt of independentAlternatives(runs)) compareState.setAlternativeActive(alt, set.has(alt))
+  }
+  const reference = config.compareReference
+  if (reference === 'observed') compareState.setReference({ kind: 'observed' })
+  else if (reference && known.has(reference)) compareState.setReference({ kind: 'scenario', name: reference })
 }

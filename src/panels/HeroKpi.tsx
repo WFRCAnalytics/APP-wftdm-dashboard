@@ -15,11 +15,11 @@ import { cn } from '@/lib/utils'
 // the selected year, a delta pill against the active reference with its caption, and a sparkline of the metric at each
 // model year. The delta is neutral ink; only "calibrated against Observed in the base year" uses status colours.
 
-async function readColumn(run: string, metric: string, column: string): Promise<number | null> {
+async function readColumn(run: string, metric: string, column: string, scale = 1): Promise<number | null> {
   await ensureRegistered([{ scenario: run, metric }])
   const rows = await query(`SELECT "${column}" AS v FROM "${run}__${metric}" LIMIT 1`)
   const v = rows[0]?.v
-  return v === null || v === undefined || !Number.isFinite(Number(v)) ? null : Number(v)
+  return v === null || v === undefined || !Number.isFinite(Number(v)) ? null : Number(v) * scale
 }
 
 const SPARK_W = 64
@@ -66,13 +66,13 @@ export function HeroKpi({ config }: { config: ValueBoxPanelConfig }) {
       return
     }
     ;(async () => {
-      const value = await readColumn(focusRun, config.metric, config.column)
-      const reference = refRun ? await readColumn(refRun, config.metric, config.column) : null
+      const value = await readColumn(focusRun, config.metric, config.column, config.scale)
+      const reference = refRun ? await readColumn(refRun, config.metric, config.column, config.scale) : null
       const series: { year: number; value: number }[] = []
       for (const y of years) {
         const run = runNameFor(focus, y)
         if (!run) continue
-        const v = run === focusRun ? value : await readColumn(run, config.metric, config.column)
+        const v = run === focusRun ? value : await readColumn(run, config.metric, config.column, config.scale)
         if (v !== null) series.push({ year: y, value: v })
       }
       if (!cancelled) setState({ value, reference, series, status: value === null ? 'empty' : 'ready' })
@@ -86,7 +86,7 @@ export function HeroKpi({ config }: { config: ValueBoxPanelConfig }) {
       cancelled = true
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [config.metric, config.column, focus, focusRun, refRun, year, years.join(',')])
+  }, [config.metric, config.column, config.scale, focus, focusRun, refRun, year, years.join(',')])
 
   const delta = useMemo(
     () => (state.value !== null && refRun ? deltaValue(state.value, state.reference, 'pct') : null),

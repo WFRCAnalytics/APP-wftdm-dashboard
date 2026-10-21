@@ -1,10 +1,12 @@
 import { Suspense, useEffect, useMemo } from 'react'
 import { PanelCard, PanelErrorBoundary } from '@/layout/panelCard'
 import { HeroCell } from '@/layout/heroCell'
+import { IdenticalNote } from '@/layout/identicalNote'
 import { registry } from '@/panels/registry'
 import { PanelErrorState } from '@/panels/PanelErrorState'
 import { PanelLoadingState } from '@/panels/PanelLoadingState'
-import { findFullPagePanel, isHeroRow, isMetricStripRow, resolveSections } from '@/layout/dashboardLayout'
+import { useResolvedView } from '@/hooks/useViewContext'
+import { findFullPagePanel, isHeroRow, isMetricStripRow, isPanelVisible, resolveSections } from '@/layout/dashboardLayout'
 import { isMapRenderingPanel, type DashboardTabConfig, type PanelConfig } from '@/layout/types'
 import { computeTabDataRequirement, ensureRegistered } from '@/services/tabDataLoader'
 import { useActiveScenarios } from '@/hooks/useActiveScenarios'
@@ -142,6 +144,8 @@ function FullPagePanel({ config }: { config: PanelConfig }) {
 }
 
 function OrdinaryDashboardRenderer({ tab }: { tab: DashboardTabConfig }) {
+  const view = useResolvedView()
+  const visibility = useMemo(() => ({ compare: view.compare, isBaseYear: view.isBaseYear }), [view.compare, view.isBaseYear])
   const rows = useMemo(() => {
     function withTabDefaultBasemap(panel: PanelConfig): PanelConfig {
       // a multi-view hands the tab default on to a map view
@@ -155,10 +159,10 @@ function OrdinaryDashboardRenderer({ tab }: { tab: DashboardTabConfig }) {
       // type-safety gap.
       return { ...panel, _tabDefaultBasemap: tab.default_basemap } as PanelConfig
     }
-    return Object.entries(tab.layout).map(
-      ([rowName, panels]) => [rowName, panels.map(withTabDefaultBasemap)] as const,
-    )
-  }, [tab])
+    return Object.entries(tab.layout)
+      .map(([rowName, panels]) => [rowName, panels.filter((p) => isPanelVisible(p, visibility)).map(withTabDefaultBasemap)] as const)
+      .filter(([, panels]) => panels.length > 0)
+  }, [tab, visibility])
 
   // FR-013–FR-016: for each resolved section, the FIRST row (in layout's
   // own real key order, never the section's own authored rows[] order) is
@@ -171,14 +175,22 @@ function OrdinaryDashboardRenderer({ tab }: { tab: DashboardTabConfig }) {
     const map = new Map<string, string>()
     for (const section of resolveSections(tab)) {
       const firstRow = section.rows[0]
-      if (firstRow && !map.has(firstRow)) map.set(firstRow, section.id)
+      // a section that names a tile anchors on that tile instead (see tileAnchors)
+      if (firstRow && !section.tile && !map.has(firstRow)) map.set(firstRow, section.id)
     }
+    return map
+  }, [tab])
+
+  const tileAnchors = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const section of tab.sections ?? []) if (section.tile) map.set(section.tile, section.id)
     return map
   }, [tab])
 
   return (
     <div className="flex flex-col gap-[14px] pb-[60px] pl-[14px] pr-7 pt-2">
       {/* The page title and description now live in the sticky PageHeader (layout/pageHeader.tsx). */}
+      {rows.some(([, panels]) => isHeroRow(panels)) && <IdenticalNote />}
       {rows.map(([rowName, panels]) => {
         const sectionId = sectionAnchorByRow.get(rowName)
         // FR-018: a row composed entirely of valuebox panels lays out as
@@ -216,8 +228,12 @@ function OrdinaryDashboardRenderer({ tab }: { tab: DashboardTabConfig }) {
               hero ? (
                 <HeroCell key={`${rowName}-${index}`} config={panel} />
               ) : (
-                <div key={`${rowName}-${index}`} className="min-w-0">
-                  <PanelCard config={panel} tileKey={tileKey(tab.header.tab, `${rowName}-${index}`)} />
+                <div
+                  key={`${rowName}-${index}`}
+                  id={tileAnchors.has((panel as { id?: string }).id ?? '') ? `section-${tileAnchors.get((panel as { id?: string }).id ?? '')}` : undefined}
+                  className="min-w-0 scroll-mt-24"
+                >
+                  <PanelCard config={panel} tileKey={tileKey(tab.header.tab, (panel as { id?: string }).id ?? `${rowName}-${index}`)} />
                 </div>
               ),
             )}

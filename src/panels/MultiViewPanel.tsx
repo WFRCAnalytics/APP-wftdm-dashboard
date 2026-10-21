@@ -18,8 +18,8 @@ export function MultiViewPanel({ config }: PanelProps<MultiViewPanelConfig>) {
   const ctx = useResolvedView()
   const error = useMemo(() => validateMultiView(config), [config])
   const resolved = useMemo(
-    () => (error ? null : resolveMultiView(config, tile)),
-    [config, error, tile.view, tile.group, tile.strategy], // eslint-disable-line react-hooks/exhaustive-deps
+    () => (error ? null : resolveMultiView(config, tile, { compare: ctx.compare })),
+    [config, error, tile.view, tile.group, tile.strategy, ctx.compare], // eslint-disable-line react-hooks/exhaustive-deps
   )
   // The tab-level default basemap is injected onto the multi-view config; hand it to a map view.
   const panelConfig = useMemo(() => {

@@ -129,6 +129,9 @@ export interface ChartKind {
   tables(plan: ChartPlan): string[]
   /** Runs to load beyond the compared runs, the reference and the focus (e.g. every year of each alternative). */
   extraRuns?(plan: ChartPlan): string[]
-  /** Draws into `el`, replacing its children. May return a legend, a disposer and an aria label. */
+  /** Draws into `el`, replacing its children. May return a legend, a disposer and an aria label. A kind that owns an
+   * expensive object (a MapLibre map) keeps it in `env.state` and reuses it on the next draw. */
   draw(el: HTMLElement, env: ChartEnv): ChartResult | void
+  /** Called once when the panel unmounts, with the panel's persistent `state` (e.g. `map.remove()`). */
+  destroy?(state: Record<string, unknown>): void
 }

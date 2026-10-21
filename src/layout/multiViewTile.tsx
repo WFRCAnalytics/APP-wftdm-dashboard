@@ -31,7 +31,7 @@ export function MultiViewTile({ config, tileKey }: { config: MultiViewPanelConfi
   const { inputs, referenceLabel } = useCompareInputs()
   const [tile, setTile] = useTileState(tileKey)
   const error = useMemo(() => validateMultiView(config), [config])
-  const resolved = useMemo(() => (error ? null : resolveMultiView(config, tile)), [config, error, tile])
+  const resolved = useMemo(() => (error ? null : resolveMultiView(config, tile, { compare: ctx.compare })), [config, error, tile, ctx.compare])
 
   // Tiles flagged for another mode are not rendered at all.
   if (config.needs_compare && !ctx.compare) return null
@@ -115,14 +115,14 @@ export function MultiViewTile({ config, tileKey }: { config: MultiViewPanelConfi
       />,
     )
   }
-  if (config.views.length > 1) {
+  if (resolved.visibleViews.length > 1) {
     controls.push(
       <Segmented
         key="view"
         label="View"
         className="ml-auto"
         value={resolved.view.id}
-        options={config.views.map((v) => ({ id: v.id, label: v.label ?? v.id }))}
+        options={resolved.visibleViews.map((v) => ({ id: v.id, label: v.label ?? v.id }))}
         onChange={(view) => setTile({ view })}
       />,
     )

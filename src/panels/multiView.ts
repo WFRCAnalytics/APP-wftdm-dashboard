@@ -33,7 +33,7 @@ export function defaultStrategies(type: string): CompareStrategy[] {
 const GROUP_REF = /^\$group\.([A-Za-z_][\w]*)$/
 
 /** Keys a view carries for the wrapper only; they never reach the panel component. */
-const VIEW_ONLY_KEYS = new Set(['id', 'label', 'compare', 'scenario_independent', 'base_year_only', 'family'])
+const VIEW_ONLY_KEYS = new Set(['id', 'label', 'compare', 'scenario_independent', 'base_year_only', 'family', 'needs_compare'])
 
 function groupRefsIn(value: unknown, out: Set<string>): void {
   if (typeof value === 'string') {
@@ -128,6 +128,8 @@ export interface TileSelection {
 
 export interface ResolvedMultiView {
   view: MultiViewViewConfig
+  /** The views the switcher offers: a view flagged `needs_compare` is left out while Compare is off. */
+  visibleViews: MultiViewViewConfig[]
   groupOption?: MultiViewGroupOption
   /** The active view as an ordinary panel config (tile defaults applied, `$group` substituted). */
   panel: PanelConfig
@@ -139,8 +141,17 @@ export interface ResolvedMultiView {
 }
 
 /** Chooses the active view and group from the tile selection, falling back to the first view and the default group. */
-export function resolveMultiView(config: MultiViewPanelConfig, selection: TileSelection = {}): ResolvedMultiView {
-  const view = config.views.find((v) => v.id === selection.view) ?? config.views[0]
+export function resolveMultiView(
+  config: MultiViewPanelConfig,
+  selection: TileSelection = {},
+  opts: { compare?: boolean } = {},
+): ResolvedMultiView {
+  const offered = config.views.filter((v) => !(v.needs_compare && opts.compare === false))
+  const visibleViews = offered.length > 0 ? offered : config.views
+  const view =
+    visibleViews.find((v) => v.id === selection.view) ??
+    visibleViews.find((v) => v.id === config.default_view) ??
+    visibleViews[0]
   const options = config.group_by?.options ?? []
   const groupOption =
     options.find((o) => o.id === selection.group) ??
@@ -168,7 +179,7 @@ export function resolveMultiView(config: MultiViewPanelConfig, selection: TileSe
   const scenarioIndependent = Boolean(view.scenario_independent ?? config.scenario_independent) || strategies.length === 0
   const strategy =
     scenarioIndependent ? undefined : strategies.includes(selection.strategy as CompareStrategy) ? selection.strategy : strategies[0]
-  return { view, groupOption, panel: merged as unknown as PanelConfig, strategies, strategy, scenarioIndependent }
+  return { view, visibleViews, groupOption, panel: merged as unknown as PanelConfig, strategies, strategy, scenarioIndependent }
 }
 
 /** Every view as a panel config (default group): what a tab will need to load. */
