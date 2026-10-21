@@ -1,11 +1,13 @@
-import { Suspense, useMemo } from 'react'
+import { useMemo } from 'react'
 
 import { PanelErrorBoundary } from '@/layout/panelCard'
 import type { MultiViewPanelConfig } from '@/layout/types'
+import { useResolvedView } from '@/hooks/useViewContext'
 import { useTileKey, useTileState } from '@/hooks/useTileState'
+import { CompareHost } from '@/panels/CompareHost'
+import { effectiveStrategy } from '@/panels/compareStrategy'
 import { PanelErrorState } from '@/panels/PanelErrorState'
-import { PanelLoadingState } from '@/panels/PanelLoadingState'
-import { registry, type PanelProps } from '@/panels/registry'
+import type { PanelProps } from '@/panels/registry'
 import { resolveMultiView, validateMultiView } from '@/panels/multiView'
 
 // The body of a `multi-view` tile: the active view rendered as an ordinary panel. The view, group and strategy
@@ -13,6 +15,7 @@ import { resolveMultiView, validateMultiView } from '@/panels/multiView'
 export function MultiViewPanel({ config }: PanelProps<MultiViewPanelConfig>) {
   const key = useTileKey() || `multi-view:${config.title}`
   const [tile] = useTileState(key)
+  const ctx = useResolvedView()
   const error = useMemo(() => validateMultiView(config), [config])
   const resolved = useMemo(
     () => (error ? null : resolveMultiView(config, tile)),
@@ -26,13 +29,16 @@ export function MultiViewPanel({ config }: PanelProps<MultiViewPanelConfig>) {
   }, [resolved, config])
 
   if (error || !resolved || !panelConfig) return <PanelErrorState message={error ?? 'Invalid multi-view'} />
-  const Inner = registry[panelConfig.type]
-  if (!Inner) return <PanelErrorState message={`Unknown panel type: "${panelConfig.type}"`} />
+  const strategy = effectiveStrategy({
+    strategies: resolved.strategies,
+    chosen: tile.strategy,
+    scenarioIndependent: resolved.scenarioIndependent,
+    compare: ctx.compare,
+    display: ctx.display,
+  })
   return (
     <PanelErrorBoundary panelTitle={config.title} key={`${resolved.view.id}:${resolved.groupOption?.id ?? ''}`}>
-      <Suspense fallback={<PanelLoadingState height={config.height} />}>
-        <Inner config={panelConfig} />
-      </Suspense>
+      <CompareHost panel={panelConfig} strategy={strategy} tileKey={key} title={config.title} />
     </PanelErrorBoundary>
   )
 }

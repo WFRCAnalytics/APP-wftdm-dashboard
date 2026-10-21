@@ -69,6 +69,11 @@ export function currentView(): ResolvedView {
   return resolveViewContext(viewInput(), viewManifest())
 }
 
+/** `alternative`'s run name in `year`, or undefined (e.g. its base-year run for the "same scenario in the base year" reference). */
+export function runNameFor(alternative: string, year: number): string | undefined {
+  return resolveRun(viewManifest().runs, alternative, year)?.name
+}
+
 /** The baseline scenario's run for the current year (`$baseline` and baseline-pinned panels read this). */
 export function getBaselineForYear(): string | undefined {
   const manifest = viewManifest()

@@ -3,6 +3,7 @@ import { Suspense, useMemo, type ReactNode } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { PillSelect } from '@/components/ui/pill-select'
 import { Segmented } from '@/components/ui/segmented'
+import { useCompareInputs } from '@/hooks/useCompareInputs'
 import { useResolvedView } from '@/hooks/useViewContext'
 import { TileKeyContext, useTileState } from '@/hooks/useTileState'
 import { PanelErrorBoundary } from '@/layout/panelCard'
@@ -10,14 +11,11 @@ import { Tile } from '@/layout/tile'
 import type { CompareStrategy, MultiViewPanelConfig } from '@/layout/types'
 import { PanelLoadingState } from '@/panels/PanelLoadingState'
 import { registry } from '@/panels/registry'
+import { effectiveStrategy } from '@/panels/compareStrategy'
 import { isBaseYearOnly, isCalibrationFamily, resolveMultiView, validateMultiView } from '@/panels/multiView'
 
 // The tile for `type: multi-view`: the chrome (badges, group-by, compare-as, view switcher) around MultiViewPanel,
 // which draws the active view. Hidden entirely when the tile only makes sense in another mode.
-
-/** The strategy controls are built and tested here but only change what is drawn once CompareHost applies
- * strategies (P5); until then they stay hidden rather than offer a control with no effect. */
-export const SHOW_COMPARE_CONTROLS = false
 
 const STRATEGY_LABEL: Record<CompareStrategy, string> = {
   overlay: 'Overlay',
@@ -30,6 +28,7 @@ const STRATEGY_LABEL: Record<CompareStrategy, string> = {
 
 export function MultiViewTile({ config, tileKey }: { config: MultiViewPanelConfig; tileKey: string }) {
   const ctx = useResolvedView()
+  const { inputs, referenceLabel } = useCompareInputs()
   const [tile, setTile] = useTileState(tileKey)
   const error = useMemo(() => validateMultiView(config), [config])
   const resolved = useMemo(() => (error ? null : resolveMultiView(config, tile)), [config, error, tile])
@@ -51,7 +50,23 @@ export function MultiViewTile({ config, tileKey }: { config: MultiViewPanelConfi
     return <Tile title={config.title} expandable={false} panel={null} errorMessage={error ?? 'Invalid multi-view'} />
   }
 
+  const strategy = effectiveStrategy({
+    strategies: resolved.strategies,
+    chosen: tile.strategy,
+    scenarioIndependent: resolved.scenarioIndependent,
+    compare: ctx.compare,
+    display: ctx.display,
+  })
   const badges: ReactNode[] = []
+  if (strategy === 'diff') {
+    badges.push(
+      <Badge key="diff" variant="accent">
+        {ctx.display === 'pct' ? '% change' : 'Change'} vs {referenceLabel}
+      </Badge>,
+    )
+  } else if (ctx.compare && ctx.display !== 'val' && !resolved.scenarioIndependent && resolved.strategies.length > 0) {
+    badges.push(<Badge key="values" variant="neutral">Shows values</Badge>)
+  }
   if (ctx.compare && resolved.scenarioIndependent) {
     badges.push(<Badge key="same" variant="neutral">Same in every scenario</Badge>)
   }
@@ -72,15 +87,31 @@ export function MultiViewTile({ config, tileKey }: { config: MultiViewPanelConfi
       />,
     )
   }
-  if (SHOW_COMPARE_CONTROLS && ctx.compare && resolved.strategies.length >= 2 && !resolved.scenarioIndependent) {
+  if (ctx.compare && resolved.strategies.length >= 2 && !resolved.scenarioIndependent) {
     controls.push(
       <Segmented
         key="strategy"
         variant="compare"
         label="Compare as"
-        value={resolved.strategy ?? resolved.strategies[0]}
+        value={strategy ?? resolved.strategies[0]}
         options={resolved.strategies.map((s) => ({ id: s, label: STRATEGY_LABEL[s] }))}
-        onChange={(strategy) => setTile({ strategy: strategy as CompareStrategy })}
+        onChange={(chosen) => setTile({ strategy: chosen as CompareStrategy })}
+      />,
+    )
+  } else if (ctx.compare && resolved.strategies.length === 1 && (strategy === 'multi' || strategy === 'grid')) {
+    badges.push(<Badge key="sbs" variant="neutral">Side by side</Badge>)
+  }
+  if (strategy === 'switch' || strategy === 'swipe') {
+    const runs = inputs.active
+    const value = tile.scenario && runs.includes(tile.scenario) ? tile.scenario : (inputs.focusRun ?? runs[0] ?? '')
+    controls.push(
+      <PillSelect
+        key="scenario"
+        compact
+        label="Scenario"
+        value={value}
+        options={runs.map((r) => ({ value: r, label: inputs.label(r) }))}
+        onChange={(scenario) => setTile({ scenario })}
       />,
     )
   }

@@ -22,3 +22,17 @@ export function readChartRadius(): number {
   const v = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--chart-r'))
   return Number.isFinite(v) ? v : 5
 }
+
+/** The resolved colour tokens the semantic helpers in chartColor.ts need, read once per draw. */
+export function readColorTokens(el: Element): import('@/panels/chartColor').ColorTokens {
+  const style = getComputedStyle(el)
+  const get = (name: string, fallback: string) => style.getPropertyValue(name).trim() || fallback
+  return {
+    surface: get('--surface', '#ffffff'),
+    ink: get('--ink', '#10151c'),
+    c1: get('--c-1', '#2fa598'),
+    c2: get('--c-2', '#c28940'),
+    c3: get('--c-3', '#a781eb'),
+    dark: document.documentElement.classList.contains('dark'),
+  }
+}

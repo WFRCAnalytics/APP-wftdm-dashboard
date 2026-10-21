@@ -76,6 +76,11 @@ function colorFor(node: D3HierarchyNode<HierarchyNode>, resolveColor: (name: str
   return resolveColor(nodeName(d))
 }
 
+/** The leaf's path (root excluded) joined the way HierarchicalChartHost keys its difference map. */
+function leafKey(node: D3HierarchyNode<HierarchyNode>): string {
+  return node.ancestors().reverse().slice(1).map(nodeName).join('')
+}
+
 function clearChildren(el: Element) {
   while (el.firstChild) el.removeChild(el.firstChild)
 }
@@ -147,7 +152,8 @@ function buildGroup(
     const rect = document.createElementNS(SVG_NS, 'rect')
     rect.setAttribute('width', String(w))
     rect.setAttribute('height', String(h))
-    rect.setAttribute('fill', colorFor(child, ctx.resolveColor))
+    const diffColor = !child.children && ctx.leafColor ? ctx.leafColor(leafKey(child)) : undefined
+    rect.setAttribute('fill', diffColor ?? colorFor(child, ctx.resolveColor))
     rect.setAttribute('stroke', 'var(--card, #fff)')
     rect.setAttribute('stroke-width', '1')
     nodeGroup.appendChild(rect)

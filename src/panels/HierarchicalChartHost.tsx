@@ -11,6 +11,9 @@ import { useColorblindSafePreference } from '@/hooks/useColorblindSafePreference
 import { ensureRegistered } from '@/services/tabDataLoader'
 import { resolveQueryAndPairs, extractGlobalFilterIds } from '@/panels/panelQuery'
 import { buildHierarchy, type HierarchyNode } from '@/panels/hierarchyData'
+import { buildComparisonDiffQuery } from '@/panels/panelQuery'
+import { diverging } from '@/panels/chartColor'
+import { readColorTokens } from '@/panels/chartTheme'
 import { resolveNamedColorScheme, resolveCategoryFallbackColors, CATEGORY_FALLBACK_HEX, CATEGORY_TOKEN_VARS } from '@/panels/chartColor'
 import { PanelEmptyState } from '@/panels/PanelEmptyState'
 import { PanelErrorState } from '@/panels/PanelErrorState'
@@ -49,6 +52,9 @@ export interface HierarchyRenderContext {
    * real zoomable-sunburst reference's own established convention
    * (`while (d.depth > 1) d = d.parent; return color(d.data.name)`). */
   resolveColor: (topLevelCategoryName: string) => string
+  /** Set for a difference view: the colour of a LEAF from its % change against the reference (geometry still comes from
+   * the shown scenario). Undefined for the ordinary categorical colouring. */
+  leafColor?: (pathKey: string) => string | undefined
 }
 
 /** What a chart-type-specific module (treemapRenderer.ts/sunburstRenderer.ts)
@@ -92,6 +98,16 @@ function buildColorResolver(
   return (topLevelCategoryName: string) => colorByName.get(topLevelCategoryName) ?? palette[0]
 }
 
+/** Diverging colour of a leaf from its % change: zero maps to the neutral midpoint, +/-50% to the full colours.
+ * A missing or non-finite change (a reference of zero) stays neutral. Never green/red. */
+function buildLeafColor(el: Element, pct: Map<string, number | null>): (pathKey: string) => string | undefined {
+  const tokens = readColorTokens(el)
+  return (pathKey) => {
+    const v = pct.get(pathKey)
+    return diverging(v === null || v === undefined || !Number.isFinite(v) ? 0 : v / 50, tokens)
+  }
+}
+
 export function HierarchicalChartHost({
   config,
   renderer,
@@ -109,6 +125,7 @@ export function HierarchicalChartHost({
   const hasMountedRendererRef = useRef(false)
   const [status, setStatus] = useState<'loading' | 'ready' | 'empty' | 'error'>('loading')
   const [root, setRoot] = useState<HierarchyRectangularNode<HierarchyNode> | null>(null)
+  const [diffPct, setDiffPct] = useState<Map<string, number | null> | null>(null)
 
   // Data fetch — identical shape to every other data-bound panel type's
   // own fetch effect. resolveQueryAndPairs()/ensureRegistered() reused
@@ -124,8 +141,27 @@ export function HierarchicalChartHost({
     }
     const { sql, pairs } = resolved
 
-    ensureRegistered(pairs)
-      .then(() => query(sql))
+    // A difference view (CompareHost's `color_diff`): a second query gives each leaf's % change against the reference.
+    const colorDiff = (config as { color_diff?: { a: string; b: string; expr: string } }).color_diff
+    const diffSql = colorDiff
+      ? buildComparisonDiffQuery(config.metric, colorDiff.a, colorDiff.b, config.path, colorDiff.expr)
+      : undefined
+    const diffPairs = colorDiff ? [{ scenario: colorDiff.a, metric: config.metric }] : []
+
+    ensureRegistered([...pairs, ...diffPairs])
+      .then(async () => {
+        const rows = await query(sql)
+        if (diffSql) {
+          const diffRows = await query(diffSql)
+          const m = new Map<string, number | null>()
+          for (const r of diffRows) {
+            const v = r.diff_value
+            m.set(config.path.map((c) => String(r[c])).join(''), v === null || v === undefined ? null : Number(v))
+          }
+          if (!cancelled) setDiffPct(m)
+        } else if (!cancelled) setDiffPct(null)
+        return rows
+      })
       .then((rows) => {
         if (cancelled) return
         if (rows.length === 0) {
@@ -184,6 +220,7 @@ export function HierarchicalChartHost({
         height,
         root: root!,
         resolveColor: buildColorResolver(el!, root!, config.color_scheme, colorblindSafe),
+        leafColor: diffPct ? buildLeafColor(el!, diffPct) : undefined,
       }
       if (!hasMountedRendererRef.current) {
         renderer.mount(ctx)
@@ -204,7 +241,7 @@ export function HierarchicalChartHost({
     // colorblindSafe (061-appearance-controls): same reasoning — forces a
     // redraw when the Appearance-tab toggle changes, with no width/height
     // change of its own.
-  }, [config, root, status, colorScheme, colorblindSafe, renderer])
+  }, [config, root, status, colorScheme, colorblindSafe, renderer, diffPct])
 
   // Unmount-only teardown — deliberately a second effect, empty deps,
   // matching every other panel type's own established convention.
