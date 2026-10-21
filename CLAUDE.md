@@ -561,6 +561,30 @@ a range, every version-compatibility bug found) is in
 
 ---
 
+## 063 redesign: compare model, chart kinds, demo content
+
+The app implements the Corridor Pro design in `project-docs/redesign/` (read `00-README.md`, then `09-chart-kind-guide.md`
+before touching charts).
+
+- **View context**: `state/compareState.ts` (year, focus, compare, reference, display) plus appState's active flags feed
+  the pure `services/viewContext.ts#resolveViewContext`; read it through `hooks/useViewContext.ts`. Runs are identified by
+  manifest `alternative` + `year`; `kind: scenario | round | observed`, and `hidden: true` keeps a run loadable/pinnable
+  but out of the picker, Scenarios tab and compare set (the legacy ActivitySim runs the Test tab pins).
+- **Tiles**: `type: multi-view` wraps views, a Group by control and compare strategies (`panels/multiView.ts`,
+  `layout/multiViewTile.tsx`, `panels/CompareHost.tsx` + `compareStrategy.ts` for overlay/diff/multi/grid/switch/swipe).
+  Tile keys: panel `id` (else `row-index`), session state in `state/tileState.ts`. `show_when: compare|single`,
+  `needs_compare`, `family: calibration`, `height_rows` and `default_view` shape what is rendered.
+- **Charts**: `type: chart, kind: <name>` is drawn by `panels/ChartPanel.tsx`; each kind is one module in
+  `src/charts/kinds/` (named from its file name, auto-registered via `import.meta.glob`), shared logic in `src/charts/lib/`.
+  Kinds receive a `ChartEnv` and never read stores or DuckDB. One tooltip (`services/tooltip.ts`), crosshair/armPlot
+  (`panels/plotInteraction.ts`), mode cross-highlight (`panels/crossHighlight.ts`), grid-synced hover (`panels/gridSync.ts`).
+  Legacy panel types (`observable-plot`, `treemap`, ... ) are unchanged and still render old-style configs.
+- **Data**: per-run Parquet tables listed in `scripts/build-demo-redesign-data.py` (synthetic demo: 15 alternatives x 6 years,
+  `observed-2023`, 50 `round-NN`, family roll-up `families/calibration/calibration_by_round.parquet`, Wasatch zone/rail
+  geometry in `public/demo-geometry`). `panels/panelQuery.ts#resolveActiveScenarios` skips runs whose metric catalog
+  lacks a panel's metric. `wftdm-dashboard validate-observed <folder>` checks a published observed folder.
+- New D3 submodules (no new chart library): d3-selection/scale/array/chord/zoom/format/interpolate/transition.
+
 ## Implementation status
 
 All 12 remaining panel types are built (plotly and recharts were removed in the 063 redesign). Sidebar navigation, lazy
@@ -623,5 +647,7 @@ shipped feature, read `project-docs/IMPLEMENTATION-HISTORY.md`.
 - Create `dashboard-config.yaml` — does not exist (the `public/dashboard-config/` directory is unrelated)
 - Create `services/observedRegistry.ts` — replaced by `services/scenarioDiscovery.ts`
 - Recreate the `duckdbLoaderPool.ts` multi-instance pattern — removed, measured slower
+- Add a chart library, a per-chart tooltip element, a native `title`/`tip: true` tooltip, or hard-coded colours in a chart kind
+- Colour a difference green/red, or use status colours for series
 - Re-add per-panel-type `sankeyColor.ts`/`hierarchyColor.ts`/`polarChartColor.ts`
   duplicates — consolidated into `panels/chartColor.ts`

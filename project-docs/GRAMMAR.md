@@ -1781,3 +1781,34 @@ placeholder — write each filter-gated condition on its own line.
 | Scenario comparison | Both overlaid and side-by-side supported | `scenario:` key controls which; omit for overlaid |
 | Observed data | Permanent registered views, no prefix | Always available, no per-panel loading config |
 | Geography | Four levels in zones.parquet; super_district default | TAZ only for map panels |
+
+---
+
+## 063 redesign additions
+
+### `type: chart`
+```yaml
+- type: chart
+  kind: mode-bars            # a module in src/charts/kinds (kebab-case of its file name)
+  group: scn                 # what the series are; usually set by a multi-view group option (fields: { group: scn })
+  variant: trips             # kind-specific options are plain keys
+```
+Reads per-run Parquet tables chosen by the kind, for every compared run, the reference and the focus. See
+`project-docs/redesign/09-chart-kind-guide.md` for the kind catalogue and the data tables.
+
+### Tile and layout keys
+| Key | Where | Meaning |
+|---|---|---|
+| `id` | any tile | Stable tile id: keys the viewer's chosen view/group/strategy and section anchors. |
+| `show_when: compare \| single` | any tile | Render only with Compare on / off; the row's columns re-divide. |
+| `needs_compare: true` | multi-view or a view | Hidden while Compare is off (scorecard, ranking, difference/swipe maps). |
+| `family: calibration`, `base_year_only: true` | multi-view / view | Calibration-rounds tile, shown only in the base year. |
+| `height_rows: {base, per, max}` | multi-view | Height grows with the number of compared scenarios. |
+| `default_view: <view id>` | multi-view | View shown first. |
+| `scenario_independent: true` | multi-view / view | "Same in every scenario" badge in Compare mode. |
+| `sections[].tile: <id>` | tab | Sub-navigation entry scrolls to that tile instead of the row. |
+
+### `dashboard-config/index.json` additions
+`years` (`[{year,label}]`), `baseYear`, `defaultYear`, `compare: { default: auto|on|off, scenarios: [alternative ids],
+focus, reference }`. Run manifests may carry `kind`, `alternative`, `year`, `tag`, `family`, `family_index`, `hidden`,
+and (for an observed run) `observed: { source, sample, metrics: { <table>: { source, sample } } }`.
