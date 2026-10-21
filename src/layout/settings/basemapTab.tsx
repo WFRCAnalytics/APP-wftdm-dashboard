@@ -134,6 +134,7 @@ const SECTIONS: Section[] = [
     icon: Landmark,
     entries: [
       { name: 'ugrc-vector-lite', label: 'Vector Lite', icon: MapIcon },
+      { name: 'ugrc-vector-dark', label: 'Vector Dark', icon: Moon },
       { name: 'ugrc-vector-hybrid', label: 'Vector Hybrid', icon: Satellite },
       { name: 'ugrc-vector-outdoors', label: 'Vector Outdoors', icon: Mountain },
     ],
@@ -392,7 +393,7 @@ export function BasemapTab() {
           {SECTIONS.map((section) => (
             <div key={section.heading}>
               <GroupHeading>{section.heading}</GroupHeading>
-              <div className="grid grid-cols-[repeat(auto-fill,minmax(128px,1fr))] gap-2.5" role="radiogroup" aria-label={section.heading}>
+              <div className="grid grid-cols-[repeat(auto-fill,minmax(104px,1fr))] gap-2.5" role="radiogroup" aria-label={section.heading}>
                 {section.entries.map((entry) => (
                   <StyleCard
                     key={entry.name}
@@ -412,7 +413,7 @@ export function BasemapTab() {
           {/* Protomaps needs a configured PMTiles source; without one its styles stay disabled, as before. */}
           <div>
             <GroupHeading>Protomaps</GroupHeading>
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(128px,1fr))] gap-2.5" role="radiogroup" aria-label="Protomaps">
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(104px,1fr))] gap-2.5" role="radiogroup" aria-label="Protomaps">
               {PROTOMAPS_FLAVOR_NAMES.map((name) => {
                 const { label, icon } = PROTOMAPS_FLAVOR_LABEL_AND_ICON[name]
                 return (
@@ -490,8 +491,8 @@ export function BasemapTab() {
           </div>
         </div>
 
-        <aside className="self-start overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--tile-hi)] max-[1100px]:order-first">
-          <div className="relative h-[220px] w-full">
+        <aside className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--tile-hi)] max-[1100px]:order-first">
+          <div className="relative min-h-[220px] w-full flex-1">
             <div ref={previewContainerRef} className="h-full w-full" />
             {previewError && (
               <div
@@ -502,7 +503,7 @@ export function BasemapTab() {
               </div>
             )}
           </div>
-          <div className="px-3.5 py-3">
+          <div className="shrink-0 px-3.5 py-3">
             <b className="block font-medium">{describeSelection(stagedSelection).name}</b>
             <small className="text-[var(--mute)]">{describeSelection(stagedSelection).group}</small>
             {isProtomapsFlavorName(stagedSelection) && !protomapsSource && (
@@ -556,7 +557,7 @@ interface StyleCardProps {
   onPick: () => void
 }
 
-// One style card: a 76px thumbnail area (a tint matching the style's brightness and its category icon; the styles have no
+// One style card: a 48px thumbnail area (a tint matching the style's brightness and its category icon; the styles have no
 // bundled preview images), the name, and optional captions. A radio of its section's radiogroup.
 function StyleCard({ name, label, icon: Icon, staged, inUse, recommended, disabled, note, onPick }: StyleCardProps) {
   return (
@@ -569,7 +570,7 @@ function StyleCard({ name, label, icon: Icon, staged, inUse, recommended, disabl
       onClick={onPick}
       title={disabled ? 'No Protomaps source configured' : recommended ? 'Recommended: the app default for unconfigured map panels' : undefined}
       className={cn(
-        'overflow-hidden rounded-[14px] border-2 bg-[var(--tile-hi)] p-0 text-left shadow-[0_0_0_1px_var(--line)] transition-colors motion-reduce:transition-none',
+        'flex flex-col items-stretch justify-start overflow-hidden rounded-[12px] border-2 bg-[var(--tile-hi)] p-0 text-left shadow-[0_0_0_1px_var(--line)] transition-colors motion-reduce:transition-none',
         'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-text)]',
         'disabled:cursor-not-allowed disabled:opacity-50',
         staged
@@ -580,13 +581,13 @@ function StyleCard({ name, label, icon: Icon, staged, inUse, recommended, disabl
       <span
         aria-hidden="true"
         className={cn(
-          'flex h-[76px] w-full items-center justify-center',
+          'flex h-[48px] w-full shrink-0 items-center justify-center',
           DARK_STYLE.test(name)
             ? 'bg-[linear-gradient(135deg,#2c3644,#1a212b)] text-[#9fb0c4]'
             : 'bg-[linear-gradient(135deg,#eef2f6,#d6dee8)] text-[#5b6b80]',
         )}
       >
-        <Icon className="h-6 w-6" />
+        <Icon className="h-5 w-5" />
       </span>
       <span className="flex items-center gap-1 px-2.5 py-[7px] text-[12.5px]">
         {label}

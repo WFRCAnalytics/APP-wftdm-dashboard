@@ -21,6 +21,8 @@ interface UrlPreset {
 interface CompositionPreset {
   kind: 'composition'
   layers: string[] // identical shape to BasemapComposition.layers (types.ts)
+  glyphs?: string // font URL template overriding the first-declared one (the label layer's service owns the fonts it needs)
+  background?: string // fill under the composed layers when none of them has a background layer (default white)
 }
 
 type BuiltInPreset = UrlPreset | CompositionPreset
@@ -48,6 +50,20 @@ const BUILT_IN_PRESETS: Record<BasemapPresetName, BuiltInPreset> = {
       'https://tiles.arcgis.com/tiles/99lidPhWCzftIe9K/arcgis/rest/services/LiteBase/VectorTileServer/resources/styles/root.json',
       'https://tiles.arcgis.com/tiles/99lidPhWCzftIe9K/arcgis/rest/services/LiteLabels/VectorTileServer/resources/styles/root.json',
     ],
+  },
+  // UGRC's dark counterpart to Vector Lite (web map 00be227f54bf4795953af5d7e9a26cf9, "Utah Vector Dark Basemap"):
+  // hillshade (bottom), base, labels (top). Item-based style URLs, as the web map itself references them.
+  'ugrc-vector-dark': {
+    kind: 'composition',
+    layers: [
+      'https://www.arcgis.com/sharing/rest/content/items/e91dd08e21f345cd8005ecb85dbe37bf/resources/styles/root.json',
+      'https://www.arcgis.com/sharing/rest/content/items/a8140cb623c64580b5d6be3c745cc03a/resources/styles/root.json',
+      'https://www.arcgis.com/sharing/rest/content/items/d3899e1857de4b4993d9ca05c67d531b/resources/styles/root.json',
+    ],
+    // MapLibre takes one font URL per style and each UGRC service hosts only the fonts it uses (the hillshade's answers every
+    // request with a JSON error). The base service is the one that has the fonts of both the base and the labels layers.
+    glyphs: 'https://tiles.arcgis.com/tiles/99lidPhWCzftIe9K/arcgis/rest/services/LiteBase/VectorTileServer/resources/fonts/{fontstack}/{range}.pbf',
+    background: '#000000',
   },
   'ugrc-vector-hybrid': {
     kind: 'composition',
