@@ -171,10 +171,12 @@ export function AppearanceTab() {
         help="Drive highlights, selected states and the colours for transit, walking and biking."
       >
         <div>
-          {ROLES.map(({ role, label }) => (
-            <InterfaceColorControl key={role} role={role} label={label} />
-          ))}
-          <div className="mt-2 flex max-w-[340px] items-center gap-1.5">
+          <div className="flex items-start justify-between gap-4">
+            {ROLES.map(({ role, label }) => (
+              <InterfaceColorControl key={role} role={role} label={label} />
+            ))}
+          </div>
+          <div className="mt-3 flex max-w-[340px] items-center gap-1.5">
             {PRESETS.map((p) => (
               <button
                 key={p.name}

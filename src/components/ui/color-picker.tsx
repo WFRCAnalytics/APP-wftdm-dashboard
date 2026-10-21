@@ -302,7 +302,7 @@ export const ColorPickerOutput = ({ className, ...props }: ColorPickerOutputProp
   const { mode, setMode } = useColorPicker()
   return (
     <Select value={mode} onValueChange={setMode}>
-      <SelectTrigger className="h-8 w-20 shrink-0 text-xs" {...props}>
+      <SelectTrigger className="h-8 w-[4.25rem] shrink-0 gap-1 px-2 text-xs" {...props}>
         <SelectValue placeholder="Mode" />
       </SelectTrigger>
       <SelectContent>
@@ -391,11 +391,11 @@ export const ColorPickerFormat = ({ className, ...props }: ColorPickerFormatProp
 
   if (mode === 'rgb') {
     return (
-      <div className={cn('flex items-center gap-1', className)} {...props}>
+      <div className={cn('flex min-w-0 flex-1 items-center gap-1', className)} {...props}>
         {rgbDraft.map((channelText, index) => (
           <Input
             key={index}
-            className="h-8 w-12 bg-secondary px-1 text-center text-xs shadow-none"
+            className="h-8 min-w-0 flex-1 bg-secondary px-1 text-center text-xs shadow-none"
             inputMode="numeric"
             value={channelText}
             aria-label={['Red', 'Green', 'Blue'][index]}
@@ -412,7 +412,7 @@ export const ColorPickerFormat = ({ className, ...props }: ColorPickerFormatProp
   }
 
   return (
-    <div className={cn('flex items-center gap-1', className)} {...props}>
+    <div className={cn('flex min-w-0 flex-1 items-center gap-1', className)} {...props}>
       <Input
         className="h-8 flex-1 bg-secondary px-2 text-xs shadow-none"
         value={hexDraft}

@@ -50,8 +50,7 @@ export function InterfaceColorControl({ role, label }: { role: InterfaceColorRol
     colors[role].color ?? (getComputedStyle(document.documentElement).getPropertyValue(FALLBACK_VAR[role]).trim() || '#000000')
 
   return (
-    <div className="grid max-w-[340px] grid-cols-[1fr_34px_76px] items-center gap-2.5 py-[5px]">
-      <span>{label}</span>
+    <div className="flex flex-col items-center gap-1">
       <Popover>
         <PopoverTrigger asChild>
           <button
@@ -94,7 +93,8 @@ export function InterfaceColorControl({ role, label }: { role: InterfaceColorRol
           )}
         </PopoverContent>
       </Popover>
-      <code className="font-mono text-xs text-[var(--mute)]" data-testid={`interface-color-hex-${role}`}>
+      <span className="text-[12.5px]">{label}</span>
+      <code className="font-mono text-[11px] leading-none text-[var(--mute)]" data-testid={`interface-color-hex-${role}`}>
         {toHex(effectiveColor)}
       </code>
     </div>
