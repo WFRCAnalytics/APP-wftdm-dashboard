@@ -161,6 +161,15 @@ New unit tests: `viewContext.test.ts` (every rule in file 03 section 2 and the e
 New integration spec: `modelYears.spec.ts` (6 tests). The demo gained a synthetic 2036 run per alternative
 (`activitysim-*-2036`, counts scaled, marked DEMO DATA in each manifest's notes).
 
+## P4 (tile chrome, multi-view)
+
+Full pass (three-run procedure) found 7 failures outside the baseline list: `boot.spec.ts` x3 and `scenarioAutoActivation`
+(the demo's new 2036 runs joined unrouted boots; those specs now route the three 2023 runs), `dashboardShell.spec.ts:367`
+(tile title is 15.5px), `lazyTabLoading.spec.ts:95` and `sankeyPanel.spec.ts:276` (the compare set now follows the run
+for the current year, so deactivating one run deactivates its alternative), `sectionSubNav.spec.ts:82` and `:63` (the new
+multi-view row got its own section, and the scroll test waits for the page height to settle). All pass after the fixes.
+New: `multiView.test.ts` (validation, `$group` substitution, resolution, tile state) and `multiViewTile.spec.ts` (8 tests).
+
 ## P2 re-run (floating nav, sticky header)
 
 A full pass plus retry found 22 failures outside the baseline list. Causes found and fixed: the hover-expanded nav stayed

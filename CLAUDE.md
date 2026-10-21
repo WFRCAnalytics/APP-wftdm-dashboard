@@ -211,7 +211,9 @@ APP-wftdm-dashboard/
     │   ├── sidebarNav.tsx         # sidebar tab list + accordion sub-nav (role="tablist"/"tab")
     │   ├── dashboardLayout.ts     # pure: isMetricStripRow()/findFullPagePanel()/resolveSections()
     │   ├── dashboardRenderer.tsx  # renders one tab's layout; injects tab-level default_basemap
-    │   ├── panelCard.tsx          # Card wrapper: title, scoped expand trigger, error boundary
+    │   ├── panelCard.tsx          # PanelCard: error boundary + Suspense; plain panels and multi-view tiles
+    │   ├── tile.tsx               # tile chrome: header, badges, control row, legend slot, body
+    │   ├── multiViewTile.tsx      # chrome for `type: multi-view` (view switcher, Group by, badges, hide rules)
     │   ├── panelExpandHost.tsx    # generic expand-to-dialog mechanism
     │   ├── types.ts               # DashboardTabConfig/PanelConfig types
     │   └── settings/              # settingsModal.tsx tabs: appearanceTab, scenariosTab,
@@ -244,7 +246,7 @@ bug found in it and how it was fixed) is in
 
 ---
 
-## Panel types (12, in `panels/registry.tsx`)
+## Panel types (12, plus the `multi-view` wrapper, in `panels/registry.tsx`)
 
 ```tsx
 export const registry: Record<string, ComponentType<PanelProps>> = {
@@ -255,6 +257,7 @@ export const registry: Record<string, ComponentType<PanelProps>> = {
   'markdown': MarkdownPanel,
   'treemap': TreemapPanel, 'sunburst': SunburstPanel,
   'pie': PieChartPanel, 'radar': RadarChartPanel,
+  'multi-view': MultiViewPanel,   // 063: wrapper holding several views of one dataset (panels/multiView.ts)
 }
 ```
 

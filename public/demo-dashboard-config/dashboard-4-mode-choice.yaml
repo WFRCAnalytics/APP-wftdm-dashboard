@@ -17,6 +17,9 @@ sections:
   - id: atwork-subtour-mode-choice
     label: "At-Work Subtour Mode Choice"
     rows: [row_atwork_subtour_mode]
+  - id: trips-purpose-mode
+    label: "Trips by Purpose and Mode"
+    rows: [row_trips_purpose_mode]
   - id: trip-mode-choice
     label: "Trip Mode Choice"
     rows: [row_trip_mode_flow, row_trip_mode_heatmap, row_trip_mode_radar, row_trip_mode_by_period]
@@ -62,6 +65,30 @@ layout:
       grid:       true
       height:     400
       width:      1.0
+
+  # 063 redesign (P4): one tile, four views of the same purpose_mode_flow data, with a Group by control for the
+  # hierarchy order. The Sankey and heatmap panels below stay as their own tiles (their specs and the Test tab
+  # depend on them). Pinned to one scenario: a treemap, sunburst or Sankey has no series channel, so an unpinned
+  # $scenario union would silently sum scenarios. Per-scenario comparison strategies arrive with CompareHost (P5).
+  row_trips_purpose_mode:
+    - type: multi-view
+      title: "Trips by Purpose and Mode"
+      description: "Baseline scenario. The same trips drawn four ways; Group by sets which level comes first."
+      metric: purpose_mode_flow
+      scenario: activitysim-baseline
+      height: 430
+      width: 1.0
+      group_by:
+        label: Group by
+        default: pm
+        options:
+          - { id: pm, label: "Purpose > Mode", fields: { path: [primary_purpose, major_trip_mode] } }
+          - { id: mp, label: "Mode > Purpose", fields: { path: [major_trip_mode, primary_purpose] } }
+      views:
+        - { id: tree, label: Treemap,  type: treemap,  path: $group.path, value: trips, compare: [multi, diff] }
+        - { id: sun,  label: Sunburst, type: sunburst, path: $group.path, value: trips, compare: [multi] }
+        - { id: flow, label: Flow,     type: sankey,   source: primary_purpose, target: major_trip_mode, value: trips, compare: [switch] }
+        - { id: heat, label: Heatmap,  type: observable-plot, mark: cell, x: primary_purpose, y: major_trip_mode, fill: trips, tip: true, compare: [overlay] }
 
   # Real trip counts flowing from purpose to grouped mode — the same
   # metric/panel dashboard-6-flows.yaml (031, dissolved) already authored

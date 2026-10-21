@@ -70,6 +70,15 @@ test.describe('030-sidebar-navigation — User Story 3 (accordion sub-navigation
       navigated = true
     })
 
+    // Panels above the target keep growing as their data arrives; a smooth scroll started mid-growth can land short.
+    // Wait for the page height to hold still before asking for the scroll.
+    await expect
+      .poll(async () => {
+        const h1 = await page.evaluate(() => document.documentElement.scrollHeight)
+        await page.waitForTimeout(600)
+        return h1 === (await page.evaluate(() => document.documentElement.scrollHeight))
+      }, { timeout: 20_000 })
+      .toBe(true)
     await page.getByRole('button', { name: 'Trip Mode Choice' }).click()
     await page.waitForFunction(() => {
       const el = document.getElementById('section-trip-mode-choice')

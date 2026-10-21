@@ -1,0 +1,113 @@
+import { Suspense, useMemo, type ReactNode } from 'react'
+
+import { Badge } from '@/components/ui/badge'
+import { PillSelect } from '@/components/ui/pill-select'
+import { Segmented } from '@/components/ui/segmented'
+import { useResolvedView } from '@/hooks/useViewContext'
+import { TileKeyContext, useTileState } from '@/hooks/useTileState'
+import { PanelErrorBoundary } from '@/layout/panelCard'
+import { Tile } from '@/layout/tile'
+import type { CompareStrategy, MultiViewPanelConfig } from '@/layout/types'
+import { PanelLoadingState } from '@/panels/PanelLoadingState'
+import { registry } from '@/panels/registry'
+import { isBaseYearOnly, isCalibrationFamily, resolveMultiView, validateMultiView } from '@/panels/multiView'
+
+// The tile for `type: multi-view`: the chrome (badges, group-by, compare-as, view switcher) around MultiViewPanel,
+// which draws the active view. Hidden entirely when the tile only makes sense in another mode.
+
+/** The strategy controls are built and tested here but only change what is drawn once CompareHost applies
+ * strategies (P5); until then they stay hidden rather than offer a control with no effect. */
+export const SHOW_COMPARE_CONTROLS = false
+
+const STRATEGY_LABEL: Record<CompareStrategy, string> = {
+  overlay: 'Overlay',
+  diff: 'Difference',
+  multi: 'Side by side',
+  grid: 'Side by side',
+  switch: 'One at a time',
+  swipe: 'Swipe',
+}
+
+export function MultiViewTile({ config, tileKey }: { config: MultiViewPanelConfig; tileKey: string }) {
+  const ctx = useResolvedView()
+  const [tile, setTile] = useTileState(tileKey)
+  const error = useMemo(() => validateMultiView(config), [config])
+  const resolved = useMemo(() => (error ? null : resolveMultiView(config, tile)), [config, error, tile])
+
+  // Tiles flagged for another mode are not rendered at all.
+  if (config.needs_compare && !ctx.compare) return null
+  if (resolved && isCalibrationFamily(config, resolved.view) && !ctx.isBaseYear) return null
+
+  const Body = registry['multi-view']
+  const panel = Body ? (
+    <PanelErrorBoundary panelTitle={config.title}>
+      <Suspense fallback={<PanelLoadingState height={config.height} />}>
+        <Body config={config} />
+      </Suspense>
+    </PanelErrorBoundary>
+  ) : null
+
+  if (error || !resolved) {
+    return <Tile title={config.title} expandable={false} panel={null} errorMessage={error ?? 'Invalid multi-view'} />
+  }
+
+  const badges: ReactNode[] = []
+  if (ctx.compare && resolved.scenarioIndependent) {
+    badges.push(<Badge key="same" variant="neutral">Same in every scenario</Badge>)
+  }
+  if (isBaseYearOnly(config, resolved.view) && !ctx.isBaseYear) {
+    badges.push(<Badge key="base" variant="neutral">Measured on the base year</Badge>)
+  }
+
+  const controls: ReactNode[] = []
+  if (config.group_by && config.group_by.options.length > 0) {
+    controls.push(
+      <PillSelect
+        key="group"
+        compact
+        label={config.group_by.label ?? 'Group by'}
+        value={resolved.groupOption?.id ?? ''}
+        options={config.group_by.options.map((o) => ({ value: o.id, label: o.label }))}
+        onChange={(group) => setTile({ group })}
+      />,
+    )
+  }
+  if (SHOW_COMPARE_CONTROLS && ctx.compare && resolved.strategies.length >= 2 && !resolved.scenarioIndependent) {
+    controls.push(
+      <Segmented
+        key="strategy"
+        variant="compare"
+        label="Compare as"
+        value={resolved.strategy ?? resolved.strategies[0]}
+        options={resolved.strategies.map((s) => ({ id: s, label: STRATEGY_LABEL[s] }))}
+        onChange={(strategy) => setTile({ strategy: strategy as CompareStrategy })}
+      />,
+    )
+  }
+  if (config.views.length > 1) {
+    controls.push(
+      <Segmented
+        key="view"
+        label="View"
+        className="ml-auto"
+        value={resolved.view.id}
+        options={config.views.map((v) => ({ id: v.id, label: v.label ?? v.id }))}
+        onChange={(view) => setTile({ view })}
+      />,
+    )
+  }
+
+  return (
+    <TileKeyContext.Provider value={tileKey}>
+      <Tile
+        title={config.title}
+        subtitle={config.description}
+        badges={badges.length > 0 ? badges : undefined}
+        controls={controls.length > 0 ? controls : undefined}
+        height={config.height}
+        expandable={config.expandable ?? true}
+        panel={panel}
+      />
+    </TileKeyContext.Provider>
+  )
+}

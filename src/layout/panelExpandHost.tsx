@@ -59,7 +59,12 @@ import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 export function usePanelExpandHost(
   title: string,
   children: ReactNode,
-  options?: { height?: number },
+  options?: {
+    height?: number
+    /** Rendered under the title inside the dialog (badges, view and group controls), so every control keeps working
+     * while the tile is expanded (project-docs/redesign/02-layout-and-components.md section 2). */
+    chrome?: ReactNode
+  },
 ): { trigger: ReactNode; body: ReactNode } {
   const [expanded, setExpanded] = useState(false)
   const [inlineAnchor, setInlineAnchor] = useState<HTMLDivElement | null>(null)
@@ -142,13 +147,14 @@ export function usePanelExpandHost(
           // header-to-content separation (components/ui/card.tsx), since
           // DialogTitle here isn't wrapped in its own padded header box
           // the way CardHeader is.
-          className="flex h-[90vh] w-[95vw] max-w-[1600px] flex-col gap-4"
+          className="flex h-[min(88vh,100%)] w-[min(1400px,94vw)] max-w-[1400px] flex-col gap-3 rounded-[24px] border-[var(--glass-line)] bg-[var(--surface)] p-5"
           onCloseAutoFocus={(event) => {
             event.preventDefault()
             triggerRef.current?.focus()
           }}
         >
           <DialogTitle>{title}</DialogTitle>
+          {options?.chrome}
           <div ref={setDialogAnchor} className="min-h-0 flex-1" />
         </DialogContent>
       </Dialog>

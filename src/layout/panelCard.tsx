@@ -1,12 +1,12 @@
 import { Component, Suspense, type ReactNode } from 'react'
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { PanelErrorState } from '@/panels/PanelErrorState'
 import { PanelLoadingState } from '@/panels/PanelLoadingState'
 import { registry } from '@/panels/registry'
 import { EXPANDABLE_PANEL_TYPES } from '@/panels/expandablePanelTypes'
-import { usePanelExpandHost } from '@/layout/panelExpandHost'
-import type { PanelConfig } from '@/layout/types'
+import { MultiViewTile } from '@/layout/multiViewTile'
+import { Tile } from '@/layout/tile'
+import type { MultiViewPanelConfig, PanelConfig } from '@/layout/types'
 
 // React error boundaries require a class component — no hook equivalent
 // exists. The one deliberate exception to "function components only" in
@@ -47,27 +47,27 @@ export class PanelErrorBoundary extends Component<PanelErrorBoundaryProps, Panel
 // by the boundary above — MUST NOT affect any other panel. Centralizing
 // both checks here (rather than duplicating them per panel type)
 // structurally guarantees that, per contracts/panel-registry.md.
-export function PanelCard({ config }: { config: PanelConfig }) {
+//
+// `tileKey` (`pageId:tileId`, 063 redesign) keys the tile's session state (chosen view, group, strategy).
+export function PanelCard({ config, tileKey }: { config: PanelConfig; tileKey?: string }) {
+  if (config.type === 'multi-view') {
+    return <MultiViewTile config={config as MultiViewPanelConfig} tileKey={tileKey ?? `multi-view:${config.title}`} />
+  }
+  return <PlainTile config={config} />
+}
+
+function PlainTile({ config }: { config: PanelConfig }) {
   const PanelComponent = registry[config.type]
   // 034-metric-panel-redesign (FR-001/FR-002, and the Part A addendum's
-  // FR-023–FR-025): whether this panel offers the expand-to-dialog
-  // affordance — config.expandable, when the author set it explicitly,
-  // always wins over EXPANDABLE_PANEL_TYPES' own per-TYPE default
-  // (`??`, not `||`: an explicit `false` must NOT fall through to the
-  // default just because it's falsy). config.type/config.expandable are
-  // both fixed for the lifetime of one PanelCard instance, so this never
-  // changes across this component's own re-renders.
+  // FR-023–FR-025): config.expandable, when the author set it explicitly,
+  // always wins over EXPANDABLE_PANEL_TYPES' per-TYPE default (`??`, not
+  // `||`: an explicit `false` must not fall through to the default).
   const isExpandable = config.expandable ?? EXPANDABLE_PANEL_TYPES.has(config.type)
 
-  // 042-boot-performance-fix: registry[config.type] is now a React.lazy()
-  // component (panels/registry.tsx) — its own JS chunk may not have
-  // finished its dynamic import() yet the first time a tab renders a
-  // panel of this type. <Suspense> is the required boundary for that;
-  // placed INSIDE PanelErrorBoundary (not outside) so a rejected
-  // dynamic import — a genuine network failure fetching the chunk, not
-  // just a slow one — is also caught by the same error boundary every
-  // other panel-render failure already goes through, rather than needing
-  // a second, separate failure path.
+  // 042-boot-performance-fix: registry[config.type] is a React.lazy()
+  // component, so <Suspense> is required; it sits INSIDE the error
+  // boundary so a rejected dynamic import is caught by the same boundary
+  // as every other render failure.
   const panelElement = PanelComponent ? (
     <PanelErrorBoundary panelTitle={config.title}>
       <Suspense fallback={<PanelLoadingState height={config.height} />}>
@@ -76,55 +76,13 @@ export function PanelCard({ config }: { config: PanelConfig }) {
     </PanelErrorBoundary>
   ) : null
 
-  // Called unconditionally regardless of whether PanelComponent resolved
-  // OR whether this panel type is expandable (React's rules of hooks) —
-  // passing `null` as children when PanelComponent didn't resolve is
-  // harmless: the hook's own state/refs still exist, they just never have
-  // anything to portal (004-panel-expand-dialog, panelExpandHost.tsx).
-  // 034-metric-panel-redesign (research.md §1): for a NON-expandable panel
-  // type, `trigger`/`body` are simply never placed in the JSX this
-  // component returns below — the hook's own `body` value is an
-  // unrendered React element tree until placed in JSX (its internal
-  // `createPortal(...)` call doesn't execute/mount until then), so this
-  // never double-renders `panelElement` and never leaves the hook's own
-  // internal effects running against anything real. Deliberately NOT a
-  // conditional hook call (`if (isExpandable) { usePanelExpandHost(...) }`)
-  // — that would violate react-hooks/rules-of-hooks even though the
-  // underlying invariant (config.type stable per instance) would make it
-  // safe in practice; keeping the call itself unconditional, exactly as
-  // before this feature, carries zero such risk.
-  const { trigger, body } = usePanelExpandHost(
-    config.title,
-    panelElement,
-    // height is a common PanelConfig field (layout/types.ts), not
-    // plotly-specific — passed through so the inline (collapsed)
-    // presentation keeps its configured height exactly as before this
-    // feature existed; a panel with no height opinion (undefined) stays
-    // naturally auto-sized.
-    { height: config.height },
-  )
-
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0">
-        <CardTitle>{config.title}</CardTitle>
-        {/* No expand trigger for an "unknown panel type" card — nothing
-            valid to expand at any size (004's FR-002/FR-010). No expand
-            trigger for a non-expandable panel type either
-            (034-metric-panel-redesign FR-001/FR-002). */}
-        {PanelComponent && isExpandable && trigger}
-      </CardHeader>
-      <CardContent>
-        {PanelComponent ? (
-          isExpandable ? (
-            body
-          ) : (
-            panelElement
-          )
-        ) : (
-          <PanelErrorState message={`Unknown panel type: "${config.type}"`} />
-        )}
-      </CardContent>
-    </Card>
+    <Tile
+      title={config.title}
+      height={config.height}
+      expandable={isExpandable}
+      panel={panelElement}
+      errorMessage={PanelComponent ? undefined : `Unknown panel type: "${config.type}"`}
+    />
   )
 }

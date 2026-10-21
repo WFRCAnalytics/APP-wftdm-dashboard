@@ -103,6 +103,13 @@ test.describe('User Story 3 - A shared link pre-selects specific scenarios', () 
     'activitysim-transit-variant',
   ]
 
+  // The demo also ships synthetic 2036 runs (063 P3); these tests are about which one year's runs activate.
+  test.beforeEach(async ({ page }) => {
+    await page.route('**/demo-scenarios/index.json', (r) =>
+      r.fulfill({ contentType: 'application/json', body: JSON.stringify(READY_SET) }),
+    )
+  })
+
   test('a matching ?s= param activates exactly that scenario, additively (038: add-only)', async ({
     page,
   }) => {

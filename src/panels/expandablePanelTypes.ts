@@ -41,4 +41,6 @@ export const EXPANDABLE_PANEL_TYPES = new Set([
   // panel type's own default.
   'pie',
   'radar',
+  // 063 redesign: a multi-view tile expands with its controls.
+  'multi-view',
 ])

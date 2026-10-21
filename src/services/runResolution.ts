@@ -53,9 +53,16 @@ export function viewManifest(): ViewManifest {
 }
 
 export function viewInput(): ViewInput {
-  const scenarios = appState.listByDisplayOrder()
-  const compareSet = alternativesOf(scenarios.filter((s) => s.active).map(runInfoOf))
-  return { ...compareState.getState(), compareSet }
+  const state = compareState.getState()
+  const runs = appState.listByDisplayOrder()
+  // An alternative is in the compare set when its run for the current year is active; with no run for this year, when
+  // any of its runs is (so the choice still shows once a year that has one is selected).
+  const compareSet = alternativesOf(runs.map(runInfoOf)).filter((alt) => {
+    const mine = runs.filter((s) => alternativeOf(s) === alt)
+    const forYear = resolveRun(mine.map(runInfoOf), alt, state.year)
+    return forYear ? Boolean(appState.get(forYear.name)?.active) : mine.some((s) => s.active)
+  })
+  return { ...state, compareSet }
 }
 
 export function currentView(): ResolvedView {

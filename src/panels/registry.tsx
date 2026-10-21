@@ -63,4 +63,6 @@ export const registry: Record<string, ComponentType<PanelProps<any>>> = {
   // above), each lazy per-type exactly like every other entry.
   pie: lazy(() => import('@/panels/PieChartPanel').then((m) => ({ default: m.PieChartPanel }))),
   radar: lazy(() => import('@/panels/RadarChartPanel').then((m) => ({ default: m.RadarChartPanel }))),
+  // 063 redesign: several views of one dataset in a single tile (project-docs/redesign/06-data-and-config.md section 7).
+  'multi-view': lazy(() => import('@/panels/MultiViewPanel').then((m) => ({ default: m.MultiViewPanel }))),
 }

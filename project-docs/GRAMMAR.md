@@ -1465,6 +1465,45 @@ either type. (Donut/hollow-center rendering was a non-goal of this
 feature specifically but was added later, as a small additive `donut:`
 field on `type: pie` — see that type's own section above.)
 
+### `type: multi-view` (063 redesign)
+
+One tile holding several views of the same data. The tile shows a view switcher (hidden with one view) and, when
+`group_by` is set, a Group by select. The choices are session state keyed `pageId:tileId`.
+
+```yaml
+- type: multi-view
+  title: Trips by Purpose and Mode
+  description: Daily trips for the baseline.            # shown under the title; not passed to the views
+  metric: purpose_mode_flow                              # defaults for every view that omits them:
+  scenario: activitysim-baseline                         #   metric, height, scenario(s), filter
+  height: 430
+  group_by:                                              # optional
+    label: Group by
+    default: pm
+    options:
+      - { id: pm, label: "Purpose > Mode", fields: { path: [primary_purpose, major_trip_mode] } }
+      - { id: mp, label: "Mode > Purpose", fields: { path: [major_trip_mode, primary_purpose] } }
+  views:                                                 # first view is the default
+    - { id: tree, label: Treemap,  type: treemap,  path: $group.path, value: trips, compare: [multi, diff] }
+    - { id: sun,  label: Sunburst, type: sunburst, path: $group.path, value: trips }
+    - { id: flow, label: Flow,     type: sankey,   source: primary_purpose, target: major_trip_mode, value: trips, compare: [] }
+```
+
+- A view is an ordinary panel config for its `type`; the keys `id`, `label`, `compare`, `scenario_independent`,
+  `base_year_only` and `family` are for the wrapper and never reach the panel.
+- A string value of exactly `$group.<field>` is replaced by the active group option's `fields.<field>`; a field the
+  option leaves out stays unset. A view that omits a field the option defines gets it merged in.
+- `compare:` lists the strategies the view supports (`overlay | diff | multi | grid | switch | swipe`), first = default.
+  Omitted = the type's default (file 03 section 4.1); `[]` = the view does not vary by scenario (badge "Same in every
+  scenario" in Compare mode). The strategy controls are built but hidden until CompareHost lands (P5).
+- Tile flags: `needs_compare: true` hides the tile when Compare is off; `family: calibration` hides it outside the base
+  year; `base_year_only: true` adds the badge "Measured on the base year" outside it; `scenario_independent: true` on
+  the tile or a view adds "Same in every scenario".
+- Validated at render time, never thrown: no views, a view without `id` or `type`, duplicate view ids, a nested
+  multi-view, an unknown strategy, an unknown `$group` field, duplicate or unknown group options. The tile shows the
+  panel error state with a precise message and the rest of the tab is unaffected.
+- A treemap, sunburst, sankey or pie has no series channel: pin the tile (`scenario:`) until CompareHost (P5) takes over.
+
 ### `type: graphic-walker`
 
 Graphic Walker — full-tab free-form Tableau-style sandbox. Explore tab only.

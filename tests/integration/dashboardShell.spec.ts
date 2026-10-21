@@ -379,7 +379,7 @@ test.describe('Phase 2 — shell/nav redesign (wftdm-design-system)', () => {
       if (dark) await page.evaluate(() => document.documentElement.classList.add('dark'))
       const [pageSize, panelSize] = await Promise.all([readPx(pageTitle), readPx(panelTitle)])
       expect(pageSize).toBeGreaterThan(panelSize)
-      expect(panelSize).toBe(16) // wftdm-design-system's Panel Title role
+      expect(panelSize).toBe(15.5) // tile title (project-docs/redesign/02-layout-and-components.md section 2)
     }
   })
 

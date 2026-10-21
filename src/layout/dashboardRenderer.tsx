@@ -7,6 +7,7 @@ import { findFullPagePanel, isMetricStripRow, resolveSections } from '@/layout/d
 import { isMapRenderingPanel, type DashboardTabConfig, type PanelConfig } from '@/layout/types'
 import { computeTabDataRequirement, ensureRegistered } from '@/services/tabDataLoader'
 import { useActiveScenarios } from '@/hooks/useActiveScenarios'
+import { tileKey } from '@/state/tileState'
 
 // Renders one active tab's layout (project-docs/GRAMMAR.md: named rows, each a
 // flat list of panels) as ordered rows of PanelCards, each sized by its
@@ -142,6 +143,8 @@ function FullPagePanel({ config }: { config: PanelConfig }) {
 function OrdinaryDashboardRenderer({ tab }: { tab: DashboardTabConfig }) {
   const rows = useMemo(() => {
     function withTabDefaultBasemap(panel: PanelConfig): PanelConfig {
+      // a multi-view hands the tab default on to a map view
+      if (panel.type === 'multi-view') return { ...panel, _tabDefaultBasemap: tab.default_basemap } as PanelConfig
       if (!isMapRenderingPanel(panel)) return panel
       // isMapRenderingPanel already runtime-confirms `panel` is one of
       // the map-rendering PanelConfig union members — the cast below is
@@ -199,7 +202,7 @@ function OrdinaryDashboardRenderer({ tab }: { tab: DashboardTabConfig }) {
           >
             {panels.map((panel, index) => (
               <div key={`${rowName}-${index}`} className="min-w-0">
-                <PanelCard config={panel} />
+                <PanelCard config={panel} tileKey={tileKey(tab.header.tab, `${rowName}-${index}`)} />
               </div>
             ))}
           </div>

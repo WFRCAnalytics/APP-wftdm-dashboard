@@ -478,7 +478,54 @@ export interface UnknownPanelConfig extends PanelConfigBase {
   type: string
 }
 
+/** How a tile draws a comparison (project-docs/redesign/03-state-and-compare.md section 4). */
+export type CompareStrategy = 'overlay' | 'diff' | 'multi' | 'grid' | 'switch' | 'swipe'
+
+export interface MultiViewGroupOption {
+  id: string
+  label: string
+  /** Merged into the active view's config; `$group.<field>` strings in a view are replaced from here. */
+  fields: Record<string, unknown>
+}
+
+export interface MultiViewGroupBy {
+  label?: string
+  default?: string
+  options: MultiViewGroupOption[]
+}
+
+/** One view of a `multi-view` tile: an ordinary panel config for its `type` plus the keys below. */
+export interface MultiViewViewConfig {
+  id: string
+  label?: string
+  type: string
+  /** Strategies this view supports, first = default. Omitted = the type's default; `[]` = does not vary by scenario. */
+  compare?: CompareStrategy[]
+  scenario_independent?: boolean
+  base_year_only?: boolean
+  family?: string
+  [key: string]: unknown
+}
+
+/** 063 redesign (project-docs/redesign/06-data-and-config.md section 7): several views of the same data in one tile. */
+export interface MultiViewPanelConfig extends PanelConfigBase {
+  type: 'multi-view'
+  description?: string
+  metric?: string
+  scenario?: string
+  scenarios?: string[]
+  filter?: string | Record<string, string>
+  group_by?: MultiViewGroupBy
+  views: MultiViewViewConfig[]
+  scenario_independent?: boolean
+  /** Hides the tile when Compare is off (scorecard, ranking). */
+  needs_compare?: boolean
+  base_year_only?: boolean
+  family?: string
+}
+
 export type PanelConfig =
+  | MultiViewPanelConfig
   | ValueBoxPanelConfig
   | TablePanelConfig
   | MarkdownPanelConfig
