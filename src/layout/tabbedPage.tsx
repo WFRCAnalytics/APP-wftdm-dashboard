@@ -63,7 +63,7 @@ function TabStrip({ page, plan, section, rows }: { page: string; plan: TabsPlan;
   return (
     <div className="flex shrink-0 flex-wrap items-center gap-3">
       {plan.sections.length > 1 && (
-        <div role="tablist" aria-label="Page sections" onKeyDown={onKey} className="inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full bg-[color-mix(in_srgb,var(--ink)_8%,transparent)] p-[3px]">
+        <div role="tablist" aria-label="Page sections" onKeyDown={onKey} className="inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full bg-[var(--pill-track)] p-[3px]">
           {plan.sections.map((s) => {
             const on = s.id === section.id
             return (
@@ -77,7 +77,7 @@ function TabStrip({ page, plan, section, rows }: { page: string; plan: TabsPlan;
                 onClick={() => setActiveSection(page, s.id)}
                 className={cn(
                   'shrink-0 whitespace-nowrap rounded-full px-[15px] py-[6px] font-body text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-text)]',
-                  on ? 'bg-[var(--tile-hi)] font-medium text-[var(--ink)] shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_1px_3px_rgba(0,0,0,0.18)]' : 'text-[var(--mute)] hover:text-[var(--ink)]',
+                  on ? 'pill-on font-medium text-[var(--ink)]' : 'text-[var(--mute)] hover:text-[var(--ink)]',
                 )}
               >
                 {s.label}

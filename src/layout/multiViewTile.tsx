@@ -102,7 +102,6 @@ export function MultiViewTile({ config: rawConfig, tileKey }: { config: MultiVie
     controls.push(
       <Segmented
         key="strategy"
-        variant="compare"
         label="Compare as"
         value={strategy ?? resolved.strategies[0]}
         options={resolved.strategies.map((s) => ({ id: s, label: STRATEGY_LABEL[s] }))}

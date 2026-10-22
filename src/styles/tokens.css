@@ -71,6 +71,10 @@
   --glass-line: rgba(14, 19, 26, 0.1);
   --hi: rgba(255, 255, 255, 0.9);
 
+  /* tab pills (Segmented, tabbed-page tabs, Graphic Walker's tabs): this ONE token is the track behind them. The selected
+     pill is derived from existing tokens (see .pill-on below), so nothing else needs tuning. */
+  --pill-track: color-mix(in srgb, var(--ink) 8%, transparent);
+
   /* calibration status — only ever for calibration status, never for series */
   --ok: #167a4a;
   --warn: #95600f;
@@ -133,6 +137,15 @@ body::before {
   pointer-events: none;
   z-index: 0;
   background: radial-gradient(1100px 600px at 30% -12%, var(--hi), transparent 70%);
+}
+
+/* The selected tab pill: the cell's own surface, lifted by the edge highlight and hairline every glass surface uses, so
+   it follows both themes with no token of its own. Every selected pill looks like this, with no per-control variants.
+   Graphic Walker's tabs (panels/graphicWalkerShadowStyle.ts) repeat these declarations: a shadow root cannot see this
+   class. */
+.pill-on {
+  background: var(--tile-hi);
+  box-shadow: 0 1px 0 var(--hi) inset, 0 0 0 1px var(--glass-line), 0 1px 2px rgba(0, 0, 0, 0.12);
 }
 
 /* Floating glass tier (navigation, control bar, picker, tooltip). Use together with a radius utility. */
@@ -244,6 +257,9 @@ body::before {
   --glass: rgba(18, 23, 31, 0.84);
   --glass-line: rgba(255, 255, 255, 0.09);
   --hi: rgba(255, 255, 255, 0.06);
+
+  /* tab pills, dark: the track is the app's own --line (the same tone as its borders and dividers). */
+  --pill-track: var(--line);
 
   --ok: #41c98f;
   --warn: #e8a93d;
