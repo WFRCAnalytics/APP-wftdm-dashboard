@@ -31,6 +31,7 @@ layout:
         - { id: stack, label: "100% bars", type: chart, kind: stacked-bars, variant: scenario, compare: [overlay] }
         - { id: slope, label: Slope, type: chart, kind: slope, compare: [switch] }
         - { id: donut, label: Donut, type: chart, kind: donut, compare: [switch, diff] }
+        - { id: radar, label: Radar, type: chart, kind: mode-radar, compare: [overlay] }
         - { id: tbl, label: Table, type: chart, kind: mode-table, compare: [overlay] }
 
   row_flowbig:
@@ -42,6 +43,7 @@ layout:
       width: 1.0
       views:
         - { id: flow, label: Flow, type: chart, kind: sankey, compare: [switch] }
+        - { id: chord, label: Chord, type: chart, kind: purpose-chord, compare: [switch] }
 
   row_time_mix:
     - id: time
@@ -78,5 +80,7 @@ layout:
       views:
         - { id: tree, label: Treemap, type: chart, kind: treemap, variant: trips, compare: [multi, diff] }
         - { id: sun, label: Sunburst, type: chart, kind: sunburst, variant: trips, compare: [multi] }
+        - { id: radar, label: Radar, type: chart, kind: purpose-radar, compare: [overlay] }
         - { id: flow, label: Flow, type: chart, kind: sankey, compare: [switch] }
+        - { id: chord, label: Chord, type: chart, kind: purpose-chord, compare: [switch] }
         - { id: bars, label: "100% bars", type: chart, kind: stacked-bars, variant: trips, compare: [multi] }

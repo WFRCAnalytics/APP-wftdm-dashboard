@@ -15,9 +15,7 @@
   "protomapsApiKey": "2c497b58fdc8c210",
   "layout": { "mode": "tabs" },
   "compare": {
-    "default": "auto",
-    "focus": "activitysim-baseline",
-    "reference": "activitysim-baseline"
+    "default": "auto"
   },
   "units": { "trips": { "divisor": 1, "suffix": "" }, "transit_share_max": 60 },
   "metrics": {
