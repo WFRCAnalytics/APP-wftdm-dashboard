@@ -1,6 +1,7 @@
-# 10 — Toolbar, row sizing, page layout modes and export (proposal)
+# 10 — Toolbar, row sizing, page layout modes and export
 
-Status: **proposal, not implemented.** Written 2026-10-21 after reviewing the code on branch `063-ui-redesign`.
+Status: **implemented on `063-ui-redesign`** (parts B, A, D and C; see "Implementation notes" at the end for where the
+built behaviour differs from the first proposal). Written 2026-10-21 after reviewing the code on that branch.
 Read `02-layout-and-components.md` (shell, control bar, tile) and `03-state-and-compare.md` first. This file changes
 or extends parts of 02; where it conflicts with 02 once approved, this file wins and 02 must be updated in the same PR.
 
@@ -47,11 +48,14 @@ rows at the top of the page and its height changes while scrolling.
 
 ### A.2 Design: the Scenarios chip
 
-Replace Focus, the picker button and Reference with **one chip** that opens the existing scenario popover.
+Replace Focus, the picker button and Reference with **one chip** that opens the existing scenario popover. The **Compare
+toggle is the right-most control and is always rendered**, so it never moves when Compare is switched (a viewer who turns
+Compare off finds it under the pointer to turn it back on). **Show** stays in the bar between the chip and the toggle and
+is greyed out and disabled while Compare is off, so the bar keeps its structure in both states.
 
 ```
-Compare off:   [ Year ▾ ]  [ Compare ○ ]  [ ● Density variant  ▾ ]
-Compare on:    [ Year ▾ ]  [ Compare ● ]  [ ● Density variant  +2  ⇄ Baseline  ▾ ]  [ Values | Change | % ]
+Compare off:   [ Year ▾ ]  [ ● Density variant ▾ ]  [ Values | Change | % ] (disabled)  [ Compare ○ ]
+Compare on:    [ Year ▾ ]  [ ●●● Density variant  +2  ⇄ vs Baseline  ▾ ]  [ Values | Change | % ]  [ Compare ● ]
 ```
 
 Chip anatomy (height 38px, same pill style as `PillSelect`):
@@ -74,19 +78,19 @@ segmented control but gets short labels at medium widths (A.4).
 
 Reuse `scenarioPicker.tsx` (do not write a second picker). Changes:
 
-1. It opens in both modes. Compare off: a single-select list (the Focus buttons act as radios, the checkboxes and
-   Reference block are hidden). Compare on: today's list.
-2. A **Reference** block at the top of the popover (a compact segmented/select, moved here from the bar):
-   *Observed* (base year only) · *Baseline* · *Same scenario in the base year* · *Pick a run…* (the per-row Reference
-   mini buttons already cover picking a run; the block shows the current one and offers the three special options).
-   Options come from `services/compareOptions.ts#referenceOptions`, unchanged.
+1. It opens in both modes. Compare off: a single-select list (a coloured **radio** per scenario sets the focus). Compare
+   on: a coloured **checkbox** per scenario (the colour *is* the scenario's identity, so there is no separate dot) plus
+   the Focus and Reference buttons.
+2. **No Reference dropdown.** The list is the one place to choose the reference: each scenario row has a Reference button,
+   and the two non-scenario references are rows of the same list: *Observed* (base year only) and *Same scenario in the
+   base year* (other years only). A calibration round used as reference is chosen in the rounds block.
 3. Footer keeps "3 of 65 compared" and the link to Settings > Scenarios.
-4. Search, tag chips and the rounds strip are unchanged. Search is only shown when there are 8 or more rows, to keep
+4. Search, tag chips and the rounds strip are unchanged (search is always shown; the 8-row threshold was not built). It would keep
    the three-run real deployment compact.
 
-The trigger gets `data-testid="control-scenarios"`. The old `control-focus` and `control-reference` test ids move to
-the popover's Focus and Reference elements so tests keep a stable hook (`tests/integration/modelYears.spec.ts` is the
-only spec that uses them, plus the redesign suites that use the picker).
+The trigger keeps `data-testid="scenario-picker-button"` (its focus label is `scenario-chip-focus`). `control-focus`
+(a Focus select, shown only when calibration rounds exist) and `control-reference` (the rounds-as-reference select) live in
+the popover.
 
 ### A.4 Staying on one row
 
@@ -98,9 +102,9 @@ needed rather than optional.
 | Viewport (main column) | Bar |
 |---|---|
 | 1400px and up | everything in full |
-| 1100 to 1399px | Show uses short labels (`Values · Δ · %`); the title may use up to two lines (`line-clamp-2`) so the bar keeps its width |
-| 900 to 1099px | the chip drops dots and `vs` text, showing `● Density variant +2 ▾`; reference moves into the tooltip and popover; Year shows only the year number |
-| Below 900px | the bar takes the full width under the title, still one row: chip is the only flexible item (truncates), Show and Year collapse into a single `⋯`-style "Options" popover |
+| 1100 to 1399px | Show uses short labels (`Values · Δ · %`); the reference text leaves the chip below 1500px (it is in the chip's accessible name and the popover); the title may use two lines (`line-clamp-2`) so the bar keeps its width |
+| 900 to 1099px | same as above; the chip label truncates first |
+| Below 900px | the bar takes the full width under the title, still one row; the chip is the flexible item and truncates (the "Options" popover for Year and Show was not needed and is not built) |
 
 Rules that make it **one row regardless of scroll state**:
 
@@ -195,6 +199,22 @@ on Summary) is pinned in tabs mode. A page can name others: `header.pinned_rows:
 are neither pinned nor in a section render at the end of the first tab (so no tile is ever lost by a missing
 section; the loader warns).
 
+**Tab content: stack, pick, and the control rail.** A tab is a small workspace, not necessarily one chart:
+
+- `mode: stack` (default): the tab shows all of its rows, each row dividing the height; tiles in a row share the width by
+  their `width` fractions (two charts side by side on one topic, a chart and its table, a map beside a ranking).
+- `mode: pick`: the tab shows **one tile at a time**, chosen from a **Chart** dropdown beside the tab strip (same pill
+  style as every other control). Use it for alternatives that each need the whole screen (a zone map or the desire
+  lines). The chosen tile is kept for the session.
+- Faceted tiles (one view per compared scenario) keep working inside either mode: a tile that fills a big tab simply
+  gets a big grid (3 maps in 2x2 at about 500px each at 1440x900).
+- **Control rail.** In a tab, each tile's controls (Group by, Compare as, Scenario, View) and its Export and Expand
+  buttons are not squeezed above the chart: when the tile is at least 760px wide the controls stack in a rail on the
+  right of the chart (labels above full-width options); narrower tiles keep them above the chart. The legend stays
+  above the chart.
+- Shared controls across the tiles of a tab ("one Group by drives both charts") are **not built**; each tile keeps its own
+  state. See open question 6.
+
 **Tabs are the existing `sections:`.** No second concept. Everything that makes a section navigable in the sidebar
 already exists (`id`, `label`, `rows`, optional `tile`). New optional fields:
 
@@ -263,8 +283,8 @@ Pagination (`CompareHost`'s pager) stays for more than six compared runs.
 
 Resolution order, first match wins:
 
-1. **Viewer** (Settings > Appearance > *Page layout*: `Use page default`, `Scrolling pages`, `Tabbed pages`). Session
-   state only (`state/layoutState.ts`, resets on reload; also settable with `?layout=tabs` for a shared link).
+1. **Viewer** (Settings > Appearance > *Page layout*: *Page default*, *Tabs*, *Scrolling*). Session state only
+   (`state/layoutState.ts`, resets on reload); `?layout=tabs` or `?layout=scroll` in a shared link sets it.
 2. **Page author**: `header.layout_mode` in `dashboard-*.yaml`.
 3. **Deployer default**: `layout: { mode: tabs }` in `dashboard-config/index.json` (same file as `compare`, `vocab`,
    `metrics`, `units`; parsed in `services/yamlLoader.ts` and `DashboardBranding`).
@@ -273,9 +293,11 @@ Resolution order, first match wins:
 Other deployer settings under the same `layout` object: `min_fill_height` (px, default 360), `facet_min_height`
 (default 260), `pin_hero` (default true).
 
-Recommended demo configuration: Summary `tabs` with the hero band pinned (Overview, Mode share, Time of day,
-Map); Person and household, Tour models, Mode choice and Network `tabs` with their sections as the tabs; Explore is
-unchanged (full page).
+Built-in default is `scroll` (so existing deployments and the legacy and synthetic demo sets are unchanged). The real
+demo's `index.json` sets `layout: { mode: tabs }`, so every real page opens tabbed: Summary (hero band pinned; tabs
+Scenarios, Mode choice, Time of day, Maps = pick), Person and household (one tab, two tiles side by side), Tour models
+(Time of day, Desire lines), Mode choice (Mode share, Purpose to mode, Through the day), Network (Where transit is used,
+Trip desire lines); Explore is unchanged (full page).
 
 ### C.7 Edge cases
 
@@ -399,7 +421,37 @@ Docs to update in the same PRs: `02-layout-and-components.md` (control bar §1.2
 `03-state-and-compare.md` (layout state), `06-data-and-config.md` (YAML and `index.json` fields), `09-chart-kind-guide.md`
 (`facets`, `exportRows`), `project-docs/GRAMMAR.md`, `CLAUDE.md` (063 section).
 
+## Implementation notes (what was built, and where it differs)
+
+- **B** `layout/dashboardLayout.ts#equalizeRowHeights` gives every tile of a row the tallest height (resolving
+  `height_rows` first); cards stretch to the grid cell. There is no `row_height` key: the tallest tile decides.
+- **A** `layout/scenarioPicker.tsx` is the chip and popover; `layout/controlBar.tsx` is one non-wrapping row. The popover
+  is anchored under the chip (left edges aligned, clamped to the viewport, following the header while it resizes).
+- **D** `services/exportTile.ts` (CSV, DOM-to-SVG walk, PNG), `layout/tileExport.tsx` (menu and registry),
+  `services/mapCapture.ts` (reads a map's pixels inside its `render` event, so no `preserveDrawingBuffer`),
+  `charts/exportRows.ts` (default CSV rows; a kind may provide `exportRows`). The image is a faithful walk of the tile as
+  drawn (so legacy panels and maps export too); controls and buttons are left out. Deployer setting
+  `export: { footer: true | false | "text" }` in `index.json`. Not built: the Export menu inside the expanded dialog.
+- **C** `state/layoutState.ts`, `hooks/useTabsPlan.ts`, `layout/tabbedPage.tsx`, `layout/fill.tsx`, `layout/heroBand.tsx`;
+  tiles measure their body and report the height to their cell (`useFill`); panels draw at the measured height (the
+  panel config is rewritten, `height_rows` dropped). Inactive tabs are unmounted. The page header is always compact in
+  tabs mode and the window does not scroll (the content area scrolls only when the screen is shorter than the tab's
+  minimum). Not built: automatic promotion of facet tiles to a full row in `scroll` mode (a big tab already gives them room).
+
 ## F. Open questions
+
+Resolved (2026-10-21): all real pages are tabbed by default, with scroll available per viewer, page and deployment; inactive
+map tabs are unmounted (a mounted hidden map keeps a WebGL context and its memory, and browsers allow only about 16
+contexts, so keeping several alive would eventually blank the oldest); Show stays in the bar; the export footer is a
+deployer setting.
+
+Still open:
+
+6. **Shared tab controls.** Should a tab be able to declare one control (for example Group by) that drives all its tiles,
+   replacing each tile's own? Needs a `tab_controls:` block and a way to map the shared value onto each tile's group.
+7. **Export from the expanded dialog**, and a page-level "Export all tiles".
+
+### Earlier questions (kept for the record)
 
 1. **Default mode per demo page**: tabs everywhere, or only Network and Mode choice? (Recommendation: Summary, Mode
    choice and Network `tabs`; Person and household and Tour models have only two tiles each and read fine scrolling.)

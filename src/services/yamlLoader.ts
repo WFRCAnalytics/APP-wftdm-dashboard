@@ -86,6 +86,7 @@ type DashboardIndexJson =
       metrics?: unknown
       units?: unknown
       export?: unknown
+      layout?: unknown
     }
 
 /**
@@ -204,6 +205,8 @@ export interface DashboardBranding {
   /** `export.footer`: the line under exported images. `true` (default) = source, scenarios, year and date; a string replaces
    * it; `false` leaves it out. */
   exportFooter?: boolean | string
+  /** `layout.mode`: how pages are shown unless the page or the viewer says otherwise (default `scroll`). */
+  layout?: { mode?: 'scroll' | 'tabs' }
 }
 
 export interface ModelYear {
@@ -336,6 +339,7 @@ export async function loadDashboardBranding(
       compareDefault: parseCompareDefault(parsed.compare),
       ...parseCompareInitial(parsed.compare),
       exportFooter: parseExportFooter(parsed.export),
+      layout: typeof parsed.layout === 'object' && parsed.layout !== null ? (parsed.layout as DashboardBranding['layout']) : undefined,
       units: typeof parsed.units === 'object' && parsed.units !== null ? (parsed.units as DashboardBranding['units']) : undefined,
       metrics: typeof parsed.metrics === 'object' && parsed.metrics !== null ? (parsed.metrics as DashboardBranding['metrics']) : undefined,
       vocab: typeof parsed.vocab === 'object' && parsed.vocab !== null ? (parsed.vocab as DashboardBranding['vocab']) : undefined,

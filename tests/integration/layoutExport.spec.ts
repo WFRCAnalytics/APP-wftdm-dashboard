@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs'
 // Tile export (project-docs/redesign/10-toolbar-layout-export-proposal.md section D) on the real demo content.
 
 async function boot(page: Page) {
-  await page.goto('/')
+  await page.goto('/?layout=scroll')
   await page.waitForFunction(() => document.querySelector('h1') && !document.body.innerText.includes('Connecting to DuckDB'), null, { timeout: 60_000 })
 }
 

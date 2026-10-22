@@ -10,6 +10,7 @@ import { configureVocab } from '@/charts/vocab'
 import { configureMetrics } from '@/charts/lib/metrics'
 import { configureUnits } from '@/charts/units'
 import { configureExport } from '@/state/exportState'
+import { configureLayout } from '@/state/layoutState'
 // 033-shadcn-default-theme: self-hosted Schibsted Grotesk / DM Mono font
 // side-effecting imports — the real replacement for the old Google-Fonts-
 // CDN runtime-injection module this project used to keep under
@@ -188,11 +189,13 @@ const branding: DashboardBranding = {
   metrics: primaryBranding.metrics ?? demoBranding.metrics,
   units: primaryBranding.units ?? demoBranding.units,
   exportFooter: primaryBranding.exportFooter ?? demoBranding.exportFooter,
+  layout: primaryBranding.layout ?? demoBranding.layout,
 }
 // 063 redesign: this deployment's category vocabulary (modes, purposes, income groups) for the chart kinds.
 configureVocab(branding.vocab)
 configureMetrics(branding.metrics)
 configureUnits(branding.units)
+configureLayout(branding.layout)
 configureExport({ footer: branding.exportFooter, title: branding.title })
 // 063 redesign: model years, focus and Compare defaults (project-docs/redesign/03-state-and-compare.md §1.1). Needs the
 // discovered runs and the merged config above; every tile and the control bar read the result.

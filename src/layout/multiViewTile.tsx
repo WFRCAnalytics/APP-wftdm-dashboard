@@ -8,6 +8,7 @@ import { useResolvedView } from '@/hooks/useViewContext'
 import { TileKeyContext, useTileState } from '@/hooks/useTileState'
 import { PanelErrorBoundary } from '@/layout/panelCard'
 import { Tile } from '@/layout/tile'
+import { useFill, withFillHeight } from '@/layout/fill'
 import type { CompareStrategy, MultiViewPanelConfig } from '@/layout/types'
 import { PanelLoadingState } from '@/panels/PanelLoadingState'
 import { registry } from '@/panels/registry'
@@ -28,7 +29,9 @@ const STRATEGY_LABEL: Record<CompareStrategy, string> = {
 
 export function MultiViewTile({ config: rawConfig, tileKey }: { config: MultiViewPanelConfig; tileKey: string }) {
   const ctx = useResolvedView()
+  const fill = useFill()
   const config = useMemo(() => withRowHeight(rawConfig, ctx.active.length), [rawConfig, ctx.active.length])
+  const bodyConfig = useMemo(() => withFillHeight(rawConfig, fill), [rawConfig, fill.active, fill.height]) // eslint-disable-line react-hooks/exhaustive-deps
   const { inputs, referenceLabel } = useCompareInputs()
   const [tile, setTile] = useTileState(tileKey)
   const error = useMemo(() => validateMultiView(config), [config])
@@ -42,7 +45,7 @@ export function MultiViewTile({ config: rawConfig, tileKey }: { config: MultiVie
   const panel = Body ? (
     <PanelErrorBoundary panelTitle={config.title}>
       <Suspense fallback={<PanelLoadingState height={config.height} />}>
-        <Body config={rawConfig} />
+        <Body config={bodyConfig} />
       </Suspense>
     </PanelErrorBoundary>
   ) : null

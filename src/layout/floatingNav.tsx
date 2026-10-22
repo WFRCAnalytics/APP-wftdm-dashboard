@@ -7,6 +7,8 @@ import { SettingsModal } from '@/layout/settingsModal'
 import { resolveSections } from '@/layout/dashboardLayout'
 import { iconComponentFor } from '@/lib/iconComponentFor'
 import { useThemeMode } from '@/hooks/useThemeMode'
+import { useTabsPlan } from '@/hooks/useTabsPlan'
+import { getActiveSection, setActiveSection, useLayoutVersion } from '@/state/layoutState'
 import { setMode, type ThemeMode } from '@/state/themeState'
 import { cn } from '@/lib/utils'
 import type { DashboardTabConfig } from '@/layout/types'
@@ -49,6 +51,8 @@ export function FloatingNav({ tabs, activeIndex, onTabChange, branding, mobile =
     setEngaged(false)
   }
   const themeMode = useThemeMode()
+  useLayoutVersion()
+  const activePlan = useTabsPlan(tabs[activeIndex])
   const expanded = mobile ? open : engaged
 
   if (mobile && !open) return null
@@ -97,7 +101,8 @@ export function FloatingNav({ tabs, activeIndex, onTabChange, branding, mobile =
           {tabs.map((tab, index) => {
             const isActive = index === activeIndex
             const Icon = tab.header.icon ? iconComponentFor(tab.header.icon) : undefined
-            const sections = isActive ? resolveSections(tab) : []
+            const tabsPlan = isActive ? activePlan : null
+            const sections = isActive ? (tabsPlan ? tabsPlan.sections : resolveSections(tab)) : []
             return (
               <div key={`${tab.header.tab}-${index}`}>
                 <NavButton
@@ -127,8 +132,10 @@ export function FloatingNav({ tabs, activeIndex, onTabChange, branding, mobile =
                         <button
                           type="button"
                           className="h-[30px] w-full truncate rounded-lg px-2 text-left font-body text-[13px] text-[var(--mute)] transition-colors hover:bg-[color-mix(in_srgb,var(--ink)_7%,transparent)] hover:text-[var(--ink)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-text)]"
+                          aria-current={tabsPlan && getActiveSection(tab.header.tab) === section.id ? 'true' : undefined}
                           onClick={(e) => {
-                            document.getElementById(`section-${section.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                            if (tabsPlan) setActiveSection(tab.header.tab, section.id)
+                            else document.getElementById(`section-${section.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
                             onClose?.()
                             dismissAfterMouse(e)
                           }}

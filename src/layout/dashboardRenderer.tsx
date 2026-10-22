@@ -1,6 +1,8 @@
 import { Suspense, useEffect, useMemo } from 'react'
 import { PanelCard, PanelErrorBoundary } from '@/layout/panelCard'
 import { HeroCell } from '@/layout/heroCell'
+import { TabbedPage } from '@/layout/tabbedPage'
+import { useTabsPlan } from '@/hooks/useTabsPlan'
 import { IdenticalNote } from '@/layout/identicalNote'
 import { registry } from '@/panels/registry'
 import { PanelErrorState } from '@/panels/PanelErrorState'
@@ -187,6 +189,10 @@ function OrdinaryDashboardRenderer({ tab }: { tab: DashboardTabConfig }) {
     for (const section of tab.sections ?? []) if (section.tile) map.set(section.tile, section.id)
     return map
   }, [tab])
+
+  const plan = useTabsPlan(tab)
+  const rowMap = useMemo(() => new Map(rows), [rows])
+  if (plan) return <TabbedPage page={tab.header.tab} plan={plan} rows={rowMap} />
 
   return (
     <div className="flex flex-col gap-[14px] pb-[60px] pl-[14px] pr-7 pt-2">

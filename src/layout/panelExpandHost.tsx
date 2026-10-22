@@ -60,7 +60,7 @@ export function usePanelExpandHost(
   title: string,
   children: ReactNode,
   options?: {
-    height?: number
+    height?: number | string
     /** Rendered under the title inside the dialog (badges, view and group controls), so every control keeps working
      * while the tile is expanded (project-docs/redesign/02-layout-and-components.md section 2). */
     chrome?: ReactNode

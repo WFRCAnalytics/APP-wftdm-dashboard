@@ -7,8 +7,9 @@ header:
   icon: shuffle
 
 sections:
-  - { id: shares, label: "Shares", rows: [row_share] }
-  - { id: flow, label: "Flow", rows: [row_flowbig] }
+  - { id: shares, label: "Mode share", rows: [row_share] }
+  - { id: flow, label: "Purpose to mode", rows: [row_flowbig] }
+  - { id: day, label: "Through the day", rows: [row_time_mix] }
 
 layout:
   row_share:

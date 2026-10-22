@@ -10,6 +10,7 @@ import { FloatingNav } from '@/layout/floatingNav'
 import { PageHeader } from '@/layout/pageHeader'
 import { PanelEmptyState } from '@/panels/PanelEmptyState'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
+import { useTabsPlan } from '@/hooks/useTabsPlan'
 import type { DashboardTabConfig } from '@/layout/types'
 import type { DashboardBranding } from '@/services/yamlLoader'
 
@@ -29,6 +30,7 @@ export function Shell({
 }) {
   const [activeIndex, setActiveIndex] = useState(0)
   const [menuOpen, setMenuOpen] = useState(false)
+  const tabbed = useTabsPlan(dashboards[activeIndex] ?? dashboards[0]) !== null
   // Below 760px the nav is a sheet opened from the header instead of a fixed rail.
   const mobile = useMediaQuery('(max-width: 759px)')
 
@@ -61,9 +63,9 @@ export function Shell({
         onClose={() => setMenuOpen(false)}
       />
       {/* A chromeless full-page panel needs a DEFINITE height for its `height: 100%` chain (min-height does not give one). */}
-      <main className={cn('flex flex-col', chromeless ? 'h-screen' : 'min-h-screen', !mobile && 'pl-[96px]')}>
+      <main className={cn('flex flex-col', chromeless || tabbed ? 'h-dvh' : 'min-h-screen', tabbed && 'overflow-hidden', !mobile && 'pl-[96px]')}>
         {!chromeless && (
-          <PageHeader title={active.header.title} subtitle={active.header.description} onMenu={mobile ? () => setMenuOpen(true) : undefined}>
+          <PageHeader title={active.header.title} subtitle={active.header.description} onMenu={mobile ? () => setMenuOpen(true) : undefined} forceCompact={tabbed}>
             <ControlBar />
           </PageHeader>
         )}

@@ -6,24 +6,29 @@ header:
   description: "Zones, trip flows and the places they serve"
   icon: network
 
+sections:
+  - { id: zones, label: "Where transit is used", rows: [row_zones] }
+  - { id: flows, label: "Trip desire lines", rows: [row_flows] }
+
 layout:
-  row_zones_flows:
+  row_zones:
     - id: zones
       type: multi-view
       title: "Where transit is used"
       description: "Transit share of trip ends by traffic analysis zone. Scroll to zoom."
       height: 500
-      width: 0.5
+      width: 1.0
       views:
         - { id: map, label: Values, type: chart, kind: zone-map, boundaries: taz25.geoparquet, boundaries_id: TAZ1454, rail: null, compare: [grid, switch] }
         - { id: diffm, label: Difference, type: chart, kind: zone-diff-map, boundaries: taz25.geoparquet, boundaries_id: TAZ1454, rail: null, compare: [diff], needs_compare: true }
         - { id: swipe, label: Swipe, type: chart, kind: zone-swipe-map, boundaries: taz25.geoparquet, boundaries_id: TAZ1454, rail: null, compare: [swipe], needs_compare: true }
+  row_flows:
     - id: flows
       type: multi-view
       title: "Trip desire lines"
       description: "Daily trips between zones, one scenario at a time."
       height: 500
-      width: 0.5
+      width: 1.0
       views:
         - id: lines
           label: Desire lines

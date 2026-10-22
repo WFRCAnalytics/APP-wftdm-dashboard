@@ -7,8 +7,7 @@ header:
   icon: users
 
 sections:
-  - { id: auto-ownership, label: "Auto ownership", rows: [row_hh_pyramid], tile: hh }
-  - { id: population, label: "Population", rows: [row_hh_pyramid], tile: pyramid }
+  - { id: people, label: "Households and people", rows: [row_hh_pyramid] }
 
 layout:
   row_hh_pyramid:

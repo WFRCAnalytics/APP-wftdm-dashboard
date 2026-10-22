@@ -93,6 +93,7 @@ export interface ResolvedSection {
   rows: string[]
   /** Anchor on the tile with this `id` rather than the first row. */
   tile?: string
+  mode?: 'stack' | 'pick'
 }
 
 /**
@@ -134,10 +135,51 @@ export function resolveSections(tab: DashboardTabConfig): ResolvedSection[] {
     // never reorders rows" guarantee.
     const orderedRows = Object.keys(tab.layout).filter((rowName) => validRows.includes(rowName))
     if (orderedRows.length === 0) continue
-    resolved.push({ id: section.id, label: section.label, rows: orderedRows, tile: typeof section.tile === 'string' ? section.tile : undefined })
+    resolved.push({ id: section.id, label: section.label, rows: orderedRows, tile: typeof section.tile === 'string' ? section.tile : undefined, mode: section.mode === 'pick' ? 'pick' : undefined })
   }
 
   return resolved
+}
+
+export interface TabSection {
+  id: string
+  label: string
+  mode: 'stack' | 'pick'
+  /** Visible rows of the tab, in layout order. */
+  rows: string[]
+}
+
+export interface TabsPlan {
+  /** Rows that stay above the tabs. */
+  pinned: string[]
+  sections: TabSection[]
+}
+
+/**
+ * The tabbed form of a page (project-docs/redesign/10-toolbar-layout-export-proposal.md section C.3): hero rows (or
+ * `header.pinned_rows`) stay on top, each section with something to show is a tab, and rows no section names go to
+ * the end of the first tab so no tile is lost. Null when the page has nothing to tab (no sections, or all empty).
+ */
+export function planTabs(tab: DashboardTabConfig, ctx: VisibilityContext): TabsPlan | null {
+  const visibleRows = new Map<string, PanelConfig[]>()
+  for (const [name, panels] of Object.entries(tab.layout)) {
+    const visible = panels.filter((p) => isPanelVisible(p, ctx))
+    if (visible.length > 0) visibleRows.set(name, visible)
+  }
+  const wanted = Array.isArray(tab.header.pinned_rows) ? tab.header.pinned_rows : null
+  const pinned = [...visibleRows.keys()].filter((name) => (wanted ? wanted.includes(name) : isHeroRow(visibleRows.get(name)!)))
+  const sections: TabSection[] = []
+  for (const s of resolveSections(tab)) {
+    const rows = s.rows.filter((r) => visibleRows.has(r) && !pinned.includes(r))
+    if (rows.length > 0 && !sections.some((x) => x.id === s.id)) sections.push({ id: s.id, label: s.label, mode: s.mode ?? 'stack', rows })
+  }
+  if (sections.length === 0) return null
+  const placed = new Set(sections.flatMap((s) => s.rows))
+  const loose = [...visibleRows.keys()].filter((r) => !pinned.includes(r) && !placed.has(r))
+  if (loose.length > 0) {
+    sections[0] = { ...sections[0], rows: Object.keys(tab.layout).filter((r) => sections[0].rows.includes(r) || loose.includes(r)) }
+  }
+  return { pinned, sections }
 }
 
 // Re-exported so callers (sidebarNav.tsx) don't need a second import from

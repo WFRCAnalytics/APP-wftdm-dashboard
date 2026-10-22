@@ -20,6 +20,7 @@ import { clearFont, setFont, type FontRole } from '@/state/fontPreferenceState'
 import { clearInterfaceColorOverride, setInterfaceColorOverride } from '@/state/interfaceColorState'
 import { clearGoogleFont, ensureGoogleFontLoaded } from '@/panels/googleFontLoader'
 import type { InterfaceColorRole } from '@/panels/interfaceColor'
+import { getViewerLayout, setViewerLayout, useLayoutVersion, type ViewerLayout } from '@/state/layoutState'
 
 // The Appearance tab (project-docs/redesign/02-layout-and-components.md section 4.1): theme, colour-blind-safe palette,
 // interface colours, type, text size and a reset. Everything is session-only state (no storage of any kind).
@@ -84,8 +85,16 @@ function applyFont(role: FontRole, name: string | undefined) {
   }
 }
 
+const LAYOUT_OPTIONS = [
+  { id: 'default', label: 'Page default' },
+  { id: 'tabs', label: 'Tabs' },
+  { id: 'scroll', label: 'Scrolling' },
+]
+
 export function AppearanceTab() {
   const mode = useThemeMode()
+  useLayoutVersion()
+  const viewerLayout = getViewerLayout()
   const colorblindSafe = useColorblindSafePreference()
   const textSize = useTextSize()
   const fontPreference = useFontPreference()
@@ -148,6 +157,16 @@ export function AppearanceTab() {
           options={THEME_OPTIONS}
           value={mode}
           onChange={(id) => setMode(id as ThemeMode)}
+        />
+      </SettingsRow>
+
+      <SettingsRow title="Page layout" help="Tabs keep every page on one screen with no scrolling. Follows each page's own setting unless you pick one.">
+        <Segmented
+          label="Page layout"
+          size="lg"
+          options={LAYOUT_OPTIONS}
+          value={viewerLayout}
+          onChange={(id) => setViewerLayout(id as ViewerLayout)}
         />
       </SettingsRow>
 

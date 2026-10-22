@@ -13,13 +13,16 @@ export interface PageHeaderProps {
   children?: ReactNode
   /** Present only below 760px, where the nav is a sheet opened from here. */
   onMenu?: () => void
+  /** Tabbed pages do not scroll, so the header stays in its compact form. */
+  forceCompact?: boolean
 }
 
 const COMPACT_ENTER = 80
 const COMPACT_EXIT = 24
 
-export function PageHeader({ title, subtitle, children, onMenu }: PageHeaderProps) {
-  const [compact, setCompact] = useState(false)
+export function PageHeader({ title, subtitle, children, onMenu, forceCompact }: PageHeaderProps) {
+  const [scrolledCompact, setCompact] = useState(false)
+  const compact = scrolledCompact || Boolean(forceCompact)
   const headerRef = useRef<HTMLElement>(null)
   const expandedHeight = useRef(0)
   const [shrink, setShrink] = useState(0)

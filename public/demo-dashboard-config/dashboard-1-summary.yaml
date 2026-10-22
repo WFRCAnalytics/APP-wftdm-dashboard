@@ -8,6 +8,12 @@ header:
   description: "Regional totals for the example scenarios"
   icon: layout-dashboard
 
+sections:
+  - { id: scenarios, label: "Scenarios", rows: [row_rank_score] }
+  - { id: mode, label: "Mode choice", rows: [row_mix_share] }
+  - { id: time, label: "Time of day", rows: [row_time] }
+  - { id: maps, label: "Maps", rows: [row_zones, row_flows], mode: pick }
+
 layout:
   row_kpis:
     - { type: valuebox, variant: hero, title: Trips, metric: summary_kpis, column: total_trips, format: ",.0f", width: 0.2 }
@@ -16,11 +22,39 @@ layout:
     - { type: valuebox, variant: hero, title: Average trip length, metric: summary_kpis, column: avg_trip_length_miles, format: ",.2f", unit: mi, width: 0.2 }
     - { type: valuebox, variant: hero, title: Trips per household, metric: summary_kpis, column: trips_per_household, format: ",.2f", width: 0.2 }
 
-  # ---- Compare off ----
+  row_rank_score:
+    - id: rank
+      type: multi-view
+      title: "Ranked by metric"
+      description: "Scenarios sorted by the chosen metric."
+      needs_compare: true
+      height: 300
+      width: 0.4167
+      group_by:
+        label: Metric
+        default: transit
+        options:
+          - { id: trips, label: "Trips", fields: { group: trips } }
+          - { id: drive, label: "Drive-alone share", fields: { group: drive } }
+          - { id: transit, label: "Transit share", fields: { group: transit } }
+          - { id: active, label: "Walk and bike share", fields: { group: active } }
+          - { id: vmt, label: "Vehicle miles", fields: { group: vmt } }
+          - { id: len, label: "Average trip length", fields: { group: len } }
+      views:
+        - { id: bars, label: Bars, type: chart, kind: rank-bars, diff: true, compare: [overlay] }
+    - id: score
+      type: multi-view
+      title: "Scenario scorecard"
+      description: "Every compared scenario against the reference. Click a column to sort."
+      needs_compare: true
+      height_rows: { base: 120, per: 40, max: 560 }
+      height: 300
+      width: 0.5833
+      views:
+        - { id: matrix, label: Matrix, type: chart, kind: scorecard, diff: true, compare: [overlay] }
+
   row_mix_share:
-    - &mix
-      id: mix
-      show_when: single
+    - id: mix
       type: multi-view
       title: "Trips by purpose and mode"
       description: "Daily trips for the focus scenario. Hover a mode to trace it across every chart."
@@ -37,9 +71,7 @@ layout:
         - { id: sun, label: Sunburst, type: chart, kind: sunburst, variant: trips, compare: [multi] }
         - { id: flow, label: Flow, type: chart, kind: sankey, compare: [switch] }
         - { id: bars, label: "100% bars", type: chart, kind: stacked-bars, variant: trips, compare: [multi] }
-    - &share
-      id: share
-      show_when: single
+    - id: share
       type: multi-view
       title: "Mode share"
       description: "Share of daily trips. The dashed line is the reference."
@@ -59,15 +91,13 @@ layout:
         - { id: donut, label: Donut, type: chart, kind: donut, compare: [switch, diff] }
         - { id: tbl, label: Table, type: chart, kind: mode-table, compare: [overlay] }
 
-  row_time_zones:
-    - &time
-      id: time
-      show_when: single
+  row_time:
+    - id: time
       type: multi-view
       title: "Trips through the day"
       description: "Departure hour. Group by chooses what the lines or bands represent."
       height: 410
-      width: 0.6667
+      width: 1.0
       group_by:
         label: Group by
         default: scn
@@ -79,23 +109,21 @@ layout:
         - { id: lines, label: Lines, type: chart, kind: time-lines, diff: true, compare: [overlay] }
         - { id: stream, label: Stream, type: chart, kind: time-stream, compare: [switch, multi] }
         - { id: heat, label: Heatmap, type: chart, kind: time-heat, compare: [overlay] }
-    - &zones
-      id: zones
-      show_when: single
+
+  row_zones:
+    - id: zones
       type: multi-view
       title: "Where transit is used"
       description: "Transit share of trip ends by traffic analysis zone. Scroll to zoom."
       height: 410
-      width: 0.3333
+      width: 1.0
       views:
         - { id: map, label: Values, type: chart, kind: zone-map, boundaries: taz25.geoparquet, boundaries_id: TAZ1454, rail: null, compare: [grid, switch] }
         - { id: diffm, label: Difference, type: chart, kind: zone-diff-map, boundaries: taz25.geoparquet, boundaries_id: TAZ1454, rail: null, compare: [diff], needs_compare: true }
         - { id: swipe, label: Swipe, type: chart, kind: zone-swipe-map, boundaries: taz25.geoparquet, boundaries_id: TAZ1454, rail: null, compare: [swipe], needs_compare: true }
 
   row_flows:
-    - &flows
-      id: flows
-      show_when: single
+    - id: flows
       type: multi-view
       title: "Trip desire lines"
       description: "Daily trips between zones, one scenario at a time."
@@ -117,57 +145,3 @@ layout:
           clustering_auto: true
           compare: [switch]
 
-  # ---- Compare on: the same tiles re-spanned, plus the two compare-only tiles ----
-  row_rank_score_compare:
-    - id: rank
-      type: multi-view
-      title: "Ranked by metric"
-      description: "Scenarios sorted by the chosen metric."
-      needs_compare: true
-      show_when: compare
-      height: 300
-      width: 0.4167
-      group_by:
-        label: Metric
-        default: transit
-        options:
-          - { id: trips, label: "Trips", fields: { group: trips } }
-          - { id: drive, label: "Drive-alone share", fields: { group: drive } }
-          - { id: transit, label: "Transit share", fields: { group: transit } }
-          - { id: active, label: "Walk and bike share", fields: { group: active } }
-          - { id: vmt, label: "Vehicle miles", fields: { group: vmt } }
-          - { id: len, label: "Average trip length", fields: { group: len } }
-      views:
-        - { id: bars, label: Bars, type: chart, kind: rank-bars, diff: true, compare: [overlay] }
-    - id: score
-      type: multi-view
-      title: "Scenario scorecard"
-      description: "Every compared scenario against the reference. Click a column to sort."
-      needs_compare: true
-      show_when: compare
-      height_rows: { base: 120, per: 40, max: 560 }
-      height: 300
-      width: 0.5833
-      views:
-        - { id: matrix, label: Matrix, type: chart, kind: scorecard, diff: true, compare: [overlay] }
-  row_share_time_compare:
-    - <<: *share
-      height: 440
-      width: 0.5833
-      show_when: compare
-    - <<: *time
-      height: 440
-      width: 0.4167
-      show_when: compare
-  row_mix_zones_compare:
-    - <<: *mix
-      height: 440
-      width: 0.5833
-      show_when: compare
-    - <<: *zones
-      height: 440
-      width: 0.4167
-      show_when: compare
-  row_flows_compare:
-    - <<: *flows
-      show_when: compare

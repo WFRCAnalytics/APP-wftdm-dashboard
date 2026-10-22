@@ -591,6 +591,13 @@ before touching charts).
   incomes, autos: label, raw `ids`, mode colour token), `metrics` (label/unit/decimals/scale/hidden for scorecard, ranking and
   trend metrics) and `units` (`trips` divisor/suffix for time-of-day charts, `transit_share_max` for the map ramp). `panels/panelQuery.ts#resolveActiveScenarios` skips runs whose metric catalog
   lacks a panel's metric. `wftdm-dashboard validate-observed <folder>` checks a published observed folder.
+- **Layout, toolbar and export** (`project-docs/redesign/10-toolbar-layout-export-proposal.md`): the control bar is one row (a
+  Scenarios chip for focus, compared set and reference; Show greyed out when Compare is off; Compare right-most). Tiles in a
+  row share the tallest height. Pages are `scroll` or `tabs` (`state/layoutState.ts`: viewer setting or `?layout=` >
+  `header.layout_mode` > `layout.mode` in index.json > scroll); in tabs mode `sections:` are the tabs (`mode: pick` shows one
+  tile at a time), hero rows stay above them, tiles fill the screen (`layout/fill.tsx`) and their controls move to a rail.
+  Every tile has an Export menu (`layout/tileExport.tsx`, `services/exportTile.ts`: CSV, PNG, SVG); `export.footer` in
+  index.json sets the image footer. The real demo is tabbed; the synthetic and legacy sets stay scrolling.
 - New D3 submodules (no new chart library): d3-selection/scale/array/chord/zoom/format/interpolate/transition.
 
 ## Implementation status

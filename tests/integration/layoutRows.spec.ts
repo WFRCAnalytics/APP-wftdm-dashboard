@@ -3,7 +3,7 @@ import { test, expect, type Page } from '@playwright/test'
 // Layout rules of project-docs/redesign/10-toolbar-layout-export-proposal.md, on the real demo content.
 
 async function boot(page: Page) {
-  await page.goto('/')
+  await page.goto('/?layout=scroll')
   await page.waitForFunction(() => document.querySelector('h1') && !document.body.innerText.includes('Connecting to DuckDB'), null, { timeout: 60_000 })
 }
 
@@ -54,7 +54,7 @@ test.describe('the control bar is one row', () => {
           heights.add(Math.round(box!.height))
           // every control sits on one line: all children share the same vertical centre (within 2px)
           const centres = await page.getByTestId('control-bar').evaluate((el) =>
-            [...el.children].map((c) => { const r = c.getBoundingClientRect(); return Math.round(r.top + r.height / 2) }),
+            [...el.querySelectorAll(':scope > *, :scope > .contents > *')].map((c) => c.getBoundingClientRect()).filter((r) => r.width > 0 && r.height > 0).map((r) => Math.round(r.top + r.height / 2)),
           )
           expect(Math.max(...centres) - Math.min(...centres)).toBeLessThanOrEqual(2)
         }

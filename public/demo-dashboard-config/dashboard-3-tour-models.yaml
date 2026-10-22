@@ -6,6 +6,10 @@ header:
   description: "When and where people travel"
   icon: route
 
+sections:
+  - { id: time, label: "Time of day", rows: [row_timing] }
+  - { id: flows, label: "Desire lines", rows: [row_flows] }
+
 layout:
   row_timing:
     - id: time

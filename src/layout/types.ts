@@ -592,6 +592,8 @@ export interface SectionConfig {
   id: string
   label: string
   rows: string[]
+  /** Tabbed pages: `stack` (default) shows every tile of the tab; `pick` shows one at a time, chosen from a list. */
+  mode?: 'stack' | 'pick'
   /** 063 redesign: scroll to the tile with this `id` instead of the section's first row (two tiles can share a row). */
   tile?: string
 }
@@ -617,6 +619,10 @@ export interface DashboardTabConfig {
      * Cases). Default false/absent — every existing dashboard-*.yaml is
      * unaffected. */
     full_page?: boolean
+    /** `tabs`: each section is a tab and the page does not scroll; `scroll`: all rows in order. Default: the deployment's. */
+    layout_mode?: 'scroll' | 'tabs'
+    /** Rows that stay above the tabs in tabbed mode (default: the hero KPI rows). */
+    pinned_rows?: string[]
     /** 040-test-suite-migration, FR-019–FR-021: an explicit accessible
      * name for this tab's sidebar button, set as its `aria-label`. Only
      * `public/demo-dashboard-config/dashboard-8-test.yaml` uses it — that

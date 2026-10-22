@@ -1,4 +1,4 @@
-import { Component, Suspense, type ReactNode } from 'react'
+import { Component, Suspense, useMemo, type ReactNode } from 'react'
 
 import { PanelErrorState } from '@/panels/PanelErrorState'
 import { PanelLoadingState } from '@/panels/PanelLoadingState'
@@ -6,6 +6,7 @@ import { registry } from '@/panels/registry'
 import { EXPANDABLE_PANEL_TYPES } from '@/panels/expandablePanelTypes'
 import { MultiViewTile } from '@/layout/multiViewTile'
 import { Tile } from '@/layout/tile'
+import { useFill, withFillHeight } from '@/layout/fill'
 import type { MultiViewPanelConfig, PanelConfig } from '@/layout/types'
 
 // React error boundaries require a class component — no hook equivalent
@@ -56,7 +57,9 @@ export function PanelCard({ config, tileKey }: { config: PanelConfig; tileKey?: 
   return <PlainTile config={config} />
 }
 
-function PlainTile({ config }: { config: PanelConfig }) {
+function PlainTile({ config: authored }: { config: PanelConfig }) {
+  const fill = useFill()
+  const config = useMemo(() => withFillHeight(authored, fill), [authored, fill.active, fill.height]) // eslint-disable-line react-hooks/exhaustive-deps
   const PanelComponent = registry[config.type]
   // 034-metric-panel-redesign (FR-001/FR-002, and the Part A addendum's
   // FR-023–FR-025): config.expandable, when the author set it explicitly,
