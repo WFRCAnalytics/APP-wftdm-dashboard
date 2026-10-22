@@ -602,6 +602,7 @@ before touching charts).
   Every tile has an Export menu (`layout/tileExport.tsx`, `services/exportTile.ts`: CSV, PNG, SVG), also inside the expanded dialog, and
   an Export all button zips the tiles on screen (`layout/pageExport.tsx`); `export.footer` in
   index.json sets the image footer. The real demo is tabbed; the synthetic and legacy sets stay scrolling.
+- Dial KPIs: a hero `valuebox` with `ring: { max }` draws its value on a half-circle dial with a tick at the reference. Mode share has a `mode-radar` view, trips by purpose a `purpose-radar` view and purpose to mode a `purpose-chord` view; all three read tables the real demo publishes.
 - New D3 submodules (no new chart library): d3-selection/scale/array/chord/zoom/format/interpolate/transition.
 
 ## Implementation status

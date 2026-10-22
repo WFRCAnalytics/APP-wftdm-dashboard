@@ -43,6 +43,32 @@ function Sparkline({ points, current }: { points: { year: number; value: number 
   )
 }
 
+const RING_W = 108
+const RING_H = 54
+const RING_R = 38
+
+/** A half-circle dial (0 at 9 o'clock, `max` at 3 o'clock): the value as a filled arc, the reference as a tick. */
+function Ring({ value, reference, max, unit }: { value: number; reference: number | null; max: number; unit?: string }) {
+  const cx = RING_W / 2
+  const cy = RING_H - 6
+  const at = (v: number) => Math.PI * (1 - Math.min(1, Math.max(0, v / max)))
+  const pt = (a: number, r: number) => `${(cx + Math.cos(a) * r).toFixed(1)} ${(cy - Math.sin(a) * r).toFixed(1)}`
+  const arc = (a0: number, a1: number) => `M${pt(a0, RING_R)} A${RING_R} ${RING_R} 0 0 1 ${pt(a1, RING_R)}`
+  const a = at(value)
+  const ref = reference === null ? null : at(reference)
+  return (
+    <svg width={RING_W} height={RING_H} viewBox={`0 0 ${RING_W} ${RING_H}`} className="ml-auto shrink-0" role="img" aria-label={`${value.toFixed(1)} of ${max}${unit ?? ''}`} data-testid="hero-ring">
+      <path d={arc(Math.PI, 0)} fill="none" stroke="var(--grid)" strokeWidth="7" strokeLinecap="round" />
+      {value > 0 && <path d={arc(Math.PI, a)} fill="none" stroke="var(--brand)" strokeWidth="7" strokeLinecap="round" />}
+      {ref !== null && (
+        <line x1={pt(ref, RING_R - 7).split(' ')[0]} y1={pt(ref, RING_R - 7).split(' ')[1]} x2={pt(ref, RING_R + 7).split(' ')[0]} y2={pt(ref, RING_R + 7).split(' ')[1]} stroke="var(--ink)" strokeWidth="2" strokeLinecap="round" />
+      )}
+      <text x={cx - RING_R} y={RING_H} textAnchor="middle" fontSize="9" fill="var(--mute)">0</text>
+      <text x={cx + RING_R} y={RING_H} textAnchor="middle" fontSize="9" fill="var(--mute)">{`${max}${unit ?? ''}`}</text>
+    </svg>
+  )
+}
+
 export function HeroKpi({ config }: { config: ValueBoxPanelConfig }) {
   const view = useResolvedView()
   const { referenceLabel, referenceColor } = useCompareInputs()
@@ -102,10 +128,15 @@ export function HeroKpi({ config }: { config: ValueBoxPanelConfig }) {
 
   return (
     <div className="flex flex-col" data-testid="hero-kpi">
-      <div className="my-2 whitespace-nowrap font-mono text-[clamp(30px,3vw,42px)] font-medium leading-[1.1] tracking-[-0.04em] tabular-nums text-[var(--ink)]">
-        {state.status === 'loading' ? ' ' : formatValue(state.value, config.format)}
-        {config.unit && state.status === 'ready' && (
-          <i className="ml-[6px] font-body text-sm font-normal not-italic tracking-normal text-[var(--mute)]">{config.unit}</i>
+      <div className="flex items-end gap-2">
+        <div className="my-2 whitespace-nowrap font-mono text-[clamp(30px,3vw,42px)] font-medium leading-[1.1] tracking-[-0.04em] tabular-nums text-[var(--ink)]">
+          {state.status === 'loading' ? ' ' : formatValue(state.value, config.format)}
+          {config.unit && state.status === 'ready' && (
+            <i className="ml-[6px] font-body text-sm font-normal not-italic tracking-normal text-[var(--mute)]">{config.unit}</i>
+          )}
+        </div>
+        {config.ring && state.status === 'ready' && state.value !== null && (
+          <Ring value={state.value} reference={refRun ? state.reference : null} max={config.ring.max} unit={config.unit} />
         )}
       </div>
       <div className="flex min-h-[22px] items-center gap-2 font-body text-[12.5px] text-[var(--mute)]">
