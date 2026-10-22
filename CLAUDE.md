@@ -164,6 +164,7 @@ APP-wftdm-dashboard/
 │   ├── TABLE-PANEL-PROPOSAL.md
 │   ├── UX-REDESIGN-PROPOSAL.md
 │   ├── BASEMAP-PICKER-PROPOSAL.md
+│   ├── ZERO-STEP-SUMMARIZATION-PROPOSAL.md  # deferred: `here` summarizes on launch, Parquet hand-off
 │   └── OBSERVABLE-PLOT-THEMING-PROPOSAL.md
 ├── docs/                        # ⚠ NOT docs — committed GitHub Pages build output
 ├── index.html                   # <script type="module" src="/src/main.tsx">
