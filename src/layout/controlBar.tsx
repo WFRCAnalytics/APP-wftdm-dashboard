@@ -98,7 +98,7 @@ export function ControlBar() {
   const showShort = useMediaQuery('(max-width: 1399px)')
   return (
     <div
-      className="glass flex min-w-0 max-w-full origin-top-right flex-nowrap items-center gap-2 rounded-full px-2 py-[7px] [animation:control-bar-expand_260ms_cubic-bezier(0.2,0.8,0.2,1)]"
+      className="glass flex min-w-0 max-w-full origin-top-right flex-nowrap items-center gap-2 rounded-full px-2 py-[7px] max-[640px]:flex-wrap max-[640px]:rounded-[24px] [animation:control-bar-expand_260ms_cubic-bezier(0.2,0.8,0.2,1)]"
       data-testid="control-bar"
     >
       {showYear && (

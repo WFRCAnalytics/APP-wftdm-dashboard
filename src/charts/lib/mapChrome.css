@@ -76,7 +76,7 @@
 .wfz-legend {
   position: absolute;
   left: 10px;
-  bottom: 10px;
+  bottom: 36px;
   z-index: 6;
   background: var(--surface);
   border: 1px solid var(--line);

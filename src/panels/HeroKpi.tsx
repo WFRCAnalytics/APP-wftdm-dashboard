@@ -60,7 +60,7 @@ function Ring({ value, reference, max, unit }: { value: number; reference: numbe
   const fill = value > 0 ? (band({ startAngle: -Math.PI / 2, endAngle: angle(value) }) ?? '') : ''
   const mark = reference === null ? '' : (tick({ startAngle: angle(reference) - 0.025, endAngle: angle(reference) + 0.025 }) ?? '')
   return (
-    <svg width={RING_W} height={RING_H} viewBox={`0 0 ${RING_W} ${RING_H}`} className="ml-auto shrink-0" role="img" aria-label={`${value.toFixed(1)} of ${max}${unit ?? ''}`} data-testid="hero-ring">
+    <svg width={RING_W} height={RING_H} viewBox={`0 0 ${RING_W} ${RING_H}`} className="ml-auto shrink-0 max-sm:hidden" role="img" aria-label={`${value.toFixed(1)} of ${max}${unit ?? ''}`} data-testid="hero-ring">
       <g transform={`translate(${cx},${cy})`}>
         <path d={track} fill="var(--grid)" />
         {fill && <path d={fill} fill="var(--brand)" />}

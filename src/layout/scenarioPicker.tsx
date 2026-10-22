@@ -200,7 +200,7 @@ export function ScenarioPicker() {
         aria-expanded={open}
         data-testid="scenario-picker-button"
         onClick={() => setOpen((o) => !o)}
-        className="inline-flex h-[38px] min-w-0 items-center gap-2 rounded-full border border-[var(--glass-line)] bg-[var(--tile-hi)] pl-[12px] pr-[6px] font-body text-sm text-[var(--ink)] shadow-[inset_0_1px_0_var(--hi)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-text)]"
+        className="inline-flex h-[38px] min-w-0 items-center gap-2 max-[640px]:basis-full rounded-full border border-[var(--glass-line)] bg-[var(--tile-hi)] pl-[12px] pr-[6px] font-body text-sm text-[var(--ink)] shadow-[inset_0_1px_0_var(--hi)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-text)]"
       >
         <span className="inline-flex shrink-0" aria-hidden="true">
           {compareOn ? (
