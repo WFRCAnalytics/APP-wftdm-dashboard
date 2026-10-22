@@ -295,7 +295,9 @@ body::before {
   --c-2: #ffc984;
   --c-3: #caacff;
   --brand: #c9d6f2;
-  --tag-hue: var(--brand);
+  --tag-hue: color-mix(in srgb, var(--brand) 55%, #4f7bd9);
+  --tag-neutral-bg: color-mix(in srgb, var(--tag-hue) 20%, transparent);
+  --tag-accent-bg: color-mix(in srgb, var(--tag-hue) 30%, transparent);
   --brand-text: #c9d6f2;
   --c-obs: #eef1f5;
 
