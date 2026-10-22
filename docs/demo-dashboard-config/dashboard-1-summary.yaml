@@ -23,9 +23,9 @@ layout:
     - { type: valuebox, variant: hero, title: Trips per household, metric: summary_kpis, column: trips_per_household, format: ",.2f", width: 0.2 }
 
   row_shares:
-    - { type: valuebox, variant: hero, title: Drive alone, metric: summary_kpis, column: drive_share, scale: 100, format: ",.1f", unit: "%", ring: { max: 100 }, width: 0.3333 }
-    - { type: valuebox, variant: hero, title: Transit, metric: summary_kpis, column: transit_share, scale: 100, format: ",.1f", unit: "%", ring: { max: 50 }, width: 0.3333 }
-    - { type: valuebox, variant: hero, title: Walk and bike, metric: summary_kpis, column: active_share, scale: 100, format: ",.1f", unit: "%", ring: { max: 100 }, width: 0.3333 }
+    - { type: valuebox, variant: hero, title: Drive alone, metric: summary_kpis, column: drive_share, scale: 100, format: ",.1f", unit: "%", ring: {}, width: 0.3333 }
+    - { type: valuebox, variant: hero, title: Transit, metric: summary_kpis, column: transit_share, scale: 100, format: ",.1f", unit: "%", ring: {}, width: 0.3333 }
+    - { type: valuebox, variant: hero, title: Walk and bike, metric: summary_kpis, column: active_share, scale: 100, format: ",.1f", unit: "%", ring: {}, width: 0.3333 }
 
   row_rank_score:
     - id: rank
