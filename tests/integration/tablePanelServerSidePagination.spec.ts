@@ -1,9 +1,9 @@
 import { execFileSync } from 'node:child_process'
-import { copyFileSync, existsSync, mkdtempSync, rmSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { test, expect, type Page } from '@playwright/test'
+import { test, expect, type Page, type Route } from '@playwright/test'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 import type { WftdmDebugHook } from '../../src/main.tsx'
@@ -17,18 +17,18 @@ declare global {
 // 059-server-side-pagination — real, live tests for User Stories 1/2/3.
 // Generates a real, throwaway ~250,000-row synthetic Parquet file via the
 // native `duckdb` CLI (the exact technique specs/059-server-side-
-// pagination/research.md itself used) and places it directly under a
-// REAL, already-discovered scenario's own real summary/ folder
-// (`public/demo-scenarios/activitysim-baseline/summary/`) — the same
-// technique `tests/integration/graphicWalkerPanel.spec.ts` established
-// for injecting a real, unmodified-app-code test tab via `page.route()`,
-// combined with `services/tabDataLoader.ts#registerOnePair()`'s own real,
-// confirmed behavior (read directly): it builds `${scenario.path}/
-// ${metric}.parquet` and registers whatever it finds there, with NO
-// upfront catalog check against `summary/index.json` at all — so a real
-// scenario's own metric catalog file needs no edit for this to work.
-// Deleted in `afterAll`; never committed (confirmed via `git status`
-// during this feature's own implementation).
+// pagination/research.md itself used) and serves it for a REAL,
+// already-discovered scenario's summary folder
+// (`demo-scenarios/activitysim-baseline/summary/`) through a Playwright
+// route, the same way the injected test tab itself is served.
+// `services/tabDataLoader.ts#registerOnePair()` builds
+// `${scenario.path}/${metric}.parquet` and registers whatever it finds
+// there, with NO upfront catalog check against `summary/index.json` at all
+// � so a real scenario's own metric catalog file needs no edit for this to
+// work. The files live in a temp dir, never under `public/`: Vite only
+// learns about public files that exist when the dev server starts (or that
+// its watcher reports), and writing/deleting large files there while the
+// server runs crashed the watcher on Windows (EBUSY).
 
 const DUCKDB_CLI =
   process.env.DUCKDB_CLI ??
@@ -39,20 +39,10 @@ const SMALL_METRIC = '_059_scale_test_small'
 const SCENARIO = 'activitysim-baseline'
 const REAL_ROW_COUNT = 250_000
 const SMALL_ROW_COUNT = 50 // comfortably under TABLE_QUERY_MODE_THRESHOLD — stays in 'client' mode
-const TARGET_PARQUET = path.resolve(
-  __dirname,
-  '../../public/demo-scenarios',
-  SCENARIO,
-  'summary',
-  `${TEST_METRIC}.parquet`,
-)
-const SMALL_TARGET_PARQUET = path.resolve(
-  __dirname,
-  '../../public/demo-scenarios',
-  SCENARIO,
-  'summary',
-  `${SMALL_METRIC}.parquet`,
-)
+const PARQUET_URL_PATTERN = '**/demo-scenarios/' + SCENARIO + '/summary/_059_scale_test*.parquet'
+
+let tmpDir = ''
+const parquetBuffers = new Map<string, Buffer>() // file name -> contents
 
 // T021 (US3): trip_id=1 → trip_distance = 0.1 + (1 % 500) * 0.1 = 0.2, in
 // both the large (query-driven) and small (client-mode) fixtures — same
@@ -110,45 +100,54 @@ function tripsSql(rowCount: number): string {
 }
 
 test.beforeAll(() => {
-  const tmpDir = mkdtempSync(path.join(tmpdir(), '059-scale-test-'))
-
-  const tmpParquet = path.join(tmpDir, `${TEST_METRIC}.parquet`)
-  execFileSync(
-    DUCKDB_CLI,
-    ['-c', `COPY (${tripsSql(REAL_ROW_COUNT)}) TO '${tmpParquet.replace(/\\/g, '/')}' (FORMAT PARQUET);`],
-    { stdio: 'inherit' },
-  )
-  copyFileSync(tmpParquet, TARGET_PARQUET)
-
-  const smallTmpParquet = path.join(tmpDir, `${SMALL_METRIC}.parquet`)
-  execFileSync(
-    DUCKDB_CLI,
-    [
-      '-c',
-      `COPY (${tripsSql(SMALL_ROW_COUNT)}) TO '${smallTmpParquet.replace(/\\/g, '/')}' (FORMAT PARQUET);`,
-    ],
-    { stdio: 'inherit' },
-  )
-  copyFileSync(smallTmpParquet, SMALL_TARGET_PARQUET)
-
-  // Copy (not move) into the real scenario folder — mirrors this
-  // project's own established "generate then place a real, throwaway
-  // asset" technique.
-  rmSync(tmpDir, { recursive: true, force: true })
-  if (!existsSync(TARGET_PARQUET)) {
-    throw new Error(`059-server-side-pagination test setup: ${TARGET_PARQUET} was not created`)
-  }
-  if (!existsSync(SMALL_TARGET_PARQUET)) {
-    throw new Error(`059-server-side-pagination test setup: ${SMALL_TARGET_PARQUET} was not created`)
+  tmpDir = mkdtempSync(path.join(tmpdir(), '059-scale-test-'))
+  for (const [metric, rowCount] of [
+    [TEST_METRIC, REAL_ROW_COUNT],
+    [SMALL_METRIC, SMALL_ROW_COUNT],
+  ] as const) {
+    const file = path.join(tmpDir, `${metric}.parquet`)
+    execFileSync(
+      DUCKDB_CLI,
+      ['-c', `COPY (${tripsSql(rowCount)}) TO '${file.replaceAll('\\', '/')}' (FORMAT PARQUET);`],
+      { stdio: 'inherit' },
+    )
+    if (!existsSync(file)) {
+      throw new Error(`059-server-side-pagination test setup: ${file} was not created`)
+    }
+    parquetBuffers.set(`${metric}.parquet`, readFileSync(file))
   }
 })
 
 test.afterAll(() => {
-  rmSync(TARGET_PARQUET, { force: true })
-  rmSync(SMALL_TARGET_PARQUET, { force: true })
+  parquetBuffers.clear()
+  rmSync(tmpDir, { recursive: true, force: true })
 })
 
+// Serves the generated Parquet like a static file server would: DuckDB-WASM reads a Parquet file through HEAD and Range
+// requests (footer first), so those have to be answered properly, not just a whole-file 200.
+async function serveParquet(route: Route) {
+  const request = route.request()
+  const body = parquetBuffers.get(path.posix.basename(new URL(request.url()).pathname))
+  if (!body) return route.fallback()
+  const headers = { 'accept-ranges': 'bytes', 'content-type': 'application/octet-stream' }
+  if (request.method() === 'HEAD') {
+    return route.fulfill({ status: 200, headers: { ...headers, 'content-length': String(body.length) } })
+  }
+  const range = /^bytes=(\d*)-(\d*)$/.exec(request.headers()['range'] ?? '')
+  if (!range) return route.fulfill({ status: 200, headers, body })
+  const [, from, to] = range
+  const start = from === '' ? Math.max(0, body.length - Number(to)) : Number(from)
+  const end = from === '' || to === '' ? body.length - 1 : Math.min(Number(to), body.length - 1)
+  return route.fulfill({
+    status: 206,
+    headers: { ...headers, 'content-range': `bytes ${start}-${end}/${body.length}` },
+    body: body.subarray(start, end + 1),
+  })
+}
+
 async function boot(page: Page) {
+  // Context level, so requests DuckDB-WASM makes from its Web Worker are intercepted too.
+  await page.context().route(PARQUET_URL_PATTERN, serveParquet)
   await page.route('**/demo-dashboard-config/index.json', async (route) => {
     const res = await route.fetch()
     const json = await res.json()
@@ -211,10 +210,34 @@ test.describe('059-server-side-pagination — User Story 1: a real large table s
     // proving flat latency regardless of cursor depth (research.md §2).
     const timings: number[] = []
     for (const label of ['Last page', 'First page'] as const) {
-      const t0 = Date.now()
-      await card.getByRole('button', { name: label }).click()
+      // The page change is timed inside the page, from the click being dispatched to the new rows being rendered. Wrapping
+      // Playwright's own click() in a timer would measure its actionability waits (the button is disabled and the layout
+      // settling while the previous page loads), not the pagination.
+      await expect(card.getByRole('button', { name: label })).toBeEnabled()
+      timings.push(
+        await card.evaluate(
+          (root, buttonLabel) =>
+            new Promise<number>((resolve, reject) => {
+              const firstId = () => root.querySelector('tbody tr td:first-child')?.textContent ?? null
+              const before = firstId()
+              const button = root.querySelector<HTMLButtonElement>(`button[aria-label="${buttonLabel}"]`)
+              if (!button) return reject(new Error(`no "${buttonLabel}" button`))
+              const timeout = setTimeout(() => reject(new Error('the page never changed')), 15_000)
+              const observer = new MutationObserver(() => {
+                const now = firstId()
+                if (now === null || now === before) return
+                clearTimeout(timeout)
+                observer.disconnect()
+                resolve(performance.now() - start)
+              })
+              observer.observe(root, { childList: true, subtree: true, characterData: true })
+              const start = performance.now()
+              button.click()
+            }),
+          label,
+        ),
+      )
       await expect(card.locator('tbody tr').first()).toBeVisible()
-      timings.push(Date.now() - t0)
       const ids = await card.locator('tbody tr td:first-child').allTextContents()
       ids.forEach((id) => seenIds.add(Number(id)))
     }
