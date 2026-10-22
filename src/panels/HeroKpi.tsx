@@ -9,6 +9,7 @@ import { loadRows } from '@/charts/dataCache'
 import { runNameFor } from '@/services/runResolution'
 import { getDeployment } from '@/state/compareState'
 import { cn } from '@/lib/utils'
+import { tagTintStyle } from '@/lib/tagTint'
 
 // One KPI of the hero band (project-docs/redesign/02-layout-and-components.md section 1.4): the focus scenario's value in
 // the selected year, a delta pill against the active reference with its caption, and a sparkline of the metric at each
@@ -44,7 +45,7 @@ function Sparkline({ points, current }: { points: { year: number; value: number 
 
 export function HeroKpi({ config }: { config: ValueBoxPanelConfig }) {
   const view = useResolvedView()
-  const { referenceLabel } = useCompareInputs()
+  const { referenceLabel, referenceColor } = useCompareInputs()
   const [state, setState] = useState<{
     value: number | null
     reference: number | null
@@ -122,7 +123,12 @@ export function HeroKpi({ config }: { config: ValueBoxPanelConfig }) {
             >
               {formatDelta(delta, 'pct')}
             </span>
-            <span className="min-w-0 truncate rounded-full bg-[var(--tag-neutral-bg)] px-2 py-[2px] text-[var(--tag-neutral-fg)]">vs {referenceLabel}</span>
+            <span
+              className="min-w-0 truncate rounded-full bg-[var(--tag-neutral-bg)] px-2 py-[2px] text-[var(--tag-neutral-fg)]"
+              style={referenceColor ? tagTintStyle(referenceColor, 18) : undefined}
+            >
+              vs {referenceLabel}
+            </span>
           </>
         )}
         {state.status === 'ready' && <Sparkline points={state.series} current={year} />}

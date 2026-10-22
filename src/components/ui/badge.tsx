@@ -2,6 +2,7 @@ import * as React from 'react'
 import { cva, type VariantProps } from 'class-variance-authority'
 
 import { cn } from '@/lib/utils'
+import { tagTintStyle } from '@/lib/tagTint'
 
 // 034-metric-panel-redesign (T022, data-model.md §3): adapted from
 // shadcn's real, current new-york-v4 registry source (apps/v4/registry/
@@ -38,10 +39,13 @@ const badgeVariants = cva(
 
 export interface BadgeProps
   extends React.HTMLAttributes<HTMLSpanElement>,
-    VariantProps<typeof badgeVariants> {}
+    VariantProps<typeof badgeVariants> {
+  /** A scenario colour (Settings): the badge takes a tint of it instead of the brand tint. */
+  tint?: string
+}
 
-const Badge = React.forwardRef<HTMLSpanElement, BadgeProps>(({ className, variant, ...props }, ref) => (
-  <span ref={ref} className={cn(badgeVariants({ variant }), className)} {...props} />
+const Badge = React.forwardRef<HTMLSpanElement, BadgeProps>(({ className, variant, tint, style, ...props }, ref) => (
+  <span ref={ref} className={cn(badgeVariants({ variant }), className)} style={tint ? { ...tagTintStyle(tint), ...style } : style} {...props} />
 ))
 Badge.displayName = 'Badge'
 

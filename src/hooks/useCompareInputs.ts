@@ -4,12 +4,12 @@ import { useScenarioDisplay } from '@/hooks/useScenarioDisplay'
 import { useResolvedView } from '@/hooks/useViewContext'
 import { runKindOf, runNameFor } from '@/services/runResolution'
 import { get as getScenario } from '@/state/appState'
-import { resolveScenarioLabel } from '@/panels/scenarioDisplay'
+import { resolveScenarioColor, resolveScenarioLabel } from '@/panels/scenarioDisplay'
 import type { CompareInputs } from '@/panels/compareStrategy'
 import { OBSERVED_LABEL } from '@/services/viewContext'
 
 /** What the compare strategies need from the resolved view, plus label helpers. Stable until the view changes. */
-export function useCompareInputs(): { inputs: CompareInputs; referenceLabel: string } {
+export function useCompareInputs(): { inputs: CompareInputs; referenceLabel: string; referenceColor: string | undefined } {
   const view = useResolvedView()
   const display = useScenarioDisplay()
   const label = useCallback((run: string) => resolveScenarioLabel(run, display), [display])
@@ -38,6 +38,9 @@ export function useCompareInputs(): { inputs: CompareInputs; referenceLabel: str
           : view.referenceRun
             ? label(view.referenceRun)
             : view.reference
-    return { inputs, referenceLabel }
-  }, [view, label])
+    // the reference run's colour from Settings (undefined for observed data, which has no scenario colour)
+    const referenceRun = view.referenceKind === 'self-base-year' ? selfBaseRun : view.referenceKind === 'observed' ? undefined : view.referenceRun
+    const referenceColor = referenceRun ? resolveScenarioColor(referenceRun, display) : undefined
+    return { inputs, referenceLabel, referenceColor }
+  }, [view, label, display])
 }

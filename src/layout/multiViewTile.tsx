@@ -24,7 +24,7 @@ export function MultiViewTile({ config: rawConfig, tileKey }: { config: MultiVie
   const fill = useFill()
   const config = useMemo(() => withRowHeight(rawConfig, ctx.active.length), [rawConfig, ctx.active.length])
   const bodyConfig = useMemo(() => withFillHeight(rawConfig, fill), [rawConfig, fill.active, fill.height]) // eslint-disable-line react-hooks/exhaustive-deps
-  const { inputs, referenceLabel } = useCompareInputs()
+  const { inputs, referenceLabel, referenceColor } = useCompareInputs()
   const [tile, setTile] = useTileState(tileKey)
   const lifted = useSharedKinds()
   const error = useMemo(() => validateMultiView(config), [config])
@@ -57,14 +57,14 @@ export function MultiViewTile({ config: rawConfig, tileKey }: { config: MultiVie
   const badges: ReactNode[] = []
   if (strategy === 'diff') {
     badges.push(
-      <Badge key="diff" variant="accent">
+      <Badge key="diff" variant="accent" tint={referenceColor}>
         {ctx.display === 'pct' ? '% change' : 'Change'} vs {referenceLabel}
       </Badge>,
     )
   } else if (ctx.compare && ctx.display !== 'val' && Boolean(resolved.view.diff) && strategy !== 'multi' && strategy !== 'grid') {
     // the chart draws its own differences (view flag `diff: true`)
     badges.push(
-      <Badge key="diff" variant="accent">
+      <Badge key="diff" variant="accent" tint={referenceColor}>
         {ctx.display === 'pct' ? '% change' : 'Change'} vs {referenceLabel}
       </Badge>,
     )
