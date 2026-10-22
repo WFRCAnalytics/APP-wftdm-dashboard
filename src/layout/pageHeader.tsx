@@ -91,7 +91,7 @@ export function PageHeader({ title, subtitle, children, onMenu }: PageHeaderProp
           </button>
         )}
         <div className="min-w-0">
-          <h1 style={{ lineHeight: 1.08 }} className={cn('line-clamp-2 font-heading font-bold tracking-[-0.025em] text-[var(--ink)] transition-[font-size] duration-[260ms] ease-out', compact ? 'text-[21px]' : 'text-[clamp(28px,3.2vw,40px)]')}>{title}</h1>
+          <h1 style={{ lineHeight: 1.08 }} className={cn('line-clamp-2 font-heading font-bold tracking-[-0.025em] text-[var(--title-fg)] transition-[font-size] duration-[260ms] ease-out', compact ? 'text-[21px]' : 'text-[clamp(28px,3.2vw,40px)]')}>{title}</h1>
           {subtitle && (
             // The subtitle folds away (row height 1fr to 0fr, fading) instead of vanishing, and its top gap lives inside the
             // folding row so the gap closes with it. visibility flips at the end of the fade, so it is also out of the

@@ -20,7 +20,7 @@ export function HeroCell({ config }: { config: PanelConfig }) {
   return (
     <div className="min-w-0 border-l border-[var(--line)] px-5 pb-[14px] pt-4 first:border-l-0 max-[1100px]:[&:nth-child(n+3)]:border-t max-[1100px]:[&:nth-child(3)]:border-l-0 max-[1100px]:[&:last-child:nth-child(odd)]:col-span-2">
       <div>
-        <small className="font-body text-[13px] text-[var(--mute)]">{config.title}</small>
+        <small className="font-body text-[13px] font-semibold text-[var(--mute)]">{config.title}</small>
         {/* a plain value (no gauge) follows the focus scenario and shows its delta and sparkline */}
         {config.type === 'valuebox' && (config as ValueBoxPanelConfig).kpi === 'calibration' ? (
           <PanelErrorBoundary panelTitle={config.title}>
