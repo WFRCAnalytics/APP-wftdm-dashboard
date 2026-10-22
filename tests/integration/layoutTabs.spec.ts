@@ -46,10 +46,11 @@ test.describe('tabbed pages', () => {
   test('a "pick" tab shows one tile at a time, chosen from a list', async ({ page }) => {
     await boot(page)
     await pageTab(page, 'Maps').click()
-    await expect(page.getByTestId('tab-chart-picker')).toHaveValue('zones')
+    await expect(page.getByTestId('tab-chart-picker')).toContainText('Where transit is used')
     await expect(page.getByRole('heading', { name: 'Where transit is used' })).toBeVisible({ timeout: 30_000 })
     await expect(page.getByRole('heading', { name: 'Trip desire lines' })).toHaveCount(0)
-    await page.getByTestId('tab-chart-picker').selectOption('flows')
+    await page.getByTestId('tab-chart-picker').click()
+    await page.getByRole('option', { name: 'Trip desire lines' }).click()
     await expect(page.getByRole('heading', { name: 'Trip desire lines' })).toBeVisible()
     await expect(page.getByRole('heading', { name: 'Where transit is used' })).toHaveCount(0)
   })

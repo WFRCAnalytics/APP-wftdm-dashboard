@@ -48,13 +48,8 @@ function panelCard(page: Page, title: string) {
 }
 
 async function chooseYear(page: Page, label: RegExp) {
-  // the year control is a native select
-  const select = page.getByTestId('control-year')
-  const value = await select.locator('option').evaluateAll(
-    (opts, source) => opts.find((o) => new RegExp(source).test(o.textContent ?? ''))?.getAttribute('value') ?? '',
-    label.source,
-  )
-  await select.selectOption(value)
+  await page.getByTestId('control-year').click()
+  await page.getByRole('option', { name: label }).click()
 }
 
 async function scenarioCells(page: Page) {
@@ -67,7 +62,7 @@ async function scenarioCells(page: Page) {
 test.describe('063 P3 — model years', () => {
   test('the control bar shows Year and Focus, defaulting to the base year and the baseline', async ({ page }) => {
     await boot(page, ALL_RUNS)
-    await expect(page.getByTestId('control-year')).toHaveValue('2023')
+    await expect(page.getByTestId('control-year')).toContainText('2023')
     await expect(page.getByTestId('scenario-chip-focus')).toContainText(/baseline/i)
     const state = await page.evaluate(() => window.__wftdm!.compareState.getState())
     expect(state).toMatchObject({ year: 2023, focus: 'activitysim-baseline', compare: true })
@@ -75,7 +70,9 @@ test.describe('063 P3 — model years', () => {
 
   test('the Year select lists every configured year with its label', async ({ page }) => {
     await boot(page, ALL_RUNS)
-    await expect(page.getByTestId('control-year').locator('option')).toHaveText(['2023 · Base year', '2036 · End of RTP Phase I'])
+    await page.getByTestId('control-year').click()
+    await expect(page.getByRole('option')).toHaveText(['2023 · Base year', '2036 · End of RTP Phase I'])
+    await page.keyboard.press('Escape')
   })
 
   test('changing the year re-queries the tiles for that year', async ({ page }) => {

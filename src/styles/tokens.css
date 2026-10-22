@@ -74,6 +74,20 @@
   /* tab pills (Segmented, tabbed-page tabs, Graphic Walker's tabs): this ONE token is the track behind them. The selected
      pill is derived from existing tokens (see .pill-on below), so nothing else needs tuning. */
   --pill-track: color-mix(in srgb, var(--ink) 8%, transparent);
+  /* THE one place that styles every pill: segmented controls, the page tab strip, Graphic Walker's tabs and the toast close
+     button all read these (a shadow root sees custom properties, not classes). Change the look here and nowhere else. */
+  --pill-on-bg: var(--brand);
+  --pill-on-fg: var(--primary-foreground);
+  --pill-on-shadow: 0 1px 0 rgba(255, 255, 255, 0.2) inset, 0 1px 3px color-mix(in srgb, var(--brand) 45%, transparent);
+  --pill-off-fg: var(--mute);
+  --pill-hover-fg: var(--ink);
+  /* Tile tags (Badge): accent = a computed view such as "Change vs <reference>"; neutral = a plain note ("Side by side",
+     "Same in every scenario"). The only place their colours are set. */
+  --tag-accent-bg: color-mix(in srgb, var(--brand) 26%, transparent);
+  --tag-accent-fg: var(--brand-text);
+  --tag-accent-ring: color-mix(in srgb, var(--brand) 45%, transparent);
+  --tag-neutral-bg: color-mix(in srgb, var(--ink) 9%, transparent);
+  --tag-neutral-fg: var(--mute);
 
   /* calibration status — only ever for calibration status, never for series */
   --ok: #167a4a;
@@ -139,14 +153,21 @@ body::before {
   background: radial-gradient(1100px 600px at 30% -12%, var(--hi), transparent 70%);
 }
 
-/* The selected tab pill: the cell's own surface, lifted by the edge highlight and hairline every glass surface uses, so
-   it follows both themes with no token of its own. Every selected pill looks like this, with no per-control variants.
-   Graphic Walker's tabs (panels/graphicWalkerShadowStyle.ts) repeat these declarations: a shadow root cannot see this
-   class. */
+/* Pill classes: all values come from the --pill-* tokens above. Graphic Walker's tabs (panels/graphicWalkerShadowStyle.ts)
+   cannot use these classes (a shadow root), so they read the same tokens. */
+.pill-track {
+  background: var(--pill-track);
+}
 .pill-on {
-  background: var(--brand);
-  color: var(--primary-foreground);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.2) inset, 0 1px 3px color-mix(in srgb, var(--brand) 45%, transparent);
+  background: var(--pill-on-bg);
+  color: var(--pill-on-fg);
+  box-shadow: var(--pill-on-shadow);
+}
+.pill-off {
+  color: var(--pill-off-fg);
+}
+.pill-off:hover {
+  color: var(--pill-hover-fg);
 }
 
 /* Floating glass tier (navigation, control bar, picker, tooltip). Use together with a radius utility. */

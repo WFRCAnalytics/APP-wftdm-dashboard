@@ -14,7 +14,7 @@ import {
   Waves,
   Satellite,
   Mountain,
-  Star,
+  Check,
   Contrast,
   CircleDashed,
   type LucideIcon,
@@ -591,15 +591,14 @@ function StyleCard({ name, label, icon: Icon, staged, inUse, recommended, disabl
       </span>
       <span className="flex items-center gap-1 px-2.5 py-[7px] text-[12.5px]">
         {label}
-        {recommended && (
-          <>
-            <Star className="h-3 w-3 shrink-0 fill-current text-[var(--brand-text)]" aria-hidden="true" />
-            <span className="sr-only"> recommended default</span>
-          </>
+        {inUse && (
+          <span data-testid="style-in-use" className="ml-auto grid size-4 shrink-0 place-items-center rounded-full bg-[var(--pill-on-bg)] text-[var(--pill-on-fg)]">
+            <Check className="size-3" strokeWidth={3} aria-hidden="true" />
+            <span className="sr-only">In use</span>
+          </span>
         )}
       </span>
       {note && <small className="-mt-1 block px-2.5 pb-[7px] text-[11px] text-[var(--warn)]">{note}</small>}
-      {inUse && <small className="-mt-1 block px-2.5 pb-[7px] text-[11px] text-[var(--brand-text)]">In use</small>}
     </button>
   )
 }

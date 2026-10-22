@@ -60,7 +60,7 @@ test.describe('063 P4 — multi-view tile', () => {
     const views = card.getByRole('group', { name: 'View' })
     await expect(views.getByRole('button')).toHaveText(['Treemap', 'Sunburst', 'Flow', 'Heatmap'])
     await expect(views.getByRole('button', { name: 'Treemap' })).toHaveAttribute('aria-pressed', 'true')
-    await expect(card.getByLabel('Group by')).toHaveValue('pm')
+    await expect(card.getByRole('combobox', { name: 'Group by' })).toContainText(/^Purpose/)
     await expect(card.locator('g[data-node-name]').first()).toBeVisible({ timeout: 20_000 })
   })
 
@@ -90,7 +90,8 @@ test.describe('063 P4 — multi-view tile', () => {
     await expect(card.locator('g[data-node-name="work"]').first()).toBeVisible({ timeout: 20_000 })
     await expect(card.locator('g[data-node-name="SOV"]')).toHaveCount(0)
 
-    await card.getByLabel('Group by').selectOption('mp')
+    await card.getByRole('combobox', { name: 'Group by' }).click()
+    await page.getByRole('option', { name: /^Mode/ }).click()
     await expect(card.locator('g[data-node-name="SOV"]').first()).toBeVisible({ timeout: 20_000 })
     await expect(card.locator('g[data-node-name="work"]')).toHaveCount(0)
   })
@@ -100,7 +101,8 @@ test.describe('063 P4 — multi-view tile', () => {
     await gotoTab(page, 'Mode Choice')
     let card = tile(page)
     await card.getByRole('group', { name: 'View' }).getByRole('button', { name: 'Sunburst' }).click()
-    await card.getByLabel('Group by').selectOption('mp')
+    await card.getByRole('combobox', { name: 'Group by' }).click()
+    await page.getByRole('option', { name: /^Mode/ }).click()
 
     await gotoTab(page, 'Trip')
     await gotoTab(page, 'Mode Choice')
@@ -109,7 +111,7 @@ test.describe('063 P4 — multi-view tile', () => {
       'aria-pressed',
       'true',
     )
-    await expect(card.getByLabel('Group by')).toHaveValue('mp')
+    await expect(card.getByRole('combobox', { name: 'Group by' })).toContainText(/^Mode/)
   })
 
   test('expand opens the overlay with the same controls working inside it', async ({ page }) => {

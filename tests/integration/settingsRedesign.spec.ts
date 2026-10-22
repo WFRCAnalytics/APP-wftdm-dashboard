@@ -277,7 +277,7 @@ test.describe('Basemap tab', () => {
     await voyager.click()
     await apply.click()
     await expect(dialog.getByText(/^Applied now:/)).toContainText('Voyager')
-    await expect(voyager.getByText('In use')).toBeVisible()
+    await expect(voyager.getByTestId('style-in-use')).toBeVisible()
   })
 
   test('Protomaps styles are disabled with a "Needs a PMTiles source" caption exactly when no source is configured', async ({ page }) => {

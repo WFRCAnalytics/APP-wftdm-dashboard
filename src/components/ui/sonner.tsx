@@ -38,7 +38,7 @@ export function Toaster(props: ToasterProps) {
           cancelButton:
             'rounded-full border border-[var(--glass-line)] px-3 py-1 text-[12.5px] text-[var(--mute)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-text)]',
           closeButton:
-            '!flex !size-5 !items-center !justify-center !rounded-full !p-0 [&>svg]:!size-3 [&>svg]:!block !border !border-[var(--line)] !bg-[var(--surface)] !text-[var(--mute)] shadow-[var(--sh1)] hover:!bg-[color-mix(in_srgb,var(--ink)_10%,var(--surface))] hover:!text-[var(--ink)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-text)]',
+            '!flex !size-5 !items-center !justify-center !rounded-full !p-0 [&>svg]:!size-3 [&>svg]:!block !border-0 !bg-[var(--pill-on-bg)] !text-[var(--pill-on-fg)] !shadow-[var(--pill-on-shadow)] hover:!opacity-85 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-text)]',
         },
       }}
       {...props}

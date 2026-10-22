@@ -55,7 +55,7 @@ test.describe('scenario comparison charts', () => {
     await trend.scrollIntoViewIfNeeded()
     const b2 = (await trend.boundingBox())!
     await page.mouse.click(b2.x + 70, b2.y + b2.height / 2)
-    await expect(page.locator('select').first()).toHaveValue('2023')
+    await expect(page.getByTestId('control-year')).toContainText('2023')
 
     expect(problems).toEqual([])
   })

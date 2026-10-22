@@ -32,7 +32,7 @@ function MiniPill({ pressed, label, onClick, children }: { pressed: boolean; lab
       onClick={onClick}
       className={cn(
         'h-7 rounded-full border px-[11px] font-body text-[12.5px] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-text)]',
-        pressed ? 'border-[var(--ink)] bg-[var(--ink)] text-[var(--bg)]' : 'border-[var(--glass-line)] text-[var(--mute)] hover:text-[var(--ink)]',
+        pressed ? 'pill-on border-transparent' : 'pill-off border-[var(--glass-line)]',
       )}
     >
       {children}
@@ -296,7 +296,7 @@ export function ScenarioPicker() {
                   onClick={() => setTagFilter(tagFilter === t ? null : t)}
                   className={cn(
                     'h-7 rounded-full border px-[11px] font-body text-[12.5px] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-text)]',
-                    tagFilter === t ? 'border-[var(--ink)] bg-[var(--ink)] text-[var(--bg)]' : 'border-[var(--glass-line)] text-[var(--mute)] hover:text-[var(--ink)]',
+                    tagFilter === t ? 'pill-on border-transparent' : 'pill-off border-[var(--glass-line)]',
                   )}
                 >
                   {t}

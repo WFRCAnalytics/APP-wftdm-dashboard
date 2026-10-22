@@ -28,7 +28,7 @@ export function Segmented({ label, options, value, onChange, size = 'md', classN
     <div
       role="group"
       aria-label={label}
-      className={cn('inline-flex items-center rounded-full bg-[var(--pill-track)] p-[3px]', rail && 'flex w-full flex-col items-stretch rounded-[18px]', className)}
+      className={cn('pill-track inline-flex items-center rounded-full p-[3px]', rail && 'flex w-full flex-col items-stretch rounded-[18px]', className)}
     >
       {options.map((o) => {
         const pressed = o.id === value
@@ -45,7 +45,7 @@ export function Segmented({ label, options, value, onChange, size = 'md', classN
               'rounded-full font-body leading-[1.45] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-text)] disabled:opacity-40',
               pressed
                 ? 'pill-on'
-                : 'text-[var(--mute)] hover:text-[var(--ink)]',
+                : 'pill-off',
             )}
           >
             {o.label}
