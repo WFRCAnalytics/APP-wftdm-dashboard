@@ -38,3 +38,12 @@ test('Trips by purpose has a radar view', async ({ page }) => {
   await expect(page.locator('svg [data-axis="Work"]')).toHaveCount(1, { timeout: 30_000 })
   await page.screenshot({ path: 'test-results/real-charts-purpose-radar.png' })
 })
+
+test('by default the first scenario is the reference and the second the focus', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await boot(page)
+  await expect(page.getByTestId('hero-delta').first()).toBeVisible({ timeout: 60_000 })
+  await expect(page.getByTestId('hero-kpi').first()).toContainText('vs ActivitySim Baseline')
+  await expect(page.getByTestId('scenario-chip-reference')).toHaveCount(1)
+  await expect(page.getByTestId('scenario-chip-focus')).not.toHaveText('ActivitySim Baseline')
+})
