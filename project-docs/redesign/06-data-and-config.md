@@ -37,7 +37,8 @@ Rules:
 ## 2. Dashboard config additions (`public/dashboard-config/index.json`)
 
 Existing fields stay (`dashboards`, `title`, `logoUrl`, `logoUrlDark`, `markUrl`, `markUrlDark` (the collapsed-rail mark), `scenarioPalette`, `protomapsPmtilesUrl`,
-`protomapsApiKey`, `primaryColor`, `secondaryColor`, `accentColor`). Add:
+`protomapsApiKey`, `primaryColor`, `secondaryColor`, `accentColor`, `brandColor`). The first three are the data colours; `brandColor` is the
+interface colour (`--brand`, `--primary`, `--ring`), kept apart from them. Add:
 
 ```jsonc
 {

@@ -107,7 +107,8 @@ manifest.yaml         per-scenario metadata
   `DashboardBranding`: `title`, `logoUrl`/`logoUrlDark` (full logo, shown when the nav
   is expanded), `markUrl`/`markUrlDark` (abbreviated logo, shown on the collapsed rail;
   the generic mark when unset), `scenarioPalette`,
-  `protomapsPmtilesUrl`, `primaryColor`/`secondaryColor`/`accentColor`. All
+  `protomapsPmtilesUrl`, `primaryColor`/`secondaryColor`/`accentColor` (the three DATA colours: transit, walking, biking and the chart palette) and `brandColor` (the
+  interface colour for selected pills, titles, tags and focus rings; separate so a data colour never recolours the chrome). All
   optional; an unconfigured deployment renders exactly as it always did.
 - Parquet outputs live in `{scenario-dir}/summary/` — written by the post-processor.
 - `public/scenarios/`, `public/dashboard-config/`, `public/observed/` are

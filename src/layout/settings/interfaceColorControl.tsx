@@ -27,9 +27,10 @@ import type { InterfaceColorRole } from '@/panels/interfaceColor'
 
 /** The stylesheet custom property that holds each role's current (adapted) colour when nothing is configured. */
 const FALLBACK_VAR: Record<InterfaceColorRole, string> = {
-  primary: '--primary',
+  primary: '--c-1',
   secondary: '--c-2',
   accent: '--c-3',
+  brand: '--brand',
 }
 
 function toHex(value: string): string {

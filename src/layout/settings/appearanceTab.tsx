@@ -139,6 +139,7 @@ export function AppearanceTab() {
   function resetAppearance() {
     setColorblindSafe(false)
     for (const { role } of ROLES) clearInterfaceColorOverride(role)
+    clearInterfaceColorOverride('brand')
     for (const role of ['body', 'heading', 'mono'] as const) clearFont(role)
     setScale(DEFAULT_SCALE)
   }
@@ -186,8 +187,8 @@ export function AppearanceTab() {
       <GroupHeading>Interface colours</GroupHeading>
       <SettingsRow
         align="start"
-        title="Primary, secondary, tertiary"
-        help="Drive highlights, selected states and the colours for transit, walking and biking."
+        title="Data colours"
+        help="Primary, secondary and tertiary: the colours for transit, walking and biking, and the chart palette built from them."
       >
         <div>
           <div className="flex items-start justify-between gap-4">
@@ -219,6 +220,12 @@ export function AppearanceTab() {
             </button>
           </div>
         </div>
+      </SettingsRow>
+      <SettingsRow
+        title="Brand colour"
+        help="The interface colour: selected tabs and pills, page titles, tags and focus rings. Separate from the data colours."
+      >
+        <InterfaceColorControl role="brand" label="Brand" />
       </SettingsRow>
 
       <GroupHeading>Type</GroupHeading>

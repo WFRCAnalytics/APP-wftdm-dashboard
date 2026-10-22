@@ -233,7 +233,7 @@ const WCAG_NON_TEXT_MIN_CONTRAST = 3.0
 // WFRC-brand dark background to shadcn's real #0a0a0a) — the chart hues
 // they're measured against are the same values as before this feature.
 const CHART_TOKENS: Array<{ name: string; expectedLight: number; expectedDark: number }> = [
-  { name: 'chart-1', expectedLight: 3.02, expectedDark: 12.07 },
+  { name: 'chart-1', expectedLight: 3.02, expectedDark: 8.08 },
   { name: 'chart-2', expectedLight: 3.02, expectedDark: 11.7 },
   { name: 'chart-3', expectedLight: 3.01, expectedDark: 9.11 },
   { name: 'chart-4', expectedLight: 3.26, expectedDark: 11.06 },

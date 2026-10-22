@@ -21,7 +21,7 @@ export interface ResolvedInterfaceColor {
 
 export type InterfaceColorMap = Record<InterfaceColorRole, ResolvedInterfaceColor>
 
-const ROLES: InterfaceColorRole[] = ['primary', 'secondary', 'accent']
+const ROLES: InterfaceColorRole[] = ['primary', 'secondary', 'accent', 'brand']
 
 function resolveRole(role: InterfaceColorRole): ResolvedInterfaceColor {
   const color = resolveInterfaceColor(role, getInterfaceColorOverride(role))

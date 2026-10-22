@@ -80,6 +80,7 @@ type DashboardIndexJson =
       primaryColor?: unknown
       secondaryColor?: unknown
       accentColor?: unknown
+      brandColor?: unknown
       years?: unknown
       baseYear?: unknown
       defaultYear?: unknown
@@ -192,6 +193,8 @@ export interface DashboardBranding {
   primaryColor?: string
   secondaryColor?: string
   accentColor?: string
+  /** The interface colour (selected pills, titles, tags, focus rings), separate from the three data colours above. */
+  brandColor?: string
   /** 063 redesign (project-docs/redesign/06-data-and-config.md §2): model years, in display order. Absent or empty
    * means a single-year deployment (the Year control is hidden). */
   years?: ModelYear[]
@@ -343,6 +346,7 @@ export async function loadDashboardBranding(
       primaryColor: typeof parsed.primaryColor === 'string' ? parsed.primaryColor : undefined,
       secondaryColor: typeof parsed.secondaryColor === 'string' ? parsed.secondaryColor : undefined,
       accentColor: typeof parsed.accentColor === 'string' ? parsed.accentColor : undefined,
+      brandColor: typeof parsed.brandColor === 'string' ? parsed.brandColor : undefined,
       years: parseYears(parsed.years),
       baseYear: typeof parsed.baseYear === 'number' ? parsed.baseYear : undefined,
       defaultYear: typeof parsed.defaultYear === 'number' ? parsed.defaultYear : undefined,

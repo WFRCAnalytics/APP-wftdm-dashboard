@@ -5,7 +5,11 @@
 // are three independent roles here, not one shared palette.
 import Color from 'color'
 
-export type InterfaceColorRole = 'primary' | 'secondary' | 'accent'
+/** primary, secondary and accent are the three DATA colours (transit, walking, biking and the chart palette); `brand` is
+ * the interface colour (selected pills, titles, tags, focus rings), set apart so changing one never changes the other. */
+export type InterfaceColorRole = 'primary' | 'secondary' | 'accent' | 'brand'
+
+export const DATA_COLOR_ROLES = ['primary', 'secondary', 'accent'] as const
 
 const deployerDefaults: Partial<Record<InterfaceColorRole, string>> = {}
 

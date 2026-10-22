@@ -162,18 +162,18 @@ async function contrastBetween(page: Page, a: string, b: string): Promise<number
 }
 const contrastOnWhite = (page: Page, c: string) => contrastBetween(page, c, '#ffffff')
 
-test.describe('User Story 3 - Primary / Secondary / Accent colors', () => {
+test.describe('User Story 3 - Brand colour (the interface colour, separate from the data colours)', () => {
   test('a deployer default applies with no override; a viewer override takes precedence live; reset reverts; text stays legible; reload clears only the override', async ({
     page,
   }) => {
     // Route the real dashboard-config/index.json endpoint (empty/
     // gitignored in this dev/test environment) to supply a deployer
-    // default for Primary — the same page.route() injection technique
+    // default for the brand colour — the same page.route() injection technique
     // scenarioColorOverride.spec.ts already established for scenarioPalette.
     await page.route('**/dashboard-config/index.json', (route) =>
       route.fulfill({
         contentType: 'application/json',
-        body: JSON.stringify({ dashboards: [], primaryColor: '#1447e6' }),
+        body: JSON.stringify({ dashboards: [], brandColor: '#1447e6' }),
       }),
     )
     await boot(page)
@@ -186,7 +186,7 @@ test.describe('User Story 3 - Primary / Secondary / Accent colors', () => {
     expect(await contrastOnWhite(page, primaryBefore)).toBeGreaterThanOrEqual(4.5)
 
     await openAppearanceTab(page)
-    await page.getByTestId('interface-color-swatch-primary').click()
+    await page.getByTestId('interface-color-swatch-brand').click()
     const hexInput = page.getByLabel('Hex color')
     await expect(hexInput).toBeVisible()
     await hexInput.fill('00ff00')
@@ -217,6 +217,30 @@ test.describe('User Story 3 - Primary / Secondary / Accent colors', () => {
       getComputedStyle(document.documentElement).getPropertyValue('--primary').trim(),
     )
     expect(primaryAfterReload).toBe(primaryBefore)
+  })
+
+  test('the data colours and the brand colour are independent: changing one never moves the other', async ({ page }) => {
+    await boot(page)
+    const read = (name: string) => page.evaluate((n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim(), name)
+    const brand0 = await read('--brand')
+    const primary0 = await read('--primary')
+    const c1_0 = await read('--c-1')
+
+    await openAppearanceTab(page)
+    await page.getByTestId('interface-color-swatch-primary').click()
+    await page.getByLabel('Hex color').fill('ff0000')
+    await expect.poll(() => read('--c-1')).not.toBe(c1_0)
+    expect(await read('--brand')).toBe(brand0)
+    expect(await read('--primary')).toBe(primary0)
+    await page.getByTestId('interface-color-swatch-primary').click() // closes its picker
+    await expect(page.getByLabel('Hex color')).toHaveCount(0)
+
+    const c1_1 = await read('--c-1')
+    await page.getByTestId('interface-color-swatch-brand').click()
+    await page.getByLabel('Hex color').fill('1447e6')
+    await expect.poll(() => read('--brand')).not.toBe(brand0)
+    expect(await read('--primary')).toBe(await read('--brand'))
+    expect(await read('--c-1')).toBe(c1_1)
   })
 
 })
@@ -259,7 +283,7 @@ test.describe('User Story 3 - live OS theme reactivity (real bug fix)', () => {
     await expect
       .poll(() => swatch.evaluate((el) => getComputedStyle(el).backgroundColor))
       .not.toBe(before)
-    await expect(swatch).toHaveCSS('background-color', 'rgb(201, 214, 242)') // dark --primary, #c9d6f2
+    await expect(swatch).toHaveCSS('background-color', 'rgb(105, 190, 181)') // dark --c-1, #69beb5
   })
 })
 

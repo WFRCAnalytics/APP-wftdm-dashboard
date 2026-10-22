@@ -12,9 +12,11 @@ Everything here is exact. Copy values; do not "improve" them. All colors are wri
    behind the page. No accent-colored gradients, no gradient borders, no gradient text.
 3. **Boldness lives in type and data, not decoration.** Large tabular numerals for headline numbers, tight
    tracking on headings, generous radius. Charts are the color. Chrome stays quiet.
-4. **One accent family.** Three user-adjustable colors (primary, secondary, tertiary) drive interface
-   highlights and the semantic colors for transit, walking and biking. Scenario identity colors are a
-   *separate* palette (section 5).
+4. **Two colour systems, kept apart.** Three user-adjustable *data* colors (primary, secondary, tertiary) drive the semantic
+   colors for transit, walking and biking and the categorical chart palette built from them. One *brand* color is the
+   interface color: selected pills and tabs, page titles, tags, toggles and focus rings (`--brand`, `--primary`, `--ring`).
+   Changing a data color never recolours the chrome, and the brand color never appears as a series. Scenario identity colors
+   are a *separate* palette (section 5).
 5. **Color means something.** Gray = driving. Teal/amber/violet (defaults) = transit/walk/bike. Status
    colors (green/amber/red) are reserved for calibration status and never reused for series.
 6. **Numbers align.** All numerals in tables, tooltips and KPIs use the mono face with tabular figures.

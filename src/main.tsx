@@ -180,6 +180,7 @@ const branding: DashboardBranding = {
   primaryColor: primaryBranding.primaryColor ?? demoBranding.primaryColor,
   secondaryColor: primaryBranding.secondaryColor ?? demoBranding.secondaryColor,
   accentColor: primaryBranding.accentColor ?? demoBranding.accentColor,
+  brandColor: primaryBranding.brandColor ?? demoBranding.brandColor,
   years: primaryBranding.years ?? demoBranding.years,
   baseYear: primaryBranding.baseYear ?? demoBranding.baseYear,
   defaultYear: primaryBranding.defaultYear ?? demoBranding.defaultYear,
@@ -250,12 +251,13 @@ for (const [role, value] of [
   ['primary', branding.primaryColor],
   ['secondary', branding.secondaryColor],
   ['accent', branding.accentColor],
+  ['brand', branding.brandColor],
 ] as const) {
   if (value && CSS.supports('color', value)) {
     setDeployerInterfaceColor(role, value)
   }
 }
-// Derives --c-1..3 / --brand / --chart-* from the three colors (deployer default or viewer override) and keeps them
+// Derives --c-1..3 / --chart-* from the three data colors and --brand / --primary from the brand color (deployer default or viewer override) and keeps them
 // current across theme and color changes (services/theme.ts).
 startThemeSync()
 startAccentSync()
