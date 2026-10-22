@@ -7,7 +7,7 @@
 ## Summary
 
 Add a generic expand-to-dialog affordance at the `panelCard.tsx` level so
-any panel — every current type (`valuebox`, `plotly`) and every future
+any panel — every current type (`valuebox`, `the old chart library`) and every future
 registry entry — can be viewed in a large, near-fullscreen Radix `Dialog`
 with zero per-panel-type wiring. The central technical decision (weighed in
 research.md §1, not picked for implementation speed) is to keep exactly one
@@ -17,7 +17,7 @@ either lifting query state into a shared cache for two mounted instances,
 or letting the toggle silently recreate the chart's container. This
 structurally guarantees FR-007/FR-008 (no reset, no duplicate query)
 instead of merely testing for it. The second flagged risk — Radix's
-outside-click detection against Plotly's own legend-click interactivity
+outside-click detection against the old chart library's own legend-click interactivity
 (research.md §2) — is carried forward as a required, named Playwright
 assertion, not assumed safe; both pass.
 
@@ -29,7 +29,7 @@ state across a container change; it was replaced with the proven
 "persistent portal host node, imperatively moved" technique (research.md
 §1b), confirmed via the actual, real-cause debug evidence (a query-count
 log and a container-identity marker), not merely re-reasoned. (2) `FR-009`
-(chart resize) required a small, one-line change to `PlotlyPanel.tsx`
+(chart resize) required a small, one-line change to `the retired chart panel`
 itself (a hardcoded pixel container height couldn't grow into the dialog)
 — this plan's "zero panel changes" claim did not fully hold; documented in
 `contracts/panel-card.md`. `forceMount` (originally planned to keep the
@@ -45,7 +45,7 @@ simpler and sufficient once §1b's mechanism no longer needed it.
 **Primary Dependencies**: **new** — `@radix-ui/react-dialog` (`^1.1.x`,
 matching the version line already pinned for `@radix-ui/react-tabs`/
 `@radix-ui/react-tooltip`, research.md §7). Existing, unmodified: `react`/
-`react-dom`, `lucide-react` (`Maximize2`/`X` icons), `plotly.js-dist-min`
+`react-dom`, `lucide-react` (`Maximize2`/`X` icons), `the old chart library`
 (already installed by `003`; this feature adds no new chart capability,
 only re-verifies `003`'s existing `ResizeObserver` fix against a new
 container context), the existing `Card`/`Button` shadcn components and
@@ -58,7 +58,7 @@ the generic mechanism itself, a hook — `contracts/panel-expand-host.md`);
 modified `src/layout/panelCard.tsx`. Also modified, found necessary during
 implementation and not originally planned: `src/components/ui/button.tsx`
 (added an `icon` size variant — no existing one fit a label-less trigger)
-and `src/panels/PlotlyPanel.tsx` (its container's hardcoded pixel height
+and `src/panels/the retired chart panel` (its container's hardcoded pixel height
 couldn't grow into the dialog; changed to fill its actual parent —
 `contracts/panel-card.md`).
 
@@ -69,7 +69,7 @@ transient, local component state (research.md §5 — no lifted/global
 
 **Testing**: No new pure-logic module — the portal-target-swap mechanism is
 inherently DOM/React-dependent (refs, `createPortal`, Radix internals),
-unlike `003`'s `panelQuery.ts`/`plotlyTraces.ts`. Entirely Playwright:
+unlike `003`'s `panelQuery.ts`/`a retired chart helper`. Entirely Playwright:
 `tests/integration/panelExpand.spec.ts`, extending
 `dashboardShell.spec.ts`'s existing real-browser/real-fixture-data pattern
 (research.md §6) — no new component-testing library.
@@ -85,11 +85,11 @@ not a latency budget to separately measure.
 
 **Constraints**: The *mechanism* — knowledge of panel types, the registry,
 config shapes — MUST live at `panelCard.tsx`/`panelExpandHost.tsx` only;
-`ValueBoxPanel.tsx`/`PlotlyPanel.tsx`/any future panel component MUST
+`ValueBoxPanel.tsx`/`the retired chart panel`/any future panel component MUST
 require zero *awareness of the expand mechanism* (FR-002; data-model.md's
 `usePanelExpandHost` signature: `title`/`children`/a common `height`
 field only, no panel-type-specific knowledge). This held for
-`ValueBoxPanel.tsx` completely; `PlotlyPanel.tsx` needed one CSS value
+`ValueBoxPanel.tsx` completely; `the retired chart panel` needed one CSS value
 changed (`height: '100%'` instead of a hardcoded pixel default) to satisfy
 FR-009 — a sizing fix, not new awareness of expand/collapse existing (it
 has no idea whether its container is currently inline or in a dialog).
@@ -106,7 +106,7 @@ mechanism's trigger button isn't a `<DialogTrigger>` (research.md,
 **Scale/Scope**: 1 new dependency, 1 new shadcn primitive (`dialog.tsx`),
 1 new generic host hook (`panelExpandHost.tsx`), 1 modified component
 (`panelCard.tsx`), 2 small modified files found necessary during
-implementation (`button.tsx`, `PlotlyPanel.tsx`), 1 new Playwright spec.
+implementation (`button.tsx`, `the retired chart panel`), 1 new Playwright spec.
 No new panel type (spec.md's explicit scope boundary, matching `003`'s).
 
 ## Constitution Check
@@ -137,10 +137,10 @@ the table above — no principle is touched differently than assessed
 pre-research. Still PASS across all nine.
 
 **Post-implementation re-check**: the two corrections found during actual
-implementation (the portal mechanism itself, §1b; the `PlotlyPanel.tsx`
+implementation (the portal mechanism itself, §1b; the `the retired chart panel`
 height fix) are both implementation-detail corrections to *this plan*, not
 new information bearing on any constitution principle — Principle I
-(TypeScript/React) still holds (`PlotlyPanel.tsx`'s one-line change is
+(TypeScript/React) still holds (`the retired chart panel`'s one-line change is
 still `.tsx`, still consumes `services/duckdb.ts` the same way), and no
 other principle's PASS above depends on any claim these corrections
 touched. Still PASS across all nine, confirmed after the full Playwright
@@ -200,7 +200,7 @@ src/
 ├── panels/
 │   ├── ValueBoxPanel.tsx           # unmodified
 │   ├── registry.tsx                # unmodified
-│   └── PlotlyPanel.tsx             # modified — container height changed
+│   └── the retired chart panel             # modified — container height changed
 │                                    # from a hardcoded pixel default to
 │                                    # 100% (found necessary for FR-009,
 │                                    # not in original plan — see
@@ -218,7 +218,7 @@ tests/
     └── panelExpand.spec.ts         # new — Playwright: expand/collapse
                                      # round trip, focus management, no
                                      # duplicate query, chart container
-                                     # identity, Plotly-legend-vs-outside-
+                                     # identity, the old chart library-legend-vs-outside-
                                      # click (research.md §2)
 ```
 
@@ -227,7 +227,7 @@ tests/
 new UI primitive (`components/ui/dialog.tsx`), one new layout-level
 mechanism (`layout/panelExpandHost.tsx`), and one modified existing file
 (`panelCard.tsx`), plus the small, transparently-documented corrections
-above (`button.tsx`, `PlotlyPanel.tsx`, `duckdb.ts`) found necessary during
+above (`button.tsx`, `the retired chart panel`, `duckdb.ts`) found necessary during
 implementation rather than anticipated in this plan's first draft.
 
 ## Complexity Tracking

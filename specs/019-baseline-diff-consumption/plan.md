@@ -6,7 +6,7 @@
 
 ## Summary
 
-Generalize `013-zonemap-panel`'s existing `buildComparisonDiffQuery()` (currently zonemap-only, hardcoded to `metric_id` as the join key) into one shared mechanism parameterized on an author-named `compare_on: string[]` join key, reused by `plotly`/`table`/`observable-plot`/`zonemap` alike. Add a `$baseline` sentinel value, resolved by each panel's own component (never inside the query-builder itself, matching the existing "caller pre-resolves" convention) via the new `useBaseline()` hook (018-baseline-scenario-designation), gated so an unresolved baseline shows the panel's existing error state rather than building a broken query. Fix two real, confirmed gaps found during research — `formatValue()` renders the literal string `"null"` today, and `TablePanel`'s `cellColor()` gives a null value no distinct visual treatment — so `diff_value: null` (the zero-baseline degenerate case) renders as a defined "N/A" state, not raw artifacts.
+Generalize `013-zonemap-panel`'s existing `buildComparisonDiffQuery()` (currently zonemap-only, hardcoded to `metric_id` as the join key) into one shared mechanism parameterized on an author-named `compare_on: string[]` join key, reused by `the old chart library`/`table`/`observable-plot`/`zonemap` alike. Add a `$baseline` sentinel value, resolved by each panel's own component (never inside the query-builder itself, matching the existing "caller pre-resolves" convention) via the new `useBaseline()` hook (018-baseline-scenario-designation), gated so an unresolved baseline shows the panel's existing error state rather than building a broken query. Fix two real, confirmed gaps found during research — `formatValue()` renders the literal string `"null"` today, and `TablePanel`'s `cellColor()` gives a null value no distinct visual treatment — so `diff_value: null` (the zero-baseline degenerate case) renders as a defined "N/A" state, not raw artifacts.
 
 ## Technical Context
 
@@ -26,7 +26,7 @@ Generalize `013-zonemap-panel`'s existing `buildComparisonDiffQuery()` (currentl
 
 **Constraints**: MUST NOT modify `013-zonemap-panel`'s existing hardcoded-`a`/`b` `comparison: diff` behavior for any panel that doesn't reference `$baseline` (FR-005/SC-004). MUST NOT route `comparison: diff` queries through `sqlExpander.expand()` for the first time (spec Grammar finding #2 — `$baseline` resolution happens in the caller, not via a new placeholder-regex path).
 
-**Scale/Scope**: `layout/types.ts` (new mixin + 3 panel configs updated), `panels/panelQuery.ts` (generalized query-builder + new `$baseline` resolver, both shared), `panels/PlotlyPanel.tsx`/`plotlyTraces.ts`, `panels/TablePanel.tsx`/`tableLogic.ts`/`formatValue.ts`, `panels/ObservablePlotPanel.tsx`/`observablePlotEncoding.ts`, `panels/ZoneMapPanel.tsx` (migrated onto the generalized builder, behavior unchanged), `project-docs/GRAMMAR.md`. No new files.
+**Scale/Scope**: `layout/types.ts` (new mixin + 3 panel configs updated), `panels/panelQuery.ts` (generalized query-builder + new `$baseline` resolver, both shared), `panels/the retired chart panel`/`a retired chart helper`, `panels/TablePanel.tsx`/`tableLogic.ts`/`formatValue.ts`, `panels/ObservablePlotPanel.tsx`/`observablePlotEncoding.ts`, `panels/ZoneMapPanel.tsx` (migrated onto the generalized builder, behavior unchanged), `project-docs/GRAMMAR.md`. No new files.
 
 ## Constitution Check
 
@@ -74,7 +74,7 @@ src/
 │                             #   ZoneMapPanelConfig's own local `comparison`
 │                             #   field replaced by the mixin (adds
 │                             #   compare_on to it too, optional, defaults
-│                             #   to [metric_id]). PlotlyPanelConfig/
+│                             #   to [metric_id]). RetiredChartPanelConfig/
 │                             #   TablePanelConfig/ObservablePlotPanelConfig
 │                             #   each gain the mixin.
 ├── panels/
@@ -96,13 +96,13 @@ src/
 │   │                         #   dependency array (FR-016), only
 │   │                         #   consulted when comparison.a/b references
 │   │                         #   $baseline.
-│   ├── PlotlyPanel.tsx       # MODIFIED — comparison: diff branch added to
+│   ├── the retired chart panel       # MODIFIED — comparison: diff branch added to
 │   │                         #   the fetch effect, useBaseline() added to
 │   │                         #   its dependency array (FR-016).
-│   ├── plotlyTraces.ts       # Unchanged — diff_value is just another
+│   ├── a retired chart helper       # Unchanged — diff_value is just another
 │   │                         #   column name an author's own trace x/y/
 │   │                         #   color config can reference; no new
-│   │                         #   trace-building logic needed. Plotly.js's
+│   │                         #   trace-building logic needed. the old chart library's
 │   │                         #   own native null-point handling satisfies
 │   │                         #   FR-014 for chart-type panels (research.md).
 │   ├── TablePanel.tsx        # MODIFIED — comparison: diff branch added to
@@ -135,7 +135,7 @@ src/
 │                             #   sees it (research.md §6, corrected).
 └── docs/
     └── GRAMMAR.md            # MODIFIED — comparison/compare_on documented
-                              #   for plotly/table/observable-plot; $baseline
+                              #   for the old chart library/table/observable-plot; $baseline
                               #   sentinel documented for a/b wherever
                               #   comparison: diff already appears.
 
@@ -149,7 +149,7 @@ tests/
 │   ├── tableLogic.test.ts   # EXTENDED — cellColor() null branch
 │   └── formatValue.test.ts  # EXTENDED — formatValue(null, ...) branch
 └── integration/
-    ├── plotlyPanel.spec.ts       # EXTENDED — comparison: diff with
+    ├── a retired chart spec       # EXTENDED — comparison: diff with
     │                              #   $baseline, baseline-change reactivity
     ├── tablePanel.spec.ts        # EXTENDED — same, plus the "N/A" cell
     ├── observablePlotPanel.spec.ts # EXTENDED — same

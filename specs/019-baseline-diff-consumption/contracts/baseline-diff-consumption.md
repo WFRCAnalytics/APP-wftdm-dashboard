@@ -18,8 +18,8 @@ export interface ZoneMapPanelConfig
   // ... unchanged fields; local `comparison` field REMOVED (now inherited)
 }
 
-export interface PlotlyPanelConfig extends DataBoundPanelConfigBase, ComparisonCapablePanelConfig {
-  type: 'plotly'
+export interface RetiredChartPanelConfig extends DataBoundPanelConfigBase, ComparisonCapablePanelConfig {
+  type: 'the old chart library'
   // ... unchanged existing fields
 }
 
@@ -106,7 +106,7 @@ useEffect(() => {
 }, [config, filters, activeScenarioNames, baseline]) // baseline ADDED (FR-016)
 ```
 
-`isZoneMap()` is illustrative — the real per-file branch just reads `config.metric_id` directly where `ZoneMapPanelConfig` is already the known, narrowed type (`ZoneMapPanel.tsx`); `plotly`/`table`/`observable-plot`'s own versions of this effect have no `metric_id` field at all, so `compareOn` is simply `config.compare_on` there (required — see Edge Cases in spec.md for the missing-`compare_on` case).
+`isZoneMap()` is illustrative — the real per-file branch just reads `config.metric_id` directly where `ZoneMapPanelConfig` is already the known, narrowed type (`ZoneMapPanel.tsx`); `the old chart library`/`table`/`observable-plot`'s own versions of this effect have no `metric_id` field at all, so `compareOn` is simply `config.compare_on` there (required — see Edge Cases in spec.md for the missing-`compare_on` case).
 
 ## Null rendering contract
 
@@ -141,7 +141,7 @@ const yField = config.y
 const data = yField ? rows.filter((row) => row[yField] !== null) : rows
 ```
 
-`plotlyTraces.ts`: genuinely **no code change** — Plotly.js's own native null-point omission was empirically confirmed (not merely assumed) to satisfy FR-014 already (research.md §6).
+`a retired chart helper`: genuinely **no code change** — the old chart library's own native null-point omission was empirically confirmed (not merely assumed) to satisfy FR-014 already (research.md §6).
 
 ## Non-goals (explicitly unaffected)
 

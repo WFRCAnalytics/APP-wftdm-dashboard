@@ -27,7 +27,7 @@ export interface DataBoundPanelConfigBase extends PanelConfigBase {
 }
 ```
 
-`ValueBoxPanelConfig`, `PlotlyPanelConfig`, and `TablePanelConfig` all
+`ValueBoxPanelConfig`, `RetiredChartPanelConfig`, and `TablePanelConfig` all
 re-parent onto `DataBoundPanelConfigBase` (no field changes of their own —
 they already declared/used every field that layer now carries).
 `MarkdownPanelConfig` (§below) extends `PanelConfigBase` directly and adds
@@ -47,7 +47,7 @@ headcount). Checked both documented sources for the full panel-type
 roster before deciding:
 
 - `project-docs/SPEC.md`'s Panel types table — the authoritative, exhaustive list:
-  `plotly`, `observable-plot`, `table`, `valuebox`, `flowmap`, `zonemap`,
+  `the old chart library`, `observable-plot`, `table`, `valuebox`, `flowmap`, `zonemap`,
   `sankey`, `graphic-walker`, `markdown`. Of these nine, `markdown` is the
   only one with zero query. `graphic-walker` looks close (its own
   `project-docs/GRAMMAR.md` example is a "snapshot" that doesn't respond to
@@ -82,7 +82,7 @@ future types share the property:
 2. **TypeScript's discriminated unions make the split cheap regardless of
    headcount** — this isn't a decision that trades off worse against a
    larger split later. Re-parenting `ValueBoxPanelConfig`/
-   `PlotlyPanelConfig`/`TablePanelConfig` onto `DataBoundPanelConfigBase`
+   `RetiredChartPanelConfig`/`TablePanelConfig` onto `DataBoundPanelConfigBase`
    is a one-line `extends` change per interface, no runtime code changes
    (parsing logic in `parseDashboardConfig` doesn't reference
    `PanelConfigBase` by name, only the union `PanelConfig`). If a sixth
@@ -269,7 +269,7 @@ entire component's lifetime (a markdown panel's `content:` cannot be
 edited live in this app — spec.md's own stated non-goal, no in-app
 authoring UI). There is nothing to "wait for" the way every other panel
 type waits for `query()` to resolve. Introducing a `loading` state anyway,
-purely for shape-parity with `ValueBoxPanel.tsx`/`PlotlyPanel.tsx`/
+purely for shape-parity with `ValueBoxPanel.tsx`/`the retired chart panel`/
 `TablePanel.tsx`, would be modeling a state transition that structurally
 cannot happen — the same category of overreach as `PanelConfigBase`
 forcing a `metric` field on a type with no metric (§1) — and would cost a
@@ -321,7 +321,7 @@ used only after the DOMPurify pass (§3) — never on unsanitized input.
 coverage lives in `tests/integration/markdownPanel.spec.ts` (Playwright).
 
 **Rationale**: `003`/`005`'s pure-logic-module-plus-Vitest split
-(`plotlyTraces.ts`, `tableLogic.ts`) exists because those modules contain
+(`a retired chart helper`, `tableLogic.ts`) exists because those modules contain
 real project-specific algorithmic decisions worth testing in isolation
 from a DOM (numeric-vs-string sort comparators, color-scale midpoint
 math, column-resolution fallback order). `MarkdownPanel.tsx` has no
@@ -341,7 +341,7 @@ expand-dialog inheritance check.
 
 **Alternatives considered**:
 - *A thin `markdownLogic.ts` wrapping the two library calls, purely for
-  shape-parity with `tableLogic.ts`/`plotlyTraces.ts`* — rejected: an
+  shape-parity with `tableLogic.ts`/`a retired chart helper`* — rejected: an
   extraction with no independent logic to test is a wrapper, not a
   module earning its own file; `003`'s/`005`'s actual reason for
   splitting (Vitest-testable algorithmic risk with no DOM dependency)
@@ -465,7 +465,7 @@ clicking a citation, not a per-link authoring choice.
 
 | # | Decision |
 |---|---|
-| 1 | `PanelConfigBase` split into a common `{title, width, height}` layer and a new `DataBoundPanelConfigBase` (`metric`/`filter`/`scenario`/`scenarios`) that `ValueBoxPanelConfig`/`PlotlyPanelConfig`/`TablePanelConfig` re-parent onto; `MarkdownPanelConfig` extends the plain common base. Justified independent of how many query-less types exist today (only `markdown`, confirmed against `project-docs/SPEC.md`'s full 9-type roster and `CLAUDE.md`'s file tree) — a required-in-spirit field on a type that structurally can't use it is a modeling smell regardless of cardinality, and the split costs one `extends` clause per existing type |
+| 1 | `PanelConfigBase` split into a common `{title, width, height}` layer and a new `DataBoundPanelConfigBase` (`metric`/`filter`/`scenario`/`scenarios`) that `ValueBoxPanelConfig`/`RetiredChartPanelConfig`/`TablePanelConfig` re-parent onto; `MarkdownPanelConfig` extends the plain common base. Justified independent of how many query-less types exist today (only `markdown`, confirmed against `project-docs/SPEC.md`'s full 9-type roster and `CLAUDE.md`'s file tree) — a required-in-spirit field on a type that structurally can't use it is a modeling smell regardless of cardinality, and the split costs one `extends` clause per existing type |
 | 2 | marked.js's own `_getDefaults()` sets `gfm: true` by default — GFM (including table syntax) renders with no explicit `{ gfm: true }` config |
 | 3 | DOMPurify's default `ALLOWED_TAGS` (`src/tags.ts`'s `html` export) includes the full GFM table tag set (`table`/`thead`/`tbody`/`tr`/`th`/`td`/`caption`/`colgroup`/`col`); its default attribute allow-list excludes all `on*` handlers and neutralizes `javascript:` URLs — no custom DOMPurify config needed for either "tables survive" or "scripts/handlers don't" |
 | 4 | No loading/ready/error state machine — `config.content` is synchronously available at mount (already-parsed `dashboard-*.yaml` object graph); only two presentations exist (empty state, rendered content); render-time throws are caught by `panelCard.tsx`'s existing generic `PanelErrorBoundary`, not a new component-local mechanism |

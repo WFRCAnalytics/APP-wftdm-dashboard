@@ -47,7 +47,7 @@ query involved for this panel type at all) and asserts:
 7. The panel gets `004`'s expand trigger with no panel-specific setup,
    and the same rendered HTML appears in both the inline card and the
    expanded dialog.
-8. A tab mixing a markdown panel with valuebox/plotly/table panels
+8. A tab mixing a markdown panel with valuebox/the old chart library/table panels
    renders all of them without error.
 9. A plain markdown link in `content:` (no author-written `target`/`rel`)
    renders as an `<a>` element whose DOM attributes include

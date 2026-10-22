@@ -35,7 +35,7 @@
   and specific decided-in-advance design constraints up front — those are
   carried into the spec's "Research Findings" and "Assumptions" sections
   as grounding context (matching this project's own established
-  convention, e.g. `029-shadcn-chart-panel/spec.md`, which names Recharts
+  convention, e.g. `029-shadcn-chart-panel/spec.md`, which names the old chart library
   directly the same way), not invented by this spec. The Functional
   Requirements and Success Criteria themselves are phrased around
   capability and observable outcome (interactivity, theming correctness,

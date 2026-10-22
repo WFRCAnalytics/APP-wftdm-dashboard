@@ -11,7 +11,7 @@ declare global {
 // mode — a real demo panel (Summary tab, "Total VMT") plus three real
 // Test-tab fixtures proving each status color resolves correctly. Same
 // boot()/route pattern as demoContentAllPanels.spec.ts/
-// observablePlotMarkVariety.spec.ts/rechartsComboChart.spec.ts — serves
+// observablePlotMarkVariety.spec.ts/a retired chart spec — serves
 // the real demo indexes without mutating on-disk fixture files.
 
 const REAL_DEMO_DASHBOARD_INDEX = {

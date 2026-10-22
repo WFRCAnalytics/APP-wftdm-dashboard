@@ -56,7 +56,7 @@ export default defineConfig({
           // 042-boot-performance-fix: a THIRD instance of the react-vendor/
           // app-shared class of leak, and the last one — found by checking
           // whether the entry chunk's own residual one-binding `import`
-          // from 'recharts'/'flowmap-deck' (real, confirmed used code, not
+          // from 'the old chart library'/'flowmap-deck' (real, confirmed used code, not
           // dead facades — grepped for real call sites in the built entry
           // chunk) shared ANY actual module with either chunk. It didn't —
           // an explicit module-set intersection, computed directly via
@@ -72,7 +72,7 @@ export default defineConfig({
           // `\0vite/preload-helper.js` (every `import()` call site needs
           // it, including all ten of panels/registry.tsx's own lazy()
           // factories, which live in the entry chunk itself) — confirmed
-          // present in both 'recharts' and 'flowmap-deck' chunks' own
+          // present in both 'the old chart library' and 'flowmap-deck' chunks' own
           // module lists from the earlier react-vendor investigation.
           // Rollup's automatic algorithm, with no explicit rule of mine to
           // guide it, placed this ALWAYS-NEEDED shared helper physically
@@ -86,13 +86,13 @@ export default defineConfig({
           }
           // 042-boot-performance-fix: the last instance of this same class
           // of leak — found by grepping the entry chunk's own compiled code
-          // around its one remaining `recharts` import for a recognizable
+          // around its one remaining `the old chart library` import for a recognizable
           // usage pattern (`mq(UL(e))`/`WC=UL` — `clsx`'s own real, tiny
           // output shape, combined with tailwind-merge, is exactly
           // `@/lib/utils`'s `cn()` helper every UI component in this app
           // uses). `clsx` has real consumers on both sides of the eager/
           // lazy boundary (every eager shadcn-pattern component's own
-          // `cn()` call, AND recharts' own internal usage) — same fix.
+          // `cn()` call, AND the old chart library' own internal usage) — same fix.
           if (id.includes('node_modules/clsx/')) return 'app-shared'
           // 042-boot-performance-fix: MUST be checked first, before every
           // other rule below. A real, confirmed root cause found while
@@ -102,19 +102,19 @@ export default defineConfig({
           // `imports` array via Vite's build API directly: EVERY chunk in
           // the app, including totally unrelated leaf ones like
           // hooks/useFilterState.ts's own tiny chunk, statically imported
-          // the 'recharts' chunk. Root cause, confirmed by printing that
+          // the 'the old chart library' chunk. Root cause, confirmed by printing that
           // chunk's own full module list: this manualChunks function had
           // no explicit rule for `react`/`react-dom`/`scheduler` at all —
           // Rollup's own automatic algorithm, left to decide where to
           // physically place those three unmatched-but-shared packages,
-          // chose to bundle them INSIDE the 'recharts' output file (recharts
+          // chose to bundle them INSIDE the 'the old chart library' output file (the old chart library
           // v3 depends on them transitively via @reduxjs/toolkit/
           // react-redux, and Rollup's chunk-graph heuristic apparently
           // judged that the best place to co-locate them). Invisible before
-          // this feature because 'recharts' was ALREADY part of the eager
+          // this feature because 'the old chart library' was ALREADY part of the eager
           // entry graph back then (registry.tsx statically imported every
           // panel type) — trapping React itself inside a NOW-lazy chunk
-          // only became a real problem once 'recharts' actually became
+          // only became a real problem once 'the old chart library' actually became
           // conditionally-loaded. Since literally every part of this React
           // app needs React/ReactDOM/Scheduler unconditionally, giving them
           // their own explicit, always-eager chunk — checked before any
@@ -131,17 +131,17 @@ export default defineConfig({
           }
           // 042-boot-performance-fix: a SECOND instance of the exact same
           // class of problem the react-vendor rule above fixes, found by
-          // re-inspecting the 'recharts' chunk's own module list after that
+          // re-inspecting the 'the old chart library' chunk's own module list after that
           // first fix — it shrank but was still statically imported by the
           // entry chunk. This app's own panels/scenarioDisplay.ts (pure,
           // dependency-free per its own header comment) is imported BOTH
           // eagerly (main.tsx's own setDeployerScenarioPalette() call,
           // scenarioColorControl.tsx via the Scenarios tab — always
           // mounted, same as basemapTab.tsx's own leak fixed via
-          // mapDefaults.ts) AND by the lazy Recharts/Plotly/ObservablePlot
+          // mapDefaults.ts) AND by the lazy the old chart library/ObservablePlot
           // chain (hooks/useScenarioDisplay.ts). Left unmatched, Rollup
-          // physically placed it inside the 'recharts' chunk, and along
-          // with it, several of recharts' own real transitive dependencies
+          // physically placed it inside the 'the old chart library' chunk, and along
+          // with it, several of the old chart library' own real transitive dependencies
           // that happen to be graph-adjacent (`use-sync-external-store`,
           // `tiny-invariant`, `@babel/runtime` helpers — none of which have
           // any other real, eager consumer of their own, confirmed via
@@ -203,17 +203,17 @@ export default defineConfig({
           // vega/vega-lite/vega-embed, mobx/mobx-react-lite, a second
           // @radix-ui/@headlessui component set, and styled-components —
           // a large, previously-absent tree, the same situation
-          // plotly/maplibre-gl were each in when they got their own chunk
+          // the old chart library/maplibre-gl were each in when they got their own chunk
           // above (research.md §9).
           if (id.includes('@kanaries/graphic-walker')) return 'graphic-walker'
           // 057-observable-plot-conversion (found post-hoc, not part of
           // that feature's own original scope — a real, confirmed chunk-
           // graph leak, same class as 042's three react-vendor/app-shared
           // findings, discovered while investigating why Summary's
-          // landing tab still downloaded the full recharts vendor chunk
-          // after every real recharts panel there was converted to
+          // landing tab still downloaded the full the old chart library vendor chunk
+          // after every real the old chart library panel there was converted to
           // observable-plot). `@observablehq/plot`'s own real dependency
-          // (`d3`, the umbrella package) and `recharts`' own real
+          // (`d3`, the umbrella package) and `the old chart library`' own real
           // dependency (via `victory-vendor`) both genuinely,
           // independently need several of the SAME top-level d3-*
           // packages — confirmed directly via each library's own real
@@ -227,22 +227,22 @@ export default defineConfig({
           // d3-color/d3-format/d3-interpolate/d3-path/d3-scale/d3-shape/
           // d3-time/d3-time-format, confirmed via Vite's own build API
           // chunk-graph output, not guessed — entirely inside the
-          // (forced) `recharts` bucket below. Since `@observablehq/plot`
+          // (forced) `the old chart library` bucket below. Since `@observablehq/plot`
           // itself was ALSO left unmatched (auto-chunked under an
           // arbitrary `index-*` name), every real Observable Plot
           // consumer needed a static cross-chunk import edge back into
-          // the FULL `recharts` chunk just to reach these shared, purely
-          // generic math/formatting/scale primitives — dragging recharts
+          // the FULL `the old chart library` chunk just to reach these shared, purely
+          // generic math/formatting/scale primitives — dragging the old chart library
           // plus its own real, unique dependencies (`@reduxjs/toolkit`,
           // `react-redux`, ...) onto any page using Observable Plot,
           // including a bare value-box sparkline, even with zero real
-          // recharts panels anywhere on it (confirmed live: Summary's
-          // landing tab, no recharts panel since this feature's own
-          // conversion, still downloaded the full ~450KB recharts chunk
+          // the old chart library panels anywhere on it (confirmed live: Summary's
+          // landing tab, no the old chart library panel since this feature's own
+          // conversion, still downloaded the full ~450KB the old chart library chunk
           // on every visit). Fixed with a THIRD, small, neutral bucket
           // for exactly this confirmed-shared subset — checked before
-          // recharts' own rule below — so neither chart engine's real,
-          // UNIQUE code (recharts' own React/Redux layer; Observable
+          // the old chart library' own rule below — so neither chart engine's real,
+          // UNIQUE code (the old chart library' own React/Redux layer; Observable
           // Plot's own mark/facet/plot.js logic) is ever pulled in by a
           // page using only the other one. `internmap` (d3-array's own
           // small internal Map-polyfill dependency) travels with it for
@@ -303,8 +303,8 @@ export default defineConfig({
           // @observablehq/plot never had its own explicit bucket —
           // Rollup auto-chunked it under a generic, unstable `index-*`
           // name instead. Same "large, previously-unshared library gets
-          // its own explicit, stably-named chunk" reasoning as plotly/
-          // maps/graphic-walker/recharts in this same function — its own
+          // its own explicit, stably-named chunk" reasoning as the old chart library/
+          // maps/graphic-walker/the old chart library in this same function — its own
           // exclusive d3-* dependencies (d3-axis/d3-contour/d3-delaunay/
           // d3-dispatch/d3-ease/d3-random/d3-selection/d3-timer/
           // d3-transition/d3-zoom — confirmed via the same chunk-graph

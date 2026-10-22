@@ -84,7 +84,7 @@ rejected outright (FR-015).
 
 - `panels/scenarioDisplay.ts`'s `resolveScenarioLabel()`/
   `resolveScenarioColor()` function signatures — unchanged (FR-007).
-- `panels/plotlyTraces.ts`/`rechartsEncoding.ts`/
+- `panels/a retired chart helper`/`a retired chart helper`/
   `observablePlotEncoding.ts`'s own color-consuming branches (`035`) —
   unchanged; they still just read `ScenarioDisplayMap.color`.
 - `services/scenarioDiscovery.ts`'s manifest-fetch fix, `Scenario.color`,

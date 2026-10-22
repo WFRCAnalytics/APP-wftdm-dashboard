@@ -76,8 +76,8 @@ information for either import without the DefinitelyTyped packages. Both
 **Decision**: `SankeyPanel.tsx` builds and owns its own `<svg>` markup
 directly (via `d3-selection`, already transitively available the same way
 `d3-scale-chromatic` is — see §1 — but declared explicitly here too for the
-same reason); there is no `Plotly.react()`-equivalent update call to reuse
-from `PlotlyPanel`, and no `Plot.plot()`-equivalent single-call renderer to
+same reason); there is no `the old library API`-equivalent update call to reuse
+from `the retired chart panel`, and no `Plot.plot()`-equivalent single-call renderer to
 reuse from `ObservablePlotPanel` either.
 
 **Rationale**: Verified directly against `d3-sankey`'s real source
@@ -92,7 +92,7 @@ just a path-string generator for the link shape, analogous to `d3-shape`'s
 `line()`/`area()` generators — not a rendering call). This makes
 `SankeyPanel.tsx`'s own render responsibility closer to what
 `ObservablePlotPanel.tsx` already does (compute a data structure, then
-imperatively build/replace real DOM under a ref) than to `PlotlyPanel.tsx`
+imperatively build/replace real DOM under a ref) than to `the retired chart panel`
 (hand a config object to a charting library that owns its own DOM).
 
 **Alternatives considered**: none — there is no maintained higher-level
@@ -107,7 +107,7 @@ dependency for one panel type; the raw-SVG-construction pattern is
 **Decision**: Reuse `ObservablePlotPanel`'s ResizeObserver-triggered
 full-rebuild-and-swap pattern (including its last-rendered-size guard from
 007's confirmed ResizeObserver double-fire fix), **not**
-`PlotlyPanel`'s cheap `Plotly.Plots.resize()` call.
+`the retired chart panel`'s cheap `the old library API` call.
 
 **Rationale**: `d3-sankey`'s `sankey.extent([[x0,y0],[x1,y1]])` sets the
 **pixel bounds the entire layout is computed for** (default
@@ -119,7 +119,7 @@ plain window resize) therefore requires **recomputing the full layout**
 with the new extent and rebuilding the SVG, not an in-place geometry patch
 — structurally the same "no cheap incremental update, must rebuild" shape
 007 found for `Plot.plot()`, and a genuinely different situation from
-Plotly's own internal diffing/resize support. Confirmed by directly
+the old chart library's own internal diffing/resize support. Confirmed by directly
 inspecting `d3-sankey`'s real API rather than assuming either prior fix
 transfers, per the feature description's explicit instruction.
 
@@ -244,9 +244,9 @@ the feature description asked for this "matching how every other chart
 panel type already respects the app's brand palette rather than a
 library's own default colors." Checked directly against both existing
 chart panels' real code before accepting that as precedent, and it's
-**not accurate**: `plotlyTraces.ts` explicitly sets no `marker.color` on
+**not accurate**: `a retired chart helper` explicitly sets no `marker.color` on
 split/categorical traces, with its own doc comment stating this lets
-"Plotly's own default palette assign each trace a distinct color";
+"the old chart library's own default palette assign each trace a distinct color";
 `observablePlotEncoding.ts` likewise sets no explicit color array for
 `fill`/`stroke` — only `{legend: true}` — leaving Observable Plot's own
 default categorical scheme (`d3.schemeObservable10`) in effect. The one
@@ -295,7 +295,7 @@ this plan, not just noted here.
 
 ## 7. Pure, DOM-free transform module boundary
 
-**Decision**: `panels/sankeyGraph.ts` (mirroring `plotlyTraces.ts`/
+**Decision**: `panels/sankeyGraph.ts` (mirroring `a retired chart helper`/
 `tableLogic.ts`/`observablePlotEncoding.ts`) owns the rows→graph transform
 (§4's namespacing, value aggregation, non-positive-value exclusion) and the
 `d3-sankey` layout call itself (`sankey()` needs no DOM — confirmed §2) —
@@ -303,8 +303,8 @@ both fully Vitest-testable without a real DOM. `SankeyPanel.tsx` owns only
 the SVG construction/update from the module's output, the ResizeObserver
 wiring (§3), and the loading/empty/error state wrapper — the same
 component/pure-module split boundary every prior panel type already uses,
-for the same reason (plotly.js-dist-min's module-load `self` reference was
-the original forcing reason for `plotlyTraces.ts`; this module has no such
+for the same reason (the old chart library's module-load `self` reference was
+the original forcing reason for `a retired chart helper`; this module has no such
 forcing constraint itself, but keeping the transform logic Vitest-testable
 without a DOM is independently valuable per the feature description's own
 instruction).

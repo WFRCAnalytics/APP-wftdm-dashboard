@@ -61,7 +61,7 @@ that is correct and intentional.
 | Build | Vite, TypeScript (ES2022 target) |
 | Query — browser | DuckDB-WASM in a Web Worker |
 | Query — offline | Python DuckDB (`uv run`) |
-| Charts — default | Observable Plot (`@observablehq/plot`) — `057-observable-plot-conversion` moved every real demo bar/distribution chart off Plotly/Recharts onto it; both remain registered, supported panel types (`plotly`/`recharts`), just no longer used by the real demo content |
+| Charts — default | Observable Plot (`@observablehq/plot`) — `057-observable-plot-conversion` moved every real demo bar/distribution chart off the old chart library onto it; both remain registered, supported panel types (`the old chart library`/`the old chart library`), just no longer used by the real demo content |
 | Charts — Sankey | D3 (`d3-sankey`) — confirmed no genuine Observable Plot support exists (no mark/transform, no documented composition pattern, an unresolved upstream request since 2022) |
 | Charts — Hierarchical | D3 (`d3-hierarchy`/`d3-shape`) — confirmed no genuine Observable Plot treemap/sunburst support exists either (058-hierarchical-chart-panels); SVG built via plain `document.createElementNS()`, never `d3-selection`/`d3-transition`, matching the Sankey panel's own established convention |
 | Charts — Pie/Radar | D3 (`d3-shape`) — confirmed no genuine Observable Plot pie/polar support exists either (060-radar-pie-charts); the pie chart reuses the already-pinned `d3-shape` (`d3.pie()`/`d3.arc()`), the radar chart is hand-rolled polar trigonometry with no D3 layout package — no new dependency added by this feature |
@@ -79,7 +79,7 @@ retired):
 The app is TypeScript (`.ts`), not plain JavaScript — no branch to merge
 from, no gate to clear first, work lands directly on `main`. `services/
 duckdb.ts`, `state/appState.ts`, `state/filterState.ts`, panel config
-interfaces (`PlotlyPanelConfig`, `FlowMapPanelConfig`) get real types instead
+interfaces (`RetiredChartPanelConfig`, `FlowMapPanelConfig`) get real types instead
 of JSDoc — catches YAML config errors and DuckDB column mismatches at
 write-time.
 
@@ -123,7 +123,7 @@ manifest.yaml         per-scenario metadata
 - No `summarize-preprocessor.yaml` — join logic lives in `sql_fragments` inside `summarize.yaml`
 - Dashboard YAML configs (`dashboard-*.yaml`, `summarize.yaml`) are authored alongside the model scripts in the TDM repo (not in the dashboard repo) — same authored-vs-published split as `manifest.yaml`. A published copy of the `dashboard-*.yaml` files (WFRC's default templates ship seven) is expected in `public/dashboard-config/` in the dashboard repo, discovered at runtime via `public/dashboard-config/index.json` — the same discovery pattern as `public/scenarios/index.json` — and fetched by the browser at startup; `summarize.yaml` is post-processor-only and is never published or read by the browser.
 - `public/dashboard-config/index.json` and `public/scenarios/index.json` are discovery metadata (a list of filenames/names to fetch), not one of the three config file types above — same category as each other, not a new type (constitution Principle VII still holds: exactly three *config* file types, no more)
-- `028-dashboard-branding`: `dashboard-config/index.json` (and, additively, `demo-dashboard-config/index.json`) may ALSO carry a deployer-configurable app-wide `title`/`logoUrl`/`logoUrlDark`, alongside its existing filename-list role — `{"dashboards": [...], "title": "...", "logoUrl": "...", "logoUrlDark": "..."}` instead of the old bare array. This is a richer shape for a discovery file that already existed, not a new config file type either (same reasoning as the bullet above) — a deliberate choice over adding a fourth config file, or a build-time/env constant, since a deployer of a fresh `wftdm-dashboard init` scaffold is a planner running a CLI, not a JS developer touching `src/`. All three fields are optional; an unconfigured deployment's header renders exactly as it always did (`layout/dashboardBrand.tsx`, rendered inside `shell.tsx`'s `<header>`) — no logo shows no image (never a broken-image icon, FR-004), no title sets neither header text nor the browser tab title. `logoUrlDark` is a separate, optional field (not a boolean paired with one URL) — WFRC's own real logo assets (wired into `public/demo-dashboard-config/index.json` by default) are a dark-navy-on-transparent PNG and a white-on-transparent PNG, each illegible against the other theme's header, the same light/dark-pair convention `PlotlyPanel.tsx`'s `FALLBACK_FOREGROUND`/`FALLBACK_BORDER` already established. See `services/yamlLoader.ts`'s own `loadDashboardBranding()`/`DashboardBranding` doc comments — including a real, confirmed `loadDashboards()`/`loadDashboardBranding()` doubled-path bug found and fixed by this same feature — for the full story.
+- `028-dashboard-branding`: `dashboard-config/index.json` (and, additively, `demo-dashboard-config/index.json`) may ALSO carry a deployer-configurable app-wide `title`/`logoUrl`/`logoUrlDark`, alongside its existing filename-list role — `{"dashboards": [...], "title": "...", "logoUrl": "...", "logoUrlDark": "..."}` instead of the old bare array. This is a richer shape for a discovery file that already existed, not a new config file type either (same reasoning as the bullet above) — a deliberate choice over adding a fourth config file, or a build-time/env constant, since a deployer of a fresh `wftdm-dashboard init` scaffold is a planner running a CLI, not a JS developer touching `src/`. All three fields are optional; an unconfigured deployment's header renders exactly as it always did (`layout/dashboardBrand.tsx`, rendered inside `shell.tsx`'s `<header>`) — no logo shows no image (never a broken-image icon, FR-004), no title sets neither header text nor the browser tab title. `logoUrlDark` is a separate, optional field (not a boolean paired with one URL) — WFRC's own real logo assets (wired into `public/demo-dashboard-config/index.json` by default) are a dark-navy-on-transparent PNG and a white-on-transparent PNG, each illegible against the other theme's header, the same light/dark-pair convention `the retired chart panel`'s `FALLBACK_FOREGROUND`/`FALLBACK_BORDER` already established. See `services/yamlLoader.ts`'s own `loadDashboardBranding()`/`DashboardBranding` doc comments — including a real, confirmed `loadDashboards()`/`loadDashboardBranding()` doubled-path bug found and fixed by this same feature — for the full story.
 - Parquet outputs live in `{scenario-dir}/summary/` — written by the post-processor
 - Published scenarios are manually copied into `public/scenarios/` in the dashboard repo
 - `public/scenarios/`, `public/dashboard-config/`, and `public/observed/` are ALL gitignored (`npm run dev:fixtures` destructively copies `tests/fixtures/{scenarios,dashboard-config,observed}` into them for local/CI checks — see `scripts/copy-fixtures.js`) — nothing real was ever checked in at those exact paths before `026-activitysim-demo-content`. That feature's own real, non-fixture content (a `summarize.yaml` run through the post-processor against three real ActivitySim `prototype_mtc` runs — baseline + a land-use-density variant + a transit-service variant) lives instead at a **new, separate, git-tracked root**, `public/demo-scenarios/`/`public/demo-dashboard-config/`, discovered via the same `index.json` pattern but never touched by `copy-fixtures.js` and never gitignored (`.gitignore`'s existing three entries are exact directory names, not a wildcard, so no `.gitignore` edit was needed at all). `main.ts`/`scenarioDiscovery.ts` fetch this second root additively, alongside (never instead of) the existing fixture-copy-targeted paths — see `services/scenarioDiscovery.ts`'s entry below and `specs/026-activitysim-demo-content/` for the full design record.
@@ -648,7 +648,7 @@ APP-wftdm-dashboard/
     │   # the only entry in this tree still not built (out of scope for
     │   # every feature to date). Anything that renders JSX is .tsx;
     │   # pure-logic modules with no JSX (scenarioManager.ts,
-    │   # manifestReader.ts, panelQuery.ts, plotlyTraces.ts, tableLogic.ts,
+    │   # manifestReader.ts, panelQuery.ts, a retired chart helper, tableLogic.ts,
     │   # formatValue.ts, observablePlotEncoding.ts, flowmapData.ts) stay
     │   # .ts, same as
     │   # services/ and state/ (constitution v2.2.0, Development Workflow)
@@ -710,7 +710,7 @@ APP-wftdm-dashboard/
     │   │                         # pattern exactly — ZoneMapPanelConfig's
     │   │                         # previously-local `comparison` field
     │   │                         # is now inherited from it (gaining
-    │   │                         # compare_on too), and PlotlyPanelConfig/
+    │   │                         # compare_on too), and RetiredChartPanelConfig/
     │   │                         # TablePanelConfig/ObservablePlotPanelConfig
     │   │                         # each gain the same mixin — one shared
     │   │                         # comparison-diff grammar across all four,
@@ -1069,7 +1069,7 @@ APP-wftdm-dashboard/
     │   │                         # dead/placeholder href.
     │   └── sidebar.tsx           # not built yet — no feature has needed it
     ├── panels/
-    │   ├── registry.tsx          # type -> component map: valuebox, plotly
+    │   ├── registry.tsx          # type -> component map: valuebox, the old chart library
     │   ├── panelQuery.ts         # PanelConfig + filters -> SQL template.
     │   │                         # 019-baseline-diff-consumption:
     │   │                         # buildComparisonDiffQuery() — 013's own
@@ -1098,7 +1098,7 @@ APP-wftdm-dashboard/
     │   │                         # here from its previous
     │   │                         # ZoneMapPanel.tsx-local definition, now
     │   │                         # shared by all four comparison-capable
-    │   │                         # panel types (plotly/table/observable-
+    │   │                         # panel types (the old chart library/table/observable-
     │   │                         # plot/zonemap), each of which gained a
     │   │                         # comparison: diff branch in their own
     │   │                         # fetch effect (identical shape across
@@ -1128,7 +1128,7 @@ APP-wftdm-dashboard/
     │   │                         # originally assumed Observable Plot's
     │   │                         # native null-handling would omit a
     │   │                         # null-valued barY mark the same way
-    │   │                         # Plotly's does; empirically false,
+    │   │                         # the old chart library's does; empirically false,
     │   │                         # caught only because a real Playwright
     │   │                         # assertion against the live rendered
     │   │                         # SVG failed — barY actually renders a
@@ -1171,9 +1171,9 @@ APP-wftdm-dashboard/
     │   │                         # insufficiently-sampled first
     │   │                         # conclusion, not just other people's.
     │   ├── ValueBoxPanel.tsx
-    │   ├── PlotlyPanel.tsx
-    │   ├── plotlyTraces.ts       # pure trace-resolution logic (split out of
-    │   │                         # PlotlyPanel.tsx — plotly.js-dist-min
+    │   ├── the retired chart panel
+    │   ├── a retired chart helper       # pure trace-resolution logic (split out of
+    │   │                         # the retired chart panel — the old chart library
     │   │                         # references `self` at module load, which
     │   │                         # breaks Vitest's Node environment)
     │   ├── PanelEmptyState.tsx   # shared empty-result state
@@ -1181,7 +1181,7 @@ APP-wftdm-dashboard/
     │   ├── TablePanel.tsx        # done (005-table-panel)
     │   ├── tableLogic.ts         # pure sort/paginate/search/color-scale
     │   │                         # logic, split out of TablePanel.tsx same
-    │   │                         # reason as plotlyTraces.ts (005)
+    │   │                         # reason as a retired chart helper (005)
     │   ├── formatValue.ts        # pure value-formatting helper (005)
     │   ├── MarkdownPanel.tsx     # done (006-markdown-panel) — marked +
     │   │                         # DOMPurify, sanitized rendering
@@ -1189,7 +1189,7 @@ APP-wftdm-dashboard/
     │   ├── observablePlotEncoding.ts # pure, DOM-free mark/options
     │   │                         # resolution, split out of
     │   │                         # ObservablePlotPanel.tsx same reason as
-    │   │                         # plotlyTraces.ts (007)
+    │   │                         # a retired chart helper (007)
     │   ├── SankeyPanel.tsx       # done (008-sankey-panel) — the sixth
     │   │                         # panel type (flowmap and zonemap below
     │   │                         # are the seventh and eighth/final
@@ -1197,7 +1197,7 @@ APP-wftdm-dashboard/
     │   ├── sankeyGraph.ts        # pure, DOM-free rows-to-graph transform +
     │   │                         # d3-sankey layout wrapper, split out of
     │   │                         # SankeyPanel.tsx same reason as
-    │   │                         # plotlyTraces.ts (008)
+    │   │                         # a retired chart helper (008)
     │   ├── sankeyColor.ts        # pure color_scheme name resolution (008)
     │   ├── FlowMapPanel.tsx      # done (010-flowmap-panel) — the seventh
     │   │                         # and final originally-listed panel
@@ -2281,19 +2281,19 @@ APP-wftdm-dashboard/
     │                              # still pick a different, working
     │                              # dataset from the same control instead
     │                              # of being stuck.
-    ├── RechartsPanel.tsx          # done (029-shadcn-chart-panel) — the
+    ├── the retired chart panel          # done (029-shadcn-chart-panel) — the
     │                              # tenth panel type, and this app's new
     │                              # default/primary bar/line/area chart
     │                              # engine (shadcn/ui's own official
     │                              # chart component — a themed layer over
-    │                              # Recharts, confirmed via direct source
+    │                              # the old chart library, confirmed via direct source
     │                              # read NOT a wrapper). A fully
     │                              # declarative React component, unlike
-    │                              # PlotlyPanel.tsx — Recharts (via
+    │                              # the retired chart panel — the old chart library (via
     │                              # shadcn's ChartContainer/
     │                              # ResponsiveContainer) re-renders on
     │                              # ordinary prop changes, no imperative
-    │                              # Plotly.react()/ResizeObserver dance,
+    │                              # the old library API/ResizeObserver dance,
     │                              # and every color resolves from a CSS
     │                              # custom property so a theme flip
     │                              # repaints for free through the
@@ -2307,7 +2307,7 @@ APP-wftdm-dashboard/
     │                              # every other data-bound panel type
     │                              # already uses. A real TypeScript
     │                              # finding during implementation:
-    │                              # Recharts' own `Bar`/`Area` class
+    │                              # the old chart library' own `Bar`/`Area` class
     │                              # components (a `getDerivedStateFromProps`
     │                              # static requiring a concrete `dataKey`
     │                              # prop) aren't structurally assignable
@@ -2331,10 +2331,10 @@ APP-wftdm-dashboard/
     │                              # fast with a specific, surfaced error
     │                              # message before any query even fires,
     │                              # never a silent blank panel.
-    ├── rechartsEncoding.ts        # pure, DOM-free tidy-rows-to-Recharts'-
+    ├── a retired chart helper        # pure, DOM-free tidy-rows-to-the old chart library'-
     │                              # own-wide-row-shape pivot + ChartConfig
-    │                              # builder, split out of RechartsPanel.tsx
-    │                              # same reason as plotlyTraces.ts/
+    │                              # builder, split out of the retired chart panel
+    │                              # same reason as a retired chart helper/
     │                              # sankeyGraph.ts/flowmapData.ts/
     │                              # observablePlotEncoding.ts. Cycles
     │                              # --chart-1..--chart-5 in first-seen
@@ -2342,7 +2342,7 @@ APP-wftdm-dashboard/
     │                              # the fifth distinct series value; a
     │                              # missing x/series combination is left
     │                              # `undefined`, never coerced to `0`.
-    ├── rechartsPanel.css          # post-completion polish pass — two
+    ├── a retired chart panel file          # post-completion polish pass — two
     │                              # real, confirmed theme-integration
     │                              # bugs found via live DOM measurement:
     │                              # `chart.tsx`'s own default className
@@ -2355,7 +2355,7 @@ APP-wftdm-dashboard/
     │                              # history already recorded, confirmed
     │                              # to still apply here too (a
     │                              # gridline's real computed stroke was
-    │                              # Recharts' own hardcoded `#ccc`, the
+    │                              # the old chart library' own hardcoded `#ccc`, the
     │                              # tooltip's own border was Tailwind's
     │                              # generic gray-200 — neither the real
     │                              # `--border` token, in either theme).
@@ -2491,17 +2491,17 @@ APP-wftdm-dashboard/
     │                              # loading-skeleton-then-mount pattern
     │                              # already avoids the 0×0-first-paint
     │                              # flash `initialDimension` exists to
-    │                              # prevent (see `panels/rechartsPanel.css`'s
+    │                              # prevent (see `panels/a retired chart panel file`'s
     │                              # own tree entry above for the OTHER,
     │                              # separate real bug this same pass
     │                              # found and fixed WITHOUT touching this
     │                              # file). A THIRD, LATER round (the real
-    │                              # `recharts` v2→v3 dependency upgrade,
+    │                              # `the old chart library` v2→v3 dependency upgrade,
     │                              # research.md §13) added genuinely
     │                              # NECESSARY type-only ports, not style
     │                              # backports: `ChartTooltipContent`'s
     │                              # prop type gained an `& Omit<
-    │                              # RechartsPrimitive.
+    │                              # old chart primitives
     │                              # DefaultTooltipContentProps<...>,
     │                              # "accessibilityLayer">` intersection
     │                              # (v3 changed `DefaultTooltipContent`'s
@@ -2509,16 +2509,16 @@ APP-wftdm-dashboard/
     │                              # confirmed `npx tsc --noEmit` failures
     │                              # this upgrade produced before the
     │                              # fix), `ChartLegendContent` switched
-    │                              # from `Pick<RechartsPrimitive.
+    │                              # from `Pick<old chart primitives
     │                              # LegendProps, "payload" |
     │                              # "verticalAlign">` to
-    │                              # `RechartsPrimitive.
+    │                              # `old chart primitives
     │                              # DefaultLegendContentProps` (v3 made
     │                              # `LegendProps.payload` REQUIRED,
     │                              # breaking every real call site that
     │                              # renders `<ChartLegendContent
     │                              # className="..." />` without passing
-    │                              # `payload` explicitly — Recharts' own
+    │                              # `payload` explicitly — the old chart library' own
     │                              # `<Legend content={...}>` injects it at
     │                              # runtime via `cloneElement`, invisible
     │                              # to static analysis), and the tooltip
@@ -2539,7 +2539,7 @@ APP-wftdm-dashboard/
     │                              # never-upgraded-to-v3 registry track,
     │                              # confirmed via a real `--dry-run` (it
     │                              # still proposes installing
-    │                              # `recharts@2.15.4`, byte-for-byte the
+    │                              # `the old chart library@2.15.4`, byte-for-byte the
     │                              # OLD pre-fix source) — every change
     │                              # here is a manual, independently
     │                              # verified port, not a CLI re-fetch.
@@ -2681,8 +2681,8 @@ export function Panel({ config }: PanelProps) {
   const filters = useFilterState(config.filter_ids ?? ALL_FILTERS)
   const containerRef = useRef<HTMLDivElement>(null)
 
-  // Data fetch + draw. Re-runs on config/filters change. Plotly panels call
-  // Plotly.react() here — never newPlot(), never purge() — react() diffs
+  // Data fetch + draw. Re-runs on config/filters change. the old chart library panels call
+  // the old library API here — never newPlot(), never purge() — react() diffs
   // against the existing plot itself.
   useEffect(() => {
     let cancelled = false
@@ -2695,7 +2695,7 @@ export function Panel({ config }: PanelProps) {
   // Unmount-only teardown — deliberately a second effect with an empty
   // dependency array, not folded into the effect above.
   useEffect(() => {
-    return () => { /* e.g. Plotly.purge(containerRef.current) */ }
+    return () => { /* e.g. the old library APIcontainerRef.current) */ }
   }, [])
 
   return <div ref={containerRef} />
@@ -2751,7 +2751,7 @@ actually differs.
 
 ```tsx
 export const registry: Record<string, ComponentType<PanelProps>> = {
-  'plotly':           PlotlyPanel,
+  'the old chart library':           the retired chart panel,
   'observable-plot':  ObservablePlotPanel,
   'table':            TablePanel,
   'valuebox':         ValueBoxPanel,
@@ -2760,7 +2760,7 @@ export const registry: Record<string, ComponentType<PanelProps>> = {
   'sankey':           SankeyPanel,
   'graphic-walker':   GraphicWalkerPanel,
   'markdown':         MarkdownPanel,
-  'recharts':         RechartsPanel,
+  'the old chart library':         the retired chart panel,
   'treemap':          TreemapPanel,
   'sunburst':         SunburstPanel,
   'pie':              PieChartPanel,
@@ -2866,18 +2866,18 @@ satisfied by the sunburst reference's own real `arcVisible`/
 `labelVisible` predicate helpers, reused verbatim, and by a minimum-
 pixel-size + `<clipPath>` guard for the treemap.
 
-`recharts` (029-shadcn-chart-panel) is the tenth panel type and this app's
+`the old chart library` (029-shadcn-chart-panel) is the tenth panel type and this app's
 new default/primary engine for bar/line/area charts — shadcn/ui's own
-official chart component (a themed layer over Recharts, confirmed via
-direct source read NOT a wrapper — `panels/RechartsPanel.tsx`, new
+official chart component (a themed layer over the old chart library, confirmed via
+direct source read NOT a wrapper — `panels/the retired chart panel`, new
 `components/ui/chart.tsx` added via the shadcn CLI, new `panels/
-rechartsEncoding.ts` pure tidy-to-wide pivot module). `plotly`/
+a retired chart helper` pure tidy-to-wide pivot module). `the old chart library`/
 `observable-plot`/`sankey` are unmodified and remain fully supported for
 what this new type deliberately doesn't cover: Sankey diagrams, and
-Plotly's own interactive per-category legend click-to-toggle (shadcn's
+the old chart library's own interactive per-category legend click-to-toggle (shadcn's
 shipped `ChartLegendContent` wires up no click handler at all —
 `shadcn-ui/ui#4188`, a real, closed upstream request — accepted as a
-deliberate gap for new `recharts` charts, not something to build here).
+deliberate gap for new `the old chart library` charts, not something to build here).
 `chart_type: 'bar' | 'line' | 'area'` only in this version — no `pie`/
 `radar`/`radial`, even though shadcn's own component supports them. New
 `--chart-1`..`--chart-5` tokens (`src/styles/tokens.css`) — verified
@@ -2893,7 +2893,7 @@ hues instead (blue/amber-gold/teal-slate/gray/muted-purple) before this
 ever reached a real component — see `specs/029-shadcn-chart-panel/
 research.md` §1 for the full computed-contrast record.
 
-**Recharts version history (three real, confirmed states, in order —
+**the old chart library version history (three real, confirmed states, in order —
 none of them assumed, each verified directly against installed
 `node_modules`)**: (1) originally installed at `^2.15.4` — the real
 shadcn CLI's own pinned version at the time, NOT npm's newer "latest" tag
@@ -2901,30 +2901,30 @@ shadcn CLI's own pinned version at the time, NOT npm's newer "latest" tag
 confirmed version-discrepancy correction made during that implementation).
 (2) **Deliberately upgraded to `^3.10.1`** (research.md §13) — a real,
 informed major-version upgrade, not drift: `npx shadcn@latest add chart`
-was confirmed, live, to STILL install `recharts@2.15.4` for this project
+was confirmed, live, to STILL install `the old chart library@2.15.4` for this project
 specifically, because `components.json`'s own `"style": "default"` points
-at shadcn's legacy registry track, which was never upgraded to Recharts
+at shadcn's legacy registry track, which was never upgraded to the old chart library
 v3 at all — only their separate `new-york-v4` style/registry (Tailwind v4,
-recharts@3.8.0) was. Re-running the CLI in this repo therefore never was,
+the old chart library@3.8.0) was. Re-running the CLI in this repo therefore never was,
 and still isn't, a path to v3 — the upgrade here is a manual,
 independently-verified dependency bump plus a hand-ported `chart.tsx` type
 fix (below), not a CLI re-fetch. npm's own real current latest (`3.10.1`,
 newer than the `new-york-v4` registry's own pinned `3.8.0`) was installed
 instead, matching "current 3.x release," not shadcn's specific snapshot.
 Confirmed real, load-bearing dependency-chain changes via direct
-`npm ls`, not assumed: `react-smooth`/`recharts-scale` are GONE (v3
+`npm ls`, not assumed: `react-smooth`/`old-chart-class` are GONE (v3
 dropped both); `@reduxjs/toolkit`, `es-toolkit`, `decimal.js-light` are
-new, recharts-exclusive additions (a genuine internal move to a
-Redux-based state layer — `recharts/lib/state/store.js`'s own real
+new, old-chart-class additions (a genuine internal move to a
+Redux-based state layer — `the old chart library/lib/state/store.js`'s own real
 `legendSlice`/`chartData`/`cartesianAxis`/`rootProps` slices, confirmed by
 direct source read); `victory-vendor` bumped `^36.6.8` → `^37.0.2`;
 `immer`/`react-redux`/`reselect`/`use-sync-external-store` are ALSO real,
-new recharts dependencies but were left OUT of the `recharts`
+new the old chart library dependencies but were left OUT of the `the old chart library`
 `vite.config.ts` chunk (see that file's own comment) because each is
 independently already pulled in by an unrelated, pre-existing dependency
 elsewhere in this tree. `lodash` was REMOVED from the chunk list
 entirely — confirmed via `npm ls lodash` that it was **never actually a
-recharts dependency at all**, in v2 or v3: it's `@kanaries/
+the old chart library dependency at all**, in v2 or v3: it's `@kanaries/
 graphic-walker`'s own transitive dependency, a pre-existing inaccuracy in
 this project's own chunk rule now fixed (unrelated to, but surfaced by,
 this upgrade). `chart.tsx` itself needed a real, necessary type-only port
@@ -3346,20 +3346,20 @@ export default defineConfig({
     rollupOptions: { output: { manualChunks(id) {
       if (id.includes('@duckdb/duckdb-wasm')) return 'duckdb'
       if (id.includes('maplibre-gl'))         return 'maplibre'
-      if (id.includes('plotly'))              return 'plotly'
+      if (id.includes('the old chart library'))              return 'the old chart library'
       if (id.includes('graphic-walker'))      return 'graphic-walker'
-      // recharts@^3.10.1 (upgraded from ^2.15.4 — research.md §13):
-      // react-smooth/recharts-scale are gone in v3; lodash was removed
-      // from this list entirely (it was never actually a recharts
+      // the old chart library@^3.10.1 (upgraded from ^2.15.4 — research.md §13):
+      // react-smooth/old-chart-class are gone in v3; lodash was removed
+      // from this list entirely (it was never actually a the old chart library
       // dependency — graphic-walker's own transitive one). immer/
       // react-redux/reselect/use-sync-external-store are real, new
-      // recharts deps too but deliberately left OUT here — each is
+      // the old chart library deps too but deliberately left OUT here — each is
       // already pulled in by an unrelated, pre-existing dependency
       // elsewhere, so leaving them unmatched lets Rollup's own default
       // chunking place them wherever they're naturally shared.
-      if (id.includes('recharts') || id.includes('@reduxjs/toolkit') ||
+      if (id.includes('the old chart library') || id.includes('@reduxjs/toolkit') ||
           id.includes('es-toolkit') || id.includes('decimal.js-light') ||
-          id.includes('victory-vendor'))      return 'recharts'
+          id.includes('victory-vendor'))      return 'the old chart library'
     }}}
   },
   server: { headers: {                 // dev only
@@ -3411,8 +3411,8 @@ export default defineConfig({
                          // an explicit, direct dependency.
   "js-yaml": "latest",
   "maplibre-gl": "^4.7.1",
-  "plotly.js-dist-min": "latest",
-  "recharts": "^3.10.1"  // 029-shadcn-chart-panel, later UPGRADED from the
+  "the old chart library": "latest",
+  "the old chart library": "^3.10.1"  // 029-shadcn-chart-panel, later UPGRADED from the
                           // original ^2.15.4 the shadcn CLI itself
                           // installed (research.md §13) — a deliberate,
                           // informed major-version upgrade to npm's real
@@ -3420,13 +3420,13 @@ export default defineConfig({
                           // the CLI does NOT get you this version for this
                           // project: components.json's own "style":
                           // "default" points at shadcn's legacy registry
-                          // track, which was never upgraded to Recharts
+                          // track, which was never upgraded to the old chart library
                           // v3 at all (only their separate "new-york-v4"
                           // style/registry was, confirmed live). Peer deps
                           // confirmed React ^18.0.0-compatible (unchanged
                           // in v3). Real dependency-chain changes,
                           // confirmed via `npm ls`: react-smooth/
-                          // recharts-scale are GONE; @reduxjs/toolkit,
+                          // old-chart-class are GONE; @reduxjs/toolkit,
                           // es-toolkit, decimal.js-light are new
                           // (a genuine internal move to Redux-based
                           // state); victory-vendor bumped to ^37.0.2;
@@ -3434,7 +3434,7 @@ export default defineConfig({
                           // use-sync-external-store are also new but
                           // already shared with other, pre-existing
                           // dependencies. lodash was NEVER actually a
-                          // recharts dependency (a pre-existing, unrelated
+                          // the old chart library dependency (a pre-existing, unrelated
                           // graphic-walker transitive dependency).
 }
 ```
@@ -3488,11 +3488,11 @@ first cross-reference this list was built from). ✅ done,
    directly.
 8. Panels — per-type status, list kept at its original six, not shrunk:
    - ✅ `ValueBoxPanel` — done (`003-dashboard-shell-navigation`)
-   - ✅ `PlotlyPanel` — done (`003-dashboard-shell-navigation`)
+   - ✅ `the retired chart panel` — done (`003-dashboard-shell-navigation`)
    - ✅ `TablePanel` — done (`005-table-panel`); split out
      `panels/tableLogic.ts` (sort/paginate/search/color-scale, pure) and
-     `panels/formatValue.ts`, same reason `plotlyTraces.ts` was split out
-     of `PlotlyPanel.tsx`
+     `panels/formatValue.ts`, same reason `a retired chart helper` was split out
+     of `the retired chart panel`
    - ✅ `MarkdownPanel` — done (`006-markdown-panel`); `marked` +
      `dompurify` added to `package.json`, XSS-sanitized rendering with an
      `afterSanitizeAttributes` hook forcing `target="_blank"`/
@@ -3500,14 +3500,14 @@ first cross-reference this list was built from). ✅ done,
    - ✅ `ObservablePlotPanel` — done (`007-observable-plot-panel`);
      `@observablehq/plot` added to `package.json`; split out
      `panels/observablePlotEncoding.ts` (pure, DOM-free mark/options
-     resolution), same reason as `plotlyTraces.ts`
+     resolution), same reason as `a retired chart helper`
    - ✅ `SankeyPanel` — done (`008-sankey-panel`); `d3-sankey` +
      `d3-scale-chromatic` added to `package.json` (plus `@types/d3-sankey`/
      `@types/d3-scale-chromatic` devDependencies — neither ships its own
      types); split out `panels/sankeyGraph.ts` (pure, DOM-free
      rows-to-graph transform + `d3-sankey` layout wrapper — a genuinely
      new data-transform problem, not just a split-for-Vitest-testability
-     reason like `plotlyTraces.ts`) and `panels/sankeyColor.ts`
+     reason like `a retired chart helper`) and `panels/sankeyColor.ts`
      (`color_scheme` name resolution). **This completes the
      originally-listed six-panel-type set** — no panel type in this list
      remains not-started
@@ -3526,7 +3526,7 @@ first cross-reference this list was built from). ✅ done,
      wiring), not rebuilt per-render the way every chart panel type
      before it works. Also required a `vite.config.ts` `manualChunks`
      addition (a `maps` chunk) — the first panel-type feature since
-     `003`'s own Plotly chunk to need a build-config change. `sankey`
+     `003`'s own the old chart library chunk to need a build-config change. `sankey`
      was mistakenly described as "sixth and final" in `008`'s own
      completion note, then flowmap in turn was mistakenly described as
      "the actual final one" here — `zonemap` below is the real eighth
@@ -3595,7 +3595,7 @@ first cross-reference this list was built from). ✅ done,
 10. ✅ `GraphicWalkerPanel` (Explore tab) — done
     (`014-graphic-walker-panel`). **This completes this project's
     originally-listed panel-type roadmap in full** — nine panel types
-    total (`valuebox`, `plotly`, `table`, `markdown`, `observable-plot`,
+    total (`valuebox`, `the old chart library`, `table`, `markdown`, `observable-plot`,
     `sankey`, `flowmap`, `zonemap`, `graphic-walker`), none remaining.
     Confirmed directly against `project-docs/GRAMMAR.md`'s own already-documented
     `type: graphic-walker` grammar before any design work, not assumed:
@@ -3708,7 +3708,7 @@ first cross-reference this list was built from). ✅ done,
     (`003-dashboard-shell-navigation`). `PanelErrorState.tsx`/
     `PanelEmptyState.tsx` are shared components; loading states are
     **deliberately** inline per panel (`animate-pulse` skeletons directly
-    in `ValueBoxPanel.tsx`/`PlotlyPanel.tsx`) rather than a third shared
+    in `ValueBoxPanel.tsx`/`the retired chart panel`) rather than a third shared
     component — `003`'s own research.md documents this as a considered
     choice (no reusable loading pattern existed to port, unlike
     error/empty), not an inconsistency to fix later
@@ -3792,17 +3792,17 @@ first cross-reference this list was built from). ✅ done,
     with a retry-with-backoff wrapper, while blanking two small files never
     failed once. Full suite re-confirmed passing (230/230) after the fix.
     See `specs/026-activitysim-demo-content/` for the full design record.
-16. ✅ `RechartsPanel` — done (`029-shadcn-chart-panel`). Not part of this
+16. ✅ `the retired chart panel` — done (`029-shadcn-chart-panel`). Not part of this
     list when originally written either — the app-wide UI/UX redesign's
-    own shadcn/Recharts chart research (logged in `project-docs/PIPELINE.md`)
+    own shadcn/the old chart library chart research (logged in `project-docs/PIPELINE.md`)
     identified shadcn/ui's official chart component as this app's new
     default/primary bar/line/area chart engine, and this feature is the
     first (of the five-technology charting direction PIPELINE.md records)
-    to actually get built. A NEW npm dependency (`recharts`, originally
+    to actually get built. A NEW npm dependency (`the old chart library`, originally
     `^2.15.4` — the real shadcn CLI's own pinned version at the time, not
     npm's newer "latest" tag `3.10.1` originally researched, a real,
     confirmed correction made during implementation; later deliberately
-    upgraded to `^3.10.1` — see this file's own "Recharts version
+    upgraded to `^3.10.1` — see this file's own "the old chart library version
     history" note above and research.md §13) plus shadcn's own
     `components/ui/chart.tsx`,
     added verbatim via the real CLI rather than hand-authored (this
@@ -3814,20 +3814,20 @@ first cross-reference this list was built from). ✅ done,
     `--chart-1`/`--chart-2` identically in dark mode, since `--primary`
     already resolves to `--brand-wfrc-secondary-blue` there; fixed with 5
     genuinely distinct hues before any real component ever used them).
-    `plotly`/`observable-plot`/`sankey` needed and got ZERO changes — the
+    `the old chart library`/`observable-plot`/`sankey` needed and got ZERO changes — the
     same `buildPanelQuery()`/`sqlExpander.expand()` shared query code
     every other data-bound panel type already uses, confirmed unmodified
     both by direct read and by the full existing Vitest/Playwright suite
     passing unchanged, plus a dedicated regression test confirming the
     one existing capability this new panel type deliberately does NOT
-    replicate (Plotly's own legend click-to-toggle) still works exactly
+    replicate (the old chart library's own legend click-to-toggle) still works exactly
     as before. One real regression WAS found and fixed during this
     feature's own final full-suite confirmation pass, not merely
     anticipated: a new fixture panel's title
-    (`"Recharts Mode Share by Purpose (Bar)"`) contained
+    (`"the old chart library Mode Share by Purpose (Bar)"`) contained
     `markdownPanel.spec.ts`'s own pre-existing non-exact
     `getByText('Mode Share by Purpose')` query as a literal substring,
-    causing a strict-mode collision — renamed to `"Recharts Mode
+    causing a strict-mode collision — renamed to `"the old chart library Mode
     Breakdown (Bar)"` after grepping the whole `tests/integration/` tree
     for other possible collisions first (the same title-collision
     discipline every prior panel-type feature's own fixture additions
@@ -3845,7 +3845,7 @@ first cross-reference this list was built from). ✅ done,
     activitysim-demo-content`'s real pipeline (same three real scenarios:
     `activitysim-baseline`/`activitysim-density-variant`/
     `activitysim-transit-variant`) to cover the remaining panel types
-    `026` didn't touch — `recharts`/`observable-plot` (Overview tab, a new
+    `026` didn't touch — `the old chart library`/`observable-plot` (Overview tab, a new
     `row_mode_share_alt_engines` row bound to the already-real
     `trip_mode_share` metric), `graphic-walker`/`markdown` (a new Explore
     tab, `dashboard-7-explore.yaml`), and `zonemap` (a new Network tab,
@@ -3975,7 +3975,7 @@ first cross-reference this list was built from). ✅ done,
     reproducible failure (not a hang) the first time this spec actually
     ran end-to-end. Fixed by restoring both files together. Two more real,
     confirmed test/strict-mode bugs from that same first real run:
-    Recharts (v3) renders each bar as `<path class="recharts-rectangle">`,
+    the old chart library (v3) renders each bar as `<path class="old-chart-class">`,
     never a plain `<rect>` — the spec's original selector matched zero
     elements; and two `getByText(..., {exact: false})`/`{exact: true}`
     calls hit real Playwright strict-mode violations (the queried text
@@ -4047,7 +4047,7 @@ first cross-reference this list was built from). ✅ done,
     existing suite most exposed to this feature's own `zoneGeometry.ts`/
     `ZoneMapPanel.tsx` changes (`zonemapPanel.spec.ts`,
     `dashboardShell.spec.ts`, `flowmapPanel.spec.ts` — 86 tests) ran
-    83/86 passing. The 3 failures (a dark-mode Plotly re-query-count
+    83/86 passing. The 3 failures (a dark-mode the old chart library re-query-count
     assertion off by exactly one query; an identical "Settings button
     outside viewport" timeout in both `flowmapPanel.spec.ts`'s and
     `zonemapPanel.spec.ts`'s own "manual pan survives... basemap switch"
@@ -4352,7 +4352,7 @@ first cross-reference this list was built from). ✅ done,
     the ones that visibly broke — this project's own established
     discipline of confirming a class of bug is fully fixed, not just its
     first visible symptom). (2) `dashboard-3-tour-models.yaml`'s original
-    "Mandatory Tour Scheduling" panel was `plotly` keyed on `start` alone,
+    "Mandatory Tour Scheduling" panel was `the old chart library` keyed on `start` alone,
     but `mandatory_tour_scheduling` groups by `(primary_purpose, start,
     end, duration)` together — even filtered to one purpose, this produces
     many thin, scattered bars per start hour rather than one clean bar per
@@ -4396,12 +4396,12 @@ first cross-reference this list was built from). ✅ done,
 
     **All ten registered panel types** are used at least once across the
     six tabs, each chosen for a genuine real data-shape fit, confirmed by
-    a direct PyYAML scan (not merely eyeballed): `valuebox`×6, `plotly`×4,
+    a direct PyYAML scan (not merely eyeballed): `valuebox`×6, `the old chart library`×4,
     `observable-plot`×5, `table`×18, `markdown`×5, `sankey`×1, `flowmap`×1,
     `zonemap`×2, `graphic-walker`×1 (a new `person_household_profile`
     dataset — one real row per person, deliberately the one new metric
     that does NOT aggregate — built specifically for this open-ended
-    exploration panel, on the Person/Household Models tab), `recharts`×2.
+    exploration panel, on the Person/Household Models tab), `the old chart library`×2.
 
     Verification: `uv run pytest python/tests/` 64/64 passing (was 59/59
     before this feature — 5 new representative tests cover the distinct
@@ -4419,7 +4419,7 @@ first cross-reference this list was built from). ✅ done,
     every 030-era shell/nav spec, not just the originally-planned zonemap/
     flowmap/dashboardShell set — ran 29/30 plus 30/30 (zonemap/flowmap)
     passing; the one failure is the SAME already-documented, pre-existing
-    dark-mode Plotly re-query-count flake `030`'s and `031`'s own entries
+    dark-mode the old chart library re-query-count flake `030`'s and `031`'s own entries
     above already recorded (`Expected: 79, Received: 80`), not a new
     regression. `demoContentAllPanels.spec.ts` (fully rewritten) — 7/7
     passing, including the new all-ten-panel-types coverage assertion.
@@ -4565,7 +4565,7 @@ first cross-reference this list was built from). ✅ done,
     primitive, in both themes.
 
     **Real WFRC-brand-name references fixed** (FR-008 scope,
-    distinguished explicitly from `RechartsPanel`'s own separate,
+    distinguished explicitly from `the retired chart panel`'s own separate,
     correctly-out-of-scope `--chart-1..5`, per the user's own explicit
     disambiguation instruction): `tableLogic.ts`'s/`zonemapColor.ts`'s
     `cellColor()`/choropleth-fill anchor (`var(--brand-wfrc-blue)` →
@@ -4606,7 +4606,7 @@ first cross-reference this list was built from). ✅ done,
     assertion or silently patched.
 
     **Dark-mode fix re-verification** (all six of this project's own
-    previously-proven fixes — Plotly transparent backgrounds, Observable
+    previously-proven fixes — the old chart library transparent backgrounds, Observable
     Plot tooltip contrast, Sankey `currentColor` labels, map-control
     `invert(1)` icons, native form-control `color-scheme`, Dialog text-
     color inheritance): re-verified by RUNNING the existing real
@@ -4650,8 +4650,8 @@ first cross-reference this list was built from). ✅ done,
     **Part A — expand-ability is now scoped per panel TYPE, with a
     per-panel author override.** The generic 004 expand-to-dialog
     mechanism (`usePanelExpandHost()`) used to apply to every panel type
-    unconditionally; it now applies only to `table`/`markdown`/`plotly`/
-    `observable-plot`/`sankey`/`recharts`/`flowmap`/`zonemap` by default —
+    unconditionally; it now applies only to `table`/`markdown`/`the old chart library`/
+    `observable-plot`/`sankey`/`the old chart library`/`flowmap`/`zonemap` by default —
     `valuebox` and ordinary (non-`dataset_picker`, non-full-page)
     `graphic-walker` panels no longer show an Expand control at all,
     since neither benefits from more working room the way a chart/table/
@@ -4703,16 +4703,16 @@ first cross-reference this list was built from). ✅ done,
     **Part C — two new, independently-configurable, OPTIONAL trend
     indicators** on `ValueBoxPanelConfig`:
     - `sparkline: { metric, x, y, chart_type? }` — a small embedded
-      Recharts chart showing the metric's OWN distribution across a
+      the old chart library chart showing the metric's OWN distribution across a
       category, via a genuinely new, independent query (own `idle`/
       `loading`/`ready`/`empty`/`error` state, never blocking or being
       blocked by the panel's own primary scalar value). New
       `panelQuery.ts` export `buildSparklineQuery()` — a thin,
       purely-additive delegation to the EXISTING, unmodified
       `buildPanelQuery()` via a synthetic config object. New
-      `panels/valueBoxSparkline.tsx` reuses `rechartsEncoding.ts`'s
+      `panels/valueBoxSparkline.tsx` reuses `a retired chart helper`'s
       existing `encodeRechartsData()` unmodified, rendering bare
-      Recharts primitives (`BarChart`/`LineChart` + `Bar`/`Line` inside a
+      the old chart library primitives (`BarChart`/`LineChart` + `Bar`/`Line` inside a
       plain `ResponsiveContainer`) — deliberately NOT the full
       `ChartContainer` chrome from `components/ui/chart.tsx` (no
       axes/legend/tooltip needed at sparkline scale).
@@ -4791,7 +4791,7 @@ first cross-reference this list was built from). ✅ done,
     failures spread across both runs — no two runs failing the same set,
     the signature of genuine multi-worker resource-contention flakiness —
     each individually re-run in isolation and confirmed passing alone
-    (the dark-mode Plotly "no re-query" flake additionally cross-checked
+    (the dark-mode the old chart library "no re-query" flake additionally cross-checked
     against a clean `git stash`'d tree, reproducing there too:
     Expected 79/Received 80 on main vs. this branch's Expected
     103/Received 104 — same pre-existing off-by-one-query flake, a
@@ -4805,10 +4805,10 @@ first cross-reference this list was built from). ✅ done,
     **Part A** propagates `020-settings-modal`'s existing `Scenario.label`
     field to every real place a scenario name becomes human-facing display
     text — a full source audit (not assumed) found exactly four such
-    surfaces: `plotly` trace legend names (`panels/plotlyTraces.ts`'s
+    surfaces: `the old chart library` trace legend names (`panels/a retired chart helper`'s
     `resolveTraces()`, when a trace's `color`/`name` resolves to the bare
-    `$scenario` placeholder), `recharts` `chartConfig[key].label`
-    (`panels/rechartsEncoding.ts`'s `encodeRechartsData()`, when `series
+    `$scenario` placeholder), `the old chart library` `chartConfig[key].label`
+    (`panels/a retired chart helper`'s `encodeRechartsData()`, when `series
     === 'scenario'`), `observable-plot`'s row-driven legend/axis text
     (structurally different from the other two — Observable Plot reads
     legend text directly from each row's own cell value, with no separate
@@ -4831,7 +4831,7 @@ first cross-reference this list was built from). ✅ done,
     research, before any code was written: `Scenario.color` (sourced from
     `manifest.yaml`) had ZERO real rendering consumers anywhere in this
     codebase. `project-docs/GRAMMAR.md`'s own "the panel colors by scenario" line
-    refers to `plotlyTraces.ts`'s generic per-trace default-palette
+    refers to `a retired chart helper`'s generic per-trace default-palette
     cycling (no explicit `marker.color` set at all), completely unrelated
     to the manifest field. This feature is therefore the FIRST real wiring
     of a per-scenario color to a rendered pixel — treated as the correct,
@@ -4840,9 +4840,9 @@ first cross-reference this list was built from). ✅ done,
     not scope creep. Manifest color is now the real default at the same
     three chart-type surfaces Part A's own audit found (`table` has no
     per-scenario color dimension, so it's Part-B-out-of-scope);
-    `plotlyTraces.ts` sets `marker.color` only when a color actually
-    resolves (Plotly's own default cycling still applies otherwise, never
-    an explicit `undefined`); `rechartsEncoding.ts` falls back to the
+    `a retired chart helper` sets `marker.color` only when a color actually
+    resolves (the old chart library's own default cycling still applies otherwise, never
+    an explicit `undefined`); `a retired chart helper` falls back to the
     existing `--chart-${n}` token cycling; `observablePlotEncoding.ts` hit
     a genuine, confirmed API constraint the other two don't share —
     Observable Plot's own color `range` is all-or-nothing (an explicit
@@ -4913,12 +4913,12 @@ first cross-reference this list was built from). ✅ done,
     resolved as `colorOverride ?? manifest color` — FR-007/FR-008/FR-011's
     precedence computed in exactly one place) threaded as a new, optional
     trailing parameter into all three extended pure encoding/trace-
-    resolution functions. `PlotlyPanel.tsx` needed a genuinely new
+    resolution functions. `the retired chart panel` needed a genuinely new
     dedicated re-render effect (`lastRowsRef` cache + a scenario-display-
     only effect mirroring its own existing theme-only-re-render effect —
-    this panel type's data-fetch is imperative, `Plotly.react()` inside a
+    this panel type's data-fetch is imperative, `the old library API` inside a
     `.then()`) so a label/color change alone never triggers a new DuckDB
-    query (FR-005/FR-012); `RechartsPanel.tsx` needed nothing beyond the
+    query (FR-005/FR-012); `the retired chart panel` needed nothing beyond the
     hook call (fully declarative — `encodeRechartsData()` is called
     directly in the render body from `rows` state); `ObservablePlotPanel.tsx`
     added `scenarioDisplay` to its own already-existing redraw effect's
@@ -4942,8 +4942,8 @@ first cross-reference this list was built from). ✅ done,
 
     Full regression confirmation: `npm run typecheck` clean; `npm run
     test:unit` 426/426 passing (up from 403 — `tests/unit/
-    scenarioDisplay.test.ts` new, 6 tests; `plotlyTraces.test.ts`/
-    `rechartsEncoding.test.ts`/`observablePlotEncoding.test.ts` extended,
+    scenarioDisplay.test.ts` new, 6 tests; `a retired chart helper`/
+    `a retired chart helper`/`observablePlotEncoding.test.ts` extended,
     17 new cases across the three); `npm run build` clean, no new
     warnings. The FULL `tests/integration/` Playwright suite: 306 passed,
     18 failed on the first full-suite run, spread across 10 files. Every
@@ -4969,7 +4969,7 @@ first cross-reference this list was built from). ✅ done,
     resolution with a three-tier chain: viewer `colorOverride` (unchanged)
     → a new, deployer-configured `scenarioPalette` → this app's own
     shipped `--chart-1..5` default. Real research grounded the shipped
-    default choice: Recharts has no real built-in categorical palette to
+    default choice: the old chart library has no real built-in categorical palette to
     compare against at all (confirmed by reading the installed package —
     `Line`/`Bar` default to single hardcoded colors, not a cycling
     scheme), while `schemeObservable10` is real and already the basis of
@@ -4989,9 +4989,9 @@ first cross-reference this list was built from). ✅ done,
 
     **A real reactivity gap found during planning** (not in the original
     request): a `var(--chart-N)` reference needs a CONCRETE value before
-    it can safely reach Plotly (confirmed against `PlotlyPanel.tsx`'s own
-    existing `getComputedStyle()`-based workaround — Plotly's SVG
-    rendering doesn't reliably honor raw `var()` the way Recharts' normal
+    it can safely reach the old chart library (confirmed against `the retired chart panel`'s own
+    existing `getComputedStyle()`-based workaround — the old chart library's SVG
+    rendering doesn't reliably honor raw `var()` the way the old chart library' normal
     DOM cascade does), and that resolution must re-run on a theme flip.
     Fixed by resolving `var(--x)` via `getComputedStyle(document.
     documentElement)` inside `useScenarioDisplay()` itself (the one place
@@ -5172,12 +5172,12 @@ first cross-reference this list was built from). ✅ done,
     unaffected) both re-run clean. The FULL `tests/integration/`
     Playwright suite (333 tests): 327 passed, 6 failed on the first run,
     spread across `dashboardShell.spec.ts`/`flowmapPanel.spec.ts` (×2)/
-    `observablePlotPanel.spec.ts`/`rechartsPanel.spec.ts`/
+    `observablePlotPanel.spec.ts`/`a retired chart panel file`/
     `zonemapPanel.spec.ts` — none in any file this Part C touches. Every
     failure re-run individually: 4 of 6 passed cleanly in isolation
     (genuine multi-worker resource-contention flakiness); the other 2 are
     the SAME already-extensively-documented pre-existing flakes this
-    project's own history already records (the dark-mode Plotly
+    project's own history already records (the dark-mode the old chart library
     re-query-count off-by-one; the deck.gl hover-tooltip real-hardware-
     timing-sensitive flake) — `scenarioStatusColor.ts`/`scenariosTab.tsx`
     are untouched by either. Zero real regressions.
@@ -5332,7 +5332,7 @@ first cross-reference this list was built from). ✅ done,
     already-exists error and a spread of failures across files with no
     relationship to this change): 5 failures on the clean run, all
     individually triaged — 1 is the same already-documented dark-mode
-    Plotly re-query-count flake, and the other 4 (three `flowmapPanel.spec.ts`
+    the old chart library re-query-count flake, and the other 4 (three `flowmapPanel.spec.ts`
     reset-to-view/basemap-pin cases, one `zonemapPanel.spec.ts` basemap-
     inheritance case) all passed cleanly in isolation. A separate, later
     isolated re-run of the full `flowmapPanel.spec.ts` file surfaced 4
@@ -5559,7 +5559,7 @@ first cross-reference this list was built from). ✅ done,
     that stay pinned: 6 KPI `valuebox` (renders `rows[0]` only — an
     unpinned union would surface an arbitrary scenario's row), 3
     `zonemap`/`flowmap` (one draw per dataset), and **5** `observable-
-    plot`/`recharts` whose `fill`/`series` channel is already committed
+    plot`/`the old chart library` whose `fill`/`series` channel is already committed
     to a real categorical breakdown (`school_segment` /
     `primary_purpose` ×3 / `tour_mode`) — converting those needs
     faceting, out of scope. The genuine "unpin + add a per-scenario
@@ -5615,7 +5615,7 @@ first cross-reference this list was built from). ✅ done,
     workaround. New `scenarioAutoActivation.spec.ts` (DA-1..DA-8),
     `switchControlsUnpinnedPanels.spec.ts` (US1 against the fixture's own
     unpinned `Scenario Split (*)` panels), `demoMultiScenario.spec.ts`
-    (US3 + dual-theme: unpinned plotly/recharts/observable-plot each
+    (US3 + dual-theme: unpinned the old chart library/observable-plot each
     render 3 theme-correct per-scenario series in light AND dark).
 
     `npm run typecheck` clean; `npm run test:unit` 457/457 (unchanged —
@@ -5722,35 +5722,35 @@ first cross-reference this list was built from). ✅ done,
        any part of it. Split into two buckets: `'maps'` (maplibre-gl +
        pmtiles + `@protomaps/basemaps`, still eager, correctly) and a new
        `'flowmap-deck'` (deck.gl family, now genuinely lazy).
-    3. The deepest one, found by inspecting the `'recharts'`/
+    3. The deepest one, found by inspecting the `'the old chart library'`/
        `'flowmap-deck'` chunks' own real module composition after the fix
        above still left them in `index.html`'s `modulepreload` list:
        Rollup's own automatic chunking (for every package this
        `manualChunks` function doesn't explicitly name) had physically
        placed **React, ReactDOM, and Scheduler themselves** inside the
-       `'recharts'` chunk (recharts v3 pulls them in transitively via
+       `'the old chart library'` chunk (the old chart library v3 pulls them in transitively via
        `@reduxjs/toolkit`/`react-redux` — invisible before this feature
-       only because `'recharts'` was already part of the eager graph back
+       only because `'the old chart library'` was already part of the eager graph back
        then). Since literally everything needs React, every other chunk
        — including leaf ones with nothing to do with charts, like
        `hooks/useFilterState.ts`'s own tiny chunk — was forced to
-       statically import the whole `'recharts'` bundle just to reach
+       statically import the whole `'the old chart library'` bundle just to reach
        React's exports. Fixed with an explicit `'react-vendor'` bucket,
        checked first, before any other rule can claim
        `react`/`react-dom`/`scheduler`. Two smaller instances of the
-       identical class of leak followed the same fix once `'recharts'`
+       identical class of leak followed the same fix once `'the old chart library'`
        shrank far enough to reveal them (new `'app-shared'` bucket):
        `panels/scenarioDisplay.ts` (this app's own pure module, imported
        both eagerly — `main.tsx`'s `setDeployerScenarioPalette()`,
        `scenarioColorControl.tsx` via the always-mounted Scenarios tab —
-       and by the lazy Recharts/Plotly/ObservablePlot chain), and two
+       and by the lazy the old chart library/ObservablePlot chain), and two
        Vite-internal virtual modules (`vite/preload-helper`, `vite/
        modulepreload-polyfill` — the shared runtime every `import()` call
        site needs, including all ten of `registry.tsx`'s own `lazy()`
        factories, which live in the entry chunk itself) and, last,
        `clsx` (used by this app's own `cn()` helper — `@/lib/utils` —
        needed by essentially every eager shadcn-pattern UI component, and
-       also by Recharts internally). Rollup's own `hoistTransitiveImports`
+       also by the old chart library internally). Rollup's own `hoistTransitiveImports`
        option was tried once, alone, at the very start of this
        investigation (its documented symptom — a real import backed by no
        real shared code — matched what was being seen) and had ZERO
@@ -5763,7 +5763,7 @@ first cross-reference this list was built from). ✅ done,
     both served with `Cache-Control: no-store` to simulate a genuine
     cold-cache visit) via a real Playwright/CDP network trace, not theory.
     `index.html`'s own `modulepreload` list dropped from 10 entries
-    (including `plotly`/`graphic-walker`/`recharts`/`maps` at their full,
+    (including `the old chart library`/`graphic-walker`/`the old chart library`/`maps` at their full,
     unsplit sizes) to 8 (only the genuinely-always-needed
     `duckdb`/`yamlLoader`/`appState`/`filterState`/`react-vendor`/
     `app-shared`/`maps` remain — confirmed via the same real chunk-import-
@@ -5852,8 +5852,8 @@ first cross-reference this list was built from). ✅ done,
     actually regressed before this feature touched it.
 
 28. ✅ Observable Plot chart consolidation — six real chart panels across
-    four `public/demo-dashboard-config/*.yaml` files, previously `plotly`
-    (4) or `recharts` (2), re-authored to `type: observable-plot`:
+    four `public/demo-dashboard-config/*.yaml` files, previously `the old chart library`
+    (4) or `the old chart library` (2), re-authored to `type: observable-plot`:
     Summary's "Total Trips by Mode"/"Average Trip Distance by Purpose",
     Tour's "Non-Mandatory Tour Frequency by Purpose", Mode Choice's
     "At-Work Subtour Mode Share by Purpose"/"Trip Mode Share by
@@ -5864,8 +5864,8 @@ first cross-reference this list was built from). ✅ done,
     `resolveObservablePlotEncoding()` completely unmodified (already
     fully sufficient, confirmed before converting anything). Zero changes
     to `panels/panelQuery.ts`/`services/sqlExpander.ts` — every conversion
-    is a rendering-engine swap, never a query change. `panels/PlotlyPanel.tsx`/
-    `panels/RechartsPanel.tsx` and both panel types remain fully
+    is a rendering-engine swap, never a query change. `panels/the retired chart panel`/
+    `panels/the retired chart panel` and both panel types remain fully
     registered and supported — `dashboard-8-test.yaml` (untouched, zero
     diff) still exercises both for real via its own per-type broken-
     metric coverage.
@@ -5887,7 +5887,7 @@ first cross-reference this list was built from). ✅ done,
 
     **Value-box sparkline** (`panels/valueBoxSparkline.tsx`) re-implemented
     against `@observablehq/plot` directly (`Plot.plot()`, `axis: null` on
-    both scales, explicit `height: 40`) instead of bare Recharts
+    both scales, explicit `height: 40`) instead of bare the old chart library
     primitives — same exported signature, same `h-10 w-full aria-hidden`
     container, same `chart_type: 'bar' | 'line'` behavior. Reuses
     `ObservablePlotPanel.tsx`'s own already-proven `--plot-background`
@@ -5918,16 +5918,16 @@ first cross-reference this list was built from). ✅ done,
     **A real, confirmed, deliberate test-invariant supersession**:
     `032-six-tab-demo-content`'s own "every one of the ten registered
     panel types renders at least once, real and non-empty" test
-    (`demoContentAllPanels.spec.ts`) directly asserted `.js-plotly-plot`/
-    `svg path.recharts-rectangle` on the Summary tab — exactly the two
+    (`demoContentAllPanels.spec.ts`) directly asserted `old-chart-root`/
+    `svg path.old-chart-class` on the Summary tab — exactly the two
     panels this feature converts. This feature's own explicit FR-001/
-    FR-002 (convert *every* real Plotly/Recharts panel, no exception
+    FR-002 (convert *every* real the old chart library panel, no exception
     carved out to preserve type-coverage) deliberately supersedes that
     prior success criterion — found and resolved during this feature's
     own `/speckit-tasks` phase, not an oversight. Rewritten (not silently
     patched or deleted) to state and prove the new, correct invariant:
     real content now covers eight of the ten registered types on the six
-    primary tabs; `plotly`/`recharts` remain fully supported, exercised
+    primary tabs; `the old chart library`/`the old chart library` remain fully supported, exercised
     for real via `dashboard-8-test.yaml`'s own error-state coverage
     instead of by real Summary-tab data.
 
@@ -5940,7 +5940,7 @@ first cross-reference this list was built from). ✅ done,
     exactly: `settingsModal.spec.ts`×32, `observablePlotPanel.spec.ts`×24,
     `tablePanel.spec.ts`×23, `scenarioManager.spec.ts`×16,
     `valueBoxPanel.spec.ts`×14, `sankeyPanel.spec.ts`×11,
-    `rechartsPanel.spec.ts`×8, `scenarioAutoActivation.spec.ts`×6,
+    `a retired chart panel file`×8, `scenarioAutoActivation.spec.ts`×6,
     `flowmapPanel.spec.ts`×1 (the last one the same already-documented
     real-hardware-timing flake this project's own history already
     records). Zero real regressions. Eight of those nine files share one
@@ -6202,7 +6202,7 @@ first cross-reference this list was built from). ✅ done,
     `Math.sin` calls already does exactly as correctly. `radarData.ts`'s
     `layoutRadarPolygons()`/`layoutRadarAxisLabels()` are hand-rolled
     polar trigonometry instead (evenly-spaced angles starting at -π/2,
-    12 o'clock, matching Recharts'/Chart.js's own real radar-chart
+    12 o'clock, matching the old chart library'/Chart.js's own real radar-chart
     convention; a linear 0..outerRadius scale against the shared max
     value across every series/axis) — matching this project's own
     established "D3 layout math where a real algorithm exists, plain
@@ -6232,7 +6232,7 @@ first cross-reference this list was built from). ✅ done,
     `panels/ChartLegend.tsx` (a plain color-swatch+label flex row —
     genuinely NEW UI, not a refactor: neither `SankeyPanel.tsx` nor
     `HierarchicalChartHost.tsx` renders a legend at all today, and
-    `RechartsPanel`'s/`ObservablePlotPanel`'s own legends are each tied
+    `the retired chart panel`'s/`ObservablePlotPanel`'s own legends are each tied
     to their own charting library's payload/DOM shape, not reusable by a
     hand-built D3/SVG chart). `ChartLegend` is rendered as a plain React
     SIBLING of each panel's own imperative chart container — never a JSX

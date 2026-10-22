@@ -40,7 +40,7 @@ export function ValueBoxPanel({ config }: PanelProps<ValueBoxPanelConfig>) {
 
 The full `buildPanelQuery` → `resolveActiveScenarios` → `sqlExpander.expand()`
 → `query()` chain is `contracts/panel-query.md`'s "Composing with
-sqlExpander.expand()" section, reused verbatim here (and by `PlotlyPanel`)
+sqlExpander.expand()" section, reused verbatim here (and by `the retired chart panel`)
 — `buildPanelQuery`'s output alone is a template, not executable SQL.
 `PanelEmptyState`/`PanelErrorState` are the shared components
 `contracts/panel-registry.md` defines (ported from `APP-Project-

@@ -89,7 +89,7 @@ const REAL_TABLEAU10 = [
 ]
 // 033-shadcn-default-theme: SankeyPanel.tsx's own token-derived fallback
 // moved from WFRC brand tokens to --chart-1..4 (research.md §7's
-// disambiguation from RechartsPanel's separate, still out-of-scope
+// disambiguation from the retired chart panel's separate, still out-of-scope
 // palette) — these are tokens.css's real LIGHT-mode --chart-1..4 hex
 // values (Playwright's default colorScheme is 'light', unset here).
 const FALLBACK_TOKEN_HEX = ['#2fa598', '#c28940', '#a781eb', '#78976c', '#b48596', '#6b93c2', '#237c72', '#926730']
@@ -381,7 +381,7 @@ test.describe('User Story 3 - Sankey panel behaves consistently with the rest of
   })
 
   // Adapted to the REAL Mode Choice tab's own actual composition — the
-  // retired fixture mixed sankey with valuebox/plotly/table/markdown/
+  // retired fixture mixed sankey with valuebox/the old chart library/table/markdown/
   // observable-plot all on one Summary-tab-equivalent; the real Mode
   // Choice tab (where the real sankey panel actually lives) mixes it with
   // table + observable-plot x2 instead, matching markdownPanel.spec.ts's
@@ -407,7 +407,7 @@ test.describe('User Story 3 - Sankey panel behaves consistently with the rest of
     await expect(expandTrigger(page, REAL_SANKEY_TITLE)).toBeVisible()
   })
 
-  test('a sankey panel uses the same inline loading skeleton convention as PlotlyPanel/ObservablePlotPanel, not a new shared component', async ({
+  test('a sankey panel uses the same inline loading skeleton convention as the retired chart panel/ObservablePlotPanel, not a new shared component', async ({
     page,
   }) => {
     await boot(page)

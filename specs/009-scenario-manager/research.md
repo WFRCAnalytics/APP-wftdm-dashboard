@@ -41,7 +41,7 @@ invent — it is applying an existing, understood one to a second store.
 The real cost is concrete and small: `appState.ts` gains a `subscribe()`
 export and a `notify()` call at the end of `register`/`setStatus`/
 `setActive`/`unregister`; the five existing data-bound panel components
-(`ValueBoxPanel.tsx`, `PlotlyPanel.tsx`, `TablePanel.tsx`,
+(`ValueBoxPanel.tsx`, `the retired chart panel`, `TablePanel.tsx`,
 `ObservablePlotPanel.tsx`, `SankeyPanel.tsx`) each swap their in-effect
 `appState.getActive().map((s) => s.name)` call for a top-level
 `useActiveScenarios()` hook call, adding its return value to the
@@ -73,7 +73,7 @@ Unlike `filterState.ts` (which supports subscribing to individual filter
 ids, since panels bind to specific filters), every panel consumer of
 `appState.getActive()` reads the **entire** active-scenario list as one
 unit (`resolveActiveScenarios(config, activeScenarios)` — confirmed by
-reading `PlotlyPanel.tsx`/`TablePanel.tsx`/`ValueBoxPanel.tsx`/
+reading `the retired chart panel`/`TablePanel.tsx`/`ValueBoxPanel.tsx`/
 `ObservablePlotPanel.tsx`/`SankeyPanel.tsx`, all identical in this
 respect). `appState.subscribe()` is therefore a single wildcard
 subscriber list (`Set<() => void>`), notified on any mutating call — no

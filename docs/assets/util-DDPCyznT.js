@@ -1,0 +1,1 @@
+const s=(t,e)=>Number(t[e]),o=(t,e)=>String(t[e]??""),a=t=>t>.0049?"+":t<-.0049?"−":"",c=t=>t.toFixed(1);function m(t,e){const n=document.createElement("p");n.textContent=e,n.className="p-5 font-body text-sm text-[var(--mute)]",t.replaceChildren(n)}export{a,m as e,c as f,s as n,o as s};

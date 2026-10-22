@@ -110,10 +110,10 @@ Each entry: what works today, what doesn't, and a concrete proposal — grounded
 **Doesn't:** Nothing structural found this round — it's a genuinely simple, low-surface-area panel type and stayed that way.
 **Proposal:** No change proposed.
 
-### PlotlyPanel
+### the retired chart panel
 **Works:** `resolveThemeLayout()`'s token-resolved dark-mode fix is correct and well-tested; the theme-only re-render effect (no re-query on a theme flip) is a real, non-obvious performance win worth keeping regardless of any IA change.
-**Doesn't:** Plotly's own legend is dense/small by default relative to this app's own type scale — not touched by any prior phase.
-**Proposal:** No structural change — Plotly is explicitly staying as a supported engine (`project-docs/PIPELINE.md`'s five-tier charting direction). Worth a narrow, later pass applying `wftdm-design-system`'s Body/Caption type roles to Plotly's own `layout.legend.font`/`layout.font.size`, the same category of fix `resolveThemeLayout()` already makes for color — out of scope for this research document, named here so it isn't lost.
+**Doesn't:** the old chart library's own legend is dense/small by default relative to this app's own type scale — not touched by any prior phase.
+**Proposal:** No structural change — the old chart library is explicitly staying as a supported engine (`project-docs/PIPELINE.md`'s five-tier charting direction). Worth a narrow, later pass applying `wftdm-design-system`'s Body/Caption type roles to the old chart library's own `layout.legend.font`/`layout.font.size`, the same category of fix `resolveThemeLayout()` already makes for color — out of scope for this research document, named here so it isn't lost.
 
 ### ObservablePlotPanel
 **Works:** `PanelLocalInput`'s reactive controls are a genuine, already-shipped example of exactly the "reactive widget" idea `gropaul/dash` was researched for (§1) — this app already has the capability, just scoped per-panel rather than dashboard-wide.
@@ -125,9 +125,9 @@ Each entry: what works today, what doesn't, and a concrete proposal — grounded
 **Doesn't:** Nothing new found — this is a narrow, well-scoped panel type and audits clean.
 **Proposal:** No change proposed. (Sankey is also the one real, confirmed gap in shadcn's own chart component per `project-docs/PIPELINE.md`'s existing research — an independent reason this panel type isn't a candidate for consolidation regardless of any IA change here.)
 
-### RechartsPanel
-**Works:** The v2→v3 upgrade (this session, earlier) re-verified all three prior fixes correctly; the bar-silhouette skeleton is shared with Plotly/Observable Plot per the skill's own "same shape regardless of mark type" reasoning.
-**Doesn't:** shadcn's own `ChartLegendContent` has no click-to-toggle (a real, confirmed, closed-without-fix upstream gap, already documented) — worth restating here since it's directly relevant to any IA/UX proposal: a viewer used to Plotly's legend-click behavior on one tab and this panel type's non-interactive legend on another tab gets an inconsistent interaction model PURELY based on which chart engine a given panel happens to use, not anything the viewer did. This is a real UX inconsistency this document is naming for the record, not proposing to fix (the shadcn/Recharts-vs-Plotly-legend gap is already tracked in `project-docs/PIPELINE.md`'s deferred charting-consolidation entry).
+### the retired chart panel
+**Works:** The v2→v3 upgrade (this session, earlier) re-verified all three prior fixes correctly; the bar-silhouette skeleton is shared with the old chart library/Observable Plot per the skill's own "same shape regardless of mark type" reasoning.
+**Doesn't:** shadcn's own `ChartLegendContent` has no click-to-toggle (a real, confirmed, closed-without-fix upstream gap, already documented) — worth restating here since it's directly relevant to any IA/UX proposal: a viewer used to the old chart library's legend-click behavior on one tab and this panel type's non-interactive legend on another tab gets an inconsistent interaction model PURELY based on which chart engine a given panel happens to use, not anything the viewer did. This is a real UX inconsistency this document is naming for the record, not proposing to fix (the shadcn/the old chart library-vs-the old chart library-legend gap is already tracked in `project-docs/PIPELINE.md`'s deferred charting-consolidation entry).
 **Proposal:** No new proposal beyond restating the above for visibility — the fix (a custom legend-content component with a real `onClick`) is already implicitly scoped by the existing PIPELINE.md entry, not new work this document is inventing.
 
 ### FlowMapPanel

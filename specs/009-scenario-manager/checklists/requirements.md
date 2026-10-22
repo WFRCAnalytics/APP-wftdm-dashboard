@@ -45,7 +45,7 @@
   API surface this feature's requirements bind to (per `project-docs/ARCHITECTURE.md`/
   `project-docs/SPEC.md`'s own documented API names) — not a new implementation
   choice being introduced here. This mirrors how prior panel-type specs
-  named `d3-sankey`/`Plotly.react()`/etc. directly when the technology
+  named `d3-sankey`/`the old library API`/etc. directly when the technology
   choice was already fixed by `project-docs/SPEC.md` rather than being decided by
   the spec itself.
 - Three implementation-shaped questions were deliberately deferred to

@@ -43,13 +43,13 @@ Every row below reproduces a fixture "(intentional)" panel or `broken_scenario` 
 | Row / panel | Type | Broken mechanism | Expected UI state | Replaces (fixture) |
 |---|---|---|---|---|
 | `row_missing_metric` #1 | `table` | `metric: __nonexistent_metric__` | "Couldn't load…" error state | `Broken Table Panel` |
-| `row_missing_metric` #2 | `plotly` | `metric: __nonexistent_metric__` | error state | `Broken Panel` |
+| `row_missing_metric` #2 | `the old chart library` | `metric: __nonexistent_metric__` | error state | `Broken Panel` |
 | `row_missing_metric` #3 | `sankey` | `metric: __nonexistent_metric__` | error state | `Sankey Broken Panel` |
 | `row_missing_metric` #4 | `flowmap` | `metric: __nonexistent_metric__` | error state (map chrome may still mount) | `Flow Map Broken Panel` |
 | `row_missing_metric` #5 | `zonemap` | `metric: __nonexistent_metric__` | error state | `Zone Map Broken Panel` |
-| `row_missing_metric` #6 | `recharts` | `metric: __nonexistent_metric__` | error state | `Recharts Broken Panel` |
+| `row_missing_metric` #6 | `the old chart library` | `metric: __nonexistent_metric__` | error state | `the old chart library Broken Panel` |
 | `row_missing_metric` #7 | `observable-plot` | `metric: __nonexistent_metric__` | error state | `Observable Plot Broken Panel` |
-| `row_bad_chart_type` | `recharts` | `chart_type: pie` | runtime validation error, surfaced before query | `Recharts Invalid Chart Type` |
+| `row_bad_chart_type` | `the old chart library` | `chart_type: pie` | runtime validation error, surfaced before query | `the old chart library Invalid Chart Type` |
 | `row_bad_basemap` #1 | `flowmap` | `basemap: totally-made-up-preset-name` | blank-style fallback; **flow lines still render** (FR-010/SC-004 of 011) | `Flowmap Unreachable Basemap` |
 | `row_bad_basemap` #2 | `zonemap` | `basemap: totally-made-up-preset-name` | blank-style fallback; **choropleth still renders** | `Zone Map Unreachable Basemap` |
 | `row_broken_composition` | `flowmap` | `basemap: { layers: [ { url: "https://invalid.example/nope.json" } ] }` | blank-style fallback; data content still renders | `Flowmap Broken Composition Layer` |
@@ -61,7 +61,7 @@ Every row below reproduces a fixture "(intentional)" panel or `broken_scenario` 
 | `row_valuebox_edge` #1 | `valuebox` | `sparkline: { metric: __nonexistent__, x: …, y: … }` | scalar value renders; sparkline shows its own error/empty, panel not blocked | 034 sparkline missing-metric |
 | `row_valuebox_edge` #2 | `valuebox` | `baseline_trend: { expr: "a.__missing_col__ - b.total_persons" }` | scalar renders; trend badge shows neutral/`Minus` or error, not a false arrow | 034 baseline_trend no-op |
 | `row_bad_diff` | `table` | `comparison: { diff: { a: __nope_a__, b: __nope_b__ } }` | error / "no data" state, no crash | `comparison: diff` unresolvable fixture |
-| `row_empty_result` #1 | `recharts` | `filter: { primary_purpose: __no_such_purpose__ }` | empty-state (`PanelEmptyState`) | `Recharts Empty Result` |
+| `row_empty_result` #1 | `the old chart library` | `filter: { primary_purpose: __no_such_purpose__ }` | empty-state (`PanelEmptyState`) | `the old chart library Empty Result` |
 | `row_empty_result` #2 | `graphic-walker` | `filter: { primary_purpose: __no_such_purpose__ }` | empty-state | `Free-form Visual Analytics Empty` |
 | `row_basemap_precedence` #1 | `flowmap` | no panel `basemap:`; tab has `default_basemap: <preset X>` | resolves to tab default X (panel > **tab** > global > app-default) | `dashboard-3-basemaps.yaml` precedence matrix |
 | `row_basemap_precedence` #2 | `flowmap` | panel `basemap: <preset Y>` overriding the tab default | resolves to Y | same |

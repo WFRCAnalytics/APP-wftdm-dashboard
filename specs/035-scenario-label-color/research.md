@@ -13,10 +13,10 @@ literal string `'scenario'`, uniformly across all three chart panel types.
 **Rationale**: `services/sqlExpander.ts`'s `$scenario.<metric>` union
 (the only mechanism that ever populates this column) always names it
 literally `scenario` (`'${name}' AS scenario`, confirmed in spec.md's
-research). For `plotly`, `trace.color`/`trace.name` go through
+research). For `the old chart library`, `trace.color`/`trace.name` go through
 `resolveColumnName()` first — `resolveColumnName('$scenario')` already
 returns `'scenario'` today, so checking `splitColumn === 'scenario'` in
-`resolveTraces()` needs no new resolution step. For `recharts`/
+`resolveTraces()` needs no new resolution step. For `the old chart library`/
 `observable-plot`, `series`/`fill`/`stroke` are literal column names
 already (not `$`-prefixed placeholders — confirmed directly against a real
 published config, `public/demo-dashboard-config/dashboard-1-summary.yaml`'s
@@ -26,7 +26,7 @@ published config, `public/demo-dashboard-config/dashboard-1-summary.yaml`'s
 **Alternatives considered**: Checking the raw placeholder token
 (`trace.color === '$scenario'`) before resolution, to avoid a
 theoretical false-positive if some metric's own SQL happened to produce a
-real data column literally named `scenario`. Rejected: `plotlyTraces.ts`
+real data column literally named `scenario`. Rejected: `a retired chart helper`
 already has this exact same structural ambiguity today (it groups by
 whatever column `splitColumn` resolves to, with no way to distinguish "the
 sentinel-produced column" from "a coincidentally-named real column") —
@@ -45,11 +45,11 @@ appState.ts` and hands it to whichever panel component needs it.
 
 **Rationale**: Matches this codebase's own established split exactly —
 every other panel type already separates DOM-free pure logic
-(`plotlyTraces.ts`, `sankeyGraph.ts`, `flowmapData.ts`,
-`observablePlotEncoding.ts`, `rechartsEncoding.ts`,
+(`a retired chart helper`, `sankeyGraph.ts`, `flowmapData.ts`,
+`observablePlotEncoding.ts`, `a retired chart helper`,
 `expandablePanelTypes.ts`) from the React component that calls it, both
 for independent Vitest coverage and because some of those modules
-(`plotlyTraces.ts`) cannot safely import anything with a browser-global
+(`a retired chart helper`) cannot safely import anything with a browser-global
 side effect at module load. `034-metric-panel-redesign` hit exactly this
 constraint building `panels/expandablePanelTypes.ts` — the same reasoning
 applies here: `panels/scenarioDisplay.ts` must stay import-safe from a
@@ -100,17 +100,17 @@ true}` for the "show a legend" case): an explicit `range` array is
 matched positionally against `domain` and replaces Plot's own internal
 default cycling for the WHOLE scale — there is no way to say "use my
 color for category A, but fall back to your own default cycle color for
-category B" within one scale. `plotly`/`recharts` don't have this
-constraint (`plotlyTraces.ts` sets `marker.color` per-trace independently;
-`rechartsEncoding.ts` sets `chartConfig[key].color` per-series
+category B" within one scale. `the old chart library`/`the old chart library` don't have this
+constraint (`a retired chart helper` sets `marker.color` per-trace independently;
+`a retired chart helper` sets `chartConfig[key].color` per-series
 independently), so only `observable-plot` needs this all-or-nothing rule.
 
 **Alternatives considered**: Filling any un-resolved scenario's `range`
 slot with a value from `d3-scale-chromatic`'s `schemeObservable10` (Plot's
 own real default categorical scheme — already a real, installed
 dependency in this codebase, imported by `SankeyPanel.tsx` for Tableau10
-and `RechartsPanel.tsx`'s own `--chart-1..5` tokens per `033`/
-`rechartsPanel.css`'s history) to mimic Plot's default cycling exactly,
+and `the retired chart panel`'s own `--chart-1..5` tokens per `033`/
+`a retired chart panel file`'s history) to mimic Plot's default cycling exactly,
 category by category. Rejected as unnecessary complexity for this
 feature's actual scope: it would require reproducing Plot's own internal
 first-seen assignment order exactly (a real risk of a subtle, hard-to-spot
@@ -130,8 +130,8 @@ shallow row copy with that one field's value replaced by
 
 **Rationale**: Per spec.md's own research, Observable Plot reads legend/
 axis/facet text directly from each row's own cell value (no separate
-"trace name" or "chart config label" indirection the way `plotly`/
-`recharts` have) — this is the one point in this whole feature where
+"trace name" or "chart config label" indirection the way `the old chart library`/
+`the old chart library` have) — this is the one point in this whole feature where
 label substitution genuinely happens to the DATA the chart renders from,
 not to a separate display-string field. This is still safe under FR-002/
 FR-003: by the time `resolveObservablePlotEncoding()` runs, the SQL query

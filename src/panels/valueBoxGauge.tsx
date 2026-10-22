@@ -20,7 +20,7 @@ const HEIGHT = OUTER_RADIUS + PADDING * 2
 // (scenarioStatusColor.ts's own history already records a real prior
 // decision NOT to invent one when a real status didn't strictly need
 // it) — --chart-2 is reused for "warn" instead, this app's own real,
-// already WCAG-verified amber-gold categorical token (rechartsPanel.css's
+// already WCAG-verified amber-gold categorical token (a retired chart panel file's
 // own recorded palette history), rather than adding and re-verifying a
 // new token pair for this one component.
 const STATUS_COLOR: Record<GaugeStatus, string> = {

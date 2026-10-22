@@ -33,7 +33,7 @@ them on their own (`npx playwright test <file> -g "<title>"`) before calling the
 | `graphicWalkerPanel.spec.ts` | 1 |
 | `lazyTabLoading.spec.ts` | 1 |
 | `observablePlotPanel.spec.ts` | 1 |
-| `rechartsPanel.spec.ts` | 1 |
+| `a retired chart panel file` | 1 |
 | `sunburstPanel.spec.ts` | 1 |
 | `tablePanel.spec.ts` | 1 |
 | `treemapPanel.spec.ts` | 1 |
@@ -46,7 +46,7 @@ them on their own (`npx playwright test <file> -g "<title>"`) before calling the
 - `hierarchicalChartTheming.spec.ts:75` User Story 3 - A viewer cannot tell these charts use a different rendering technology › dark mode: every fill remains resolved to the current (dark) --chart-1..5 values, and stays legible
 - `lazyTabLoading.spec.ts:25` User Story 1 - Fast landing on the tab a viewer actually opens › the landing tab registers only its own real referenced metrics, not the full deployment catalog
 - `observablePlotPanel.spec.ts:436` User Story 2 - Author adds panel-local reactive input controls › a select/multiselect input's fetched option list is unaffected by its own current value
-- `rechartsPanel.spec.ts:121` User Story 1 - Author renders a bar, line, or area chart with the new default engine › chart_type: bar renders one bar per distinct series value, each a genuinely distinct real --chart-N color
+- `a retired chart panel file:121` User Story 1 - Author renders a bar, line, or area chart with the new default engine › chart_type: bar renders one bar per distinct series value, each a genuinely distinct real --chart-N color
 - `sankeyPanel.spec.ts:228` User Story 1 - Author renders a two-column flow metric as a Sankey diagram › a rejected/unresolvable config renders PanelErrorState
 - `sankeyPanel.spec.ts:253` User Story 2 - Sankey panel responds to real, live reactive changes › a literal filter matching zero rows shows PanelEmptyState
 - `scenarioAutoActivation.spec.ts:128` 038 auto-activation (discovery-activation.md DA-1..DA-8) › DA-3: an unpinned $scenario panel spans exactly the ready scenarios, with no failed-scenario error
@@ -92,12 +92,12 @@ them on their own (`npx playwright test <file> -g "<title>"`) before calling the
 
 ## Flaky (failed in the full pass, passed on retry)
 - `flowmapPanel.spec.ts:1610` 017-multi-sprite-support — US1: both UGRC panels' highway/route-shield icons resolve › Flowmap UGRC Composition — LiteLabels' own highway-shield icons are present
-- `rechartsComboChart.spec.ts:84` chart_type: combo (Trip tab, "Trip Volume vs. Average Distance by Purpose") › the line layer uses its own independent right-axis scale, not the bar layer's left-axis range
-- `rechartsPanel.spec.ts:241` User Story 1 - Author renders a bar, line, or area chart with the new default engine › chart_type: line and chart_type: area render correctly with the same data-binding and theming, changing only the visual mark
-- `rechartsPanel.spec.ts:300` User Story 1 - Author renders a bar, line, or area chart with the new default engine › a zero-row query renders PanelEmptyState; a rejected query renders PanelErrorState
-- `rechartsPanel.spec.ts:324` User Story 2 - Existing panel types remain completely unaffected › plotly, recharts, observable-plot, and sankey panels each render without error, including two side by side on one tab
-- `rechartsPanel.spec.ts:395` User Story 3 - A viewer gets useful, on-brand tooltips without extra author work › hovering a bar shows a real tooltip matching the underlying query value(s) for that point
-- `rechartsPanel.spec.ts:442` User Story 3 - A viewer gets useful, on-brand tooltips without extra author work › the tooltip surface and text remain legible in both light and dark mode
+- `a retired chart spec:84` chart_type: combo (Trip tab, "Trip Volume vs. Average Distance by Purpose") › the line layer uses its own independent right-axis scale, not the bar layer's left-axis range
+- `a retired chart panel file:241` User Story 1 - Author renders a bar, line, or area chart with the new default engine › chart_type: line and chart_type: area render correctly with the same data-binding and theming, changing only the visual mark
+- `a retired chart panel file:300` User Story 1 - Author renders a bar, line, or area chart with the new default engine › a zero-row query renders PanelEmptyState; a rejected query renders PanelErrorState
+- `a retired chart panel file:324` User Story 2 - Existing panel types remain completely unaffected › the old chart library, observable-plot, and sankey panels each render without error, including two side by side on one tab
+- `a retired chart panel file:395` User Story 3 - A viewer gets useful, on-brand tooltips without extra author work › hovering a bar shows a real tooltip matching the underlying query value(s) for that point
+- `a retired chart panel file:442` User Story 3 - A viewer gets useful, on-brand tooltips without extra author work › the tooltip surface and text remain legible in both light and dark mode
 - `sunburstPanel.spec.ts:88` User Story 2 - Author renders the same real hierarchy as a zoomable sunburst › clicking a non-leaf arc zooms so it becomes the center; clicking the center circle zooms back out
 - `treemapPanel.spec.ts:92` User Story 1 - Author renders a real hierarchical breakdown as a zoomable treemap › hovering any region shows its real underlying value, cross-checked against a direct query
 - `treemapPanel.spec.ts:107` User Story 1 - Author renders a real hierarchical breakdown as a zoomable treemap › a zero-row query renders the shared PanelEmptyState; a broken-metric config renders the shared PanelErrorState
@@ -109,7 +109,7 @@ them on their own (`npx playwright test <file> -g "<title>"`) before calling the
 ## Investigation of the eight files `CLAUDE.md` does not list
 
 `CLAUDE.md` names about eight spec files as already failing (settingsModal, observablePlotPanel, tablePanel,
-scenarioManager, valueBoxPanel, sankeyPanel, rechartsPanel, scenarioAutoActivation). At this baseline six of those fail
+scenarioManager, valueBoxPanel, sankeyPanel, the retired chart panel, scenarioAutoActivation). At this baseline six of those fail
 and `scenarioManager` and `valueBoxPanel` pass. Eight other files also had stable failures (11 tests). Each was rerun alone:
 
 | Result when run alone | Tests |
@@ -151,7 +151,7 @@ spec files ran 162 tests: 152 passed, 10 failed. Three of the ten are baseline f
 border/tooltip assertions fixed afterwards and then verified passing. The remaining three zonemap tests
 (`zonemapPanel.spec.ts:535, 553, 657`) wait on `data-render-count` for the Test tab's maps, which takes about 10 s here
 against a 10 s poll. That same ~10 s appears on the P0 commit (`cc88765`, measured in a worktree), so it is a timing
-edge, not a P1 regression. The earlier recharts, sunburst, treemap and demoMultiScenario failures passed on the re-run
+edge, not a P1 regression. The earlier the old chart library, sunburst, treemap and demoMultiScenario failures passed on the re-run
 (load-sensitive).
 
 ## P3 (model years, compare state)
@@ -185,7 +185,7 @@ A full pass plus retry found 22 failures outside the baseline list. Causes found
 open after a mouse click and covered the left of the page, so hover and click targets there were blocked (the nav now
 steps aside after a mouse click and expands on keyboard focus only); a mouse press expanded the nav and inserted the
 sub-list mid-click, dropping the click (focus-based expansion is now `:focus-visible` only); specs that read nav labels
-or sub-items now hover the nav first; a Recharts combo-chart spec measured before the bar paths existed (now waits). With
+or sub-items now hover the nav first; a the old chart library combo-chart spec measured before the bar paths existed (now waits). With
 one worker the affected files finish with only timing-edge failures: `flowmapPanel.spec.ts:1743` (offline fallback, 10 s
 poll) and `zonemapPanel.spec.ts:1261` (shared boundaries file, 10 s poll), the same kind as the P1 zonemap entries.
 

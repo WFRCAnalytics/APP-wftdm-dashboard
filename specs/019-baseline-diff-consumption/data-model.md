@@ -14,14 +14,14 @@ export interface ComparisonCapablePanelConfig {
 | Field | Type | Meaning |
 |---|---|---|
 | `comparison` | `'side_by_side' \| ComparisonDiff` (optional) | Unchanged in shape from `013-zonemap-panel`'s existing field — omitted or `'side_by_side'` means no change from pre-existing behavior. |
-| `compare_on` | `string[]` (optional) | NEW. Names the column(s) that jointly identify a "comparable row" between the two sides of a diff. Required in practice for `plotly`/`table`/`observable-plot` when `comparison` is the `diff` shape (no reasonable single-column default exists for them — Assumptions). For `zonemap`, defaults to `[metric_id]` when omitted, preserving every existing zonemap `comparison: diff` config unchanged. |
+| `compare_on` | `string[]` (optional) | NEW. Names the column(s) that jointly identify a "comparable row" between the two sides of a diff. Required in practice for `the old chart library`/`table`/`observable-plot` when `comparison` is the `diff` shape (no reasonable single-column default exists for them — Assumptions). For `zonemap`, defaults to `[metric_id]` when omitted, preserving every existing zonemap `comparison: diff` config unchanged. |
 
 ### Consumers (all four, identical mixin)
 
 | Panel type | Before | After |
 |---|---|---|
 | `ZoneMapPanelConfig` | Declares `comparison?: 'side_by_side' \| ComparisonDiff` locally | `extends DataBoundPanelConfigBase, MapRenderingPanelConfig, ComparisonCapablePanelConfig` — local `comparison` field removed, now inherited (adds `compare_on` to zonemap too, optional) |
-| `PlotlyPanelConfig` | No comparison concept | `extends DataBoundPanelConfigBase, ComparisonCapablePanelConfig` |
+| `RetiredChartPanelConfig` | No comparison concept | `extends DataBoundPanelConfigBase, ComparisonCapablePanelConfig` |
 | `TablePanelConfig` | No comparison concept | `extends DataBoundPanelConfigBase, ComparisonCapablePanelConfig` |
 | `ObservablePlotPanelConfig` | No comparison concept | `extends DataBoundPanelConfigBase, ComparisonCapablePanelConfig` |
 
@@ -51,7 +51,7 @@ Always the literal column name `diff_value` in the query result — unchanged fr
 | Panel type | `diff_value: null` rendering |
 |---|---|
 | `table` | `formatValue()` → `'N/A'` (new explicit branch); `cellColor()` → a dedicated, visibly-distinct "not computable" color (new explicit branch), never blended into the real color scale |
-| `plotly` | Point omitted — Plotly.js's own native null-handling, zero new code |
+| `the old chart library` | Point omitted — the old chart library's own native null-handling, zero new code |
 | `observable-plot` | Row filtered out before `Plot.plot()` sees it — `resolveObservablePlotEncoding()`'s new explicit filter (corrected during implementation: `barY`'s own native handling was empirically found to render a null y as a real `height="0"` rect at the real-0-value position instead, research.md §6) |
 | `zonemap` | Unaffected by this feature — `013`'s own existing `resolveZoneFillColor()` already handles a missing/null value correctly (the precedent this feature's `table` fix is modeled on) |
 
@@ -62,4 +62,4 @@ No new state. Each panel type's own existing fetch effect gains:
 2. Its return value added to the fetch effect's dependency array (FR-016).
 3. A `comparison: diff` branch inside that SAME effect (mirroring `ZoneMapPanel.tsx`'s own existing `isComparisonDiff(config.comparison) ? ... : ...` branch) — not a second, separate effect.
 
-No component's render-time JSX structure changes beyond what already renders `diff_value`-bound content through its own pre-existing field-binding grammar (`x`/`y`/`color` for plotly, `x`/`y`/`fill`/`stroke` for observable-plot, `field` for table columns) — no new JSX, no new component.
+No component's render-time JSX structure changes beyond what already renders `diff_value`-bound content through its own pre-existing field-binding grammar (`x`/`y`/`color` for the old chart library, `x`/`y`/`fill`/`stroke` for observable-plot, `field` for table columns) — no new JSX, no new component.

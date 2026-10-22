@@ -25,7 +25,7 @@ function tab(layout: Record<string, PanelConfig[]>): DashboardTabConfig {
   return { header: { tab: 'Test', title: 'Test Tab' }, filters: [], layout }
 }
 
-const plotly = (metric: string, extra: Partial<ObservablePlotPanelConfig> = {}): ObservablePlotPanelConfig => ({
+const chartPanel = (metric: string, extra: Partial<ObservablePlotPanelConfig> = {}): ObservablePlotPanelConfig => ({
   type: 'observable-plot',
   title: 'A Chart',
   metric,
@@ -49,7 +49,7 @@ describe('computeTabDataRequirement', () => {
   })
 
   it('defaults to the active-scenario union when neither scenario nor scenarios is set', () => {
-    const t = tab({ row: [plotly('trip_mode_share')] })
+    const t = tab({ row: [chartPanel('trip_mode_share')] })
     expect(computeTabDataRequirement(t, ['a', 'b'])).toEqual([
       { scenario: 'a', metric: 'trip_mode_share' },
       { scenario: 'b', metric: 'trip_mode_share' },
@@ -57,14 +57,14 @@ describe('computeTabDataRequirement', () => {
   })
 
   it('a pinned scenario: field bypasses the active-scenario union entirely', () => {
-    const t = tab({ row: [plotly('trip_mode_share', { scenario: 'pinned_one' })] })
+    const t = tab({ row: [chartPanel('trip_mode_share', { scenario: 'pinned_one' })] })
     expect(computeTabDataRequirement(t, ['a', 'b'])).toEqual([
       { scenario: 'pinned_one', metric: 'trip_mode_share' },
     ])
   })
 
   it('an explicit scenarios: list overrides the active-scenario union', () => {
-    const t = tab({ row: [plotly('trip_mode_share', { scenarios: ['x', 'y'] })] })
+    const t = tab({ row: [chartPanel('trip_mode_share', { scenarios: ['x', 'y'] })] })
     expect(computeTabDataRequirement(t, ['a', 'b'])).toEqual([
       { scenario: 'x', metric: 'trip_mode_share' },
       { scenario: 'y', metric: 'trip_mode_share' },
@@ -73,7 +73,7 @@ describe('computeTabDataRequirement', () => {
 
   it('deduplicates two panels on the same tab referencing the same scenario+metric — the real, confirmed Network-tab od_flows case', () => {
     const t = tab({
-      row: [plotly('od_flows', { scenario: 'baseline' }), plotly('od_flows', { scenario: 'baseline' })],
+      row: [chartPanel('od_flows', { scenario: 'baseline' }), chartPanel('od_flows', { scenario: 'baseline' })],
     })
     expect(computeTabDataRequirement(t, [])).toEqual([{ scenario: 'baseline', metric: 'od_flows' }])
   })
@@ -103,7 +103,7 @@ describe('computeTabDataRequirement', () => {
   it('comparison: diff resolves both named scenarios for the one metric, ignoring the active-scenario union', () => {
     const t = tab({
       row: [
-        plotly('vmt_by_home_taz', {
+        chartPanel('vmt_by_home_taz', {
           comparison: { type: 'diff', a: 't009_scn_a', b: 't009_scn_b', expr: 'a.value - b.value' },
         }),
       ],
@@ -121,7 +121,7 @@ describe('computeTabDataRequirement', () => {
 
     const t = tab({
       row: [
-        plotly('vmt_by_home_taz', {
+        chartPanel('vmt_by_home_taz', {
           comparison: { type: 'diff', a: '$baseline', b: 't009_scn_b', expr: 'a.value - b.value' },
         }),
       ],
@@ -153,7 +153,7 @@ describe('computeTabDataRequirement', () => {
 
   it('is deterministic — sorted by scenario__metric regardless of panel/row order', () => {
     const t = tab({
-      row: [plotly('trip_mode_share', { scenario: 'z' }), plotly('trip_mode_share', { scenario: 'a' })],
+      row: [chartPanel('trip_mode_share', { scenario: 'z' }), chartPanel('trip_mode_share', { scenario: 'a' })],
     })
     expect(computeTabDataRequirement(t, [])).toEqual([
       { scenario: 'a', metric: 'trip_mode_share' },

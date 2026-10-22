@@ -19,8 +19,8 @@ type by panel type:**
 
 | Panel type | Real display surface found? | Where |
 |---|---|---|
-| `plotly` | **Yes** | `panels/plotlyTraces.ts`'s `resolveTraces()` — when a trace's `color`/`name` config resolves to the bare `$scenario` placeholder, rows are grouped by the real `scenario` column value and that same value becomes the trace's `name` (the Plotly legend label) |
-| `recharts` | **Yes** | `panels/rechartsEncoding.ts`'s `encodeRechartsData()` — when `series` is bound to the literal `scenario` column, each distinct value becomes both a pivoted-row column key AND `chartConfig[key].label` (read by shadcn's `ChartTooltipContent`/`ChartLegendContent`) |
+| `the old chart library` | **Yes** | `panels/a retired chart helper`'s `resolveTraces()` — when a trace's `color`/`name` config resolves to the bare `$scenario` placeholder, rows are grouped by the real `scenario` column value and that same value becomes the trace's `name` (the old chart library legend label) |
+| `the old chart library` | **Yes** | `panels/a retired chart helper`'s `encodeRechartsData()` — when `series` is bound to the literal `scenario` column, each distinct value becomes both a pivoted-row column key AND `chartConfig[key].label` (read by shadcn's `ChartTooltipContent`/`ChartLegendContent`) |
 | `observable-plot` | **Yes, but structurally different** | `ObservablePlotPanel.tsx` hands raw query rows straight to `Plot.plot()`; `panels/observablePlotEncoding.ts` never regroups them. When `fill`/`stroke`/`facet_x`/`facet_y` is bound to the literal `scenario` column, Observable Plot reads the legend/facet/axis text directly from each row's own cell value — there is no intermediate "trace name" or "config label" to substitute into; the row's own `scenario` cell value itself is what must display the label |
 | `table` | **Yes, cell values only — not headers** | `panels/tableLogic.ts`'s column resolution derives one column per row key when `config.columns` is absent, giving a `scenario` COLUMN a literal header of `"scenario"` (never a scenario name) — but that column's CELLS (`String(raw)` in `resolveRows()`) render the real scenario name per row. Headers are unaffected; cell values are the real surface |
 | `sankey` | **No** | `panels/sankeyGraph.ts`/`SankeyPanel.tsx` — confirmed via full-file grep: zero `scenario` references. This panel type has no scenario-keyed node/link naming today |
@@ -54,12 +54,12 @@ opposite: `Scenario.color` (populated from `manifest.yaml` by
 `state/appState.ts`'s `register()`) has **zero real rendering consumers
 anywhere in the current codebase.** The one place `project-docs/GRAMMAR.md` says
 "the panel colors by scenario" (the multi-scenario overlaid-series section)
-refers to `plotlyTraces.ts`'s own confirmed behavior of setting no explicit
-`marker.color` at all on a scenario-split trace, letting Plotly's own
+refers to `a retired chart helper`'s own confirmed behavior of setting no explicit
+`marker.color` at all on a scenario-split trace, letting the old chart library's own
 built-in default palette assign each trace a color by cycling position —
 a generic, scenario-**agnostic** mechanism with no relationship to the
 manifest `color` field. The equivalent default behaviors in
-`rechartsEncoding.ts` (`--chart-1`..`--chart-5` token cycling, by
+`a retired chart helper` (`--chart-1`..`--chart-5` token cycling, by
 first-seen order) and Observable Plot (its own built-in categorical color
 scale) are the same kind of generic cycling.
 
@@ -71,7 +71,7 @@ stated intent (a viewer overriding "that scenario's own displayed color"),
 the coherent, complete reading — treated as an informed default, not a
 new ask — is: this feature ALSO makes the manifest `color` the real
 DEFAULT color at the same three confirmed per-scenario-color surfaces Part
-A's audit already found (`plotly`, `recharts`, `observable-plot` — the
+A's audit already found (`the old chart library`, `the old chart library`, `observable-plot` — the
 three panel types where scenario can be the rendered color/series
 dimension), so scenarios get a real, consistent color across panel types
 for the first time, and the new override has a real baseline to override.
@@ -123,18 +123,18 @@ visible completion of already-shipped functionality, and every other panel
 type in the app is affected by it.
 
 **Independent Test**: Set a custom label on an active scenario, open a
-tab with a multi-scenario Plotly/Recharts/Observable Plot chart (`series`
+tab with a multi-scenario the old chart library/Observable Plot chart (`series`
 or `color`/`name` bound to scenario) and a table showing a `scenario`
 column, and confirm the label — not the raw name — appears in every
 legend/tooltip/cell. Fully testable without Part B.
 
 **Acceptance Scenarios**:
 
-1. **Given** a scenario with a custom label and an active Plotly panel
+1. **Given** a scenario with a custom label and an active the old chart library panel
    whose trace `color`/`name` resolves to `$scenario`, **When** the panel
    renders, **Then** the trace's legend name shows the custom label, not
    the real scenario name.
-2. **Given** the same setup with a Recharts panel (`series: scenario`),
+2. **Given** the same setup with a the old chart library panel (`series: scenario`),
    **When** the panel renders, **Then** the tooltip/legend show the custom
    label.
 3. **Given** the same setup with an Observable Plot panel (`fill`/`stroke`:
@@ -162,7 +162,7 @@ legend/tooltip/cell. Fully testable without Part B.
 
 A viewer comparing three scenarios finds the auto-cycled chart colors
 inconsistent and hard to track across tabs (the same scenario can render a
-different color in a Plotly chart than in a Recharts chart on the same
+different color in a the old chart library chart than in a the old chart library chart on the same
 page, since each panel type cycles its own default palette independently).
 This story gives every scenario a real, consistent color across panel
 types (from its own `manifest.yaml`), and lets a viewer override any
@@ -176,7 +176,7 @@ real, consistent color, just not a chosen one) — a complete, valuable
 feature on its own, independently shippable after Part A.
 
 **Independent Test**: Load two scenarios with different manifest colors,
-confirm a Plotly/Recharts/Observable Plot panel splitting by scenario
+confirm a the old chart library/Observable Plot panel splitting by scenario
 renders each in its own manifest color consistently; then override one
 scenario's color from the Scenarios tab and confirm every already-rendered
 panel showing that scenario updates immediately, in every one of the three
@@ -185,7 +185,7 @@ panel types, without touching Part A at all.
 **Acceptance Scenarios**:
 
 1. **Given** two active scenarios with different `manifest.yaml` colors
-   and no override set, **When** a Plotly/Recharts/Observable Plot panel
+   and no override set, **When** a the old chart library/Observable Plot panel
    splits by scenario, **Then** each scenario renders in its own manifest
    color, consistently across all three panel types.
 2. **Given** a scenario with no manifest color at all (e.g. a locally
@@ -199,7 +199,7 @@ panel types, without touching Part A at all.
    scenario's currently-effective color (its override if set, else its
    manifest color, else a neutral placeholder if neither exists).
 4. **Given** a viewer picks a new color for a scenario, **When** the pick
-   is made, **Then** every already-rendered Plotly/Recharts/Observable
+   is made, **Then** every already-rendered the old chart library/Observable
    Plot panel showing that scenario updates to the new color immediately,
    with no reload or manual re-fetch.
 5. **Given** an overridden scenario, **When** a viewer clears the
@@ -225,7 +225,7 @@ panel types, without touching Part A at all.
   comparison-diff output columns never embed a scenario name or color
   (confirmed in Research above).
 - A single dashboard tab has two panels of different types (e.g. one
-  Plotly, one Recharts) both splitting by scenario: each independently
+  the old chart library, one the old chart library) both splitting by scenario: each independently
   resolves label/color the same way, so the same scenario shows
   consistently between them.
 
@@ -237,8 +237,8 @@ panel types, without touching Part A at all.
 
 - **FR-001**: The system MUST resolve `label ?? name` at every point
   identified in Research above where a real scenario name currently
-  becomes human-facing display text: a Plotly trace's legend `name` (when
-  split by the `scenario` column), a Recharts `chartConfig[key].label`
+  becomes human-facing display text: a the old chart library trace's legend `name` (when
+  split by the `scenario` column), a the old chart library `chartConfig[key].label`
   (when `series` is bound to the `scenario` column), Observable Plot's
   rendered legend/facet/axis text (when `fill`/`stroke`/`facet_x`/
   `facet_y` is bound to the `scenario` column), and a table cell's
@@ -269,8 +269,8 @@ panel types, without touching Part A at all.
 
 - **FR-007**: The system MUST establish a real, consistent per-scenario
   default color — that scenario's own `manifest.yaml`-sourced `color` —
-  at the three confirmed per-scenario-color surfaces: a Plotly trace's
-  color (when split by the `scenario` column), a Recharts series' color
+  at the three confirmed per-scenario-color surfaces: a the old chart library trace's
+  color (when split by the `scenario` column), a the old chart library series' color
   token (when `series` is bound to the `scenario` column), and Observable
   Plot's color scale (when `fill`/`stroke` is bound to the `scenario`
   column). Before this feature, none of the three read this field at all.
@@ -345,7 +345,7 @@ panel types, without touching Part A at all.
 - `Scenario.color` (manifest-sourced) has zero real rendering consumers
   today (Research above) — this feature is understood to include wiring it
   up as each scenario's real default color at the three confirmed surfaces
-  (Plotly/Recharts/Observable Plot), not merely adding an override on top
+  (the old chart library/Observable Plot), not merely adding an override on top
   of an already-visible color. This reading matches the feature
   description's own stated framing ("today each scenario gets an
   auto-assigned color... already") and is necessary for the new override

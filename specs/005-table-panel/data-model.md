@@ -39,7 +39,7 @@ One entry in a `table` panel's `columns:` list (`project-docs/GRAMMAR.md`).
 about this panel type needs a new common field.
 
 **Union update**: `layout/types.ts`'s `PanelConfig` becomes
-`ValueBoxPanelConfig | PlotlyPanelConfig | TablePanelConfig |
+`ValueBoxPanelConfig | RetiredChartPanelConfig | TablePanelConfig |
 UnknownPanelConfig` — a `type: table` entry now parses to a real,
 narrowed type instead of falling through to `UnknownPanelConfig`'s wide
 shape.
@@ -99,4 +99,4 @@ copies (research.md §2).
 `004`'s expand-to-dialog mechanism (`usePanelExpandHost`) has no
 relationship to any of the shapes above — `TablePanel.tsx` is just
 another `PanelComponent` the mechanism portals, identical in that respect
-to `ValueBoxPanel`/`PlotlyPanel` (FR-015).
+to `ValueBoxPanel`/`the retired chart panel` (FR-015).

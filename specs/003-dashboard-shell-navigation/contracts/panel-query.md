@@ -41,7 +41,7 @@ export function resolveActiveScenarios(
  * $mappings/$bins/$sql cases, which a panel-built template never actually
  * uses (see "Composing with sqlExpander.expand()" below). Exported from
  * this module — the one place that constructs panel SQL templates — so
- * ValueBoxPanel.tsx/PlotlyPanel.tsx import it from here rather than each
+ * ValueBoxPanel.tsx/the retired chart panel import it from here rather than each
  * defining their own equivalent empty object.
  */
 export const EMPTY_SUMMARIZE_CONFIG: DashboardConfig = { raw: {}, sourcePath: '' }
@@ -54,7 +54,7 @@ export const EMPTY_SUMMARIZE_CONFIG: DashboardConfig = { raw: {}, sourcePath: ''
   runs, **then** it returns `SELECT "total_trips" FROM ($scenario.summary_kpis)`
   (or an equivalent single-column projection) — a bare `$scenario.x`
   reference, no `WHERE` clause.
-- **Given** a `PlotlyPanelConfig` with `metric: 'trip_mode_share'` and
+- **Given** a `RetiredChartPanelConfig` with `metric: 'trip_mode_share'` and
   `filter: '$filters.purpose'`, **when** `buildPanelQuery` runs, **then**
   the returned template's `WHERE` clause places the `$filters.purpose`
   reference alone on its own line, per `project-docs/GRAMMAR.md`'s documented

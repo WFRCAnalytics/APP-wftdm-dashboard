@@ -42,7 +42,7 @@ baseline_trend:
 
 Ensure a baseline scenario is currently resolved (this app's existing automatic-default-baseline rule, or an explicit designation).
 
-**Done when**: the card shows a directional badge with a percentage matching, to the same precision, what a `table`/`recharts` panel's own existing `comparison: diff` against the same two scenarios/metric/column computes.
+**Done when**: the card shows a directional badge with a percentage matching, to the same precision, what a `table`/`the old chart library` panel's own existing `comparison: diff` against the same two scenarios/metric/column computes.
 
 ## Scenario 5 — Baseline-diff mode, no baseline resolved (FR-017)
 

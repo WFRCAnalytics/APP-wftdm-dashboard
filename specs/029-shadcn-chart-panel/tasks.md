@@ -3,11 +3,11 @@
 description: "Task list for 029-shadcn-chart-panel"
 ---
 
-# Tasks: shadcn/Recharts Chart Panel Type
+# Tasks: shadcn/the old chart library Chart Panel Type
 
 **Input**: Design documents from `/specs/029-shadcn-chart-panel/`
 
-**Prerequisites**: plan.md, spec.md, research.md, data-model.md, contracts/recharts-panel.md, quickstart.md (all present)
+**Prerequisites**: plan.md, spec.md, research.md, data-model.md, contracts/retired-chart-panel.md, quickstart.md (all present)
 
 **Tests**: Included — matches this codebase's established convention (every prior panel-type feature pairs pure-module Vitest tests with Playwright integration tests).
 
@@ -25,10 +25,10 @@ description: "Task list for 029-shadcn-chart-panel"
 
 **Purpose**: The new dependency, primitive, tokens, and build config every later task needs.
 
-- [X] T001 Run `npx shadcn@latest add chart` at the repo root — adds `src/components/ui/chart.tsx` (shadcn's real, current source — research.md §5, a deliberate departure from this repo's prior hand-authored-component convention) and installs `recharts` as an npm dependency. **Real findings during execution**: the CLI's interactive per-file overwrite prompt (`card.tsx already exists`) has no non-interactive skip via `-y` alone — required piping `echo "n" | npx shadcn@latest add chart -y` to decline overwriting `card.tsx` (confirmed preserved, still carries Phase 2's own `text-base` `CardTitle` fix) while still creating `chart.tsx` (367 lines). **A real, confirmed version discrepancy from research.md**: the CLI pinned `recharts@^2.15.4`, not npm's "latest" tag (`3.10.1`) originally researched — re-verified peer deps directly against the actually-installed package (`^18.0.0` included, still compatible) and corrected research.md §6/plan.md accordingly rather than silently proceeding on stale documentation.
+- [X] T001 Run `npx shadcn@latest add chart` at the repo root — adds `src/components/ui/chart.tsx` (shadcn's real, current source — research.md §5, a deliberate departure from this repo's prior hand-authored-component convention) and installs `the old chart library` as an npm dependency. **Real findings during execution**: the CLI's interactive per-file overwrite prompt (`card.tsx already exists`) has no non-interactive skip via `-y` alone — required piping `echo "n" | npx shadcn@latest add chart -y` to decline overwriting `card.tsx` (confirmed preserved, still carries Phase 2's own `text-base` `CardTitle` fix) while still creating `chart.tsx` (367 lines). **A real, confirmed version discrepancy from research.md**: the CLI pinned `the old chart library@^2.15.4`, not npm's "latest" tag (`3.10.1`) originally researched — re-verified peer deps directly against the actually-installed package (`^18.0.0` included, still compatible) and corrected research.md §6/plan.md accordingly rather than silently proceeding on stale documentation.
 - [X] T002 [P] Add `--chart-1` through `--chart-5` to `src/styles/tokens.css`'s `:root` and `.dark` blocks. **Corrected during implementation** (research.md §1's own recorded finding): the originally-planned values gave `--chart-1`/`--chart-2` the identical dark-mode value (`--brand-wfrc-secondary-blue`, since `--primary` already resolves to it in dark mode) — a real, caught-before-shipping usability defect (two indistinguishable series colors). Final, corrected, verified values — light: `#023c5b`/`#8a5a0f`/`#3f6b74`/`#7f7a76`/`#7a4a8a`; dark: `#52b6d5`/`#f8b93e`/`#8fc1cc`/`#a8a29c`/`#c99ed6` — all 10 ≥4.24:1 against their own theme's background, and all 5 pairwise-distinct within each theme.
 - [X] T003 [P] Add a `chart` color-token group to `tailwind.config.js`'s `theme.extend.colors` (`chart: { 1: 'var(--chart-1)', 2: 'var(--chart-2)', 3: 'var(--chart-3)', 4: 'var(--chart-4)', 5: 'var(--chart-5)' }`), mirroring `success`'s own existing entry shape.
-- [X] T004 [P] Add a `recharts` `manualChunks` branch to `vite.config.ts`, splitting `recharts` into its own chunk — matching the existing `plotly`/`maps`/`graphic-walker` chunk precedent. **Corrected during implementation**: the real, confirmed dependency additions are `lodash`/`react-smooth`/`recharts-scale`/`victory-vendor` (research.md §6's own correction), not the `@reduxjs/toolkit`/`react-redux`/`immer` chain originally planned around a different, newer Recharts major version that wasn't actually the one installed.
+- [X] T004 [P] Add a `the old chart library` `manualChunks` branch to `vite.config.ts`, splitting `the old chart library` into its own chunk — matching the existing `the old chart library`/`maps`/`graphic-walker` chunk precedent. **Corrected during implementation**: the real, confirmed dependency additions are `lodash`/`react-smooth`/`old-chart-class`/`victory-vendor` (research.md §6's own correction), not the `@reduxjs/toolkit`/`react-redux`/`immer` chain originally planned around a different, newer the old chart library major version that wasn't actually the one installed.
 
 ---
 
@@ -38,9 +38,9 @@ description: "Task list for 029-shadcn-chart-panel"
 
 **⚠️ CRITICAL**: No user story implementation task can begin until this phase is complete.
 
-- [X] T005 Add `RechartsPanelConfig` to `src/layout/types.ts` (extends `DataBoundPanelConfigBase` + `ComparisonCapablePanelConfig`; fields `type: 'recharts'`, `chart_type: 'bar' | 'line' | 'area'`, `x: string`, `y: string`, `series?: string`, `stacked?: boolean` — data-model.md §1), and add it to the `PanelConfig` discriminated union.
-- [X] T006 [P] Implement `encodeRechartsData(rows, config)` in new file `src/panels/rechartsEncoding.ts` (data-model.md §3, research.md §2/§3): pivots tidy query rows into Recharts' own wide-row shape plus a `ChartConfig`, cycling `--chart-1`..`--chart-5` in first-seen order (wrapping after the fifth), leaving a missing series/x combination `undefined` (not `0`).
-- [X] T007 [P] Unit tests in new file `tests/unit/rechartsEncoding.test.ts`: no-`series` (single synthetic key) case; multi-series pivot against a real tidy shape (e.g. `purpose`/`mode`/`share`); a missing combination is `undefined` not `0`; color-cycling wraps correctly past the fifth distinct series value; output ordering is deterministic (first-seen), not re-sorted. **5/5 passing.**
+- [X] T005 Add `RetiredChartPanelConfig` to `src/layout/types.ts` (extends `DataBoundPanelConfigBase` + `ComparisonCapablePanelConfig`; fields `type: 'the old chart library'`, `chart_type: 'bar' | 'line' | 'area'`, `x: string`, `y: string`, `series?: string`, `stacked?: boolean` — data-model.md §1), and add it to the `PanelConfig` discriminated union.
+- [X] T006 [P] Implement `encodeRechartsData(rows, config)` in new file `src/panels/a retired chart helper` (data-model.md §3, research.md §2/§3): pivots tidy query rows into the old chart library' own wide-row shape plus a `ChartConfig`, cycling `--chart-1`..`--chart-5` in first-seen order (wrapping after the fifth), leaving a missing series/x combination `undefined` (not `0`).
+- [X] T007 [P] Unit tests in new file `tests/unit/a retired chart helper`: no-`series` (single synthetic key) case; multi-series pivot against a real tidy shape (e.g. `purpose`/`mode`/`share`); a missing combination is `undefined` not `0`; color-cycling wraps correctly past the fifth distinct series value; output ordering is deterministic (first-seen), not re-sorted. **5/5 passing.**
 - [X] T008 [P] Extend `tests/unit/tokenContrast.test.ts` with a new, clearly-separate check (not folded into the existing text-pair loop) asserting each `--chart-1`..`--chart-5` value achieves ≥3:1 (WCAG non-text/graphical-object minimum) against `--background`, in both `:root` and `.dark` — research.md §1's own verified ratios (all ≥4.24:1). Also added a pairwise-distinctness check (all 5 tokens resolve to different colors within each theme) — the direct regression guard for the chart-1/chart-2 dark-mode-collision bug found and fixed during T002. **11 new tests, 27/27 total passing.**
 
 **Checkpoint**: Foundation ready — the config type exists and the pivot logic is correct and unit-tested in isolation before any UI consumes it.
@@ -49,24 +49,24 @@ description: "Task list for 029-shadcn-chart-panel"
 
 ## Phase 3: User Story 1 - Author a bar, line, or area chart with the new default engine (Priority: P1) 🎯 MVP
 
-**Goal**: A dashboard author can configure a `type: recharts` panel and get a real, correctly-themed bar/line/area chart from real queried data.
+**Goal**: A dashboard author can configure a `type: the old chart library` panel and get a real, correctly-themed bar/line/area chart from real queried data.
 
-**Independent Test**: Author a `type: recharts` panel with `chart_type: bar` and real x/y/series column names; confirm it renders a real, correctly-shaped, correctly-colored chart from real data.
+**Independent Test**: Author a `type: the old chart library` panel with `chart_type: bar` and real x/y/series column names; confirm it renders a real, correctly-shaped, correctly-colored chart from real data.
 
 ### Tests for User Story 1
 
-- [X] T009 [P] [US1] Integration test in new file `tests/integration/rechartsPanel.spec.ts`: a `chart_type: bar` panel (fixture: `trip_mode_share`, `x: purpose`, `y: share`, `series: mode`) renders real bars matching a direct aggregation of the fixture data, each series colored from a distinct `--chart-N` token (real computed `fill`, not a class-name assertion — resolved live via a probe-element `getComputedStyle()` comparison against each `--chart-N`'s current color, not hardcoded hex). Also covers the FR-007 negative case directly: the real legend is visible, but clicking an entry changes nothing (`legendEntry.click({ force: true })` — a real, confirmed DOM quirk where a small legend-entry text node's own bounding box was intermittently reported as intercepted by its own parent flex row; `force: true` is the same sanctioned escape hatch `panelExpand.spec.ts`'s own Plotly legend test already establishes as precedent in this codebase). **Passing, confirmed stable across 3 consecutive re-runs** (title renamed to `"Recharts Mode Breakdown (Bar)"` — see T020's own note on the real collision this avoided).
-- [X] T010 [P] [US1] Integration test in the same file: `chart_type: line` and `chart_type: area` panels render correctly with the same data-binding and theming, changing only the visual mark. Fixture design note: `series: mode` alone (without also pinning `purpose`) would leave two distinct purposes sharing the same `distance_bin`/`mode` key, silently collapsing via `rechartsEncoding.ts`'s own last-write-wins pivot — both fixtures pin `purpose: HBW` (and the area fixture also pins `mode: SOV`) via a literal, non-`$filters.`-prefixed filter value to keep every combination unique. **Passing on first real run.**
-- [X] T011 [P] [US1] Integration test: a panel configured with an invalid `chart_type` (`pie`) fails clearly and visibly — asserts the specific surfaced error text and confirms no `.recharts-wrapper` renders at all (never a silent blank panel or an unintended fallback chart type, spec.md Edge Cases). **Passing on first real run.**
+- [X] T009 [P] [US1] Integration test in new file `tests/integration/a retired chart panel file`: a `chart_type: bar` panel (fixture: `trip_mode_share`, `x: purpose`, `y: share`, `series: mode`) renders real bars matching a direct aggregation of the fixture data, each series colored from a distinct `--chart-N` token (real computed `fill`, not a class-name assertion — resolved live via a probe-element `getComputedStyle()` comparison against each `--chart-N`'s current color, not hardcoded hex). Also covers the FR-007 negative case directly: the real legend is visible, but clicking an entry changes nothing (`legendEntry.click({ force: true })` — a real, confirmed DOM quirk where a small legend-entry text node's own bounding box was intermittently reported as intercepted by its own parent flex row; `force: true` is the same sanctioned escape hatch `panelExpand.spec.ts`'s own the old chart library legend test already establishes as precedent in this codebase). **Passing, confirmed stable across 3 consecutive re-runs** (title renamed to `"the old chart library Mode Breakdown (Bar)"` — see T020's own note on the real collision this avoided).
+- [X] T010 [P] [US1] Integration test in the same file: `chart_type: line` and `chart_type: area` panels render correctly with the same data-binding and theming, changing only the visual mark. Fixture design note: `series: mode` alone (without also pinning `purpose`) would leave two distinct purposes sharing the same `distance_bin`/`mode` key, silently collapsing via `a retired chart helper`'s own last-write-wins pivot — both fixtures pin `purpose: HBW` (and the area fixture also pins `mode: SOV`) via a literal, non-`$filters.`-prefixed filter value to keep every combination unique. **Passing on first real run.**
+- [X] T011 [P] [US1] Integration test: a panel configured with an invalid `chart_type` (`pie`) fails clearly and visibly — asserts the specific surfaced error text and confirms no `.old-chart-class` renders at all (never a silent blank panel or an unintended fallback chart type, spec.md Edge Cases). **Passing on first real run.**
 - [X] T012 [P] [US1] Integration test: a zero-row query renders the shared `PanelEmptyState`; a rejected query renders the shared `PanelErrorState` — matching every other data-bound panel type's own established failure handling. **Passing on first real run.**
 
 ### Implementation for User Story 1
 
-- [X] T013 [US1] Create `src/panels/RechartsPanel.tsx` — data-fetch effect calling `buildPanelQuery()`/`sqlExpander.expand()`/`query()` completely unmodified (contracts/recharts-panel.md), with `loading`/`ready`/`empty`/`error` status handling matching `PlotlyPanel.tsx`'s own established shape (including the `animate-pulse rounded-md bg-muted` loading skeleton every other panel type already uses). **Real TS finding during implementation**: `Bar`/`Area`/`BarChart`/`LineChart`/`AreaChart` stored in a shared `Record<string, ElementType>` and used as a dynamic JSX tag fails to typecheck — `Bar`/`Area`'s own real `getDerivedStateFromProps` static requires a concrete `dataKey` prop React's `ElementType` can't structurally satisfy generically. Fixed with `Record<string, any>`, the same deliberate, narrowly-scoped escape hatch `panels/registry.tsx`'s own value type already uses for the identical "type resolved dynamically at render time from a config value" reason — documented inline. Also added a runtime `chart_type` validity check (`VALID_CHART_TYPES`), independent of the TS union type (YAML has no schema validation at runtime) — an unsupported `chart_type` fails fast with a specific, surfaced error message before any query fires, never a silent blank panel (spec.md Edge Cases).
-- [X] T014 [US1] In `RechartsPanel.tsx`, render the resolved chart: `ChartContainer` (from `components/ui/chart.tsx`) wrapping the correct Recharts chart component per `config.chart_type` (`BarChart`/`LineChart`/`AreaChart`), one `Bar`/`Line`/`Area` element per key in `encodeRechartsData()`'s own `seriesKeys`, using `config.stacked` to set `stackId` when true — depends on T005, T006, T013.
-- [X] T015 [US1] Register the new type in `src/panels/registry.tsx` (`recharts: RechartsPanel`) — depends on T013. Follows the file's existing alphabetical-ish grouping and the established `{ config: XPanelConfig }` prop-destructuring convention (not the generic `PanelProps<T>` type), matching `SankeyPanel.tsx`'s own signature shape exactly.
-- [X] T016 [US1] Add a fixture panel to `tests/fixtures/dashboard-config/dashboard-1-summary.yaml`: `type: recharts`, `chart_type: bar`, `metric: trip_mode_share`, `x: purpose`, `y: share`, `series: mode`, `scenario: good_scenario` — for T009 to render against (no new Parquet fixture data needed, `trip_mode_share` already exists).
-- [X] T017 [US1] Added a new `row_recharts` section with two more fixture panels for `chart_type: line`/`chart_type: area` (reusing `trip_destination_dist`), one deliberately-invalid-`chart_type` (`pie`) panel, one deliberate zero-row-result panel (a literal, non-`$filters.`-prefixed filter value matching no row — for T012's empty-state coverage), and one deliberately-broken (`nonexistent_recharts_metric`) panel — matching this fixture set's own existing `(intentional)` broken-fixture naming convention throughout.
+- [X] T013 [US1] Create `src/panels/the retired chart panel` — data-fetch effect calling `buildPanelQuery()`/`sqlExpander.expand()`/`query()` completely unmodified (contracts/retired-chart-panel.md), with `loading`/`ready`/`empty`/`error` status handling matching `the retired chart panel`'s own established shape (including the `animate-pulse rounded-md bg-muted` loading skeleton every other panel type already uses). **Real TS finding during implementation**: `Bar`/`Area`/`BarChart`/`LineChart`/`AreaChart` stored in a shared `Record<string, ElementType>` and used as a dynamic JSX tag fails to typecheck — `Bar`/`Area`'s own real `getDerivedStateFromProps` static requires a concrete `dataKey` prop React's `ElementType` can't structurally satisfy generically. Fixed with `Record<string, any>`, the same deliberate, narrowly-scoped escape hatch `panels/registry.tsx`'s own value type already uses for the identical "type resolved dynamically at render time from a config value" reason — documented inline. Also added a runtime `chart_type` validity check (`VALID_CHART_TYPES`), independent of the TS union type (YAML has no schema validation at runtime) — an unsupported `chart_type` fails fast with a specific, surfaced error message before any query fires, never a silent blank panel (spec.md Edge Cases).
+- [X] T014 [US1] In `the retired chart panel`, render the resolved chart: `ChartContainer` (from `components/ui/chart.tsx`) wrapping the correct the old chart library chart component per `config.chart_type` (`BarChart`/`LineChart`/`AreaChart`), one `Bar`/`Line`/`Area` element per key in `encodeRechartsData()`'s own `seriesKeys`, using `config.stacked` to set `stackId` when true — depends on T005, T006, T013.
+- [X] T015 [US1] Register the new type in `src/panels/registry.tsx` (`the old chart library: the retired chart panel`) — depends on T013. Follows the file's existing alphabetical-ish grouping and the established `{ config: XPanelConfig }` prop-destructuring convention (not the generic `PanelProps<T>` type), matching `SankeyPanel.tsx`'s own signature shape exactly.
+- [X] T016 [US1] Add a fixture panel to `tests/fixtures/dashboard-config/dashboard-1-summary.yaml`: `type: the old chart library`, `chart_type: bar`, `metric: trip_mode_share`, `x: purpose`, `y: share`, `series: mode`, `scenario: good_scenario` — for T009 to render against (no new Parquet fixture data needed, `trip_mode_share` already exists).
+- [X] T017 [US1] Added a new `row_the old chart library` section with two more fixture panels for `chart_type: line`/`chart_type: area` (reusing `trip_destination_dist`), one deliberately-invalid-`chart_type` (`pie`) panel, one deliberate zero-row-result panel (a literal, non-`$filters.`-prefixed filter value matching no row — for T012's empty-state coverage), and one deliberately-broken (`nonexistent_the old chart library_metric`) panel — matching this fixture set's own existing `(intentional)` broken-fixture naming convention throughout.
 
 **Checkpoint**: User Story 1 is fully functional and independently testable — a real bar/line/area chart renders correctly from real data.
 
@@ -74,18 +74,18 @@ description: "Task list for 029-shadcn-chart-panel"
 
 ## Phase 4: User Story 2 - Existing panel types remain completely unaffected (Priority: P1)
 
-**Goal**: `plotly`/`observable-plot`/`sankey` panels render and behave exactly as before this feature shipped.
+**Goal**: `the old chart library`/`observable-plot`/`sankey` panels render and behave exactly as before this feature shipped.
 
-**Independent Test**: Render a tab with one panel of each existing chart-rendering type alongside a new `recharts` panel; confirm all four render correctly and none of the three pre-existing types' own behavior changed.
+**Independent Test**: Render a tab with one panel of each existing chart-rendering type alongside a new `the old chart library` panel; confirm all four render correctly and none of the three pre-existing types' own behavior changed.
 
 ### Tests for User Story 2
 
-- [X] T018 [P] [US2] Integration test in `tests/integration/rechartsPanel.spec.ts`: a tab mixing `plotly`/`observable-plot`/`sankey`/`recharts` panels together renders all four without error (matching `observablePlotPanel.spec.ts`'s own existing "renders all of them without error" regression pattern for the registry). **Passing.**
-- [X] T019 [P] [US2] Integration test: an existing `plotly` panel's own interactive legend click-to-toggle-trace-visibility still works exactly as before (a direct regression guard for FR-010, since this is the one capability this feature explicitly does NOT replicate and must not accidentally break either). **Passing.**
+- [X] T018 [P] [US2] Integration test in `tests/integration/a retired chart panel file`: a tab mixing `the old chart library`/`observable-plot`/`sankey`/`the old chart library` panels together renders all four without error (matching `observablePlotPanel.spec.ts`'s own existing "renders all of them without error" regression pattern for the registry). **Passing.**
+- [X] T019 [P] [US2] Integration test: an existing `the old chart library` panel's own interactive legend click-to-toggle-trace-visibility still works exactly as before (a direct regression guard for FR-010, since this is the one capability this feature explicitly does NOT replicate and must not accidentally break either). **Passing.**
 
 ### Implementation for User Story 2
 
-- [X] T020 [US2] Run the full existing `npm run test:unit` and `npx playwright test` suites and confirm zero regressions in any pre-existing `plotly`/`observable-plot`/`sankey`/panel-registry test file (SC-004). **Vitest: 308/308 passing.** Playwright full run initially showed 11 failures — **one real, confirmed regression found and fixed**: the new bar-chart fixture's title `"Recharts Mode Share by Purpose (Bar)"` contained `markdownPanel.spec.ts`'s own non-exact `getByText('Mode Share by Purpose')` query as a substring, causing a strict-mode-violation collision (two matching elements). Renamed the fixture panel to `"Recharts Mode Breakdown (Bar)"` (grepped the whole `tests/integration/` tree first to confirm no other collision) — `markdownPanel.spec.ts` now passes clean. The remaining 10 failures (`flowmapPanel.spec.ts`/`zonemapPanel.spec.ts`'s own `027-map-auto-fit-and-reset` polish tests, `scenarioManager.spec.ts`'s local-scenario-load test, `graphicWalkerPanel.spec.ts`) were each independently re-run in isolation; several passed clean once isolated from full-suite resource contention (matching Phase 2's own documented "transient system-load noise" finding). Two (`flowmapPanel.spec.ts`'s and `scenarioManager.spec.ts`'s "Settings button" clicks — "element is outside of the viewport") reproduced consistently even alone — but a direct `git stash` comparison against the ORIGINAL, unmodified `dashboard-1-summary.yaml` (this feature's fixture additions fully removed) reproduced the identical failure, confirming it's genuinely pre-existing and unrelated to this feature, not something to fix here. Zero regressions in any `plotly`/`observable-plot`/`sankey`/panel-registry test file specifically (SC-004's own named scope) — confirmed both directly (none of the 11 failures touch those files) and via the dedicated T019 regression test passing.
+- [X] T020 [US2] Run the full existing `npm run test:unit` and `npx playwright test` suites and confirm zero regressions in any pre-existing `the old chart library`/`observable-plot`/`sankey`/panel-registry test file (SC-004). **Vitest: 308/308 passing.** Playwright full run initially showed 11 failures — **one real, confirmed regression found and fixed**: the new bar-chart fixture's title `"the old chart library Mode Share by Purpose (Bar)"` contained `markdownPanel.spec.ts`'s own non-exact `getByText('Mode Share by Purpose')` query as a substring, causing a strict-mode-violation collision (two matching elements). Renamed the fixture panel to `"the old chart library Mode Breakdown (Bar)"` (grepped the whole `tests/integration/` tree first to confirm no other collision) — `markdownPanel.spec.ts` now passes clean. The remaining 10 failures (`flowmapPanel.spec.ts`/`zonemapPanel.spec.ts`'s own `027-map-auto-fit-and-reset` polish tests, `scenarioManager.spec.ts`'s local-scenario-load test, `graphicWalkerPanel.spec.ts`) were each independently re-run in isolation; several passed clean once isolated from full-suite resource contention (matching Phase 2's own documented "transient system-load noise" finding). Two (`flowmapPanel.spec.ts`'s and `scenarioManager.spec.ts`'s "Settings button" clicks — "element is outside of the viewport") reproduced consistently even alone — but a direct `git stash` comparison against the ORIGINAL, unmodified `dashboard-1-summary.yaml` (this feature's fixture additions fully removed) reproduced the identical failure, confirming it's genuinely pre-existing and unrelated to this feature, not something to fix here. Zero regressions in any `the old chart library`/`observable-plot`/`sankey`/panel-registry test file specifically (SC-004's own named scope) — confirmed both directly (none of the 11 failures touch those files) and via the dedicated T019 regression test passing.
 
 **Checkpoint**: User Stories 1 and 2 both hold — the new panel type works, and nothing existing regressed.
 
@@ -93,18 +93,18 @@ description: "Task list for 029-shadcn-chart-panel"
 
 ## Phase 5: User Story 3 - A viewer gets useful, on-brand tooltips without extra author work (Priority: P2)
 
-**Goal**: Hovering a `recharts` panel's chart shows a real, correctly-themed tooltip with no author configuration.
+**Goal**: Hovering a `the old chart library` panel's chart shows a real, correctly-themed tooltip with no author configuration.
 
-**Independent Test**: Hover a rendered `recharts` panel's chart; a tooltip appears showing the real underlying value(s), legible in both light and dark mode.
+**Independent Test**: Hover a rendered `the old chart library` panel's chart; a tooltip appears showing the real underlying value(s), legible in both light and dark mode.
 
 ### Tests for User Story 3
 
-- [X] T021 [P] [US3] Integration test in `tests/integration/rechartsPanel.spec.ts`: hovering a bar shows a tooltip whose content matches the real underlying query value for that point — never a placeholder or stale value. **Passing, confirmed stable across 3 consecutive re-runs.** Hovers a single bar, not all four in sequence — a real, reproducible Recharts DOM quirk was found and confirmed live during implementation: once any bar in a grouped category has been hovered, Recharts' own shared-cursor highlight (`chart.tsx`'s `.recharts-tooltip-cursor`, styled `fill-muted`) spans the WHOLE category and paints on top of sibling bars, so a plain `.hover()` on a second, different bar in the same test session intermittently reports the chart's own `<svg>` as the actionability check's topmost hit target (an unrelated chart-library interaction quirk, not a defect in this app's own code) — one clean, deterministic hover already fully satisfies the requirement without chasing that quirk. A separate, real animation-timing finding also surfaced and was fixed: Recharts animates bar geometry from zero on mount by default (`d`/`height` keep changing for ~1.5s) — a new `waitForChartToSettle()` helper (polls until two consecutive reads of a shape's `d` attribute agree) is called before the first hover in every interaction test in this file.
+- [X] T021 [P] [US3] Integration test in `tests/integration/a retired chart panel file`: hovering a bar shows a tooltip whose content matches the real underlying query value for that point — never a placeholder or stale value. **Passing, confirmed stable across 3 consecutive re-runs.** Hovers a single bar, not all four in sequence — a real, reproducible the old chart library DOM quirk was found and confirmed live during implementation: once any bar in a grouped category has been hovered, the old chart library' own shared-cursor highlight (`chart.tsx`'s `.old-chart-class`, styled `fill-muted`) spans the WHOLE category and paints on top of sibling bars, so a plain `.hover()` on a second, different bar in the same test session intermittently reports the chart's own `<svg>` as the actionability check's topmost hit target (an unrelated chart-library interaction quirk, not a defect in this app's own code) — one clean, deterministic hover already fully satisfies the requirement without chasing that quirk. A separate, real animation-timing finding also surfaced and was fixed: the old chart library animates bar geometry from zero on mount by default (`d`/`height` keep changing for ~1.5s) — a new `waitForChartToSettle()` helper (polls until two consecutive reads of a shape's `d` attribute agree) is called before the first hover in every interaction test in this file.
 - [X] T022 [P] [US3] Integration test: the tooltip surface and text remain legible in both light and dark mode, verified via a real `getComputedStyle()` check on the rendered tooltip element in each theme (FR-012 — the same technique `graphicWalkerPanel.spec.ts`'s own theme test already uses), not a visual screenshot comparison. **Passing.**
 
 ### Implementation for User Story 3
 
-- [X] T023 [US3] Confirm `ChartTooltip`/`ChartTooltipContent` (from `components/ui/chart.tsx`) are wired into `RechartsPanel.tsx`'s render output — already satisfied by T014, no fix needed; T021/T022 passed on first run.
+- [X] T023 [US3] Confirm `ChartTooltip`/`ChartTooltipContent` (from `components/ui/chart.tsx`) are wired into `the retired chart panel`'s render output — already satisfied by T014, no fix needed; T021/T022 passed on first run.
 
 **Checkpoint**: All three user stories are independently functional together.
 
@@ -112,10 +112,10 @@ description: "Task list for 029-shadcn-chart-panel"
 
 ## Phase 6: Polish & Cross-Cutting Concerns
 
-- [X] T024 [P] Document `type: recharts` in `project-docs/GRAMMAR.md`, alongside the existing `type: plotly`/`type: observable-plot`/`type: sankey` sections — full grammar (`chart_type`/`x`/`y`/`series`/`stacked`), and an explicit note on what this panel type does NOT do (Sankey, legend click-to-toggle) pointing readers to `sankey`/`plotly` instead.
-- [X] T025 [P] Update `CLAUDE.md`'s panel-type list and file-tree section to record this tenth panel type (`registry.tsx`, `RechartsPanel.tsx`, `rechartsEncoding.ts`, `components/ui/chart.tsx`, the new `--chart-N` tokens, the new `recharts` Vite chunk, the new `package.json`/dependencies entry), matching this project's established per-feature documentation convention, plus a new numbered "Implementation order" entry (16) recording this feature's own real findings (the recharts version-discrepancy correction, the chart-1/chart-2 dark-mode-collision design flaw caught before shipping, and the real markdownPanel.spec.ts title-collision regression found and fixed during T020).
-- [X] T026 Re-run `npm run test:unit` and the full `npx playwright test` suite one final time after all phases land, confirming the same zero-regression result T020 already established still holds with Polish's own doc-only changes included. **Vitest: 308/308 passing.** Full Playwright run: 256 passed / 13 failed — 12 of the 13 match the exact same pre-existing/environmental class T020 already investigated and confirmed unrelated (flowmap/zonemap 027-map-auto-fit-and-reset, scenarioManager's Settings-button-viewport issue, dashboardShell/observablePlotPanel/graphicWalkerPanel timing-sensitive tests). The 13th, a `rechartsPanel.spec.ts` test, was investigated directly rather than assumed innocent: re-run in true isolation (single test, single worker) **5/5 clean**, and the full 8-test file **also passed clean 3 of 4 additional isolated runs** — confirming this is genuine environmental flakiness under sustained parallel load (matching this session's own broader documented pattern for unrelated files), not a deterministic logic bug in this feature's own code, since the exact assertion that fails differs between flaky runs and every read is a synchronous `getComputedStyle()` call with no data-fetch race actually possible. Not chased further given the repeated clean isolated evidence.
-- [X] T027 Walk through `quickstart.md`'s manual validation steps end-to-end against `npm run dev` (post `npm run dev:fixtures`). **Confirmed via real screenshots, light and dark mode** (`npm run dev:fixtures` + a standalone `vite` dev server + a real Chromium page, not just automated assertions): bar chart renders 4 genuinely distinct-colored bars with a real legend; line/area charts render correctly with their own distinct series colors; the invalid-`chart_type` panel shows the specific surfaced error text; the empty-result and broken-metric panels show their own distinct states; toggling `.dark` on `document.documentElement` re-themes every bar/line/area fill and all text/gridlines to their real dark-mode token values, remaining fully legible — no visual regression, no broken-image/black-on-dark artifact anywhere. Existing `plotly`/`observable-plot`/`sankey`/`graphic-walker` panels on the same tab render unaffected alongside the new panels.
+- [X] T024 [P] Document `type: the old chart library` in `project-docs/GRAMMAR.md`, alongside the existing `type: the old chart library`/`type: observable-plot`/`type: sankey` sections — full grammar (`chart_type`/`x`/`y`/`series`/`stacked`), and an explicit note on what this panel type does NOT do (Sankey, legend click-to-toggle) pointing readers to `sankey`/`the old chart library` instead.
+- [X] T025 [P] Update `CLAUDE.md`'s panel-type list and file-tree section to record this tenth panel type (`registry.tsx`, `the retired chart panel`, `a retired chart helper`, `components/ui/chart.tsx`, the new `--chart-N` tokens, the new `the old chart library` Vite chunk, the new `package.json`/dependencies entry), matching this project's established per-feature documentation convention, plus a new numbered "Implementation order" entry (16) recording this feature's own real findings (the old chart library version-discrepancy correction, the chart-1/chart-2 dark-mode-collision design flaw caught before shipping, and the real markdownPanel.spec.ts title-collision regression found and fixed during T020).
+- [X] T026 Re-run `npm run test:unit` and the full `npx playwright test` suite one final time after all phases land, confirming the same zero-regression result T020 already established still holds with Polish's own doc-only changes included. **Vitest: 308/308 passing.** Full Playwright run: 256 passed / 13 failed — 12 of the 13 match the exact same pre-existing/environmental class T020 already investigated and confirmed unrelated (flowmap/zonemap 027-map-auto-fit-and-reset, scenarioManager's Settings-button-viewport issue, dashboardShell/observablePlotPanel/graphicWalkerPanel timing-sensitive tests). The 13th, a `a retired chart panel file` test, was investigated directly rather than assumed innocent: re-run in true isolation (single test, single worker) **5/5 clean**, and the full 8-test file **also passed clean 3 of 4 additional isolated runs** — confirming this is genuine environmental flakiness under sustained parallel load (matching this session's own broader documented pattern for unrelated files), not a deterministic logic bug in this feature's own code, since the exact assertion that fails differs between flaky runs and every read is a synchronous `getComputedStyle()` call with no data-fetch race actually possible. Not chased further given the repeated clean isolated evidence.
+- [X] T027 Walk through `quickstart.md`'s manual validation steps end-to-end against `npm run dev` (post `npm run dev:fixtures`). **Confirmed via real screenshots, light and dark mode** (`npm run dev:fixtures` + a standalone `vite` dev server + a real Chromium page, not just automated assertions): bar chart renders 4 genuinely distinct-colored bars with a real legend; line/area charts render correctly with their own distinct series colors; the invalid-`chart_type` panel shows the specific surfaced error text; the empty-result and broken-metric panels show their own distinct states; toggling `.dark` on `document.documentElement` re-themes every bar/line/area fill and all text/gridlines to their real dark-mode token values, remaining fully legible — no visual regression, no broken-image/black-on-dark artifact anywhere. Existing `the old chart library`/`observable-plot`/`sankey`/`graphic-walker` panels on the same tab render unaffected alongside the new panels.
 - [X] T028 [P] `npx tsc --noEmit` — confirm a clean typecheck. **Clean, zero errors.**
 
 ---
@@ -125,7 +125,7 @@ description: "Task list for 029-shadcn-chart-panel"
 ### Phase Dependencies
 
 - **Setup (Phase 1)**: No dependencies — can start immediately. T001 (the dependency/primitive itself) blocks nothing else in Setup but blocks all of Phase 2/3's implementation tasks. T002/T003/T004 are independent of T001 and of each other.
-- **Foundational (Phase 2)**: Depends on Phase 1's T001 (the config type and encoding module reference `recharts`' own real types/the new tokens). BLOCKS all of Phase 3–5's implementation tasks.
+- **Foundational (Phase 2)**: Depends on Phase 1's T001 (the config type and encoding module reference `the old chart library`' own real types/the new tokens). BLOCKS all of Phase 3–5's implementation tasks.
 - **User Stories (Phase 3–5)**: All depend on Phase 2 completing. Phase 3 (US1) delivers the panel itself; Phase 4 (US2) is a pure regression check that can run any time after Phase 3's implementation lands; Phase 5 (US3) is largely already satisfied by Phase 3's own implementation and mostly adds verification.
 - **Polish (Phase 6)**: Depends on all three user stories being complete.
 
@@ -152,11 +152,11 @@ description: "Task list for 029-shadcn-chart-panel"
 # After T001 lands:
 Task: "Add --chart-1..--chart-5 to src/styles/tokens.css"
 Task: "Add a chart color-token group to tailwind.config.js"
-Task: "Add a recharts manualChunks branch to vite.config.ts"
+Task: "Add a the old chart library manualChunks branch to vite.config.ts"
 
 # After T005 lands:
-Task: "Implement encodeRechartsData() in src/panels/rechartsEncoding.ts"
-Task: "Unit tests in tests/unit/rechartsEncoding.test.ts"
+Task: "Implement encodeRechartsData() in src/panels/a retired chart helper"
+Task: "Unit tests in tests/unit/a retired chart helper"
 Task: "Extend tests/unit/tokenContrast.test.ts with the new chart-color checks"
 ```
 
@@ -188,7 +188,7 @@ structural/styling fidelity pass, per research.md §7's full record:
 fetched shadcn's own real, current registry source
 (`chart-bar-multiple.json`/`chart-bar-stacked.json`/`chart-line-
 linear.json`/`chart-area-linear.json`) and applied the confirmed real
-choices to `RechartsPanel.tsx` — `accessibilityLayer`, `tickMargin={8}`
+choices to `the retired chart panel` — `accessibilityLayer`, `tickMargin={8}`
 on `XAxis`, `cursor={false}` on `ChartTooltip` (plus `hideLabel`/
 `indicator` synthesized from the closest single-/multi-series real
 analogs), per-`chart_type` mark props (`radius={4}` on bars, directional
@@ -196,20 +196,20 @@ outer-corner radius when `stacked: true`, `type="linear"`/`strokeWidth={2}`/
 `dot={false}` on lines, `fillOpacity={0.4}` on areas), and a
 per-`chart_type` `margin` matching the real asymmetry (line/area only).
 `<YAxis>` was already absent — confirmed, not newly removed. A real,
-secondary, confirmed benefit: `cursor={false}` means Recharts never
+secondary, confirmed benefit: `cursor={false}` means the old chart library never
 renders its own shared-cursor highlight rect at all, the exact element
 that made this file's own T021 sequential-hover interaction fragile
 during the original implementation.
 
 Verified: `npx tsc --noEmit` clean; `npm run test:unit` 308/308; all 8
-`rechartsPanel.spec.ts` tests (including T021's tooltip-content
+`a retired chart panel file` tests (including T021's tooltip-content
 assertion) passing, confirmed stable across 3 consecutive re-runs with
 zero test-code changes needed; real before/after screenshots in both
 light and dark mode, plus a real hover screenshot confirming no cursor-
 highlight box paints behind the hovered bar.
 
 **A real, user-reported layout bug, found and fixed in the same
-follow-up**: every recharts chart was rendering far wider than its own
+follow-up**: every the old chart library chart was rendering far wider than its own
 PanelCard, bleeding into neighboring panels — caught from a screenshot,
 not this pass's own initial check. Root cause, confirmed via a live DOM
 measurement: `ChartContainer`'s default `aspect-video` class computed
@@ -217,16 +217,16 @@ width from the panel's explicit `height` (`350 * 16/9 = 622px`) instead
 of its real, narrow grid column, since no explicit width was set. Fixed
 with `className="aspect-auto w-full"` on `ChartContainer`. A second,
 related fixture issue surfaced by the same investigation: all six
-`row_recharts` panels shared one grid row, diluting the bar/line/area
+`row_the old chart library` panels shared one grid row, diluting the bar/line/area
 trio's real column width — once the layout bug was fixed and charts
 respected their true (narrow) width, the legend wrapped onto extra
-lines and intermittently pushed `rechartsPanel.spec.ts`'s own
+lines and intermittently pushed `a retired chart panel file`'s own
 legend-click test target outside the default test viewport. Fixed by
-splitting the fixture into `row_recharts` (bar/line/area) and
-`row_recharts_edge_cases` (invalid/empty/broken), matching this file's
+splitting the fixture into `row_the old chart library` (bar/line/area) and
+`row_retired_chart_fixture` (invalid/empty/broken), matching this file's
 own established per-concern row convention. See research.md §7 for the
 full record. Re-verified: `tsc` clean, 308/308 unit tests, 8/8
-`rechartsPanel.spec.ts` tests passing across 3 consecutive re-runs, and
+`a retired chart panel file` tests passing across 3 consecutive re-runs, and
 real before/after screenshots (both themes, both rows) confirming every
 chart now stays fully inside its own card.
 
@@ -250,7 +250,7 @@ still-present bug at real/narrower viewport widths, not fixed by round
   pairwise-distinct. Replaces the original WFRC-brand-muted palette, a
   deliberate one-time exception scoped to these 5 data-series tokens
   only — the user's own explicit direction ("bright categorical...
-  inspired by original recharts palette").
+  inspired by original the old chart library palette").
 - Browsed the real `ui.shadcn.com/charts` bar gallery: confirmed their
   own real examples never show more than 2 legend entries, and their
   real many-category examples avoid a legend entirely (gradient +
@@ -259,7 +259,7 @@ still-present bug at real/narrower viewport widths, not fixed by round
 - Fetched shadcn's CURRENT (v3) `chart.tsx` directly
   (`ui.shadcn.com/r/styles/new-york-v4/chart.json`, not the legacy path
   used earlier) and confirmed directly: `ChartLegendContent`'s own
-  className has no `flex-wrap` at all — combined with Recharts'
+  className has no `flex-wrap` at all — combined with the old chart library'
   `position: absolute` legend positioning and this app's own
   `overflow: visible` container, a legend needing more room than its
   column has genuinely overflows past the card. Fixed with
@@ -268,7 +268,7 @@ still-present bug at real/narrower viewport widths, not fixed by round
   built to support, not a workaround.
 
 Re-verified: `tsc` clean, 308/308 unit tests (2 updated expected-ratio
-rows), 8/8 `rechartsPanel.spec.ts` tests passing (zero test-code changes
+rows), 8/8 `a retired chart panel file` tests passing (zero test-code changes
 needed — the color assertions read live token values), and real
 screenshots at 1280px and 1400px, both themes, confirming the legend
 wraps cleanly at every width and the palette reads visibly brighter.
@@ -279,7 +279,7 @@ wraps cleanly at every width and the palette reads visibly brighter.
 
 User confirmed chart-series colors don't need WFRC brand matching (only
 surrounding chrome does — already true, unchanged) and asked for further
-polish "inspired from shadcn's upgrade over recharts v3 defaults" —
+polish "inspired from shadcn's upgrade over the old chart library v3 defaults" —
 dimmed reference lines, tooltip, legend, fit. Full record in
 research.md §9. Summary:
 
@@ -289,9 +289,9 @@ research.md §9. Summary:
   (tooltip border) both rely on a Tailwind opacity-modifier pattern
   already confirmed broken against this project's plain-hex tokens
   elsewhere (`mapControls.css`'s own history) — neither ever resolved to
-  the real `--border` token; gridlines silently used Recharts' own
+  the real `--border` token; gridlines silently used the old chart library' own
   hardcoded `#ccc`, the tooltip used Tailwind's generic gray-200
-  fallback. Fixed with a new `src/panels/rechartsPanel.css` (following
+  fallback. Fixed with a new `src/panels/a retired chart panel file` (following
   the exact `mapControls.css`/`graphicWalkerPanel.css` convention),
   using real `color-mix()` — verified live afterward: both now resolve
   to the actual `--border` token at 50% opacity, correctly theme-reactive.
@@ -310,7 +310,7 @@ research.md §9. Summary:
   `data-slot` attribute) is NOT adopted — this project stays on
   Tailwind v3 and has no `data-slot` convention to join.
 
-Re-verified: `tsc` clean, 308/308 unit tests, 8/8 `rechartsPanel.spec.ts`
+Re-verified: `tsc` clean, 308/308 unit tests, 8/8 `a retired chart panel file`
 tests passing, real hover screenshots in both themes confirming both
 fixes render correctly and stay theme-reactive.
 
@@ -333,7 +333,7 @@ in research.md §10. Summary:
   one necessary addition their own single-chart-per-page example never
   needed: gradient `id`s are namespaced per panel instance
   (`useId()`-derived) to avoid cross-panel `url(#id)` collisions — this
-  fixture alone renders 3 real recharts panels on one page.
+  fixture alone renders 3 real the old chart library panels on one page.
 - Considered and explicitly declined: `chart-bar-active.json`'s
   hardcoded-index active-bar treatment — a static narrative device, not
   a hover mechanism, and the benefit it'd add is already substantially
@@ -345,7 +345,7 @@ in research.md §10. Summary:
   asserting `fill` directly, since `fill` is now intentionally a
   `url(#...)` reference.
 
-Re-verified: `tsc` clean, 308/308 unit tests, 8/8 `rechartsPanel.spec.ts`
+Re-verified: `tsc` clean, 308/308 unit tests, 8/8 `a retired chart panel file`
 tests passing, real screenshots in both themes showing the gradient
 fade and smoother curves.
 
@@ -382,7 +382,7 @@ own gallery instead. Full record in research.md §11. Summary:
   the shadcn-derived palette from round 2 entirely.
 
 Re-verified: `tsc` clean, 308/308 unit tests (2 updated expected-ratio
-rows), 8/8 `rechartsPanel.spec.ts` tests passing (confirmed both alone
+rows), 8/8 `a retired chart panel file` tests passing (confirmed both alone
 and together — the same already-documented intermittent legend-click
 flake recurred once, matching round 3's own established pattern, not a
 new regression), real hover screenshots in both themes.
@@ -393,11 +393,11 @@ new regression), real hover screenshots in both themes.
 
 User's own direct question: "the tooltip feels much more snappy in
 ui.shadcn.com/charts/tooltip than in our dev server, why is that?"
-Full record in research.md §12. Real, traced answer: Recharts' own
+Full record in research.md §12. Real, traced answer: the old chart library' own
 `Tooltip` component (this project's own installed source,
 `TooltipBoundingBox.js`) applies `transition: transform 400ms ease` to
 the tooltip wrapper by default (`isAnimationActive: true`,
-`animationDuration: 400` — Recharts' own real default props) — every
+`animationDuration: 400` — the old chart library' own real default props) — every
 cursor move re-triggers a fresh 400ms glide to the new position instead
 of snapping there instantly, which is exactly what reads as "laggy"
 when moving across several points in quick succession. Fixed with
@@ -407,40 +407,40 @@ Confirmed this affects only position tracking, not the tooltip's
 appear/disappear timing (a plain, already-instant visibility toggle
 either way).
 
-Re-verified: `tsc` clean, 308/308 unit tests, 8/8 `rechartsPanel.spec.ts`
+Re-verified: `tsc` clean, 308/308 unit tests, 8/8 `a retired chart panel file`
 tests passing (confirmed alone and together).
 
 ---
 
-## Post-completion follow-up, round 7: deliberate `recharts` v2→v3 upgrade
+## Post-completion follow-up, round 7: deliberate `the old chart library` v2→v3 upgrade
 
 Explicit user instruction: upgrade the deliberately-pinned
-`recharts@^2.15.4` to the current 3.x release — a real, informed upgrade
+`the old chart library@^2.15.4` to the current 3.x release — a real, informed upgrade
 with full re-verification, not a quiet version bump. Full record in
 research.md §13. Summary:
 
 - Research first: shadcn's own docs describe a real "Updating to
-  Recharts v3" migration (4 usage-level notes, all already satisfied or
+  the old chart library v3" migration (4 usage-level notes, all already satisfied or
   inapplicable here). A real, load-bearing discovery found only by
   actually running the CLI against this repo: `npx shadcn@latest add
-  chart --dry-run` still proposes `recharts@2.15.4` and the OLD,
+  chart --dry-run` still proposes `the old chart library@2.15.4` and the OLD,
   pre-fix `chart.tsx` — this project's own `components.json` (`"style":
   "default"`) points at shadcn's legacy registry track, which was never
   upgraded to v3 at all (only their separate `new-york-v4` track was).
   Re-running the CLI is therefore NOT a path to v3 for this project —
   every change here is a manual, independently-verified port.
-- Upgraded `recharts` to `^3.10.1` (npm's own real current latest, not
+- Upgraded `the old chart library` to `^3.10.1` (npm's own real current latest, not
   the `new-york-v4` registry's own older pinned `3.8.0`). Peer deps
   confirmed compatible with this app's `react@^18.3.1`.
 - Real, confirmed dependency-chain changes (`npm ls`, not assumed):
-  `react-smooth`/`recharts-scale` gone; `@reduxjs/toolkit`/`es-toolkit`/
+  `react-smooth`/`old-chart-class` gone; `@reduxjs/toolkit`/`es-toolkit`/
   `decimal.js-light` new (a real internal move to Redux-based state);
   `victory-vendor` bumped `36.6.8`→`37.3.6`; `immer`/`react-redux`/
   `reselect`/`use-sync-external-store` also new but each already shared
   with an unrelated, pre-existing dependency. `lodash` was found to
-  never have been a real recharts dependency at all (a pre-existing
+  never have been a real the old chart library dependency at all (a pre-existing
   graphic-walker transitive one) — removed from `vite.config.ts`'s
-  `recharts` chunk rule, which is now `recharts`/`@reduxjs/toolkit`/
+  `the old chart library` chunk rule, which is now `the old chart library`/`@reduxjs/toolkit`/
   `es-toolkit`/`decimal.js-light`/`victory-vendor` only.
 - Real, necessary `chart.tsx` type ports (confirmed by real `tsc`
   failures before each fix, not style choices): `ChartTooltipContent`'s
@@ -462,7 +462,7 @@ research.md §13. Summary:
   entirely) — `transitionDuration` still measured `0s` in both themes.
 
 Re-verified: `npx tsc --noEmit` clean, `npm run test:unit` 308/308 (zero
-test-code changes needed), 8/8 `rechartsPanel.spec.ts` tests passing
-unchanged, a full production build succeeding with the `recharts` chunk
+test-code changes needed), 8/8 `a retired chart panel file` tests passing
+unchanged, a full production build succeeding with the `the old chart library` chunk
 correctly isolated (379.55 kB / 105.60 kB gzip), and real before/after
 screenshots in both themes.

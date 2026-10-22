@@ -18,7 +18,7 @@ already-shipped default categorical palette (spec.md's own research) —
 referencing them by name (not copying their current hex values into a
 second location) means a future retheme of `tokens.css` automatically
 carries through to the scenario-color default too, with nothing in this
-feature needing to change. `panels/rechartsEncoding.ts`'s own existing
+feature needing to change. `panels/a retired chart helper`'s own existing
 fallback (`` `var(--chart-${tokenNumber})` ``) already proves this exact
 string shape is the established convention for "the default categorical
 color, by reference" in this codebase.
@@ -43,7 +43,7 @@ own configuration is fixed at boot, never changes mid-session).
 already visits every registered scenario in one pass (§4 below covers its
 full, corrected shape) — the array index from that SAME pass is what
 `resolveDefaultScenarioColor()` receives, matching
-`rechartsEncoding.ts`'s own "first-seen/registration order" cycling
+`a retired chart helper`'s own "first-seen/registration order" cycling
 convention exactly (spec.md FR-004).
 
 **Rationale**: Keeps `panels/scenarioDisplay.ts` importable from a
@@ -82,29 +82,29 @@ the fetch/parse layer.
 ## §4. A real reactivity gap found during planning: the shipped default must re-resolve on a theme flip
 
 **Finding**: `DEFAULT_PALETTE` entries are `var(--chart-N)` REFERENCES
-(§1), but every real color consumer downstream — `plotlyTraces.ts`'s
-`marker.color`, `rechartsEncoding.ts`'s `chartConfig[key].color`,
+(§1), but every real color consumer downstream — `a retired chart helper`'s
+`marker.color`, `a retired chart helper`'s `chartConfig[key].color`,
 `observablePlotEncoding.ts`'s `plotOptions.color.range` — ultimately needs
 a CONCRETE color value, not a raw CSS variable reference. Confirmed
-directly: `PlotlyPanel.tsx`'s own existing `resolveThemeLayout()` already
+directly: `the retired chart panel`'s own existing `resolveThemeLayout()` already
 resolves every token color it needs via `getComputedStyle(el)` rather than
-ever handing Plotly a raw `var(--x)` string — the established, proven
+ever handing the old chart library a raw `var(--x)` string — the established, proven
 pattern in this exact codebase for "a CSS token needs to reach a
 rendering library that doesn't sit inside the normal DOM/CSS cascade the
-way a plain styled `<div>` does." `rechartsEncoding.ts`'s own EXISTING
+way a plain styled `<div>` does." `a retired chart helper`'s own EXISTING
 `` `var(--chart-${n})` `` fallback is the one case that already works
-un-resolved (Recharts renders through ordinary React-owned DOM elements
+un-resolved (the old chart library renders through ordinary React-owned DOM elements
 with a real inherited CSS cascade) — but `observablePlotEncoding.ts`'s
 `range` array is new territory for this exact string shape (035 never put
 a raw CSS-var string there before, only real resolved hex values from
-`Scenario.color`), and Plotly's own SVG-attribute rendering path is
+`Scenario.color`), and the old chart library's own SVG-attribute rendering path is
 confirmed NOT to reliably honor `var()` the same way.
 
 **Decision**: Resolve `var(--chart-N)` to a concrete value in exactly one
 place — `hooks/useScenarioDisplay.ts` itself — before it ever reaches any
 panel-type-specific code. The hook already has real DOM access (it's a
 React hook, not a pure module); resolving centrally here means
-`plotlyTraces.ts`/`rechartsEncoding.ts`/`observablePlotEncoding.ts` all
+`a retired chart helper`/`a retired chart helper`/`observablePlotEncoding.ts` all
 keep receiving an already-concrete value exactly as they do today, with
 zero changes to any of the three (matching spec.md FR-007's own explicit
 requirement that none of them change). Resolution: if
@@ -135,7 +135,7 @@ that same render pass, this time correctly detecting the theme change and
 rebuilding the map with a freshly-resolved concrete value.
 
 **Alternatives considered**: Resolving `var()` independently inside each
-of the three panel components (mirroring `PlotlyPanel.tsx`'s own existing
+of the three panel components (mirroring `the retired chart panel`'s own existing
 per-component `getComputedStyle()` call). Rejected — would triplicate the
 same resolution/reactivity logic three times (once per panel type), each
 needing its own theme-flip handling, versus doing it once, correctly, at

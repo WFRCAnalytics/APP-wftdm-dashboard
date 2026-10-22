@@ -158,7 +158,7 @@ corresponding author-facing key (Grammar findings #5, spec.md). Decision
 unchanged from the spec's own Assumption: this prop is left unset,
 letting flowmap.gl's own internal default apply — the same honestly-
 documented precedent `008-sankey-panel`'s own research established
-(neither `PlotlyPanel` nor `ObservablePlotPanel` sets an explicit
+(neither `the retired chart panel` nor `ObservablePlotPanel` sets an explicit
 categorical palette either; sankey's own token-derived fallback was the
 grammar-driven exception, not the rule). Inventing a new `color_scheme`-
 style key for flowmap without it being documented grammar would be

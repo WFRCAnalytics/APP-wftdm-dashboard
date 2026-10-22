@@ -6,7 +6,7 @@
 
 **Status**: Draft
 
-**Input**: User description: "Add a fourth panel type — markdown — to the registry, following the same pattern as ValueBoxPanel/PlotlyPanel/TablePanel and inheriting 004's expand-to-dialog mechanism automatically (no per-type wiring). Renders static/authored prose content via marked.js, per project-docs/SPEC.md's Panel types table. Grammar resolved from project-docs/GRAMMAR.md's `type: markdown` example: a literal `content:` block of raw markdown text, no `metric:`/`$scenario`/`$filters` placeholder substitution — pure static text, no data binding. Rendered markdown must be sanitized against XSS (marked.js + DOMPurify). Uses 002-design-tokens' typography (font-heading for headings, font-body for prose)."
+**Input**: User description: "Add a fourth panel type — markdown — to the registry, following the same pattern as ValueBoxPanel/the retired chart panel/TablePanel and inheriting 004's expand-to-dialog mechanism automatically (no per-type wiring). Renders static/authored prose content via marked.js, per project-docs/SPEC.md's Panel types table. Grammar resolved from project-docs/GRAMMAR.md's `type: markdown` example: a literal `content:` block of raw markdown text, no `metric:`/`$scenario`/`$filters` placeholder substitution — pure static text, no data binding. Rendered markdown must be sanitized against XSS (marked.js + DOMPurify). Uses 002-design-tokens' typography (font-heading for headings, font-body for prose)."
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -39,7 +39,7 @@ markdown characters — styled with the dashboard's existing typography.
    standard markdown semantics (headings, emphasis, lists, links,
    paragraphs).
 2. **Given** a rendered markdown panel, **When** compared visually against
-   a plotly or table panel on the same tab, **Then** headings use the same
+   a the old chart library or table panel on the same tab, **Then** headings use the same
    heading typeface/weight and body text uses the same body typeface as
    the rest of the dashboard's design system — not marked.js's unstyled
    default output.
@@ -102,7 +102,7 @@ rendering behavior — but still needed before this panel type is genuinely
 "done" per the project's own panel pattern.
 
 **Independent Test**: Register the `markdown` type in the panel registry
-and load a tab that mixes a markdown panel alongside valuebox/plotly/table
+and load a tab that mixes a markdown panel alongside valuebox/the old chart library/table
 panels. Confirm the markdown panel appears in its assigned grid position
 with standard panel-card chrome (title, expand icon), and that a markdown
 panel with a missing/empty `content:` value renders a defined empty state
@@ -202,7 +202,7 @@ rather than throwing.
   the same dashboard tab (valuebox titles, table headers, panel-card
   chrome) — same font family per element role.
 - **SC-004**: A dashboard tab mixing a markdown panel with valuebox,
-  plotly, and table panels loads and renders all panel types with zero
+  the old chart library, and table panels loads and renders all panel types with zero
   additional errors attributable to the markdown panel.
 - **SC-005**: Expanding a markdown panel to its dialog view and
   collapsing it back requires zero markdown-specific code — proven by

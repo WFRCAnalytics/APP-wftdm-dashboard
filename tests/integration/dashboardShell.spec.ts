@@ -105,7 +105,7 @@ test.describe('User Story 2 - An analyst sees a real number, computed from real 
 })
 
 test.describe('User Story 3 - An analyst sees a real, filter-reactive chart', () => {
-  // 057-observable-plot-conversion: this panel was `type: plotly` until
+  // 057-observable-plot-conversion: this panel was `type: the old chart library` until
   // this feature converted it to `type: observable-plot` (contracts/
   // panel-conversions.md) — the query/data it renders is byte-for-byte
   // unchanged (FR-005), only the rendering engine differs.
@@ -116,8 +116,8 @@ test.describe('User Story 3 - An analyst sees a real, filter-reactive chart', ()
     // Purpose" (trip_distance_by_purpose, unpinned — a real multi-scenario
     // union per 038-all-loaded-scenarios, one fill category per active
     // scenario, per the panel's own `fill: scenario` config).
-    const plotlyCard = page.getByText('Average Trip Distance by Purpose', { exact: true }).locator('..').locator('..')
-    await expect(plotlyCard.locator('.observable-plot-chart svg[viewBox]')).toBeVisible({ timeout: 10_000 })
+    const chartCard = page.getByText('Average Trip Distance by Purpose', { exact: true }).locator('..').locator('..')
+    await expect(chartCard.locator('.observable-plot-chart svg[viewBox]')).toBeVisible({ timeout: 10_000 })
 
     // 3 real active demo scenarios (activitysim-baseline/-density-variant/
     // -transit-variant) — one legend swatch entry each, per the panel's
@@ -125,7 +125,7 @@ test.describe('User Story 3 - An analyst sees a real, filter-reactive chart', ()
     // established "assert real category labels by name" convention,
     // preferred here over counting anonymous DOM nodes whose exact markup
     // isn't part of Plot's own public contract).
-    const legend = plotlyCard.locator('.observable-plot-chart [class*="-swatches"]')
+    const legend = chartCard.locator('.observable-plot-chart [class*="-swatches"]')
     await expect(legend).toBeVisible()
     await expect(legend).toContainText('activitysim-baseline')
     await expect(legend).toContainText('activitysim-density-variant')
@@ -150,7 +150,7 @@ test.describe('User Story 3 - An analyst sees a real, filter-reactive chart', ()
   })
 
   // 057-observable-plot-conversion: rewritten for the same panel's new
-  // engine. The bug this test originally guarded (PlotlyPanel.tsx's own
+  // engine. The bug this test originally guarded (the retired chart panel's own
   // 015-theme-toggle fix) doesn't apply to Observable Plot's own,
   // separately-proven dark-mode fix — @observablehq/plot's generated SVG
   // hardcodes `--plot-background: white` (confirmed directly against the
@@ -164,8 +164,8 @@ test.describe('User Story 3 - An analyst sees a real, filter-reactive chart', ()
   }) => {
     await page.goto('/')
     await page.waitForFunction(() => window.__wftdm !== undefined, null, { timeout: 30_000 })
-    const plotlyCard = page.getByText('Average Trip Distance by Purpose', { exact: true }).locator('..').locator('..')
-    const svg = plotlyCard.locator('.observable-plot-chart svg[viewBox]')
+    const chartCard = page.getByText('Average Trip Distance by Purpose', { exact: true }).locator('..').locator('..')
+    const svg = chartCard.locator('.observable-plot-chart svg[viewBox]')
     await expect(svg).toBeVisible({ timeout: 10_000 })
 
     const queryCountBefore = await page.evaluate(() => window.__wftdm!.__debugQueryLog().length)
@@ -181,7 +181,7 @@ test.describe('User Story 3 - An analyst sees a real, filter-reactive chart', ()
     // app's own text-foreground class — no separate fix needed for it,
     // confirmed by ObservablePlotPanel.tsx's own header comment; not
     // re-asserted here since it was never the bug this file's own prior
-    // Plotly-specific version guarded.
+    // the old chart library-specific version guarded.
 
     // A theme flip must not re-query DuckDB-WASM — only colors change.
     await page.waitForTimeout(300)

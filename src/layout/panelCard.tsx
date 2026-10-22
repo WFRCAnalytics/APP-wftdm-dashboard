@@ -15,7 +15,7 @@ import type { MultiViewPanelConfig, PanelConfig } from '@/layout/types'
 // shared, cross-cutting concern — not a precedent for panel components
 // themselves. Catches synchronous render-time throws only; a panel's own
 // rejected query promise is that panel's own responsibility to catch
-// (ValueBoxPanel.tsx/PlotlyPanel.tsx both do, via their own .catch()).
+// (ValueBoxPanel.tsx/the retired chart panel both do, via their own .catch()).
 interface PanelErrorBoundaryProps {
   panelTitle: string
   children: ReactNode

@@ -184,7 +184,7 @@ test.describe('User Story 1 - See a panel\'s query result as a real table', () =
 
     // Genuine query rejection (a metric no scenario publishes) —
     // PanelErrorState, the same shared component ValueBoxPanel/
-    // PlotlyPanel already use for their own rejected queries. A default
+    // the retired chart panel already use for their own rejected queries. A default
     // 5s timeout is unreliable on the Test tab — it has grown
     // substantially crowded across several later features, so this
     // panel's own error can take longer than 5s under real DuckDB-WASM

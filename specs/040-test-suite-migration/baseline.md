@@ -39,7 +39,7 @@ Per-file failure counts (every `[ ]`-still-open file):
 | `sankeyPanel.spec.ts` | 11 |
 | `markdownPanel.spec.ts` | 10 |
 | `scenarioColorOverride.spec.ts` | 8 |
-| `rechartsPanel.spec.ts` | 8 |
+| `a retired chart panel file` | 8 |
 | `scenarioAutoActivation.spec.ts` | 6 |
 | `sectionSubNav.spec.ts` | 5 |
 | `scenarioLabelDisplay.spec.ts` | 5 |
@@ -373,7 +373,7 @@ itself showed its own already-documented single pre-existing flake
 re-run before concluding anything**: both full-suite runs also showed a
 large, nearly IDENTICAL block of 100%-per-file failures
 (`tablePanel`/`valueBoxPanel`/`markdownPanel`/`observablePlotPanel`/
-`rechartsPanel`/`sankeyPanel`/`graphicWalkerPanel`/`sectionSubNav`, plus
+`the retired chart panel`/`sankeyPanel`/`graphicWalkerPanel`/`sectionSubNav`, plus
 `scenarioManager`/`scenarioColorOverride`/`scenarioLabelDisplay`/
 `scenarioAutoActivation`/`switchControlsUnpinnedPanels`/`settingsModal`
 partial). The IDENTICAL-across-two-runs shape of this (unlike ordinary
@@ -388,7 +388,7 @@ neither the real demo content nor any currently-served config — the
 retired synthetic fixture content T011 already deleted. This is simply
 the expected, ALREADY-TRACKED state of `tasks.md`'s own remaining NOT-DONE
 migration tasks (T018 `valueBoxPanel`, T019 `tablePanel`, T020
-`markdownPanel`, T021 `observablePlotPanel`, T022 `rechartsPanel`, T023
+`markdownPanel`, T021 `observablePlotPanel`, T022 `the retired chart panel`, T023
 `sankeyPanel`, T026 `graphicWalkerPanel`, T028 `sectionSubNav`) — every
 one of those 8 files fails 100%, deterministically, because their own
 content was never migrated, not because of anything T025 touched or any
@@ -539,7 +539,7 @@ both runs. One real, confirmed non-regression investigated directly:
 session's own edit) confirmed it was pure contention noise; run 2 showed
 9/0 clean on its own. The same large, already-investigated block of
 unrelated legacy-fixture failures
-(`tablePanel`/`valueBoxPanel`/`observablePlotPanel`/`rechartsPanel`/
+(`tablePanel`/`valueBoxPanel`/`observablePlotPanel`/`the retired chart panel`/
 `sankeyPanel`/`graphicWalkerPanel`/`scenarioManager`/
 `scenarioAutoActivation`, plus `settingsModal`'s own partial mix)
 reproduced at the same scale in both runs — the expected, already-tracked
@@ -559,7 +559,7 @@ confirmed timing bugs (query-log/value-capture races) were found and
 fixed using this project's own already-established "wait for a real
 signal before reading" convention. Remaining scope for a future session:
 Phase 4's `valueBoxPanel`/`tablePanel`/`observablePlotPanel`/
-`rechartsPanel`/`sankeyPanel`/`graphicWalkerPanel`, Phase 6's
+`the retired chart panel`/`sankeyPanel`/`graphicWalkerPanel`, Phase 6's
 `scenarioManager`/`scenarioAutoActivation`/`settingsModal`, and Phase 7/8
 cleanup — each confirmed, via direct reading, to be a substantially
 larger effort than this session's own chunk.
@@ -570,12 +570,12 @@ larger effort than this session's own chunk.
 instruction not to trust the remaining-scope list as still accurate.**
 Ran the 9 files a prior audit session's own findings named as the real
 remaining scope (`valueBoxPanel`/`tablePanel`/`observablePlotPanel`/
-`rechartsPanel`/`sankeyPanel`/`scenarioAutoActivation`/`scenarioManager`/
+`the retired chart panel`/`sankeyPanel`/`scenarioAutoActivation`/`scenarioManager`/
 `settingsModal`/`graphicWalkerPanel`) together, single worker — real
 result: **56 passed, 133 failed**, per-file:
 `settingsModal` 31, `observablePlotPanel` 24, `tablePanel` 23,
 `scenarioManager` 16, `valueBoxPanel` 14, `sankeyPanel` 11,
-`rechartsPanel` 8, `scenarioAutoActivation` 6, `graphicWalkerPanel` **0**.
+`the retired chart panel` 8, `scenarioAutoActivation` 6, `graphicWalkerPanel` **0**.
 
 **Real drift caught, exactly the class this session was warned to watch
 for**: `graphicWalkerPanel.spec.ts` (`tasks.md`'s own `T026`, still shown
@@ -634,9 +634,9 @@ discriminator column).
   panel genuinely has: toggling one active scenario's own Switch
   (`appState.setActive`) — cross-checked against real, live-queried
   work→SOV values (324 combined, 107 baseline-only). The "tab mixing
-  sankey with valuebox/plotly/table/markdown/observable-plot" test was
+  sankey with valuebox/the old chart library/table/markdown/observable-plot" test was
   adapted to the REAL Mode Choice tab's own actual composition
-  (table + observable-plot ×2 + sankey — no valuebox/plotly/markdown
+  (table + observable-plot ×2 + sankey — no valuebox/the old chart library/markdown
   live there), matching `markdownPanel.spec.ts`'s own identical
   adaptation precedent.
 
@@ -678,7 +678,7 @@ the fixes above.
 **Full-suite confirmation, one real run plus a git-stash A/B** (10
 workers each): with Batch A applied — **125 failed** total, per-file
 `settingsModal` 31 / `observablePlotPanel` 24 / `tablePanel` 23 /
-`scenarioManager` 16 / `valueBoxPanel` 14 / `rechartsPanel` 8 /
+`scenarioManager` 16 / `valueBoxPanel` 14 / `the retired chart panel` 8 /
 `sankeyPanel` 2 / `flowmapPanel` 2 / `dashboardShell` 2 / `panelExpand` 1
 / `graphicWalkerPanel` 1 / `brokenPanelStates` 1 — `scenarioAutoActivation`
 **zero**. The 2 remaining `sankeyPanel` failures were the same Test-tab-
@@ -687,7 +687,7 @@ every isolated run before and after). Stashing Batch A entirely and
 re-running the full suite on the CLEAN tree confirmed every one of
 these numbers directly: **141 failed**, with `settingsModal`/
 `observablePlotPanel`/`tablePanel`/`scenarioManager`/`valueBoxPanel`/
-`rechartsPanel` at BYTE-IDENTICAL counts to the with-Batch-A run
+`the retired chart panel` at BYTE-IDENTICAL counts to the with-Batch-A run
 (proving zero interaction), `sankeyPanel`/`scenarioAutoActivation` back
 at their full pre-migration counts (11/6, matching this same document's
 own original per-file table exactly), and the scattered single-digit
@@ -715,7 +715,7 @@ Remaining scope, re-confirmed still open and still real: `T018`
 `tablePanel` (large — a new sortable/searchable/paginated dataset + 2
 new `$baseline`-diff panels), `T021` `observablePlotPanel` (large — the
 `inputs:` grammar has zero real usage anywhere in demo content today),
-`T022` `rechartsPanel` (medium — zero working `type: recharts` panels
+`T022` `the retired chart panel` (medium — zero working `type: the old chart library` panels
 exist anywhere in real demo content; needs a real content-strategy
 decision on where new ones belong before authoring), `T032`
 `scenarioManager` (medium — a real structural fix needed: its
@@ -723,36 +723,36 @@ local-folder mock reads bytes from a now-deleted fixture path), `T037`
 `settingsModal` (largest, highest collision risk, last per this file's
 own existing ordering), and Phase 7/8 cleanup.
 
-## Batch B (T022 `rechartsPanel.spec.ts`) — real findings and results
+## Batch B (T022 `a retired chart panel file`) — real findings and results
 
 **Direct re-read of the file first, per this session's own explicit
 instruction not to trust the Batch A closing estimate.** Confirmed: zero
-working `type: recharts` panels exist anywhere in real demo content —
-`057-observable-plot-conversion` deliberately moved every real Recharts
+working `type: the old chart library` panels exist anywhere in real demo content —
+`057-observable-plot-conversion` deliberately moved every real the old chart library
 panel off the demo tabs onto Observable Plot, per this file's/CLAUDE.md's
 own on-record decision. Per direct user decision this session, rather
-than inventing an artificial "real" Recharts use on a demo tab, real
-Recharts panel(s) were added directly to `dashboard-8-test.yaml` (the
+than inventing an artificial "real" the old chart library use on a demo tab, real
+the old chart library panel(s) were added directly to `dashboard-8-test.yaml` (the
 permanent Test tab) instead — the same role that tab already serves for
 `sankeyPanel.spec.ts`'s own Batch A addition.
 
-**Fresh isolated baseline before touching anything**: `rechartsPanel.
+**Fresh isolated baseline before touching anything**: `the retired chart panel.
 spec.ts` alone, single worker, pre-migration content — reproduced the
 same real fixture-coupled failures Batch A's own re-verification pass
-already recorded for this file (`rechartsPanel` 8, matching this
+already recorded for this file (`the retired chart panel` 8, matching this
 document's Batch A section and CLAUDE.md item 28's own independent
 record).
 
 **Content added to `dashboard-8-test.yaml`**: two new rows.
-`row_recharts_charts` — three real, live-queried `type: recharts` panels:
+`row_retired_chart_fixture` — three real, live-queried `type: the old chart library` panels:
 a `chart_type: bar` panel (`trip_purpose_share`, `x`/`series: primary_
 purpose`, `y: share`, 10 real categories, 5-token wraparound); a
 `chart_type: line` panel and a `chart_type: area` panel (both `trip_
-destination_summary`, `y: avg_distance_miles`). `row_plotly_legend` — one
-real `type: plotly` bar panel (`trip_mode_share`, one trace per distinct
+destination_summary`, `y: avg_distance_miles`). `row_the old chart library_legend` — one
+real `type: the old chart library` bar panel (`trip_mode_share`, one trace per distinct
 `major_trip_mode` via `color: $metric.major_trip_mode`) needed for the
-existing "plotly legend click-to-toggle still works" regression test,
-which had no real non-fixture Plotly panel with a genuine multi-trace
+existing "the old chart library legend click-to-toggle still works" regression test,
+which had no real non-fixture the old chart library panel with a genuine multi-trace
 legend to target.
 
 **Two real, confirmed, OUT-OF-SCOPE application bugs found and
@@ -772,7 +772,7 @@ source reads, not guessed):
    around by switching the bar panel's data source to `trip_purpose_
    share` (10 real purposes, all single words, no spaces).
 2. **DuckDB-WASM's already-documented `bigint` gap has a second, new
-   manifestation: Recharts' own internal numeric geometry computation
+   manifestation: the old chart library' own internal numeric geometry computation
    silently renders zero `<path>` elements for a `bigint` y-value** (not
    just `formatValue.ts`'s already-known display-string gap). Confirmed
    via a temporary, since-deleted debug spec that hit `TypeError: Do not
@@ -808,17 +808,17 @@ own Batch A precedent exactly.
 `waitForChartToSettle`'s internal poll and every "first real render on
 the Test tab" assertion bumped to `{ timeout: 10_000 }`.
 
-**Isolated verification**: `rechartsPanel.spec.ts` alone, single worker —
+**Isolated verification**: `a retired chart panel file` alone, single worker —
 **8/8 passed, clean**, reproduced across two separate consecutive runs
 after the fixes above.
 
 **Full-suite confirmation plus a real git-stash A/B** (10 workers each,
 375 total tests both runs): with Batch B applied — **123 failed** total,
 per-file `settingsModal` 33 / `observablePlotPanel` 24 / `tablePanel` 23
-/ `scenarioManager` 16 / `valueBoxPanel` 14 / `rechartsPanel` **2** /
+/ `scenarioManager` 16 / `valueBoxPanel` 14 / `the retired chart panel` **2** /
 `zonemapPanel` 3 / `flowmapPanel` 3 / `panelExpand` 1 /
 `graphicWalkerPanel` 1 / `dashboardShell` 1 / `brokenPanelStates` 1 /
-`scenarioAutoActivation` 1. The 2 remaining `rechartsPanel` failures were
+`scenarioAutoActivation` 1. The 2 remaining `the retired chart panel` failures were
 the same Test-tab-crowding timeout class (both passed clean in every
 isolated run before and after — confirmed via the error text itself:
 `toHaveCount(10)` receiving `0` under full contention, never a `Catalog
@@ -827,7 +827,7 @@ full suite on the CLEAN tree reproduced the identical total (**123
 failed**, 375 tests, 252 passed both runs) with `settingsModal`/
 `observablePlotPanel`/`tablePanel`/`scenarioManager`/`valueBoxPanel` at
 BYTE-IDENTICAL counts to the with-Batch-B run (31/24/23/16/14 — proving
-zero interaction), `rechartsPanel` back at its full pre-migration count
+zero interaction), `the retired chart panel` back at its full pre-migration count
 (**8**, matching this document's own Batch A re-verification figure and
 CLAUDE.md item 28's independent record exactly), and the scattered
 single-digit noise (`flowmapPanel` 2, `zonemapPanel` 1, `panelExpand` 1,
@@ -843,7 +843,7 @@ mid-fix, after the full-suite run, after the stash pop.
 
 ## Batch B conclusion
 
-**T022 (`rechartsPanel.spec.ts`) is DONE.** Isolated correctness is
+**T022 (`a retired chart panel file`) is DONE.** Isolated correctness is
 unambiguous (8/8, reproduced clean twice). Full-suite confirmation plus a
 real git-stash A/B conclusively separates one real, small test-authoring
 bug this batch found and fixed (a tooltip-value precision mismatch,
@@ -853,7 +853,7 @@ own already-extensively-documented resource-contention noise. Two real,
 confirmed application bugs were found and deliberately worked around
 rather than fixed, per this whole effort's scope discipline: a space in a
 real category value breaking `chart.tsx`'s generated CSS custom
-property, and DuckDB-WASM's bigint gap silently breaking Recharts' own
+property, and DuckDB-WASM's bigint gap silently breaking the old chart library' own
 geometry computation (a new manifestation of an already-documented gap,
 not previously recorded for this panel type). Remaining scope, unchanged
 from the Batch A conclusion above: `T018` `valueBoxPanel`, `T019`

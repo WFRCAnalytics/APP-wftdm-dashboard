@@ -7,7 +7,7 @@
 Extends the existing `DataBoundPanelConfigBase` (`metric`, `filter?`,
 `scenario?`, `scenarios?`) and the existing `ComparisonCapablePanelConfig`
 mixin (`comparison?`, `compare_on?`) — both reused completely unmodified,
-matching `RechartsPanelConfig`'s own precedent (research.md §4).
+matching `RetiredChartPanelConfig`'s own precedent (research.md §4).
 
 | Field | Type | Required | Notes |
 |---|---|---|---|
@@ -54,7 +54,7 @@ query rows, before it is handed to `d3.hierarchy()`:
 levels; at the final level, SUM `value` across any rows that still share
 the same full path tuple (a real, defensive case — matches this app's
 own established "aggregate, don't assume pre-aggregated" discipline
-already applied elsewhere, e.g. `rechartsEncoding.ts`'s own pivot). A
+already applied elsewhere, e.g. `a retired chart helper`'s own pivot). A
 row with a missing/non-numeric `value` contributes `0` to that sum
 (FR-009), never `NaN` and never a dropped row.
 

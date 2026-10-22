@@ -27,7 +27,7 @@ const ALL_FILTERS: ['*'] = ['*']
 // rebuild against the mounted container's computed style, not hardcoded
 // hex values, so a future tokens.css change is picked up automatically.
 // This is genuinely new territory for this codebase: neither
-// PlotlyPanel.tsx nor observablePlotEncoding.ts sets an explicit
+// the retired chart panel nor observablePlotEncoding.ts sets an explicit
 // categorical palette today (both rely on their charting library's own
 // default) — research.md §6 documents why that "precedent" doesn't
 // actually exist and why this panel type builds one anyway.
@@ -165,7 +165,7 @@ function renderSvg(
     text.setAttribute('font-size', '12')
     // wftdm-design-system skill audit (Phase 3 Batch 2) — a real,
     // confirmed dark-mode bug, the same class this project has hit
-    // before (Plotly's hardcoded backgrounds, Observable Plot's tip
+    // before (the old chart library's hardcoded backgrounds, Observable Plot's tip
     // fill): raw SVG's own initial `fill` value is black, and nothing
     // here or in any stylesheet ever set one — confirmed live,
     // getComputedStyle() read a literal `rgb(0, 0, 0)` in dark mode.
@@ -174,12 +174,12 @@ function renderSvg(
     // whose blended colors happen to still contrast against pure black
     // today) — genuinely broken the moment a label lands over the plain
     // dark page background instead. `currentColor` matches Observable
-    // Plot's own tip-mark fix (this file's own PlotlyPanel.tsx/
+    // Plot's own tip-mark fix (this file's own the retired chart panel/
     // ObservablePlotPanel.tsx sibling precedent): this SVG mounts in the
     // normal light DOM (no shadow root), so it inherits shell.tsx's own
     // real `text-foreground` class through ordinary CSS cascade, no
     // getComputedStyle()-and-set-inline resolution needed the way a CSS
-    // custom property (PlotlyPanel's font.color, ObservablePlotPanel's
+    // custom property (the retired chart panel's font.color, ObservablePlotPanel's
     // --plot-background) would.
     text.setAttribute('fill', 'currentColor')
     text.textContent = node.label
@@ -196,7 +196,7 @@ function renderSvg(
 // (1) a new rows-to-graph transform problem (sankeyGraph.ts, research.md
 // §4/§7), (2) d3-sankey computes layout only, never DOM — this component
 // builds and owns real SVG markup itself (research.md §2), unlike
-// PlotlyPanel's Plotly.react() call or ObservablePlotPanel's Plot.plot()
+// the old library's render call or ObservablePlotPanel's Plot.plot()
 // call.
 export function SankeyPanel({ config }: { config: SankeyPanelConfig }) {
   const filterIds = extractGlobalFilterIds(config.filter)
@@ -235,7 +235,7 @@ export function SankeyPanel({ config }: { config: SankeyPanelConfig }) {
   }, [])
 
   // Data fetch — identical shape to every other data-bound panel type
-  // (PlotlyPanel.tsx/ObservablePlotPanel.tsx). Does NOT build the
+  // (the retired chart panel/ObservablePlotPanel.tsx). Does NOT build the
   // FlowGraph or call d3-sankey's layout itself — that happens in the
   // render-and-swap effect below, which also needs the
   // ResizeObserver-measured container size.
@@ -343,7 +343,7 @@ export function SankeyPanel({ config }: { config: SankeyPanelConfig }) {
   }, [config, rows, status, colorblindSafe])
 
   // Deliberately no separate unmount-only teardown effect (unlike
-  // PlotlyPanel.tsx's Plotly.purge()/ObservablePlotPanel.tsx's
+  // the old library's teardown call/ObservablePlotPanel.tsx's
   // plotElementRef.current?.remove()) — this component owns plain DOM
   // nodes it built itself via document.createElementNS, with no external
   // library instance holding a reference that needs explicit disposal;
@@ -388,7 +388,7 @@ export function SankeyPanel({ config }: { config: SankeyPanelConfig }) {
         style={{
           width: '100%',
           // 100%, not a fixed pixel height — same reasoning
-          // PlotlyPanel.tsx/ObservablePlotPanel.tsx already document: this
+          // the retired chart panel/ObservablePlotPanel.tsx already document: this
           // container is the same DOM node whether inline or inside 004's
           // expand dialog.
           height: '100%',

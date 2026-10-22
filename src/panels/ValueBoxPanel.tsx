@@ -69,7 +69,7 @@ export function ValueBoxPanel({ config }: { config: ValueBoxPanelConfig }) {
   // unlike a remount (research.md §1 of that feature).
   const activeScenarioNames = useActiveScenarios()
   // 034-metric-panel-redesign (FR-019) — the SAME reactive baseline
-  // subscription RechartsPanel.tsx/TablePanel.tsx already use; a baseline
+  // subscription the retired chart panel/TablePanel.tsx already use; a baseline
   // change elsewhere in the app recomputes the trend effect below
   // automatically, with no new reactivity mechanism.
   const baseline = useBaseline()

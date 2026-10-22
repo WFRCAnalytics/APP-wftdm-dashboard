@@ -1,7 +1,7 @@
 # Contract: `ObservablePlotPanel` (`src/panels/ObservablePlotPanel.tsx`)
 
 Satisfies: FR-001 through FR-011. The fifth panel type — follows
-`contracts/plotly-panel.md`'s config → query → render shape (unlike
+`contracts/retired-chart-panel.md`'s config → query → render shape (unlike
 `contracts/markdown-panel.md`, this panel type always queries — research.md
 §7), but with a genuinely different rendering model (research.md §5/§5b) and
 a new panel-local input-state layer (research.md §3/§9) neither prior
@@ -16,7 +16,7 @@ non-illustrative bodies rather than sketched.
 ```ts
 // Pure, DOM-free — never imports @observablehq/plot at runtime, never calls
 // a DOM API (research.md §4/§6). Vitest-testable in `environment: 'node'`
-// with zero DOM shim, the same reasoning plotlyTraces.ts/tableLogic.ts were
+// with zero DOM shim, the same reasoning a retired chart helper/tableLogic.ts were
 // already split out for.
 import type { ObservablePlotPanelConfig } from '@/layout/types'
 
@@ -31,7 +31,7 @@ export interface ResolvedObservablePlotEncoding {
  * x/y/fill/stroke/facet_x/facet_y are literal column names — NOT
  * $metric.<column>-prefixed (research.md §4, confirmed against
  * project-docs/GRAMMAR.md's own observable-plot examples, in explicit contrast to
- * type: plotly's traces). Only keys actually present on `config` are
+ * type: the old chart library's traces). Only keys actually present on `config` are
  * copied through, so Plot's own per-mark defaults apply to anything the
  * author omitted.
  */
@@ -117,7 +117,7 @@ export function ObservablePlotPanel({ config }: { config: ObservablePlotPanelCon
   )
   const inputState = { get: (id: string) => inputValues[id] }
 
-  // Read once per render, same as PlotlyPanel.tsx's own inline reads of
+  // Read once per render, same as the retired chart panel's own inline reads of
   // appState — a synchronous store read, not an async fetch. Computed
   // here (not only inside the fetch effect below) because PanelLocalInput
   // also needs `view` for its own options/bounds query (research.md §9).
@@ -169,8 +169,8 @@ export function ObservablePlotPanel({ config }: { config: ObservablePlotPanelCon
   // Render-and-swap — runs when `rows`/`status` changes AND on every
   // ResizeObserver-observed container resize (research.md §5: Plot.plot()
   // has no in-place update API and no automatic container-size awareness,
-  // unlike Plotly.react()/responsive:true — a real difference from
-  // PlotlyPanel.tsx's cheap Plotly.Plots.resize() call, not the same fix
+  // unlike the old library API — a real difference from
+  // the retired chart panel's cheap the old library API call, not the same fix
   // reused unchanged).
   useEffect(() => {
     const el = containerRef.current
@@ -185,7 +185,7 @@ export function ObservablePlotPanel({ config }: { config: ObservablePlotPanelCon
     // element for the exact same size, every time this effect runs. The
     // synchronous call is kept (not dropped in favor of the async
     // callback alone) so the chart appears immediately when data is
-    // ready, matching PlotlyPanel.tsx's no-flash behavior — the guard
+    // ready, matching the retired chart panel's no-flash behavior — the guard
     // below makes the guaranteed duplicate a no-op instead, and also
     // filters out any later spurious sub-pixel ResizeObserver firings.
     let lastWidth = -1
@@ -423,7 +423,7 @@ happen only inside `ObservablePlotPanel.tsx` itself; the fetch effect and the
 render-and-swap effect are two separate effects — fetch depends on
 `[config, filters, inputValues]`, render-and-swap depends on `[config, rows,
 status]` plus its own `ResizeObserver` and its own last-rendered-size guard
-(research.md §5b), mirroring `PlotlyPanel.tsx`'s two-effect split in spirit
+(research.md §5b), mirroring `the retired chart panel`'s two-effect split in spirit
 while diverging in what each effect actually does, per research.md §5;
 `inputValues` is `useState`, never written to `state/filterState.ts`;
 `sqlExpander.expand()`'s new 5th parameter is always passed, even when
@@ -443,7 +443,7 @@ step with what the slider visibly shows once real bounds are known.)
 
 `config.title`/`config.width`/`config.height` flow through `panelCard.tsx`
 exactly like every other panel type. `004`'s `usePanelExpandHost` wraps this
-component exactly like it wraps `PlotlyPanel`/`TablePanel` — same mounted
+component exactly like it wraps `the retired chart panel`/`TablePanel` — same mounted
 instance, inline vs. dialog is a visual relocation only; the
 `ResizeObserver`-driven render-and-swap above is what makes that relocation
 render at the correct size (FR-007), not `usePanelExpandHost` itself.
@@ -487,13 +487,13 @@ render at the correct size (FR-007), not `usePanelExpandHost` itself.
   expands it into `004`'s dialog and closes it again, **then** the input's
   current value (not its `default`) is still in effect, and no query was
   triggered solely by that transition (FR-006, US2).
-- **Given** a dashboard tab combining `valuebox`/`plotly`/`table`/`markdown`/
+- **Given** a dashboard tab combining `valuebox`/`the old chart library`/`table`/`markdown`/
   `observable-plot` panels, **when** the tab loads, **then** every panel
   renders without error and the `observable-plot` panel's card chrome/expand
   trigger match the others (US3, SC-005).
 - **Given** an `observable-plot` panel's query is in flight, **when** it first
   mounts, **then** it shows the same inline `animate-pulse` skeleton
-  convention `PlotlyPanel`/`ValueBoxPanel` already use, not a new shared
+  convention `the retired chart panel`/`ValueBoxPanel` already use, not a new shared
   loading component (US3, research.md §7).
 - **Given** a `select`/`multiselect` input currently set to a non-default
   value, **when** its options are (re-)fetched, **then** the fetched option

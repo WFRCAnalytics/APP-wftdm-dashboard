@@ -33,7 +33,7 @@
 
 - All items pass on first pass. The user's input named specific
   implementation choices (shadcn's Dialog/Radix, ResizeObserver +
-  Plotly.Plots.resize(), registry.tsx) — these are captured as
+  the old library API, registry.tsx) — these are captured as
   Assumptions/context for planning rather than restated as
   implementation-specific Functional Requirements, keeping spec.md
   focused on WHAT/WHY. The open question the user flagged (stay-mounted

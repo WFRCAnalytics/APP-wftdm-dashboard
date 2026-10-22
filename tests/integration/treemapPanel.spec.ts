@@ -140,7 +140,7 @@ test.describe('User Story 1 - Author renders a real hierarchical breakdown as a 
     // soon, which looks identical to a spurious refetch. Fixed by polling
     // query-log length until it stops growing (matches this project's
     // own established `waitForChartToSettle()`-style convention,
-    // rechartsPanel.spec.ts) before ever taking the "before" snapshot —
+    // a retired chart panel file) before ever taking the "before" snapshot —
     // guarantees every sibling panel's own one-time initial fetch has
     // already happened.
     async function waitForQueryActivityToSettle() {

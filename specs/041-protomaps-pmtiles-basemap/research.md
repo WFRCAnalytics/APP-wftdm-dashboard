@@ -40,7 +40,7 @@
 - `sprite`: the confirmed-stable `https://protomaps.github.io/basemaps-assets/sprites/v4/{flavorName}` (Protomaps ships a per-flavor sprite sheet, not one shared sheet — matching each flavor's own distinct icon palette).
 - `glyphs`: the confirmed-stable shared `https://protomaps.github.io/basemaps-assets/fonts/{fontstack}/{range}.pbf`.
 
-This is a plain, DOM-free, Vitest-testable function — no MapLibre/browser API involved in building the object, matching every other pure style/encoding module in this codebase (`panels/basemap/loadBasemapStyle.ts`'s own `composeStyles()`, `panels/rechartsEncoding.ts`, etc.).
+This is a plain, DOM-free, Vitest-testable function — no MapLibre/browser API involved in building the object, matching every other pure style/encoding module in this codebase (`panels/basemap/loadBasemapStyle.ts`'s own `composeStyles()`, `panels/a retired chart helper`, etc.).
 
 **Rationale**: Keeps flavor→style generation testable without a real browser/WebGL context (this project's established pattern for exactly this class of logic). The attribution string is the literal one confirmed this session: `'<a href="https://github.com/protomaps/basemaps">Protomaps</a> © <a href="https://openstreetmap.org">OpenStreetMap</a>'`, wired the same way every other basemap source's attribution already reaches MapLibre (a source-level `attribution` field, rendered by MapLibre's own built-in `AttributionControl` already present on every map instance in this app — confirmed via existing panels, no new attribution-control wiring needed).
 

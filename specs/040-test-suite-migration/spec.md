@@ -53,7 +53,7 @@ Coupling to the fixture content, by count of references to the synthetic scenari
 | `tablePanel.spec.ts` | 7 | 0 | 2 | panel-mechanic | a real demo `table` panel + real column values |
 | `valueBoxPanel.spec.ts` | 4 | 0 | 2 | panel-mechanic | real demo `valuebox` + real KPI values (RF-5) |
 | `observablePlotPanel.spec.ts` | 3 | 0 | 2 | panel-mechanic + (b) | demo `observable-plot` + `dashboard-8-test.yaml` |
-| `rechartsPanel.spec.ts` | 2 | 0 | 2 | panel-mechanic + (b) | demo `recharts` + `dashboard-8-test.yaml` for invalid `chart_type` |
+| `a retired chart panel file` | 2 | 0 | 2 | panel-mechanic + (b) | demo `the old chart library` + `dashboard-8-test.yaml` for invalid `chart_type` |
 | `flowmapPanel.spec.ts` | 1 | 0 | 2 | panel-mechanic + (b) | demo `dashboard-6-network.yaml` flowmap + `dashboard-8-test.yaml` for basemap-precedence/broken-composition |
 | `sankeyPanel.spec.ts` | 1 | 0 | 2 | panel-mechanic + (b) | demo `dashboard-4-mode-choice.yaml` sankey + `dashboard-8-test.yaml` |
 | `markdownPanel.spec.ts` | 0 | 0 | 2 | panel-mechanic + (b) | demo `markdown` panels + `dashboard-8-test.yaml` for XSS/empty/whitespace |
@@ -74,15 +74,15 @@ Coupling to the fixture content, by count of references to the synthetic scenari
 
 ~25 "(intentional)" panels exist across the 3 fixture dashboards. Every one is a **config-shape error**, not a data-value error:
 
-- Panel `metric:` names a table no scenario publishes → Catalog Error (`Broken Panel`, `Broken Table Panel`, `Sankey/Flow Map/Zone Map/Recharts/Observable Plot Broken Panel`).
-- `chart_type: <not bar/line/area>` → runtime validation error (`Recharts Invalid Chart Type`).
+- Panel `metric:` names a table no scenario publishes → Catalog Error (`Broken Panel`, `Broken Table Panel`, `Sankey/Flow Map/Zone Map/the old chart library/Observable Plot Broken Panel`).
+- `chart_type: <not bar/line/area>` → runtime validation error (`the old chart library Invalid Chart Type`).
 - `basemap: totally-made-up-preset-name` → blank-style fallback (`Flowmap/Zone Map Unreachable Basemap`).
 - A composition `layers:` entry pointing at an unreachable URL (`Flowmap Broken Composition Layer`).
 - A `graphic-walker` `dataset:` no scenario publishes (`Explore Panel Broken`, `… (Dataset Picker, No Match)`).
 - `markdown` `content:` that is an XSS payload / empty / whitespace-only.
 - `valuebox` `sparkline`/`baseline_trend` referencing a missing metric or resolving to a same-scenario no-op.
 - `comparison: diff` whose `a`/`b` names an unresolvable scenario.
-- A filter value matching zero rows → empty-state (`Recharts Empty Result`, `Free-form Visual Analytics Empty`).
+- A filter value matching zero rows → empty-state (`the old chart library Empty Result`, `Free-form Visual Analytics Empty`).
 
 All of these can be expressed with this app's **existing** panel/scenario grammar against the **real** demo metrics/scenarios. None require malformed data that real ActivitySim output lacks.
 
@@ -162,7 +162,7 @@ A maintainer needs somewhere to put deliberately-broken panels (missing metric, 
 
 ### User Story 2 - Panel-type behavior is verified against real ActivitySim panels (Priority: P2)
 
-A maintainer changing a panel component (`table`, `valuebox`, `markdown`, `observable-plot`, `recharts`, `sankey`, `flowmap`, `zonemap`, `graphic-walker`) needs the integration test for that panel type to exercise a **real** demo panel bound to **real** ActivitySim summary data, so a regression that only manifests with real column shapes/values is caught.
+A maintainer changing a panel component (`table`, `valuebox`, `markdown`, `observable-plot`, `the old chart library`, `sankey`, `flowmap`, `zonemap`, `graphic-walker`) needs the integration test for that panel type to exercise a **real** demo panel bound to **real** ActivitySim summary data, so a regression that only manifests with real column shapes/values is caught.
 
 **Why this priority**: The largest group of specs, and the clearest win from the migration — synthetic panel shapes were convenient but did not resemble production data. Independently valuable and mechanical.
 
@@ -172,7 +172,7 @@ A maintainer changing a panel component (`table`, `valuebox`, `markdown`, `obser
 
 1. **Given** the `valueBoxPanel.spec.ts` migration, **When** it runs, **Then** it asserts against a real demo `valuebox` panel showing a real KPI (e.g. `5,000` households on the Summary tab) — not the retired synthetic `1,500`.
 2. **Given** any panel-mechanic spec, **When** it runs, **Then** it contains zero references to `good_scenario`, `broken_scenario`, or `tests/fixtures/dashboard-config/`.
-3. **Given** a panel-type spec that also covered an error case (e.g. `recharts` invalid `chart_type`), **When** migrated, **Then** the happy-path assertions target a real demo panel and the error-case assertions target a `dashboard-8-test.yaml` panel.
+3. **Given** a panel-type spec that also covered an error case (e.g. `the old chart library` invalid `chart_type`), **When** migrated, **Then** the happy-path assertions target a real demo panel and the error-case assertions target a `dashboard-8-test.yaml` panel.
 4. **Given** the two already-demo-based specs (`demoContentAllPanels`, `demoMultiScenario`), **When** the fixture is gone, **Then** their `page.route(...→404)` workarounds for fixture endpoints are removed and they still pass.
 
 ---

@@ -62,8 +62,8 @@ TypeScript throughout; React for all UI (constitution v2.0.0+). No branch-
 per-phase migration — work lands directly on `main`. `services/`/`state/`
 stay plain `.ts` (no JSX); anything rendering JSX is `.tsx`.
 
-Recharts and Plotly were removed in the 063 redesign (recover them from git history, commit before
-`redesign: remove Plotly and Recharts` if ever needed). Chart-engine consolidation
+the old chart library and the old chart library were removed in the 063 redesign (recover them from git history, commit before
+`redesign: remove the old chart library and the old chart library` if ever needed). Chart-engine consolidation
 (`057-observable-plot-conversion`), and every panel-type's own build
 story are in `project-docs/IMPLEMENTATION-HISTORY.md` (items 16, 21, 28–31).
 
@@ -506,7 +506,7 @@ heavy per-chart-library code out of the eager entry graph. See
 `project-docs/IMPLEMENTATION-HISTORY.md` item 26 for the three real
 leak-sources found and fixed (a static import in `basemapTab.tsx`, a
 merged maps/deck.gl chunk, and React itself getting bundled into
-`'recharts'` transitively).
+`'the old chart library'` transitively).
 
 ---
 
@@ -556,7 +556,7 @@ Tailwind v4 via the `@config` bridge (`033-shadcn-default-theme`) —
 `postcss.config.js`/`autoprefixer`. `components.json` `style` is
 `"new-york-v4"`.
 
-Full dependency-history detail (Recharts v2→v3, why each pin is exact vs.
+Full dependency-history detail (the old chart library v2→v3, why each pin is exact vs.
 a range, every version-compatibility bug found) is in
 `project-docs/IMPLEMENTATION-HISTORY.md`.
 
@@ -605,7 +605,7 @@ before touching charts).
 
 ## Implementation status
 
-All 12 remaining panel types are built (plotly and recharts were removed in the 063 redesign). Sidebar navigation, lazy
+All 12 remaining panel types are built (the old chart library and the old chart library were removed in the 063 redesign). Sidebar navigation, lazy
 tab-scoped data loading, server-side table pagination (≥100k rows),
 scenario label/color overrides, deployer-configurable branding/palette/
 basemap defaults, and a full shadcn/ui default-theme adoption (Tailwind

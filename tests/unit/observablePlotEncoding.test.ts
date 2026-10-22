@@ -135,7 +135,7 @@ describe('resolveObservablePlotEncoding', () => {
   // @observablehq/plot's color: {legend: true} is confirmed a top-level
   // plot() option that is NOT automatic — a fill/stroke channel with no
   // explicit legend option shows no legend. Defaults to showing one
-  // whenever a color channel exists, matching PlotlyPanel's own
+  // whenever a color channel exists, matching the retired chart panel's own
   // auto-legend behavior.
   it('sets plotOptions.color = {legend: true, style, swatchSize} when fill is set, never into options', () => {
     const result = resolveObservablePlotEncoding({ ...baseConfig, fill: 'mode' }, rows)
@@ -167,16 +167,16 @@ describe('resolveObservablePlotEncoding', () => {
   })
 
   // Real, confirmed visual bug: @observablehq/plot's own default rendered
-  // font-size (10px) reads noticeably smaller than PlotlyPanel.tsx's own
-  // charts, which render at Plotly's own default (12px — PlotlyPanel.tsx
+  // font-size (10px) reads noticeably smaller than the retired chart panel's own
+  // charts, which render at the old chart library's own default (12px — the retired chart panel
   // sets no explicit font.size at all, confirmed by direct read, so 12px
-  // is Plotly's own real, live-confirmed rendered default, not a guessed
+  // is the old chart library's own real, live-confirmed rendered default, not a guessed
   // value). Matched here via Plot.plot()'s own top-level `style` option
   // (a CSSStyleDeclaration-shaped object, confirmed against the installed
   // package's own plot.d.ts) — unconditional, applied to every observable-
   // plot chart regardless of author config, so the two charting panel
   // types never visibly disagree on text size.
-  it('always sets plotOptions.style.fontSize to match PlotlyPanel.tsx\'s own real default (chart theme size)', () => {
+  it('always sets plotOptions.style.fontSize to match the retired chart panel\'s own real default (chart theme size)', () => {
     const result = resolveObservablePlotEncoding(baseConfig, rows)
     expect(result.plotOptions.style).toEqual(CHART_BODY_STYLE)
   })

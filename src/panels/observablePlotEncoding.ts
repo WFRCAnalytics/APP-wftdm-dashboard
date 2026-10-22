@@ -1,12 +1,12 @@
 // Pure, DOM-free encoding resolution — never imports @observablehq/plot at
 // runtime and never calls a DOM API (research.md §4/§6). Confirmed against
-// @observablehq/plot's real source (unlike plotly.js-dist-min) that
+// @observablehq/plot's real source (unlike the old chart library) that
 // importing it doesn't reference a browser global at module load time —
 // but Plot.plot() itself constructs real SVG/HTML DOM nodes, which this
 // project's Vitest config (environment: 'node') has no DOM for. Keeping
 // this module's output a plain object, never a real Plot mark or plotted
-// element, means it needs no DOM at all — mirroring plotlyTraces.ts's own
-// reason for being split out of PlotlyPanel.tsx. Only ObservablePlotPanel.tsx
+// element, means it needs no DOM at all — mirroring a retired chart helper's own
+// reason for being split out of the retired chart panel. Only ObservablePlotPanel.tsx
 // itself ever calls Plot[markName](data, options).
 import type { ObservablePlotPanelConfig } from '@/layout/types'
 import { resolveScenarioColor, resolveScenarioLabel, type ScenarioDisplayMap } from '@/panels/scenarioDisplay'
@@ -21,7 +21,7 @@ export interface ResolvedObservablePlotEncoding {
 
 // OBSERVABLE-PLOT-THEMING-PROPOSAL.md §5e — this app's own real,
 // WCAG-contrast-verified categorical palette (tokens.css), the same 5
-// tokens RechartsPanel/rechartsEncoding.ts already cycle through. Used
+// tokens the retired chart panel/a retired chart helper already cycle through. Used
 // below for a non-scenario categorical fill/stroke channel, replacing
 // Plot's own raw (non-contrast-adjusted) schemeObservable10 default.
 const CHART_COLOR_TOKENS = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', 'var(--chart-4)', 'var(--chart-5)']
@@ -30,7 +30,7 @@ const CHART_COLOR_TOKENS = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)'
  * x/y/fill/stroke/facet_x/facet_y are literal column names — NOT
  * $metric.<column>-prefixed (research.md §4, confirmed against
  * project-docs/GRAMMAR.md's own observable-plot examples, in explicit contrast to
- * type: plotly's traces, whose x/y ARE $metric.-prefixed). Only keys
+ * type: the old chart library's traces, whose x/y ARE $metric.-prefixed). Only keys
  * actually present on `config` are copied through, so Plot's own per-mark
  * defaults apply to anything the author omitted — no key is ever set to
  * `undefined` (Plot treats an explicit undefined differently from an
@@ -57,9 +57,9 @@ export function resolveObservablePlotEncoding(
   // Real, confirmed visual bug: @observablehq/plot's own default rendered
   // font-size is 10px (confirmed empirically via getComputedStyle() on a
   // live rendered chart's own axis-tick <text> element — not merely
-  // assumed from docs), while PlotlyPanel.tsx's charts render at Plotly's
-  // own default of 12px (PlotlyPanel.tsx sets no explicit layout.font.size
-  // at all — confirmed by direct read — so 12px is Plotly's own library
+  // assumed from docs), while the retired chart panel's charts render at the old chart library's
+  // own default of 12px (the retired chart panel sets no explicit layout.font.size
+  // at all — confirmed by direct read — so 12px is the old chart library's own library
   // default, also confirmed live the same way). The two charting panel
   // types sitting side by side with visibly different text sizes reads as
   // an inconsistency, not an intentional design choice — matched here via
@@ -67,7 +67,7 @@ export function resolveObservablePlotEncoding(
   // shaped object, confirmed against the installed package's own
   // plot.d.ts), the documented way to override Plot's default styling,
   // rather than fighting it after the fact with an external CSS override.
-  // `12` is Plotly's own real, live-confirmed rendered default — not a
+  // `12` is the old chart library's own real, live-confirmed rendered default — not a
   // guessed pixel value in isolation.
   // OBSERVABLE-PLOT-THEMING-PROPOSAL.md §5a: fontFamily added alongside
   // the existing fontSize fix. Plot's own plot.js sets
@@ -98,7 +98,7 @@ export function resolveObservablePlotEncoding(
   // a fill/stroke channel with no explicit legend option shows no legend
   // at all. Since there is no author-facing key to opt in with, showing
   // one whenever a categorical color channel exists is the only reachable
-  // default — and matches this app's own PlotlyPanel, whose Plotly.js
+  // default — and matches this app's own the retired chart panel, whose the old chart library
   // legend already shows automatically whenever a color/name split
   // produces multiple traces, keeping the two charting panel types
   // visually consistent (a real hover/legend gap found via manual visual
@@ -122,14 +122,14 @@ export function resolveObservablePlotEncoding(
       // <svg> (Plot's own figure.append(...legends, svg)), not a
       // descendant, so CSS inheritance never reaches it either. After:
       // matches the chart body (fontFamily/fontSize above) and
-      // RechartsPanel's own ChartLegendContent text color
+      // the retired chart panel's own ChartLegendContent text color
       // (`text-muted-foreground`) exactly.
       style: plotLegendStyle(),
       // 15px (Plot's own legendItems() `swatchSize = 15` default) → 9px,
-      // matching RechartsPanel's own 8px `h-2 w-2` legend swatch as
+      // matching the retired chart panel's own 8px `h-2 w-2` legend swatch as
       // closely as this mark-independent, real-rendered-<svg>-per-swatch
       // shape allows (Plot's swatch is drawn as its own <svg><rect>, not
-      // a plain CSS-sizable <div> — an odd size vs. Recharts' round 8px
+      // a plain CSS-sizable <div> — an odd size vs. the old chart library' round 8px
       // is not perceptible at this scale, unlike 15px vs 8px today).
       swatchSize: 10,
     }
@@ -172,7 +172,7 @@ export function resolveObservablePlotEncoding(
   // (30px — axis.js's own `marginBottom = anchor === "bottom" ? 30 : 0`
   // default) was sized for Plot's own 10px default tick-label font, not the
   // 12px this panel's plotOptions.style override above renders at (matched
-  // to PlotlyPanel.tsx's own 12px default, see that assignment's own
+  // to the retired chart panel's own 12px default, see that assignment's own
   // comment) — and Plot never recomputes it from the actual rendered font
   // size. Confirmed directly against axis.js's own label-placement code
   // (labelOptions()): for a categorical/band scale specifically (every real
@@ -209,7 +209,7 @@ export function resolveObservablePlotEncoding(
 
   // 019-baseline-diff-consumption (FR-014): a real, confirmed finding —
   // research.md §6 originally assumed Observable Plot's own native
-  // null-handling omits a null-valued mark the same way Plotly's does.
+  // null-handling omits a null-valued mark the same way the old chart library's does.
   // Empirically false for barY specifically: a null y renders as a real
   // <rect height="0"> at the EXACT position a genuine 0 value would
   // occupy — visually indistinguishable from "no change," which is
@@ -265,7 +265,7 @@ export function resolveObservablePlotEncoding(
     filteredRows.length > 0 &&
     filteredRows.every((row) => isNumericColorValue(row[colorField as string]))
 
-  // 035-scenario-label-color: unlike plotly/recharts, Observable Plot
+  // 035-scenario-label-color: unlike the old chart library, Observable Plot
   // reads legend/axis/facet text DIRECTLY from each row's own cell value
   // — there is no separate "trace name"/"chart config label" field to
   // substitute into instead (research.md §5). Safe under FR-002/FR-003:
@@ -358,11 +358,11 @@ export function resolveObservablePlotEncoding(
     // SAME palette family this app's own --chart-1..5 tokens were
     // derived from — but not byte-identical: --chart-1..5 were
     // separately lightness-adjusted for WCAG 3:1 non-text contrast
-    // (rechartsPanel.css's own recorded history), Plot's raw
+    // (a retired chart panel file's own recorded history), Plot's raw
     // schemeObservable10 was not. This branch replaces Plot's own raw
     // scheme with this app's real, already-verified tokens whenever a
-    // categorical fill/stroke channel exists, matching RechartsPanel's
-    // own --chart-1..5 cycling (rechartsEncoding.ts) exactly, the same
+    // categorical fill/stroke channel exists, matching the retired chart panel's
+    // own --chart-1..5 cycling (a retired chart helper) exactly, the same
     // "all-or-nothing explicit range" mechanism the scenario branch above
     // already established (Plot's color scale has no partial-override
     // mode — research.md §4 of 035, re-confirmed here).

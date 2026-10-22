@@ -9,7 +9,7 @@
 **Decision**: Add a new fixture, `tests/fixtures/dashboard-shell-config.yaml`
 — a real, `project-docs/GRAMMAR.md`-shaped `dashboard-*.yaml` with `header`, one
 `filters` entry, and a `layout` containing at least two tabs' worth of rows
-(one `valuebox` row, one `plotly` row) — rather than extending
+(one `valuebox` row, one `the old chart library` row) — rather than extending
 `all-placeholders-config.yaml`.
 
 **Rationale**: Confirmed by reading `all-placeholders-config.yaml` directly
@@ -37,7 +37,7 @@ Scenarios): at least 2 tabs (for SC-001's "at least two different configured
 tab counts" — achieved by testing against a 1-tab and a 2-tab variant, or by
 editing this fixture's tab count between test runs), one `valuebox` panel
 bound to a real fixture metric column (`summary_kpis.total_households`, from
-`tests/fixtures/generate.py`'s existing schema), one `plotly` panel bound to
+`tests/fixtures/generate.py`'s existing schema), one `the old chart library` panel bound to
 `trip_mode_share` with a `filter: $filters.purpose` reference (existing
 fixture data already has a `purpose` column), and one global `purpose`
 filter definition.
@@ -73,7 +73,7 @@ total_trips`), the constructed template is:
 ```sql
 SELECT "total_trips" FROM ($scenario.summary_kpis)
 ```
-For a `plotly` panel (`metric: trip_mode_share`, `filter:
+For a `the old chart library` panel (`metric: trip_mode_share`, `filter:
 $filters.purpose`), the template adds a `WHERE` clause on its own line, per
 `project-docs/GRAMMAR.md`'s documented `$filters.x`-must-sit-alone-on-its-own-line
 rule for correct `all`-sentinel omission:
@@ -97,17 +97,17 @@ modules).
   for no benefit — the two concerns compose cleanly as separate functions.
 - *Let each panel component build its own query inline* — rejected: would
   duplicate the column-selection/filter-binding logic between
-  `ValueBoxPanel.tsx` and `PlotlyPanel.tsx` (and every future panel type),
+  `ValueBoxPanel.tsx` and `the retired chart panel` (and every future panel type),
   exactly the kind of per-panel-type divergence the registry pattern exists
   to avoid.
 
 ---
 
-## 3. Resolving `$metric.col` in Plotly trace configs
+## 3. Resolving `$metric.col` in the old chart library trace configs
 
-**Decision**: `$metric.col` resolution is a `PlotlyPanel.tsx`-local concern,
+**Decision**: `$metric.col` resolution is a `the retired chart panel`-local concern,
 resolved entirely in JS after the query returns — not a `sqlExpander.ts`
-placeholder kind. `PlotlyPanel` reads a trace's `x`/`y`/`color`/etc. keys,
+placeholder kind. `the retired chart panel` reads a trace's `x`/`y`/`color`/etc. keys,
 and for any value matching `$metric.<column>`, maps it to
 `rows.map(r => r[column])`; a bare `$scenario` value (as in
 `project-docs/GRAMMAR.md`'s `name: $scenario` example) maps to the query result's
@@ -118,7 +118,7 @@ name — see `sqlExpander.ts`'s existing `expandScenario`).
 **Rationale**: `$metric.col`/`$scenario` in a trace config select *which
 column of the already-fetched result set* becomes a trace's `x`/`y`/`color`
 — fundamentally a data-shaping step, not a SQL-generation step. Handling it
-in `sqlExpander.ts` would require that module to understand Plotly's trace
+in `sqlExpander.ts` would require that module to understand the old chart library's trace
 shape, which is exactly the kind of panel-type-specific knowledge the
 registry pattern (constitution v2.2.0) keeps out of shared services.
 
@@ -127,7 +127,7 @@ registry pattern (constitution v2.2.0) keeps out of shared services.
   reuse if a second chart-rendering panel type (`plot`, Observable Plot)
   is added later; not built now since `plot` is out of scope for this
   feature and speculative generalization for a type that doesn't exist yet
-  isn't justified. `PlotlyPanel.tsx`'s own resolution logic is written
+  isn't justified. `the retired chart panel`'s own resolution logic is written
   straightforwardly enough that extracting it later, if `plot` needs the
   same shape, is a small refactor, not a rewrite.
 
@@ -137,7 +137,7 @@ registry pattern (constitution v2.2.0) keeps out of shared services.
 
 **Decision**: New `src/layout/types.ts` defines `DashboardTabConfig`
 (`header`, `filters[]`, `layout: Record<string, PanelConfig[]>`) and a
-discriminated-union `PanelConfig` (`ValueBoxPanelConfig | PlotlyPanelConfig`
+discriminated-union `PanelConfig` (`ValueBoxPanelConfig | RetiredChartPanelConfig`
 for this feature, extensible by `type` for future panel types) plus a
 `parseDashboardConfig(raw: unknown): DashboardTabConfig` function. Consumed
 by `shell.tsx`/`dashboardRenderer.tsx`, called once per loaded
@@ -201,8 +201,8 @@ rendering tests that Playwright can't cover end-to-end.
 
 **Decision**: `panels/registry.tsx` is exactly the `Record<string,
 ComponentType<PanelProps>>` the constitution's v2.2.0 amendment and
-`project-docs/SPEC.md` already specify — `{ valuebox: ValueBoxPanel, plotly:
-PlotlyPanel }` for this feature. `panelCard.tsx` (shadcn `Card`) is the
+`project-docs/SPEC.md` already specify — `{ valuebox: ValueBoxPanel, the old chart library:
+the retired chart panel }` for this feature. `panelCard.tsx` (shadcn `Card`) is the
 single place that (a) looks up a panel's component from the registry by
 `config.type`, (b) renders a title (`config.title`, `font-heading` per
 `002`'s typography mapping), and (c) hosts a React error boundary around
@@ -325,7 +325,7 @@ exist here; ours are `--destructive`/`--destructive-foreground`, per
   this feature's error state; a tinted background token is a reasonable
   future `002`-adjacent addition if a later feature finds the flat version
   visually too weak — not a gap this feature needs to close.
-- Loading state (`ValueBoxSkeleton`/an equivalent for `PlotlyPanel`) is
+- Loading state (`ValueBoxSkeleton`/an equivalent for `the retired chart panel`) is
   designed fresh, since there's genuinely nothing to port — a simple
   `animate-pulse` (Tailwind's built-in utility, no new token needed)
   placeholder matching the panel's expected shape.
@@ -348,7 +348,7 @@ either.
 |---|---|
 | 1 | New fixture (`dashboard-shell-config.yaml`), not an extension of `all-placeholders-config.yaml` |
 | 2 | `panelQuery.ts` builds bare `$scenario.x`/`$filters.x` SQL templates; `sqlExpander.ts` unchanged |
-| 3 | `$metric.col`/`$scenario` in Plotly traces resolved in `PlotlyPanel.tsx` from the query result, not in `sqlExpander.ts` |
+| 3 | `$metric.col`/`$scenario` in the old chart library traces resolved in `the retired chart panel` from the query result, not in `sqlExpander.ts` |
 | 4 | New `layout/types.ts` for typed `dashboard-*.yaml` parsing; `yamlLoader.ts`'s `raw: unknown` contract unchanged |
 | 5 | Vitest for pure logic (`panelQuery.ts`, `types.ts`); Playwright for anything that renders — no new component-testing library |
 | 6 | Shared error boundary lives in `panelCard.tsx`, not duplicated per panel type |

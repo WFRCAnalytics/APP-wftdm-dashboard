@@ -42,7 +42,7 @@ persistence of any kind.
 
 **Testing**: Vitest (unit — the flat-rows-to-hierarchy transform and any
 other pure logic module, matching every prior panel type's own
-`rechartsEncoding.ts`/`sankeyGraph.ts`/`observablePlotEncoding.ts`
+`a retired chart helper`/`sankeyGraph.ts`/`observablePlotEncoding.ts`
 precedent) + Playwright (integration — real render, real zoom
 interaction, real computed-style dual-theme verification, matching this
 project's established per-panel-type test convention).
@@ -79,7 +79,7 @@ renderer functions, one new pure data-transform module (flat rows →
 type (both against `purpose_mode_flow`) on `dashboard-8-test.yaml` (this
 project's own established "exercise a panel type's own mechanics, not
 part of the real calibration story" venue — see `040-test-suite-
-migration`'s own precedent for `sankey`/`recharts`) — no existing
+migration`'s own precedent for `sankey`/`the old chart library`) — no existing
 dashboard content, panel type, or query mechanism is modified.
 
 ## Constitution Check
@@ -115,7 +115,7 @@ dashboard content, panel type, or query mechanism is modified.
   of change (2.2.0→2.3.0's `@deck.gl/layers` addition; the existing
   "Charts — Sankey" row itself). This amendment is scheduled as part of
   this feature's own implementation (not deferred), the same way
-  `029-shadcn-chart-panel` amended the table for Recharts.
+  `029-shadcn-chart-panel` amended the table for the old chart library.
 - **Principle VII (Minimal, fixed config file set)** — PASS. No new
   config file type; `path`/`value`/`color_scheme` are new FIELDS inside
   the existing `dashboard-*.yaml` panel grammar, not a new file.
@@ -188,7 +188,7 @@ src/
 │   │                                 #   interactive zoomable chart
 │   │                                 #   benefits from 004's expand-to-
 │   │                                 #   dialog room, matching table/
-│   │                                 #   plotly/sankey/flowmap/zonemap's
+│   │                                 #   the old chart library/sankey/flowmap/zonemap's
 │   │                                 #   own default).
 │   ├── hierarchyData.ts              # NEW, pure — flat tidy query rows
 │   │                                 #   -> a d3.hierarchy()-ready nested
@@ -196,7 +196,7 @@ src/
 │   │                                 #   order, leaves valued by `value`
 │   │                                 #   (research.md §4). Vitest-covered,
 │   │                                 #   same split-pure-logic-out
-│   │                                 #   convention as rechartsEncoding.ts/
+│   │                                 #   convention as a retired chart helper/
 │   │                                 #   sankeyGraph.ts/
 │   │                                 #   observablePlotEncoding.ts.
 │   ├── HierarchicalChartHost.tsx     # NEW — the shared host (research.md
@@ -237,7 +237,7 @@ public/
     └── dashboard-8-test.yaml         # MODIFIED — new real treemap/sunburst
                                        #   panels against purpose_mode_flow
                                        #   (research.md §2), matching the
-                                       #   sankey/recharts precedent already
+                                       #   sankey/the old chart library precedent already
                                        #   established on this tab by
                                        #   040-test-suite-migration.
 

@@ -50,7 +50,7 @@ function isMultiselectInputPlaceholder(
  *
  * - undefined -> [] (no WHERE clause)
  * - a string matching ^\$filters\.<id>$ -> [[id, filter]] (today's exact
- *   behavior for valuebox/plotly/table — column assumed equal to id, per
+ *   behavior for valuebox/the old chart library/table — column assumed equal to id, per
  *   the SQL placeholder reference table's own literal example)
  * - any other string (a literal, non-placeholder value) -> [] (unchanged —
  *   never produces a WHERE clause)
@@ -157,7 +157,7 @@ export function buildPanelQuery(
  * single-id extraction (previously an inline
  * `config.filter.replace(/^\$filters\./, '')`) no longer typechecks
  * against the widened union either, since `.replace` isn't callable on a
- * Record. Reused here by ValueBoxPanel.tsx/PlotlyPanel.tsx/TablePanel.tsx
+ * Record. Reused here by ValueBoxPanel.tsx/the retired chart panel/TablePanel.tsx
  * too, replacing three near-identical inline snippets with one — not
  * scope creep, a direct, necessary consequence of the filter: type
  * widening every data-bound panel type shares.
@@ -333,7 +333,7 @@ export function buildGraphicWalkerQuery(config: GraphicWalkerPanelConfig): strin
  * DashboardConfig argument for its $mappings/$bins/$sql cases, but a
  * panel-built template never contains those placeholder kinds (this
  * module never emits them). Exported from here — the one place that
- * constructs panel SQL templates — so ValueBoxPanel.tsx/PlotlyPanel.tsx
+ * constructs panel SQL templates — so ValueBoxPanel.tsx/the retired chart panel
  * import it rather than each defining their own equivalent empty object.
  */
 export const EMPTY_SUMMARIZE_CONFIG: DashboardConfig = { raw: {}, sourcePath: '' }
@@ -411,9 +411,9 @@ export interface ResolvedPanelQuery {
  * comparison: diff query or an ordinary $scenario query, plus the
  * {scenario, metric} pairs tabDataLoader.ts's ensureRegistered() needs"
  * shape every comparison-capable panel type's own fetch effect
- * (PlotlyPanel.tsx/TablePanel.tsx/ObservablePlotPanel.tsx/
- * RechartsPanel.tsx/ZoneMapPanel.tsx) duplicated inline, verbatim, since
- * 019-baseline-diff-consumption first established it — PlotlyPanel.tsx's
+ * (the retired chart panel/TablePanel.tsx/ObservablePlotPanel.tsx/
+ * the retired chart panel/ZoneMapPanel.tsx) duplicated inline, verbatim, since
+ * 019-baseline-diff-consumption first established it — the retired chart panel's
  * own comment used to say so directly ("same ... shape ZoneMapPanel.tsx's
  * own reference migration establishes"), and each later panel type
  * copied the block forward again rather than sharing it.

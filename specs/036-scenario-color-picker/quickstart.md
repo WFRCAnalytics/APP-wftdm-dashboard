@@ -17,7 +17,7 @@ npm run dev            # starts the Vite dev server
    `dev:fixtures`) to add `"scenarioPalette": ["#111111", "#222222"]`.
 2. Reload with two active scenarios, no color override on either.
 3. **Expect**: the first-registered scenario renders `#111111`, the
-   second `#222222`, consistently across a Plotly, a Recharts, and an
+   second `#222222`, consistently across a the old chart library, a the old chart library, and an
    Observable Plot panel splitting by scenario.
 
 ## Scenario 2 — Shipped default with no deployer config (US1, AC2)

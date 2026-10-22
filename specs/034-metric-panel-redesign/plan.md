@@ -6,13 +6,13 @@
 
 ## Summary
 
-Three independent changes to this app's metric/value-box panels: (A) scope the expand-to-dialog affordance away from `valuebox` and ordinary (non-full-page) `graphic-walker` panels, keeping it unchanged for every other panel type; (B) restyle `ValueBoxPanel.tsx` to match shadcn's own real, current dashboard metric-card pattern (label above value, tabular-aligned figures, badge-style trend presentation), confirmed by fetching that real source directly; (C) add two new, independent, optional configuration modes — `sparkline` (a small embedded Recharts chart summarizing a separate grouped metric) and `baseline_trend` (a directional indicator reusing this app's existing `$baseline`-resolution and free-form-`expr` comparison technique via one new, small, additive query-building function, since the existing row-join-based comparison mechanism has no equivalent for a single-row scalar table). No existing panel type's behavior changes except the two named in Part A; no existing `ValueBoxPanelConfig` field's meaning changes.
+Three independent changes to this app's metric/value-box panels: (A) scope the expand-to-dialog affordance away from `valuebox` and ordinary (non-full-page) `graphic-walker` panels, keeping it unchanged for every other panel type; (B) restyle `ValueBoxPanel.tsx` to match shadcn's own real, current dashboard metric-card pattern (label above value, tabular-aligned figures, badge-style trend presentation), confirmed by fetching that real source directly; (C) add two new, independent, optional configuration modes — `sparkline` (a small embedded the old chart library chart summarizing a separate grouped metric) and `baseline_trend` (a directional indicator reusing this app's existing `$baseline`-resolution and free-form-`expr` comparison technique via one new, small, additive query-building function, since the existing row-join-based comparison mechanism has no equivalent for a single-row scalar table). No existing panel type's behavior changes except the two named in Part A; no existing `ValueBoxPanelConfig` field's meaning changes.
 
 ## Technical Context
 
 **Language/Version**: TypeScript (ES2022 target), React 18.3 — this app's existing stack, no change.
 
-**Primary Dependencies**: `recharts` (already installed, `029-shadcn-chart-panel`), `lucide-react` (already installed — `TrendingUp`/`TrendingDown`/`Minus` icons), `class-variance-authority` (already installed, used by `button.tsx`) for the new `Badge` primitive's `variant` prop. No new npm dependency.
+**Primary Dependencies**: `the old chart library` (already installed, `029-shadcn-chart-panel`), `lucide-react` (already installed — `TrendingUp`/`TrendingDown`/`Minus` icons), `class-variance-authority` (already installed, used by `button.tsx`) for the new `Badge` primitive's `variant` prop. No new npm dependency.
 
 **Storage**: N/A — reuses the existing DuckDB-WASM query layer (`services/duckdb.ts`) unchanged.
 
@@ -24,7 +24,7 @@ Three independent changes to this app's metric/value-box panels: (A) scope the e
 
 **Performance Goals**: No new goal beyond this app's existing per-panel query/render conventions — a value box's two new optional zones each add at most one small, independent query, matching the cost profile of any other optional panel feature (e.g. a `comparison: diff` config on an existing panel type).
 
-**Constraints**: No new npm dependency (Constitution Principle VI's fixed technology choices — `recharts`/`lucide-react`/`class-variance-authority` already satisfy every real need here). `panelQuery.ts`'s existing exports (`buildPanelQuery`, `buildComparisonDiffQuery`, `resolveComparisonScenarioName`, `isComparisonDiff`, `resolveActiveScenarios`, `extractGlobalFilterIds`) MUST NOT change signature or behavior — every addition is a new, additive export (spec.md's own explicit "does not include" scope boundary; research.md §3).
+**Constraints**: No new npm dependency (Constitution Principle VI's fixed technology choices — `the old chart library`/`lucide-react`/`class-variance-authority` already satisfy every real need here). `panelQuery.ts`'s existing exports (`buildPanelQuery`, `buildComparisonDiffQuery`, `resolveComparisonScenarioName`, `isComparisonDiff`, `resolveActiveScenarios`, `extractGlobalFilterIds`) MUST NOT change signature or behavior — every addition is a new, additive export (spec.md's own explicit "does not include" scope boundary; research.md §3).
 
 **Scale/Scope**: One new UI primitive (`components/ui/badge.tsx`), one new exported constant (`EXPANDABLE_PANEL_TYPES`), two new `ValueBoxPanelConfig` fields (`sparkline`, `baseline_trend`), two new query-builder functions, one redesigned panel component (`ValueBoxPanel.tsx`) plus one small new sub-component for the embedded chart.
 
@@ -39,7 +39,7 @@ Three independent changes to this app's metric/value-box panels: (A) scope the e
 | III. No `eval()` — string replacement only | PASS | `baseline_trend.expr` is interpolated verbatim into a SQL template, identical convention to `ComparisonDiff.expr` (never evaluated in JS). |
 | IV. YAML Parsed at Runtime | PASS | `sparkline`/`baseline_trend` are two more optional keys parsed by the existing runtime `js-yaml` pipeline — no build-time schema introduced. |
 | V. Parquet-Only Browser Data I/O | PASS | Unaffected — both new query builders read from already-registered scenario views, same as every existing panel query. |
-| VI. Fixed Technology Choices | PASS | Reuses `recharts`/`lucide-react`/shadcn-pattern primitives already in place; no new CSS framework, chart library, or icon set. |
+| VI. Fixed Technology Choices | PASS | Reuses `the old chart library`/`lucide-react`/shadcn-pattern primitives already in place; no new CSS framework, chart library, or icon set. |
 | VII. Minimal, Fixed Config File Set | PASS | No new config file type — additive keys inside the existing `dashboard-*.yaml` `type: valuebox` grammar. |
 | VIII. Reuse Proven Reference Implementations | N/A | This feature touches no DuckDB-WASM/MapLibre/Vite-worker wiring the reference repos cover. |
 | IX. Fixed Python/JS Source Split | PASS | No Python-side change. |
@@ -99,13 +99,13 @@ src/
 │   │                               # fetch effects (sparkline, baseline_trend), each
 │   │                               # with its own loading/ready/empty-or-no-baseline/
 │   │                               # error state (data-model.md §4/§6)
-│   └── valueBoxSparkline.tsx        # NEW — small, minimal-chrome Recharts rendering
+│   └── valueBoxSparkline.tsx        # NEW — small, minimal-chrome the old chart library rendering
 │                                   # (bare BarChart/LineChart + encodeRechartsData(),
 │                                   # no ChartContainer axes/tooltip/legend) — split
 │                                   # out of ValueBoxPanel.tsx for the same reason
 │                                   # every other panel type's own pure/presentational
-│                                   # logic is split out (plotlyTraces.ts,
-│                                   # rechartsEncoding.ts, etc.)
+│                                   # logic is split out (a retired chart helper,
+│                                   # a retired chart helper, etc.)
 ├── components/
 │   └── ui/
 │       └── badge.tsx                # NEW — adapted from shadcn's real, current
@@ -130,7 +130,7 @@ tests/
     │                               # valuebox loses its expand trigger, every one of
     │                               # those tests needs its fixture panel swapped to
     │                               # a still-expandable type (this file's own
-    │                               # existing "Mode Share by Purpose" plotly fixture,
+    │                               # existing "Mode Share by Purpose" the old chart library fixture,
     │                               # already used by its chart-specific tests, is the
     │                               # natural candidate — exact choice left to
     │                               # /speckit-tasks). A new, small, dedicated test

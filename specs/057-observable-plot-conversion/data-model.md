@@ -61,7 +61,7 @@ over unchanged, byte-for-byte, in every conversion.
 Note the grammar difference already documented in `ObservablePlotPanelConfig`'s
 own doc comment and confirmed unchanged by this feature: `x`/`y`/`fill`
 are **literal column names** (`purpose`, `share`), never
-`$metric.<column>`-prefixed the way `PlotlyTraceConfig.x`/`y` are — every
+`$metric.<column>`-prefixed the way `RetiredChartTraceConfig.x`/`y` are — every
 mapping above already reflects this (the `$metric.` prefix is dropped,
 not translated).
 
@@ -90,12 +90,12 @@ builds from `ValueBoxSparklineConfig` to call `Plot.plot()`:
 ```
 
 No `fill`/`color`/`legend` option — the sparkline renders exactly one
-series, matching its current Recharts behavior (no color-by-category
+series, matching its current the old chart library behavior (no color-by-category
 mode exists for a sparkline today, and none is being added).
 
 ## 4. Excluded from this data model
 
-- `PlotlyPanelConfig`, `RechartsPanelConfig`, `SankeyPanelConfig` — all
+- `RetiredChartPanelConfig`, `RetiredChartPanelConfig`, `SankeyPanelConfig` — all
   unchanged; still valid, parseable, renderable panel types (FR-010).
 - Any field on `PanelConfigBase`/`DataBoundPanelConfigBase`/
   `ComparisonCapablePanelConfig` — untouched; every converted panel keeps

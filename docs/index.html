@@ -4,18 +4,21 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>WFRC TDM Calibration Dashboard</title>
-    <script type="module" crossorigin src="/APP-wftdm-dashboard/assets/index-Dlzl8K7L.js"></script>
-    <link rel="modulepreload" crossorigin href="/APP-wftdm-dashboard/assets/app-shared-zjifzaoS.js">
-    <link rel="modulepreload" crossorigin href="/APP-wftdm-dashboard/assets/react-vendor-C9aN2wcb.js">
+    <script type="module" crossorigin src="/APP-wftdm-dashboard/assets/index-DJXlzwQc.js"></script>
+    <link rel="modulepreload" crossorigin href="/APP-wftdm-dashboard/assets/app-shared-B6XQkMz5.js">
+    <link rel="modulepreload" crossorigin href="/APP-wftdm-dashboard/assets/react-vendor-hk5JyWcx.js">
     <link rel="modulepreload" crossorigin href="/APP-wftdm-dashboard/assets/duckdb-Bjlci3X6.js">
     <link rel="modulepreload" crossorigin href="/APP-wftdm-dashboard/assets/duckdb-DGuTOzOD.js">
-    <link rel="modulepreload" crossorigin href="/APP-wftdm-dashboard/assets/yamlLoader-Di0TAkn-.js">
-    <link rel="modulepreload" crossorigin href="/APP-wftdm-dashboard/assets/appState-CIu_yLrC.js">
+    <link rel="modulepreload" crossorigin href="/APP-wftdm-dashboard/assets/yamlLoader-B59OwAop.js">
+    <link rel="modulepreload" crossorigin href="/APP-wftdm-dashboard/assets/appState-CKSLopfd.js">
+    <link rel="modulepreload" crossorigin href="/APP-wftdm-dashboard/assets/compareState-DdpT1JXQ.js">
     <link rel="modulepreload" crossorigin href="/APP-wftdm-dashboard/assets/filterState-RCplXVNu.js">
     <link rel="modulepreload" crossorigin href="/APP-wftdm-dashboard/assets/sqlExpander-Bv6wpbkr.js">
-    <link rel="modulepreload" crossorigin href="/APP-wftdm-dashboard/assets/maps-uAubRabf.js">
+    <link rel="modulepreload" crossorigin href="/APP-wftdm-dashboard/assets/d3-shared-CJ777Fuf.js">
+    <link rel="modulepreload" crossorigin href="/APP-wftdm-dashboard/assets/observable-plot-D-UHXL3h.js">
+    <link rel="modulepreload" crossorigin href="/APP-wftdm-dashboard/assets/maps-L2vCIGha.js">
     <link rel="stylesheet" crossorigin href="/APP-wftdm-dashboard/assets/maps-BQlc4wYO.css">
-    <link rel="stylesheet" crossorigin href="/APP-wftdm-dashboard/assets/index-C-ltaRqJ.css">
+    <link rel="stylesheet" crossorigin href="/APP-wftdm-dashboard/assets/index-DI0Lsicx.css">
   </head>
   <body>
     <div id="app">
@@ -66,44 +69,37 @@
            needed here; it inherits whichever theme the rest of the app
            would already be in. -->
       <!-- BOOT_SKELETON -->
-<div role="status" aria-label="Loading dashboard" class="flex min-h-screen bg-background text-foreground">
-      <aside class="sticky top-0 flex h-screen w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar shadow-md">
-        <div class="flex flex-col">
-          <div class="flex items-center justify-between gap-2 p-4">
-            <div class="h-8 w-32 animate-pulse rounded-md bg-muted"></div>
-            <div class="h-8 w-8 shrink-0 animate-pulse rounded-md bg-muted"></div>
-          </div>
-          <div class="border-b border-sidebar-border"></div>
+<div role="status" aria-label="Loading dashboard" class="relative z-[1] min-h-screen">
+      <span class="sr-only">Loading dashboard…</span>
+      <nav aria-hidden="true" class="glass fixed bottom-[14px] left-[14px] top-[14px] z-40 flex w-[68px] flex-col overflow-hidden rounded-[24px] px-[10px] py-3 max-[759px]:hidden">
+        <div class="mb-[14px] flex min-h-[46px] items-center px-[3px]"><div class="h-[38px] w-[38px] shrink-0 rounded-[13px] animate-pulse bg-[color-mix(in_srgb,var(--ink)_12%,transparent)] motion-reduce:animate-none"></div></div>
+        <div class="flex min-h-0 flex-1 flex-col gap-1 overflow-hidden"><div role="tab" aria-label="Summary" class="flex h-[46px] w-full items-center rounded-[15px] px-[14px]"><div class="h-5 w-5 shrink-0 rounded-md animate-pulse bg-[color-mix(in_srgb,var(--ink)_12%,transparent)] motion-reduce:animate-none"></div></div><div role="tab" aria-label="Person and household" class="flex h-[46px] w-full items-center rounded-[15px] px-[14px]"><div class="h-5 w-5 shrink-0 rounded-md animate-pulse bg-[color-mix(in_srgb,var(--ink)_12%,transparent)] motion-reduce:animate-none"></div></div><div role="tab" aria-label="Tour models" class="flex h-[46px] w-full items-center rounded-[15px] px-[14px]"><div class="h-5 w-5 shrink-0 rounded-md animate-pulse bg-[color-mix(in_srgb,var(--ink)_12%,transparent)] motion-reduce:animate-none"></div></div><div role="tab" aria-label="Mode choice" class="flex h-[46px] w-full items-center rounded-[15px] px-[14px]"><div class="h-5 w-5 shrink-0 rounded-md animate-pulse bg-[color-mix(in_srgb,var(--ink)_12%,transparent)] motion-reduce:animate-none"></div></div><div role="tab" aria-label="Network" class="flex h-[46px] w-full items-center rounded-[15px] px-[14px]"><div class="h-5 w-5 shrink-0 rounded-md animate-pulse bg-[color-mix(in_srgb,var(--ink)_12%,transparent)] motion-reduce:animate-none"></div></div><div role="tab" aria-label="Explore" class="flex h-[46px] w-full items-center rounded-[15px] px-[14px]"><div class="h-5 w-5 shrink-0 rounded-md animate-pulse bg-[color-mix(in_srgb,var(--ink)_12%,transparent)] motion-reduce:animate-none"></div></div></div>
+        <div class="mt-2 flex flex-col gap-1 border-t border-[var(--line)] pt-2">
+          <div class="flex h-[46px] items-center px-[14px] max-[759px]:hidden"><div class="h-5 w-5 rounded-md animate-pulse bg-[color-mix(in_srgb,var(--ink)_12%,transparent)] motion-reduce:animate-none"></div></div>
+          <div class="flex h-[46px] items-center px-[14px]"><div class="h-5 w-5 rounded-md animate-pulse bg-[color-mix(in_srgb,var(--ink)_12%,transparent)] motion-reduce:animate-none"></div></div>
+          <div class="flex h-[46px] items-center px-[14px]"><div class="h-5 w-5 rounded-md animate-pulse bg-[color-mix(in_srgb,var(--ink)_12%,transparent)] motion-reduce:animate-none"></div></div>
         </div>
-        <div class="flex min-h-0 flex-1 flex-col gap-0.5 overflow-hidden px-2 py-2">
-          <ul role="tablist" class="flex flex-col gap-0.5"><li class="list-none"><div class="flex w-full items-center gap-3 rounded-md px-2.5 py-2" role="tab" aria-label="Summary"><div class="h-4 w-4 shrink-0 animate-pulse rounded-md bg-muted rounded-full"></div><div class="h-4 animate-pulse rounded-md bg-muted" style="width:56px"></div></div></li><li class="list-none"><div class="flex w-full items-center gap-3 rounded-md px-2.5 py-2" role="tab" aria-label="Person &amp; Households"><div class="h-4 w-4 shrink-0 animate-pulse rounded-md bg-muted rounded-full"></div><div class="h-4 animate-pulse rounded-md bg-muted" style="width:133px"></div></div></li><li class="list-none"><div class="flex w-full items-center gap-3 rounded-md px-2.5 py-2" role="tab" aria-label="Tour"><div class="h-4 w-4 shrink-0 animate-pulse rounded-md bg-muted rounded-full"></div><div class="h-4 animate-pulse rounded-md bg-muted" style="width:56px"></div></div></li><li class="list-none"><div class="flex w-full items-center gap-3 rounded-md px-2.5 py-2" role="tab" aria-label="Mode Choice"><div class="h-4 w-4 shrink-0 animate-pulse rounded-md bg-muted rounded-full"></div><div class="h-4 animate-pulse rounded-md bg-muted" style="width:77px"></div></div></li><li class="list-none"><div class="flex w-full items-center gap-3 rounded-md px-2.5 py-2" role="tab" aria-label="Trip"><div class="h-4 w-4 shrink-0 animate-pulse rounded-md bg-muted rounded-full"></div><div class="h-4 animate-pulse rounded-md bg-muted" style="width:56px"></div></div></li><li class="list-none"><div class="flex w-full items-center gap-3 rounded-md px-2.5 py-2" role="tab" aria-label="Network"><div class="h-4 w-4 shrink-0 animate-pulse rounded-md bg-muted rounded-full"></div><div class="h-4 animate-pulse rounded-md bg-muted" style="width:56px"></div></div></li><li class="list-none"><div class="flex w-full items-center gap-3 rounded-md px-2.5 py-2" role="tab" aria-label="Explore"><div class="h-4 w-4 shrink-0 animate-pulse rounded-md bg-muted rounded-full"></div><div class="h-4 animate-pulse rounded-md bg-muted" style="width:56px"></div></div></li><li class="list-none"><div class="flex w-full items-center gap-3 rounded-md px-2.5 py-2" role="tab" aria-label=" "><div class="h-4 animate-pulse rounded-md bg-muted" style="width:56px"></div></div></li></ul>
-        </div>
-        <div class="flex flex-col">
-          <div class="border-b border-sidebar-border"></div>
-          <div class="flex flex-col gap-0.5 p-4">
-            <div class="flex w-full items-center gap-3 rounded-md px-2.5 py-2">
-              <div class="h-4 w-4 shrink-0 animate-pulse rounded-md bg-muted rounded-full"></div>
-              <div class="h-4 w-16 animate-pulse rounded-md bg-muted"></div>
-            </div>
-            <div class="flex w-full items-center gap-3 rounded-md px-2.5 py-2">
-              <div class="h-4 w-4 shrink-0 animate-pulse rounded-md bg-muted rounded-full"></div>
-              <div class="h-4 w-24 animate-pulse rounded-md bg-muted"></div>
+      </nav>
+      <main class="flex min-h-screen flex-col pl-[96px] max-[759px]:pl-0">
+        <header class="flex flex-wrap items-center justify-between gap-x-5 gap-y-[14px] pb-3 pl-[14px] pr-7 pt-[26px]">
+          <div class="flex min-w-0 items-center gap-3">
+            <div class="hidden h-10 w-10 shrink-0 rounded-full animate-pulse bg-[color-mix(in_srgb,var(--ink)_12%,transparent)] motion-reduce:animate-none max-[759px]:block"></div>
+            <div class="min-w-0">
+              <div class="h-10 w-[min(280px,60vw)] rounded-xl animate-pulse bg-[color-mix(in_srgb,var(--ink)_12%,transparent)] motion-reduce:animate-none"></div>
+              <div class="mt-[10px] h-4 w-[min(360px,70vw)] rounded-full animate-pulse bg-[color-mix(in_srgb,var(--ink)_12%,transparent)] motion-reduce:animate-none"></div>
             </div>
           </div>
-        </div>
-      </aside>
-      <main class="flex min-h-screen min-w-0 flex-1 flex-col">
-        <div class="flex flex-col gap-6 p-6">
-          <div class="h-7 w-56 animate-pulse rounded-md bg-muted"></div>
-          <div class="grid gap-6" style="grid-template-columns: repeat(3, 1fr)">
-            <div class="h-32 animate-pulse rounded-md bg-muted rounded-lg border border-border shadow-md"></div>
-            <div class="h-32 animate-pulse rounded-md bg-muted rounded-lg border border-border shadow-md"></div>
-            <div class="h-32 animate-pulse rounded-md bg-muted rounded-lg border border-border shadow-md"></div>
+          <div class="glass flex h-[52px] w-[min(620px,100%)] items-center gap-2 rounded-[26px] px-2">
+            <div class="h-9 flex-1 rounded-full animate-pulse bg-[color-mix(in_srgb,var(--ink)_12%,transparent)] motion-reduce:animate-none"></div>
+            <div class="h-9 flex-1 rounded-full animate-pulse bg-[color-mix(in_srgb,var(--ink)_12%,transparent)] motion-reduce:animate-none"></div>
+            <div class="h-9 w-[120px] rounded-full animate-pulse bg-[color-mix(in_srgb,var(--ink)_12%,transparent)] motion-reduce:animate-none"></div>
           </div>
-          <div class="grid gap-6" style="grid-template-columns: repeat(2, 1fr)">
-            <div class="h-64 animate-pulse rounded-md bg-muted rounded-lg border border-border shadow-md"></div>
-            <div class="h-64 animate-pulse rounded-md bg-muted rounded-lg border border-border shadow-md"></div>
+        </header>
+        <div class="flex flex-col gap-[14px] pb-[60px] pl-[14px] pr-7 pt-2">
+          <div class="grid grid-cols-5 rounded-[26px] border border-[var(--glass-line)] bg-[var(--tile-hi)] p-[6px] shadow-[var(--sh1)] max-[1100px]:grid-cols-2">
+            <div class="flex h-[148px] flex-col gap-3 px-[22px] py-5 min-[1101px]:border-r min-[1101px]:border-[var(--glass-line)]"><div class="h-3 w-24 rounded-full animate-pulse bg-[color-mix(in_srgb,var(--ink)_12%,transparent)] motion-reduce:animate-none"></div><div class="h-9 w-28 rounded-lg animate-pulse bg-[color-mix(in_srgb,var(--ink)_12%,transparent)] motion-reduce:animate-none"></div><div class="h-4 w-36 rounded-full animate-pulse bg-[color-mix(in_srgb,var(--ink)_12%,transparent)] motion-reduce:animate-none"></div></div><div class="flex h-[148px] flex-col gap-3 px-[22px] py-5 min-[1101px]:border-r min-[1101px]:border-[var(--glass-line)]"><div class="h-3 w-24 rounded-full animate-pulse bg-[color-mix(in_srgb,var(--ink)_12%,transparent)] motion-reduce:animate-none"></div><div class="h-9 w-28 rounded-lg animate-pulse bg-[color-mix(in_srgb,var(--ink)_12%,transparent)] motion-reduce:animate-none"></div><div class="h-4 w-36 rounded-full animate-pulse bg-[color-mix(in_srgb,var(--ink)_12%,transparent)] motion-reduce:animate-none"></div></div><div class="flex h-[148px] flex-col gap-3 px-[22px] py-5 min-[1101px]:border-r min-[1101px]:border-[var(--glass-line)]"><div class="h-3 w-24 rounded-full animate-pulse bg-[color-mix(in_srgb,var(--ink)_12%,transparent)] motion-reduce:animate-none"></div><div class="h-9 w-28 rounded-lg animate-pulse bg-[color-mix(in_srgb,var(--ink)_12%,transparent)] motion-reduce:animate-none"></div><div class="h-4 w-36 rounded-full animate-pulse bg-[color-mix(in_srgb,var(--ink)_12%,transparent)] motion-reduce:animate-none"></div></div><div class="flex h-[148px] flex-col gap-3 px-[22px] py-5 min-[1101px]:border-r min-[1101px]:border-[var(--glass-line)]"><div class="h-3 w-24 rounded-full animate-pulse bg-[color-mix(in_srgb,var(--ink)_12%,transparent)] motion-reduce:animate-none"></div><div class="h-9 w-28 rounded-lg animate-pulse bg-[color-mix(in_srgb,var(--ink)_12%,transparent)] motion-reduce:animate-none"></div><div class="h-4 w-36 rounded-full animate-pulse bg-[color-mix(in_srgb,var(--ink)_12%,transparent)] motion-reduce:animate-none"></div></div><div class="flex h-[148px] flex-col gap-3 px-[22px] py-5 max-[1100px]:col-span-2"><div class="h-3 w-24 rounded-full animate-pulse bg-[color-mix(in_srgb,var(--ink)_12%,transparent)] motion-reduce:animate-none"></div><div class="h-9 w-28 rounded-lg animate-pulse bg-[color-mix(in_srgb,var(--ink)_12%,transparent)] motion-reduce:animate-none"></div><div class="h-4 w-36 rounded-full animate-pulse bg-[color-mix(in_srgb,var(--ink)_12%,transparent)] motion-reduce:animate-none"></div></div>
           </div>
+          <div class="grid grid-cols-2 gap-[14px] max-[900px]:grid-cols-1"><div class="h-[320px] rounded-[22px] border border-[var(--glass-line)] bg-card p-[18px] shadow-[var(--sh1)]"><div class="h-4 w-40 rounded-full animate-pulse bg-[color-mix(in_srgb,var(--ink)_12%,transparent)] motion-reduce:animate-none"></div><div class="mt-2 h-3 w-64 max-w-full rounded-full animate-pulse bg-[color-mix(in_srgb,var(--ink)_12%,transparent)] motion-reduce:animate-none"></div></div><div class="h-[320px] rounded-[22px] border border-[var(--glass-line)] bg-card p-[18px] shadow-[var(--sh1)]"><div class="h-4 w-40 rounded-full animate-pulse bg-[color-mix(in_srgb,var(--ink)_12%,transparent)] motion-reduce:animate-none"></div><div class="mt-2 h-3 w-64 max-w-full rounded-full animate-pulse bg-[color-mix(in_srgb,var(--ink)_12%,transparent)] motion-reduce:animate-none"></div></div></div>
         </div>
       </main>
     </div>

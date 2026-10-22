@@ -21,7 +21,7 @@
 5. **Expected**: every one of those panels' colors visibly shift, live,
    to the `Set2` colorblind-safe set — no reload. A sibling panel with an
    explicit `color_scheme:` configured is unaffected.
-6. Load a tab with an unpinned, multi-scenario chart (e.g. a `recharts`
+6. Load a tab with an unpinned, multi-scenario chart (e.g. a `the old chart library`
    or `observable-plot` panel with `series: scenario` and no scenario
    color override/deployer palette configured).
 7. **Expected**: with colorblind-safe mode on, that chart's default

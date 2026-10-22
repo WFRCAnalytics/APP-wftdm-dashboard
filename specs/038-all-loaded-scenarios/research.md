@@ -5,7 +5,7 @@ section (items 1–3) before requirements were written. This document is the
 **Phase 1 deepening** the spec's Assumptions section defers to it: the definitive
 itemized 41-panel disposition table (built from a direct parse of the eight live
 `public/demo-dashboard-config/dashboard-*.yaml` files, not the spec's estimated
-categories), the per-`valuebox` keep-vs-convert call, the observable-plot/recharts
+categories), the per-`valuebox` keep-vs-convert call, the observable-plot/the old chart library
 colour-channel-conflict resolution, the auto-activation rule's concrete shape, and
 the fixture-test remediation strategy.
 
@@ -91,8 +91,8 @@ panel `description`.
 | 3 | 1-summary | valuebox | Tours | `scenario=` | — | **KEEP+NOTE** | KPI card — see §3 |
 | 4 | 1-summary | valuebox | Trips | `scenario=` | — | **KEEP+NOTE** | KPI card — see §3 |
 | 5 | 1-summary | valuebox | Total VMT | `scenario=` | — | **KEEP+NOTE** | KPI card — see §3 |
-| 6 | 1-summary | recharts | Total Trips by Mode | `scenarios=[3]` | `series: scenario` | **UNLIST** | already has the channel — just drop the list |
-| 7 | 1-summary | plotly | Average Trip Distance by Purpose | `scenarios=[3]` | none | **UNPIN+CH** | add `name: $scenario` (list → dynamic union) |
+| 6 | 1-summary | the old chart library | Total Trips by Mode | `scenarios=[3]` | `series: scenario` | **UNLIST** | already has the channel — just drop the list |
+| 7 | 1-summary | the old chart library | Average Trip Distance by Purpose | `scenarios=[3]` | none | **UNPIN+CH** | add `name: $scenario` (list → dynamic union) |
 | 8 | 2-person | table | Auto Ownership by Household Segment | `scenario=` | n/a | **UNPIN** | `TablePanel` renders the `scenario` column |
 | 10 | 2-person | observable-plot | School Location Distance Distribution | `scenario=` | `fill: school_segment` | **KEEP+NOTE** | fill channel already committed — see §4 |
 | 11 | 2-person | observable-plot | Workplace Location Distance Distribution | `scenario=` | none | **UNPIN+CH** | add `fill: scenario` |
@@ -105,7 +105,7 @@ panel `description`.
 | 21 | 3-tour | table | Joint Tour Participation | `scenario=` | n/a | **UNPIN** | |
 | 22 | 3-tour | observable-plot | Joint Tour Destination Distance | `scenario=` | `fill: primary_purpose` | **KEEP+NOTE** | fill already committed — see §4 |
 | 23 | 3-tour | table | Joint Tour Scheduling | `scenario=` | n/a | **UNPIN** | |
-| 24 | 3-tour | plotly | Non-Mandatory Tour Frequency by Purpose | `scenario=` | none | **UNPIN+CH** | add `name: $scenario` |
+| 24 | 3-tour | the old chart library | Non-Mandatory Tour Frequency by Purpose | `scenario=` | none | **UNPIN+CH** | add `name: $scenario` |
 | 25 | 3-tour | observable-plot | Non-Mandatory Tour Destination Distance | `scenario=` | `fill: primary_purpose` | **KEEP+NOTE** | fill already committed — see §4 |
 | 26 | 3-tour | table | Non-Mandatory Tour Scheduling | `scenario=` | n/a | **UNPIN** | |
 | 27 | 3-tour | table | At-Work Subtour Frequency | `scenario=` | n/a | **UNPIN** | |
@@ -113,12 +113,12 @@ panel `description`.
 | 29 | 3-tour | table | At-Work Subtour Scheduling | `scenario=` | n/a | **UNPIN** | |
 | 30 | 3-tour | table | Stop Frequency by Tour Purpose | `scenario=` | n/a | **UNPIN** | |
 | 31 | 4-mode | table | Tour Mode Share by Segment | `scenario=` | n/a | **UNPIN** | |
-| 32 | 4-mode | recharts | At-Work Subtour Mode Share by Purpose | `scenario=` | `series: tour_mode` | **KEEP+NOTE** | series already committed; recharts has no faceting — see §4 |
+| 32 | 4-mode | the old chart library | At-Work Subtour Mode Share by Purpose | `scenario=` | `series: tour_mode` | **KEEP+NOTE** | series already committed; the old chart library has no faceting — see §4 |
 | 33 | 4-mode | sankey | Trip Purpose to Mode Flow | `scenarios=[3]` | none (sums) | **UNLIST** | union sums flows across active scenarios; renders without error, responds to Switch, but is a *combined* flow not a comparison — weakest unpin, accepted per spec item-2 |
-| 34 | 4-mode | plotly | Trip Mode Share by Time-of-Day Period (WALK_LOC) | `scenarios=[3]` | none | **UNPIN+CH** | add `name: $scenario` (list → dynamic union) |
+| 34 | 4-mode | the old chart library | Trip Mode Share by Time-of-Day Period (WALK_LOC) | `scenarios=[3]` | none | **UNPIN+CH** | add `name: $scenario` (list → dynamic union) |
 | 35 | 5-trip | table | Trip Purpose Breakdown | `scenario=` | n/a | **UNPIN** | |
 | 36 | 5-trip | observable-plot | Trip Destination Distance Distribution | `scenario=` | `fill: primary_purpose` | **KEEP+NOTE** | fill already committed — see §4 |
-| 37 | 5-trip | plotly | Trip Departure Hour (Work Trips) | `scenario=` | none | **UNPIN+CH** | add `name: $scenario` |
+| 37 | 5-trip | the old chart library | Trip Departure Hour (Work Trips) | `scenario=` | none | **UNPIN+CH** | add `name: $scenario` |
 | 38 | 5-trip | zonemap | SOV Trip Attractions by Zone | `scenario=` | n/a | **KEEP+NOTE** | one choropleth draw per dataset (FR-010) |
 | 40 | 6-network | valuebox | Total VMT (straight-line proxy) | `scenario=` | — | **KEEP+NOTE** | KPI card — see §3 |
 | 41 | 6-network | zonemap | VMT by Home Zone (straight-line proxy) | `scenario=` | n/a | **KEEP+NOTE** | one choropleth draw per dataset (FR-010) |
@@ -138,7 +138,7 @@ notes — already unpinned, no data query, no action.)*
 | **UNPIN** (table) | 18 | 8, 12, 16, 18, 19, 20, 21, 23, 26, 27, 28, 29, 30, 31, 35, 43, 44, 45 |
 | **UNPIN** (graphic-walker) | 2 | 17, 46 |
 | **UNPIN+CH** (add `name:`/`fill: $scenario`) | 5 | 7, 11, 24, 34, 37 |
-| **UNLIST** (drop redundant `scenarios: [3]`, keep channel) | 2 | 6 (recharts, has channel), 33 (sankey, combined flow) |
+| **UNLIST** (drop redundant `scenarios: [3]`, keep channel) | 2 | 6 (the old chart library, has channel), 33 (sankey, combined flow) |
 | **KEEP+NOTE** — channel already committed | 5 | 10, 22, 25, 32, 36 |
 | **KEEP+NOTE** — one-draw-per-dataset (zonemap/flowmap) | 3 | 38, 41, 42 |
 | **KEEP+NOTE** — KPI valuebox | 6 | 1, 2, 3, 4, 5, 40 |
@@ -149,7 +149,7 @@ notes — already unpinned, no data query, no action.)*
 - **SC-003** ("at least 20 unpinned rendering a legible multi-scenario
   comparison"): 27 unpinned; of those, 26 render a legible per-scenario
   series/column (18 tables' `scenario` column + 2 graphic-walker pivots + 5
-  new-channel charts + 1 recharts). The 27th (sankey #33) responds to the Switch
+  new-channel charts + 1 the old chart library). The 27th (sankey #33) responds to the Switch
   but shows a combined flow, not a comparison — counted as unpinned, **not**
   counted toward "legible comparison". 26 ≥ 20 ✔.
 - **FR-009** ("redundant `scenarios: [all three]` list removed") applies to
@@ -161,9 +161,9 @@ notes — already unpinned, no data query, no action.)*
 ### §2 deviation from the spec's estimated item-2 categories
 
 The spec's item-2 table estimated "~8" panels in "Unpin + add a per-scenario
-series channel", naming "person-household ×2 obs-plot; tour-models 1 plotly + 2
-obs-plot; trip-models 1 obs-plot + 1 plotly; mode-choice 1 recharts". The direct
-parse shows **5** of those candidates (obs-plot 10/22/25/36, recharts 32) already
+series channel", naming "person-household ×2 obs-plot; tour-models 1 the old chart library + 2
+obs-plot; trip-models 1 obs-plot + 1 the old chart library; mode-choice 1 the old chart library". The direct
+parse shows **5** of those candidates (obs-plot 10/22/25/36, the old chart library 32) already
 bind their `fill`/`series` channel to a real categorical dimension
 (`school_segment`, `primary_purpose` ×3, `tour_mode`). Converting them to
 multi-scenario would require moving that dimension to a facet — a panel redesign
@@ -206,7 +206,7 @@ add baseline-scope `description`.** No conversion.
 
 ---
 
-## §4 — Colour-channel conflict on obs-plot / recharts (resolves FR-008 boundary)
+## §4 — Colour-channel conflict on obs-plot / the old chart library (resolves FR-008 boundary)
 
 Five panels bind their only per-series channel to a substantive non-scenario
 categorical dimension:
@@ -217,11 +217,11 @@ categorical dimension:
 | 22 | observable-plot | `fill: primary_purpose` | tour purpose breakdown is the analytical content |
 | 25 | observable-plot | `fill: primary_purpose` | same |
 | 36 | observable-plot | `fill: primary_purpose` | same |
-| 32 | recharts | `series: tour_mode` | mode split is the chart; **recharts has no faceting** (`rechartsEncoding.ts` pivots to one series per `series` value — a single channel) |
+| 32 | the old chart library | `series: tour_mode` | mode split is the chart; **the old chart library has no faceting** (`a retired chart helper` pivots to one series per `series` value — a single channel) |
 
 `observablePlotEncoding.ts` supports only one `fill`/`stroke`; a second
 categorical dimension needs `facet_x`/`facet_y`, which this feature does not add.
-`rechartsEncoding.ts` has no facet concept at all.
+`a retired chart helper` has no facet concept at all.
 
 **Decision**: these 5 stay `KEEP+NOTE` (pinned to `activitysim-baseline`, scope
 stated in `description`). Converting them to multi-scenario is a per-panel
@@ -275,7 +275,7 @@ shift. Expected blast radius: ~8–15 assertions, not 33.
    assuming `observed` was the sole scenario. **Fix**: pin the fixture panel
    itself to `scenarios: [observed]` in `tests/fixtures/dashboard-config/*.yaml`
    (an explicit declaration — FR-012's preferred remedy), **except**:
-   - `Scenario Split (Plotly|Recharts|Observable Plot|Table)` (dashboard-1) and
+   - `Scenario Split (the old chart library|the old chart library|Observable Plot|Table)` (dashboard-1) and
      `Free-form Visual Analytics (Multi-Scenario)` /
      `(Dataset Picker, Multi-Scenario)` (dashboard-2) — these **exist** to test
      the `$scenario` union. They stay unpinned; their tests already boot
@@ -378,10 +378,10 @@ render new per-scenario series/columns) must be checked in **both** light and
 dark mode. Technique per the `wftdm-design-system` skill: live
 `getComputedStyle()` assertions in a Playwright spec, not visual spot-checks.
 Specifically:
-- multi-series **plotly** (7, 24, 34, 37): confirm each scenario trace resolves a
-  distinct, theme-correct colour (`plotlyTraces.ts` already resolves
+- multi-series **the old chart library** (7, 24, 34, 37): confirm each scenario trace resolves a
+  distinct, theme-correct colour (`a retired chart helper` already resolves
   `$scenario`-split trace colours from tokens — 035).
-- multi-series **recharts** (6): `--chart-N` token cycling, already dual-theme
+- multi-series **the old chart library** (6): `--chart-N` token cycling, already dual-theme
   verified (029).
 - multi-series **observable-plot** (11): `fill: scenario` legend text uses
   `currentColor` — inherits `shell.tsx` `text-foreground` (already fixed, 033
@@ -401,7 +401,7 @@ Specifically:
 - `037`'s Scenarios-tab UI (drag reorder, baseline chip, Switch, tooltip) —
   untouched. This feature only changes *which panels the Switch's existing
   mechanism reaches*.
-- Faceting support for obs-plot/recharts (§4) — follow-up feature.
+- Faceting support for obs-plot/the old chart library (§4) — follow-up feature.
 - `valuebox` → `sparkline`/`baseline_trend` conversion (§3) — follow-up.
 - Large-N-scenario default behaviour (spec Assumptions) — follow-up if it ever
   arises; demo ships 3.

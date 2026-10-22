@@ -51,7 +51,7 @@ import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 // the card, `dialogAnchor` inside the Dialog) whenever `expanded`
 // changes, inside a `useLayoutEffect` so the move happens synchronously
 // before paint (no visible flash) and — critically — before any
-// passive-effect child (e.g. PlotlyPanel's own data-fetch/`Plotly.react()`
+// passive-effect child (e.g. the retired chart panel's own data-fetch/the old library's render call
 // effect) runs; React flushes every layout effect in a commit before any
 // regular effect, so by the time a portaled panel's own `useEffect` reads
 // its container's real layout dimensions, this hook's DOM move has
@@ -109,7 +109,7 @@ export function usePanelExpandHost(
           actually renders. Hidden (not removed) while expanded, so it
           stays available the instant the dialog closes. Given an
           explicit height only when the panel config specifies one
-          (options.height, e.g. a plotly panel's `height:` key, a common
+          (options.height, e.g. a the old chart library panel's `height:` key, a common
           field across panel types per data-model.md) — left `auto`
           otherwise, so a panel with no height opinion (e.g. a value box)
           renders exactly as it did before this feature existed. */}
@@ -137,7 +137,7 @@ export function usePanelExpandHost(
           // DialogContent's className never had a gap-* class, in either
           // dialog.tsx or here). It went unnoticed because every panel
           // type except flowmap/zonemap happens to have its own incidental
-          // top spacing (Plotly/table/markdown content, a value box's own
+          // top spacing (the old chart library/table/markdown content, a value box's own
           // layout) between its rendered content and its top edge — a real
           // user report on the map panel types surfaced it: their
           // containerRef div (FlowMapPanel.tsx/ZoneMapPanel.tsx) is

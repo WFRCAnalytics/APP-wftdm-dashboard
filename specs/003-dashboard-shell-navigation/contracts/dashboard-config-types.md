@@ -44,7 +44,7 @@ export interface ValueBoxPanelConfig extends PanelConfigBase {
   threshold_fail?: number
 }
 
-export interface PlotlyTraceConfig {
+export interface RetiredChartTraceConfig {
   type: string
   x?: string
   y?: string
@@ -55,15 +55,15 @@ export interface PlotlyTraceConfig {
   barmode?: string
 }
 
-export interface PlotlyPanelConfig extends PanelConfigBase {
-  type: 'plotly'
-  traces: PlotlyTraceConfig[]
+export interface RetiredChartPanelConfig extends PanelConfigBase {
+  type: 'the old chart library'
+  traces: RetiredChartTraceConfig[]
   layout?: Record<string, unknown>
   observed?: { source: string; style?: string } & Record<string, unknown>
   reference_lines?: unknown[]
 }
 
-export type PanelConfig = ValueBoxPanelConfig | PlotlyPanelConfig
+export type PanelConfig = ValueBoxPanelConfig | RetiredChartPanelConfig
 
 export interface DashboardTabConfig {
   header: { tab: string; title: string; description?: string }
@@ -93,7 +93,7 @@ export function parseDashboardConfig(raw: unknown): DashboardTabConfig
 - **Given** a `raw` value with no `filters` key, **when** parsed, **then**
   `filters` is `[]`, not `undefined` — every consumer can iterate it
   unconditionally.
-- **Given** a panel entry whose `type` is not `'valuebox'` or `'plotly'`,
+- **Given** a panel entry whose `type` is not `'valuebox'` or `'the old chart library'`,
   **when** parsed, **then** it still parses as a `PanelConfigBase`-shaped
   object with an unrecognized `type` string (not dropped, not an error at
   parse time) — the *registry* lookup, not the parser, is what surfaces an

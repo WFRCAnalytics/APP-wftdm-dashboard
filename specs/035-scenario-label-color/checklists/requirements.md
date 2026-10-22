@@ -6,7 +6,7 @@
 
 ## Content Quality
 
-- [x] No implementation details (languages, frameworks, APIs) — *the spec does name real internal files/fields (`plotlyTraces.ts`, `Scenario.colorOverride`, etc.) as this project's own established spec convention (confirmed against `034-metric-panel-redesign/spec.md`'s identical style) — these are the "what exists today" facts the requirements are grounded in, not implementation choices being prescribed*
+- [x] No implementation details (languages, frameworks, APIs) — *the spec does name real internal files/fields (`a retired chart helper`, `Scenario.colorOverride`, etc.) as this project's own established spec convention (confirmed against `034-metric-panel-redesign/spec.md`'s identical style) — these are the "what exists today" facts the requirements are grounded in, not implementation choices being prescribed*
 - [x] Focused on user value and business needs
 - [x] Written for non-technical stakeholders — *user stories and success criteria are; the Research section is deliberately technical, matching this project's own established "show the real audit" convention*
 - [x] All mandatory sections completed

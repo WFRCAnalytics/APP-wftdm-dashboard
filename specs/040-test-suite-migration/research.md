@@ -96,11 +96,11 @@ Direct scan of all 7 real demo `dashboard-*.yaml` files. Every registered panel 
 | Panel type | Real demo panel (tab · row · title) | Bound metric | Concrete real value/shape a migrated spec can assert |
 |---|---|---|---|
 | `valuebox` | Summary · KPI strip · "Total Households" etc. (×6) | `summary_kpis` | `5,000` households, `8,212` persons, `15,212` VMT (baseline, RF-5) |
-| `plotly` | Trip · `row_trip_scheduling` · "Trip Departure Hour (Work Trips)" (×4 total) | `trip_scheduling` | one `bar` trace per active scenario, `barmode: group` |
+| `the old chart library` | Trip · `row_trip_scheduling` · "Trip Departure Hour (Work Trips)" (×4 total) | `trip_scheduling` | one `bar` trace per active scenario, `barmode: group` |
 | `table` | Mode Choice · "Tour Mode Share by Segment" | `tour_mode_share_summary` (**2738 rows**) | pagination past page 1, sort, search; a prepended `scenario` column |
 | `markdown` | Summary / gap-note panels (×5) | — (`content:`) | rendered sanitized HTML |
 | `observable-plot` | Trip · `row_trip_destination` · "Trip Destination Distance Distribution" (×5 total) | `trip_destination_summary` | `barY` marks, `fill` = `primary_purpose` |
-| `recharts` | Overview / Mode Choice (×2) | real share metric | bars render as `<path class="recharts-rectangle">` (v3) |
+| `the old chart library` | Overview / Mode Choice (×2) | real share metric | bars render as `<path class="old-chart-class">` (v3) |
 | `sankey` | Mode Choice · `purpose_mode_flow` panel | `purpose_mode_flow` | nodes for `primary_purpose` → `major_trip_mode` |
 | `flowmap` | Network · `od_flows` panel | `od_flows` | flow lines; base map = OpenFreeMap Positron (post-`APP_DEFAULT` change) |
 | `zonemap` | Trip · "SOV Trip Attractions by Zone"; Network (×2) | `trip_ends_by_zone_mode` | 25 zones, `taz25.geoparquet`, `YlOrRd` ramp |
@@ -118,15 +118,15 @@ Each deliberately-broken fixture panel maps to a concrete `dashboard-8-test.yaml
 
 | Error/edge class (RF-3) | `dashboard-8-test.yaml` mechanism |
 |---|---|
-| Missing metric → Catalog Error | `metric: __nonexistent__` on `table` / `plotly` / `sankey` / `flowmap` / `zonemap` / `recharts` / `observable-plot` (one panel each) |
-| Invalid `chart_type` | `recharts` panel with `chart_type: pie` |
+| Missing metric → Catalog Error | `metric: __nonexistent__` on `table` / `the old chart library` / `sankey` / `flowmap` / `zonemap` / `the old chart library` / `observable-plot` (one panel each) |
+| Invalid `chart_type` | `the old chart library` panel with `chart_type: pie` |
 | Unreachable basemap → blank-style fallback | `flowmap` + `zonemap` panel each with `basemap: totally-made-up-preset-name` |
 | Broken composition layer | `flowmap` panel with a `basemap: { layers: [...] }` pointing at an unreachable URL |
 | `graphic-walker` bad dataset | one fixed `dataset: __nonexistent__`; one `dataset_picker: true` + `dataset: __nonexistent__` (no-match) |
 | Markdown XSS / empty / whitespace | 3 `markdown` panels: `<script>`-bearing `content:`, `content: ""`, `content: "   "` |
 | `valuebox` sparkline / baseline_trend missing metric | `valuebox` with `sparkline: { metric: __nonexistent__ }`; `valuebox` with `baseline_trend` `expr` referencing a missing column / resolving same-scenario |
 | `comparison: diff` unresolvable a/b | `table` (or `zonemap`) with `comparison: { diff: { a: __nope__, b: __nope__ } }` |
-| Zero-row filter → empty state | `recharts` + `graphic-walker` panel each with `filter: { primary_purpose: __no_such_purpose__ }` (verified against real data: no real row has that value) |
+| Zero-row filter → empty state | `the old chart library` + `graphic-walker` panel each with `filter: { primary_purpose: __no_such_purpose__ }` (verified against real data: no real row has that value) |
 | Misconfigured full-page tab | `dashboard-8-test.yaml` itself carries `header.full_page: true` **and** two panels → app `console.warn`s and falls back to ordinary rendering (the `fullPagePanel.spec.ts` misconfiguration case) |
 | Basemap precedence matrix | tab-level `default_basemap:` + panels with/without a panel-level `basemap:` to exercise panel > tab > global > app-default resolution |
 

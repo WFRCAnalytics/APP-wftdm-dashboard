@@ -10,7 +10,7 @@
 
 Add a generic capability, at the panelCard.tsx level, for a user to expand
 any panel to a large near-fullscreen view — not specific to any one panel
-type, so every current panel type (valuebox, plotly) and every future one
+type, so every current panel type (valuebox, the old chart library) and every future one
 (table, zonemap, flowmap, etc.) inherits it automatically with no
 per-type wiring.
 
@@ -23,11 +23,11 @@ per-type wiring.
 - Standard dialog accessibility, inherited free from Radix: focus trapped
   while open, Escape closes it, clicking outside closes it, focus returns
   to the trigger button on close. Don't re-derive any of this manually.
-- Known technical risk to address up front, not rediscover: PlotlyPanel's
-  container size changes when it moves into the dialog. Plotly does not
-  automatically detect this — reuse the ResizeObserver + Plotly.Plots.resize()
+- Known technical risk to address up front, not rediscover: the retired chart panel's
+  container size changes when it moves into the dialog. the old chart library does not
+  automatically detect this — reuse the ResizeObserver + the old library API
   pattern already built in 003-dashboard-shell-navigation's layout fix
-  (src/panels/PlotlyPanel.tsx) rather than re-deriving a fix for the same
+  (src/panels/the retired chart panel) rather than re-deriving a fix for the same
   class of bug.
 - The panel's own data/query state (loading/ready/empty/error) must not
   reset or re-fetch when moving into or out of the dialog — same query

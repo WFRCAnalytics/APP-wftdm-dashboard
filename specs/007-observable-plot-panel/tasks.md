@@ -90,7 +90,7 @@ enough to exercise all three stories' Playwright coverage.
       `tests/unit/panelQuery.test.ts`'s existing assertions (all six `describe('buildPanelQuery', ...)`/
       `describe('resolveActiveScenarios', ...)` cases) must pass **unchanged,
       byte-for-byte**, proving T003's rewrite preserves
-      `ValueBoxPanel.tsx`/`PlotlyPanel.tsx`/`TablePanel.tsx`'s existing
+      `ValueBoxPanel.tsx`/`the retired chart panel`/`TablePanel.tsx`'s existing
       single-string `filter:` behavior exactly. Do not proceed to T008 until
       this is clean. Depends on T003
 - [x] T005 [P] Add a new export, `extractGlobalFilterIds(filter:
@@ -119,7 +119,7 @@ enough to exercise all three stories' Playwright coverage.
       reference with no `inputState` throws the same `missing()` error shape
       an unresolved `$filters.` reference already does; an `$inputs.` line
       with value `'all'` is dropped, mirroring `$filters.`'s existing case.
-      Existing callers (`ValueBoxPanel`/`PlotlyPanel`/`TablePanel`) pass no
+      Existing callers (`ValueBoxPanel`/`the retired chart panel`/`TablePanel`) pass no
       5th argument and are unaffected — depends on T001 only in the sense of
       sequencing (no actual code dependency)
 - [x] T007 **Checkpoint**: run `npm run typecheck` and `npx vitest run
@@ -243,7 +243,7 @@ when the filter changes.
 - [x] T014 [P] [US1] Playwright test in
       `tests/integration/observablePlotPanel.spec.ts`: changing the global
       Trip Purpose filter re-queries and re-renders the "Mode Share by
-      Purpose (Bar)" panel's chart, while a sibling `plotly`/`observable-plot`
+      Purpose (Bar)" panel's chart, while a sibling `the old chart library`/`observable-plot`
       panel bound to a *different* filter is unaffected (SC-002)
 - [x] T015 [P] [US1] Playwright test in
       `tests/integration/observablePlotPanel.spec.ts`: expanding the "Mode
@@ -276,7 +276,7 @@ when the filter changes.
       inputValues[id]}` wrapper passed as `sqlExpander.expand()`'s new 5th
       argument; `buildPanelQuery`/`resolveActiveScenarios` reused unchanged;
       `'loading'|'ready'|'empty'|'error'` status state machine identical in
-      shape to `PlotlyPanel.tsx`'s (research.md §7). No `Plot.plot()` call in
+      shape to `the retired chart panel`'s (research.md §7). No `Plot.plot()` call in
       this effect — it only resolves `rows`/`status`. Depends on T005, T006,
       T017
 - [x] T019 [US1] Implement `ObservablePlotPanel.tsx`'s render-and-swap effect
@@ -405,7 +405,7 @@ their two distinct mismatched-default outcomes are both verified.
 registry/layout grid/panel-card chrome with no special-casing.
 
 **Independent Test**: Load a tab mixing `observable-plot` with
-`valuebox`/`plotly`/`table`/`markdown` panels, confirm standard panel-card
+`valuebox`/`the old chart library`/`table`/`markdown` panels, confirm standard panel-card
 chrome, grid placement, and loading-skeleton convention.
 
 **Note**: Like `006`'s US2/US3, this story is test-only — T017-T020's
@@ -417,7 +417,7 @@ what US1 already built.
 
 - [x] T031 [P] [US3] Playwright test in
       `tests/integration/observablePlotPanel.spec.ts`: a tab mixing
-      `observable-plot` panels with `valuebox`/`plotly`/`table`/`markdown`
+      `observable-plot` panels with `valuebox`/`the old chart library`/`table`/`markdown`
       panels (this fixture file's full `row_kpis`/`row_chart`/`row_table`/
       `row_markdown`/`row_observable_plot` set) renders all of them without
       error, and an `observable-plot` panel's card has the same title bar and
@@ -425,7 +425,7 @@ what US1 already built.
 - [x] T032 [P] [US3] Playwright test in
       `tests/integration/observablePlotPanel.spec.ts`: an `observable-plot`
       panel shows the same inline `animate-pulse` skeleton convention
-      `PlotlyPanel`/`ValueBoxPanel` already use while its query is in flight
+      `the retired chart panel`/`ValueBoxPanel` already use while its query is in flight
       — not a new shared loading component (research.md §7)
 
 ### Implementation for User Story 3
@@ -545,7 +545,7 @@ Task: "Register 'observable-plot': ObservablePlotPanel in src/panels/registry.ts
 3. **STOP and VALIDATE**: run T011-T016 and confirm they pass.
 4. This alone is a demoable, mergeable increment — a working fifth panel
    type reactive to the existing global filter system, on par with what
-   `PlotlyPanel` already delivers, even before any panel-local input exists
+   `the retired chart panel` already delivers, even before any panel-local input exists
    (spec.md's own stated reasoning for US1 being independently valuable).
 
 ### Incremental Delivery
@@ -650,7 +650,7 @@ contracts anticipated:**
    feature's own coverage. Fixed by scoping both to their specific panel's
    card, matching the `panelCard()` pattern newer suites already use.
 6. **Fixture panel titles "Mode Share by Purpose (Bar)"/"(Multiselect
-   Filter)" collided by prefix** with the pre-existing plotly panel titled
+   Filter)" collided by prefix** with the pre-existing the old chart library panel titled
    exactly "Mode Share by Purpose", breaking several `panelExpand.spec.ts`/
    `markdownPanel.spec.ts` assertions that queried by non-exact
    substring match. Renamed both to "Observable Plot Mode Share (...)".
@@ -726,7 +726,7 @@ contracts anticipated:**
      an internal default, not new grammar, chosen because (a) no
      author-facing key exists to opt in with, so any other default
      would be an unreachable dead feature, and (b) it matches this
-     app's own `PlotlyPanel`, which already auto-shows a legend
+     app's own `the retired chart panel`, which already auto-shows a legend
      whenever a categorical color split exists.
    - **A real regression this fix itself introduced, caught before
      shipping**: Plot's legend swatches render as their own small

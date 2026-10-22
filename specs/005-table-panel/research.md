@@ -11,7 +11,7 @@ sort/search/pagination) — no `@tanstack/react-table` or similar added.
 
 **Rationale**: `project-docs/SPEC.md`'s own Panel types table already answers
 this: `table | plain DOM | Sortable, paginated`. Every other row in that
-same table names the actual rendering library used (`plotly` → Plotly.js,
+same table names the actual rendering library used (`the old chart library` → the old chart library,
 `flowmap` → flowmap.gl + MapLibre, `graphic-walker` → Graphic Walker) —
 `table`'s own row says "plain DOM," not a library name, which is either a
 deliberate statement that no library is intended, or at minimum the
@@ -57,7 +57,7 @@ same format-string convention `ValueBoxPanelConfig.format` already uses
 regex already handles). Defining a second, separate copy of the same
 parser inside `TablePanel.tsx`/`tableLogic.ts` would duplicate logic this
 project has consistently centralized elsewhere (`panelQuery.ts` for SQL
-template construction, `plotlyTraces.ts` for trace resolution) rather than
+template construction, `a retired chart helper` for trace resolution) rather than
 letting two panel types silently drift out of sync with each other over
 time. Extracting is also a small, low-risk win in its own right: the
 function was already pure and untested in isolation (only exercised
@@ -76,7 +76,7 @@ gap while touching it anyway.
 ## 3. Column resolution, sort, search, pagination — one pure module
 
 **Decision**: A new `panels/tableLogic.ts`, mirroring `003`'s
-`plotlyTraces.ts` split (pure logic extracted from the React/DOM
+`a retired chart helper` split (pure logic extracted from the React/DOM
 component specifically so it's independently Vitest-testable, without
 needing a DOM). Exports:
 
@@ -108,20 +108,20 @@ needing a DOM). Exports:
 spec.md's own stated order of operations (filter the full set, sort the
 filtered subset, then paginate what's left).
 
-**Rationale**: Same reasoning as `003`'s `plotlyTraces.ts` split
-(`plotly.js-dist-min` references `self` at module load, breaking Vitest —
+**Rationale**: Same reasoning as `003`'s `a retired chart helper` split
+(`the old chart library` references `self` at module load, breaking Vitest —
 not applicable here, but the *shape* of the win is identical): this
 feature's actual algorithmic risk — sorting numbers correctly, filtering
 against rendered rather than raw values, resolving columns correctly with
 and without config — is exactly the kind of logic that benefits from
 direct unit tests, not indirect coverage through a rendered component.
 Keeping `TablePanel.tsx` itself thin (state + wiring only) mirrors
-`PlotlyPanel.tsx`'s own shape after its own extraction.
+`the retired chart panel`'s own shape after its own extraction.
 
 **Alternatives considered**:
 - *Inline all of this directly in `TablePanel.tsx`* — rejected: would
   require Playwright (real browser) coverage for logic that has nothing
-  to do with the DOM, the exact gap `003`'s `plotlyTraces.ts` precedent
+  to do with the DOM, the exact gap `003`'s `a retired chart helper` precedent
   already exists to avoid repeating.
 
 ---
@@ -261,6 +261,6 @@ library.
 |---|---|
 | 1 | No new table library — `project-docs/SPEC.md`'s "plain DOM" is taken as the deciding signal; sort/search/pagination are plain array operations over an already-fetched result set |
 | 2 | `formatValue` extracted from `ValueBoxPanel.tsx` into a new shared `panels/formatValue.ts`, imported by both panel types — no duplicated format-string parser |
-| 3 | New pure module `panels/tableLogic.ts` (column resolution, sort, search-filter, color mapping) — mirrors `003`'s `plotlyTraces.ts` split, keeps `TablePanel.tsx` itself thin and the algorithmic logic independently Vitest-tested |
+| 3 | New pure module `panels/tableLogic.ts` (column resolution, sort, search-filter, color mapping) — mirrors `003`'s `a retired chart helper` split, keeps `TablePanel.tsx` itself thin and the algorithmic logic independently Vitest-tested |
 | 4 | `color_scale` reuses existing brand tokens only (`--brand-wfrc-blue` for sequential-high and diverging-negative, `--destructive` for diverging-positive, `--muted` for both scales' neutral/low end) — zero new colors; diverging midpoint is fixed at `0`, not the domain's geometric center; cell backgrounds use a capped `color-mix()` blend so text stays legible at every point on the scale |
 | 5 | Vitest for `tableLogic.ts`/`formatValue.ts`; Playwright for `tablePanel.spec.ts` (including `004` expand-inheritance + state-persistence checks) — no new testing library |

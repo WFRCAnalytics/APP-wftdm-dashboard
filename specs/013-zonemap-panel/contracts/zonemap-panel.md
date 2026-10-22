@@ -30,7 +30,7 @@ export interface ZoneMapPanelConfig extends DataBoundPanelConfigBase, MapRenderi
 
 export type PanelConfig =
   | ValueBoxPanelConfig
-  | PlotlyPanelConfig
+  | RetiredChartPanelConfig
   | TablePanelConfig
   | MarkdownPanelConfig
   | ObservablePlotPanelConfig

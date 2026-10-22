@@ -26,11 +26,11 @@ Single-project web frontend, additive to `001-data-state-layer`'s and
 
 ## Phase 1: Setup (Shared Infrastructure)
 
-- [X] T001 Add `plotly.js-dist-min` to `package.json`; run `npm install`
+- [X] T001 Add `the old chart library` to `package.json`; run `npm install`
 - [X] T002 [P] Write `tests/fixtures/dashboard-shell-config.yaml` — a real,
   `project-docs/GRAMMAR.md`-shaped `dashboard-*.yaml` with `header`, one `filters`
   entry (`purpose`), and a `layout` with at least one `valuebox` row bound
-  to `summary_kpis.total_households` and one `plotly` row bound to
+  to `summary_kpis.total_households` and one `the old chart library` row bound to
   `trip_mode_share` with `filter: $filters.purpose` (research.md §1) —
   matches `tests/fixtures/generate.py`'s existing Parquet schema exactly,
   no new fixture data needed
@@ -51,8 +51,8 @@ presentation pieces every user story depends on.
 - [X] T004 Write `src/layout/types.ts` per
   `contracts/dashboard-config-types.md` — `FilterDefinition`,
   `PanelConfigBase` (including `scenario`/`scenarios`, both real per
-  `project-docs/GRAMMAR.md`), `ValueBoxPanelConfig`, `PlotlyTraceConfig`,
-  `PlotlyPanelConfig`, the `PanelConfig` union, `DashboardTabConfig`, and
+  `project-docs/GRAMMAR.md`), `ValueBoxPanelConfig`, `RetiredChartTraceConfig`,
+  `RetiredChartPanelConfig`, the `PanelConfig` union, `DashboardTabConfig`, and
   `parseDashboardConfig()` (throws on missing `header.tab`/`header.title`,
   defaults `filters`/`layout` safely)
 - [X] T005 Write `src/panels/panelQuery.ts` per `contracts/panel-query.md`
@@ -169,7 +169,7 @@ real, navigable dashboard with one real, correct panel.
 
 ## Phase 5: User Story 3 - An analyst sees a real, filter-reactive chart (Priority: P2)
 
-**Goal**: `PlotlyPanel` proves the fuller pipeline — SQL expansion,
+**Goal**: `the retired chart panel` proves the fuller pipeline — SQL expansion,
 `$metric.col`/bare-`$scenario` trace resolution, and filter reactivity via
 `project-docs/SPEC.md`'s corrected two-effect pattern.
 
@@ -179,19 +179,19 @@ confirm the chart redraws in place (not torn down and rebuilt).
 
 ### Implementation for User Story 3
 
-- [X] T018 [US3] Write `src/panels/PlotlyPanel.tsx` per
-  `contracts/plotly-panel.md` — same query chain as `ValueBoxPanel`
-  (T015's pattern); `resolveTrace()` resolving each `PlotlyTraceConfig`'s
+- [X] T018 [US3] Write `src/panels/the retired chart panel` per
+  `contracts/retired-chart-panel.md` — same query chain as `ValueBoxPanel`
+  (T015's pattern); `resolveTrace()` resolving each `RetiredChartTraceConfig`'s
   `$metric.<column>` references and the bare `$scenario` sentinel against
   the query result (research.md §3) — this is `project-docs/SPEC.md`'s own
   dashboard-config example implemented exactly as written, not literal
-  column names; two-effect split — data fetch + `Plotly.react()` (no
+  column names; two-effect split — data fetch + `the old library API` (no
   purge, `[config, filters]` deps) and a separate unmount-only
-  `Plotly.purge()` effect (empty deps); `loading`/`empty`/`error` states
+  `the old library API` effect (empty deps); `loading`/`empty`/`error` states
   using `PanelEmptyState`/`PanelErrorState`, loading placeholder kept
-  DOM-but-hidden so `Plotly.react()` always has a mounted container to
+  DOM-but-hidden so `the old library API` always has a mounted container to
   target (depends on T003, T005)
-- [X] T019 [US3] Register `plotly: PlotlyPanel` in `src/panels/registry.tsx`
+- [X] T019 [US3] Register `the old chart library: the retired chart panel` in `src/panels/registry.tsx`
   (T008) (depends on T018)
 - [X] T020 [US3] Manually verify `quickstart.md` step 4: confirm the chart
   renders real fixture data, then change the `purpose` filter (via
@@ -219,7 +219,7 @@ verified.
   extends `boot.spec.ts`'s pattern (real browser, real DuckDB-WASM,
   `tests/fixtures/generate.py`'s Parquet) against the new fixture: tab set
   matches config (SC-001), tab switch with no reload (FR-002), value-box
-  number matches fixture data (SC-002), filter change redraws the Plotly
+  number matches fixture data (SC-002), filter change redraws the old chart library
   panel without a reload (SC-003), and a deliberately-broken panel config
   (test-local, not the main fixture) shows a scoped error without
   affecting sibling panels (SC-006) — depends on T014, T017, T020
@@ -283,7 +283,7 @@ Task: "Write src/panels/registry.tsx as an empty type-to-component map"
 ```bash
 # Once US1's T014 checkpoint is reached, these can run at the same time:
 Task: "Build ValueBoxPanel.tsx and register it (Phase 4, US2)"
-Task: "Build PlotlyPanel.tsx and register it (Phase 5, US3)"
+Task: "Build the retired chart panel and register it (Phase 5, US3)"
 ```
 
 ---

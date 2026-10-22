@@ -47,7 +47,7 @@ persistence of any kind.
 
 **Testing**: Vitest (unit — the two pure rows-to-chart-geometry
 transforms, matching every prior panel type's own `sankeyGraph.ts`/
-`hierarchyData.ts`/`rechartsEncoding.ts` precedent) + Playwright
+`hierarchyData.ts`/`a retired chart helper` precedent) + Playwright
 (integration — real render, real hover-tooltip content, real dual-theme
 computed-style verification, matching this project's established
 per-panel-type test convention).

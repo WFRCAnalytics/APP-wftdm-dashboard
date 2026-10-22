@@ -34,7 +34,7 @@
 - Zero [NEEDS CLARIFICATION] markers were needed: every ambiguity in the
   original feature description was resolved by direct research (see
   spec.md's own "Research performed before writing this spec" section) —
-  the Recharts-vs-Observable-Plot palette comparison resolved to "no real
+  the old chart library-vs-Observable-Plot palette comparison resolved to "no real
   comparison exists, reuse the already-verified derivative this app
   already ships"; the deployer-config location resolved to the existing
   `dashboard-config/index.json` branding mechanism.

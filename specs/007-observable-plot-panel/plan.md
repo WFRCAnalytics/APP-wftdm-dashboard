@@ -7,23 +7,23 @@
 ## Summary
 
 Add the fifth panel type — `observable-plot` — to the registry, following
-`ValueBoxPanel`/`PlotlyPanel`/`TablePanel`/`MarkdownPanel`'s established
+`ValueBoxPanel`/`the retired chart panel`/`TablePanel`/`MarkdownPanel`'s established
 component shape (a function component receiving a single `config` prop,
 registered in `panels/registry.tsx`) and, unlike `MarkdownPanel`, the full
 query-chain part of that pattern too — `project-docs/GRAMMAR.md`'s real
 `type: observable-plot` grammar always queries a `metric` (research.md §7).
 Two grammar findings, verified rather than assumed (per this project's
 established discipline), shape the design: chart encodings (`x`/`y`/`fill`/
-`stroke`) are bare column names, not `$metric.`-prefixed like `PlotlyPanel`'s
+`stroke`) are bare column names, not `$metric.`-prefixed like `the retired chart panel`'s
 traces (research.md §4); and `$inputs.<id>` — panel-local reactive input
 widgets — is real, documented grammar, not illustrative-only, making this
-feature materially bigger than "swap Plotly for Observable Plot" (spec.md's
+feature materially bigger than "swap the old chart library for Observable Plot" (spec.md's
 Grammar findings, research.md §2/§3/§8). A third finding, confirmed directly
 against `@observablehq/plot`'s real docs/source rather than assumed to work
-like `PlotlyPanel`'s `Plotly.react()` + `Plotly.Plots.resize()` pattern:
+like `the retired chart panel`'s `the old library API` + `the old library API` pattern:
 `Plot.plot()` returns a brand-new detached DOM element on every call, with no
 in-place update API and no automatic container-resize awareness — the
-ResizeObserver trigger transfers from `PlotlyPanel.tsx`, but the action it
+ResizeObserver trigger transfers from `the retired chart panel`, but the action it
 triggers (a full replot-and-swap, not a cheap resize call) does not
 (research.md §5).
 
@@ -46,13 +46,13 @@ panel-local inputs, research.md §3), `004`'s expand-to-dialog mechanism
 FR-009/SC-003).
 
 **Component source**: New `src/panels/ObservablePlotPanel.tsx` (the React/DOM
-layer — two effects: a data-fetch effect shaped like `PlotlyPanel.tsx`'s, and
+layer — two effects: a data-fetch effect shaped like `the retired chart panel`'s, and
 a render-and-swap effect that both draws the initial chart and responds to
 `ResizeObserver`, since `@observablehq/plot` has no separate cheap
-resize-only API to split out the way `Plotly.Plots.resize()` allowed —
+resize-only API to split out the way `the old library API` allowed —
 research.md §5) plus a new pure module, `src/panels/observablePlotEncoding.ts`
 (config + rows → `{markName, data, options, plotOptions}`, no DOM/Plot
-runtime dependency — research.md §4/§6, mirroring `plotlyTraces.ts`'s split).
+runtime dependency — research.md §4/§6, mirroring `a retired chart helper`'s split).
 Modified: `src/layout/types.ts` (widen `DataBoundPanelConfigBase.filter` to
 `string | Record<string,string> | undefined`, research.md §1; add
 `ObservablePlotInputConfig`/`ObservablePlotPanelConfig`), `src/panels/
@@ -78,14 +78,14 @@ any other durable store.
 
 **Testing**: Vitest — `observablePlotEncoding.ts`'s pure resolution logic gets
 its own dedicated unit test file, `tests/unit/observablePlotEncoding.test.ts`,
-mirroring `plotlyTraces.test.ts`'s existing pattern for a sibling pure module.
+mirroring `a retired chart helper`'s existing pattern for a sibling pure module.
 `tests/unit/panelQuery.test.ts` (exists — extended, not new) gains cases for
 `buildPanelQuery`'s new `Record<string,string>` filter-shape handling, with
 its existing string-form assertions required to stay green unchanged.
 `tests/unit/sqlExpander.test.ts` (exists — extended, not new) gains cases for
 the new `inputs` placeholder kind. Playwright:
-`tests/integration/observablePlotPanel.spec.ts`, matching `plotlyPanel`-style
-coverage (this project has no standalone `plotlyPanel.spec.ts` file — Plotly
+`tests/integration/observablePlotPanel.spec.ts`, matching old-chart-panel-style
+coverage (this project has no standalone `a retired chart spec` file — the old chart library
 coverage lives inside `dashboardShell.spec.ts`; this feature gets its own
 dedicated spec file instead, matching `005`/`006`'s precedent of one
 dedicated integration spec per new panel type) — rendering at least two mark
@@ -106,7 +106,7 @@ type already budgets against; the one new cost this feature introduces is a
 full `Plot.plot()` rebuild on every `ResizeObserver` firing (research.md §5),
 not benchmarked separately since Observable Plot's own rendering cost for
 panel-sized datasets is not a workload this project needs to budget
-differently from `PlotlyPanel`'s existing chart-render cost.
+differently from `the retired chart panel`'s existing chart-render cost.
 
 **Constraints**: Chart encoding fields (`x`/`y`/`fill`/`stroke`/`facet_x`/
 `facet_y`) MUST NOT go through `$metric.<column>` placeholder resolution
@@ -136,7 +136,7 @@ boundary). Scoped larger than `005`/`006` specifically because panel-local
 reactive input controls (real, documented grammar — spec.md's Grammar
 findings) are this application's first interactive filter-value-setting UI of
 any kind (research.md §8), not merely a second chart-rendering library swapped
-in alongside Plotly.
+in alongside the old chart library.
 
 ## Constitution Check
 

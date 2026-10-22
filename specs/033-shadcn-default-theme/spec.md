@@ -58,7 +58,7 @@ A developer building a future feature that needs a text field, a dropdown, a che
 
 ### User Story 4 - Every previously-fixed dark-mode behavior still works (Priority: P2)
 
-A reviewer who already knows this project's own history of hard-won dark-mode fixes (Plotly's transparent chart backgrounds, Observable Plot's tooltip contrast, Sankey's node-label legibility, map controls' icon inversion, native form-control legibility, dialog text-color inheritance) re-checks each one after the retheme and finds every one of them still correct — none silently reintroduced by the new token values.
+A reviewer who already knows this project's own history of hard-won dark-mode fixes (the old chart library's transparent chart backgrounds, Observable Plot's tooltip contrast, Sankey's node-label legibility, map controls' icon inversion, native form-control legibility, dialog text-color inheritance) re-checks each one after the retheme and finds every one of them still correct — none silently reintroduced by the new token values.
 
 **Why this priority**: A retheme that quietly reintroduces a bug this project already spent real effort fixing once is a regression, not progress — this verification is what keeps User Stories 1-2 from being a net loss.
 
@@ -66,7 +66,7 @@ A reviewer who already knows this project's own history of hard-won dark-mode fi
 
 **Acceptance Scenarios**:
 
-1. **Given** a Plotly panel in dark mode, **When** its chart background is inspected, **Then** it remains transparent/token-derived, never the library's own opaque white default.
+1. **Given** a the old chart library panel in dark mode, **When** its chart background is inspected, **Then** it remains transparent/token-derived, never the library's own opaque white default.
 2. **Given** an Observable Plot panel's tooltip in dark mode, **When** its contrast is inspected, **Then** it remains legible, not silently reverted to a low-contrast default.
 3. **Given** a Sankey panel in dark mode, **When** its node labels are inspected, **Then** they remain legible via the existing `currentColor` mechanism, not reverted to black-on-dark.
 4. **Given** a map panel's navigation/3D controls in dark mode, **When** their icons are inspected, **Then** the existing icon-inversion/legibility handling still applies correctly.
@@ -105,7 +105,7 @@ A future developer or reviewer reads this project's own design-system reference 
 - **FR-004**: The component library MUST include any additional standard shadcn form-input primitive that a direct, real audit of the existing component library against shadcn's own current registry finds missing beyond the set named in FR-003.
 - **FR-005**: Every UI primitive component already in the app (button, card, chart, dialog, dropdown menu, separator, sidebar, tabs, tooltip) MUST visually reflect the new default theme's colors and typography consistently, in both light and dark mode.
 - **FR-006**: Every one of the app's panel types MUST visually reflect the new default theme wherever its own internal styling currently derives from the app's brand/primary/accent tokens.
-- **FR-007**: Every one of this project's own previously-established, dark-mode-specific fixes (including, at minimum, Plotly's transparent chart backgrounds, Observable Plot's tooltip contrast, Sankey's node-label legibility via `currentColor`, map controls' icon-inversion handling, native form-control legibility, and dialog text-color inheritance) MUST continue to work correctly after this feature ships — each verified directly against the retheme, not assumed unaffected.
+- **FR-007**: Every one of this project's own previously-established, dark-mode-specific fixes (including, at minimum, the old chart library's transparent chart backgrounds, Observable Plot's tooltip contrast, Sankey's node-label legibility via `currentColor`, map controls' icon-inversion handling, native form-control legibility, and dialog text-color inheritance) MUST continue to work correctly after this feature ships — each verified directly against the retheme, not assumed unaffected.
 - **FR-008**: Any code that currently references a WFRC-brand-specific color value by name (not merely through a semantic token) MUST be updated to derive from the new default theme instead, so no such reference remains live within this feature's scope.
 - **FR-009**: The project's own design-system reference documentation MUST be updated to state plainly that its brand-consistency rule is deliberately suspended for this feature, on explicit direction, pending a future, separate re-branding feature.
 - **FR-010**: The technical approach for reconciling this project's current component-tooling configuration with the adopted theme's real source track MUST be explicitly researched, its real tradeoffs reported, a recommendation made, and the choice confirmed before any component's styling is changed.

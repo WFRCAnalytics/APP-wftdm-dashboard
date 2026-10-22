@@ -57,7 +57,7 @@ function panelCard(page: Page, title: string) {
 // each swatch containing a small <svg fill="<color>"><rect .../></svg>
 // immediately followed by a text node with the category's own label —
 // swatch and label are SIBLINGS inside the same <span>, matching the
-// shape the original Plotly helper's own doc comment described for
+// shape the original the old chart library helper's own doc comment described for
 // <g class="traces">. `[class$="-swatch"]` (ends-with, not `*=`) is
 // deliberate: the container's own classes end in "-swatches"/"-wrap",
 // which a substring match would incorrectly also match.
@@ -199,7 +199,7 @@ test.describe('User Story 1 (036) - A deployer sets a consistent, on-brand scena
 
 test.describe('User Story 2 (035) - A viewer picks a scenario\'s own display color', () => {
   // 057-observable-plot-conversion: both Summary-tab panels below are now
-  // observable-plot (converted from plotly/recharts respectively,
+  // observable-plot (converted from the old chart library respectively,
   // contracts/panel-conversions.md) — this test's original "across all
   // three chart types" premise is superseded (there is only one engine
   // left among these three example panels); the value this test still
@@ -213,9 +213,9 @@ test.describe('User Story 2 (035) - A viewer picks a scenario\'s own display col
     const plotCard = panelCard(page, 'Average Trip Distance by Purpose')
     await expect(plotCard).toBeVisible()
     await expect(plotCard.locator('.observable-plot-chart svg[viewBox]')).toBeVisible()
-    const rechartsCard = panelCard(page, 'Total Trips by Mode')
-    await expect(rechartsCard).toBeVisible()
-    await expect(rechartsCard.locator('.observable-plot-chart svg[viewBox]')).toBeVisible()
+    const barCard = panelCard(page, 'Total Trips by Mode')
+    await expect(barCard).toBeVisible()
+    await expect(barCard.locator('.observable-plot-chart svg[viewBox]')).toBeVisible()
 
     // Person & Households tab: a third, independent observable-plot instance.
     await page.getByRole('tablist').getByRole('tab', { name: 'Person & Households', exact: true }).click()

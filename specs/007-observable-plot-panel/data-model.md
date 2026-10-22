@@ -17,7 +17,7 @@ resolution module (research.md §4/§6).
 | Field | Type | Notes |
 |---|---|---|
 | `metric` | `string` | Unchanged |
-| `filter` | `string \| Record<string, string> \| undefined` | **Widened.** Was `string?`. `project-docs/GRAMMAR.md`'s common-keys table always documented both the bare `$ref` string form and an `inline` map form (research.md §1) — `observable-plot` is simply the first panel type to use the map form. `ValueBoxPanelConfig`/`PlotlyPanelConfig`/`TablePanelConfig` are unaffected in practice (they only ever author the string form), but must still typecheck against the widened union — a checkpoint task verifies this before `ObservablePlotPanelConfig` is added, mirroring 006-markdown-panel's `PanelConfigBase`-split checkpoint |
+| `filter` | `string \| Record<string, string> \| undefined` | **Widened.** Was `string?`. `project-docs/GRAMMAR.md`'s common-keys table always documented both the bare `$ref` string form and an `inline` map form (research.md §1) — `observable-plot` is simply the first panel type to use the map form. `ValueBoxPanelConfig`/`RetiredChartPanelConfig`/`TablePanelConfig` are unaffected in practice (they only ever author the string form), but must still typecheck against the widened union — a checkpoint task verifies this before `ObservablePlotPanelConfig` is added, mirroring 006-markdown-panel's `PanelConfigBase`-split checkpoint |
 | `scenario` | `string?` | Unchanged |
 | `scenarios` | `string[]?` | Unchanged |
 
@@ -49,7 +49,7 @@ input.
 
 | Field | Type | Notes |
 |---|---|---|
-| `mark` | `string` | Names an `@observablehq/plot` mark-constructor export (e.g. `'barY'`, `'lineY'`) — looked up dynamically as `Plot[markName]`, not an exhaustive hardcoded enum, matching how `PlotlyTraceConfig.type` is a plain `string` rather than a closed union of every Plotly trace type |
+| `mark` | `string` | Names an `@observablehq/plot` mark-constructor export (e.g. `'barY'`, `'lineY'`) — looked up dynamically as `Plot[markName]`, not an exhaustive hardcoded enum, matching how `RetiredChartTraceConfig.type` is a plain `string` rather than a closed union of every the old chart library trace type |
 | `x` | `string?` | Literal column name — **not** `$metric.`-prefixed (research.md §4) |
 | `y` | `string?` | Literal column name |
 | `fill` | `string?` | Literal column name |
@@ -66,7 +66,7 @@ is where `$inputs.<id>` placeholders actually appear, per
 `project-docs/GRAMMAR.md`'s own examples (a map value, never `x`/`y`/etc.).
 
 **Union update**: `layout/types.ts`'s `PanelConfig` becomes
-`ValueBoxPanelConfig | PlotlyPanelConfig | TablePanelConfig |
+`ValueBoxPanelConfig | RetiredChartPanelConfig | TablePanelConfig |
 MarkdownPanelConfig | ObservablePlotPanelConfig | UnknownPanelConfig` — a
 `type: observable-plot` entry now parses to a real, narrowed type instead of
 falling through to `UnknownPanelConfig`'s wide shape.
@@ -107,7 +107,7 @@ purpose.
 `ObservablePlotPanel.tsx` is this function's only caller — no existing panel
 type needs it, since a bare-string `filter:` can only ever reference one
 `$filters.<id>` (today's `useFilterState([config.filter.replace(/^\$filters\./, '')])`
-pattern in `PlotlyPanel.tsx` already handles that single-id case inline). It
+pattern in `the retired chart panel` already handles that single-id case inline). It
 lives in `panelQuery.ts`, not `ObservablePlotPanel.tsx` itself, because it is
 pure config-shape logic in the same family as `buildPanelQuery`'s own
 `filter:`-shape normalization (research.md §1) — Vitest-tested alongside it
@@ -177,12 +177,12 @@ dashboard-*.yaml's type: observable-plot entry
         |
         v  ObservablePlotPanel.tsx's own render effect
   Plot[markName](data, options)  ->  a NEW detached DOM element each call
-  (research.md §5 — no in-place update API, unlike Plotly.react())
+  (research.md §5 — no in-place update API, unlike the old library API)
         |
         v  container.replaceChildren(newElement) — swapped on BOTH a
         |  data/config change AND a ResizeObserver-triggered resize
-        |  (research.md §5 — a real difference from PlotlyPanel's
-        |  cheap Plotly.Plots.resize() call)
+        |  (research.md §5 — a real difference from the retired chart panel's
+        |  cheap the old library API call)
   PanelEmptyState (zero rows) -- or -- PanelErrorState (rejected query /
   unrecognized mark) -- or -- the rendered chart
 ```

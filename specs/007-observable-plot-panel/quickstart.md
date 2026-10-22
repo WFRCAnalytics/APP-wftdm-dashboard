@@ -50,7 +50,7 @@ query) and asserts:
    with **zero** additional query fired solely by that transition — verified
    directly (e.g. a query-count assertion), not inferred from visual
    inspection alone (SC-003, research.md §5's confirmed different resize
-   model from `PlotlyPanel`).
+   model from `the retired chart panel`).
 5. A zero-row query renders `PanelEmptyState`; a rejected query (bad
    `metric`) renders `PanelErrorState` — neither an unhandled exception nor a
    blank chart area (SC-004).
@@ -65,7 +65,7 @@ query) and asserts:
    or the global filter store (US2, research.md §3).
 9. An input's non-default value survives an expand/collapse cycle through
    `004`'s dialog, with no query fired solely by that transition (US2).
-10. A tab mixing `valuebox`/`plotly`/`table`/`markdown`/`observable-plot`
+10. A tab mixing `valuebox`/`the old chart library`/`table`/`markdown`/`observable-plot`
     panels renders all of them without error (SC-005).
 11. A `select`/`multiselect` input's fetched option list is unaffected by
     that same input's own current value — options never narrow down to just
@@ -95,7 +95,7 @@ npm run dev:fixtures && npm run dev
 
 1. **Chart renders correctly** — confirm bar/line marks appear with values
    matching the fixture data, styled consistently with the rest of the
-   dashboard's card chrome (not marked.js/Plotly-specific styling bleeding
+   dashboard's card chrome (not marked.js/the old chart library-specific styling bleeding
    in).
 2. **Global filter reactivity** — change the Trip Purpose sidebar value (or
    whatever fixture filter is wired up) and confirm the `observable-plot`
@@ -114,7 +114,7 @@ npm run dev:fixtures && npm run dev
    is still set inline — not reset to the input's `default`.
 6. **Cross-panel isolation** — with two `observable-plot` panels on the same
    tab, change one panel's input; confirm the other panel's chart and any
-   global-filter-driven panel (e.g. a `plotly` panel bound to the same
+   global-filter-driven panel (e.g. a `the old chart library` panel bound to the same
    global filter) are visually unaffected.
 7. **Empty/error states show, not a blank card** — point a panel at a
    nonexistent metric (error) and a filter combination that legitimately

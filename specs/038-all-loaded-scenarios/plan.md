@@ -23,8 +23,8 @@ active-scenario set explicitly. No change to `$baseline`/`comparison: diff` or t
 
 **Language/Version**: TypeScript (ES2022 target), React 18, Vite
 
-**Primary Dependencies**: DuckDB-WASM (Web Worker), js-yaml (runtime YAML), Plotly.js,
-Recharts, `@observablehq/plot`, MapLibre GL — all already present; **this feature adds
+**Primary Dependencies**: DuckDB-WASM (Web Worker), js-yaml (runtime YAML), the old chart library,
+the old chart library, `@observablehq/plot`, MapLibre GL — all already present; **this feature adds
 no dependency**.
 
 **Storage**: Parquet/GeoParquet in the browser via DuckDB-WASM; scenario view

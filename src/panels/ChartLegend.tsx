@@ -2,7 +2,7 @@
 // genuinely shared presentational component: neither SankeyPanel.tsx nor
 // HierarchicalChartHost.tsx renders a legend at all (a Sankey's own node
 // labels ARE its legend; a treemap/sunburst's own segment labels serve
-// the same role), and RechartsPanel's/ObservablePlotPanel's own legends
+// the same role), and the retired chart panel's/ObservablePlotPanel's own legends
 // are each tied to their own charting library's payload/DOM shape — not
 // reusable by a hand-built D3/SVG chart. This is the one piece of UI
 // genuinely identical between PieChartPanel.tsx and RadarChartPanel.tsx

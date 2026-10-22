@@ -41,7 +41,7 @@ implementation-level detail spec.md deliberately left out.
 
 ## 3. Value-box sparkline feasibility — CONFIRMED: feasible
 
-- The current `panels/valueBoxSparkline.tsx` renders bare Recharts
+- The current `panels/valueBoxSparkline.tsx` renders bare the old chart library
   primitives (`BarChart`/`LineChart`) inside a fixed `h-10` (40px),
   `aria-hidden`, chrome-less container — no axes, no legend, no tooltip.
 - `@observablehq/plot`'s scale options (`src/scales.d.ts`) confirm
@@ -55,7 +55,7 @@ implementation-level detail spec.md deliberately left out.
 
 ## 4. Data-shape compatibility — CONFIRMED: no reshaping needed anywhere
 
-- Every panel type in this app (Plotly, Recharts, Observable Plot alike)
+- Every panel type in this app (the old chart library, Observable Plot alike)
   is fed the identical flat, tidy row array (`Record<string, unknown>[]`)
   from the same shared `buildPanelQuery()` → `query()`/`queryArrow()`
   pipeline (`panels/panelQuery.ts`, unmodified by every prior panel-type
@@ -74,25 +74,25 @@ onward) supports everything every panel below needs, with **zero**
 
 | Panel (tab) | Old grammar | New `observable-plot` grammar |
 |---|---|---|
-| Total Trips by Mode (Summary) | `recharts`, `chart_type: bar`, `x/y/series` | `mark: barY`, `x/y/fill: scenario` |
-| Average Trip Distance by Purpose (Summary) | `plotly`, `traces: [{x:$metric.x,y:$metric.y,name:$scenario}]` | `mark: barY`, `x/y`, `fill: scenario` |
-| Non-Mandatory Tour Frequency by Purpose (Tour) | `plotly`, grouped bar, `name:$scenario` | `mark: barY`, `x/y`, `fill: scenario` |
-| At-Work Subtour Mode Share by Purpose (Mode Choice) | `recharts`, `chart_type: bar`, `series: tour_mode` | `mark: barY`, `x/y`, `fill: tour_mode` |
-| Trip Mode Share by Time-of-Day Period (Mode Choice) | `plotly`, `name:$scenario` | `mark: barY`, `x/y`, `fill: scenario` |
-| Trip Departure Hour, Work Trips (Trip) | `plotly`, grouped bar, `name:$scenario` | `mark: barY`, `x/y`, `fill: scenario` |
+| Total Trips by Mode (Summary) | `the old chart library`, `chart_type: bar`, `x/y/series` | `mark: barY`, `x/y/fill: scenario` |
+| Average Trip Distance by Purpose (Summary) | `the old chart library`, `traces: [{x:$metric.x,y:$metric.y,name:$scenario}]` | `mark: barY`, `x/y`, `fill: scenario` |
+| Non-Mandatory Tour Frequency by Purpose (Tour) | `the old chart library`, grouped bar, `name:$scenario` | `mark: barY`, `x/y`, `fill: scenario` |
+| At-Work Subtour Mode Share by Purpose (Mode Choice) | `the old chart library`, `chart_type: bar`, `series: tour_mode` | `mark: barY`, `x/y`, `fill: tour_mode` |
+| Trip Mode Share by Time-of-Day Period (Mode Choice) | `the old chart library`, `name:$scenario` | `mark: barY`, `x/y`, `fill: scenario` |
+| Trip Departure Hour, Work Trips (Trip) | `the old chart library`, grouped bar, `name:$scenario` | `mark: barY`, `x/y`, `fill: scenario` |
 
 All six resolve cleanly to Observable Plot's `barY` mark with a `fill`
 color channel — the exact idiom the five already-existing Observable Plot
 panels already use for their own categorical breakdown (confirmed by
 direct read, §7 below). No panel needs faceting to preserve its existing
 analytical content (a scenario or category split via one color channel is
-enough, matching what Plotly's `name:`/Recharts' `series:` already
+enough, matching what the old chart library's `name:`/the old chart library' `series:` already
 provided) — faceting is a genuine *available* improvement, not a
 requirement, consistent with spec.md's own "free re-authoring allowed, no
 over-investment" framing.
 
-`dashboard-8-test.yaml` is confirmed **excluded**: its `plotly`/
-`recharts`/`sankey` entries all deliberately reference
+`dashboard-8-test.yaml` is confirmed **excluded**: its `the old chart library`/
+`the old chart library`/`sankey` entries all deliberately reference
 `__nonexistent_metric__` (proving each panel type's own error-state
 rendering) or an intentionally-invalid `chart_type: pie`. Converting
 their `type:` would not change their error behavior (a missing metric
@@ -109,9 +109,9 @@ dependency for the sparkline: it owns a `ResizeObserver`, panel-expand
 (004) dialog-awareness, legend-height compensation math, and loading/
 empty/error state branches — none of which apply to a fixed-size,
 chrome-less, always-ready (it only renders once its parent value-box has
-already resolved real rows) mini chart. The existing `recharts`-based
+already resolved real rows) mini chart. The existing `the old chart library`-based
 `ValueBoxSparkline` already deliberately avoids the equivalent
-full-chrome Recharts component (`RechartsPanel.tsx`) for the identical
+full-chrome the old chart library component (`the retired chart panel`) for the identical
 reason (see that file's own header comment). Re-implementing directly
 against `Plot.plot()` (mirroring `ObservablePlotPanel.tsx`'s own
 mount-effect *pattern*, not its component) keeps the same "reuse the
@@ -142,7 +142,7 @@ with a categorical `fill` breakdown) found:
   deliberate, correct all-or-nothing fallback to Plot's own default
   categorical cycling when not every scenario resolves a color.
 - Correct legend handling (`color: {legend: true}` whenever a `fill`/
-  `stroke` channel exists — matching Plotly's own automatic-legend
+  `stroke` channel exists — matching the old chart library's own automatic-legend
   behavior for visual consistency across panel types).
 
 No leftover workaround or confirmed defect found. **No code change to any
@@ -162,7 +162,7 @@ out of this feature's own first-pass scope, not a defect.)
 `--plot-background: white` via an inline `<style>` rule
 (`node_modules/@observablehq/plot/src/plot.js`, confirmed directly) — the
 exact same class of "opaque light background ignores the app's dark
-theme" bug this project already found and fixed once for Plotly
+theme" bug this project already found and fixed once for the old chart library
 (`015-theme-toggle`). **This was already found and fixed for Observable
 Plot too** — `ObservablePlotPanel.tsx`'s own header comments document the
 finding and its fix (`svgEl.style.setProperty('--plot-background', card)`,
@@ -189,13 +189,13 @@ established for the five existing panels.
 
 | Spec file | What it currently asserts (confirmed by reading the file) | Required change |
 |---|---|---|
-| `dashboardShell.spec.ts` | `.js-plotly-plot` visibility; reads `gd.data.length` (Plotly's internal trace array) to assert 3 traces; a dark-mode test reads `.js-plotly-plot .bg` computed style | Swap to `.observable-plot-chart svg[viewBox]`; replace trace-count check with a legend-swatch or distinct-`fill`-color count; dark-mode assertion targets the already-proven `--plot-background`/`--card` mechanism (§8) instead of Plotly's `.bg` element |
-| `demoMultiScenario.spec.ts` | Comments/locators reference "recharts"/"plotly" by name for these two panels | Update comments; confirm `panelCard()` helper itself is engine-agnostic (title-based) — likely no locator change beyond any internal engine-specific assertion |
+| `dashboardShell.spec.ts` | `old-chart-root` visibility; reads `gd.data.length` (the old chart library's internal trace array) to assert 3 traces; a dark-mode test reads `old-chart-root .bg` computed style | Swap to `.observable-plot-chart svg[viewBox]`; replace trace-count check with a legend-swatch or distinct-`fill`-color count; dark-mode assertion targets the already-proven `--plot-background`/`--card` mechanism (§8) instead of the old chart library's `.bg` element |
+| `demoMultiScenario.spec.ts` | Comments/locators reference "the old chart library"/"the old chart library" by name for these two panels | Update comments; confirm `panelCard()` helper itself is engine-agnostic (title-based) — likely no locator change beyond any internal engine-specific assertion |
 | `lazyTabLoading.spec.ts` | `chart.locator('svg').getByText(scenarioName)` — searches for legend text *inside* the svg | Rewrite per §9: target the swatches element, not `svg` |
-| `markdownPanel.spec.ts` | Title-only visibility checks (`// recharts`/`// plotly` are comments only) | Comment update only, no locator change |
+| `markdownPanel.spec.ts` | Title-only visibility checks (`// the old chart library`/`// the old chart library` are comments only) | Comment update only, no locator change |
 | `metricStrip.spec.ts` | Title-only visibility check | No change |
-| `panelExpand.spec.ts` | `CHART_TITLE = 'Average Trip Distance by Purpose'`; ~10 assertions on `.js-plotly-plot` across inline/expanded-dialog states | Full selector rewrite to `.observable-plot-chart svg[viewBox]`, preserving the same inline-vs-dialog DOM-identity assertions this file's own header comment already documents testing for |
-| `scenarioColorOverride.spec.ts` | Explicit `.js-plotly-plot`/`.recharts-wrapper` visibility checks; legend/color-swatch assertions tied to Plotly trace color and Recharts series color | Rewrite to Observable Plot's own swatches element per §9; the underlying label/color propagation logic itself is already implemented and correct (§7) — this is a test-locator rewrite, not a new capability to build |
+| `panelExpand.spec.ts` | `CHART_TITLE = 'Average Trip Distance by Purpose'`; ~10 assertions on `old-chart-root` across inline/expanded-dialog states | Full selector rewrite to `.observable-plot-chart svg[viewBox]`, preserving the same inline-vs-dialog DOM-identity assertions this file's own header comment already documents testing for |
+| `scenarioColorOverride.spec.ts` | Explicit `old-chart-root`/`.old-chart-class` visibility checks; legend/color-swatch assertions tied to the old chart library trace color and the old chart library series color | Rewrite to Observable Plot's own swatches element per §9; the underlying label/color propagation logic itself is already implemented and correct (§7) — this is a test-locator rewrite, not a new capability to build |
 | `scenarioLabelDisplay.spec.ts` | Same shape as above, for label text instead of color | Same rewrite approach |
 | `switchControlsUnpinnedPanels.spec.ts` | `panelCard()` lookups by title for both converted panels, feeding into engine-agnostic assertions | Likely no change beyond confirming no embedded engine-specific selector — verify during implementation |
 
@@ -220,10 +220,10 @@ concluding" discipline:
   (`tests/fixtures/dashboard-config/`) suite that tests the shared
   value-box sparkline *mechanism* itself (034-metric-panel-redesign's own
   coverage), independent of which real demo panel a viewer sees. Three
-  assertions use Recharts-specific selectors that directly test
+  assertions use the old chart library-specific selectors that directly test
   `panels/valueBoxSparkline.tsx` — the exact component FR-003/§6 convert:
-  `.recharts-bar-rectangle, .recharts-bar rect` (a real chart rendered),
-  `.recharts-wrapper` (×2 — a "no sparkline configured" negative check,
+  `.old-chart-class, .old-chart-class rect` (a real chart rendered),
+  `.old-chart-class` (×2 — a "no sparkline configured" negative check,
   and a "sparkline present alongside baseline_trend" positive check). All
   three must be rewritten to Observable Plot's own rendered-output
   equivalent as part of the sparkline conversion (contracts/
@@ -233,16 +233,16 @@ concluding" discipline:
 - **`tests/integration/demoContentAllPanels.spec.ts`** — `032-six-tab-
   demo-content`'s own "every one of the ten registered panel types
   renders at least once, real and non-empty" test (User Story 3)
-  explicitly asserts `.js-plotly-plot` and `svg path.recharts-rectangle`
+  explicitly asserts `old-chart-root` and `svg path.old-chart-class`
   are visible on the **Summary tab** — the exact two panels this
   feature's US1/US2 convert. This is a genuine, confirmed conflict
   between that prior feature's own success criterion (all ten types show
   real content) and this feature's own explicit FR-001/FR-002 (convert
-  *every* real Plotly/Recharts panel, no exception carved out to
+  *every* real the old chart library panel, no exception carved out to
   preserve type-coverage). Per this feature's own spec — a deliberate,
   explicit instruction, not an oversight — the conversion wins: after
   this feature ships, real, non-empty content covers **eight** of the
-  ten registered types on the six primary tabs; `plotly`/`recharts`
+  ten registered types on the six primary tabs; `the old chart library`/`the old chart library`
   remain fully supported, registered panel types, exercised for real by
   `dashboard-8-test.yaml`'s own per-type error-state coverage instead of
   by real data. This test's assertion (and, ideally, its own name/intent
@@ -254,12 +254,12 @@ concluding" discipline:
   criterion, and the test is rewritten to match" pattern repeatedly,
   e.g. `026`→`032`'s three-tab-to-six-tab demo content replacement).
 
-`tests/integration/rechartsPanel.spec.ts` and
+`tests/integration/a retired chart panel file` and
 `tests/integration/sankeyPanel.spec.ts` were also checked (both matched
-the same broad `js-plotly-plot`/`recharts-wrapper`/`observable-plot-chart`
+the same broad `js-old-chart-root`/`old-chart-class`/`observable-plot-chart`
 grep) and confirmed **unaffected** — both reference *fixture*-only panels
 (`tests/fixtures/dashboard-config/`, e.g. "Mode Share by Purpose",
-"Recharts Invalid Chart Type (intentional)", "Observable Plot Mode Share
+"the old chart library Invalid Chart Type (intentional)", "Observable Plot Mode Share
 (Bar)") that are structurally separate from `public/demo-dashboard-
 config/` and exist specifically to prove one panel type's own addition
 doesn't regress a sibling type — none of their own panels are among this
@@ -294,7 +294,7 @@ mechanism onto real demo content is a genuinely separate, pre-existing
 gap, out of this feature's own scope (spec.md's FR-005/FR-011: this
 feature changes rendering engines, not test-infrastructure migrations
 unrelated to it). The three sparkline-selector rewrites T023 calls for
-were still made (`.recharts-*` → `.observable-plot-chart svg[viewBox]`)
+were still made (`.the old chart library-*` → `.observable-plot-chart svg[viewBox]`)
 since they are the logically correct fix for `panels/valueBoxSparkline.tsx`'s
 own real behavior, confirmed correct by construction (the same selector
 convention already proven working in every other rewritten file this
@@ -359,19 +359,19 @@ byte identical failure list, ~34.6 minutes each run). Every one of the
 | `scenarioManager.spec.ts` | 16 | ✅ yes — 16/16 identical on clean tree |
 | `valueBoxPanel.spec.ts` | 14 | ✅ yes — 14/14 identical (§10b) |
 | `sankeyPanel.spec.ts` | 11 | ✅ yes — 11/11 identical on clean tree |
-| `rechartsPanel.spec.ts` | 8 | ✅ yes — 8/8 identical on clean tree |
+| `a retired chart panel file` | 8 | ✅ yes — 8/8 identical on clean tree |
 | `scenarioAutoActivation.spec.ts` | 6 | ✅ yes — 6/6 identical on clean tree |
 | `flowmapPanel.spec.ts` | 1 | ✅ yes — 1/1 identical on clean tree |
 | **Total** | **135** | **135/135 (100%) confirmed pre-existing** |
 
 **Zero real regressions.** Every one of the 6 files not already
 individually investigated in §10b/§10c (`settingsModal`, `tablePanel`,
-`scenarioManager`, `sankeyPanel`, `rechartsPanel`, `scenarioAutoActivation`)
+`scenarioManager`, `sankeyPanel`, `the retired chart panel`, `scenarioAutoActivation`)
 was re-run against a fully clean tree (`git stash` with none of this
 feature's changes applied) and reproduced its exact failure count,
 confirming none of them are caused by this feature either — this feature
 touches none of their own subject matter (basemap/scenario-management/
-table-sort/sankey/recharts-panel-type/scenario-activation mechanics).
+table-sort/sankey/old-chart-class/scenario-activation mechanics).
 
 `flowmapPanel.spec.ts`'s single failure is the same class of already-
 documented, real-hardware/timing-sensitive flake this project's own
@@ -386,7 +386,7 @@ already-tracked class of gap (`flowmapPanel.spec.ts`'s OWN historical
 entry, `zonemapPanel.spec.ts`, the original `graphicWalkerPanel.spec.ts`
 fixed by `056`, plus the 5 more found by this feature: `valueBoxPanel`,
 `observablePlotPanel`, `settingsModal`, `tablePanel`, `scenarioManager`,
-`sankeyPanel`, `rechartsPanel`, `scenarioAutoActivation` — a much larger
+`sankeyPanel`, `the retired chart panel`, `scenarioAutoActivation` — a much larger
 share of the suite than previously documented anywhere). **Not fixed
 here** — this is a large, genuinely separate test-infrastructure
 migration project of its own, well outside this feature's scope
@@ -397,9 +397,9 @@ follow-up rather than silently worked around or left undocumented.
 
 Confirmed (plan.md's own Constitution Check) that no numbered Core
 Principle (I–IX) addresses "default chart engine" — only the non-binding-
-by-principle **Technology Stack Reference** table names Plotly.js as
+by-principle **Technology Stack Reference** table names the old chart library as
 "Charts — default," and that cell was already stale before this feature
-(per `CLAUDE.md`'s own `029-shadcn-chart-panel` entry naming Recharts as
+(per `CLAUDE.md`'s own `029-shadcn-chart-panel` entry naming the old chart library as
 "this app's new default/primary engine," with no corresponding amendment
 on record). This feature does not require a constitution amendment to
 proceed; a future documentation-only PATCH updating that table cell is

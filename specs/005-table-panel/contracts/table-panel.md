@@ -2,14 +2,14 @@
 
 Satisfies: FR-001, FR-002, FR-007 through FR-015. The third panel type —
 proves config → query → interactive table, following exactly the shape
-`contracts/valuebox-panel.md`/`contracts/plotly-panel.md` (`003`) already
+`contracts/valuebox-panel.md`/`contracts/retired-chart-panel.md` (`003`) already
 established.
 
 ## Shape
 
 ```tsx
 export function TablePanel({ config }: PanelProps<TablePanelConfig>) {
-  const filters = useFilterState(/* derived from config.filter, or ALL_FILTERS — identical to ValueBoxPanel/PlotlyPanel */)
+  const filters = useFilterState(/* derived from config.filter, or ALL_FILTERS — identical to ValueBoxPanel/the retired chart panel */)
   const [rows, setRows] = useState<Record<string, unknown>[]>([])
   const [state, setState] = useState<'loading' | 'ready' | 'empty' | 'error'>('loading')
   const [sortState, setSortState] = useState(
@@ -77,7 +77,7 @@ and that `resolveColumns`/`filterRows`/`sortRows`/`cellColor` are the
 re-derived inline here.)
 
 The full `buildPanelQuery` → `resolveActiveScenarios` → `sqlExpander.
-expand()` → `query()` chain is identical to `ValueBoxPanel`/`PlotlyPanel`
+expand()` → `query()` chain is identical to `ValueBoxPanel`/`the retired chart panel`
 — `contracts/panel-query.md`'s (`003`) "Composing with sqlExpander.
 expand()" section, reused verbatim, not re-derived. `PanelEmptyState`/
 `PanelErrorState` are the same shared components those two panel types

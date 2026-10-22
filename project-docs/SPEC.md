@@ -114,8 +114,8 @@ export function Panel({ config }: PanelProps) {
   const filters = useFilterState(config.filter_ids ?? ALL_FILTERS)
   const containerRef = useRef<HTMLDivElement>(null)
 
-  // Data fetch + draw — re-runs when config or filters change. For Plotly
-  // panels this calls Plotly.react(), never newPlot() (see Panel types
+  // Data fetch + draw — re-runs when config or filters change. For the old chart library
+  // panels this calls the old library API, never newPlot() (see Panel types
   // below) and never purges — react() diffs against the existing plot.
   useEffect(() => {
     let cancelled = false
@@ -128,7 +128,7 @@ export function Panel({ config }: PanelProps) {
   // Teardown on actual unmount only — a separate effect with an empty
   // dependency array, not folded into the effect above.
   useEffect(() => {
-    return () => { /* lib cleanup, e.g. Plotly.purge(containerRef.current) */ }
+    return () => { /* lib cleanup, e.g. the old library APIcontainerRef.current) */ }
   }, [])
 
   return <div ref={containerRef} />
@@ -159,7 +159,7 @@ inline literal.
 
 | type | Library | Notes |
 |---|---|---|
-| `plotly` | Plotly.js | Default. Use `Plotly.react()` not `newPlot()` for updates |
+| `the old chart library` | the old chart library | Default. Use `the old library API` not `newPlot()` for updates |
 | `observable-plot` | Observable Plot | For panels with reactive filter inputs |
 | `table` | plain DOM | Sortable, paginated |
 | `valuebox` | plain DOM | Single scalar KPI with threshold coloring |
@@ -290,7 +290,7 @@ layout:
       observed: 0.847
       width: 0.25
 
-    - type: plotly
+    - type: the old chart library
       metric: trip_mode_share
       filter: $filters.purpose
       traces:
@@ -422,7 +422,7 @@ map.getSource('zones').setData(geojson)
 
 ## Charting library decision
 
-| Plotly | Observable Plot |
+| the old chart library | Observable Plot |
 |---|---|
 | Interactive legend (toggle scenarios) | Reactive filter inputs (dropdowns → chart updates) |
 | Modebar: fullscreen, PNG export | Grammar-of-graphics (faceted small multiples) |

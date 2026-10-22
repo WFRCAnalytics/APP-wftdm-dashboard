@@ -4,7 +4,7 @@ import Color from 'color'
 // state/appState.ts import) resolver over an already-built
 // ScenarioDisplayMap, matching panels/expandablePanelTypes.ts's own
 // precedent for Vitest-importability: several of this feature's own
-// consumers (plotlyTraces.ts in particular) must stay safe to import from
+// consumers (a retired chart helper in particular) must stay safe to import from
 // a plain-Node unit test, so nothing in this module may pull in a
 // browser-global-touching or store-touching dependency. See
 // specs/035-scenario-label-color/data-model.md §2 and research.md §2.

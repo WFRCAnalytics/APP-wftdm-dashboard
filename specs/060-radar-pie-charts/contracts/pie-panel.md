@@ -33,7 +33,7 @@ A pie chart renders exactly one series (one full circle). Left unpinned,
 scenario's rows are combined into ONE circle with no per-scenario
 distinction — an author comparing more than one scenario's own
 categorical breakdown should use multiple pie panels (one per scenario)
-or a different panel type (e.g. `recharts`/`observable-plot` with
+or a different panel type (e.g. `the old chart library`/`observable-plot` with
 faceting), not rely on this panel type to disambiguate. This is
 documented behavior, not a validation error — matching this app's own
 "YAML has no runtime schema; author error surfaces as a data-shape

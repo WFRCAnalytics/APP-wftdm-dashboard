@@ -157,7 +157,7 @@ confirming focus returns to the trigger each time.
 
 - [x] T005 [P] [US1] Playwright test in `tests/integration/panelExpand.spec.ts`:
       clicking a panel's expand trigger opens a dialog showing the same
-      rendered content — covering both a `valuebox` panel and a `plotly`
+      rendered content — covering both a `valuebox` panel and a `the old chart library`
       panel from the fixture data, asserting neither is treated as a
       special case (spec.md's explicit no-opt-out requirement)
 - [x] T006 [P] [US1] Playwright test in `tests/integration/panelExpand.spec.ts`:
@@ -194,12 +194,12 @@ confirming focus returns to the trigger each time.
       entry, and assert (a) the corresponding trace's visibility actually
       toggled and (b) the dialog is still open afterward — research.md §2's
       required, not-assumed check of Radix's outside-click detection against
-      Plotly's own in-tree click interactivity
+      the old chart library's own in-tree click interactivity
       — **Confirmed safe, as predicted, with two real test-mechanics fixes
-      needed along the way** (not the mechanism itself): Plotly's modebar
+      needed along the way** (not the mechanism itself): the old chart library's modebar
       visually overlaps the legend and physically intercepts the click at
       the browser's hit-testing level (removed via a test-only DOM
-      cleanup, `.modebar-container`'s `.remove()`); and Plotly updates its
+      cleanup, `.modebar-container`'s `.remove()`); and the old chart library updates its
       internal trace-visibility state slightly after the click event fires,
       so the assertion polls rather than reading once immediately.
 
@@ -228,7 +228,7 @@ confirming focus returns to the trigger each time.
       title baseline; the only visible difference is the new expand icon
       in each header. Also required one small addition to `button.tsx`
       (an `icon` size variant — no existing variant fit a label-less
-      trigger) and one to `PlotlyPanel.tsx` (container `height: '100%'`
+      trigger) and one to `the retired chart panel` (container `height: '100%'`
       instead of a hardcoded pixel default, needed for FR-009 — see T019).
 
 **Checkpoint**: User Story 1 is fully functional and independently
@@ -286,7 +286,7 @@ same loading state and only one query ever resolves.
 ### Implementation for User Story 2
 
 - [x] T015 [US2] Address any gap T011–T014 surface in `src/panels/
-      ValueBoxPanel.tsx` or `src/panels/PlotlyPanel.tsx` (e.g. an
+      ValueBoxPanel.tsx` or `src/panels/the retired chart panel` (e.g. an
       unexpected dependency on mount/unmount timing in either panel's fetch
       effect). Expected to require **no changes** — research.md §1's
       portal-relocation design structurally guarantees single-instance,
@@ -295,7 +295,7 @@ same loading state and only one query ever resolves.
       — **No changes needed to either panel component**, confirmed: T012's
       failure before the fix was correctly diagnosed as a bug in the
       mechanism (T004's original `createPortal`-target-swap design), not
-      in `ValueBoxPanel.tsx`/`PlotlyPanel.tsx` — exactly as this task
+      in `ValueBoxPanel.tsx`/`the retired chart panel` — exactly as this task
       anticipated. Once T004 was corrected (research.md §1b), all of
       T011-T014 passed with zero panel-component changes.
 
@@ -306,7 +306,7 @@ together. **Verified**: 4/4 US2 tests pass.
 
 ## Phase 5: User Story 3 - Charts render correctly sized inside the expanded view (Priority: P3)
 
-**Goal**: A chart-type panel's Plotly rendering correctly fills the
+**Goal**: A chart-type panel's the old chart library rendering correctly fills the
 expanded dialog's actual size in both directions of the transition.
 
 **Independent Test**: Expand a chart panel and confirm it redraws to fill
@@ -326,7 +326,7 @@ confirm the card view is still rendered correctly afterward.
       making "wider than before" not a meaningful claim in this specific
       case; "fills its actual container" is the real, always-meaningful one.
 - [x] T017 [P] [US3] Playwright test in `tests/integration/panelExpand.spec.ts`:
-      the chart's container DOM node (`PlotlyPanel`'s `containerRef.current`)
+      the chart's container DOM node (`the retired chart panel`'s `containerRef.current`)
       has the same node identity before and after expanding — direct proof
       the mechanism relocates rather than remounts (research.md §1), not
       merely a visual/size check
@@ -343,13 +343,13 @@ confirm the card view is still rendered correctly afterward.
 ### Implementation for User Story 3
 
 - [x] T019 [US3] Address any gap T016–T018 surface. Expected to require
-      **no changes** to `src/panels/PlotlyPanel.tsx` — `003`'s existing
+      **no changes** to `src/panels/the retired chart panel` — `003`'s existing
       `ResizeObserver` effect already handles arbitrary container resizes
       generically (research.md §1 confirms the portal relocation triggers
       it the same way any other resize would); only touch this file if a
       test reveals it genuinely doesn't
       — **This expectation was wrong, found by T016**: the ResizeObserver
-      correctly *detected* the resize and called `Plotly.Plots.resize()`
+      correctly *detected* the resize and called `the old library API`
       as expected, but the container had nothing taller to resize *into*
       — its own `style` hardcoded `height: config.height ?? 350` (a fixed
       350/400px), unconditionally, regardless of which real container it
@@ -357,7 +357,7 @@ confirm the card view is still rendered correctly afterward.
       the container fills whatever real ancestor it's currently in — the
       inline card slot (sized via `usePanelExpandHost`'s new
       `options.height`, T004/T010) or the dialog's own flex-driven height.
-      This is the one place `PlotlyPanel.tsx` was actually touched — a
+      This is the one place `the retired chart panel` was actually touched — a
       sizing fix, not new awareness of the expand mechanism itself
       (`contracts/panel-card.md`).
 
@@ -398,7 +398,7 @@ regressions.
       an actual deviation
       — **Done**: added a "Post-implementation re-check" note to plan.md —
       still PASS across all nine; the two implementation-time corrections
-      (portal mechanism, `PlotlyPanel.tsx` height) are implementation-
+      (portal mechanism, `the retired chart panel` height) are implementation-
       detail corrections to this plan, not new information bearing on any
       constitution principle. No Complexity Tracking entries needed.
 
@@ -467,11 +467,11 @@ regressions.
 
 ```bash
 # Once Phase 2 (T002-T004) is complete, author all US1 test scenarios together:
-Task: "Playwright test: expand trigger opens dialog with same content (valuebox + plotly) in tests/integration/panelExpand.spec.ts"
+Task: "Playwright test: expand trigger opens dialog with same content (valuebox + the old chart library) in tests/integration/panelExpand.spec.ts"
 Task: "Playwright test: Escape/outside-click/close-control all close, focus returns to trigger in tests/integration/panelExpand.spec.ts"
 Task: "Playwright test: Tab/Shift+Tab focus trap while dialog open in tests/integration/panelExpand.spec.ts"
 Task: "Playwright test: DialogContent root not visible when never expanded (quickstart.md scenario 9) in tests/integration/panelExpand.spec.ts"
-Task: "Playwright test: Plotly legend click doesn't close the dialog in tests/integration/panelExpand.spec.ts"
+Task: "Playwright test: the old chart library legend click doesn't close the dialog in tests/integration/panelExpand.spec.ts"
 
 # Then, once tests exist and fail as expected:
 Task: "Wire PanelExpandHost into panelCard.tsx + before/after screenshot comparison"

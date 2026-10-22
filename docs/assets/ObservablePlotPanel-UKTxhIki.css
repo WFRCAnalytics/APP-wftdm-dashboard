@@ -1,0 +1,1 @@
+.observable-plot-chart path[filter]{stroke:var(--border)}.observable-plot-chart>figure>div rect{rx:50%}.observable-plot-chart [aria-label$="axis label"],.observable-plot-chart [aria-label$="axis tick"]{display:none}.observable-plot-chart [aria-label=bar] rect{rx:calc(var(--chart-r) * 1px)}.observable-plot-chart>figure>div{gap:14px}

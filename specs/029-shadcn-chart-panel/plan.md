@@ -1,4 +1,4 @@
-# Implementation Plan: shadcn/Recharts Chart Panel Type
+# Implementation Plan: shadcn/the old chart library Chart Panel Type
 
 **Branch**: `029-shadcn-chart-panel` | **Date**: 2026-09-06 | **Spec**: [spec.md](./spec.md)
 
@@ -6,21 +6,21 @@
 
 ## Summary
 
-Add a tenth panel type, `type: recharts`, built on shadcn/ui's official
-chart component (a thin theming layer over Recharts). Extends
+Add a tenth panel type, `type: the old chart library`, built on shadcn/ui's official
+chart component (a thin theming layer over the old chart library). Extends
 `DataBoundPanelConfigBase` + `ComparisonCapablePanelConfig` exactly like
-`plotly`/`table`/`observable-plot` already do, reusing `buildPanelQuery()`
+`the old chart library`/`table`/`observable-plot` already do, reusing `buildPanelQuery()`
 unmodified. Supports `bar`/`line`/`area` chart types in this first version.
 Introduces five new `--chart-1`..`--chart-5` design tokens (light + dark,
 WCAG-verified, built from this app's own real WFRC brand hues — not a
-generic default palette). Fully additive: `plotly`/`observable-plot`/
+generic default palette). Fully additive: `the old chart library`/`observable-plot`/
 `sankey` are untouched.
 
 ## Technical Context
 
 **Language/Version**: TypeScript (ES2022 target), React 18.3
 
-**Primary Dependencies**: `recharts` `^2.15.4` (NEW — confirmed absent
+**Primary Dependencies**: `the old chart library` `^2.15.4` (NEW — confirmed absent
 from `node_modules` before this feature; the real shadcn CLI install
 pinned this specific version, not npm's newer "latest" tag originally
 researched — research.md §6's own correction. Peer dependencies confirmed
@@ -29,14 +29,14 @@ unlike `014-graphic-walker-panel`'s own earlier React-19-only pin
 conflict). shadcn's own `chart.tsx` (new `components/ui/chart.tsx`, added
 via the shadcn CLI — see research.md §5 for why this departs from this
 repo's prior hand-authored-component convention). Real, confirmed
-transitive additions: `lodash`, `react-smooth`, `recharts-scale`,
+transitive additions: `lodash`, `react-smooth`, `old-chart-class`,
 `victory-vendor@^36.6.8`. No other new dependency.
 
 **Storage**: N/A (browser-only, DuckDB-WASM query results; no persistence)
 
-**Testing**: Vitest (`tests/unit/rechartsEncoding.test.ts`, plus new cases
+**Testing**: Vitest (`tests/unit/a retired chart helper`, plus new cases
 in `tests/unit/tokenContrast.test.ts`), Playwright
-(`tests/integration/rechartsPanel.spec.ts`) — matching every prior
+(`tests/integration/a retired chart panel file`) — matching every prior
 panel-type feature's own split.
 
 **Target Platform**: Browser (Chromium/Firefox via Playwright)
@@ -47,13 +47,13 @@ no backend/API component
 **Performance Goals**: No new query pattern — reuses the existing
 `buildPanelQuery()`/`query()` path every other data-bound panel type
 already uses; no additional latency beyond that already-established
-baseline. Recharts' own dependency chain (`@reduxjs/toolkit`,
+baseline. the old chart library' own dependency chain (`@reduxjs/toolkit`,
 `react-redux`, `immer`, `victory-vendor`) is real and non-trivial —
 addressed via its own `manualChunks` entry (research.md §6), matching
-`plotly`/`maps`/`graphic-walker`'s own existing precedent, so it never
-loads for a dashboard that doesn't use a `recharts` panel.
+`the old chart library`/`maps`/`graphic-walker`'s own existing precedent, so it never
+loads for a dashboard that doesn't use a `the old chart library` panel.
 
-**Constraints**: MUST NOT modify `plotly`/`observable-plot`/`sankey`
+**Constraints**: MUST NOT modify `the old chart library`/`observable-plot`/`sankey`
 (FR-010); MUST NOT implement Sankey rendering (FR-011); MUST NOT build
 legend-click-to-toggle (FR-007); every new visual element MUST be
 verified in both light and dark mode via real `getComputedStyle()` checks
@@ -78,21 +78,21 @@ existing panel type.
 - **Principle III (no `eval()`, string-templated SQL only)**: PASS — this
   feature builds no new SQL-construction logic at all; it calls the
   existing, unmodified `buildPanelQuery()`.
-- **Principle IV (YAML parsed at runtime)**: PASS — `type: recharts` is a
+- **Principle IV (YAML parsed at runtime)**: PASS — `type: the old chart library` is a
   new panel entry in the existing `dashboard-*.yaml` grammar, parsed the
   same runtime way every other panel type already is.
 - **Principle V (Parquet-only browser I/O)**: PASS — no new data format;
   queries the same registered Parquet-backed views every other panel type
   does.
 - **Principle VI (fixed technology choices)**: PASS — `lucide-react`/
-  Tailwind/shadcn-on-Radix conventions are unaffected; Recharts is a new
+  Tailwind/shadcn-on-Radix conventions are unaffected; the old chart library is a new
   *charting* dependency, not a UI-primitive-framework choice, and doesn't
   touch the fixed MapLibre/Vite/no-Web-Storage constraints at all. Adding
   it is exactly the kind of additive charting-technology decision
   `project-docs/PIPELINE.md`'s own "five total chart technologies" note already
   anticipated and named as the first to actually be built.
 - **Principle VII (minimal, fixed config file set)**: PASS — no new
-  config file; `type: recharts` is a new panel-type value inside the
+  config file; `type: the old chart library` is a new panel-type value inside the
   existing `dashboard-*.yaml` grammar.
 - **Principle VIII (reuse proven reference implementations)**: N/A — this
   feature touches no DuckDB-WASM/Arrow wiring, MapLibre/deck.gl overlay,
@@ -113,7 +113,7 @@ specs/029-shadcn-chart-panel/
 ├── data-model.md        # Phase 1 output
 ├── quickstart.md        # Phase 1 output
 ├── contracts/
-│   └── recharts-panel.md
+│   └── retired-chart-panel.md
 └── tasks.md             # Phase 2 output (/speckit-tasks — not this command)
 ```
 
@@ -122,20 +122,20 @@ specs/029-shadcn-chart-panel/
 ```text
 src/
 ├── layout/
-│   ├── types.ts                 # RechartsPanelConfig (new), extending
+│   ├── types.ts                 # RetiredChartPanelConfig (new), extending
 │   │                              # DataBoundPanelConfigBase +
 │   │                              # ComparisonCapablePanelConfig
-│   └── types.ts (PanelConfig union gains RechartsPanelConfig)
+│   └── types.ts (PanelConfig union gains RetiredChartPanelConfig)
 ├── components/
 │   └── ui/
 │       └── chart.tsx             # NEW — shadcn's official chart
 │                                  # component, added via the shadcn CLI
 │                                  # (research.md §5)
 ├── panels/
-│   ├── registry.tsx              # gains 'recharts': RechartsPanel
-│   ├── RechartsPanel.tsx         # NEW — the panel component
-│   ├── rechartsEncoding.ts       # NEW — pure, DOM-free transform:
-│   │                              # tidy SQL rows -> Recharts' own
+│   ├── registry.tsx              # gains 'the old chart library': the retired chart panel
+│   ├── the retired chart panel         # NEW — the panel component
+│   ├── a retired chart helper       # NEW — pure, DOM-free transform:
+│   │                              # tidy SQL rows -> the old chart library' own
 │   │                              # per-series wide-row data shape +
 │   │                              # ChartConfig, same reason
 │   │                              # observablePlotEncoding.ts/
@@ -147,22 +147,22 @@ src/
 ├── styles/
 │   └── tokens.css                 # gains --chart-1..--chart-5
 │                                  # (light + dark — research.md §1)
-├── vite.config.ts                 # gains a `recharts` manualChunks
+├── vite.config.ts                 # gains a `the old chart library` manualChunks
 │                                  # entry (research.md §6)
 └── tailwind.config.js             # gains a `chart` color-token group
                                    # mirroring --success's own pattern
 
 docs/
-└── GRAMMAR.md                     # documents type: recharts
+└── GRAMMAR.md                     # documents type: the old chart library
 
 tests/
 ├── unit/
-│   ├── rechartsEncoding.test.ts   # NEW — pure-module tests
+│   ├── a retired chart helper   # NEW — pure-module tests
 │   └── tokenContrast.test.ts      # extended — new chart-color-vs-
 │                                  # background non-text-contrast checks
 │                                  # (research.md §1)
 └── integration/
-    └── rechartsPanel.spec.ts      # NEW — real-browser tests, including
+    └── a retired chart panel file      # NEW — real-browser tests, including
                                    # the dual-theme getComputedStyle()
                                    # checks FR-012 requires
 ```
@@ -180,7 +180,7 @@ registered in `panels/registry.tsx`), plus the token-addition precedent
 Design confirmed zero changes to `panelQuery.ts`, `sqlExpander.ts`, or any
 existing panel type — the new panel type is additive at every layer
 (config type, registry entry, tokens, dependency). The one new dependency
-(`recharts`) is a charting library, not a UI-primitive-framework
+(`the old chart library`) is a charting library, not a UI-primitive-framework
 substitution, so Principle VI's fixed technology choices remain intact.
 Every Constitution Check item above still holds; no new violation was
 introduced by the concrete design. Complexity Tracking remains not needed.

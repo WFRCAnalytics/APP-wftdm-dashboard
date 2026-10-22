@@ -158,10 +158,10 @@ sort/paginate/search interactivity required yet.
 - [x] T015 [P] [US1] Playwright test in `tests/integration/tablePanel.spec.ts`:
       loading, empty-result, and error states render via the same
       `PanelEmptyState`/`PanelErrorState` components `ValueBoxPanel`/
-      `PlotlyPanel` already use — no new state-handling pattern
+      `the retired chart panel` already use — no new state-handling pattern
 - [x] T016 [P] [US1] Playwright test in `tests/integration/tablePanel.spec.ts`:
       a table panel's card uses the same border/shadow/spacing/typography
-      tokens as a `valuebox`/`plotly` panel on the same tab (SC-004)
+      tokens as a `valuebox`/`the old chart library` panel on the same tab (SC-004)
 
 ### Implementation for User Story 1
 
@@ -182,7 +182,7 @@ sort/paginate/search interactivity required yet.
 - [x] T018 [US1] Implement `TablePanel.tsx`'s core shape per
       `contracts/table-panel.md`: the `useFilterState`/`buildPanelQuery`/
       `query()` fetch chain (identical to `ValueBoxPanel.tsx`/
-      `PlotlyPanel.tsx`), loading/empty/error states, and column/cell
+      `the retired chart panel`), loading/empty/error states, and column/cell
       rendering via `resolveColumns`/`cellColor`/`formatValue` — no sort,
       pagination, or search interactivity yet (those are US2-US4). Depends
       on T002, T017
@@ -367,7 +367,7 @@ feature scoped itself to is implemented end to end.
       table panel's `sortState`/`searchTerm`/`currentPage` — all three
       together — are unchanged after an expand → collapse round trip via
       `004`'s mechanism, the same rigor `004`'s own test suite gave the
-      analogous Plotly-zoom-state-persists property, not assumed to "just
+      analogous the old chart library-zoom-state-persists property, not assumed to "just
       work" by extension. Depends on T042
 - [x] T044 [P] Run `quickstart.md`'s full validation pass end to end — the
       automated `npm run test:unit -- tableLogic formatValue` and

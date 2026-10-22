@@ -180,7 +180,7 @@ testable — deployable as the MVP.
 **Regression note**: a broader sweep (`settingsModal.spec.ts` +
 `scenarioManager.spec.ts` + `dashboardShell.spec.ts` + `panelExpand.spec.ts`,
 48 tests) found one pre-existing failure —
-`dashboardShell.spec.ts`'s "a plotly panel matches the app theme in dark
+`dashboardShell.spec.ts`'s "a the old chart library panel matches the app theme in dark
 mode ... no-re-query" test, off by exactly one query (69 vs 70),
 deterministic (3/3 runs). Confirmed via `git stash` — the SAME test fails
 identically 3/3 on the clean pre-implementation baseline, with none of

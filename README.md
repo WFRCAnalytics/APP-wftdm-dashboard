@@ -53,7 +53,7 @@ Scenarios/{run-name}/
         │  observed/ always pre-loaded · public/scenarios/* auto-discovered
         │  ?s=observed&s=2027-rtp-baseyear for shareable deep links
         ▼
-Dashboard panels (Plotly / Observable Plot / MapLibre / flowmap.gl)
+Dashboard panels (the old chart library / Observable Plot / MapLibre / flowmap.gl)
 ```
 
 All computation happens locally. The hosted web app is static HTML/JS/CSS.
@@ -165,7 +165,7 @@ See `project-docs/GRAMMAR.md` for the full YAML grammar reference.
 | Build | Vite + TypeScript | TypeScript throughout `src/`; React arrives with whichever feature first needs it, not before (constitution v2.1.1 — no phase gate, no dedicated branch for either) |
 | In-browser query | DuckDB-WASM | Columnar SQL, same dialect as Python pipeline |
 | Offline pipeline | Python DuckDB | Same SQL, reads CSV/OMX/shapefiles |
-| Charts (default) | Plotly.js | Interactive legend, fullscreen, modebar |
+| Charts (default) | the old chart library | Interactive legend, fullscreen, modebar |
 | Charts (reactive) | Observable Plot | Grammar-of-graphics, reactive filter inputs |
 | Explore tab | Graphic Walker | Tableau-style drag-and-drop sandbox |
 | Base maps | MapLibre GL | Open-source, no Mapbox token required |

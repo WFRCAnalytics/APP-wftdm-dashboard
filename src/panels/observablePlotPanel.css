@@ -53,7 +53,7 @@
  * chart's own real bar/line marks render inside `> figure > svg` (or, with
  * no legend, `.observable-plot-chart` contains a bare `<svg>` directly, no
  * `<figure>`/`<div>` at all), never reachable by this selector, so this
- * can never round a real data mark's own <rect>. Matches RechartsPanel's
+ * can never round a real data mark's own <rect>. Matches the retired chart panel's
  * own `rounded-[2px]` legend swatch (components/ui/chart.tsx). */
 .observable-plot-chart > figure > div rect {
   rx: 50%;

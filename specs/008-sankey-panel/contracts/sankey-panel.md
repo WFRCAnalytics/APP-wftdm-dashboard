@@ -4,7 +4,7 @@ Satisfies: FR-001 through FR-009. The sixth and final originally-listed
 panel type — follows the config → query → render shape every prior
 data-bound panel type already uses, but with a genuinely new data-transform
 problem (research.md §4/§7) and a genuinely new rendering model (research.md
-§2/§3) neither `PlotlyPanel` nor `ObservablePlotPanel` needed in the same
+§2/§3) neither `the retired chart panel` nor `ObservablePlotPanel` needed in the same
 shape. `sankeyGraph.ts`'s rows-to-graph transform and layout wrapper below
 are this feature's actually novel pieces — given full, non-illustrative
 bodies rather than sketched, matching 007's own precedent for
@@ -314,7 +314,7 @@ export function SankeyPanel({ config }: PanelProps<SankeyPanelConfig>) {
 
   useEffect(() => {
     return () => { /* no imperative teardown call needed — no library
-      instance to purge, unlike Plotly.purge(); replacing the container's
+      instance to purge, unlike the old library API; replacing the container's
       children is enough */ }
   }, [])
 

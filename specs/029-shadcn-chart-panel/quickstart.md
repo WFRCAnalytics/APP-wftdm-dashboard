@@ -1,18 +1,18 @@
-# Quickstart: Validating the shadcn/Recharts Chart Panel Type
+# Quickstart: Validating the shadcn/the old chart library Chart Panel Type
 
 ## Prerequisites
 
-- `npm install` run after `recharts` and `components/ui/chart.tsx` are
+- `npm install` run after `the old chart library` and `components/ui/chart.tsx` are
   added (see tasks.md for the exact CLI command — research.md §5).
 - Fixture content available: `npm run dev:fixtures`.
 
-## 1. Author a `recharts` panel
+## 1. Author a `the old chart library` panel
 
 Add to a fixture `dashboard-*.yaml`:
 
 ```yaml
-- type:       recharts
-  title:      Mode Share by Purpose (Recharts)
+- type:       the old chart library
+  title:      Mode Share by Purpose (the old chart library)
   metric:     trip_mode_share
   chart_type: bar
   x:          purpose
@@ -57,30 +57,30 @@ Confirm, via real inspection (not a glance):
 
 ## 4. Confirm existing panel types are unaffected
 
-Load a dashboard tab with existing `plotly`/`observable-plot`/`sankey`
-panels alongside the new `recharts` one. Confirm all render correctly, and
-that Plotly's own legend click-to-toggle still works exactly as before.
+Load a dashboard tab with existing `the old chart library`/`observable-plot`/`sankey`
+panels alongside the new `the old chart library` one. Confirm all render correctly, and
+that the old chart library's own legend click-to-toggle still works exactly as before.
 
 ## 5. Confirm the unsupported-chart-type edge case
 
-Author a second `recharts` panel with an invalid `chart_type` (e.g.
+Author a second `the old chart library` panel with an invalid `chart_type` (e.g.
 `chart_type: pie`). Confirm this fails clearly and visibly (a config
 error), never a silent blank panel or an unintended fallback chart type.
 
 ## Automated coverage (for `/speckit-tasks`)
 
-- `tests/unit/rechartsEncoding.test.ts` — pure-module tests for
+- `tests/unit/a retired chart helper` — pure-module tests for
   `encodeRechartsData()`: single-series (no `series` configured),
   multi-series pivot, missing combinations left `undefined` not `0`,
   color-cycling past the fifth distinct series value, deterministic
   first-seen ordering.
 - `tests/unit/tokenContrast.test.ts` — extended with the five new
   `--chart-N` non-text-contrast checks (≥3:1) in both `:root` and `.dark`.
-- `tests/integration/rechartsPanel.spec.ts` — real-browser tests
+- `tests/integration/a retired chart panel file` — real-browser tests
   covering: bar/line/area rendering against real fixture data; tooltip
   content; legend display-only behavior (no click-to-toggle); the
   dual-theme `getComputedStyle()` checks FR-012 requires (real computed
   `fill`/`stroke` values in both themes, not a screenshot diff); the
   invalid-`chart_type` edge case; a regression sweep confirming
-  `plotly`/`observable-plot`/`sankey` panels on the same tab are
+  `the old chart library`/`observable-plot`/`sankey` panels on the same tab are
   byte-for-byte unaffected.

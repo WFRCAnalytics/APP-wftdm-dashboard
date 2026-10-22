@@ -20,14 +20,14 @@ header:
   #       cleaner signal. Do NOT set `icon`.
 layout:
   row_missing_metric:   [ … one panel per type with metric: __nonexistent__ … ]
-  row_bad_chart_type:   [ recharts chart_type: pie ]
+  row_bad_chart_type:   [ the old chart library chart_type: pie ]
   row_bad_basemap:      [ flowmap + zonemap basemap: totally-made-up-preset-name ]
   row_broken_composition: [ flowmap basemap: { layers: [ unreachable-url ] } ]
   row_bad_gw_dataset:   [ graphic-walker dataset: __nonexistent__; graphic-walker dataset_picker: true + dataset: __nonexistent__ ]
   row_markdown_edge:    [ markdown XSS; markdown ""; markdown "   " ]
   row_valuebox_edge:    [ valuebox sparkline.metric __nonexistent__; valuebox baseline_trend missing expr ]
   row_bad_diff:         [ table comparison.diff.a/b unresolvable ]
-  row_empty_result:     [ recharts + graphic-walker filter.primary_purpose __no_such_purpose__ ]
+  row_empty_result:     [ the old chart library + graphic-walker filter.primary_purpose __no_such_purpose__ ]
   row_basemap_precedence: [ panels with/without panel-level basemap: under a tab-level default_basemap: ]
 ```
 

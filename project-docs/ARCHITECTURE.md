@@ -19,7 +19,7 @@ Parquet / GeoParquet summary files  (scenario folder)
         ▼  DuckDB-WASM (browser, runtime)
         │  reads Parquet, joins observed data, passes to panels
         ▼
-Dashboard panels (Plotly / Observable Plot / MapLibre / Graphic Walker)
+Dashboard panels (the old chart library / Observable Plot / MapLibre / Graphic Walker)
 ```
 
 All format conversion (CSV→Parquet, OMX→Parquet, shapefile→GeoParquet) happens **offline**. The browser only ever reads Parquet.
@@ -89,9 +89,9 @@ they run. Neither this repo's Python package nor its JS app validates or
 transforms these files ahead of time; runtime parsing (constitution Principle IV)
 is the only thing that ever touches them.
 
-### Plotly + Observable Plot (not one or the other)
+### the old chart library + Observable Plot (not one or the other)
 
-**Plotly:** interactive legend (toggle scenarios), modebar (fullscreen/export), rich hover. Use for: volume scatter, screenline comparison, VMT by facility type.
+**the old chart library:** interactive legend (toggle scenarios), modebar (fullscreen/export), rich hover. Use for: volume scatter, screenline comparison, VMT by facility type.
 
 **Observable Plot:** grammar-of-graphics, reactive filter inputs. Use for: mode share filtered by purpose, TLFD by mode, time-of-day by purpose.
 

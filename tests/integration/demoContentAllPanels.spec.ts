@@ -164,13 +164,13 @@ test.describe('032-six-tab-demo-content — User Story 2 (real data, honest gaps
 // 057-observable-plot-conversion: 032-six-tab-demo-content's own original
 // success criterion here was "all ten registered panel types render real,
 // non-empty content across the six primary tabs." This feature's own
-// explicit FR-001/FR-002 (convert EVERY real Plotly/Recharts chart panel
+// explicit FR-001/FR-002 (convert EVERY real the old chart library chart panel
 // in the demo content to Observable Plot, no exception carved out to
 // preserve type-coverage) deliberately supersedes that — a real,
 // confirmed, INTENTIONAL conflict found and resolved during this
 // feature's own /speckit-tasks phase (research.md §10a), not an
 // oversight. After this feature, real content on the six primary tabs
-// covers EIGHT of the ten registered types; `plotly`/`recharts` remain
+// covers EIGHT of the ten registered types; `the old chart library`/`the old chart library` remain
 // fully supported, registered panel types — exercised for real via
 // `dashboard-8-test.yaml`'s own per-type error-state coverage
 // (`row_missing_metric`/`row_missing_metric_2`) instead of by real
@@ -183,7 +183,7 @@ test.describe('032-six-tab-demo-content — User Story 3 (panel type coverage)',
     await boot(page)
 
     // valuebox + observable-plot ×2 — Summary (both charts were
-    // recharts/plotly until 057-observable-plot-conversion converted them,
+    // the old chart library until 057-observable-plot-conversion converted them,
     // contracts/panel-conversions.md)
     await clickDemoTab(page, 'Summary')
     await page.waitForTimeout(2000)

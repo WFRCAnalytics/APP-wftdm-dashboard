@@ -35,7 +35,7 @@ has no data-binding fields at all unless it declares its own.
 | `scenario` | `string?` | Restrict to one named scenario view — unchanged from today |
 | `scenarios` | `string[]?` | Override which active scenarios this panel unions over — unchanged from today |
 
-`ValueBoxPanelConfig`, `PlotlyPanelConfig`, and `TablePanelConfig` all
+`ValueBoxPanelConfig`, `RetiredChartPanelConfig`, and `TablePanelConfig` all
 re-parent from `PanelConfigBase` onto `DataBoundPanelConfigBase` — a pure
 `extends` change, no field additions/removals on any of the three (they
 already declared/used every field this layer now carries).
@@ -53,7 +53,7 @@ query (FR-001/FR-007). `PanelConfigBase`'s common fields (`title`,
 `width`, `height`) apply unchanged.
 
 **Union update**: `layout/types.ts`'s `PanelConfig` becomes
-`ValueBoxPanelConfig | PlotlyPanelConfig | TablePanelConfig |
+`ValueBoxPanelConfig | RetiredChartPanelConfig | TablePanelConfig |
 MarkdownPanelConfig | UnknownPanelConfig` — a `type: markdown` entry now
 parses to a real, narrowed type instead of falling through to
 `UnknownPanelConfig`'s wide shape.
@@ -71,7 +71,7 @@ component (research.md §4):
 | `string` | `DOMPurify.sanitize(marked.parse(trimmed))` — sanitized HTML, every `<a>` additionally carrying `target="_blank"`/`rel="noopener noreferrer"` (research.md §6, applied via a module-level `afterSanitizeAttributes` hook, not part of `sanitize()`'s own config), safe to pass to `dangerouslySetInnerHTML` |
 
 No `loading`/`ready`/`error` status field exists for this panel type
-(research.md §4) — unlike `ValueBoxPanelConfig`/`PlotlyPanelConfig`/
+(research.md §4) — unlike `ValueBoxPanelConfig`/`RetiredChartPanelConfig`/
 `TablePanelConfig`'s rendering components, which all hold a four-state
 `status`/`state` value driven by an async fetch.
 
@@ -109,7 +109,7 @@ dashboard-*.yaml's type: markdown entry
 `004`'s expand-to-dialog mechanism (`usePanelExpandHost`) has no
 relationship to any of the shapes above — `MarkdownPanel` is just another
 `PanelComponent` the mechanism portals, identical in that respect to
-`ValueBoxPanel`/`PlotlyPanel`/`TablePanel` (FR-008/SC-005). Because there
+`ValueBoxPanel`/`the retired chart panel`/`TablePanel` (FR-008/SC-005). Because there
 is no fetch effect to interrupt or duplicate, the unmount-race concern
 `003`'s FR-011 and `004`'s own design rigor were written to address
 doesn't apply to this panel type at all — there is nothing in flight to

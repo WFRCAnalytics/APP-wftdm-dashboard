@@ -13,22 +13,22 @@ npm run dev            # starts the Vite dev server
 Two active fixture scenarios (`observed`, `good_scenario`) are needed —
 already the default `dev:fixtures` state.
 
-## Scenario 1 — Label propagates to a Plotly legend (US1, AC1)
+## Scenario 1 — Label propagates to a the old chart library legend (US1, AC1)
 
 1. Open Settings > Scenarios, set `good_scenario`'s label to "Preferred
    Alternative".
-2. Navigate to a tab with a multi-scenario Plotly panel (trace
+2. Navigate to a tab with a multi-scenario the old chart library panel (trace
    `color`/`name: $scenario`).
 3. **Expect**: the legend entry for `good_scenario` reads "Preferred
    Alternative", not `good_scenario`. `observed`'s legend entry (no
    label set) is unchanged.
 
-## Scenario 2 — Label propagates to Recharts/Observable Plot/Table (US1, AC2–4)
+## Scenario 2 — Label propagates to the old chart library/Observable Plot/Table (US1, AC2–4)
 
-1. With the same label still set, open a Recharts panel with `series:
+1. With the same label still set, open a the old chart library panel with `series:
    scenario`, an Observable Plot panel with `fill: scenario` (or
    `stroke:`), and a Table panel with a `scenario` column.
-2. **Expect**: Recharts tooltip/legend, Observable Plot legend/axis text,
+2. **Expect**: the old chart library tooltip/legend, Observable Plot legend/axis text,
    and every `good_scenario` table cell in the `scenario` column all read
    "Preferred Alternative". The table column's own HEADER still reads
    "scenario" — unaffected. Every other data value/position/color is
@@ -54,7 +54,7 @@ already the default `dev:fixtures` state.
 
 1. With two scenarios of different manifest colors active (both
    `observed`/`good_scenario` have real `manifest.yaml` colors in the
-   fixture set), open a Plotly, a Recharts, and an Observable Plot panel
+   fixture set), open a the old chart library, a the old chart library, and an Observable Plot panel
    that each split by scenario.
 2. **Expect**: each scenario renders in the SAME color across all three
    panel types (previously arbitrary/independent per chart library).
@@ -73,7 +73,7 @@ already the default `dev:fixtures` state.
    cluster shows a small color swatch (previewing the scenario's current
    effective color) before the baseline star.
 2. Pick a new color for `good_scenario` from its swatch.
-3. **Expect**: every already-rendered Plotly/Recharts/Observable Plot
+3. **Expect**: every already-rendered the old chart library/Observable Plot
    panel showing `good_scenario` updates to the new color immediately, no
    reload.
 4. Click the swatch row's new "clear override" (X) button.
@@ -91,7 +91,7 @@ already the default `dev:fixtures` state.
 ## Automated coverage
 
 - `npm run test:unit` — `tests/unit/scenarioDisplay.test.ts` (new),
-  extended `plotlyTraces.test.ts`/`rechartsEncoding.test.ts`/
+  extended `a retired chart helper`/`a retired chart helper`/
   `observablePlotEncoding.test.ts`.
 - `npx playwright test tests/integration/scenarioLabelDisplay.spec.ts
   tests/integration/scenarioColorOverride.spec.ts

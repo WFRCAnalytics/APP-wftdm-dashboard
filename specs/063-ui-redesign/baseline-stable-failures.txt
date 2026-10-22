@@ -6,7 +6,7 @@ hierarchicalChartTheming.spec.ts:46
 hierarchicalChartTheming.spec.ts:75
 lazyTabLoading.spec.ts:25
 observablePlotPanel.spec.ts:436
-rechartsPanel.spec.ts:121
+a retired chart panel file:121
 sankeyPanel.spec.ts:228
 sankeyPanel.spec.ts:253
 scenarioAutoActivation.spec.ts:128

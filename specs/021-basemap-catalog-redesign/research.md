@@ -339,7 +339,7 @@ in-memory `BUILT_IN_PRESETS` keys), fetched once in a mount effect:
 
 - `'loading'` — an inline `animate-pulse` skeleton placeholder, matching
   this project's own established convention (`ValueBoxPanel.tsx`/
-  `PlotlyPanel.tsx`'s existing inline skeletons) rather than introducing
+  `the retired chart panel`'s existing inline skeletons) rather than introducing
   a new shared `PanelLoadingState` component — `003-dashboard-shell-
   navigation`'s own research.md already documents this as a deliberate,
   considered choice (no reusable loading pattern existed to port, unlike

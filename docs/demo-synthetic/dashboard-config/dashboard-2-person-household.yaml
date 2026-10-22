@@ -1,0 +1,45 @@
+# 063 redesign: Person and household page (project-docs/redesign/02-layout-and-components.md section 3).
+
+header:
+  tab: "Person and household"
+  title: "Person and household models"
+  description: "Who lives where, and how many cars they own"
+  icon: users
+
+sections:
+  - { id: auto-ownership, label: "Auto ownership", rows: [row_hh_pyramid], tile: hh }
+  - { id: population, label: "Population", rows: [row_hh_pyramid], tile: pyramid }
+
+layout:
+  row_hh_pyramid:
+    - id: hh
+      type: multi-view
+      title: "Auto ownership"
+      description: "Households by number of cars for the focus scenario."
+      height: 450
+      width: 0.5833
+      views:
+        - { id: waffle, label: Waffle, type: chart, kind: waffle, compare: [multi] }
+        - { id: sun, label: Sunburst, type: chart, kind: sunburst, variant: hh, compare: [multi] }
+        - { id: tree, label: Treemap, type: chart, kind: treemap, variant: hh, compare: [multi] }
+        - { id: bars, label: "100% bars", type: chart, kind: stacked-bars, variant: auto, compare: [multi] }
+        - { id: db, label: Dumbbell, type: chart, kind: dumbbell, variant: hh, compare: [overlay] }
+    - id: pyramid
+      type: multi-view
+      title: "Population by age and sex"
+      description: "Synthetic population in bars. Ticks mark the census estimate."
+      scenario_independent: true
+      height: 450
+      width: 0.4167
+      views:
+        - { id: pyr, label: Pyramid, type: chart, kind: pyramid, compare: [] }
+
+  row_modeinc:
+    - id: modeinc
+      type: multi-view
+      title: "Mode share by household income"
+      description: "Lower-income households use transit, walking and school buses most."
+      height: 300
+      width: 1.0
+      views:
+        - { id: bars, label: "100% bars", type: chart, kind: stacked-bars, variant: income, compare: [multi] }

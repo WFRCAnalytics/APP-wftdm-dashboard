@@ -13,7 +13,7 @@ to `string | Record<string, string> | undefined`, and rewrite
 `panelQuery.ts`'s `buildPanelQuery` to accept either shape. This is not new
 grammar invented for this feature — `project-docs/GRAMMAR.md`'s own common-keys table
 (the block every panel type shares) already documents `filter: <inline |
-$ref>`, i.e. two forms were always allowed; `valuebox`/`plotly`/`table` simply
+$ref>`, i.e. two forms were always allowed; `valuebox`/`the old chart library`/`table` simply
 never happened to exercise the `inline` (map) form in any example so far.
 `type: observable-plot`'s own worked examples are the first to use it:
 
@@ -45,7 +45,7 @@ need auditing instead of one.
 `[column, placeholderString]` pairs before building the template:
 - `undefined` → `[]` (unchanged behavior — no `WHERE`)
 - a string matching `^\$filters\.([A-Za-z0-9_]+)$` → `[[id, filter]]` (exactly
-  today's behavior, column assumed equal to id — existing valuebox/plotly/
+  today's behavior, column assumed equal to id — existing valuebox/the old chart library/
   table fixtures and `tests/unit/panelQuery.test.ts` are unaffected byte for
   byte)
 - a string that does *not* match that pattern (a literal, non-placeholder
@@ -100,7 +100,7 @@ duck-typed `FilterStateLike` interface (`{ get(id: string): unknown }`)
 constructs a small object literal wrapping its own component-local input
 values (§4) and passes it as `inputState`; it never imports or touches `state/
 filterState.ts` for this purpose. Existing callers
-(`ValueBoxPanel`/`PlotlyPanel`/`TablePanel`) never emit `$inputs.` placeholders
+(`ValueBoxPanel`/`the retired chart panel`/`TablePanel`) never emit `$inputs.` placeholders
 and never pass this new argument — `inputState` defaults to `undefined`, and
 `expandInputs` throws the same descriptive "unresolved placeholder" error
 `missing()` already produces for any other unresolved reference if a template
@@ -165,14 +165,14 @@ no cross-component read requirement `useState` fails to satisfy.
 **Decision**: `ObservablePlotPanel`'s encoding-resolution logic treats `x`,
 `y`, `fill`, `stroke`, `facet_x`, `facet_y` as literal column names to read
 directly off each queried row — no `$metric.<column>` placeholder
-substitution is applied to these fields, unlike `PlotlyPanel`'s trace axes.
+substitution is applied to these fields, unlike `the retired chart panel`'s trace axes.
 
 **Reasoning**: Directly verified against `project-docs/GRAMMAR.md`'s two full
 `type: observable-plot` examples — `x: distance_bin`, `y: trips`, `stroke:
 purpose`, and separately `x: income_category`, `y: share`, `fill: mode` — none
 prefixed with `$metric.`, in explicit contrast to the immediately preceding
-`type: plotly` example's `x: $metric.observed`, `y: $metric.modeled` in the
-same document. `plotlyTraces.ts`'s `resolveColumnName`/`resolveField`
+`type: the old chart library` example's `x: $metric.observed`, `y: $metric.modeled` in the
+same document. `a retired chart helper`'s `resolveColumnName`/`resolveField`
 placeholder-parsing logic therefore does not transfer to this panel type —
 reusing it here would silently break on any `observable-plot` config, since
 `resolveColumnName('purpose')` (no `$metric.` prefix) returns `undefined` by
@@ -181,7 +181,7 @@ for what an unprefixed `x:`/`y:` value means in `observable-plot`'s own
 grammar.
 
 **Design**: A new, project-specific pure module,
-`panels/observablePlotEncoding.ts` (mirroring `plotlyTraces.ts`'s reason for
+`panels/observablePlotEncoding.ts` (mirroring `a retired chart helper`'s reason for
 being split out of its component — see §6), resolves an
 `ObservablePlotPanelConfig` + queried rows into a plain `{markName: string,
 data: Record<string, unknown>[], options: Record<string, unknown>}` object —
@@ -232,7 +232,7 @@ that they required explicit configuration). Confirmed against Plot's real
 docs that `color: {legend: true}` is a top-level `Plot.plot()` option,
 confirmed not automatic. Since no author-facing key exists to opt in with,
 `observablePlotEncoding.ts` defaults to showing a legend whenever `fill` or
-`stroke` is set — matching this app's own `PlotlyPanel`, which already
+`stroke` is set — matching this app's own `the retired chart panel`, which already
 auto-shows a legend whenever a categorical color split exists, for
 consistency across the app's two charting panel types. Fixing this
 surfaced a real regression in this feature's *own* prior test coverage:
@@ -263,7 +263,7 @@ package needed, matching `marked`/`dompurify`'s precedent from
 confirmed rather than assumed**: `Plot.plot()` returns, per Observable Plot's
 own documentation (fetched directly, not summarized from memory), "a detached
 DOM element — either an SVG or HTML figure element" — a brand-new element on
-every call, with no in-place update method analogous to `Plotly.react()`.
+every call, with no in-place update method analogous to `the old library API`.
 Observable Plot's own documented React usage pattern (fetched directly from
 its getting-started guide) is:
 
@@ -277,7 +277,7 @@ useEffect(() => {
 
 There is no built-in container-resize awareness — `Plot.plot({width,
 height})` takes explicit numeric dimensions read once at call time; unlike
-Plotly's `responsive: true` + `Plotly.Plots.resize()`, nothing inside
+the old chart library's `responsive: true` + `the old library API`, nothing inside
 `@observablehq/plot` itself observes the container's size. (Observable
 *Framework*'s notebook-specific `resize()` reactive helper, surfaced in
 search results, is a Framework-only primitive tied to its own reactive
@@ -285,13 +285,13 @@ runtime — not part of the plain `@observablehq/plot` npm package this project
 depends on, and not usable outside Observable Framework's own build.)
 
 **Design — confirms the risk named in spec.md's FR-007 is real and requires a
-materially different implementation from `PlotlyPanel`'s, not the same
+materially different implementation from `the retired chart panel`'s, not the same
 ResizeObserver fix reused verbatim**: `ObservablePlotPanel.tsx` needs a
-ResizeObserver on its container (same trigger mechanism as `PlotlyPanel.tsx`),
+ResizeObserver on its container (same trigger mechanism as `the retired chart panel`),
 but the *action* taken on each observed resize is different in kind, not just
-in the API called: `PlotlyPanel.tsx` calls `Plotly.Plots.resize(container)` —
+in the API called: `the retired chart panel` calls `the old library APIcontainer)` —
 a cheap in-place layout recalculation against the *same* persistent DOM tree
-`Plotly.react()` already built. `ObservablePlotPanel.tsx` instead must, on
+`the old library API` already built. `ObservablePlotPanel.tsx` instead must, on
 each resize *and* on each data/config change, call `Plot.plot({...options,
 width: measuredWidth, height: measuredHeight})` again, and swap the container's
 child (remove the previous returned element, append the new one) — matching
@@ -299,13 +299,13 @@ Observable Plot's own documented `append()`/`remove()` React pattern, driven
 by a ref holding the currently-mounted plot element, extended so a
 ResizeObserver callback triggers the same rebuild-and-swap the data-fetch
 effect already performs, rather than a separate cheap resize-only call. This
-is the concrete reason `panels/PlotlyPanel.tsx`'s two-effect split (fetch
+is the concrete reason `panels/the retired chart panel`'s two-effect split (fetch
 effect + resize-only effect calling a different, cheap API) is not reused
 unchanged — the render-and-swap step itself has to be shared between both
 triggers here, not split into a "full render" path and a "cheap resize" path
-the way Plotly's own API allows.
+the way the old chart library's own API allows.
 
-## §6. `observablePlotEncoding.ts` stays a pure, DOM-free module — Vitest-testable, same reasoning as `plotlyTraces.ts`
+## §6. `observablePlotEncoding.ts` stays a pure, DOM-free module — Vitest-testable, same reasoning as `a retired chart helper`
 
 **Decision**: `panels/observablePlotEncoding.ts` never imports
 `@observablehq/plot` at runtime (only its types, erased at compile time, if
@@ -314,8 +314,8 @@ returns a plain data object; only `ObservablePlotPanel.tsx` itself calls
 `Plot[markName](data, options)`.
 
 **Reasoning**: Confirmed by direct inspection of `@observablehq/plot`'s real
-source (`src/plot.js`) that, unlike `plotly.js-dist-min` (which references
-`self` at module load and is the reason `plotlyTraces.ts` was split out in
+source (`src/plot.js`) that, unlike `the old chart library` (which references
+`self` at module load and is the reason `a retired chart helper` was split out in
 003-dashboard-shell-navigation), `@observablehq/plot` has no top-level
 browser-global reference — it would not throw merely on import inside
 Vitest's `environment: 'node'` config (`vitest.config.js`). That does not,
@@ -326,11 +326,11 @@ deliberately `environment: 'node'`, not `jsdom` — no per-project precedent for
 jsdom exists to lean on, and introducing one is out of scope for a single
 panel type). Keeping `observablePlotEncoding.ts`'s output a plain object
 (never a real Plot mark or plotted element) means its tests need no DOM at
-all, mirroring `plotlyTraces.ts`'s and `tableLogic.ts`'s established pattern
+all, mirroring `a retired chart helper`'s and `tableLogic.ts`'s established pattern
 of pure, project-specific logic extracted from the DOM-touching component file
 — actual rendering (`Plot[markName](...)`, appending/removing DOM nodes,
 ResizeObserver wiring) is exercised only by real-browser Playwright tests,
-same split `PlotlyPanel.tsx`/`plotlyTraces.ts` already established.
+same split `the retired chart panel`/`a retired chart helper` already established.
 
 ## §5b. `ResizeObserver.observe()` fires its callback once, guaranteed, immediately — confirmed against the spec, not assumed; the render-and-swap effect must not also call `render()` explicitly without a guard
 
@@ -338,13 +338,13 @@ same split `PlotlyPanel.tsx`/`plotlyTraces.ts` already established.
 
 **Consequence for this feature's own design**: research.md §5's original render-and-swap effect sketch called `render()` synchronously, then `observer.observe(el)` — this fires `render()` **twice** for the exact same data/config/size on every effect run: once synchronously, once again asynchronously moments later from the guaranteed initial `ResizeObserver` callback. Each call rebuilds a whole new `Plot.plot()` element and swaps it into the DOM — a real, avoidable duplicate rebuild-and-swap on every fetch, not a cosmetic issue.
 
-**Decision**: Keep the synchronous `render()` call before `observe()` — not drop it in favor of relying solely on the guaranteed async callback — because `PlotlyPanel.tsx`'s established pattern renders synchronously the moment data arrives (`Plotly.react()` inside the fetch-effect's `.then()`), and relying solely on `ResizeObserver`'s async callback would introduce a visible one-frame gap (empty container, then chart) on every panel mount/data change that `PlotlyPanel` never has — a real, avoidable UX regression, not a neutral simplification. Instead, guard `render()` itself against rebuilding for a size it already rendered at: track the last-rendered `{width, height}` in a plain (non-state) variable closed over by the effect, and skip the rebuild when the newly measured size matches. This makes the guaranteed-duplicate initial `ResizeObserver` callback a cheap no-op (the common case — nothing sized between the synchronous call and the async one), while still correctly rebuilding on every *genuine* subsequent resize (including the `004` expand/collapse transition, which does change the container's measured size). It also happens to filter out spurious sub-pixel `ResizeObserver` firings later, a secondary, welcome benefit of the same guard, not the reason for it.
+**Decision**: Keep the synchronous `render()` call before `observe()` — not drop it in favor of relying solely on the guaranteed async callback — because `the retired chart panel`'s established pattern renders synchronously the moment data arrives (`the old library API` inside the fetch-effect's `.then()`), and relying solely on `ResizeObserver`'s async callback would introduce a visible one-frame gap (empty container, then chart) on every panel mount/data change that `the retired chart panel` never has — a real, avoidable UX regression, not a neutral simplification. Instead, guard `render()` itself against rebuilding for a size it already rendered at: track the last-rendered `{width, height}` in a plain (non-state) variable closed over by the effect, and skip the rebuild when the newly measured size matches. This makes the guaranteed-duplicate initial `ResizeObserver` callback a cheap no-op (the common case — nothing sized between the synchronous call and the async one), while still correctly rebuilding on every *genuine* subsequent resize (including the `004` expand/collapse transition, which does change the container's measured size). It also happens to filter out spurious sub-pixel `ResizeObserver` firings later, a secondary, welcome benefit of the same guard, not the reason for it.
 
 **Alternatives considered**: Dropping the explicit `render()` call and relying solely on the guaranteed initial async callback — technically correct and simpler code, but rejected for the visible-empty-frame regression above. Debouncing/throttling the `ResizeObserver` callback — unnecessary complexity for a problem the size-comparison guard already solves exactly, with no risk of coalescing a real resize into a dropped frame.
 
 ## §7. Loading/empty/error states reuse the existing shared components and per-panel skeleton convention
 
-**Decision**: `ObservablePlotPanel.tsx` follows `PlotlyPanel.tsx`'s exact
+**Decision**: `ObservablePlotPanel.tsx` follows `the retired chart panel`'s exact
 state-machine shape — `'loading' | 'ready' | 'empty' | 'error'` local state,
 an inline `animate-pulse` skeleton while loading (not a new shared loading
 component, per this project's established choice — `CLAUDE.md`'s
@@ -354,7 +354,7 @@ implementation-order item 13), and the existing `PanelEmptyState`/
 **Reasoning**: Unlike `MarkdownPanel` (research.md §4 of 006-markdown-panel —
 genuinely query-less, so a state machine didn't apply), `observable-plot`
 panels always query `services/duckdb.ts` (FR-011) — the same async-fetch
-shape `PlotlyPanel`/`TablePanel` already have, so there is no reason to
+shape `the retired chart panel`/`TablePanel` already have, so there is no reason to
 diverge from their proven state-machine shape or introduce a distinct pattern
 for this fifth panel type.
 
@@ -375,7 +375,7 @@ vocabulary (`layout/types.ts`) is fully typed and stored but never rendered
 anywhere in `src/`. Panel-local `inputs:` reuses that same three-value
 vocabulary, but there is nothing to copy the actual control markup/behavior
 from — this is why spec.md scoped this feature as materially bigger than
-005/006 rather than "swap Plotly for Observable Plot": it is also, concretely,
+005/006 rather than "swap the old chart library for Observable Plot": it is also, concretely,
 this application's first interactive filter-value-setting UI of any kind.
 
 ## §9. Panel-local input option lists — sourcing, and the mismatched-default edge case (spec.md's Edge Cases)
@@ -477,10 +477,10 @@ bad `$filters.<id>` default.
 | 1 | `filter:` shape for observable-plot | Common-key union type (`string \| Record<string,string>`), confirmed via `project-docs/GRAMMAR.md`'s own common-keys table; `buildPanelQuery` normalizes both forms |
 | 2 | `$inputs.<id>` resolution | Extends `sqlExpander.ts`'s existing placeholder dispatch, mirroring `$filters.<id>`, via a new optional `inputState` param |
 | 3 | Panel-local input state storage | Component-local `useState`, not `state/filterState.ts` — isolated by construction, persists across 004's expand transition for free |
-| 4 | Chart encoding placeholder convention | Bare column names, confirmed NOT `$metric.`-prefixed — `plotlyTraces.ts` logic does not transfer |
-| 5 | `@observablehq/plot` version/deps/resize behavior | `^0.6.17`, `d3` transitive (no peer deps), own TS types; resize requires full replot-and-swap, not a cheap in-place `Plotly.Plots.resize()`-equivalent |
-| 5b | `ResizeObserver.observe()`'s guaranteed initial callback | Confirmed via the real W3C spec (`lastReportedSizes` sentinel `[(-1,-1)]`) — fires once, always, right after `observe()`. Render-and-swap effect keeps its synchronous initial `render()` call (matches `PlotlyPanel`'s no-flash behavior) and guards against the resulting duplicate via a last-rendered-size comparison, not by dropping the synchronous call |
-| 6 | Pure-module DOM safety | `observablePlotEncoding.ts` never imports Plot at runtime or touches the DOM — Vitest-safe by construction, same reasoning as `plotlyTraces.ts` |
-| 7 | Loading/empty/error state modeling | Reuses `PlotlyPanel`'s exact state-machine shape and the shared empty/error components — this panel type always queries, unlike `markdown` |
+| 4 | Chart encoding placeholder convention | Bare column names, confirmed NOT `$metric.`-prefixed — `a retired chart helper` logic does not transfer |
+| 5 | `@observablehq/plot` version/deps/resize behavior | `^0.6.17`, `d3` transitive (no peer deps), own TS types; resize requires full replot-and-swap, not a cheap in-place `the old library API`-equivalent |
+| 5b | `ResizeObserver.observe()`'s guaranteed initial callback | Confirmed via the real W3C spec (`lastReportedSizes` sentinel `[(-1,-1)]`) — fires once, always, right after `observe()`. Render-and-swap effect keeps its synchronous initial `render()` call (matches `the retired chart panel`'s no-flash behavior) and guards against the resulting duplicate via a last-rendered-size comparison, not by dropping the synchronous call |
+| 6 | Pure-module DOM safety | `observablePlotEncoding.ts` never imports Plot at runtime or touches the DOM — Vitest-safe by construction, same reasoning as `a retired chart helper` |
+| 7 | Loading/empty/error state modeling | Reuses `the retired chart panel`'s exact state-machine shape and the shared empty/error components — this panel type always queries, unlike `markdown` |
 | 8 | Panel-local input control UI | Net-new — no existing filter-bar UI anywhere in this codebase to adapt |
 | 9 | Input option-list sourcing + mismatched-default edge case | `distinctValues()`/a `MIN`/`MAX` query against the panel's own resolved view, deliberately unfiltered by any `filter:` binding (avoids self-referential option-list collapse); a mismatched default is never special-cased — it flows into the same zero-row `PanelEmptyState` path any other unmatched filter value already does, with `range` additionally protected for free by the browser's own clamping behavior |

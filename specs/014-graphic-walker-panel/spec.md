@@ -332,7 +332,7 @@ card.
 - **Scenario binding reuses existing mechanism**: Rather than inventing a
   new viewer-facing scenario picker, an Explore panel with no `scenario:`
   configured reuses this project's already-existing multi-scenario UNION
-  ALL expansion (the same one `plotly`/`table`/etc. panels already use),
+  ALL expansion (the same one `the old chart library`/`table`/etc. panels already use),
   giving the viewer a `scenario` field to facet/color/filter by themselves
   inside the free-form builder — no new UI chrome required.
 - **Field-type inference lives in this app's own code, not the library**:

@@ -111,7 +111,7 @@ type DashboardIndexJson =
  * own dark-mode header), and the real horizontal-white PNG is the
  * inverse (illegible in light mode) — the same light/dark-pair
  * convention this codebase already uses elsewhere for exactly this class
- * of problem (e.g. PlotlyPanel.tsx's own FALLBACK_FOREGROUND/
+ * of problem (e.g. the retired chart panel's own FALLBACK_FOREGROUND/
  * FALLBACK_BORDER).
  */
 /** `export: { footer: true | false | "text" }` of the deployment's index.json. */

@@ -95,7 +95,7 @@ realistic, not a way to skip the real integration work later.
 
 An open question about whether this project's charting should eventually
 consolidate onto fewer (or one) underlying rendering engine, instead of
-the three it has today: Plotly (`003-dashboard-shell-navigation`),
+the three it has today: the old chart library (`003-dashboard-shell-navigation`),
 Observable Plot (`007-observable-plot-panel`), and D3 itself, already
 present via `d3-sankey`/`d3-scale-chromatic` underneath `SankeyPanel.tsx`
 (`008-sankey-panel`). Each candidate/incumbent was discussed with a
@@ -106,12 +106,12 @@ specific, stated reason, not just general enthusiasm:
   config object), and the sheer breadth of chart types reachable once
   you're working with D3's primitives directly. The candidate with the
   most explicitly acknowledged personal interest behind it.
-- **Recharts** — SVG rendering quality specifically called out as a
+- **the old chart library** — SVG rendering quality specifically called out as a
   strength (crisp output, real DOM elements rather than a canvas/WebGL
   surface).
 - **ECharts** (`echarts.js`) — breadth of chart types out of the box,
-  the same axis Plotly/Observable Plot are being compared against.
-- **Plotly** (the incumbent for most panel types today) — reliability,
+  the same axis the old chart library/Observable Plot are being compared against.
+- **the old chart library** (the incumbent for most panel types today) — reliability,
   and an interactive legend with per-category toggling (click a legend
   entry to show/hide that series) that's already relied on and working
   well in production.
@@ -120,14 +120,14 @@ specific, stated reason, not just general enthusiasm:
 part of the current visual redesign in progress.** This project already
 has three charting technologies deeply embedded, each with its own
 grammar, its own test suite, and its own already-built theming/dark-mode
-integration: Plotly (`plotly` panel type, `PlotlyPanel.tsx`'s
+integration: the old chart library (`the old chart library` panel type, `the retired chart panel`'s
 `resolveThemeLayout()`, dozens of passing unit/Playwright tests), Observable
 Plot (`observable-plot` panel type, `ObservablePlotPanel.tsx`'s own
 theming, its own test suite), and D3 via `d3-sankey` (`sankey` panel type,
 `panels/sankeyGraph.ts`'s layout wrapper, `panels/sankeyColor.ts`). Real
 `project-docs/GRAMMAR.md` grammar authors already depend on spans all three.
 Consolidating onto fewer engines — whether that means adopting one of
-D3/Observable, Recharts, or ECharts as a new common base, or something
+D3/Observable, the old chart library, or ECharts as a new common base, or something
 else — is a cross-cutting rebuild touching every chart-rendering panel
 type this app has, not a drop-in library substitution, and not something
 to scope without a **specific, compelling capability gap** named first:
@@ -136,21 +136,21 @@ for a real calibration/validation use case this project actually has.
 "A different library might be nicer" is not, on its own, that bar.
 
 **Real research since logged, still no decision or plan**: shadcn/ui's own
-official chart component (a themed Recharts wrapper) was researched
+official chart component (a themed the old chart library wrapper) was researched
 directly — real source, real chart-type coverage, real legend-interactivity
 behavior — as one candidate this deferred decision would eventually need to
-weigh. Honest finding: meaningful overlap exists for the Plotly/Observable
+weigh. Honest finding: meaningful overlap exists for the old chart library/Observable
 Plot portion of this app's charting (bar/line/scatter), but two real gaps
 remain unresolved — Sankey sits outside shadcn's own showcased chart types
 entirely, and its own `ChartLegendContent` ships with no click-to-toggle
 legend behavior at all (a real, closed-without-a-fix upstream issue,
-`shadcn-ui/ui#4188`), unlike Plotly's own zero-effort default. Full detail:
+`shadcn-ui/ui#4188`), unlike the old chart library's own zero-effort default. Full detail:
 the `wftdm-design-system` skill's own "Charting research" section and
 `references/research.md`. This is additional research feeding the same
 still-fully-deferred decision above — not a change to the deferral itself,
 and not a migration plan.
 
-**Stated future direction (2026-09-06, after the shadcn/Recharts research
+**Stated future direction (2026-09-06, after the shadcn/the old chart library research
 above) — five total chart technologies, tiered by role, not a single
 consolidated replacement**. This is a real decision about where charting is
 headed, superseding the earlier "should we consolidate onto ONE engine at
@@ -158,23 +158,23 @@ all" framing above with a more concrete shape — still not part of the
 current visual redesign's own three phases, and only one of the five tiers
 below is actually scoped to be built next:
 
-1. **shadcn/Recharts** — the new default/primary engine for whichever chart
+1. **shadcn/the old chart library** — the new default/primary engine for whichever chart
    types it covers (per the research above: bar/line/scatter-shaped charts,
-   matching most of this app's real, current Plotly/Observable Plot
+   matching most of this app's real, current the old chart library/Observable Plot
    grammar). **This is the first of the five to actually get built, as its
    own separate feature** — not a sub-task of the current redesign's
    Phase 1/2/3, and not scoped by this note itself; a real feature still
    needs its own `/speckit-specify` treatment when picked up.
 2. **Observable Plot** — kept, not replaced — as a secondary/extension
-   engine for cases shadcn's Recharts doesn't cover.
-3. **Plotly** — kept, not replaced — as a secondary/extension engine for
-   the same reason, explicitly INCLUDING Plotly's own interactive
+   engine for cases shadcn's the old chart library doesn't cover.
+3. **the old chart library** — kept, not replaced — as a secondary/extension engine for
+   the same reason, explicitly INCLUDING the old chart library's own interactive
    per-category legend toggle (click a legend entry to show/hide that
    series). The user has explicitly accepted losing that specific
-   capability for any NEW chart built on shadcn/Recharts, rather than
+   capability for any NEW chart built on shadcn/the old chart library, rather than
    requiring shadcn's own `ChartLegendContent` to replicate it (the real,
    confirmed gap the research above already found) — a chart that
-   genuinely needs that interaction stays a Plotly chart, it doesn't force
+   genuinely needs that interaction stays a the old chart library chart, it doesn't force
    shadcn's own component to grow the capability it doesn't have.
 4. **A custom D3-composition framework** — explicitly **NOT YET SCOPED**.
    No decision has been made about which specific chart types it would
@@ -182,15 +182,15 @@ below is actually scoped to be built next:
    this yet — it's a named future idea, not a spec-ready direction.
 5. **ECharts** — also explicitly **NOT YET SCOPED**, same status as (4).
 
-Tiers 1-3 are the real, current shape (shadcn/Recharts as the new default,
-Observable Plot/Plotly kept deliberately as named fallbacks rather than
+Tiers 1-3 are the real, current shape (shadcn/the old chart library as the new default,
+Observable Plot/the old chart library kept deliberately as named fallbacks rather than
 targets for removal); tiers 4-5 are acknowledged future possibilities with
 zero design work done or authorized. Sankey's own real gap (found in the
 shadcn research above) is not solved by this five-technology direction
-either — it isn't covered by shadcn/Recharts, isn't Observable Plot's or
-Plotly's own territory today, and isn't assigned to the unscoped D3-
+either — it isn't covered by shadcn/the old chart library, isn't Observable Plot's or
+the old chart library's own territory today, and isn't assigned to the unscoped D3-
 composition/ECharts ideas by this note — it stays exactly where the
-research above left it, an open question the eventual first shadcn/Recharts
+research above left it, an open question the eventual first shadcn/the old chart library
 feature will need to either accept (Sankey stays `d3-sankey`-based,
 untouched) or explicitly take on, not something this note resolves.
 
@@ -199,7 +199,7 @@ rather than replacing any underlying rendering engine, build a shared
 tooltip/legend/color **presentation layer** across the three existing
 libraries — common visual treatment (tooltip styling, legend layout and
 interaction, the color tokens/ramps each panel type resolves against)
-applied consistently on top of Plotly/Observable Plot/D3-sankey as they
+applied consistently on top of the old chart library/Observable Plot/D3-sankey as they
 exist today. This is a step toward visual unification across panel types
 without touching any rendering engine, grammar, or test suite the three
 libraries already have — the actual consolidation question above stays
@@ -439,8 +439,8 @@ up twice in one real page load, inflating total transferred bytes to
 21.6MB for that single visit. Post-042, the same double-fetch still
 happens (untouched, out of this feature's scope) but costs far less in
 absolute terms since the chunks it duplicates are now much smaller
-(`index`/`maps` only, at 1.03MB/0.84MB — `recharts`/`flowmap-deck`/
-`graphic-walker`/`plotly` are excluded from the double-fetch entirely
+(`index`/`maps` only, at 1.03MB/0.84MB — `the old chart library`/`flowmap-deck`/
+`graphic-walker`/`the old chart library` are excluded from the double-fetch entirely
 since they no longer load eagerly at all). This is a real, positive
 interaction between the two fixes, but the underlying double-reload
 itself is unfixed and will keep taxing whatever IS still eager.
@@ -835,11 +835,11 @@ app's own code is not possible, and was not attempted.
 
 ---
 
-## Two real, confirmed bugs found during `040-test-suite-migration` Batch B (`rechartsPanel.spec.ts`) — BOTH NOW FIXED
+## Two real, confirmed bugs found during `040-test-suite-migration` Batch B (`a retired chart panel file`) — BOTH NOW FIXED
 
 **Status: RESOLVED**, in a direct follow-up request the same session this
 finding was first logged. Both were originally found while authoring
-real, live-queried Recharts panels for `dashboard-8-test.yaml` (see
+real, live-queried the old chart library panels for `dashboard-8-test.yaml` (see
 `specs/040-test-suite-migration/baseline.md`'s own "Batch B" section for
 the full migration record) and, at the time, deliberately worked around
 rather than fixed — out of scope for a test-migration task, per that
@@ -856,7 +856,7 @@ the bar chart's first candidate `series` value. `ChartStyle`'s own
 deliberately "pristine," shadcn-CLI-sourced file) emits the series key
 verbatim into a CSS custom-property name — a bare space there is invalid
 CSS syntax, so that one declaration is silently dropped (confirmed live:
-the "Ride Hail" bar rendered `rgb(0,0,0)`, MapLibre/Recharts' own black
+the "Ride Hail" bar rendered `rgb(0,0,0)`, MapLibre/the old chart library' own black
 default, not a themed `--chart-N` color). Worked around in the migration
 by switching that panel's data source to `trip_purpose_share` (10 real,
 all-single-word categories) instead of fixing `chart.tsx`.
@@ -868,18 +868,18 @@ ${sanitizeColorKey(key)}`) — the one, and only, place this file was
 touched, a third small, deliberate exception to its own "keep the
 CLI-sourced source pristine" convention (alongside the two already
 recorded above it in this project's history), same real-bug-fix bar as
-those two. `RechartsPanel.tsx`'s own three `var(--color-${key})`
+those two. `the retired chart panel`'s own three `var(--color-${key})`
 references (both `<linearGradient>` stops, the mark's own `fill`/
 `stroke`) now call the same `sanitizeColorKey()` — imported, never
 re-derived independently, so the property name generated and the
 property name referenced can never drift apart. The real, unslugged key
-is untouched everywhere else: `rechartsEncoding.ts`'s own `ChartConfig`/
+is untouched everywhere else: `a retired chart helper`'s own `ChartConfig`/
 `data` object keys, the `dataKey` binding, and every legend/tooltip
 lookup — only the CSS property NAME changes, never the display label or
 the data-binding key. Verified with a new, permanent regression test
-(`rechartsPanel.spec.ts`, "a real category value containing a space
+(`a retired chart panel file`, "a real category value containing a space
 ('Ride Hail') renders a genuine, distinct --chart-N color") against a
-NEW panel on `dashboard-8-test.yaml` (`row_recharts_space_in_category`)
+NEW panel on `dashboard-8-test.yaml` (`row_the old chart library_space_in_category`)
 using the ORIGINAL real data source the bug was found on
 (`trip_mode_share`, including "Ride Hail") — not a substitute chosen to
 avoid it. Passed clean across two consecutive isolated runs and the full
@@ -890,14 +890,14 @@ already-passing tests (the panels that route around the bug via
 bug is fixed either way).
 
 **2. A third confirmed, independent manifestation of the BigInt-vs-Number
-gap: a `bigint`-typed y-value silently renders zero Recharts geometry.**
+gap: a `bigint`-typed y-value silently renders zero the old chart library geometry.**
 `trip_destination_summary`'s `trips` column (`COUNT(*)`-derived, arrives
 over Arrow as a genuine JS `bigint`, never `number`) was the line/area
 charts' first candidate `y:` value — legend and axes rendered correctly,
 but literally zero `<path>` line/area geometry appeared anywhere.
 Root-caused via a temporary, since-deleted debug spec that serialized the
 raw query result and hit `TypeError: Do not know how to serialize a
-BigInt` — Recharts' own internal numeric geometry computation chokes on
+BigInt` — the old chart library' own internal numeric geometry computation chokes on
 `bigint` the same silent way `formatValue.ts`'s display-string gap and
 `ZoneMapPanel.tsx`'s choropleth-fill-value gap already do. Worked around
 by switching both panels' `y:` to `avg_distance_miles` (a real `DOUBLE`
@@ -910,7 +910,7 @@ Number(raw) : null`, `031-all-panel-demo-content`) and
 `GraphicWalkerPanel.tsx` (`convertBigIntsToNumbers()`,
 `014-graphic-walker-panel`) both already carry their own independent
 `bigint`→`number` conversion, confirmed directly by reading both files.
-`RechartsPanel.tsx`/`rechartsEncoding.ts` still carry none — this
+`the retired chart panel`/`a retired chart helper` still carry none — this
 migration avoided the bug by data-source choice rather than adding a
 fourth ad hoc fix.
 
@@ -954,7 +954,7 @@ serializes the result, confirmed via `@duckdb/duckdb-wasm`'s own test
 suite, `packages/duckdb-wasm/test/bindings.test.ts`, and via a direct
 `gh search code` hit on `duckdb/duckdb-wasm:lib/src/config.cc`'s real
 `config.query.cast_bigint_to_double` C++ field); the third manifestation
-(Recharts' `y:` value) never got a local patch in the first place — it
+(the old chart library' `y:` value) never got a local patch in the first place — it
 was avoided by data-source substitution — and still doesn't need one.
 `panels/graphicWalkerFields.ts#inferTypesFromArrow()` needed no change:
 it already classifies `DataType.isInt`/`DataType.isFloat` identically
@@ -982,11 +982,11 @@ boundary) to the plain real number `5000`.
 
 **Verification**: `npx tsc --noEmit` clean; `npm run test:unit` 486/486
 passing, unchanged (no unit-tested pure module's own behavior changed —
-`rechartsEncoding.test.ts`'s own `ChartConfig`-key assertions are
+`a retired chart helper`'s own `ChartConfig`-key assertions are
 untouched, since only the CSS property name changed, never the object
 key). The three previously-patched panel types' own specs
 (`zonemapPanel.spec.ts` 30/30, `graphicWalkerPanel.spec.ts` 28/28) plus
-`rechartsPanel.spec.ts` (9/9, including the new regression test) and
+`a retired chart panel file` (9/9, including the new regression test) and
 every file found to reference the old, buggy unformatted value
 (`dashboardShell.spec.ts`, `lazyTabLoading.spec.ts`,
 `duckdbHttpRangeReads.spec.ts`) — 87 tests total across all six files —

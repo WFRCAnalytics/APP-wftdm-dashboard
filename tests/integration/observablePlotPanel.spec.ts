@@ -505,9 +505,9 @@ test.describe('User Story 3 - Panel behaves consistently with the rest of the re
     await boot(page)
     // The real Summary tab's own real composition — valuebox/observable-
     // plot/markdown (confirmed via a direct grep sweep: this tab has no
-    // real plotly/table panel; both types' own registry-consistency
+    // real the old chart library/table panel; both types' own registry-consistency
     // coverage lives in their own dedicated spec files —
-    // tablePanel.spec.ts and the Test tab's real plotly fixtures).
+    // tablePanel.spec.ts and the Test tab's real the old chart library fixtures).
     await expect(panelCard(page, 'Households')).toBeVisible() // valuebox
     await expect(
       panelCard(page, 'Methodology Notes').getByRole('heading', { name: 'Straight-Line Distance Proxy' }),
@@ -518,7 +518,7 @@ test.describe('User Story 3 - Panel behaves consistently with the rest of the re
     await expect(expandTrigger(page, 'Average Trip Distance by Purpose')).toBeVisible()
   })
 
-  test('an observable-plot panel uses the same inline loading skeleton convention as PlotlyPanel/ValueBoxPanel, not a new shared component', async ({
+  test('an observable-plot panel uses the same inline loading skeleton convention as the retired chart panel/ValueBoxPanel, not a new shared component', async ({
     page,
   }) => {
     await boot(page)
@@ -586,7 +586,7 @@ test.describe('Polish - dark mode (015-theme-toggle)', () => {
   })
 
   // A real, confirmed dark-mode bug found post-implementation, same class
-  // this project has hit and fixed multiple times already (PlotlyPanel.tsx's
+  // this project has hit and fixed multiple times already (the retired chart panel's
   // own paper/plot background + font.color): @observablehq/plot's tip mark
   // (config.tip: true) fills its own box with `var(--plot-background)`, and
   // Plot's own generated SVG unconditionally sets `--plot-background: white`

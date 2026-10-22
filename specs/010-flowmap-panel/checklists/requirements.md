@@ -37,7 +37,7 @@
   app actually uses) — made and confirmed with the user *before* this
   spec was written, not left as an open question here. The corrected
   grammar is what this spec's Grammar findings section verifies against.
-- `d3-sankey`/`Plotly.react()`-style technology names appear in
+- `d3-sankey`/`the old library API`-style technology names appear in
   Requirements/Key Entities because they are the literal, already-fixed
   API surface this feature's requirements bind to (`project-docs/SPEC.md`'s own
   documented `MapboxOverlay`/`FlowmapLayer`/`setProps()`/`map.remove()`

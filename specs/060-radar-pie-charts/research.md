@@ -17,17 +17,17 @@ addition to the existing `type: observable-plot` grammar as a viable path
 rendering, matching the precedent already set twice (Sankey, `d3-sankey`;
 treemap/sunburst, `d3-hierarchy`/`d3-shape`).
 
-## §2. `RechartsPanelConfig`'s own prior, explicit non-goal
+## §2. `RetiredChartPanelConfig`'s own prior, explicit non-goal
 
-`layout/types.ts`'s `RechartsPanelConfig.chart_type` comment states:
+`layout/types.ts`'s `RetiredChartPanelConfig.chart_type` comment states:
 "bar/line/area only in this first version — pie/radar/radial are a
 deliberate, explicit non-goal (spec.md FR-004): no dashboard anywhere in
 this project authors one today." This feature does not reverse that
-decision by extending `RechartsPanelConfig.chart_type` — it adds two
+decision by extending `RetiredChartPanelConfig.chart_type` — it adds two
 independent, dedicated `pie`/`radar` panel TYPES instead, leaving
-`029-shadcn-chart-panel`'s own scope decision for Recharts specifically
-untouched. Recharts does have real `PieChart`/`RadarChart` components,
-but reusing them would mean pulling the full Recharts runtime in for two
+`029-shadcn-chart-panel`'s own scope decision for the old chart library specifically
+untouched. the old chart library does have real `PieChart`/`RadarChart` components,
+but reusing them would mean pulling the full the old chart library runtime in for two
 chart shapes it wasn't chosen for (`029`'s own scope was bar/line/area),
 and would leave this app inconsistent with its own established "reach for
 D3 directly when the gap is in Observable Plot's polar/arc coverage"
@@ -70,7 +70,7 @@ their own). Two options were considered:
   reimplementing D3's `d3-transition` behavior by hand.
 - **Hand-rolled** (chosen): compute each axis's angle as
   `-π/2 + i * (2π / axisCount)` (starting at 12 o'clock, matching every
-  real-world radar chart convention, including Recharts' own
+  real-world radar chart convention, including the old chart library' own
   `RadarChart` and Chart.js's `RadarController`), a linear radius scale
   (`value / maxValue * R`, clamped to `[0, R]`), and each vertex's
   Cartesian point via `x = cx + r * cos(angle)`, `y = cy + r * sin(angle)`.
@@ -110,9 +110,9 @@ choices, which is out of scope here).
 Neither `SankeyPanel.tsx` nor `HierarchicalChartHost.tsx` renders a
 legend today (a Sankey's own node labels ARE its legend; a
 treemap/sunburst's own segment labels serve the same role) — so there is
-no existing legend component to reuse. `RechartsPanel.tsx`'s legend comes
+no existing legend component to reuse. `the retired chart panel`'s legend comes
 from shadcn's `ChartLegendContent` (`components/ui/chart.tsx`), which is
-Recharts-payload-shaped and not reusable by a hand-built D3/SVG chart.
+the old chart library-payload-shaped and not reusable by a hand-built D3/SVG chart.
 `ObservablePlotPanel.tsx`'s legend is Observable Plot's own internal
 DOM-generated swatches element — also not reusable outside Plot's own
 render pipeline.
@@ -120,7 +120,7 @@ render pipeline.
 **Decision**: a new, small, genuinely shared presentational component,
 `ChartLegend.tsx` — a plain flex-wrap row of `{color swatch, label}`
 pairs, styled to match this app's existing `text-muted-foreground`/
-`font-body` legend-adjacent typography (`RechartsPanel`'s own
+`font-body` legend-adjacent typography (`the retired chart panel`'s own
 `ChartLegendContent` swatch sizing/spacing as the closest visual
 reference, per `wftdm-design-system`). Both `PieChartPanel.tsx` (legend
 entries = distinct categories) and `RadarChartPanel.tsx` (legend entries

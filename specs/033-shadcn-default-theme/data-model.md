@@ -121,7 +121,7 @@ that already uses them.
 | `panels/zonemapColor.ts` (choropleth fill, 2 call sites) | Same `color-mix(...var(--brand-wfrc-blue)...)` pattern | Same fix — `var(--primary)` |
 
 **Not in this table, confirmed unrelated (`research.md` §7)**:
-`panels/RechartsPanel.tsx`/`rechartsEncoding.ts`'s use of `--chart-1..5`
+`panels/the retired chart panel`/`a retired chart helper`'s use of `--chart-1..5`
 — those tokens are not WFRC-brand-derived and are untouched.
 
 ## §4. Existing UI primitive components — re-theme only, no structural rewrite
@@ -167,7 +167,7 @@ check, per `research.md` §9:
 
 | Case | Assertion |
 |---|---|
-| Plotly transparent background | `page.evaluate()` reads the real Plotly `layout.paper_bgcolor`/`plot_bgcolor` the chart was actually drawn with, both themes |
+| the old chart library transparent background | `page.evaluate()` reads the real the old chart library `layout.paper_bgcolor`/`plot_bgcolor` the chart was actually drawn with, both themes |
 | Observable Plot tooltip contrast | `tokenContrast.test.ts`-style ratio check against the new token values, both themes |
 | Sankey label legibility | `getComputedStyle()` on a real rendered `<text>` node's `fill`, both themes |
 | Map control icon legibility | Live visual + existing `filter: invert(1)` mechanism confirmed still resolving against the new `--card`/`--foreground` values |

@@ -172,7 +172,7 @@ export function TablePanel({ config }: { config: TablePanelConfig }) {
   )
 
   // Data fetch — re-runs on config/filters/activeScenarioNames change,
-  // identical chain to ValueBoxPanel.tsx/PlotlyPanel.tsx
+  // identical chain to ValueBoxPanel.tsx/the retired chart panel
   // (contracts/panel-query.md), but see lastContentKeyRef above for why
   // the reset below is conditional here and not in those simpler panels.
   //

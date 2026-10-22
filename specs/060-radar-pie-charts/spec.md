@@ -11,8 +11,8 @@
 ## Context
 
 This dashboard's charting layer today registers ten panel types
-(`panels/registry.tsx`): `valuebox`, `plotly`, `observable-plot`, `table`,
-`markdown`, `sankey`, `flowmap`, `zonemap`, `graphic-walker`, `recharts`,
+(`panels/registry.tsx`): `valuebox`, `the old chart library`, `observable-plot`, `table`,
+`markdown`, `sankey`, `flowmap`, `zonemap`, `graphic-walker`, `the old chart library`,
 plus the eleventh/twelfth (`treemap`/`sunburst`, `058-hierarchical-chart-
 panels`). Observable Plot (`@observablehq/plot@0.6.17`, the version
 currently installed) is confirmed, by direct inspection of its own real
@@ -129,7 +129,7 @@ polygon renders per series, sharing one set of labeled axes.
   categories than this app's existing categorical color palette
   (`--chart-1..5`, five colors) has colors for? (Matches the precedent
   already set by every other categorical chart type in this app —
-  `rechartsEncoding.ts`'s own documented "cycles past the fifth distinct
+  `a retired chart helper`'s own documented "cycles past the fifth distinct
   series value, wrapping" behavior.)
 - What happens when a radar chart's axis column has fewer than 3 distinct
   values? (A 1- or 2-axis "polygon" degenerates visually; the chart must
@@ -166,7 +166,7 @@ polygon renders per series, sharing one set of labeled axes.
   mechanism).
 - **FR-004**: Both new panel types MUST reuse this dashboard's existing
   categorical color convention (the same `--chart-1..5` token cycle
-  already used by `recharts` and `observable-plot` categorical charts) —
+  already used by `the old chart library` and `observable-plot` categorical charts) —
   a pie chart's wedges keyed by category, a radar chart's polygons keyed
   by series.
 - **FR-005**: Both new panel types MUST show a legend identifying each

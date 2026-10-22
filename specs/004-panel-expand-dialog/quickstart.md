@@ -24,7 +24,7 @@ Boots the app for real (Playwright, real DuckDB-WASM, fixture data — same
 pattern as `dashboardShell.spec.ts`) and asserts, per
 `contracts/panel-expand-host.md`'s Given/When/Then:
 
-1. Expanding a `valuebox` panel and a `plotly` panel both work identically
+1. Expanding a `valuebox` panel and a `the old chart library` panel both work identically
    — no per-type exception (SC-002).
 2. The expanded view shows the same data the card was already showing — no
    loading flash on open (SC-003, FR-007).
@@ -39,15 +39,15 @@ pattern as `dashboardShell.spec.ts`) and asserts, per
    test tried delaying network responses to catch a query in flight, but
    DuckDB-WASM's httpfs fully caches these tiny fixture files after the
    first touch, making that approach unreliable (FR-008).
-6. An expanded chart panel's Plotly container is the *same* DOM node the
+6. An expanded chart panel's the old chart library container is the *same* DOM node the
    card view was using (identity check via a marker attribute, not just a
    visual check) — proof the mechanism is a relocation, not a remount
    (research.md §1b, FR-009). This assertion is what actually caught
    research.md §1b's finding during implementation — the original
    `createPortal`-target-swap design lost the marker on every expand.
-7. Clicking a rendered Plotly legend entry inside the expanded dialog
+7. Clicking a rendered the old chart library legend entry inside the expanded dialog
    toggles that trace's visibility and does **not** close the dialog —
-   the specific Radix-vs-Plotly check research.md §2 flagged as
+   the specific Radix-vs-the old chart library check research.md §2 flagged as
    required, not assumed.
 8. A modal expanded view blocks background interaction — including
    switching tabs — until closed; spec.md's Edge Case anticipated needing
@@ -75,7 +75,7 @@ npm run dev
    shows a small expand icon, including value-box panels.
 2. **Expand shows the same data, large** — click it; confirm the same
    number/chart appears, just much bigger, filling most of the viewport.
-3. **Chart resizes correctly** — for a `plotly` panel, confirm the chart
+3. **Chart resizes correctly** — for a `the old chart library` panel, confirm the chart
    genuinely redraws to fill the larger space (not left small with
    whitespace around it, not cut off).
 4. **Close via all three paths** — Escape, clicking the dimmed backdrop
@@ -85,7 +85,7 @@ npm run dev
 5. **Keyboard-only pass** — Tab to a panel's expand trigger, press Enter to
    open it, Tab through whatever's inside, Escape to close, and confirm
    focus visibly lands back on that same trigger button.
-6. **Legend click inside the dialog** — expand a `plotly` panel with a
+6. **Legend click inside the dialog** — expand a `the old chart library` panel with a
    visible legend, click one legend entry, confirm the corresponding trace
    toggles off and the dialog stays open.
 7. **No other panel affected** — with one panel expanded, confirm every
@@ -108,7 +108,7 @@ click, uniformly across panel types; closing restores the exact prior
 state with no extra loading; charts read clearly at the larger size; the
 whole flow works keyboard-only. The two risks flagged before planning —
 no reset/duplicate query on mount-relocation, and Radix's outside-click
-detection not misfiring on Plotly's own legend interaction — are both
+detection not misfiring on the old chart library's own legend interaction — are both
 covered by dedicated, named assertions above, not left implicit.
 
 **Confirmed, not just expected**: all 16 scenarios above pass as real

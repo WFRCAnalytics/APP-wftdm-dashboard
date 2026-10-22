@@ -134,7 +134,7 @@ await expect(page.getByRole('button', { name: 'Auto Ownership' })).toHaveCount(0
 // tests/unit/dashboardLayout.test.ts
 import { isMetricStripRow } from '@/layout/dashboardLayout'
 expect(isMetricStripRow([valueBoxA, valueBoxB, valueBoxC])).toBe(true)
-expect(isMetricStripRow([valueBoxA, plotlyPanel])).toBe(false)
+expect(isMetricStripRow([valueBoxA, chartPanel])).toBe(false)
 expect(isMetricStripRow([])).toBe(false)
 ```
 

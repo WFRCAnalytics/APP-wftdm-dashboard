@@ -202,13 +202,13 @@ non-continuous-scale colorings).
 "author-names-the-real-column, never a `$metric.`-prefixed placeholder"
 convention (`SankeyPanelConfig.source/target/value`,
 `ObservablePlotPanelConfig`'s `x/y/fill/stroke`,
-`RechartsPanelConfig`'s `x/y/series`) — an ordered array is the natural
+`RetiredChartPanelConfig`'s `x/y/series`) — an ordered array is the natural
 generalization of that same idea to an arbitrary hierarchy depth (2 levels
 for this feature's own real content; FR-004 requires 3+ levels to also
 render correctly). A client-side nesting transform (flat tidy rows ->
 `d3.hierarchy`-ready nested object, grouped by `path` in order, leaves
 summed/valued by `value`) runs once per query result, mirroring
-`rechartsEncoding.ts`'s own established "pivot the universal tidy-row
+`a retired chart helper`'s own established "pivot the universal tidy-row
 query result into the shape this specific rendering library needs"
 pattern — never a query that returns pre-nested JSON.
 
@@ -237,7 +237,7 @@ this feature's own design decisions flagged (a raw, unresolved
 `var(--x)` reference is not guaranteed to resolve correctly on every
 D3-managed SVG node in every browser) — it does not need to be re-solved
 from scratch. Both new chart types redraw on a theme-scheme change the
-same way `ObservablePlotPanel.tsx`/`PlotlyPanel.tsx` already do (a
+same way `ObservablePlotPanel.tsx`/`the retired chart panel` already do (a
 dedicated redraw triggered by `useColorScheme()`, never re-querying data
 for a theme-only change).
 
@@ -283,12 +283,12 @@ duplicate the query/loading/theming logic ObservablePlotPanel.tsx already
 proves is substantial and error-prone to get right twice (see that file's
 own extensive real-bug history). Registering both chart types as the
 SAME literal panel type with a `chart_type: 'treemap' | 'sunburst'`
-discriminator (mirroring `RechartsPanelConfig.chart_type`) was also
+discriminator (mirroring `RetiredChartPanelConfig.chart_type`) was also
 considered — rejected in favor of two distinct `type:` values
 (`treemap`/`sunburst`), matching `sankey`'s own precedent of naming a
 panel type after the specific diagram it produces, since (unlike
-Recharts' bar/line/area, which share one visual grammar and literally
-one Recharts component swapped by a prop) a treemap and a sunburst are
+the old chart library' bar/line/area, which share one visual grammar and literally
+one the old chart library component swapped by a prop) a treemap and a sunburst are
 different SVG structures end-to-end, not one component with a variant
 prop.
 

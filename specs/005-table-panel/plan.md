@@ -7,7 +7,7 @@
 ## Summary
 
 Add the third panel type — `table` — to the registry, following the exact
-pattern `ValueBoxPanel`/`PlotlyPanel` already established (`003`): a
+pattern `ValueBoxPanel`/`the retired chart panel` already established (`003`): a
 function component receiving a single `config` prop, `useFilterState` for
 filter values, a direct `services/duckdb.ts` import for querying, and the
 shared `PanelEmptyState`/`PanelErrorState` components for non-happy-path
@@ -41,10 +41,10 @@ as the deciding signal against adding a table library (e.g. TanStack
 Table) — research.md §1 confirms this rather than assuming it.
 
 **Component source**: New `src/panels/TablePanel.tsx` (the React/DOM
-layer, matching `ValueBoxPanel.tsx`/`PlotlyPanel.tsx`'s existing shape);
+layer, matching `ValueBoxPanel.tsx`/`the retired chart panel`'s existing shape);
 new `src/panels/tableLogic.ts` (pure sort/filter/column-resolution/color-
-scale logic, split out for the same reason `003` split `plotlyTraces.ts`
-out of `PlotlyPanel.tsx` — Vitest-testable pure functions, not requiring
+scale logic, split out for the same reason `003` split `a retired chart helper`
+out of `the retired chart panel` — Vitest-testable pure functions, not requiring
 a DOM); new `src/panels/formatValue.ts` (extracted from
 `ValueBoxPanel.tsx`'s existing local `formatValue`, so `TablePanel.tsx`
 doesn't duplicate the same Python-style-format-string parser — research.md
@@ -68,7 +68,7 @@ the extracted `formatValue.ts` — matching `003`'s established split
 including a check that `004`'s expand-to-dialog mechanism applies to
 `table` panels with zero extra wiring (FR-015/SC-005), and that a table's
 sort/search/page state survives that expand/collapse round trip the same
-way `PlotlyPanel`'s zoom state did in `004` (both are just consequences of
+way `the retired chart panel`'s zoom state did in `004` (both are just consequences of
 being the same mounted component instance either way — worth confirming
 directly rather than assuming it carries over unchanged).
 
@@ -105,7 +105,7 @@ beyond `table` itself (`flowmap`/`zonemap`/`sankey`/`markdown`/
 | Principle | Check | Status |
 |---|---|---|
 | I. TypeScript Throughout, React Permitted When Needed | All new/modified files are `.tsx`/`.ts`; React already adopted — this feature is a third, ordinary consumer of the already-established panel pattern, not a new adoption decision | PASS |
-| II. DuckDB-WASM off the main thread, one shared instance | Not touched — `TablePanel.tsx` queries through `services/duckdb.ts`'s existing `query()` by direct import, exactly like `ValueBoxPanel.tsx`/`PlotlyPanel.tsx`; no new `AsyncDuckDB`/`Worker`/connection usage | PASS |
+| II. DuckDB-WASM off the main thread, one shared instance | Not touched — `TablePanel.tsx` queries through `services/duckdb.ts`'s existing `query()` by direct import, exactly like `ValueBoxPanel.tsx`/`the retired chart panel`; no new `AsyncDuckDB`/`Worker`/connection usage | PASS |
 | III. No `eval()` | `TablePanel.tsx` builds no SQL of its own — `panelQuery.ts`'s existing `SELECT *` branch (unmodified) already covers it; sort/search/pagination are plain in-memory array operations, not SQL construction of any kind | PASS |
 | IV. YAML parsed at runtime | `columns`/`sort`/`pagination`/`searchable` are parsed from `dashboard-*.yaml` at runtime via the existing `layout/types.ts` parsing seam (extended, not replaced) — no build-time baking | PASS |
 | V. Parquet-only browser I/O | Not applicable — no new data I/O path; queries the same already-registered views every other panel type queries | PASS (N/A) |

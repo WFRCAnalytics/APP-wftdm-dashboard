@@ -91,7 +91,7 @@ export function HierarchicalChartHost({
 - `services/sqlExpander.ts` — zero changes.
 - `services/tabDataLoader.ts` — zero changes; `ensureRegistered()` reused
   unmodified.
-- Every existing panel type (`plotly`/`recharts`/`observable-plot`/
+- Every existing panel type (`the old chart library`/`the old chart library`/`observable-plot`/
   `sankey`/`table`/`valuebox`/`markdown`/`flowmap`/`zonemap`/
   `graphic-walker`) — zero changes (FR-010).
 

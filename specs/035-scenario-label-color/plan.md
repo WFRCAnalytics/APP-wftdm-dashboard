@@ -9,7 +9,7 @@
 Two independent, presentation-only additions to how scenario identity
 renders. **Part A**: propagate the existing `Scenario.label` field
 (`020-settings-modal`) to the four real display surfaces confirmed by
-spec.md's own audit — Plotly trace legend names, Recharts `chartConfig`
+spec.md's own audit — the old chart library trace legend names, the old chart library `chartConfig`
 labels, Observable Plot's row-driven legend/axis text, and table cell
 values in a `scenario`-keyed column — via `label ?? name`, resolved only
 after all query/grouping/join logic (which keeps using the real name)
@@ -30,7 +30,7 @@ panel type, no new query, no change to `services/sqlExpander.ts` or
 
 **Language/Version**: TypeScript (ES2022 target), React 18.3 — matching the existing panel-layer convention (constitution v2.2.0)
 
-**Primary Dependencies**: None new. Reuses `services/duckdb.ts` (unmodified), `state/appState.ts` (extended), `plotly.js-dist-min`, `recharts`, `@observablehq/plot`, `lucide-react` (all already installed)
+**Primary Dependencies**: None new. Reuses `services/duckdb.ts` (unmodified), `state/appState.ts` (extended), `the old chart library`, `the old chart library`, `@observablehq/plot`, `lucide-react` (all already installed)
 
 **Storage**: N/A (in-memory only — no persistence, per FR-013 and constitution's no-`localStorage`/`sessionStorage` rule)
 
@@ -44,7 +44,7 @@ panel type, no new query, no change to `services/sqlExpander.ts` or
 
 **Constraints**: Must not change any DuckDB view name, SQL, or React state key (FR-003); must not persist (FR-013); must not touch `$baseline`/comparison-diff query logic (spec.md's explicit exclusion)
 
-**Scale/Scope**: 4 panel types touched for Part A (`plotly`, `recharts`, `observable-plot`, `table`); 3 of those 4 touched for Part B (`plotly`, `recharts`, `observable-plot` — `table` has no per-scenario color dimension); 1 new field + 2 new functions on `state/appState.ts`; 1 new hook; 1 new pure module; 1 new UI control in `layout/settings/scenariosTab.tsx`
+**Scale/Scope**: 4 panel types touched for Part A (`the old chart library`, `the old chart library`, `observable-plot`, `table`); 3 of those 4 touched for Part B (`the old chart library`, `the old chart library`, `observable-plot` — `table` has no per-scenario color dimension); 1 new field + 2 new functions on `state/appState.ts`; 1 new hook; 1 new pure module; 1 new UI control in `layout/settings/scenariosTab.tsx`
 
 ## Constitution Check
 
@@ -113,17 +113,17 @@ src/
 │                                  # with no heavy transitive deps):
 │                                  # resolveScenarioLabel(name, map),
 │                                  # resolveScenarioColor(name, map)
-│   ├── plotlyTraces.ts           # EXTEND: resolveTraces() gains an
+│   ├── a retired chart helper           # EXTEND: resolveTraces() gains an
 │                                  # optional 3rd param, scenarioDisplay —
 │                                  # applied only when the split column is
 │                                  # 'scenario' (name + marker.color)
-│   ├── PlotlyPanel.tsx           # EXTEND: calls useScenarioDisplay(),
+│   ├── the retired chart panel           # EXTEND: calls useScenarioDisplay(),
 │                                  # threads it into resolveTraces()
-│   ├── rechartsEncoding.ts       # EXTEND: encodeRechartsData() gains an
+│   ├── a retired chart helper       # EXTEND: encodeRechartsData() gains an
 │                                  # optional 3rd param — applied only
 │                                  # when config.series === 'scenario'
 │                                  # (chartConfig[key].label + .color)
-│   ├── RechartsPanel.tsx         # EXTEND: calls useScenarioDisplay(),
+│   ├── the retired chart panel         # EXTEND: calls useScenarioDisplay(),
 │                                  # threads it into encodeRechartsData()
 │   ├── observablePlotEncoding.ts # EXTEND: resolveObservablePlotEncoding()
 │                                  # gains an optional 3rd param — applied
@@ -155,8 +155,8 @@ src/
 tests/
 ├── unit/
 │   ├── scenarioDisplay.test.ts   # NEW — resolveScenarioLabel/Color
-│   ├── plotlyTraces.test.ts      # EXTEND (existing file)
-│   ├── rechartsEncoding.test.ts  # EXTEND (existing file)
+│   ├── a retired chart helper      # EXTEND (existing file)
+│   ├── a retired chart helper  # EXTEND (existing file)
 │   └── observablePlotEncoding.test.ts # EXTEND (existing file — confirmed
 │        via `ls tests/unit/` before planning; an earlier draft of this
 │        plan wrongly assumed it didn't exist)
@@ -174,8 +174,8 @@ no new top-level directory. Every change is additive to already-existing
 files, plus two genuinely new, narrow modules (`panels/scenarioDisplay.ts`,
 `hooks/useScenarioDisplay.ts`) following this codebase's established
 "split pure logic from the React component that calls it" convention
-(`plotlyTraces.ts`/`sankeyGraph.ts`/`flowmapData.ts`/
-`observablePlotEncoding.ts`/`rechartsEncoding.ts`/
+(`a retired chart helper`/`sankeyGraph.ts`/`flowmapData.ts`/
+`observablePlotEncoding.ts`/`a retired chart helper`/
 `expandablePanelTypes.ts` are all direct precedents).
 
 ## Complexity Tracking

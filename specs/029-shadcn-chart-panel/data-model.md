@@ -1,12 +1,12 @@
-# Phase 1 Data Model: shadcn/Recharts Chart Panel Type
+# Phase 1 Data Model: shadcn/the old chart library Chart Panel Type
 
-## 1. `RechartsPanelConfig` (new, `src/layout/types.ts`)
+## 1. `RetiredChartPanelConfig` (new, `src/layout/types.ts`)
 
 ```ts
-export interface RechartsPanelConfig
+export interface RetiredChartPanelConfig
   extends DataBoundPanelConfigBase,
     ComparisonCapablePanelConfig {
-  type: 'recharts'
+  type: 'the old chart library'
   chart_type: 'bar' | 'line' | 'area'
   x: string           // required — the category/axis column, a real,
                         // literal result-set column name
@@ -44,7 +44,7 @@ field for any of them.
 type TidyRow = Record<string, unknown> // e.g. { purpose: 'HBW', mode: 'SOV', share: 0.62 }
 ```
 
-### Wide chart row (what Recharts' own `<BarChart data={...}>` needs)
+### Wide chart row (what the old chart library' own `<BarChart data={...}>` needs)
 
 ```ts
 type WideChartRow = { [xValue: string]: string | number }
@@ -59,22 +59,22 @@ type ChartConfig = Record<string, { label: string; color: string }>
 //        HOV: { label: 'HOV', color: 'var(--chart-2)' }, ... }
 ```
 
-## 3. `rechartsEncoding.ts` contract
+## 3. `a retired chart helper` contract
 
 ```ts
 /**
- * Pivots tidy SQL rows into Recharts' own wide-row shape plus a matching
+ * Pivots tidy SQL rows into the old chart library' own wide-row shape plus a matching
  * ChartConfig, cycling through --chart-1..--chart-5 in order (wrapping
  * after the fifth distinct series value). Pure — no DOM, no React.
  *
  * @param rows the tidy query result rows
  * @param config the panel's own x/y/series field-mapping
- * @returns wide-format rows ready for Recharts' `data` prop, plus the
+ * @returns wide-format rows ready for the old chart library' `data` prop, plus the
  *   ChartConfig ready for `ChartContainer`'s own `config` prop
  */
 export function encodeRechartsData(
   rows: TidyRow[],
-  config: Pick<RechartsPanelConfig, 'x' | 'y' | 'series'>,
+  config: Pick<RetiredChartPanelConfig, 'x' | 'y' | 'series'>,
 ): { data: WideChartRow[]; chartConfig: ChartConfig; seriesKeys: string[] }
 ```
 
@@ -89,15 +89,15 @@ export function encodeRechartsData(
   series value, colors cycling `--chart-1` → `--chart-5` → `--chart-1`...
   in first-seen order (deterministic, not re-sorted).
 
-## 4. Component state (`RechartsPanel.tsx`)
+## 4. Component state (`the retired chart panel`)
 
 Matches the established Panel pattern exactly — no new state shape beyond
-what `PlotlyPanel.tsx`/`ObservablePlotPanel.tsx` already use:
+what `the retired chart panel`/`ObservablePlotPanel.tsx` already use:
 
 - `status: 'loading' | 'ready' | 'empty' | 'error'`
 - `rows: TidyRow[]` (raw query result, before encoding)
 - Derived (not separately stored — recomputed from `rows`+`config` each
-  render, matching `plotlyTraces.ts`'s own "derive, don't duplicate"
+  render, matching `a retired chart helper`'s own "derive, don't duplicate"
   convention): `{ data, chartConfig, seriesKeys }` via
   `encodeRechartsData()`.
 

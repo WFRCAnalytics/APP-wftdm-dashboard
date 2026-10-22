@@ -33,7 +33,7 @@ const valueBoxConfig: ValueBoxPanelConfig = {
   format: '{:,.0f}',
 }
 
-const plotlyConfig: ObservablePlotPanelConfig = {
+const chartConfig: ObservablePlotPanelConfig = {
   type: 'observable-plot',
   title: 'Mode Share by Purpose',
   metric: 'trip_mode_share',
@@ -55,12 +55,12 @@ describe('buildPanelQuery', () => {
   })
 
   it('selects * for a non-valuebox panel', () => {
-    const sql = buildPanelQuery({ ...plotlyConfig, filter: undefined }, {})
+    const sql = buildPanelQuery({ ...chartConfig, filter: undefined }, {})
     expect(sql).toContain('SELECT *')
   })
 
   it('places $filters.x alone on its own line, per the all-sentinel line-omission rule', () => {
-    const sql = buildPanelQuery(plotlyConfig, {})
+    const sql = buildPanelQuery(chartConfig, {})
     const lines = sql.split('\n')
     const filterLine = lines.find((l) => l.includes('$filters.purpose'))
     expect(filterLine).toBeDefined()
@@ -83,7 +83,7 @@ describe('buildPanelQuery', () => {
   // independent of that entry's own placeholder id.
   it('emits one AND line per entry when config.filter is a Record<string,string> map', () => {
     const sql = buildPanelQuery(
-      { ...plotlyConfig, filter: { purpose: '$filters.purpose', mode: '$inputs.mode_select' } },
+      { ...chartConfig, filter: { purpose: '$filters.purpose', mode: '$inputs.mode_select' } },
       {},
     )
     const lines = sql.split('\n').map((l) => l.trim())
@@ -93,14 +93,14 @@ describe('buildPanelQuery', () => {
 
   it('binds a map entry\'s column name independently of its placeholder id', () => {
     const sql = buildPanelQuery(
-      { ...plotlyConfig, filter: { income_category: '$inputs.income_filter' } },
+      { ...chartConfig, filter: { income_category: '$inputs.income_filter' } },
       {},
     )
     expect(sql).toContain(`AND "income_category" = '$inputs.income_filter'`)
   })
 
   it('emits no WHERE clause for an empty filter map', () => {
-    const sql = buildPanelQuery({ ...plotlyConfig, filter: {} }, {})
+    const sql = buildPanelQuery({ ...chartConfig, filter: {} }, {})
     expect(sql).not.toContain('WHERE')
   })
 

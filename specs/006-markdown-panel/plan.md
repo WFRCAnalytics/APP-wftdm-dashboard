@@ -7,7 +7,7 @@
 ## Summary
 
 Add the fourth panel type — `markdown` — to the registry, following
-`ValueBoxPanel`/`PlotlyPanel`/`TablePanel`'s established shape (a function
+`ValueBoxPanel`/`the retired chart panel`/`TablePanel`'s established shape (a function
 component receiving a single `config` prop, registered in
 `panels/registry.tsx`) but *not* the query-chain part of that pattern:
 `project-docs/GRAMMAR.md`'s real `type: markdown` grammar (`content:` — a literal
@@ -49,7 +49,7 @@ fetch chain, just a `useMemo`-computed sanitized-HTML string rendered via
 correct, contained use of it — research.md §3/§4). Modified:
 `src/layout/types.ts` (split `PanelConfigBase` into a common layer +
 `DataBoundPanelConfigBase`, research.md §1; add `MarkdownPanelConfig`;
-`ValueBoxPanelConfig`/`PlotlyPanelConfig`/`TablePanelConfig` re-parented
+`ValueBoxPanelConfig`/`RetiredChartPanelConfig`/`TablePanelConfig` re-parented
 onto `DataBoundPanelConfigBase` with no field changes of their own),
 `src/panels/registry.tsx` (new `markdown` entry), `package.json`
 (`marked`, `dompurify` added).
@@ -60,7 +60,7 @@ the already-fetched-and-parsed `dashboard-*.yaml` object graph
 
 **Testing**: Vitest for nothing new at the "pure logic" tier — there is no
 separate pure module to extract here (unlike `tableLogic.ts`/
-`plotlyTraces.ts`): sanitize-and-render is exactly two library calls, not
+`a retired chart helper`): sanitize-and-render is exactly two library calls, not
 project-specific algorithmic logic worth isolating from the component.
 Playwright: `tests/integration/markdownPanel.spec.ts`, matching
 `tablePanel.spec.ts`'s real-browser/real-fixture-data pattern — rendering
@@ -108,7 +108,7 @@ spec.md's own stated boundary).
 | III. No `eval()` | `MarkdownPanel.tsx` builds no SQL and calls no dynamic code execution — `marked.parse()`/`DOMPurify.sanitize()` are library calls over a config string, not `eval()` or an equivalent | PASS |
 | IV. YAML parsed at runtime | `content:` is parsed from `dashboard-*.yaml` at runtime via the existing `layout/types.ts` seam (extended, not replaced) — no build-time baking | PASS |
 | V. Parquet-only browser I/O | N/A — no new data I/O path; this panel type has no data I/O of any kind | PASS (N/A) |
-| VI. Fixed Technology Choices | `marked`/`dompurify` are new dependencies, but both are `project-docs/SPEC.md`'s own pinned choice (`markdown \| marked.js`) plus the documented standard pairing for sanitizing marked.js output — not a deviation requiring a constitution amendment, since Principle VI's fixed-choices list doesn't enumerate panel-rendering libraries (Plotly.js/Observable Plot/Graphic Walker aren't listed there either) | PASS |
+| VI. Fixed Technology Choices | `marked`/`dompurify` are new dependencies, but both are `project-docs/SPEC.md`'s own pinned choice (`markdown \| marked.js`) plus the documented standard pairing for sanitizing marked.js output — not a deviation requiring a constitution amendment, since Principle VI's fixed-choices list doesn't enumerate panel-rendering libraries (the old chart library/Observable Plot/Graphic Walker aren't listed there either) | PASS |
 | VII. Minimal, Fixed Config File Set | No new config file type; `content:` is a new *key* within the existing `dashboard-*.yaml` type's already-documented `type: markdown` grammar, not a new file | PASS |
 | VIII. Reuse Proven Reference Implementations | N/A — none of the four named reference repos cover markdown rendering; this principle's named scope doesn't reach this feature | PASS (N/A) |
 | IX. Fixed Python/JS Source Split | No Python package code touched; all new files under `src/` | PASS |
@@ -151,7 +151,7 @@ src/
 │   └── types.ts                 # modified — PanelConfigBase split into
 │                                 # a common base + DataBoundPanelConfigBase
 │                                 # (research.md §1); + MarkdownPanelConfig;
-│                                 # ValueBoxPanelConfig/PlotlyPanelConfig/
+│                                 # ValueBoxPanelConfig/RetiredChartPanelConfig/
 │                                 # TablePanelConfig re-parented, no field
 │                                 # changes of their own
 └── panels/
@@ -162,7 +162,7 @@ src/
                                     # §5 — sanitize-and-render isn't
                                     # project-specific algorithmic logic
                                     # worth isolating the way tableLogic.ts/
-                                    # plotlyTraces.ts were)
+                                    # a retired chart helper were)
 
 tests/
 └── integration/

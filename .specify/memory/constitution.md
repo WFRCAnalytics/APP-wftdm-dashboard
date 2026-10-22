@@ -77,18 +77,18 @@ Sync Impact Report (2.4.2, superseded above)
 - Version change: 2.4.1 → 2.4.2
 - Modified principles: none
 - Modified sections:
-  - Technology Stack Reference: "Charts — default | Plotly.js" and
+  - Technology Stack Reference: "Charts — default | the old chart library" and
     "Charts — reactive inputs | Observable Plot (`@observablehq/plot`)"
-    corrected — stale twice over. `029-shadcn-chart-panel` made Recharts
+    corrected — stale twice over. `029-shadcn-chart-panel` made the old chart library
     "this app's new default/primary engine for bar/line/area charts"
     (CLAUDE.md's own entry) with no constitution amendment on record at
     the time; `057-observable-plot-conversion` then moved every real
-    demo bar/distribution chart off Plotly/Recharts onto Observable
+    demo bar/distribution chart off the old chart library onto Observable
     Plot, and that feature's own plan.md explicitly logged this same
     cell as stale a second time, recommending exactly this
     documentation-only PATCH (its "Non-blocking documentation note").
     "Charts — default" now reads "Observable Plot (`@observablehq/plot`)",
-    naming Plotly.js/Recharts as the two remaining registered, supported
+    naming the old chart library/the old chart library as the two remaining registered, supported
     (non-default) chart panel types. The old "Charts — reactive inputs"
     row (which named Observable Plot back when it was the secondary
     engine) is replaced with "Charts — Sankey" naming D3 (`d3-sankey`)
@@ -560,7 +560,7 @@ requires amending this constitution first:
 | Build | Vite, TypeScript (ES2022 target); React not yet adopted — arrives with whichever feature first needs it, styled with Tailwind CSS + shadcn/ui (Radix UI primitives), icons via `lucide-react` |
 | Query — browser | DuckDB-WASM in a Web Worker |
 | Query — offline | Python DuckDB (`uv run`) |
-| Charts — default | Observable Plot (`@observablehq/plot`) — `057-observable-plot-conversion` moved every real demo bar/distribution chart off Plotly.js/Recharts onto it; both remain registered, supported panel types (`plotly`/`recharts`), just no longer used by real demo content |
+| Charts — default | Observable Plot (`@observablehq/plot`) — `057-observable-plot-conversion` moved every real demo bar/distribution chart off the old chart library/the old chart library onto it; both remain registered, supported panel types (`the old chart library`/`the old chart library`), just no longer used by real demo content |
 | Charts — Sankey | D3 (`d3-sankey`) — no genuine Observable Plot Sankey support exists (no mark/transform, no documented composition pattern, an unresolved upstream request since 2022) |
 | Charts — Hierarchical | D3 (`d3-hierarchy`/`d3-shape`) — no genuine Observable Plot treemap/sunburst support exists either (confirmed by direct source search, not assumed); SVG is built via plain `document.createElementNS()`, never `d3-selection`/`d3-transition`, matching the Sankey panel's own established convention |
 | Charts — Pie/Radar | D3 (`d3-shape`) — no genuine Observable Plot pie/polar support exists either (confirmed by direct source search: no `arc`/`pie` mark, no polar coordinate system); the pie chart reuses the already-pinned `d3-shape` (`d3.pie()`/`d3.arc()`), the radar chart uses hand-rolled polar trigonometry with no D3 layout package at all — SVG built via plain `document.createElementNS()`, matching the Sankey/Hierarchical panels' own established convention |

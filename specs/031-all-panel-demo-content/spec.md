@@ -16,15 +16,15 @@ writing any requirement below — nothing here is re-derived speculation:
 - **Current real panel-type coverage, confirmed by reading the real,
   current `summarize.yaml` (repo root) and all three real
   `public/demo-dashboard-config/*.yaml` files**: exactly 3 of the 10
-  panel types are demonstrated today — `valuebox`, `plotly`, `table` —
+  panel types are demonstrated today — `valuebox`, `the old chart library`, `table` —
   across 5 real metrics (`summary_kpis`, `trips_by_destination_zone`,
   `mode_share_by_period`, `trip_mode_share`, `trip_purpose_share`). The
   other 7 (`markdown`, `observable-plot`, `sankey`, `flowmap`, `zonemap`,
-  `graphic-walker`, `recharts`) have zero real demo content anywhere in
+  `graphic-walker`, `the old chart library`) have zero real demo content anywhere in
   this repo today.
 - **The post-processor's existing `sources.py`/`config.py`/`pipeline.py`
   are already fully generic and need NO new Python code for the
-  Observable Plot/Recharts/Sankey/GraphicWalker/Markdown panel types** —
+  Observable Plot/the old chart library/Sankey/GraphicWalker/Markdown panel types** —
   confirmed by direct read: `load_source()` already handles any file
   extension generically (CSV via `read_csv_auto`, Parquet/GeoParquet via
   `read_parquet`), and `run_pipeline()`/`expand()` make no panel-type
@@ -133,7 +133,7 @@ none is more expendable than another, not an oversight.
 ### User Story 1 - See real data in every panel type that needs no new metric or geometry (Priority: P1)
 
 A calibration analyst browsing the ActivitySim demo content sees
-Observable Plot, Recharts, and Graphic Walker panels rendering real trip/
+Observable Plot, the old chart library, and Graphic Walker panels rendering real trip/
 mode data from the three real scenarios, and a Markdown panel providing
 real, accurate context about what the demo content actually shows — with
 zero new `summarize.yaml` metrics required.
@@ -143,7 +143,7 @@ confirmed by this session's own direct read of the post-processor's
 already-generic pipeline code, needing no new data engineering at all.
 
 **Independent Test**: Load the demo scenarios; confirm an Observable
-Plot panel, a Recharts panel, and a Graphic Walker panel each render real,
+Plot panel, a the old chart library panel, and a Graphic Walker panel each render real,
 non-empty, non-fabricated series from an existing real metric
 (`trip_mode_share` or `mode_share_by_period`), and a Markdown panel
 renders real, accurate prose about the three real scenarios.
@@ -153,9 +153,9 @@ renders real, accurate prose about the three real scenarios.
 1. **Given** the demo scenarios are loaded, **When** an analyst views a
    new Observable Plot panel bound to an existing real metric, **Then**
    it renders the same real, non-zero values already proven correct by
-   the existing Plotly panel using that same metric.
+   the existing the old chart library panel using that same metric.
 2. **Given** the same real metric, **When** an analyst views a new
-   Recharts panel bound to it, **Then** it renders the same real values,
+   the old chart library panel bound to it, **Then** it renders the same real values,
    confirming this is a rendering-engine choice, not a second data
    source.
 3. **Given** a Graphic Walker panel pointed at a real, existing metric,
@@ -316,7 +316,7 @@ metric.
 **Panel types needing no new metric (User Story 1)**
 
 - **FR-003**: `dashboard-*.yaml` content MUST include at least one
-  `observable-plot` panel and at least one `recharts` panel, each bound
+  `observable-plot` panel and at least one `the old chart library` panel, each bound
   to an existing real metric, rendering the same real values already
   proven correct by an existing panel type using that metric.
 - **FR-004**: `dashboard-*.yaml` content MUST include at least one

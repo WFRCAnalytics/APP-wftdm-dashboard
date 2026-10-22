@@ -18,7 +18,7 @@ export function PanelEmptyState({ icon: Icon, message, hint }: PanelEmptyStatePr
       {/* wftdm-design-system skill: text-muted-foreground/80 was the same
           "Tailwind slash-opacity modifier generates NO CSS against this
           app's plain-hex custom color tokens" bug already found and fixed
-          multiple times this session (rechartsPanel.css's gridline/tooltip-
+          multiple times this session (a retired chart panel file's gridline/tooltip-
           border fix, mapControls.css's history) — --muted-foreground is a
           plain hex value (tokens.css), not an hsl-channel triplet, so the
           modifier silently produced full-opacity text instead of 80%.

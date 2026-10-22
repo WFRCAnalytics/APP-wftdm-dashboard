@@ -27,12 +27,12 @@ declare global {
 // by default (038) — no `?s=` param needed.
 //
 // 057-observable-plot-conversion: "Total Trips by Mode" and "Average Trip
-// Distance by Purpose" were `recharts`/`plotly` until this feature
+// Distance by Purpose" were `the old chart library`/`the old chart library` until this feature
 // converted both to `observable-plot` (contracts/panel-conversions.md).
 // None of the `getByText()` assertions below needed a locator change —
 // a scenario's label/name renders as real, visible text inside
-// Observable Plot's own swatch legend exactly as it did inside Plotly's/
-// Recharts' own legends, so a title-based text query finds it the same
+// Observable Plot's own swatch legend exactly as it did inside the old chart library's/
+// the old chart library' own legends, so a title-based text query finds it the same
 // way regardless of engine. Only the two tests' own descriptions/comments
 // (which named the specific old engine) are updated.
 
@@ -72,7 +72,7 @@ test.describe('User Story 1 - Scenario labels appear everywhere a name is shown'
     // Observable Plot's own swatches legend renders each category's own
     // label as a real, visible text node (research.md §9 of
     // 057-observable-plot-conversion) — the same "just find the text" check
-    // this test already used for Plotly's own legend text nodes.
+    // this test already used for the old chart library's own legend text nodes.
     await expect(card.getByText('Preferred Alternative')).toBeVisible()
     // The other two real scenarios have no label set — their real names
     // still render unchanged.

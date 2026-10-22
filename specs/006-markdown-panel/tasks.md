@@ -69,7 +69,7 @@ stories' Playwright coverage.
       `data-model.md`/research.md §1: `PanelConfigBase` keeps only
       `title`/`width`/`height`; add a new `DataBoundPanelConfigBase extends
       PanelConfigBase` carrying `metric`/`filter`/`scenario`/`scenarios`.
-      Re-parent `ValueBoxPanelConfig`, `PlotlyPanelConfig`, and
+      Re-parent `ValueBoxPanelConfig`, `RetiredChartPanelConfig`, and
       `TablePanelConfig` onto `DataBoundPanelConfigBase` (`extends`-only
       change — no field additions/removals on any of the three).
       `UnknownPanelConfig` continues extending the plain `PanelConfigBase`
@@ -78,7 +78,7 @@ stories' Playwright coverage.
       base). Depends on T001 only in the sense of sequencing (no actual
       code dependency)
 - [x] T003 **Typecheck checkpoint**: run `npm run typecheck` and confirm it
-      passes with zero errors — proves `ValueBoxPanel.tsx`/`PlotlyPanel.tsx`/
+      passes with zero errors — proves `ValueBoxPanel.tsx`/`the retired chart panel`/
       `TablePanel.tsx`, `panelQuery.ts`, and every other existing consumer
       of `PanelConfigBase`'s fields still compile correctly against the
       split from T002, *before* `MarkdownPanelConfig` (which depends on the
@@ -247,7 +247,7 @@ layout grid/panel-card chrome with no special-casing, and a missing/empty
 `content:` fails predictably (an empty state) rather than crashing.
 
 **Independent Test**: Register the `markdown` type, load a tab mixing it
-with valuebox/plotly/table panels, confirm standard panel-card chrome and
+with valuebox/the old chart library/table panels, confirm standard panel-card chrome and
 grid placement; confirm a panel with missing/empty `content:` shows a
 defined empty state.
 
@@ -259,7 +259,7 @@ already built.
 ### Tests for User Story 3
 
 - [x] T017 [P] [US3] Playwright test in `tests/integration/markdownPanel.spec.ts`:
-      a tab mixing a markdown panel with valuebox/plotly/table panels (the
+      a tab mixing a markdown panel with valuebox/the old chart library/table panels (the
       fixture's `row_markdown` alongside `row_kpis`/`row_chart`/`row_table`)
       renders all panel types without error, and the markdown panel's card
       has the same title bar and expand trigger every other panel type has

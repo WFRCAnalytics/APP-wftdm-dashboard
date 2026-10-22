@@ -12,8 +12,8 @@ navigated via `002-design-tokens`' shadcn `Tabs` component, styled entirely
 through the established token set. Add the panel registry the constitution's
 v2.2.0 amendment already specifies (`panels/registry.tsx`, a `type` →
 component map) and populate it with the first two panel types — `valuebox`
-(config → query → rendered scalar) and `plotly` (YAML config → SQL
-expansion → query → `Plotly.react()`, using `project-docs/SPEC.md`'s corrected
+(config → query → rendered scalar) and `the old chart library` (YAML config → SQL
+expansion → query → `the old library API`, using `project-docs/SPEC.md`'s corrected
 two-effect pattern). Technical approach: introduce typed parsing of
 `dashboard-*.yaml`'s `header`/`filters`/`layout` structure (currently opaque
 `raw: unknown` from `yamlLoader.ts`); a small, new `panelQuery.ts` module
@@ -34,12 +34,12 @@ existing fixture models a real multi-tab, multi-panel `dashboard-*.yaml`.
 (all already installed, `002-design-tokens`) for navigation; the existing
 `Card`/`Tabs` shadcn components (`src/components/ui/`) for panel cards and
 tab navigation; `lucide-react` (already installed) for value-box icons
-(`project-docs/GRAMMAR.md`'s `icon:` key); **new** — `plotly.js-dist-min`, not yet
-in `package.json`, for the `plotly` panel type
+(`project-docs/GRAMMAR.md`'s `icon:` key); **new** — `the old chart library`, not yet
+in `package.json`, for the `the old chart library` panel type
 
 **Component source**: New layout (`shell.tsx`, `navBar.tsx`,
 `dashboardRenderer.tsx`, `panelCard.tsx`) and panel
-(`ValueBoxPanel.tsx`, `PlotlyPanel.tsx`) components are hand-authored
+(`ValueBoxPanel.tsx`, `the retired chart panel`) components are hand-authored
 React source under `src/layout/` and `src/panels/` — not shadcn CLI output
 (shadcn's CLI generates primitives, not app-specific composed views); they
 *consume* the shadcn primitives `002` already generated
@@ -124,7 +124,7 @@ specs/003-dashboard-shell-navigation/
 │   ├── use-filter-state.md
 │   ├── panel-registry.md
 │   ├── valuebox-panel.md
-│   └── plotly-panel.md
+│   └── retired-chart-panel.md
 ├── checklists/
 │   └── requirements.md
 └── tasks.md                # Phase 2 output (/speckit-tasks — not this command)
@@ -136,7 +136,7 @@ Single-project web frontend, additive to `001`'s and `002`'s existing
 scaffold. Only the paths this feature creates/touches are listed.
 
 ```text
-package.json                      # + plotly.js-dist-min
+package.json                      # + the old chart library
 
 src/
 ├── hooks/
@@ -154,19 +154,19 @@ src/
 │   └── panelCard.tsx              # new — shadcn Card wrapper: title, loading/error
 │                                   # states, hosts one registry-resolved panel
 ├── panels/
-│   ├── registry.tsx                # new — type -> component map (valuebox, plotly)
+│   ├── registry.tsx                # new — type -> component map (valuebox, the old chart library)
 │   ├── panelQuery.ts                # new — PanelConfig + filter values -> SQL
 │   │                                # template for sqlExpander.expand() (see
 │   │                                # contracts/panel-query.md)
 │   ├── ValueBoxPanel.tsx            # new — see contracts/valuebox-panel.md
-│   ├── PlotlyPanel.tsx              # new — see contracts/plotly-panel.md
-│   ├── plotlyTraces.ts              # new — pure trace-resolution logic split out
-│   │                                 # of PlotlyPanel.tsx: plotly.js-dist-min
+│   ├── the retired chart panel              # new — see contracts/retired-chart-panel.md
+│   ├── a retired chart helper              # new — pure trace-resolution logic split out
+│   │                                 # of the retired chart panel: the old chart library
 │   │                                 # references `self` at module-load time,
 │   │                                 # which throws in Vitest's Node environment
 │   │                                 # even to reach a pure helper defined
 │   │                                 # alongside it — kept Vitest-testable by
-│   │                                 # depending on Plotly's types only, never
+│   │                                 # depending on the old chart library's types only, never
 │   │                                 # its runtime module
 │   ├── PanelEmptyState.tsx           # new — ported from APP-Project-Scoresheet's
 │   │                                 # EmptyState.tsx (research.md §8)
@@ -181,7 +181,7 @@ tests/
 ├── unit/
 │   ├── panelQuery.test.ts          # new — pure config+filters -> SQL template
 │   ├── dashboardConfigTypes.test.ts # new — typed parsing of header/filters/layout
-│   └── plotlyTraces.test.ts         # new — trace splitting by color/name-as-
+│   └── a retired chart helper         # new — trace splitting by color/name-as-
 │                                     # $scenario, multi-scenario legend correctness
 ├── fixtures/
 │   └── dashboard-shell-config.yaml  # new — real multi-tab, multi-panel

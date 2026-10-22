@@ -35,7 +35,7 @@
 - "Content Quality"/"No implementation details" is interpreted per this project's own
   established precedent (005/006): naming `project-docs/GRAMMAR.md` config keys (`mark`, `x`,
   `y`, `inputs:`, `$inputs.<id>`) and existing module names (`state/filterState.ts`,
-  `PlotlyPanel`) is retained because those are the feature's actual public contract —
+  `the retired chart panel`) is retained because those are the feature's actual public contract —
   the dashboard-authoring grammar and the fixed panel-registry pattern — not
   incidental implementation detail. This mirrors how 005-table-panel/006-markdown-panel
   passed the same check with the same kind of references.

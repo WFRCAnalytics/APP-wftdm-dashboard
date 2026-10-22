@@ -53,14 +53,14 @@ back multiple independent pieces of UI from one persistent set of state).
 |---|---|---|
 | `title` (param) | `string` | `config.title` — becomes the Dialog's visible `DialogTitle` |
 | `children` (param) | `ReactNode` | Exactly one `<PanelComponent config={config} />` element (or `null`), rendered by `panelCard.tsx` and passed through unmodified |
-| `options.height` (param, optional) | `number \| undefined` | `config.height` — a common `PanelConfig` field, not plotly-specific; sizes only the inline (collapsed) anchor, so a panel with no height opinion (e.g. `valuebox`) stays naturally auto-sized exactly as before this feature |
+| `options.height` (param, optional) | `number \| undefined` | `config.height` — a common `PanelConfig` field, not the old chart library-specific; sizes only the inline (collapsed) anchor, so a panel with no height opinion (e.g. `valuebox`) stays naturally auto-sized exactly as before this feature |
 | `trigger` (return) | `ReactNode` | The icon-only expand `Button` — placed in `CardHeader` |
 | `body` (return) | `ReactNode` | The inline anchor `<div>` + `Dialog` + the portaled `children` (via the persistent host node) — placed in `CardContent` |
 
 **Contract**: `panelExpandHost.tsx` never inspects `children`'s type or
 props — it has no knowledge of panel types, config shapes, or the registry.
 This is what keeps the mechanism generic (FR-002/FR-009): it operates
-identically whether `children` is a `ValueBoxPanel`, a `PlotlyPanel`, or any
+identically whether `children` is a `ValueBoxPanel`, a `the retired chart panel`, or any
 future registry entry.
 
 ---
@@ -133,9 +133,9 @@ panelCard.tsx
 `PanelComponent` itself (`ValueBoxPanel.tsx`/any future registry entry) is
 unmodified by this feature and has no relationship to `usePanelExpandHost`
 beyond being (wrapped in `PanelErrorBoundary`) the `children` it portals —
-the panel pattern (constitution v2.2.0) is unchanged. `PlotlyPanel.tsx` is
+the panel pattern (constitution v2.2.0) is unchanged. `the retired chart panel` is
 the one exception: its container's `height` style changed from a
 hardcoded pixel default to `100%`, so it correctly fills whichever real
 anchor `portalHostRef.current` is currently attached to (`contracts/
 panel-card.md`) — a sizing fix, not a new relationship to this mechanism;
-`PlotlyPanel.tsx` still has no idea `usePanelExpandHost` exists.
+`the retired chart panel` still has no idea `usePanelExpandHost` exists.

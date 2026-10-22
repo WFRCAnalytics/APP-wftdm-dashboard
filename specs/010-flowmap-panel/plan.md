@@ -226,7 +226,7 @@ the existing `src/panels/` (component + one pure module) and
 `src/layout/types.ts` (config type), mirroring `008-sankey-panel`'s own
 file placement exactly. `vite.config.ts` is the one shared-infrastructure
 file this feature touches (a genuinely new situation — no panel type
-since `003`'s own Plotly chunk addition has needed a build-config
+since `003`'s own the old chart library chunk addition has needed a build-config
 change), because this is the first panel type pulling in large,
 previously-absent map-rendering libraries.
 

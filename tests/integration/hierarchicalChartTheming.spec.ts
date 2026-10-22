@@ -10,7 +10,7 @@ declare global {
 // 058-hierarchical-chart-panels — User Story 3: a viewer cannot tell the
 // treemap/sunburst panel types use a different rendering technology.
 // Verified via real, automated getComputedStyle() checks in both themes —
-// matching rechartsPanel.spec.ts's/graphicWalkerPanel.spec.ts's own
+// matching a retired chart panel file's/graphicWalkerPanel.spec.ts's own
 // established dual-theme verification technique (`document.documentElement
 // .classList.add/remove('dark')` — the same real mechanism
 // useColorScheme() observes, no toggle UI needed in this test harness).

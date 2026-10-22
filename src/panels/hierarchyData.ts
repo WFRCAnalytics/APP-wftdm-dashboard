@@ -5,7 +5,7 @@ import type { HierarchicalPanelConfigBase } from '@/layout/types'
 // ordered, root-to-leaf list of real column names) into a nested structure
 // d3.hierarchy() can consume directly. Split out of HierarchicalChartHost.tsx
 // for the same reason every other pure-logic module in this directory is
-// (rechartsEncoding.ts, sankeyGraph.ts, flowmapData.ts,
+// (a retired chart helper, sankeyGraph.ts, flowmapData.ts,
 // observablePlotEncoding.ts) — easy Vitest coverage with no DOM/React
 // renderer needed. See data-model.md §4 and research.md §4.
 
@@ -41,7 +41,7 @@ function groupLevel(
 ): HierarchyNode[] {
   // Groups are built in FIRST-SEEN order (never re-sorted) so rendering is
   // deterministic and stable across re-renders of the same query result —
-  // matching rechartsEncoding.ts's own identical seriesKeys convention.
+  // matching a retired chart helper's own identical seriesKeys convention.
   const groupsByKey = new Map<string, Record<string, unknown>[]>()
   const order: string[] = []
   for (const row of rows) {

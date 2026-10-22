@@ -70,7 +70,7 @@ VI, spec.md Assumptions). Theme Mode is in-memory `useState` inside
 current page session/tab).
 
 **Testing**: Vitest is not applicable here in the usual "pure module" sense
-this project reserves for `.ts`-only logic (`plotlyTraces.ts`,
+this project reserves for `.ts`-only logic (`a retired chart helper`,
 `graphicWalkerFields.ts`, etc.) — this feature has no non-trivial DOM-free
 logic to isolate; the resolve-and-apply logic is a handful of lines directly
 inside the effect, exercised end-to-end instead. Playwright

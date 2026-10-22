@@ -19,8 +19,8 @@ declare global {
 // VMT — already genuinely all-valuebox, FR-018's own auto-classification
 // applies with no YAML change needed) and `row_charts` (plural in the
 // real file, singular `row_chart` in the retired fixture — the one real
-// difference) holding 2 non-valuebox panels (a recharts bar chart + a
-// plotly chart), so it still correctly does NOT qualify as a Metric
+// difference) holding 2 non-valuebox panels (a the old chart library bar chart + a
+// the old chart library chart), so it still correctly does NOT qualify as a Metric
 // Strip row.
 test.describe('030-sidebar-navigation — User Story 4 (Metric Strip layout)', () => {
   test('an all-valuebox row lays out as an auto-filling grid of minimum-width cards (FR-018)', async ({
@@ -45,7 +45,7 @@ test.describe('030-sidebar-navigation — User Story 4 (Metric Strip layout)', (
     await page.goto('/')
     await page.waitForFunction(() => window.__wftdm !== undefined, null, { timeout: 30_000 })
 
-    // row_charts (real Summary tab) holds a recharts panel + a plotly
+    // row_charts (real Summary tab) holds a the old chart library panel + a the old chart library
     // panel — not all-valuebox — must use the ordinary gridTemplateColumns
     // fraction math, not auto-fill.
     const chartRow = page.locator('[data-testid="row_charts"]')

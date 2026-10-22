@@ -63,7 +63,7 @@ const PLACEHOLDER_RE = /\$(mappings|bins|sql|filters|scenario|inputs|baseline)\.
  *   filterState itself, so an $inputs.<id> reference can never
  *   accidentally resolve against the global filter store (research.md §2's
  *   rejected alternative). Optional — every existing caller
- *   (ValueBoxPanel/PlotlyPanel/TablePanel) never emits an $inputs.
+ *   (ValueBoxPanel/the retired chart panel/TablePanel) never emits an $inputs.
  *   placeholder and passes nothing here.
  * @param baselineScenario resolves $baseline.<metric> (018-baseline-
  *   scenario-designation) — the caller-resolved result of

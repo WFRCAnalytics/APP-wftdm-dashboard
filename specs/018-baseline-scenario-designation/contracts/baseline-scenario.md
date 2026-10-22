@@ -70,7 +70,7 @@ export function expand(
 
 **Backward compatibility (verified, not assumed)**: all nine existing call
 sites (`FlowMapPanel.tsx`, `GraphicWalkerPanel.tsx`, `ObservablePlotPanel.tsx`,
-`PlotlyPanel.tsx`, `SankeyPanel.tsx`, `TablePanel.tsx`, `ValueBoxPanel.tsx`,
+`the retired chart panel`, `SankeyPanel.tsx`, `TablePanel.tsx`, `ValueBoxPanel.tsx`,
 `ZoneMapPanel.tsx`) pass at most 5 positional arguments today — none require
 any change. `$baseline.<metric>` is unusable from any of them until a future
 feature threads `appState.getBaseline()` through to one of these call sites
@@ -95,5 +95,5 @@ feature threads `appState.getBaseline()` through to one of these call sites
 ## Non-goals (explicitly unaffected by this contract)
 
 - `panels/panelQuery.ts`'s `buildComparisonDiffQuery()` (013-zonemap-panel's `comparison: diff`) — zero changes.
-- `project-docs/GRAMMAR.md`'s panel-type grammar (`plotly`/`table`/`observable-plot`/`zonemap`/etc.) — zero changes.
+- `project-docs/GRAMMAR.md`'s panel-type grammar (`the old chart library`/`table`/`observable-plot`/`zonemap`/etc.) — zero changes.
 - No `dashboard-*.yaml` key is added to let an author supply `baselineScenario` to any panel's query build — that wiring is the next, separate feature.

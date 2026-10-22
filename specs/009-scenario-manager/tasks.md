@@ -95,7 +95,7 @@ functions US1's UI gating and US2's tests both need.
       `useActiveScenarios()`, add its return value to the data-fetch
       effect's dependency array. Depends on: T004.
 - [X] T010 [P] Apply the same mechanical diff to
-      `src/panels/PlotlyPanel.tsx`. Depends on: T004.
+      `src/panels/the retired chart panel`. Depends on: T004.
 - [X] T011 [P] Apply the same mechanical diff to
       `src/panels/TablePanel.tsx`. Depends on: T004.
 - [X] T012 [P] Apply the same mechanical diff to
@@ -355,7 +355,7 @@ Task: "Create scenarioManager.ts's isLocalDeployment()/
 
 # Once T004 lands, all five panel diffs can proceed together:
 Task: "Apply mechanical diff to ValueBoxPanel.tsx (T009)"
-Task: "Apply mechanical diff to PlotlyPanel.tsx (T010)"
+Task: "Apply mechanical diff to the retired chart panel (T010)"
 Task: "Apply mechanical diff to TablePanel.tsx (T011)"
 Task: "Apply mechanical diff to ObservablePlotPanel.tsx (T012)"
 Task: "Apply mechanical diff to SankeyPanel.tsx (T013)"

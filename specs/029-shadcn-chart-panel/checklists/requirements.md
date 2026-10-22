@@ -1,4 +1,4 @@
-# Specification Quality Checklist: shadcn/Recharts Chart Panel Type
+# Specification Quality Checklist: shadcn/the old chart library Chart Panel Type
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning
 **Created**: 2026-09-06
@@ -34,7 +34,7 @@
 - A "Research Findings" section precedes the standard template sections,
   same convention already used by `028-graphic-walker-dataset-picker`'s own
   spec — this feature builds directly on real, already-confirmed findings
-  from this session's own prior shadcn/Recharts research (logged in
+  from this session's own prior shadcn/the old chart library research (logged in
   `project-docs/PIPELINE.md` and the `wftdm-design-system` skill), so those facts
   are carried forward and cited, not re-derived or re-investigated.
 - Every design question the original request raised (panel type name,

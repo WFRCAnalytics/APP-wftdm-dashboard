@@ -1,7 +1,7 @@
 // 028-graphic-walker-dataset-picker — pure, DOM-free derivation of the
 // dataset names a viewer-facing picker may offer. Split out of
 // GraphicWalkerPanel.tsx for the same reason every other pure-logic module
-// in this directory is (plotlyTraces.ts, flowmapData.ts, tableLogic.ts,
+// in this directory is (a retired chart helper, flowmapData.ts, tableLogic.ts,
 // graphicWalkerFields.ts, ...) — easy Vitest coverage with no DOM/React
 // renderer needed.
 //

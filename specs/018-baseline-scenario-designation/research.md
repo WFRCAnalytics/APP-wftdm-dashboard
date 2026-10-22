@@ -51,7 +51,7 @@ All findings below are verified directly against the real, current source files 
 
 ## §5. `expand()` signature change — zero-touch on every existing caller
 
-**Finding**: `expand(sqlTemplate, config, filterState, activeScenarios, inputState?)` already has one optional trailing parameter (`inputState`, added by `007-observable-plot-panel` with zero changes needed to any pre-existing caller). Verified via a direct search: exactly nine real call sites exist today (`FlowMapPanel.tsx`, `GraphicWalkerPanel.tsx`, `ObservablePlotPanel.tsx`, `PlotlyPanel.tsx`, `SankeyPanel.tsx`, `TablePanel.tsx`, `ValueBoxPanel.tsx`, `ZoneMapPanel.tsx`, plus one reference inside `panelQuery.ts`'s own doc comment) — none passes a sixth positional argument.
+**Finding**: `expand(sqlTemplate, config, filterState, activeScenarios, inputState?)` already has one optional trailing parameter (`inputState`, added by `007-observable-plot-panel` with zero changes needed to any pre-existing caller). Verified via a direct search: exactly nine real call sites exist today (`FlowMapPanel.tsx`, `GraphicWalkerPanel.tsx`, `ObservablePlotPanel.tsx`, `the retired chart panel`, `SankeyPanel.tsx`, `TablePanel.tsx`, `ValueBoxPanel.tsx`, `ZoneMapPanel.tsx`, plus one reference inside `panelQuery.ts`'s own doc comment) — none passes a sixth positional argument.
 
 **Decision**: Add `baselineScenario?: string` as a new sixth, optional, trailing parameter. Add `'baseline'` to `PLACEHOLDER_RE`'s alternation and a matching `case 'baseline'` in `expand()`'s switch, calling a new `expandBaseline(baselineScenario, name)`.
 

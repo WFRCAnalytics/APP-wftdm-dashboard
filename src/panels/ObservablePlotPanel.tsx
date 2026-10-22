@@ -20,7 +20,7 @@ import type { ObservablePlotPanelConfig, ObservablePlotInputConfig } from '@/lay
 const ALL_FILTERS: ['*'] = ['*']
 
 // Dark-mode contrast bug, the same established class this project has hit
-// and fixed multiple times already (PlotlyPanel.tsx's own paper/plot
+// and fixed multiple times already (the retired chart panel's own paper/plot
 // background + font.color, 015-theme-toggle): @observablehq/plot's tip
 // mark (the hover tooltip, config.tip: true) fills its own box with
 // `var(--plot-background)` — confirmed directly against the installed
@@ -64,10 +64,10 @@ function resolveInputOptionsView(config: ObservablePlotPanelConfig, activeScenar
 // The fifth panel type — see contracts/observable-plot-panel.md and
 // specs/007-observable-plot-panel/research.md. Unlike MarkdownPanel, this
 // panel type always queries (research.md §7) — the query/fetch chain
-// mirrors PlotlyPanel.tsx's shape, but the render step is a genuinely
+// mirrors the retired chart panel's shape, but the render step is a genuinely
 // different model: Plot.plot() returns a brand-new detached DOM element on
 // every call, with no in-place update API and no automatic container-size
-// awareness, unlike Plotly.react()/responsive:true (research.md §5).
+// awareness, unlike the old library's render call (research.md §5).
 export function ObservablePlotPanel({ config }: { config: ObservablePlotPanelConfig }) {
   // Only $filters.<id> ids feed useFilterState (global reactivity) — an
   // $inputs.<id> reference in config.filter is resolved separately, below,
@@ -103,7 +103,7 @@ export function ObservablePlotPanel({ config }: { config: ObservablePlotPanelCon
   const baseline = useBaseline()
   // Read-only — which theme is currently active (011-basemap-style-system's
   // own hook). Only consulted by the --plot-background effect below; never
-  // by the fetch effect, matching PlotlyPanel.tsx's own deliberate
+  // by the fetch effect, matching the retired chart panel's own deliberate
   // exclusion of colorScheme from its query-triggering dependency array (a
   // theme flip is never a reason to hit DuckDB-WASM again).
   const colorScheme = useColorScheme()
@@ -111,7 +111,7 @@ export function ObservablePlotPanel({ config }: { config: ObservablePlotPanelCon
   // label/color map — included in the redraw effect's own dependency
   // array below (not the fetch effect's), so a label/color change alone
   // re-derives from the SAME cached `rows` state with no new query,
-  // mirroring PlotlyPanel.tsx's own dedicated re-render effect.
+  // mirroring the retired chart panel's own dedicated re-render effect.
   const scenarioDisplay = useScenarioDisplay()
 
   const containerRef = useRef<HTMLDivElement>(null)
@@ -190,8 +190,8 @@ export function ObservablePlotPanel({ config }: { config: ObservablePlotPanelCon
   // Render-and-swap — runs when `rows`/`status` changes AND on every
   // ResizeObserver-observed container resize (research.md §5: Plot.plot()
   // has no in-place update API and no automatic container-size awareness,
-  // unlike Plotly.react()/responsive:true — a real difference from
-  // PlotlyPanel.tsx's cheap Plotly.Plots.resize() call, not the same fix
+  // unlike the old library's render call — a real difference from
+  // the old library's cheap resize call, not the same fix
   // reused unchanged).
   useEffect(() => {
     const el = containerRef.current
@@ -206,7 +206,7 @@ export function ObservablePlotPanel({ config }: { config: ObservablePlotPanelCon
     // exact same size, every time this effect runs. The synchronous call
     // is kept (not dropped in favor of the async callback alone) so the
     // chart appears immediately when data is ready, matching
-    // PlotlyPanel.tsx's no-flash behavior — the guard below makes the
+    // the retired chart panel's no-flash behavior — the guard below makes the
     // guaranteed duplicate a no-op instead, and also filters out any later
     // spurious sub-pixel ResizeObserver firings.
     let lastWidth = -1
@@ -538,7 +538,7 @@ export function ObservablePlotPanel({ config }: { config: ObservablePlotPanelCon
       {status === 'loading' && (
         // wftdm-design-system skill's Skeleton composition recipe (Phase 3
         // Batch 1) — same shaped bar-silhouette-on-a-baseline skeleton as
-        // PlotlyPanel.tsx (both panel types cover the same barY/lineY-vs-
+        // the retired chart panel (both panel types cover the same barY/lineY-vs-
         // bar/scatter territory), sized via flex (not a fixed height) to
         // match this panel's own real chart-container sizing, which must
         // absorb whatever space config.inputs' own rows above it consume.
@@ -562,7 +562,7 @@ export function ObservablePlotPanel({ config }: { config: ObservablePlotPanelCon
           width: '100%',
           // flex: 1 1 auto + minHeight: 0, not height: 100% — see this
           // function's own opening comment above. Still the SAME DOM node
-          // whether inline or inside 004's expand dialog (PlotlyPanel.tsx's
+          // whether inline or inside 004's expand dialog (the retired chart panel's
           // original reasoning for never hardcoding a pixel height here
           // still holds) — flex sizing is what correctly adapts it to
           // "whatever's really left over" in EITHER context, not a fixed

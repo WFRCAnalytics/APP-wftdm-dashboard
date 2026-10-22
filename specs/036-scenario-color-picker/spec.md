@@ -15,19 +15,19 @@ against real, current source — this project's own installed packages, its
 own already-shipped code, and shadcn's real, current registry — not
 assumed.
 
-**Part A — Recharts' vs Observable Plot's real default categorical
+**Part A — the old chart library' vs Observable Plot's real default categorical
 schemes, compared directly:**
 
-- **Recharts has no real default categorical palette to compare.**
+- **the old chart library has no real default categorical palette to compare.**
   Confirmed by reading the installed package directly:
-  `node_modules/recharts/lib/cartesian/Line.js` defaults `stroke` to a
+  `node_modules/the old chart library/lib/cartesian/Line.js` defaults `stroke` to a
   single hardcoded `'#3182bd'` (one blue, never cycled); `Bar.js` defaults
   `fill` to `'#eee'`. The one real multi-color array in the package,
   `COLOR_PANEL` (`lib/util/Constants.js`, 24 colors starting `#1890FF`),
   is `Treemap`'s own internal fallback only — not a general Bar/Line/Area
-  categorical scheme. This project's own `panels/rechartsEncoding.ts`
+  categorical scheme. This project's own `panels/a retired chart helper`
   already had to build its own `--chart-1..5` cycling logic for exactly
-  this reason (`029-shadcn-chart-panel`) — Recharts genuinely provides
+  this reason (`029-shadcn-chart-panel`) — the old chart library genuinely provides
   nothing to fall back to here.
 - **Observable Plot's `schemeObservable10`** (`d3-scale-chromatic`,
   already installed) is a real, complete 10-color categorical scheme,
@@ -40,7 +40,7 @@ schemes, compared directly:**
   lightness-adjusted derivatives of `schemeObservable10`'s first 5 colors
   — WCAG-contrast-verified per token, per theme, by
   `tests/unit/tokenContrast.test.ts`'s own existing coverage. There is no
-  real decision left to make between the two schemes: Recharts has no
+  real decision left to make between the two schemes: the old chart library has no
   scheme to compete with `schemeObservable10` in the first place, and this
   project has already adopted (and verified) an accessible derivative of
   it. The shipped default palette is therefore `var(--chart-1)` through
@@ -73,11 +73,11 @@ iterates every registered scenario once, in a stable order, to build its
 is to that one expression's fallback half: `s.color` (manifest) is
 replaced with a palette lookup, cycled by each scenario's position in that
 SAME already-existing iteration (the same "stable, first-seen-order index"
-convention `panels/rechartsEncoding.ts`'s own `seriesKeys` cycling already
+convention `panels/a retired chart helper`'s own `seriesKeys` cycling already
 uses). `panels/scenarioDisplay.ts`'s `resolveScenarioColor()` itself,
 `Scenario.colorOverride`/`setColorOverride()`/`clearColorOverride()`, and
-all three chart panel types' own call sites (`plotlyTraces.ts`/
-`rechartsEncoding.ts`/`observablePlotEncoding.ts`) are confirmed
+all three chart panel types' own call sites (`a retired chart helper`/
+`a retired chart helper`/`observablePlotEncoding.ts`) are confirmed
 UNCHANGED — none of them read `s.color` directly; they only ever consume
 the hook's already-resolved `ScenarioDisplayMap.color`. `Scenario.color`
 itself, `services/scenarioDiscovery.ts`'s manifest-fetching fix, and
@@ -244,7 +244,7 @@ all).
 **Independent Test**: Configure a `scenarioPalette` in a test
 `dashboard-config/index.json`, load two scenarios with no color override,
 confirm each renders in the configured palette (cycled by position)
-consistently across Plotly/Recharts/Observable Plot. Fully testable
+consistently across the old chart library/Observable Plot. Fully testable
 without Part B.
 
 **Acceptance Scenarios**:
@@ -444,9 +444,9 @@ clicking another row's own baseline control still moves it.
   `hooks/useScenarioDisplay.ts`'s own color-resolution line falls back to,
   not how or whether the manifest field itself is populated.
 - **FR-007**: `panels/scenarioDisplay.ts`'s `resolveScenarioColor()`
-  signature, `panels/plotlyTraces.ts`/`panels/rechartsEncoding.ts`/
+  signature, `panels/a retired chart helper`/`panels/a retired chart helper`/
   `panels/observablePlotEncoding.ts`'s own existing color-consuming
-  branches (`035`), and `panels/PlotlyPanel.tsx`/`RechartsPanel.tsx`/
+  branches (`035`), and `panels/the retired chart panel`/`the retired chart panel`/
   `ObservablePlotPanel.tsx`'s own hook-call sites MUST remain unchanged —
   none of them read `Scenario.color` directly today, so none of them
   need to change for this feature.
@@ -582,7 +582,7 @@ clicking another row's own baseline control still moves it.
 - The shipped default palette reuses this app's own existing
   `--chart-1..5` tokens verbatim rather than introducing a new 10-color
   palette from raw `schemeObservable10` — informed by direct confirmation
-  that Recharts has no comparable built-in scheme to weigh against it, and
+  that the old chart library has no comparable built-in scheme to weigh against it, and
   that this app has already adopted and WCAG-verified an accessible
   derivative of `schemeObservable10` for exactly this "categorical chart
   color" purpose.

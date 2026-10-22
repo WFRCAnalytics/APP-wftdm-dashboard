@@ -65,7 +65,7 @@ pre-reload page load):
 | config fetches (manifest.yaml/index.json/dashboard-*.yaml) | 720 → 5219 | 887 → 4176 | blocked until `discoverScenarios()` resolves — `main.tsx` awaits it before `loadDashboards()` even starts |
 | **real Parquet file registration (105 files)** | 3887 → 4630 (**743ms**) | 3786 → 4192 (**406ms**) | the ACTUAL network file-fetch phase |
 | eager JS bundle (8 main-thread chunks) | 55 → 5305 | 55 → 4202 | ends right when `discoverScenarios()` finally resolves (React can't mount before that) |
-| React mounts, panel-type chunks load | 5229 → 5461 | 4186 → 4277 | `ValueBoxPanel`/`recharts`+`RechartsPanel`/`plotly`+`PlotlyPanel`/`MarkdownPanel` — confirmed exactly matching the Summary tab's real config, nothing else |
+| React mounts, panel-type chunks load | 5229 → 5461 | 4186 → 4277 | `ValueBoxPanel`/`the old chart library`+`the retired chart panel`/`the old chart library`+`the retired chart panel`/`MarkdownPanel` — confirmed exactly matching the Summary tab's real config, nothing else |
 | **total (`window.__wftdm` ready / real data visible)** | **5690 / 5679** | **4986 / 4913** | |
 
 **Answering the user's own five numbered items directly:**
@@ -77,12 +77,12 @@ pre-reload page load):
 2. **Summary tab's own panel types, confirmed directly from the real,
    live config** (`public/demo-dashboard-config/dashboard-1-summary.yaml`):
    5 `valuebox` panels (all `summary_kpis`, pinned to
-   `activitysim-baseline` only — ONE file), 1 `recharts` panel
+   `activitysim-baseline` only — ONE file), 1 `the old chart library` panel
    (`trip_mode_share`, unpinned — up to 3 real-scenario files), 1
-   `plotly` panel (`trip_distance_by_purpose`, unpinned — up to 3 real-
+   `the old chart library` panel (`trip_distance_by_purpose`, unpinned — up to 3 real-
    scenario files), 1 `markdown` panel (no query at all). **Yes, the
-   first tab DOES include a Plotly panel** — confirmed directly, not
-   assumed — and the trace confirms `plotly-BbWPiKc9.js` (4.68MB/
+   first tab DOES include a the old chart library panel** — confirmed directly, not
+   assumed — and the trace confirms `the old chart library-BbWPiKc9.js` (4.68MB/
    1.4MB gzipped) genuinely loads, but only AFTER React mounts (~4186–
    5229ms), taking a further ~91–232ms alongside the other needed panel
    chunks — small in absolute terms, but real, and unavoidable for this

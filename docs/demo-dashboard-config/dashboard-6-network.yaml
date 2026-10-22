@@ -1,218 +1,46 @@
-# 032-six-tab-demo-content — Network tab. Fully rewritten (research.md
-# §6) — supersedes 031's narrower single-zonemap-panel content entirely
-# (this file was `dashboard-4-network.yaml` before this feature; renamed
-# to its real position, 6th of six). Sections match
-# project-docs/CALIBRATION-SUMMARIES.md's own "Network Tab" breakdown. Two real,
-# confirmed gaps (Screenline Volumes vs Observed AADT, VMT by Facility
-# Type) share one markdown gap-note section — this pipeline has no
-# traffic-assignment step at all (data-model.md §1). Folds in the real
-# od_flows FlowMap panel from the now-dissolved dashboard-6-flows.yaml
-# (research.md §6, FR-011).
+# 063 redesign: Network page on the real ActivitySim example runs.
 
 header:
   tab: Network
   title: Network
+  description: "Zones, trip flows and the places they serve"
   icon: network
 
 sections:
-  - id: screenline-vmt-facility
-    label: "Screenline Volumes / VMT by Facility Type"
-    rows: [row_network_assignment_gap]
-  - id: vmt-by-home-taz
-    label: "VMT by Home TAZ"
-    rows: [row_vmt_by_home_taz]
-  - id: od-desire-lines
-    label: "O-D Desire Lines"
-    rows: [row_od_desire_lines, row_od_desire_lines_default]
-  - id: home-workplace-flows
-    label: "Home-Workplace Flows"
-    rows: [row_home_workplace_flows]
-  - id: land-use
-    label: "Land Use / Socioeconomics"
-    rows: [row_land_use_scatter, row_land_use]
-  - id: accessibility
-    label: "Accessibility"
-    rows: [row_accessibility]
+  - { id: zones, label: "Where transit is used", rows: [row_zones] }
+  - { id: flows, label: "Trip desire lines", rows: [row_flows] }
 
 layout:
-  row_network_assignment_gap:
-    - type:  markdown
-      title: "Screenline Volumes & VMT by Facility Type — not available in this demo"
+  row_zones:
+    - id: zones
+      type: multi-view
+      title: "Where transit is used"
+      description: "Transit share of trip ends by traffic analysis zone. Scroll to zoom."
+      height: 500
       width: 1.0
-      content: |
-        This pipeline has no traffic-assignment step — ActivitySim's own
-        `write_trip_matrices` output is zone-to-zone trip **demand**, not
-        assigned link volumes, and no real observed-AADT dataset exists
-        for this synthetic 25-zone system. Neither **Screenline Volumes
-        vs Observed AADT** nor **VMT by Facility Type** is computable
-        from this project's real data. See `project-docs/CALIBRATION-SUMMARIES.md`.
-
-  row_vmt_by_home_taz:
-    - type:   valuebox
-      title:  "Total VMT (straight-line proxy)"
-      metric: summary_kpis
-      scenario: activitysim-baseline
-      description: "Baseline scenario. Compare runs on the tables and charts via the Scenarios tab."
-      column: total_vmt
-      format: "{:,.0f} mi"
-      icon:   gauge
-      width:  0.25
-
-    - type:       zonemap
-      title:      "VMT by Home Zone (straight-line proxy)"
-      metric:     vmt_by_home_taz
-      # 038: stays pinned — a choropleth shows one run per draw (FR-010).
-      scenario:   activitysim-baseline
-      boundaries:    taz25.geoparquet
-      boundaries_id: TAZ1454
-      metric_id:     home_zone_id
-      column:     total_vmt
-      label:      "Total VMT"
-      color_scale: sequential
-      color_ramp:  YlOrRd
-      steps:       7
-      height:  500
-      width:   0.75
-      center: [-122.402, 37.787]
-      zoom:   13
-      description: >
-        Baseline scenario — a choropleth shows one run at a time. Real
-        straight-line distance between real zone centroids, summed per
-        real trip — not a modeled network-path VMT (this pipeline has no
-        traffic-assignment step).
-
-  # Already real, already correct — the same panel dashboard-6-flows.yaml
-  # (031, dissolved) already authored; re-created here, now actually
-  # publishable (FR-011).
-  row_od_desire_lines:
-    - type:        flowmap
-      title:       "Trip Distribution Desire Lines"
-      metric:      od_flows
-      # 038: stays pinned — a desire-line map draws one O-D set per
-      # render, so it shows one scenario at a time (FR-010).
-      scenario:    activitysim-baseline
-      description: "Baseline scenario. The desire-line map shows one run at a time."
-      height:      500
-      width:       1.0
-      origin:      orig_taz
-      origin_lat:  orig_lat
-      origin_lon:  orig_lon
-      destination: dest_taz
-      dest_lat:    dest_lat
-      dest_lon:    dest_lon
-      value:       trips
-      clustering:      true
-      clustering_auto: true
-      center: [-122.402, 37.787]
-      zoom:   13
-
-  # 040-test-suite-migration: a second real od_flows panel, deliberately
-  # with NO center/zoom/basemap config — the real vehicle for
-  # flowmapPanel.spec.ts's own many generic-mechanics tests (auto-fit,
-  # default app-basemap resolution, attribution/nav controls, deck.gl
-  # hover tooltip, expand/resize, registry consistency). The existing
-  # row_od_desire_lines panel above can't serve this role — it has its
-  # own real, authored center/zoom, so auto-fit's own `config.center ==
-  # null && config.zoom == null` guard never runs for it. Placed on this
-  # REAL tab (not dashboard-8-test.yaml) specifically because
-  # dashboard-8-test.yaml's own `default_basemap: carto-positron` (needed
-  # by its own real tab-default-precedence panels, below) would
-  # incorrectly apply to a panel meant to prove resolution to the real
-  # APP-WIDE default (openfreemap-positron) — this tab sets no
-  # `default_basemap` of its own, so an unconfigured panel here
-  # genuinely resolves to APP_DEFAULT, the real case these tests need.
-  row_od_desire_lines_default:
-    - type:        flowmap
-      title:       "Trip Distribution Desire Lines (Default View)"
-      metric:      od_flows
-      scenario:    activitysim-baseline
-      description: "Same real O-D data as above, with no author-configured view or basemap — auto-fits to the data's own extent using the app-wide default basemap."
-      height:      500
-      width:       1.0
-      origin:      orig_taz
-      origin_lat:  orig_lat
-      origin_lon:  orig_lon
-      destination: dest_taz
-      dest_lat:    dest_lat
-      dest_lon:    dest_lon
-      value:       trips
-      clustering:      true
-      clustering_auto: true
-
-  row_home_workplace_flows:
-    - type:       table
-      title:      "Home-Workplace District Flows"
-      metric:     workplace_od_flows
-      sort:       { column: workers, order: desc }
-      pagination: 15
-      searchable: true
-      columns:
-        # 038-all-loaded-scenarios: unpinned — the $scenario union adds this
-        # discriminator column so the table reads as a per-scenario comparison.
-        - { field: scenario, label: "Scenario" }
-        - { field: home_district, label: "Home District" }
-        - { field: work_district, label: "Workplace District" }
-        - { field: workers,       label: "Workers", format: ",.0f" }
+      views:
+        - { id: map, label: Values, type: chart, kind: zone-map, boundaries: taz25.geoparquet, boundaries_id: TAZ1454, rail: null, compare: [grid, switch] }
+        - { id: diffm, label: Difference, type: chart, kind: zone-diff-map, boundaries: taz25.geoparquet, boundaries_id: TAZ1454, rail: null, compare: [diff], needs_compare: true }
+        - { id: swipe, label: Swipe, type: chart, kind: zone-swipe-map, boundaries: taz25.geoparquet, boundaries_id: TAZ1454, rail: null, compare: [swipe], needs_compare: true }
+  row_flows:
+    - id: flows
+      type: multi-view
+      title: "Trip desire lines"
+      description: "Daily trips between zones, one scenario at a time."
+      height: 500
       width: 1.0
-
-  # New chart-type coverage: type: observable-plot's mark: dot — a real
-  # scatter plot, one point per zone. Every dashboard-6-network.yaml panel
-  # above this one is pinned to activitysim-baseline; this one is
-  # deliberately left UNPINNED with fill: scenario instead, since the
-  # real story here is genuinely cross-scenario: the density variant's
-  # own real +40% TAZ 1 employment increase (026-activitysim-demo-content)
-  # renders as a visibly shifted point relative to the same zone's
-  # baseline/transit-variant position.
-  row_land_use_scatter:
-    - type:    observable-plot
-      title:   "Employment vs. Households by Zone"
-      metric:  land_use_summary
-      description: "One point per zone, across every active scenario. The density variant's real +40% TAZ 1 employment increase is visible as a shifted point."
-      mark:    dot
-      x:       TOTHH
-      y:       TOTEMP
-      fill:    scenario
-      tip:     true
-      grid:    true
-      height:  380
-      width:   1.0
-
-  row_land_use:
-    - type:       table
-      title:      "Land Use / Socioeconomics by Zone"
-      metric:     land_use_summary
-      sort:       { column: zone_id, order: asc }
-      pagination: 25
-      searchable: true
-      columns:
-        # 038-all-loaded-scenarios: unpinned — the $scenario union adds this
-        # discriminator column so the table reads as a per-scenario comparison.
-        - { field: scenario, label: "Scenario" }
-        - { field: zone_id,             label: "Zone" }
-        - { field: DISTRICT,            label: "District" }
-        - { field: TOTHH,               label: "Households", format: ",.0f" }
-        - { field: TOTPOP,              label: "Population", format: ",.0f" }
-        - { field: TOTEMP,              label: "Total Employment", format: ",.0f" }
-        - { field: avg_income,          label: "Avg. Income", format: ",.0f" }
-        - { field: avg_auto_ownership,  label: "Avg. Autos/HH", format: ",.2f" }
-        - { field: HSENROLL,            label: "K-12 Enrollment", format: ",.0f" }
-      width: 1.0
-
-  row_accessibility:
-    - type:       table
-      title:      "Accessibility by Zone"
-      metric:     accessibility_summary
-      sort:       { column: zone_id, order: asc }
-      pagination: 25
-      searchable: true
-      columns:
-        # 038-all-loaded-scenarios: unpinned — the $scenario union adds this
-        # discriminator column so the table reads as a per-scenario comparison.
-        - { field: scenario, label: "Scenario" }
-        - { field: zone_id,     label: "Zone" }
-        - { field: auPkTotal,   label: "Auto Peak (Total)",  format: ",.1f" }
-        - { field: auOpTotal,   label: "Auto Off-Peak (Total)", format: ",.1f" }
-        - { field: trPkTotal,   label: "Transit Peak (Total)", format: ",.1f" }
-        - { field: trOpTotal,   label: "Transit Off-Peak (Total)", format: ",.1f" }
-        - { field: nmTotal,     label: "Non-Motorized (Total)", format: ",.1f" }
-      width: 1.0
+      views:
+        - id: lines
+          label: Desire lines
+          type: flowmap
+          metric: od_flows
+          origin: orig_taz
+          origin_lat: orig_lat
+          origin_lon: orig_lon
+          destination: dest_taz
+          dest_lat: dest_lat
+          dest_lon: dest_lon
+          value: trips
+          clustering: true
+          clustering_auto: true
+          compare: [switch]

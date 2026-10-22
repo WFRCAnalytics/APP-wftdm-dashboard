@@ -73,7 +73,7 @@ export interface HierarchyRenderer {
 // Token-derived categorical fallback (research.md §5), mirroring
 // SankeyPanel.tsx's own resolveFallbackColors() exactly, but over this
 // app's real 5-token categorical set (--chart-1..5 — the same lineage
-// rechartsEncoding.ts already cycles through) rather than Sankey's own
+// a retired chart helper already cycles through) rather than Sankey's own
 // 4-token choice.
 // Last-resort literal values (tokens.css's own current light-mode
 // --chart-1..5 values) — only used if getComputedStyle somehow resolves
@@ -81,7 +81,7 @@ export interface HierarchyRenderer {
 
 /** Assigns one color per real, distinct top-level (depth-1) category name,
  * in first-seen (d3.hierarchy) order, cycling with wraparound past the
- * fifth — matching rechartsEncoding.ts's own identical cycling convention. */
+ * fifth — matching a retired chart helper's own identical cycling convention. */
 function buildColorResolver(
   containerEl: Element,
   root: HierarchyRectangularNode<HierarchyNode>,

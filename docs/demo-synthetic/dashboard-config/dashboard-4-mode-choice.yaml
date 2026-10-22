@@ -1,0 +1,94 @@
+# 063 redesign: Mode choice page (project-docs/redesign/02-layout-and-components.md section 3).
+
+header:
+  tab: "Mode choice"
+  title: "Mode choice"
+  description: "How people choose between driving, transit, walking and biking"
+  icon: shuffle
+
+sections:
+  - { id: shares, label: "Shares", rows: [row_share_modeinc], tile: share }
+  - { id: segments, label: "Segments", rows: [row_share_modeinc], tile: modeinc }
+  - { id: flow, label: "Flow", rows: [row_flowbig] }
+
+layout:
+  row_share_modeinc:
+    - id: share
+      type: multi-view
+      title: "Mode share"
+      description: "Share of daily trips. The dashed line is the reference."
+      height: 420
+      width: 0.5
+      group_by:
+        label: Compare by
+        default: scn
+        options:
+          - { id: scn, label: Scenario, fields: { group: scn } }
+          - { id: purpose, label: Purpose, fields: { group: purpose } }
+          - { id: income, label: Income, fields: { group: income } }
+      views:
+        - { id: bars, label: Bars, type: chart, kind: mode-bars, diff: true, compare: [overlay] }
+        - { id: gap, label: Gap, type: chart, kind: gap-dots, diff: true, compare: [overlay] }
+        - { id: stack, label: "100% bars", type: chart, kind: stacked-bars, variant: scenario, compare: [overlay] }
+        - { id: slope, label: Slope, type: chart, kind: slope, compare: [switch] }
+        - { id: donut, label: Donut, type: chart, kind: donut, compare: [switch, diff] }
+        - { id: tbl, label: Table, type: chart, kind: mode-table, compare: [overlay] }
+    - id: modeinc
+      type: multi-view
+      title: "Mode share by household income"
+      description: "Lower-income households use transit, walking and school buses most."
+      height: 420
+      width: 0.5
+      views:
+        - { id: bars, label: "100% bars", type: chart, kind: stacked-bars, variant: income, compare: [multi] }
+
+  row_flowbig:
+    - id: flowbig
+      type: multi-view
+      title: "From purpose to mode to distance"
+      description: "Each band is a share of daily trips."
+      height: 460
+      width: 1.0
+      views:
+        - { id: flow, label: Flow, type: chart, kind: sankey, compare: [switch] }
+
+  row_time_mix:
+    - id: time
+      type: multi-view
+      title: "Trips through the day"
+      description: "Departure hour. Group by chooses what the lines or bands represent."
+      height: 400
+      width: 0.5833
+      default_view: stream
+      group_by:
+        label: Group by
+        default: scn
+        options:
+          - { id: scn, label: Scenario, fields: { group: scn } }
+          - { id: mode, label: Mode, fields: { group: mode } }
+          - { id: purpose, label: Purpose, fields: { group: purpose } }
+          - { id: income, label: Income, fields: { group: income } }
+          - { id: none, label: "All trips", fields: { group: none } }
+      views:
+        - { id: lines, label: Lines, type: chart, kind: time-lines, diff: true, compare: [overlay] }
+        - { id: stream, label: Stream, type: chart, kind: time-stream, compare: [switch, multi] }
+        - { id: heat, label: Heatmap, type: chart, kind: time-heat, compare: [overlay] }
+    - id: mix
+      type: multi-view
+      title: "Trips by purpose and mode"
+      description: "Daily trips for the focus scenario. Hover a mode to trace it across every chart."
+      height: 400
+      width: 0.4167
+      default_view: sun
+      group_by:
+        label: Group by
+        default: pm
+        options:
+          - { id: pm, label: "Purpose › Mode", fields: { group: pm } }
+          - { id: mp, label: "Mode › Purpose", fields: { group: mp } }
+          - { id: im, label: "Income › Mode", fields: { group: im } }
+      views:
+        - { id: tree, label: Treemap, type: chart, kind: treemap, variant: trips, compare: [multi, diff] }
+        - { id: sun, label: Sunburst, type: chart, kind: sunburst, variant: trips, compare: [multi] }
+        - { id: flow, label: Flow, type: chart, kind: sankey, compare: [switch] }
+        - { id: bars, label: "100% bars", type: chart, kind: stacked-bars, variant: trips, compare: [multi] }

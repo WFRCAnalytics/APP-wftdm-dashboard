@@ -1,7 +1,7 @@
 # Contract: Panel Conversions (`public/demo-dashboard-config/*.yaml`)
 
 Satisfies FR-001, FR-002, FR-005, FR-006, FR-007, FR-011. Six real chart
-panels, four files, re-authored from `plotly`/`recharts` to
+panels, four files, re-authored from `the old chart library`/`the old chart library` to
 `observable-plot`. No `src/` code change is required to make any of these
 render — `ObservablePlotPanelConfig`/`resolveObservablePlotEncoding()`/
 `ObservablePlotPanel.tsx` already fully support every field used below
@@ -36,7 +36,7 @@ render — `ObservablePlotPanelConfig`/`resolveObservablePlotEncoding()`/
       width:   0.5
 ```
 
-`layout.xaxis.title`/`layout.yaxis.title`/`showlegend` (Plotly-only
+`layout.xaxis.title`/`layout.yaxis.title`/`showlegend` (the old chart library-only
 fields) are dropped — Observable Plot derives axis labels from the field
 name by default (matching every existing Observable Plot panel's own
 convention of not overriding them) and shows a legend automatically
@@ -64,7 +64,7 @@ or is needed).
 `barmode: group` has no separate Observable Plot equivalent to set — a
 `fill`-colored `barY` mark already renders one bar per distinct
 `(x, fill)` combination side-by-side by default (Plot's own grouping
-behavior for a categorical color channel), matching Plotly's
+behavior for a categorical color channel), matching the old chart library's
 `barmode: group` visual result for this data shape.
 
 ## `dashboard-4-mode-choice.yaml`
@@ -133,8 +133,8 @@ correct translation of what `series: tour_mode` already meant.
 ## What does NOT change
 
 - `panels/panelQuery.ts`, `services/sqlExpander.ts` — zero changes.
-- `panels/PlotlyPanel.tsx`, `panels/plotlyTraces.ts`, `panels/RechartsPanel.tsx`,
-  `panels/rechartsEncoding.ts` — zero changes; both panel types stay
+- `panels/the retired chart panel`, `panels/a retired chart helper`, `panels/the retired chart panel`,
+  `panels/a retired chart helper` — zero changes; both panel types stay
   registered and supported (`dashboard-8-test.yaml` keeps exercising
   both).
 - `panels/SankeyPanel.tsx`, `panels/sankeyGraph.ts`, `panels/sankeyColor.ts`,

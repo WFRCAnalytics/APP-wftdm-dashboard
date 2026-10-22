@@ -76,10 +76,10 @@ after the fact.
   expanding one panel remains fully isolated (FR-010, FR-011, carried
   forward unmodified from `003`).
 
-## Also touched: `components/ui/button.tsx`, `panels/PlotlyPanel.tsx`
+## Also touched: `components/ui/button.tsx`, `panels/the retired chart panel`
 
 Neither was in this feature's original planned scope (plan.md's Technical
-Context originally stated `PlotlyPanel.tsx`/`ValueBoxPanel.tsx` would
+Context originally stated `the retired chart panel`/`ValueBoxPanel.tsx` would
 require zero changes) — both corrections found necessary during
 implementation, documented transparently rather than left unmentioned:
 
@@ -87,11 +87,11 @@ implementation, documented transparently rather than left unmentioned:
   icon-only, label-less trigger — added `icon: 'h-10 w-10'` alongside the
   existing `default`/`sm`/`lg` variants. A general-purpose addition to an
   existing shared primitive, not scoped to this feature specifically.
-- **`panels/PlotlyPanel.tsx`**: its chart container had a hardcoded pixel
+- **`panels/the retired chart panel`**: its chart container had a hardcoded pixel
   `height: config.height ?? 350` — correct for the card-only world `003`
   built it in, but it meant relocating the same container into the much
   taller expand dialog (`contracts/panel-expand-host.md`) never actually
-  grew it; `Plotly.Plots.resize()` would run but had nothing taller to
+  grew it; `the old library API` would run but had nothing taller to
   resize into. Changed to `height: '100%'`, so the container fills
   whichever real ancestor it's currently placed in — the inline card slot
   (now explicitly sized via `usePanelExpandHost`'s `{ height: config.height

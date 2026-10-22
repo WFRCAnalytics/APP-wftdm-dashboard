@@ -70,7 +70,7 @@ export function inferFields(
 ```
 
 Pure, DOM-free, no I/O — same split-out-for-testability reason
-`plotlyTraces.ts`/`sankeyGraph.ts`/`zonemapColor.ts` all already exist
+`a retired chart helper`/`sankeyGraph.ts`/`zonemapColor.ts` all already exist
 for their own panel types.
 
 ## Query construction (`panels/panelQuery.ts`, extended)

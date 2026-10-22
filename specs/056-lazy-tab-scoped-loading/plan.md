@@ -186,11 +186,11 @@ src/
 │   ├── GraphicWalkerPanel.tsx   # MODIFIED — one ensureRegistered() call
 │   │                            #   added to its existing fetch effect
 │   ├── ValueBoxPanel.tsx        # MODIFIED — same one-call addition
-│   ├── PlotlyPanel.tsx          # MODIFIED — same
+│   ├── the retired chart panel          # MODIFIED — same
 │   ├── TablePanel.tsx           # MODIFIED — same
 │   ├── ObservablePlotPanel.tsx  # MODIFIED — same
 │   ├── SankeyPanel.tsx          # MODIFIED — same
-│   ├── RechartsPanel.tsx        # MODIFIED — same
+│   ├── the retired chart panel        # MODIFIED — same
 │   ├── FlowMapPanel.tsx         # MODIFIED — same
 │   └── ZoneMapPanel.tsx         # MODIFIED — same
 │                                # (MarkdownPanel.tsx: no change — not

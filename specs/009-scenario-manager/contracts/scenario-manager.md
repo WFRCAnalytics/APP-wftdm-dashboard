@@ -387,14 +387,14 @@ itself.
 ## Panel diff (representative — identical mechanical change across all
 five data-bound panel types)
 
-`PlotlyPanel.tsx` (others: `ValueBoxPanel.tsx`, `TablePanel.tsx`,
+`the retired chart panel` (others: `ValueBoxPanel.tsx`, `TablePanel.tsx`,
 `ObservablePlotPanel.tsx`, `SankeyPanel.tsx` — same three-line shape each):
 
 ```diff
 +import { useActiveScenarios } from '@/hooks/useActiveScenarios'
 -import * as appState from '@/state/appState'
 
- export function PlotlyPanel({ config }: { config: PlotlyPanelConfig }) {
+ export function the retired chart panel({ config }: { config: RetiredChartPanelConfig }) {
    const filterIds = extractGlobalFilterIds(config.filter)
    const filters = useFilterState(filterIds.length ? filterIds : ALL_FILTERS)
 +  const activeScenarioNames = useActiveScenarios()

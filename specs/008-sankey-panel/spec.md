@@ -6,7 +6,7 @@
 
 **Status**: Draft
 
-**Input**: User description: "Add the sixth and final originally-listed panel type — sankey — to the registry, following the same pattern as ValueBoxPanel/PlotlyPanel/TablePanel/MarkdownPanel/ObservablePlotPanel and inheriting 004's expand-to-dialog mechanism automatically. Check project-docs/GRAMMAR.md's actual `type: sankey` section before assuming its shape — source/target/value column mapping, placeholder-substitution style, and color_scheme's real documented behavior. Uses d3-sankey (SPEC.md's pinned choice) — research current version and its d3 dependency situation against what 007 already pulled in. Rows-to-graph transform (unique nodes from source/target values, links with computed flow values) plus d3-sankey's layout computation should be a pure, DOM-free module, Vitest-testable without a real DOM, mirroring plotlyTraces.ts/tableLogic.ts/observablePlotEncoding.ts. Reuse the query/fetch chain, loading/empty/error states, and inline skeleton convention where genuinely applicable; research whether d3-sankey's rendered SVG has the same resize-on-container-change gap Plotly/Observable Plot both had, rather than assuming either fix transfers unchanged. Uses 002-design-tokens' existing tokens for node/link coloring where the grammar allows it. Does not include panel-local reactive inputs or any capability beyond rendering a sankey diagram from query results."
+**Input**: User description: "Add the sixth and final originally-listed panel type — sankey — to the registry, following the same pattern as ValueBoxPanel/the retired chart panel/TablePanel/MarkdownPanel/ObservablePlotPanel and inheriting 004's expand-to-dialog mechanism automatically. Check project-docs/GRAMMAR.md's actual `type: sankey` section before assuming its shape — source/target/value column mapping, placeholder-substitution style, and color_scheme's real documented behavior. Uses d3-sankey (SPEC.md's pinned choice) — research current version and its d3 dependency situation against what 007 already pulled in. Rows-to-graph transform (unique nodes from source/target values, links with computed flow values) plus d3-sankey's layout computation should be a pure, DOM-free module, Vitest-testable without a real DOM, mirroring a retired chart helper/tableLogic.ts/observablePlotEncoding.ts. Reuse the query/fetch chain, loading/empty/error states, and inline skeleton convention where genuinely applicable; research whether d3-sankey's rendered SVG has the same resize-on-container-change gap the old chart library/Observable Plot both had, rather than assuming either fix transfers unchanged. Uses 002-design-tokens' existing tokens for node/link coloring where the grammar allows it. Does not include panel-local reactive inputs or any capability beyond rendering a sankey diagram from query results."
 
 ## Grammar findings (pre-spec verification)
 
@@ -27,7 +27,7 @@ spec, per this project's established discipline (005/006/007 each required the s
    placeholders.** The documented example (`source: tour_mode`, `target:
    trip_mode`, `value: trips`) reads exactly like `observable-plot`'s `x`/`y`/
    `fill`/`stroke` (bare column names resolved directly from the queried rows),
-   not like `plotly`'s `x: $metric.observed` placeholder-substitution
+   not like `the old chart library`'s `x: $metric.observed` placeholder-substitution
    convention. This is the same author-names-the-field approach
    `TableColumnConfig` already uses for its own column mapping — sankey is not
    introducing a new binding shape, just applying the existing one to
@@ -126,7 +126,7 @@ reflect only matching rows, including the zero-match case.
 A dashboard tab contains a sankey panel alongside other panel types. The
 viewer expands it into the 004 near-fullscreen dialog, sees the same diagram
 at a larger size without any re-fetch or flicker, and collapses it back —
-exactly as already guaranteed for `valuebox`/`plotly`/`table`/`markdown`/
+exactly as already guaranteed for `valuebox`/`the old chart library`/`table`/`markdown`/
 `observable-plot`, with zero sankey-specific wiring required to get it.
 
 **Why this priority**: This is inherited "for free" from 004's existing
@@ -282,7 +282,7 @@ renders the shared error state instead of crashing.
   by sibling panel types, with zero unhandled exceptions surfaced to the
   user.
 - **SC-005**: A dashboard tab combining all six now-built panel types
-  (`valuebox`, `plotly`, `table`, `markdown`, `observable-plot`, `sankey`)
+  (`valuebox`, `the old chart library`, `table`, `markdown`, `observable-plot`, `sankey`)
   renders all of them without error in a single load.
 
 ## Assumptions
@@ -293,7 +293,7 @@ renders the shared error state instead of crashing.
   planning (`research.md`), not assumed here — matches 007's own precedent
   for `@observablehq/plot`'s peer-dependency question.
 - Whether d3-sankey's rendered SVG needs the same ResizeObserver-driven
-  resize treatment `PlotlyPanel`/`ObservablePlotPanel` both required, or a
+  resize treatment `the retired chart panel`/`ObservablePlotPanel` both required, or a
   different approach entirely given d3-sankey's own rendering model, is a
   planning-phase research question — not assumed to transfer unchanged from
   either prior fix (per the feature description's own instruction).
@@ -319,11 +319,11 @@ renders the shared error state instead of crashing.
   documented grammar (Grammar findings #5), and explicitly out of scope per
   the feature description.
 - This feature completes the originally-listed six-panel-type set
-  (`valuebox`, `plotly`, `table`, `markdown`, `observable-plot`, `sankey`);
+  (`valuebox`, `the old chart library`, `table`, `markdown`, `observable-plot`, `sankey`);
   `flowmap`, `zonemap`, and `graphic-walker` remain out of scope, unchanged
   from every prior panel-type feature.
 - The rows-to-graph transform and d3-sankey's layout computation are
-  implemented as a pure, DOM-free module (mirroring `plotlyTraces.ts`/
+  implemented as a pure, DOM-free module (mirroring `a retired chart helper`/
   `tableLogic.ts`/`observablePlotEncoding.ts`), Vitest-testable without a
   real DOM — the specific module boundary and shape are a planning-phase
   design decision, not fixed here.

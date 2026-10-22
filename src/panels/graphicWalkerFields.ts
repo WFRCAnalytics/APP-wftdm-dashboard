@@ -1,6 +1,6 @@
 // 014-graphic-walker-panel — pure, DOM-free Arrow-schema-to-IMutField[]
 // inference (research.md §5, contracts/graphic-walker-panel.md). Split out
-// of GraphicWalkerPanel.tsx same reason plotlyTraces.ts/sankeyGraph.ts/
+// of GraphicWalkerPanel.tsx same reason the trace helper/sankeyGraph.ts/
 // zonemapColor.ts were each split out of their own panel component: pure
 // logic is directly Vitest-testable without a DOM/React render.
 //

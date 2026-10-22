@@ -1,5 +1,5 @@
 // Pure column-resolution/sort/filter/color-scale logic for TablePanel.tsx —
-// split out for the same reason 003's plotlyTraces.ts was: independently
+// split out for the same reason 003's trace helper was: independently
 // Vitest-testable without a DOM. See specs/005-table-panel/contracts/
 // table-logic.md and research.md §3/§4.
 import { formatValue } from '@/panels/formatValue'

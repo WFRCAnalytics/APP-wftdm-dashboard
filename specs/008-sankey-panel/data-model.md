@@ -26,7 +26,7 @@ findings #4) — same pattern every prior data-bound panel type already
 follows.
 
 **Union update**: `layout/types.ts`'s `PanelConfig` becomes
-`ValueBoxPanelConfig | PlotlyPanelConfig | TablePanelConfig |
+`ValueBoxPanelConfig | RetiredChartPanelConfig | TablePanelConfig |
 MarkdownPanelConfig | ObservablePlotPanelConfig | SankeyPanelConfig |
 UnknownPanelConfig` — a `type: sankey` entry now parses to a real, narrowed
 type instead of falling through to `UnknownPanelConfig`'s wide shape. This
@@ -86,7 +86,7 @@ this codebase, routing to the shared `PanelErrorState` (FR-006).
 | Input | Output | Notes |
 |---|---|---|
 | `config.color_scheme` set to a recognized name (`Tableau10`, and a small set of other well-known `d3-scale-chromatic` categorical scheme names — exact allow-list is an implementation-task decision, not fixed here) | That scheme's color array, applied via an ordinal scale over `FlowNode.id` (so a node and every link touching it share one color — a link's own color is its *source* node's color, the conventional Sankey coloring choice, not a separate value) | |
-| `config.color_scheme` omitted, or set to an unrecognized name | A small ordered palette built from 002-design-tokens' brand hue tokens: `--primary`, `--brand-wfrc-secondary-blue`, `--brand-wfrc-yellow`, `--brand-wfrc-gray` (research.md §6 — a genuinely new categorical-coloring convention for this codebase, not one carried over from `PlotlyPanel`/`ObservablePlotPanel`, neither of which sets an explicit categorical palette today) | |
+| `config.color_scheme` omitted, or set to an unrecognized name | A small ordered palette built from 002-design-tokens' brand hue tokens: `--primary`, `--brand-wfrc-secondary-blue`, `--brand-wfrc-yellow`, `--brand-wfrc-gray` (research.md §6 — a genuinely new categorical-coloring convention for this codebase, not one carried over from `the retired chart panel`/`ObservablePlotPanel`, neither of which sets an explicit categorical palette today) | |
 
 ---
 
@@ -122,13 +122,13 @@ dashboard-*.yaml's type: sankey entry
         v  sankeyGraph.ts's d3-sankey layout call (pure, no DOM —
         |  research.md §2): sankey().nodeId(...).extent([[0,0],[w,h]])(graph)
         |  — recomputed on every data change AND every container-resize
-        |  (research.md §3), unlike Plotly's cheap resize() call; may throw
+        |  (research.md §3), unlike the old chart library's cheap resize() call; may throw
         |  a real Error("circular link"), caught into PanelErrorState
   SankeyLayout { nodes (with x0/x1/y0/y1), links (with y0/y1/width) }
         |
         v  SankeyPanel.tsx's own render effect — builds/replaces real
         |  <svg><rect>/<path> DOM under a ref (research.md §2; no
-        |  Plot.plot()/Plotly.react()-equivalent single call exists for
+        |  Plot.plot()/the old library API-equivalent single call exists for
         |  this library), colored per the Color resolution table above
   PanelEmptyState (zero rows) -- or -- PanelErrorState (rejected query,
   unresolvable source/target/value column, or a caught cyclic-graph

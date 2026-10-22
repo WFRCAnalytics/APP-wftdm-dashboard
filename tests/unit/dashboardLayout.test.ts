@@ -11,7 +11,7 @@ const valueBox = (title: string): ValueBoxPanelConfig => ({
   format: '{:,.0f}',
 })
 
-const plotly: PanelConfig = {
+const chartPanel: PanelConfig = {
   type: 'observable-plot',
   title: 'A Chart',
   metric: 'trip_mode_share',
@@ -34,7 +34,7 @@ describe('isMetricStripRow', () => {
     expect(isMetricStripRow([valueBox('A'), valueBox('B'), valueBox('C')])).toBe(true)
   })
   it('is false when any panel is not a valuebox', () => {
-    expect(isMetricStripRow([valueBox('A'), plotly])).toBe(false)
+    expect(isMetricStripRow([valueBox('A'), chartPanel])).toBe(false)
   })
   it('is false for an empty row', () => {
     expect(isMetricStripRow([])).toBe(false)
@@ -50,15 +50,15 @@ describe('findFullPagePanel', () => {
     expect(findFullPagePanel(tab({}))).toBeNull()
   })
   it('returns null for two or more panels, even across different rows', () => {
-    expect(findFullPagePanel(tab({ row_a: [markdown], row_b: [plotly] }))).toBeNull()
-    expect(findFullPagePanel(tab({ row_a: [markdown, plotly] }))).toBeNull()
+    expect(findFullPagePanel(tab({ row_a: [markdown], row_b: [chartPanel] }))).toBeNull()
+    expect(findFullPagePanel(tab({ row_a: [markdown, chartPanel] }))).toBeNull()
   })
 })
 
 describe('resolveSections', () => {
   it('resolves a well-formed section unchanged', () => {
     const t = tab(
-      { row_kpis: [valueBox('A')], row_chart: [plotly] },
+      { row_kpis: [valueBox('A')], row_chart: [chartPanel] },
       [{ id: 'overview', label: 'Overview', rows: ['row_kpis', 'row_chart'] }],
     )
     expect(resolveSections(t)).toEqual([{ id: 'overview', label: 'Overview', rows: ['row_kpis', 'row_chart'] }])
@@ -66,7 +66,7 @@ describe('resolveSections', () => {
 
   it('re-orders a section\'s own rows to match layout\'s real key order, not the section\'s authored order', () => {
     const t = tab(
-      { row_kpis: [valueBox('A')], row_chart: [plotly] },
+      { row_kpis: [valueBox('A')], row_chart: [chartPanel] },
       // Authored backwards (row_chart before row_kpis) — resolveSections
       // must still return layout's own real order.
       [{ id: 'overview', label: 'Overview', rows: ['row_chart', 'row_kpis'] }],
@@ -100,7 +100,7 @@ describe('resolveSections', () => {
 
   it('a layout row not referenced by any section is simply absent from the result — it still renders normally elsewhere', () => {
     const t = tab(
-      { row_kpis: [valueBox('A')], row_chart: [plotly] },
+      { row_kpis: [valueBox('A')], row_chart: [chartPanel] },
       [{ id: 'overview', label: 'Overview', rows: ['row_kpis'] }],
     )
     const resolved = resolveSections(t)

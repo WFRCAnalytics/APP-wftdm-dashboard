@@ -57,7 +57,7 @@ layout:
       height:   400
       width:    1.0
 
-  # The dual-axis bar+line chart that used to sit here (a Recharts-only `combo`) was removed with Recharts; trip volume
+  # The dual-axis bar+line chart that used to sit here (a the old chart library-only `combo`) was removed with the old chart library; trip volume
   # and average distance live on very different scales, so they are shown as two aligned charts instead. Pinned to one
   # scenario for the same reason the pie above is: neither mark has a series channel to separate an unpinned
   # $scenario union's rows that share one x value.

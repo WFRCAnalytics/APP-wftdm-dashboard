@@ -41,9 +41,9 @@ On the running demo, no `?s=`:
 
 - **Any tour-models table** (e.g. "Mandatory Tour Frequency by Person Type"):
   has a `scenario` column with three distinct values.
-- **"Total Trips by Mode"** (recharts, Summary): three bars per mode, one per
+- **"Total Trips by Mode"** (the old chart library, Summary): three bars per mode, one per
   scenario, each in its resolved colour.
-- **"Trip Departure Hour (Work Trips)"** (plotly, Trip Models): three traces,
+- **"Trip Departure Hour (Work Trips)"** (the old chart library, Trip Models): three traces,
   legend names = resolved scenario labels.
 - **"Workplace Location Distance Distribution"** (observable-plot): three
   fill series.
@@ -98,7 +98,7 @@ npm run build
     valueboxes pinned `scenarios: [observed]`.
   - `Scenario Split (*)` and `Free-form Visual Analytics (Multi-Scenario)`
     panels/tests unchanged (they already declare `?s=good_scenario`).
-- New dual-theme spec: an unpinned demo plotly/recharts/observable-plot panel
+- New dual-theme spec: an unpinned demo the old chart library/observable-plot panel
   renders 3 theme-correct per-scenario series in both light and dark
   (`getComputedStyle()` assertions, per `wftdm-design-system`).
 

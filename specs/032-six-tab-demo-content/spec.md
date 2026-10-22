@@ -95,8 +95,8 @@ literal or synthetic placeholder.
 ### User Story 3 - All ten panel types demonstrated with genuinely fitting data (Priority: P2)
 
 Across the six tabs, every one of the app's ten registered panel types
-(valuebox, plotly, observable-plot, table, markdown, sankey, flowmap,
-zonemap, graphic-walker, recharts) appears at least once, each chosen
+(valuebox, the old chart library, observable-plot, table, markdown, sankey, flowmap,
+zonemap, graphic-walker, the old chart library) appears at least once, each chosen
 because it's a natural fit for that particular submodel's real data shape —
 a distance distribution as a histogram-style chart, a mode-by-purpose
 breakdown as a Sankey diagram, a geographic pattern as a zone map — not
@@ -115,8 +115,8 @@ instance's data shape genuinely suited to its chosen panel type.
 **Acceptance Scenarios**:
 
 1. **Given** the six-tab structure is complete, **When** every panel is
-   enumerated by type, **Then** valuebox, plotly, observable-plot, table,
-   markdown, sankey, flowmap, zonemap, graphic-walker, and recharts each
+   enumerated by type, **Then** valuebox, the old chart library, observable-plot, table,
+   markdown, sankey, flowmap, zonemap, graphic-walker, and the old chart library each
    appear at least once.
 2. **Given** a submodel's real data is naturally a distance distribution,
    **When** its panel type is chosen, **Then** it uses a histogram-shaped
@@ -225,8 +225,8 @@ carries an explicit "not computable — reason" note.
   breakdowns as Sankey, geographic patterns as zone maps) — never
   selecting a type merely to satisfy panel-type coverage.
 - **FR-013**: System MUST ensure that, across the six tabs, every one of
-  the ten registered panel types (valuebox, plotly, observable-plot,
-  table, markdown, sankey, flowmap, zonemap, graphic-walker, recharts) is
+  the ten registered panel types (valuebox, the old chart library, observable-plot,
+  table, markdown, sankey, flowmap, zonemap, graphic-walker, the old chart library) is
   used at least once.
 - **FR-014**: System MUST re-run the real `wftdm-dashboard summarize` CLI
   for all three scenarios against the expanded `summarize.yaml` and

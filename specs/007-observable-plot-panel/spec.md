@@ -6,7 +6,7 @@
 
 **Status**: Draft
 
-**Input**: User description: "Add a fifth panel type — observable-plot — to the registry, following the same pattern as ValueBoxPanel/PlotlyPanel/TablePanel/MarkdownPanel and inheriting 004's expand-to-dialog mechanism automatically. Uses @observablehq/plot. Reuse PlotlyPanel's proven pattern where it genuinely applies (query/fetch chain, loading/empty/error states); research whether Observable Plot needs its own resize treatment rather than assuming PlotlyPanel's ResizeObserver fix transfers unchanged. Confirm, against project-docs/GRAMMAR.md, whether `type: observable-plot` uses the same `$metric.<column>` convention PlotlyPanel resolves or something else, and whether panel-local reactive input widgets (`$inputs.x` or similar) are real, documented grammar or just an illustrative example — if real, scope this as a materially bigger feature than 'swap Plotly for Observable Plot,' not silently included or excluded."
+**Input**: User description: "Add a fifth panel type — observable-plot — to the registry, following the same pattern as ValueBoxPanel/the retired chart panel/TablePanel/MarkdownPanel and inheriting 004's expand-to-dialog mechanism automatically. Uses @observablehq/plot. Reuse the retired chart panel's proven pattern where it genuinely applies (query/fetch chain, loading/empty/error states); research whether Observable Plot needs its own resize treatment rather than assuming the retired chart panel's ResizeObserver fix transfers unchanged. Confirm, against project-docs/GRAMMAR.md, whether `type: observable-plot` uses the same `$metric.<column>` convention the retired chart panel resolves or something else, and whether panel-local reactive input widgets (`$inputs.x` or similar) are real, documented grammar or just an illustrative example — if real, scope this as a materially bigger feature than 'swap the old chart library for Observable Plot,' not silently included or excluded."
 
 ## Grammar findings (pre-spec verification)
 
@@ -21,9 +21,9 @@ spec, per this project's established discipline (005/006 required the same):
    entry.
 2. **Chart encodings (`mark`, `x`, `y`, `fill`, `stroke`, `facet_x`, `facet_y`) are
    bare column names from the queried result set — NOT `$metric.<column>`-prefixed.**
-   This is a real, confirmed grammar difference from `type: plotly`, whose trace
+   This is a real, confirmed grammar difference from `type: the old chart library`, whose trace
    axes (`x: $metric.observed`) *do* use the `$metric.` placeholder convention.
-   `PlotlyPanel`'s trace-resolution logic (`plotlyTraces.ts`) does not transfer
+   `the retired chart panel`'s trace-resolution logic (`a retired chart helper`) does not transfer
    directly — Observable Plot's encoding channels map straight onto whatever
    columns the SQL query returns, no placeholder substitution needed for those
    fields specifically.
@@ -38,7 +38,7 @@ spec, per this project's established discipline (005/006 required the same):
    deferred to a future feature. `project-docs/SPEC.md`'s one-line description of this
    panel type ("For panels with reactive filter inputs") is not incidental
    color — it is this panel type's entire reason for existing as a distinct type
-   from `plotly`, so a version of this feature that omits panel-local inputs would
+   from `the old chart library`, so a version of this feature that omits panel-local inputs would
    not actually deliver what `type: observable-plot` is documented to do.
 4. **No global filter-bar UI exists anywhere in this codebase yet.** The
    top-level `filters:` block (`FilterDefinition` — `select | multiselect |
@@ -55,7 +55,7 @@ spec, per this project's established discipline (005/006 required the same):
    discovered mid-implementation.
 
 These four findings shape the scope below: this feature includes both a static
-query-and-render pipeline (parallel in shape to `PlotlyPanel`) *and* new
+query-and-render pipeline (parallel in shape to `the retired chart panel`) *and* new
 panel-local input-control UI, because the second is not a separable "nice to
 have" for this specific panel type — it is what the type is documented to be for.
 
@@ -68,14 +68,14 @@ tab, pointing it at a metric with a `mark`/`x`/`y` (and optionally `fill`/
 `stroke`/`facet_x`/`facet_y`/`tip`/`grid`) encoding. The chart renders inside the
 panel card with the dashboard's own chrome, updates when the global sidebar
 filter changes (via `$filters.x` in its `filter:` block, the same mechanism
-`PlotlyPanel` already uses), and inherits 004's expand-to-dialog mechanism with
+`the retired chart panel` already uses), and inherits 004's expand-to-dialog mechanism with
 no visual distortion when the dialog opens or closes.
 
 **Why this priority**: This is the minimum slice that makes `observable-plot` a
 usable fifth panel type at all — a working query→render pipeline bound to the
-existing global filter/scenario system, on par with what `PlotlyPanel` already
+existing global filter/scenario system, on par with what `the retired chart panel` already
 delivers for its own library. It is independently valuable and shippable even
-before panel-local inputs exist, the same way `PlotlyPanel` shipped useful
+before panel-local inputs exist, the same way `the retired chart panel` shipped useful
 charts without needing every future feature first.
 
 **Independent Test**: Add an `observable-plot` panel with a `mark`/`x`/`y`
@@ -118,7 +118,7 @@ not affect any other panel on the tab, including other `observable-plot`
 panels.
 
 **Why this priority**: This is the capability that makes `type: observable-plot`
-distinct from `type: plotly` per `project-docs/SPEC.md`'s own description ("for panels
+distinct from `type: the old chart library` per `project-docs/SPEC.md`'s own description ("for panels
 with reactive filter inputs") — real, documented grammar (see Grammar findings
 above), not a stretch goal. It is scoped as P2 rather than folded into User
 Story 1 because it is independently testable and buildable on top of a working
@@ -158,7 +158,7 @@ is affected.
 
 ### User Story 3 - Panel behaves consistently with the rest of the registry (Priority: P3)
 
-An `observable-plot` panel sits alongside `valuebox`/`plotly`/`table`/`markdown`
+An `observable-plot` panel sits alongside `valuebox`/`the old chart library`/`table`/`markdown`
 panels on the same dashboard tab. It uses the same card chrome, the same
 loading-skeleton convention, the same shared empty/error-state components, and
 requires no special-case code anywhere outside `panels/ObservablePlotPanel.tsx`
@@ -171,13 +171,13 @@ not new end-user-visible capability.
 
 **Acceptance Scenarios**:
 
-1. **Given** a dashboard tab with `valuebox`, `plotly`, `table`, `markdown`, and
+1. **Given** a dashboard tab with `valuebox`, `the old chart library`, `table`, `markdown`, and
    `observable-plot` panels all present, **When** the tab loads, **Then** every
    panel renders without error and the `observable-plot` panel's expand trigger
    and card chrome are visually consistent with the others.
 2. **Given** an `observable-plot` panel while its query is in flight, **When**
    the panel first mounts, **Then** it shows an inline loading skeleton
-   consistent with `ValueBoxPanel`/`PlotlyPanel`'s existing per-panel loading
+   consistent with `ValueBoxPanel`/`the retired chart panel`'s existing per-panel loading
    convention (not a shared loading component, matching this project's
    established choice).
 
@@ -217,7 +217,7 @@ not new end-user-visible capability.
   `scenarios`) every data-bound panel type already shares.
 - **FR-002**: Chart encoding fields (`x`, `y`, `fill`, `stroke`, `facet_x`,
   `facet_y`) MUST resolve as literal column names against the panel's queried
-  result set — the `$metric.<column>` placeholder convention `PlotlyPanel` uses
+  result set — the `$metric.<column>` placeholder convention `the retired chart panel` uses
   MUST NOT be applied to these fields, matching the confirmed grammar
   difference.
 - **FR-003**: The panel's `filter:` block MUST resolve both `$filters.<id>`
@@ -237,13 +237,13 @@ not new end-user-visible capability.
   clipping, or stale sizing) when its container size changes, specifically
   including the 004 expand-to-dialog transition and ordinary browser window
   resizing — the concrete mechanism (whether the same ResizeObserver approach
-  `PlotlyPanel` uses transfers as-is, given Observable Plot's different
+  `the retired chart panel` uses transfers as-is, given Observable Plot's different
   rendering model of returning a detached element rather than reusing a
   persistent container via an imperative `.react()`-style update) is a planning
   decision, not assumed here.
 - **FR-008**: The panel MUST use the shared `PanelEmptyState`/`PanelErrorState`
   components for a zero-row query result and a rejected/failed query,
-  respectively, consistent with `ValueBoxPanel`/`PlotlyPanel`/`TablePanel`.
+  respectively, consistent with `ValueBoxPanel`/`the retired chart panel`/`TablePanel`.
 - **FR-009**: The panel MUST show an inline loading skeleton while its initial
   query is in flight, consistent with the existing per-panel loading convention
   (not a new shared loading component).
@@ -252,7 +252,7 @@ not new end-user-visible capability.
   expand-dialog/layout layer to inherit 004's expand-to-dialog mechanism.
 - **FR-011**: The panel MUST query `services/duckdb.ts` via `useFilterState` +
   a direct `services/duckdb.ts` import, following the same query/fetch chain
-  shape `PlotlyPanel`/`TablePanel` already use — no new data-access
+  shape `the retired chart panel`/`TablePanel` already use — no new data-access
   architecture introduced for this panel type.
 
 ### Key Entities
@@ -292,7 +292,7 @@ not new end-user-visible capability.
 - **SC-004**: A zero-row query result and a rejected query each produce the
   same defined empty/error state already used by the sibling panel types, with
   zero unhandled exceptions surfaced to the user.
-- **SC-005**: A dashboard tab combining `valuebox`, `plotly`, `table`,
+- **SC-005**: A dashboard tab combining `valuebox`, `the old chart library`, `table`,
   `markdown`, and `observable-plot` panels renders all of them without error in
   a single load.
 
@@ -302,7 +302,7 @@ not new end-user-visible capability.
   dependency (e.g. `d3`) are confirmed during planning (`research.md`), not
   assumed here — `package.json` currently pins it as `"latest"`.
 - Whether Observable Plot needs its own resize-handling approach, or can reuse
-  `PlotlyPanel`'s ResizeObserver + imperative-resize pattern unchanged, is a
+  `the retired chart panel`'s ResizeObserver + imperative-resize pattern unchanged, is a
   planning-phase research question (Grammar findings note #2's rendering-model
   difference is the reason this isn't assumed) — see FR-007.
 - Panel-local input state's storage mechanism (component-local vs. a

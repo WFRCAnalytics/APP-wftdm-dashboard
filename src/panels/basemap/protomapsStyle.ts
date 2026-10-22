@@ -104,7 +104,7 @@ export function buildProtomapsStyle(flavorName: ProtomapsFlavorName, source: Pro
     // so TS treats them as nominally distinct; a narrow, local cast is
     // the same escape hatch this codebase already uses elsewhere for
     // cross-package structural type friction (e.g.
-    // panels/RechartsPanel.tsx's documented Record<string, any>).
+    // panels/the retired chart panel's documented Record<string, any>).
     layers: layers(SOURCE_ID, namedFlavor(flavorArg), { lang: 'en' }) as StyleSpecification['layers'],
     sprite: `${BASEMAPS_ASSETS_BASE}/sprites/v4/${flavorArg}`,
     glyphs: `${BASEMAPS_ASSETS_BASE}/fonts/{fontstack}/{range}.pbf`,

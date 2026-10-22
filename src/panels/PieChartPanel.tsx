@@ -29,7 +29,7 @@ const ALL_FILTERS: ['*'] = ['*']
 // the mounted container's computed style, matching SankeyPanel.tsx's/
 // HierarchicalChartHost.tsx's own resolveFallbackColors() exactly (this
 // app's real, already-verified-distinct-and-accessible --chart-1..5
-// categorical set, the same lineage rechartsEncoding.ts already cycles
+// categorical set, the same lineage a retired chart helper already cycles
 // through).
 
 const SVG_NS = 'http://www.w3.org/2000/svg'

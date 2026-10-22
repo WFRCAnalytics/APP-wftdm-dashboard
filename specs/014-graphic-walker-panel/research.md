@@ -282,7 +282,7 @@ against the existing fixture.
 `@kanaries/graphic-walker` pulls in `vega`/`vega-lite`/`vega-embed`,
 `mobx`/`mobx-react-lite`, `@radix-ui/*`, `@headlessui/react`,
 `styled-components`, and more — a large, previously-absent dependency
-tree, the same situation `plotly`/`maplibre-gl` were in when they each
+tree, the same situation `the old chart library`/`maplibre-gl` were in when they each
 got their own `vite.config.ts` `manualChunks` entry (`003`, `010`).
 `vite.config.ts`'s own existing comments already anticipate this exact
 addition (CLAUDE.md's documented sketch: `if (id.includes('graphic-walker'))

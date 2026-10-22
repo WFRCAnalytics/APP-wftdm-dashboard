@@ -85,7 +85,7 @@ shape — only what triggers their existing data-fetch effect to re-run.
 one new hook, one new layout component, one small additive change each to
 `state/appState.ts` and `services/yamlLoader.ts`, and one identical
 three-line mechanical diff repeated across five existing panel components
-(`ValueBoxPanel.tsx`, `PlotlyPanel.tsx`, `TablePanel.tsx`,
+(`ValueBoxPanel.tsx`, `the retired chart panel`, `TablePanel.tsx`,
 `ObservablePlotPanel.tsx`, `SankeyPanel.tsx`). No new panel type, no new
 `dashboard-*.yaml` grammar, no new config file type.
 
@@ -219,7 +219,7 @@ src/
 │                                  #   (research.md §6)
 └── panels/
     ├── ValueBoxPanel.tsx          # MODIFIED: 3-line mechanical diff
-    ├── PlotlyPanel.tsx            # MODIFIED: 3-line mechanical diff
+    ├── the retired chart panel            # MODIFIED: 3-line mechanical diff
     ├── TablePanel.tsx             # MODIFIED: 3-line mechanical diff
     ├── ObservablePlotPanel.tsx    # MODIFIED: 3-line mechanical diff
     └── SankeyPanel.tsx            # MODIFIED: 3-line mechanical diff

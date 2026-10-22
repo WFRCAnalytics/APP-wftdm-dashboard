@@ -8,7 +8,7 @@ shape the constitution's v2.2.0 amendment already specifies.
 ```tsx
 export const registry: Record<string, ComponentType<PanelProps>> = {
   valuebox: ValueBoxPanel,
-  plotly: PlotlyPanel,
+  the old chart library: the retired chart panel,
 }
 ```
 
@@ -63,8 +63,8 @@ this single, shared, cross-cutting concern, not a precedent for panel
 components themselves.
 
 `PanelErrorState` and `PanelEmptyState` (referenced here and by
-`ValueBoxPanel`/`PlotlyPanel` directly for their own empty-result cases,
-`contracts/valuebox-panel.md`/`contracts/plotly-panel.md`) are shared
+`ValueBoxPanel`/`the retired chart panel` directly for their own empty-result cases,
+`contracts/valuebox-panel.md`/`contracts/retired-chart-panel.md`) are shared
 `panels/` components, not defined ad hoc per panel — ported from
 `APP-Project-Scoresheet`'s `EmptyState.tsx` and `.banner-error` pattern
 respectively (research.md §8), re-expressed in this project's own tokens:

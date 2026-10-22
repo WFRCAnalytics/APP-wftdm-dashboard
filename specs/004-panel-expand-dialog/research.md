@@ -24,7 +24,7 @@ instances read from, with only one of them responsible for actually firing
 the query.
 
 - Cost: this rewrites the panel pattern itself, not just `panelCard.tsx`.
-  Every current panel (`ValueBoxPanel.tsx`, `PlotlyPanel.tsx`) and every
+  Every current panel (`ValueBoxPanel.tsx`, `the retired chart panel`) and every
   future one would need to be authored against a new
   "fetch-through-a-shared-cache" contract instead of the simple
   "do your own fetch in your own effect" contract CLAUDE.md documents and
@@ -32,10 +32,10 @@ the query.
   Workflow change, not a change scoped to `panelCard.tsx` — directly at odds
   with the feature's own framing ("a generic capability, at the
   `panelCard.tsx` level... no per-type wiring").
-- Cost: for a chart panel specifically, two mounted `PlotlyPanel` instances
-  means two real `Plotly.react()` calls against two separate DOM containers,
+- Cost: for a chart panel specifically, two mounted `the retired chart panel` instances
+  means two real `the old library API` calls against two separate DOM containers,
   reading the same cached rows — i.e. the expensive part (SVG/canvas
-  construction, Plotly's internal figure state, its own event listeners)
+  construction, the old chart library's internal figure state, its own event listeners)
   really is duplicated, exactly the "double mounted" cost the user asked to
   weigh, and it lands on the heaviest part of the system, not the lightest.
 - Cost: two independent effects watching the same cache entry is a second,
@@ -52,12 +52,12 @@ its face this keeps one component instance (`useState`/`useEffect` survive,
 no re-fetch) — but React's reconciliation unmounts and remounts a subtree
 when the branch it sits under changes structurally (going from a plain
 `<CardContent>` child to a `<DialogContent>` child is exactly that). For a
-chart panel, the actual `<div ref={containerRef}>` Plotly draws into would
+chart panel, the actual `<div ref={containerRef}>` the old chart library draws into would
 be destroyed and re-created on every expand/collapse, even though the
 *component* instance never unmounts. That's not a data reset (no new query
 fires — `rows` is still in React state), but it does force a full
-`Plotly.react()` redraw into a brand-new container, silently dropping any
-Plotly-internal UI state (zoom, pan, which legend entries are toggled off).
+`the old library API` redraw into a brand-new container, silently dropping any
+the old chart library-internal UI state (zoom, pan, which legend entries are toggled off).
 Not disqualifying on its own against the FRs as written, but strictly worse
 than necessary for no offsetting benefit over Candidate C below, which pays
 none of this cost.
@@ -85,18 +85,18 @@ reconciliation. A layout effect specifically (not a passive one) matters
 for two reasons: it runs synchronously before the browser paints (no
 visible flash of the old position), and React flushes every layout effect
 in a commit before any passive effect — so by the time a portaled panel's
-own data-fetch/`Plotly.react()` effect (a passive effect) reads its
+own data-fetch/`the old library API` effect (a passive effect) reads its
 container's real layout dimensions, this hook's DOM move has already
 attached it to a visible, correctly-sized anchor.
 
-Concretely, for a chart panel this means `PlotlyPanel`'s `containerRef`
+Concretely, for a chart panel this means `the retired chart panel`'s `containerRef`
 div is the exact same DOM node before and after expand/collapse: its own
 `useEffect`s (the data-fetch effect, and `003`'s `ResizeObserver` effect)
 never re-run, because neither `config`/`filters` (the fetch effect's
 deps) nor the component's mounted-ness ever change — only the *parent* of
 the stable container changes, which the `ResizeObserver` already built in
 `003` reports as an ordinary size change, triggering
-`Plotly.Plots.resize()` exactly as designed.
+`the old library API` exactly as designed.
 
 This is the technique libraries like `react-reverse-portal` implement for
 the same class of problem (e.g. keeping a `<video>` playing across a
@@ -217,7 +217,7 @@ a layout effect (not a passive one) matters for two reasons: it runs
 synchronously before the browser paints (no visible flash of the old
 position), and React flushes every layout effect in a commit before any
 passive effect — so by the time a portaled panel's own data-fetch/
-`Plotly.react()` effect (a passive effect) reads its container's real
+`the old library API` effect (a passive effect) reads its container's real
 layout dimensions, this hook's DOM move has already attached it to a
 visible anchor, avoiding the "measuring a detached node" problem a naive
 ordering would hit.
@@ -256,21 +256,21 @@ re-asserted from theory a second time.
 
 ---
 
-## 2. Radix outside-click detection vs. Plotly's own click interactivity (e.g. legend toggling)
+## 2. Radix outside-click detection vs. the old chart library's own click interactivity (e.g. legend toggling)
 
 FR-004 requires outside-click-to-close, inherited from Radix's
 `DismissableLayer` (used internally by `Dialog.Content`). The specific risk
-flagged: does clicking a Plotly legend entry (to toggle a trace's
+flagged: does clicking a the old chart library legend entry (to toggle a trace's
 visibility) get misidentified as "outside the dialog" and close it?
 
 **Reasoning**: Radix's outside-click detection is a DOM-containment check —
 on `pointerdown`, it asks whether `event.target` is a descendant of the
-dialog content's own ref'd DOM node, not anything Plotly-specific. Once a
-panel is expanded, its container (and everything Plotly draws inside it —
+dialog content's own ref'd DOM node, not anything the old chart library-specific. Once a
+panel is expanded, its container (and everything the old chart library draws inside it —
 the legend included) is a real DOM descendant of `DialogContent` (portaled
 to `document.body`, but still a descendant *of that portaled node*, which is
 what Radix's containment check is against). A legend entry is not a
-separate overlay Plotly portals elsewhere in the document — Plotly draws its
+separate overlay the old chart library portals elsewhere in the document — the old chart library draws its
 legend as ordinary SVG content inside the same chart container the rest of
 the trace lives in, with a click handler bound directly on that in-tree
 element. On DOM-containment grounds alone, this should not misfire.
@@ -281,9 +281,9 @@ dialog's DOM subtree (e.g. a native `<select>`'s dropdown, or a third-party
 picker appended directly to `document.body` as a sibling rather than a
 descendant) — Radix's containment check would then correctly-by-its-own-
 logic, but incorrectly-for-the-user, treat a click on that surface as
-"outside." Plotly's legend isn't that shape for the specific interaction
+"outside." the old chart library's legend isn't that shape for the specific interaction
 this spec calls out (toggle-trace-visibility by clicking a legend entry).
-Plotly *does* have features that behave more like true overlays in other
+the old chart library *does* have features that behave more like true overlays in other
 configurations (e.g. `config.editable`'s inline text-editing input,
 certain modebar dropdown menus) — none of which this feature's scope
 touches, but worth naming so a future feature enabling those doesn't
@@ -393,7 +393,7 @@ tracked case to handle explicitly.
 **Decision**: No new pure-logic module exists to unit-test with Vitest this
 time — the portal-target-swap mechanism is inherently DOM/React-dependent
 (refs, `createPortal`, Radix's own internals), unlike `003`'s
-`panelQuery.ts`/`plotlyTraces.ts`. All verification is a new Playwright
+`panelQuery.ts`/`a retired chart helper`. All verification is a new Playwright
 spec, `tests/integration/panelExpand.spec.ts`, extending the same
 real-browser/real-fixture-data pattern `dashboardShell.spec.ts` already
 established, covering:
@@ -403,12 +403,12 @@ established, covering:
 - Tab trapping: `Tab`/`Shift+Tab` cycle only within the dialog while open.
 - No re-fetch across expand/collapse — asserted by instrumenting the
   panel's query call count (or, for the chart case, by asserting the
-  `Plotly.react()` target DOM node's identity is unchanged across the
+  `the old library API` target DOM node's identity is unchanged across the
   round trip, which is only possible if the container was never recreated).
 - The chart-container-identity/resize check from `003`'s own regression
   class: an expanded chart panel actually redraws to fill the larger
   container (not left at its small-card size).
-- The Plotly-legend-click-does-not-close-the-dialog case from §2.
+- The old chart library-legend-click-does-not-close-the-dialog case from §2.
 - A value-box panel (the "less obviously useful" case named in spec.md)
   expands with no per-type exception or missing control.
 
@@ -437,10 +437,10 @@ at install time.
 | 1 | Single panel-component instance per card, relocated (not swapped via `createPortal`'s own target — tried, found to unmount/remount, §1b) between an inline location and a Dialog location via a persistent portal host node, imperatively moved by `useLayoutEffect` — chosen over lifting query state into a shared cache (would rewrite the panel pattern itself) and over literal dual-render-from-one-instance (silently recreates the chart container on every toggle) |
 | 1a | `forceMount` (the original plan for keeping the dialog-side target always available) was tried and reverted — it caused Radix's MODAL `Content` variant to hide the whole page from assistive tech on mount, confirmed via a real Playwright regression, not just source-reading |
 | 1b | The relocation mechanism itself needed correcting mid-implementation: `createPortal(children, targetNode)` with a changing `targetNode` does not preserve mounted state (verified via a query-count log and a container-identity marker, both showing a real remount) — replaced with a stable portal container, moved imperatively outside React's reconciliation (the same technique `react-reverse-portal` implements) |
-| 2 | Radix's default outside-click handling is safe against Plotly legend clicks (confirmed via a real Playwright test, not just DOM-containment reasoning) — needed two real test-mechanics fixes along the way (removing Plotly's modebar overlay, polling for Plotly's own async trace-visibility update), not a mechanism change |
+| 2 | Radix's default outside-click handling is safe against the old chart library legend clicks (confirmed via a real Playwright test, not just DOM-containment reasoning) — needed two real test-mechanics fixes along the way (removing the old chart library's modebar overlay, polling for the old chart library's own async trace-visibility update), not a mechanism change |
 | 3 | New `src/components/ui/dialog.tsx`, hand-authored to match `tabs.tsx`/`tooltip.tsx`'s existing pattern; leaves `aria-describedby` to Radix's own correct default, always shows a visible title, no `forceMount` handling (§1a) |
 | 4 | Expand trigger: `Maximize2` icon, ghost/icon `Button`, in `CardHeader`; `DialogContent` sized `w-[95vw] h-[90vh] max-w-[1600px]` — required adding an `icon` size variant to `button.tsx` (none of the existing variants fit a label-less trigger) |
 | 5 | `expanded` state is local per panel card, not lifted to a dashboard-level store — single-open-at-a-time and tab-switch-closes-it both fall out for free (confirmed: switching tabs while expanded is structurally unreachable, not merely handled — Radix's modal blocks the click from ever landing on a nav tab) |
 | 6 | Playwright-only (`tests/integration/panelExpand.spec.ts`, 16 tests) — no new pure-logic module to unit-test, no new component-testing library. One small, purely additive test instrumentation added: `services/duckdb.ts`'s `__debugQueryLog()`, for a deterministic (not timing-based) proof of FR-008 |
 | 7 | `@radix-ui/react-dialog` `^1.1.x` (resolved to `1.1.23`), matching the existing Radix primitive version line |
-| 8 | `PlotlyPanel.tsx`'s container height changed from a hardcoded pixel default to `100%` — found necessary for FR-009 (the container never grew into the dialog otherwise); the one place this feature's "zero panel-type awareness" goal didn't fully hold, and the only line actually changed in either panel component |
+| 8 | `the retired chart panel`'s container height changed from a hardcoded pixel default to `100%` — found necessary for FR-009 (the container never grew into the dialog otherwise); the one place this feature's "zero panel-type awareness" goal didn't fully hold, and the only line actually changed in either panel component |

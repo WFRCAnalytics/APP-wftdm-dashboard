@@ -119,7 +119,7 @@ explicitly here achieves the same user-visible guarantee without needing
   before paint (no visible flash), and guaranteed to run before any
   passive effect in the same commit (React flushes all layout effects
   before any passive effect), which is what lets a portaled panel's own
-  data-fetch/`Plotly.react()` effect safely measure real, attached-to-the-
+  data-fetch/`the old library API` effect safely measure real, attached-to-the-
   document layout dimensions rather than a still-detached node's.
 - **No `forceMount`.** `DialogContent` mounts only while `expanded` is
   `true`, via Radix's own Presence — research.md §1a's correction. There
@@ -135,7 +135,7 @@ explicitly here achieves the same user-visible guarantee without needing
   beyond the one common field (`height`) needed to keep the collapsed
   presentation's size unchanged from before this feature existed.
   `usePanelExpandHost` never inspects `children`'s type or props — this is
-  what makes it correct for `ValueBoxPanel`, `PlotlyPanel`, and any future
+  what makes it correct for `ValueBoxPanel`, `the retired chart panel`, and any future
   registry entry with zero changes to this file.
 
 ## Given/When/Then
@@ -156,9 +156,9 @@ explicitly here achieves the same user-visible guarantee without needing
   container DOM node identity is unchanged (verified via a marker
   attribute surviving the round trip), and `003`'s `ResizeObserver` effect
   (unmodified) reports the size change and triggers
-  `Plotly.Plots.resize()` exactly as it would for any other container
+  `the old library API` exactly as it would for any other container
   resize (FR-009) — this additionally required a small, in-scope fix to
-  `PlotlyPanel.tsx` itself (its container's hardcoded pixel height
+  `the retired chart panel` itself (its container's hardcoded pixel height
   couldn't grow into the dialog; changed to fill whatever real container
   it's placed in — see `contracts/panel-card.md`'s note and research.md).
 - **Given** a panel's query is still in flight, **when** the user expands

@@ -4,7 +4,7 @@
 // whose own hex/RGB fields are read-only — data-model.md §4). Kept
 // separate from color-picker.tsx itself for the same Vitest-testability
 // reason every other pure-logic split in this codebase exists
-// (plotlyTraces.ts, sankeyGraph.ts, panels/scenarioDisplay.ts, ...).
+// (a retired chart helper, sankeyGraph.ts, panels/scenarioDisplay.ts, ...).
 
 /** Clamps a number to a valid 8-bit color channel value (FR-015) —
  * never errors, never silently ignores an out-of-range input. */

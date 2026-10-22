@@ -61,7 +61,7 @@ here to a data/state-layer feature instead:
    reads are pull-based only"). Every existing panel type reads
    `appState.getActive()` **inside its data-fetch effect**, which only
    re-runs when that panel's `config`/`filters` dependency changes —
-   confirmed by reading `PlotlyPanel.tsx`/`TablePanel.tsx`/
+   confirmed by reading `the retired chart panel`/`TablePanel.tsx`/
    `ValueBoxPanel.tsx`/`ObservablePlotPanel.tsx`/`SankeyPanel.tsx`, all of
    which call `appState.getActive()` the same way. **Activating a newly
    loaded local scenario does not, by itself, cause any already-mounted

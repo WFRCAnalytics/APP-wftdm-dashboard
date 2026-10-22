@@ -93,7 +93,7 @@ declare global {
 // MapboxOverlay instances are imperative, mount-lifetime objects (a ref,
 // never React-rendered output — project-docs/SPEC.md's own create-once/
 // setProps()-on-update/map.remove()-on-destroy shape), not rebuilt
-// per-render the way PlotlyPanel/SankeyPanel/ObservablePlotPanel each
+// per-render the way the retired chart panel/SankeyPanel/ObservablePlotPanel each
 // rebuild their own chart on data change; (2) it must survive 004's
 // appendChild-based DOM relocation with a live WebGL context intact
 // (research.md §3) — verified empirically via a dedicated Playwright

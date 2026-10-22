@@ -76,7 +76,7 @@ npx playwright test
 **Expected**: every existing assertion about panel *content* (values,
 row counts, chart series) still passes — this feature changes loading
 timing only (spec.md FR-009). Any pre-existing, already-documented
-unrelated flake (the dark-mode Plotly re-query-count off-by-one; the
+unrelated flake (the dark-mode the old chart library re-query-count off-by-one; the
 deck.gl hover-tooltip real-hardware-timing flake — both recorded in
 `CLAUDE.md`) is expected and not this feature's concern; a *new* failure
 category is not.

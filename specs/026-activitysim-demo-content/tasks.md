@@ -64,7 +64,7 @@ Additive TS: `src/services/scenarioDiscovery.ts`, `src/main.tsx` (existing files
 
 ### Implementation for User Story 1
 
-- [X] T013 [US1] Author `public/demo-dashboard-config/dashboard-2-destination-choice.yaml` with `header.tab: Destination Choice` and a `plotly` (or `table`) panel bound to `trips_by_destination_zone`, `scenarios: [activitysim-baseline, activitysim-density-variant, activitysim-transit-variant]`, x-axis `destination_zone_id`, series per scenario — per `data-model.md`'s panel entity table
+- [X] T013 [US1] Author `public/demo-dashboard-config/dashboard-2-destination-choice.yaml` with `header.tab: Destination Choice` and a `the old chart library` (or `table`) panel bound to `trips_by_destination_zone`, `scenarios: [activitysim-baseline, activitysim-density-variant, activitysim-transit-variant]`, x-axis `destination_zone_id`, series per scenario — per `data-model.md`'s panel entity table
 - [X] T014 [P] [US1] Spot-check via DuckDB CLI (`quickstart.md` §2): query `trips_by_destination_zone.parquet` for `destination_zone_id = 1` in both `activitysim-baseline` and `activitysim-density-variant`; confirm the increase falls in the already-measured +37%–40% range (SC-003)
 - [X] T015 [US1] Run `npm run dev`, open the Destination Choice tab, confirm TAZ 1's bar/row is visibly higher for the density variant than baseline (SC-001) — depends on T013 and Phase 2's T007/T010/T011
 
@@ -80,7 +80,7 @@ Additive TS: `src/services/scenarioDiscovery.ts`, `src/main.tsx` (existing files
 
 ### Implementation for User Story 2
 
-- [X] T016 [US2] Author `public/demo-dashboard-config/dashboard-3-transit-service.yaml` with `header.tab: Transit Service` and a `plotly`/`observable-plot` panel bound to `mode_share_by_period`, filtered/highlighted on `trip_mode = 'WALK_LOC'`, x-axis `time_of_day_period` (ordered EA/AM/MD/PM/EV), series per scenario (`activitysim-baseline`, `activitysim-transit-variant`) — per `data-model.md`
+- [X] T016 [US2] Author `public/demo-dashboard-config/dashboard-3-transit-service.yaml` with `header.tab: Transit Service` and a `the old chart library`/`observable-plot` panel bound to `mode_share_by_period`, filtered/highlighted on `trip_mode = 'WALK_LOC'`, x-axis `time_of_day_period` (ordered EA/AM/MD/PM/EV), series per scenario (`activitysim-baseline`, `activitysim-transit-variant`) — per `data-model.md`
 - [X] T017 [P] [US2] Spot-check via DuckDB CLI (`quickstart.md` §2): query `mode_share_by_period.parquet` for `trip_mode = 'WALK_LOC'` across AM/PM/MD in both scenarios; confirm AM/PM rise ~+1 percentage point and MD stays close to flat (SC-004)
 - [X] T018 [US2] Run `npm run dev`, open the Transit Service tab, confirm `WALK_LOC`'s AM/PM bars are visibly higher for the transit variant while MD/EV are close to unchanged (SC-002) — depends on T016 and Phase 2's T007/T010/T011
 
@@ -112,7 +112,7 @@ Additive TS: `src/services/scenarioDiscovery.ts`, `src/main.tsx` (existing files
 
 ### Implementation for User Story 4
 
-- [X] T022 [US4] Author `public/demo-dashboard-config/dashboard-1-overview.yaml` — this is the FIRST file in T009's `index.json` (constitution Principle VII: first `dashboard-*.yaml` is the landing page) — with `valuebox` panels bound to `summary_kpis`, a `plotly` panel bound to `trip_mode_share`, and a `plotly` panel bound to `trip_purpose_share`, per `data-model.md`
+- [X] T022 [US4] Author `public/demo-dashboard-config/dashboard-1-overview.yaml` — this is the FIRST file in T009's `index.json` (constitution Principle VII: first `dashboard-*.yaml` is the landing page) — with `valuebox` panels bound to `summary_kpis`, a `the old chart library` panel bound to `trip_mode_share`, and a `the old chart library` panel bound to `trip_purpose_share`, per `data-model.md`
 - [X] T023 [P] [US4] Spot-check via DuckDB CLI: confirm `summary_kpis.parquet` for `activitysim-baseline` shows `total_households = 5000`, `total_persons = 8212`, `total_trips = 23583` (matching this session's already-confirmed real row counts)
 - [X] T024 [US4] Run `npm run dev`, open the Overview tab, confirm KPI value boxes and both breakdown panels render with no error for the baseline scenario alone and for all three scenarios together — depends on T022 and Phase 2's T007/T010/T011
 

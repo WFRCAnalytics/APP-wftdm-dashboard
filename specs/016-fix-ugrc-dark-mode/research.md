@@ -102,7 +102,7 @@ Accessibility → Color filters; a DWM-level compositor effect) was also
 considered and is judged a weaker fit: it inverts the entire visible
 desktop uniformly, with no per-element granularity, which does not
 explain why only two specific panels are reported as broken while
-everything else on the same page (other basemap panels, Plotly panels,
+everything else on the same page (other basemap panels, the old chart library panels,
 app chrome) renders correctly. It is not ruled out outright — see the
 diagnostic protocol below, which checks it alongside the leading
 hypothesis — but the per-element force-dark/extension hypothesis fits

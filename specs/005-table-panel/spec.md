@@ -9,7 +9,7 @@
 **Input**: User description: "Feature: TablePanel
 
 Add a table panel type to the registry (panels/registry.tsx), following
-the same pattern as ValueBoxPanel/PlotlyPanel from 003-dashboard-shell-
+the same pattern as ValueBoxPanel/the retired chart panel from 003-dashboard-shell-
 navigation and inheriting 004's panel-expand-dialog mechanism
 automatically (no per-type wiring needed there).
 
@@ -32,7 +32,7 @@ automatically (no per-type wiring needed there).
 - Uses 002-design-tokens' existing tokens/typography for styling — same
   bar as every prior panel type, not framework-default table styling.
 - Loading/empty/error states follow the same pattern as ValueBoxPanel/
-  PlotlyPanel (shared PanelEmptyState/PanelErrorState components, no new
+  the retired chart panel (shared PanelEmptyState/PanelErrorState components, no new
   state-handling pattern invented).
 - Same query/state-management approach as the other two panel types
   (useFilterState hook, direct services/duckdb.ts import, no new
@@ -257,7 +257,7 @@ results without the user needing to know or navigate to its original page.
 - **FR-001**: System MUST provide a `table` panel type registered in the
   panel registry, following the established panel pattern (a function
   component receiving a single `config` prop, per the pattern
-  `ValueBoxPanel`/`PlotlyPanel` already use).
+  `ValueBoxPanel`/`the retired chart panel` already use).
 - **FR-002**: A table panel MUST render its query result's rows as a
   properly styled table, using the existing design-token set — not
   unstyled or framework-default table markup.
@@ -303,7 +303,7 @@ results without the user needing to know or navigate to its original page.
   (`PanelEmptyState`, `PanelErrorState`) — no new state-handling pattern.
 - **FR-014**: A table panel MUST read filter values via the existing
   filter-state mechanism and query via the existing shared query service
-  — the same architecture `ValueBoxPanel`/`PlotlyPanel` already use, not
+  — the same architecture `ValueBoxPanel`/`the retired chart panel` already use, not
   a new one.
 - **FR-015**: A table panel MUST automatically inherit the existing
   expand-to-large-view mechanism with zero panel-type-specific wiring —
