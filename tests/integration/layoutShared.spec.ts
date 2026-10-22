@@ -139,12 +139,13 @@ test.describe('chart hover', () => {
     await expect(waffle).toBeVisible({ timeout: 30_000 })
     const rects = waffle.locator('rect[data-key]')
     await rects.first().hover()
-    // the same classes the grid uses: the group is outlined and the rest drop to half strength
+    // the same classes the grid uses: the hovered group keeps full strength, the rest fade, and nothing is outlined
     await expect(waffle).toHaveClass(/syncing/)
     expect(await waffle.locator('rect.sync').count()).toBeGreaterThan(0)
     const dimmed = waffle.locator('rect[data-key]:not(.sync)').first()
-    await expect(dimmed).toHaveCSS('opacity', '0.5')
-    await expect(waffle.locator('rect.sync').first()).toHaveCSS('stroke-width', '2.4px')
+    await expect(dimmed).toHaveCSS('opacity', '0.28')
+    await expect(waffle.locator('rect.sync').first()).toHaveCSS('opacity', '1')
+    await expect(waffle.locator('rect.sync').first()).not.toHaveCSS('stroke-width', '2.4px')
     await page.mouse.move(5, 5)
     await expect(waffle).not.toHaveClass(/syncing/)
   })
