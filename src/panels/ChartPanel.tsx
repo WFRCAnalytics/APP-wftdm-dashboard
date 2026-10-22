@@ -13,6 +13,8 @@ import { useColorScheme } from '@/hooks/useColorScheme'
 import { useScenarioDisplay } from '@/hooks/useScenarioDisplay'
 import { useViewContext } from '@/hooks/useViewContext'
 import { useTileLegendSlot } from '@/layout/tile'
+import { useRegisterTileExport } from '@/layout/tileExport'
+import { exportTables } from '@/charts/exportRows'
 import type { ChartPanelConfig } from '@/layout/types'
 import { PanelEmptyState } from '@/panels/PanelEmptyState'
 import { PanelErrorState } from '@/panels/PanelErrorState'
@@ -193,6 +195,8 @@ export function ChartPanel({ config }: PanelProps<ChartPanelConfig>) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [kind, data, status, colorScheme, tick, view.setYear, view.pickScenario])
+
+  useRegisterTileExport(kind && data && status === 'ready' ? () => exportTables(kind, data.plan, data.data) : null)
 
   const runColors = useMemo(() => {
     const m = new Map<string, string>()

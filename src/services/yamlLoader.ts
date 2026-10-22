@@ -85,6 +85,7 @@ type DashboardIndexJson =
       vocab?: unknown
       metrics?: unknown
       units?: unknown
+      export?: unknown
     }
 
 /**
@@ -110,6 +111,13 @@ type DashboardIndexJson =
  * of problem (e.g. PlotlyPanel.tsx's own FALLBACK_FOREGROUND/
  * FALLBACK_BORDER).
  */
+/** `export: { footer: true | false | "text" }` of the deployment's index.json. */
+function parseExportFooter(raw: unknown): boolean | string | undefined {
+  if (typeof raw !== 'object' || raw === null) return undefined
+  const footer = (raw as { footer?: unknown }).footer
+  return typeof footer === 'boolean' || typeof footer === 'string' ? footer : undefined
+}
+
 export interface DashboardBranding {
   title?: string
   logoUrl?: string
@@ -193,6 +201,9 @@ export interface DashboardBranding {
   metrics?: Record<string, import('../charts/lib/metrics.ts').MetricOverride>
   /** `units.trips`: divisor and suffix for trip counts in the time-of-day charts (default thousands, "k"). */
   units?: { trips?: { divisor?: number; suffix?: string }; transit_share_max?: number }
+  /** `export.footer`: the line under exported images. `true` (default) = source, scenarios, year and date; a string replaces
+   * it; `false` leaves it out. */
+  exportFooter?: boolean | string
 }
 
 export interface ModelYear {
@@ -324,6 +335,7 @@ export async function loadDashboardBranding(
       defaultYear: typeof parsed.defaultYear === 'number' ? parsed.defaultYear : undefined,
       compareDefault: parseCompareDefault(parsed.compare),
       ...parseCompareInitial(parsed.compare),
+      exportFooter: parseExportFooter(parsed.export),
       units: typeof parsed.units === 'object' && parsed.units !== null ? (parsed.units as DashboardBranding['units']) : undefined,
       metrics: typeof parsed.metrics === 'object' && parsed.metrics !== null ? (parsed.metrics as DashboardBranding['metrics']) : undefined,
       vocab: typeof parsed.vocab === 'object' && parsed.vocab !== null ? (parsed.vocab as DashboardBranding['vocab']) : undefined,

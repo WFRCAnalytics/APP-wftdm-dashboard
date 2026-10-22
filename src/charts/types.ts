@@ -142,6 +142,9 @@ export interface ChartKind {
   draw(el: HTMLElement, env: ChartEnv): ChartResult | void
   /** Loads data that is not a per-run table (a family roll-up); handed to `draw` as `env.extra`. */
   loadExtra?(plan: ChartPlan): Promise<unknown>
+  /** The flat tables behind the drawing, when they differ from the source tables (default: the kind's `tables()` for every
+   * compared run). Used by the tile's Export menu. */
+  exportRows?(plan: ChartPlan, data: ChartData): { name: string; rows: Row[] }[]
   /** Called once when the panel unmounts, with the panel's persistent `state` (e.g. `map.remove()`). */
   destroy?(state: Record<string, unknown>): void
 }

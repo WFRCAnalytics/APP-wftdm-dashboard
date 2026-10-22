@@ -1,8 +1,9 @@
-import { createContext, useContext, useState, type ReactNode } from 'react'
+import { createContext, useContext, useMemo, useRef, useState, type ReactNode } from 'react'
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { PanelErrorState } from '@/panels/PanelErrorState'
 import { usePanelExpandHost } from '@/layout/panelExpandHost'
+import { createExportRegistry, ExportMenu, TileExportContext } from '@/layout/tileExport'
 
 // The tile chrome (project-docs/redesign/02-layout-and-components.md section 2), top to bottom: header row (title,
 // badges, expand), optional subtitle, control row, legend row, body. The error boundary, Suspense and expand
@@ -32,6 +33,8 @@ export interface TileProps {
 
 export function Tile({ title, subtitle, badges, controls, height, expandable, panel, errorMessage }: TileProps) {
   const [legendEl, setLegendEl] = useState<HTMLDivElement | null>(null)
+  const cardRef = useRef<HTMLDivElement>(null)
+  const exports = useMemo(() => createExportRegistry(), [])
 
   // Shared by the card and the expand overlay so every control keeps working while expanded.
   const chrome = (
@@ -47,15 +50,17 @@ export function Tile({ title, subtitle, badges, controls, height, expandable, pa
   const hasPanel = panel !== null && !errorMessage
 
   return (
-    <Card className="flex h-full flex-col">
+    <TileExportContext.Provider value={exports.registry}>
+    <Card ref={cardRef} className="flex h-full flex-col">
       <CardHeader className="flex-row items-center gap-2 space-y-0 px-[18px] pb-0 pt-4">
         <CardTitle className="text-[15.5px]">{title}</CardTitle>
         {badges}
         <span className="flex-1" />
-        {hasPanel && expandable && trigger}
+        {hasPanel && <ExportMenu title={title} cardRef={cardRef} tables={exports.all} />}
+        {hasPanel && expandable && <span data-export-skip="">{trigger}</span>}
       </CardHeader>
       {subtitle && <p className="max-w-[72ch] px-[18px] pt-0.5 font-body text-[12.5px] text-[var(--mute)]">{subtitle}</p>}
-      {controls && <div className="flex flex-wrap items-center gap-[10px] px-[18px] pt-[10px]">{controls}</div>}
+      {controls && <div data-export-skip="" className="flex flex-wrap items-center gap-[10px] px-[18px] pt-[10px]">{controls}</div>}
       <div
         ref={setLegendEl}
         data-testid="tile-legend"
@@ -77,5 +82,6 @@ export function Tile({ title, subtitle, badges, controls, height, expandable, pa
         </TileLegendContext.Provider>
       </CardContent>
     </Card>
+    </TileExportContext.Provider>
   )
 }

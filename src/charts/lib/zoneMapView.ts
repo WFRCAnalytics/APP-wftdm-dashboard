@@ -12,6 +12,7 @@ import { basemapKey, resolveEffectiveBasemap } from '@/panels/basemap/resolveEff
 import { freshBlankStyle, loadBasemapStyle } from '@/panels/basemap/loadBasemapStyle'
 import type { BasemapPresetName, BasemapSelection } from '@/panels/basemap/types'
 import type { ChartPanelConfig } from '@/layout/types'
+import { trackMap } from '@/services/mapCapture'
 
 const SRC_ZONES = 'wfz-zones'
 const SRC_HL = 'wfz-hl'
@@ -96,6 +97,7 @@ export class ZoneMap implements CameraMap {
       fadeDuration: 0,
       ...view,
     })
+    trackMap(this.map)
     this.map.touchZoomRotate.disableRotation()
     this.home = { center: this.map.getCenter().toArray() as [number, number], zoom: this.map.getZoom() }
 
