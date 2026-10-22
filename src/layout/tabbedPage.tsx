@@ -5,8 +5,10 @@ import { FillProvider } from '@/layout/fill'
 import { HeroBand } from '@/layout/heroBand'
 import { IdenticalNote } from '@/layout/identicalNote'
 import { PanelCard } from '@/layout/panelCard'
+import { SharedControlsBar, SharedKindsContext } from '@/layout/sharedControlsBar'
+import { sharedControl } from '@/layout/sharedControls'
 import type { TabsPlan, TabSection } from '@/layout/dashboardLayout'
-import type { PanelConfig } from '@/layout/types'
+import type { PanelConfig, SharedControlKind } from '@/layout/types'
 import { cn } from '@/lib/utils'
 import { getActiveSection, getPickedTile, setActiveSection, setPickedTile, useLayoutVersion } from '@/state/layoutState'
 import { tileKey } from '@/state/tileState'
@@ -36,19 +38,28 @@ export function TabbedPage({ page, plan, rows }: { page: string; plan: TabsPlan;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page])
 
+  const kinds = useMemo(() => activeKinds(section, rows), [section, rows])
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-[14px] overflow-y-auto pb-[14px] pl-[14px] pr-7 pt-1" data-testid="tabbed-page" data-section={section.id}>
       {plan.pinned.length > 0 && <IdenticalNote />}
       {plan.pinned.map((name) => (
         <HeroBand key={name} rowName={name} panels={rows.get(name) ?? []} />
       ))}
-      <TabStrip page={page} plan={plan} section={section} rows={rows} />
-      <SectionBody key={`${page}:${section.id}`} page={page} section={section} rows={rows} />
+      <TabStrip page={page} plan={plan} section={section} rows={rows} kinds={kinds} />
+      <SharedKindsContext.Provider value={kinds}>
+        <SectionBody key={`${page}:${section.id}`} page={page} section={section} rows={rows} />
+      </SharedKindsContext.Provider>
     </div>
   )
 }
 
-function TabStrip({ page, plan, section, rows }: { page: string; plan: TabsPlan; section: TabSection; rows: Rows }) {
+/** The shared controls this tab declares that its tiles really offer (two or more options in common). */
+function activeKinds(section: TabSection, rows: Rows): ReadonlySet<SharedControlKind> {
+  const panels = section.rows.flatMap((name) => rows.get(name) ?? [])
+  return new Set(section.shared.filter((k) => sharedControl(k, panels) !== null))
+}
+
+function TabStrip({ page, plan, section, rows, kinds }: { page: string; plan: TabsPlan; section: TabSection; rows: Rows; kinds: ReadonlySet<SharedControlKind> }) {
   const tiles = section.mode === 'pick' ? pickables(section, rows) : []
   const picked = pickedFor(page, section, tiles)
   const onKey = (e: KeyboardEvent<HTMLDivElement>) => {
@@ -95,6 +106,11 @@ function TabStrip({ page, plan, section, rows }: { page: string; plan: TabsPlan;
           onChange={(id) => setPickedTile(`${page}:${section.id}`, id)}
           data-testid="tab-chart-picker"
         />
+      )}
+      {kinds.size > 0 && (
+        <div className="flex items-center gap-3" data-testid="shared-controls">
+          <SharedControlsBar page={page} sectionId={section.id} kinds={[...kinds]} rows={rows} rowNames={section.rows} />
+        </div>
       )}
     </div>
   )

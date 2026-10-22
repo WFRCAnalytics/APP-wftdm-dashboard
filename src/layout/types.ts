@@ -588,12 +588,16 @@ export type PanelConfig =
  * DOM scroll-to anchor (`section-${id}`, dashboardRenderer.tsx). Grouping
  * `rows` never reorders them; row render order stays exactly `layout`'s
  * own object-key order regardless of `sections`. */
+export type SharedControlKind = 'group' | 'view'
+
 export interface SectionConfig {
   id: string
   label: string
   rows: string[]
   /** Tabbed pages: `stack` (default) shows every tile of the tab; `pick` shows one at a time, chosen from a list. */
   mode?: 'stack' | 'pick'
+  /** Tabbed pages: tile controls lifted into the tab strip, one control driving every tile of the tab that offers the same option id. */
+  shared_controls?: SharedControlKind[]
   /** 063 redesign: scroll to the tile with this `id` instead of the section's first row (two tiles can share a row). */
   tile?: string
 }

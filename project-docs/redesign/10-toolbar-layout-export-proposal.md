@@ -212,8 +212,11 @@ section; the loader warns).
   buttons are not squeezed above the chart: when the tile is at least 760px wide the controls stack in a rail on the
   right of the chart (labels above full-width options); narrower tiles keep them above the chart. The legend stays
   above the chart.
-- Shared controls across the tiles of a tab ("one Group by drives both charts") are **not built**; each tile keeps its own
-  state. See open question 6.
+- **Shared controls.** A section may declare `shared_controls: [group, view]`. The tab strip then shows one Group by and/or
+  one View control (the union of the option ids the tab's multi-view tiles offer; the first tile decides label, order and
+  default), and the tiles hide their own copy. Choosing an option writes it to every tile of the tab that offers that
+  option id, so tiles must use matching ids to move together (a tile without the option keeps its default). A kind that
+  fewer than two options share is not lifted. `Compare as` and `Scenario` stay per tile.
 
 **Tabs are the existing `sections:`.** No second concept. Everything that makes a section navigable in the sidebar
 already exists (`id`, `label`, `rows`, optional `tile`). New optional fields:
@@ -447,8 +450,8 @@ deployer setting.
 
 Still open:
 
-6. **Shared tab controls.** Should a tab be able to declare one control (for example Group by) that drives all its tiles,
-   replacing each tile's own? Needs a `tab_controls:` block and a way to map the shared value onto each tile's group.
+6. ~~Shared tab controls~~ built as `shared_controls` on a section (`layout/sharedControls.ts`, `layout/sharedControlsBar.tsx`);
+   see section C. Not built: a shared `Compare as`.
 7. **Export from the expanded dialog**, and a page-level "Export all tiles".
 
 ### Earlier questions (kept for the record)

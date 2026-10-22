@@ -90,3 +90,37 @@ test.describe('tabbed pages', () => {
     await expect(page.getByTestId('row_time')).toBeAttached()
   })
 })
+
+test.describe('shared tab controls', () => {
+  test('a section can lift Group by and View into the tab strip, and they drive the tile', async ({ page }) => {
+    await page.route('**/dashboard-4-mode-choice.yaml', async (route) => {
+      const body = await (await route.fetch()).text()
+      const lifted = body.replace('rows: [row_share] }', 'rows: [row_share], shared_controls: [group, view] }')
+      expect(lifted).not.toBe(body)
+      await route.fulfill({ body: lifted, contentType: 'text/yaml' })
+    })
+    await page.setViewportSize({ width: 1440, height: 900 })
+    await boot(page)
+    await page.hover('[data-sidebar=sidebar]')
+    await page.getByRole('tab', { name: 'Mode choice' }).first().click()
+    const shared = page.getByTestId('shared-controls')
+    await expect(shared).toBeVisible({ timeout: 30_000 })
+    // the tile no longer carries its own copies
+    const tile = page.getByTestId('tab-body')
+    await expect(tile.getByRole('group', { name: 'View' })).toHaveCount(0)
+    await expect(tile.getByLabel('Compare by')).toHaveCount(0)
+    await expect(page.locator('[data-chart-kind="mode-bars"] svg').first()).toBeVisible({ timeout: 30_000 })
+    await shared.getByRole('button', { name: '100% bars' }).click()
+    await expect(page.locator('[data-chart-kind="stacked-bars"] svg').first()).toBeVisible({ timeout: 30_000 })
+    await expect(page.locator('[data-chart-kind="mode-bars"]')).toHaveCount(0)
+  })
+
+  test('without shared_controls the tile keeps its own controls and the strip has none', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 })
+    await boot(page)
+    await page.hover('[data-sidebar=sidebar]')
+    await page.getByRole('tab', { name: 'Mode choice' }).first().click()
+    await expect(page.getByTestId('tab-body').getByRole('group', { name: 'View' })).toBeVisible({ timeout: 30_000 })
+    await expect(page.getByTestId('shared-controls')).toHaveCount(0)
+  })
+})

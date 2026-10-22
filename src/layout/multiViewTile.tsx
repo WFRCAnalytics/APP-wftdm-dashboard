@@ -6,6 +6,7 @@ import { Segmented } from '@/components/ui/segmented'
 import { useCompareInputs } from '@/hooks/useCompareInputs'
 import { useResolvedView } from '@/hooks/useViewContext'
 import { TileKeyContext, useTileState } from '@/hooks/useTileState'
+import { useSharedKinds } from '@/layout/sharedControlsBar'
 import { PanelErrorBoundary } from '@/layout/panelCard'
 import { Tile } from '@/layout/tile'
 import { useFill, withFillHeight } from '@/layout/fill'
@@ -34,6 +35,7 @@ export function MultiViewTile({ config: rawConfig, tileKey }: { config: MultiVie
   const bodyConfig = useMemo(() => withFillHeight(rawConfig, fill), [rawConfig, fill.active, fill.height]) // eslint-disable-line react-hooks/exhaustive-deps
   const { inputs, referenceLabel } = useCompareInputs()
   const [tile, setTile] = useTileState(tileKey)
+  const lifted = useSharedKinds()
   const error = useMemo(() => validateMultiView(config), [config])
   const resolved = useMemo(() => (error ? null : resolveMultiView(config, tile, { compare: ctx.compare })), [config, error, tile, ctx.compare])
 
@@ -86,7 +88,7 @@ export function MultiViewTile({ config: rawConfig, tileKey }: { config: MultiVie
   }
 
   const controls: ReactNode[] = []
-  if (config.group_by && config.group_by.options.length > 0) {
+  if (config.group_by && config.group_by.options.length > 0 && !lifted.has('group')) {
     controls.push(
       <PillSelect
         key="group"
@@ -125,7 +127,7 @@ export function MultiViewTile({ config: rawConfig, tileKey }: { config: MultiVie
       />,
     )
   }
-  if (resolved.visibleViews.length > 1) {
+  if (resolved.visibleViews.length > 1 && !lifted.has('view')) {
     controls.push(
       <Segmented
         key="view"

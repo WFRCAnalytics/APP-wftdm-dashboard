@@ -2,7 +2,7 @@
 // out of dashboardRenderer.tsx/sidebarNav.tsx for direct unit testability,
 // matching this project's own established convention for non-trivial-but-
 // pure layout/data logic (tableLogic.ts, sankeyGraph.ts, zonemapColor.ts).
-import type { DashboardTabConfig, PanelConfig, SectionConfig } from '@/layout/types'
+import type { DashboardTabConfig, PanelConfig, SectionConfig, SharedControlKind } from '@/layout/types'
 
 /**
  * FR-018/data-model.md §5: a "Metric Strip" row — every panel in it is
@@ -83,6 +83,13 @@ export function findFullPagePanel(tab: DashboardTabConfig): PanelConfig | null {
   return allPanels.length === 1 ? allPanels[0] : null
 }
 
+/** Keeps only the kinds the app knows; anything else in the YAML is ignored. */
+export function sharedKinds(value: unknown): SharedControlKind[] | undefined {
+  if (!Array.isArray(value)) return undefined
+  const kinds = value.filter((k): k is SharedControlKind => k === 'group' || k === 'view')
+  return kinds.length > 0 ? [...new Set(kinds)] : undefined
+}
+
 export interface ResolvedSection {
   id: string
   label: string
@@ -94,6 +101,7 @@ export interface ResolvedSection {
   /** Anchor on the tile with this `id` rather than the first row. */
   tile?: string
   mode?: 'stack' | 'pick'
+  shared?: SharedControlKind[]
 }
 
 /**
@@ -135,7 +143,7 @@ export function resolveSections(tab: DashboardTabConfig): ResolvedSection[] {
     // never reorders rows" guarantee.
     const orderedRows = Object.keys(tab.layout).filter((rowName) => validRows.includes(rowName))
     if (orderedRows.length === 0) continue
-    resolved.push({ id: section.id, label: section.label, rows: orderedRows, tile: typeof section.tile === 'string' ? section.tile : undefined, mode: section.mode === 'pick' ? 'pick' : undefined })
+    resolved.push({ id: section.id, label: section.label, rows: orderedRows, tile: typeof section.tile === 'string' ? section.tile : undefined, mode: section.mode === 'pick' ? 'pick' : undefined, shared: sharedKinds(section.shared_controls) })
   }
 
   return resolved
@@ -145,6 +153,7 @@ export interface TabSection {
   id: string
   label: string
   mode: 'stack' | 'pick'
+  shared: SharedControlKind[]
   /** Visible rows of the tab, in layout order. */
   rows: string[]
 }
@@ -171,7 +180,7 @@ export function planTabs(tab: DashboardTabConfig, ctx: VisibilityContext): TabsP
   const sections: TabSection[] = []
   for (const s of resolveSections(tab)) {
     const rows = s.rows.filter((r) => visibleRows.has(r) && !pinned.includes(r))
-    if (rows.length > 0 && !sections.some((x) => x.id === s.id)) sections.push({ id: s.id, label: s.label, mode: s.mode ?? 'stack', rows })
+    if (rows.length > 0 && !sections.some((x) => x.id === s.id)) sections.push({ id: s.id, label: s.label, mode: s.mode ?? 'stack', shared: s.shared ?? [], rows })
   }
   if (sections.length === 0) return null
   const placed = new Set(sections.flatMap((s) => s.rows))

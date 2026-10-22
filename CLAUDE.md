@@ -596,7 +596,8 @@ before touching charts).
   Scenarios chip for focus, compared set and reference; Show greyed out when Compare is off; Compare right-most). Tiles in a
   row share the tallest height. Pages are `scroll` or `tabs` (`state/layoutState.ts`: viewer setting or `?layout=` >
   `header.layout_mode` > `layout.mode` in index.json > scroll); in tabs mode `sections:` are the tabs (`mode: pick` shows one
-  tile at a time), hero rows stay above them, tiles fill the screen (`layout/fill.tsx`) and their controls move to a rail.
+  tile at a time), hero rows stay above them, tiles fill the screen (`layout/fill.tsx`) and their controls move to a rail; a section's `shared_controls: [group, view]` lifts those
+  controls into the tab strip, one value driving every tile that offers the option id.
   Every tile has an Export menu (`layout/tileExport.tsx`, `services/exportTile.ts`: CSV, PNG, SVG); `export.footer` in
   index.json sets the image footer. The real demo is tabbed; the synthetic and legacy sets stay scrolling.
 - New D3 submodules (no new chart library): d3-selection/scale/array/chord/zoom/format/interpolate/transition.
