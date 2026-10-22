@@ -32,11 +32,23 @@ const kind: ChartKind = {
       }
       const main = document.createElement('span')
       const side = document.createElement('span')
-      side.style.marginLeft = '6px'
+      side.style.marginLeft = '8px'
       if (m === 'val') {
         main.textContent = `${f1(c.val)}%`
-        side.textContent = c.gap === null ? '' : `${sgn(c.gap) || (c.gap < 0 ? '−' : '+')}${Math.abs(c.gap).toFixed(1)}`
-        side.style.color = observed && c.gap !== null ? status[gapStatus(c.gap)] : 'var(--mute)'
+        if (c.gap !== null) {
+          // the gap is a pill like the calibration table's: a status colour and dot against observed data, neutral against a scenario
+          const st = observed ? gapStatus(c.gap) : null
+          side.textContent = `${sgn(c.gap) || (c.gap < 0 ? '−' : '+')}${Math.abs(c.gap).toFixed(1)}`
+          side.style.cssText = `margin-left:8px;display:inline-flex;align-items:center;gap:6px;font-size:12.5px;padding:2px 9px 2px 7px;border-radius:999px;${
+            st ? `color:${status[st]};background:color-mix(in srgb, ${status[st]} 14%, transparent)` : 'color:var(--tag-neutral-fg);background:var(--tag-neutral-bg)'
+          }`
+          if (st) {
+            side.dataset.status = st
+            const dot = document.createElement('i')
+            dot.style.cssText = 'width:7px;height:7px;border-radius:50%;background:currentColor;display:inline-block'
+            side.prepend(dot)
+          }
+        }
       } else {
         main.textContent = c.main === null ? 'n/a' : `${formatDelta(c.main, m)}${m === 'abs' ? ' pts' : ''}`
         side.textContent = `${f1(c.val)}%`
@@ -60,7 +72,7 @@ const kind: ChartKind = {
     for (const h of heads) {
       const th = document.createElement('th')
       th.scope = 'col'
-      th.style.cssText = `font-weight:500;color:var(--mute);text-align:${h.num ? 'right' : 'left'};font-size:12.5px;padding:6px 8px;border-bottom:1px solid var(--line)`
+      th.style.cssText = `font-weight:500;color:var(--mute);text-align:${h.num ? 'right' : 'left'};font-size:12.5px;padding:6px 8px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--tile);z-index:2`
       if (h.color) {
         const dot = document.createElement('i')
         dot.style.cssText = `display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;background:${h.color}`
