@@ -56,10 +56,10 @@ describe('deriveDeployment', () => {
 })
 
 describe('bootCompareState and the resolved view', () => {
-  it('boots with the baseline focus, the default year, and Compare on with two scenarios', () => {
+  it('boots with the first scenario as reference, the second as focus, the default year, and Compare on with two scenarios', () => {
     bootCompareState({})
     const s = compareState.getState()
-    expect(s).toMatchObject({ compare: true, focus: 'base', year: 2023, reference: { kind: 'scenario', name: 'base' } })
+    expect(s).toMatchObject({ compare: true, focus: 'alt', year: 2023, reference: { kind: 'scenario', name: 'base' } })
     // base year: the legacy Observed run is part of the compare set; the 2023 runs show
     expect(currentView().active).toEqual(['obs', 'base-2023', 'alt-2023'])
   })
@@ -81,7 +81,7 @@ describe('bootCompareState and the resolved view', () => {
   it('compare.default off starts with Compare off and the focus alone', () => {
     bootCompareState({ compareDefault: 'off' })
     expect(compareState.getState().compare).toBe(false)
-    expect(currentView().active).toEqual(['base-2023'])
+    expect(currentView().active).toEqual(['alt-2023'])
   })
 
   it('a single-year deployment with one scenario still starts with Compare on', () => {

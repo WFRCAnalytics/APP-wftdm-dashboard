@@ -572,6 +572,7 @@ before touching charts).
   the pure `services/viewContext.ts#resolveViewContext`; read it through `hooks/useViewContext.ts`. Runs are identified by
   manifest `alternative` + `year`; `kind: scenario | round | observed`, and `hidden: true` keeps a run loadable/pinnable
   but out of the picker, Scenarios tab and compare set (the legacy ActivitySim runs the Test tab pins).
+- **Default selection**: unless `compare.focus`/`compare.reference` are set in index.json, the first scenario is the reference and the second the focus.
 - **Tiles**: `type: multi-view` wraps views, a Group by control and compare strategies (`panels/multiView.ts`,
   `layout/multiViewTile.tsx`, `panels/CompareHost.tsx` + `compareStrategy.ts` for overlay/diff/multi/grid/switch/swipe).
   Tile keys: panel `id` (else `row-index`), session state in `state/tileState.ts`. `show_when: compare|single`,

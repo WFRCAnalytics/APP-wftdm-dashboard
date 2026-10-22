@@ -116,7 +116,8 @@ export function bootCompareState(config: {
   const auto = deployment.years.length < 2 || independents.length >= 2
   const compare = config.compareDefault === 'on' ? true : config.compareDefault === 'off' ? false : auto
   const known = new Set(alternativesOf(runs))
-  const focus = config.compareFocus && known.has(config.compareFocus) ? config.compareFocus : baseline
+  // Unless the deployment names them, the first scenario is the reference and the second the focus (one scenario alone: it is both)
+  const focus = config.compareFocus && known.has(config.compareFocus) ? config.compareFocus : (independents[1] ?? baseline)
   compareState.initCompareState({ deployment, focus, compare, baseline })
   // the initial compare set, when the deployment names one: those alternatives on, the other independent ones off
   const initial = (config.compareScenarios ?? []).filter((a) => known.has(a))
@@ -129,4 +130,5 @@ export function bootCompareState(config: {
   const reference = config.compareReference
   if (reference === 'observed') compareState.setReference({ kind: 'observed' })
   else if (reference && known.has(reference)) compareState.setReference({ kind: 'scenario', name: reference })
+  else if (independents.length >= 2) compareState.setReference({ kind: 'scenario', name: independents[0] })
 }
