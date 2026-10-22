@@ -86,7 +86,7 @@ function applyFont(role: FontRole, name: string | undefined) {
 }
 
 const LAYOUT_OPTIONS = [
-  { id: 'default', label: 'Page default' },
+  { id: 'default', label: 'Default' },
   { id: 'tabs', label: 'Tabs' },
   { id: 'scroll', label: 'Scrolling' },
 ]

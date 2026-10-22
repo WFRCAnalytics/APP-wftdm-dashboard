@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './_testTab'
 import type { WftdmDebugHook } from '../../src/main.tsx'
 
 declare global {

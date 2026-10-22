@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '@playwright/test'
+import { test, expect, type Page } from './_testTab'
 import type { WftdmDebugHook } from '../../src/main.tsx'
 import type maplibregl from 'maplibre-gl'
 

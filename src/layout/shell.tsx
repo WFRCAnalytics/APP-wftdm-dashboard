@@ -30,6 +30,10 @@ export function Shell({
 }) {
   const [activeIndex, setActiveIndex] = useState(0)
   const [menuOpen, setMenuOpen] = useState(false)
+  // The nav's labels are pinned open with its toggle. Pinned, the nav is DOCKED: the page's left padding grows by the same
+  // amount, so the canvas shrinks to the space that is left instead of sitting under the menu. (A transient keyboard-focus
+  // expansion stays an overlay; it never moves the page.) In-memory only, per the no-localStorage rule.
+  const [navPinned, setNavPinned] = useState(false)
   const tabbed = useTabsPlan(dashboards[activeIndex] ?? dashboards[0]) !== null
   // Below 760px the nav is a sheet opened from the header instead of a fixed rail.
   const mobile = useMediaQuery('(max-width: 759px)')
@@ -61,11 +65,13 @@ export function Shell({
         mobile={mobile}
         open={menuOpen}
         onClose={() => setMenuOpen(false)}
+        pinned={navPinned}
+        onPinnedChange={setNavPinned}
       />
       {/* A chromeless full-page panel needs a DEFINITE height for its `height: 100%` chain (min-height does not give one). */}
-      <main className={cn('flex flex-col', chromeless || tabbed ? 'h-dvh' : 'min-h-screen', tabbed && 'overflow-hidden', !mobile && 'pl-[96px]')}>
+      <main className={cn('flex flex-col', chromeless || tabbed ? 'h-dvh' : 'min-h-screen', tabbed && 'overflow-hidden', !mobile && 'transition-[padding-left] duration-[220ms] ease-out', !mobile && (navPinned ? 'pl-[276px]' : 'pl-[96px]'))}>
         {!chromeless && (
-          <PageHeader title={active.header.title} subtitle={active.header.description} onMenu={mobile ? () => setMenuOpen(true) : undefined} forceCompact={tabbed}>
+          <PageHeader title={active.header.title} subtitle={active.header.description} onMenu={mobile ? () => setMenuOpen(true) : undefined}>
             <ControlBar />
           </PageHeader>
         )}

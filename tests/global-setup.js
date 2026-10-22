@@ -3,15 +3,14 @@
 //
 // 040-test-suite-migration: the synthetic-fixture copy-in dance is gone.
 // The suite tests against the real, git-tracked
-// public/demo-dashboard-config/ (8 tabs — the 7 calibration tabs plus the
-// permanent dashboard-8-test.yaml broken-panel tab) and
+// public/demo-dashboard-config/ (the 6 shipped tabs; the broken-panel Test tab
+// is injected per page by tests/integration/_testTab.ts) and
 // public/demo-scenarios/ (3 ActivitySim runs) content directly. The only
 // remaining job is to copy the one hand-maintained config-grammar fixture
 // (all-placeholders-config.yaml) to where boot.spec.ts fetches it.
 //
-// No index.json manipulation: dashboard-8-test.yaml is a permanent real
-// entry in public/demo-dashboard-config/index.json now, not a test-only
-// injection.
+// No index.json manipulation on disk: the Test tab is added at run time by a
+// Playwright route (tests/integration/_testTab.ts), never written to public/.
 import { cpSync, existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'

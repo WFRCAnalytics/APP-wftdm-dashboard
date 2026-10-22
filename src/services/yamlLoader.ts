@@ -72,6 +72,8 @@ type DashboardIndexJson =
       title?: unknown
       logoUrl?: unknown
       logoUrlDark?: unknown
+      markUrl?: unknown
+      markUrlDark?: unknown
       scenarioPalette?: unknown
       protomapsPmtilesUrl?: unknown
       protomapsApiKey?: unknown
@@ -121,8 +123,14 @@ function parseExportFooter(raw: unknown): boolean | string | undefined {
 
 export interface DashboardBranding {
   title?: string
+  /** The full logo, shown when the navigation is expanded (a wide, horizontal logo suits it). */
   logoUrl?: string
   logoUrlDark?: string
+  /** The abbreviated logo, shown when the navigation is collapsed to its icon rail. Same light/dark-pair convention as
+   * `logoUrl`/`logoUrlDark`. Absent -> the app's generic mark. Both are plain URLs the deployer supplies in
+   * `dashboard-config/index.json`; nothing about any one organisation is built into the app. */
+  markUrl?: string
+  markUrlDark?: string
   /** 036-scenario-color-picker: an optional deployer-configured default
    * categorical palette for scenario colors — a list of CSS color
    * strings, cycled by each scenario's registration-order position when
@@ -319,6 +327,8 @@ export async function loadDashboardBranding(
       title: typeof parsed.title === 'string' ? parsed.title : undefined,
       logoUrl: typeof parsed.logoUrl === 'string' ? parsed.logoUrl : undefined,
       logoUrlDark: typeof parsed.logoUrlDark === 'string' ? parsed.logoUrlDark : undefined,
+      markUrl: typeof parsed.markUrl === 'string' ? parsed.markUrl : undefined,
+      markUrlDark: typeof parsed.markUrlDark === 'string' ? parsed.markUrlDark : undefined,
       scenarioPalette: Array.isArray(parsed.scenarioPalette)
         ? parsed.scenarioPalette.filter((c): c is string => typeof c === 'string')
         : undefined,

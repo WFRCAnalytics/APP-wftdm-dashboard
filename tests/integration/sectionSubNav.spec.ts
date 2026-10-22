@@ -32,12 +32,14 @@ async function boot(page: Page) {
   await page.waitForFunction(() => window.__wftdm !== undefined, null, { timeout: 30_000 })
 }
 
-// Choosing a tab with the mouse dismisses the hover-expanded nav until the pointer leaves and returns, so re-open it
-// (move out, then hover) to reach the section sub-list.
+// The nav no longer expands on hover; the section sub-list shows once it is expanded with its toggle (which stays
+// expanded across tab changes), so expand it first, then choose the tab.
 async function gotoTab(page: Page, name: string) {
+  const sidebar = page.locator('[data-sidebar="sidebar"]')
+  if ((await sidebar.getAttribute('data-state')) !== 'expanded') {
+    await page.getByRole('button', { name: 'Show menu labels' }).click()
+  }
   await page.getByRole('tablist').getByRole('tab', { name, exact: true }).click()
-  await page.mouse.move(900, 400)
-  await page.locator('[data-sidebar="sidebar"]').hover()
 }
 
 test.describe('030-sidebar-navigation — User Story 3 (accordion sub-navigation)', () => {
@@ -124,10 +126,9 @@ test.describe('030-sidebar-navigation — User Story 3 (accordion sub-navigation
     await boot(page)
     await gotoTab(page, 'Mode Choice')
     const sidebar = page.locator('[data-sidebar="sidebar"]')
-    await sidebar.hover()
     await expect(page.getByRole('button', { name: 'Tour Mode Choice', exact: true })).toBeVisible()
 
-    await page.mouse.move(900, 400)
+    await page.getByRole('button', { name: 'Hide menu labels' }).click()
     await expect(sidebar).toHaveAttribute('data-state', 'collapsed')
     await expect(page.getByRole('button', { name: 'Tour Mode Choice', exact: true })).toHaveCount(0)
   })

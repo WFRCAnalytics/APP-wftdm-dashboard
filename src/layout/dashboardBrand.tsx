@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 
 import { useColorScheme } from '@/hooks/useColorScheme'
 import type { DashboardBranding } from '@/services/yamlLoader'
@@ -42,7 +42,7 @@ export function DashboardBrand({ branding }: { branding: DashboardBranding }) {
       <img
         src={resolvedLogoUrl}
         alt={branding.title ?? 'Dashboard logo'}
-        className="dashboard-brand-logo h-8 w-auto max-w-[220px] object-contain"
+        className="dashboard-brand-logo h-auto max-h-12 w-full max-w-[222px] object-contain"
         onError={() => setFailedUrl(resolvedLogoUrl ?? null)}
       />
     )
@@ -62,4 +62,29 @@ export function DashboardBrand({ branding }: { branding: DashboardBranding }) {
   }
 
   return null
+}
+
+/** Whether a full logo is configured for the current theme (the same light/dark choice DashboardBrand makes). */
+export function hasConfiguredLogo(branding: DashboardBranding, scheme: 'light' | 'dark'): boolean {
+  return Boolean(scheme === 'dark' ? (branding.logoUrlDark ?? branding.logoUrl) : branding.logoUrl)
+}
+
+/**
+ * The abbreviated logo for the collapsed navigation rail: the deployer's `markUrl`, or `markUrlDark` in dark mode (falling
+ * back to the light one), exactly like the full logo. Renders `fallback` (the app's generic mark) when none is configured
+ * or the image fails to load, so an unconfigured deployment looks as it always did.
+ */
+export function DashboardMark({ branding, fallback }: { branding: DashboardBranding; fallback: ReactNode }) {
+  const colorScheme = useColorScheme()
+  const [failedUrl, setFailedUrl] = useState<string | null>(null)
+  const url = colorScheme === 'dark' ? (branding.markUrlDark ?? branding.markUrl) : branding.markUrl
+  if (!url || url === failedUrl) return <>{fallback}</>
+  return (
+    <img
+      src={url}
+      alt={branding.title ?? 'Dashboard logo'}
+      className="dashboard-brand-mark h-[30px] w-[42px] object-contain"
+      onError={() => setFailedUrl(url)}
+    />
+  )
 }

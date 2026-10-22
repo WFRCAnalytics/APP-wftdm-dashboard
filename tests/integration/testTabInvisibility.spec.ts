@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { test, expect, type Page } from '@playwright/test'
+import { test, expect, type Page } from './_testTab'
 import type { WftdmDebugHook } from '../../src/main.tsx'
 
 declare global {
@@ -12,13 +12,10 @@ declare global {
 
 // 040-test-suite-migration — User Story 1 (P1).
 //
-// DESIGN REVERSAL (2026-09-10): dashboard-8-test.yaml is a PERMANENT 8th
-// entry in the real public/demo-dashboard-config/index.json, present in
-// every build. It is NOT test-only-injected. It is kept unobtrusive by
-// its sidebar rendering: header.tab is a single space " " (a real, valid
-// non-empty string that renders as a barely-visible sliver),
-// header.icon is omitted, header.aria_label gives it a real accessible
-// name ("Test"). contracts/dashboard-8-test.md — "Sidebar entry contract".
+// The Test tab (dashboard-8-test.yaml) is no longer shipped: it lives in tests/fixtures/test-tab/ and every spec that
+// imports `test` from './_testTab' gets it appended to the dashboard index at run time. It stays unobtrusive when it IS
+// present: header.tab is a single space, header.icon is omitted, and header.aria_label gives it the accessible name
+// "Test" (contracts/dashboard-8-test.md — "Sidebar entry contract").
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const REPO_ROOT = path.resolve(__dirname, '../..')
@@ -42,8 +39,8 @@ function sidebarTabs(page: Page) {
   return page.locator('[data-sidebar="sidebar"]').getByRole('tablist').getByRole('tab')
 }
 
-test.describe('040 US1 — dashboard-8-test.yaml is a permanent, inconspicuous 8th tab', () => {
-  test('the shipped, git-committed index.json lists dashboard-8-test.yaml as the permanent last entry (FR-002)', () => {
+test.describe('040 US1 — dashboard-8-test.yaml: not shipped, inconspicuous when injected for tests', () => {
+  test('the shipped index.json does not list dashboard-8-test.yaml, and the file is not in the shipped config folder', () => {
     const raw = readFileSync(
       path.join(REPO_ROOT, 'public/demo-dashboard-config/index.json'),
       'utf8',
@@ -57,14 +54,14 @@ test.describe('040 US1 — dashboard-8-test.yaml is a permanent, inconspicuous 8
       // 063 redesign: the Trip models tab is not part of the Corridor Pro page set
       'dashboard-6-network.yaml',
       'dashboard-7-explore.yaml',
-      'dashboard-8-test.yaml',
     ])
-    // No leftover test-only-injection backup file (FR-003).
     expect(() =>
-      readFileSync(
-        path.join(REPO_ROOT, 'public/demo-dashboard-config/index.json.original-during-tests'),
-      ),
+      readFileSync(path.join(REPO_ROOT, 'public/demo-dashboard-config/dashboard-8-test.yaml')),
     ).toThrow()
+    // The fixture the tests inject is where it now lives.
+    expect(() =>
+      readFileSync(path.join(REPO_ROOT, 'tests/fixtures/test-tab/dashboard-8-test.yaml')),
+    ).not.toThrow()
   })
 
   test('the sidebar has 8 tabs — the 8th is an inconspicuous sliver: no icon, whitespace-only label, accessible name "Test" (SC-001, SC-008, FR-019–FR-021)', async ({
@@ -99,8 +96,8 @@ test.describe('040 US1 — dashboard-8-test.yaml is a permanent, inconspicuous 8
     page,
   }) => {
     await boot(page)
-    // Labels fade in while the floating nav is expanded.
-    await page.locator('[data-sidebar="sidebar"]').hover()
+    // Labels fade in while the floating nav is expanded (with its toggle; hovering no longer expands it).
+    await page.getByRole('button', { name: 'Show menu labels' }).click()
     for (const name of REAL_SEVEN_TABS) {
       const tab = page.getByRole('tab', { name, exact: true })
       await expect(tab).toBeVisible()

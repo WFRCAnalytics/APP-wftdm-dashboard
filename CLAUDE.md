@@ -104,7 +104,9 @@ manifest.yaml         per-scenario metadata
   discovery metadata, not a 4th config type. `dashboard-config/index.json`
   (and `demo-dashboard-config/index.json`) may additionally carry
   deployer-configurable app-wide fields — see `services/yamlLoader.ts`'s
-  `DashboardBranding`: `title`, `logoUrl`/`logoUrlDark`, `scenarioPalette`,
+  `DashboardBranding`: `title`, `logoUrl`/`logoUrlDark` (full logo, shown when the nav
+  is expanded), `markUrl`/`markUrlDark` (abbreviated logo, shown on the collapsed rail;
+  the generic mark when unset), `scenarioPalette`,
   `protomapsPmtilesUrl`, `primaryColor`/`secondaryColor`/`accentColor`. All
   optional; an unconfigured deployment renders exactly as it always did.
 - Parquet outputs live in `{scenario-dir}/summary/` — written by the post-processor.
@@ -124,19 +126,18 @@ Tabs are **discovered at runtime**: `main.ts` fetches
 filenames, display order) — same pattern `scenarios/index.json` uses. The
 first filename is always the landing page.
 
-The default set WFRC ships (`public/demo-dashboard-config/`, 7 real tabs +
-1 permanent broken-panel test tab):
+The default set WFRC ships (`public/demo-dashboard-config/`, the real tabs only):
 ```
 Summary ★ → Person/Household Models → Tour Models → Mode Choice
-→ Trip Models → Network → Explore (Graphic Walker, full-page)
-→ Test (dashboard-8-test.yaml, permanent, always in index.json)
+→ Network → Explore (Graphic Walker, full-page)
 ```
 
-`dashboard-8-test.yaml` holds deliberately-broken/edge-case panels only
-(missing metric per panel type, unreachable basemap, XSS markdown, etc.) —
-kept unobtrusive via `header.tab: " "` (a single space) + omitted
-`header.icon` + `header.aria_label: "Test"`. It is a **permanent** entry,
-present in every build; there is no conditional/test-only registration.
+There is **no Test tab in the shipped app**. `dashboard-8-test.yaml` (deliberately-
+broken/edge-case panels only: missing metric per panel type, unreachable basemap, XSS
+markdown, etc.) lives in `tests/fixtures/test-tab/`. Playwright specs that need it import
+`test` from `tests/integration/_testTab.ts`, which appends it to the dashboard index at run
+time through a `page.route` (it stays unobtrusive via `header.tab: " "` + omitted
+`header.icon` + `header.aria_label: "Test"`). Never list it in `index.json`.
 
 Sidebar navigation (`030-sidebar-navigation`) replaced the old top
 `navBar.tsx` tab strip — a persistent, collapsible left `Sidebar`
@@ -269,7 +270,7 @@ at each of `panelCard.tsx`'s and `dashboardRenderer.tsx`'s two call sites.
 `observable-plot` is the engine for bar/line/area/dot/cell charts and everything else that
 doesn't need Sankey/hierarchical/polar-specific rendering. Real demo content today uses 8
 of the 12 types across the six primary tabs; `table` and the other edge cases are exercised
-for real via `dashboard-8-test.yaml`.
+for real via the injected Test tab fixture (`tests/fixtures/test-tab/`).
 
 **Expand-ability is scoped per type** (`034-metric-panel-redesign`):
 `EXPANDABLE_PANEL_TYPES` in `panels/expandablePanelTypes.ts` lists the

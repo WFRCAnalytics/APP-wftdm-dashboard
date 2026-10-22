@@ -5,12 +5,13 @@
     "dashboard-3-tour-models.yaml",
     "dashboard-4-mode-choice.yaml",
     "dashboard-6-network.yaml",
-    "dashboard-7-explore.yaml",
-    "dashboard-8-test.yaml"
+    "dashboard-7-explore.yaml"
   ],
   "title": "WFRC TDM Calibration Dashboard",
   "logoUrl": "https://raw.githubusercontent.com/WFRCAnalytics/wfrc-brand/main/_extensions/wfrc-brand/assets/logo/horizontal/WFRC_logo_horizontal_color_transparent.png",
   "logoUrlDark": "https://raw.githubusercontent.com/WFRCAnalytics/wfrc-brand/main/_extensions/wfrc-brand/assets/logo/horizontal/WFRC_logo_horizontal_white_transparent.png",
+  "markUrl": "https://raw.githubusercontent.com/WFRCAnalytics/wfrc-brand/main/_extensions/wfrc-brand/assets/logo/abbreviated/WFRC_logo_abbreviated_color_transparent.png",
+  "markUrlDark": "https://raw.githubusercontent.com/WFRCAnalytics/wfrc-brand/main/_extensions/wfrc-brand/assets/logo/abbreviated/WFRC_logo_abbreviated_white_transparent.png",
   "protomapsApiKey": "2c497b58fdc8c210",
   "layout": { "mode": "tabs" },
   "compare": {

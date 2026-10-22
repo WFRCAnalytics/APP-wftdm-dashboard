@@ -172,6 +172,8 @@ const branding: DashboardBranding = {
   title: primaryBranding.title ?? demoBranding.title,
   logoUrl: primaryBranding.logoUrl ?? demoBranding.logoUrl,
   logoUrlDark: primaryBranding.logoUrlDark ?? demoBranding.logoUrlDark,
+  markUrl: primaryBranding.markUrl ?? demoBranding.markUrl,
+  markUrlDark: primaryBranding.markUrlDark ?? demoBranding.markUrlDark,
   scenarioPalette: primaryBranding.scenarioPalette ?? demoBranding.scenarioPalette,
   protomapsPmtilesUrl: primaryBranding.protomapsPmtilesUrl ?? demoBranding.protomapsPmtilesUrl,
   protomapsApiKey: primaryBranding.protomapsApiKey ?? demoBranding.protomapsApiKey,

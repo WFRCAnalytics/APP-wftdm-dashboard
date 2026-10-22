@@ -56,7 +56,8 @@ test.describe('tabbed pages', () => {
 
   test('the sidebar sections select tabs, and Compare off removes the compare-only tab', async ({ page }) => {
     await boot(page)
-    await page.hover('[data-sidebar=sidebar]')
+    // The section list shows once the nav is expanded with its toggle (hovering no longer expands it).
+    await page.getByRole('button', { name: 'Show menu labels' }).click()
     await page.getByRole('group', { name: 'Summary sections' }).getByRole('button', { name: 'Time of day' }).click()
     await expect(page.getByTestId('tabbed-page')).toHaveAttribute('data-section', 'time')
     await page.getByTestId('control-compare').click()

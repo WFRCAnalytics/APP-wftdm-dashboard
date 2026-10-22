@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '@playwright/test'
+import { test, expect, type Page } from './_testTab'
 import type { WftdmDebugHook } from '../../src/main.tsx'
 
 declare global {
@@ -76,7 +76,7 @@ test.describe('030-sidebar-navigation — User Story 1 (sidebar shell)', () => {
     ])
   })
 
-  test('the floating nav is a 68px rail that expands to 248px on hover or focus, overlaying the page, never on scroll', async ({
+  test('the floating nav is a 68px rail that expands to 248px with its toggle (docking the page beside it) or on keyboard focus (overlay), never on hover or scroll', async ({
     page,
   }) => {
     await boot(page)
@@ -84,23 +84,39 @@ test.describe('030-sidebar-navigation — User Story 1 (sidebar shell)', () => {
     await expect(sidebar).toHaveAttribute('data-state', 'collapsed')
     await expect.poll(async () => (await sidebar.boundingBox())!.width).toBe(68)
 
+    // Hovering never expands it: the rail moving under the pointer is exactly what made items hard to hit.
     await sidebar.hover()
+    await page.waitForTimeout(400)
+    await expect(sidebar).toHaveAttribute('data-state', 'collapsed')
+
+    await page.getByRole('button', { name: 'Show menu labels' }).click()
     await expect(sidebar).toHaveAttribute('data-state', 'expanded')
     await expect.poll(async () => (await sidebar.boundingBox())!.width).toBe(248)
 
-    // The page does not reflow while the nav expands: the main column keeps its left padding.
-    const mainLeft = await page.locator('main').evaluate((el) => getComputedStyle(el).paddingLeft)
-    expect(mainLeft).toBe('96px')
+    // Pinned, the nav is docked: the page's left padding grows by the nav's extra width, so the canvas shrinks to the
+    // remaining space instead of sitting underneath the menu.
+    await expect
+      .poll(() => page.locator('main').evaluate((el) => getComputedStyle(el).paddingLeft))
+      .toBe('276px')
 
+    // It stays expanded when the pointer leaves and after choosing a tab, until collapsed with the same toggle.
     await page.mouse.move(900, 400)
+    await expect(sidebar).toHaveAttribute('data-state', 'expanded')
+    await page.getByRole('button', { name: 'Hide menu labels' }).click()
     await expect(sidebar).toHaveAttribute('data-state', 'collapsed')
     await page.mouse.wheel(0, 2000)
     await page.waitForTimeout(200)
     await expect(sidebar).toHaveAttribute('data-state', 'collapsed')
 
-    // Keyboard focus expands it too.
-    await page.getByRole('tab', { name: 'Summary' }).focus()
+    await expect
+      .poll(() => page.locator('main').evaluate((el) => getComputedStyle(el).paddingLeft))
+      .toBe('96px')
+
+    // Keyboard focus expands it too, as a transient overlay: Tab from the toggle (just clicked) into the next control in
+    // the rail. That never moves the page.
+    await page.keyboard.press('Tab')
     await expect(sidebar).toHaveAttribute('data-state', 'expanded')
+    expect(await page.locator('main').evaluate((el) => getComputedStyle(el).paddingLeft)).toBe('96px')
   })
 
   test('brand/logo and Settings are visually distinct from the primary tab list (US1 acceptance)', async ({
@@ -108,8 +124,10 @@ test.describe('030-sidebar-navigation — User Story 1 (sidebar shell)', () => {
   }) => {
     await boot(page)
     // DashboardBrand renders in the sidebar header (above the tab list);
-    // Settings renders in the sidebar footer (below it). The real demo
-    // branding is the WFRC logo + "WFRC TDM Calibration Dashboard" title.
+    // Settings renders in the sidebar footer (below it). The full logo shows
+    // once the menu is expanded (the collapsed rail shows the abbreviated
+    // mark, or the generic one when a deployment configures none).
+    await page.getByRole('button', { name: 'Show menu labels' }).click()
     await expect(page.getByRole('img', { name: /wfrc/i })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Settings' })).toBeVisible()
   })
@@ -129,7 +147,71 @@ test.describe('030-sidebar-navigation — User Story 1 (sidebar shell)', () => {
     expect((labelText ?? '').trim()).toBe('')
 
     // Every real tab, by contrast, has a visible label once the nav is expanded.
-    await page.locator('[data-sidebar="sidebar"]').hover()
+    await page.getByRole('button', { name: 'Show menu labels' }).click()
     await expect(tabs.first().getByText('Summary', { exact: true })).toBeVisible()
+  })
+})
+
+// Navigation branding is deployer-configured (dashboard-config/index.json: logoUrl/logoUrlDark for the expanded menu,
+// markUrl/markUrlDark for the collapsed rail), never built in. Collapsed shows the mark; expanded REPLACES it with the logo
+// (or the title when there is no logo): the mark is never shown beside either.
+const PIXEL =
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='
+
+async function bootWithBranding(page: Page, branding: Record<string, string | undefined>) {
+  await page.route('**/demo-dashboard-config/index.json', async (route) => {
+    const res = await route.fetch()
+    const json = await res.json()
+    for (const key of ['title', 'logoUrl', 'logoUrlDark', 'markUrl', 'markUrlDark']) delete json[key]
+    await route.fulfill({ response: res, json: { ...json, ...branding } })
+  })
+  await boot(page)
+}
+
+const hiddenWrapper = (page: Page, selector: string) =>
+  page.locator(selector).first().evaluate((el) => el.closest('[aria-hidden]')?.getAttribute('aria-hidden'))
+
+test.describe('deployer-configured navigation branding', () => {
+  test('a configured mark shows collapsed and the logo replaces it expanded, never both', async ({ page }) => {
+    await bootWithBranding(page, { title: 'Test Org', logoUrl: PIXEL, markUrl: PIXEL })
+    await expect(page.locator('.dashboard-brand-mark')).toHaveCount(1)
+    expect(await hiddenWrapper(page, '.dashboard-brand-mark')).toBe('false')
+    expect(await hiddenWrapper(page, '.dashboard-brand-logo')).toBe('true')
+
+    await page.getByRole('button', { name: 'Show menu labels' }).click()
+    await expect(page.locator('[data-sidebar="sidebar"]')).toHaveAttribute('data-state', 'expanded')
+    expect(await hiddenWrapper(page, '.dashboard-brand-mark')).toBe('true')
+    expect(await hiddenWrapper(page, '.dashboard-brand-logo')).toBe('false')
+  })
+
+  test('the dark-mode variants are used in dark mode', async ({ page }) => {
+    await bootWithBranding(page, {
+      logoUrl: 'data:image/png;base64,LIGHTLOGO',
+      logoUrlDark: PIXEL,
+      markUrl: 'data:image/png;base64,LIGHTMARK',
+      markUrlDark: PIXEL,
+    })
+    await page.evaluate(() => document.documentElement.classList.add('dark'))
+    await expect(page.locator('.dashboard-brand-mark')).toHaveAttribute('src', PIXEL)
+    await expect(page.locator('.dashboard-brand-logo')).toHaveAttribute('src', PIXEL)
+  })
+
+  test('with no mark configured the generic mark is used, and with a title only the title replaces it when expanded', async ({ page }) => {
+    await bootWithBranding(page, { title: 'Test Org' })
+    await expect(page.locator('.dashboard-brand-mark')).toHaveCount(0)
+    await expect(page.locator('.dashboard-brand-logo')).toHaveCount(0)
+    const nav = page.locator('[data-sidebar="sidebar"]')
+    await expect(nav.locator('.dashboard-brand-title')).toHaveText('Test Org')
+    expect(await hiddenWrapper(page, '.dashboard-brand-title')).toBe('true')
+
+    await page.getByRole('button', { name: 'Show menu labels' }).click()
+    expect(await hiddenWrapper(page, '.dashboard-brand-title')).toBe('false')
+  })
+
+  test('with nothing configured the header still shows a mark and no stray empty gap', async ({ page }) => {
+    await bootWithBranding(page, {})
+    await expect(page.locator('.dashboard-brand-mark, .dashboard-brand-logo, .dashboard-brand-title')).toHaveCount(0)
+    const header = page.locator('[data-sidebar="sidebar"] svg path[d="M4 18 9 9l4 6 3-5 4 8"]')
+    await expect(header).toHaveCount(1)
   })
 })
