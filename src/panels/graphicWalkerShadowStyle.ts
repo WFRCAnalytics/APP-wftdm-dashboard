@@ -59,10 +59,10 @@ const GRAPHIC_WALKER_SHADOW_CSS = `
   color: var(--ink);
 }
 .App [class~="border-b"][class~="h-9"][class~="space-x-8"] > button[data-state="active"] {
-  color: var(--ink);
   /* same look as .pill-on in tokens.css */
-  background: var(--tile-hi);
-  box-shadow: 0 1px 0 var(--hi) inset, 0 0 0 1px var(--glass-line), 0 1px 2px rgba(0, 0, 0, 0.12);
+  color: var(--primary-foreground);
+  background: var(--brand);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.2) inset, 0 1px 3px color-mix(in srgb, var(--brand) 45%, transparent);
 }
 
 /* ── Chart tabs ("Chart 1", "+ New"): pills instead of folder tabs ───────── */

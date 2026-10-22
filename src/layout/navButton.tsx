@@ -22,7 +22,7 @@ export const NavButton = forwardRef<HTMLButtonElement, NavButtonProps>(function 
         'flex h-[46px] w-full items-center gap-3 overflow-hidden rounded-[15px] px-[14px] text-left font-body text-[14px] font-medium text-[var(--mute)] transition-colors',
         'hover:bg-[color-mix(in_srgb,var(--ink)_7%,transparent)] hover:text-[var(--ink)]',
         'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-text)]',
-        selected && 'bg-[color-mix(in_srgb,var(--brand)_16%,var(--tile))] text-[var(--ink)] [&_svg]:text-[var(--brand-text)]',
+        selected && 'bg-[color-mix(in_srgb,var(--brand)_26%,var(--tile))] text-[var(--ink)] [&_svg]:text-[var(--brand-text)]',
         className,
       )}
       {...props}

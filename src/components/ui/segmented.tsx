@@ -44,10 +44,7 @@ export function Segmented({ label, options, value, onChange, size = 'md', classN
               size === 'lg' ? 'px-[13px] py-[5px] text-sm' : 'px-[11px] py-1 text-[12.5px]',
               'rounded-full font-body leading-[1.45] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-text)] disabled:opacity-40',
               pressed
-                ? cn(
-                    'text-[var(--ink)]',
-                    'pill-on',
-                  )
+                ? 'pill-on'
                 : 'text-[var(--mute)] hover:text-[var(--ink)]',
             )}
           >

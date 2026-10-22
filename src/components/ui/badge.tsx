@@ -26,7 +26,7 @@ const badgeVariants = cva(
         destructive: 'bg-destructive text-white',
         outline: 'border-border text-foreground',
         // Tile badges (project-docs/redesign/02-layout-and-components.md section 2).
-        accent: 'bg-[color-mix(in_srgb,var(--brand)_16%,transparent)] font-mono text-[11.5px] text-[var(--brand-text)]',
+        accent: 'bg-[color-mix(in_srgb,var(--brand)_26%,transparent)] font-mono text-[11.5px] font-semibold text-[var(--brand-text)] ring-1 ring-inset ring-[color-mix(in_srgb,var(--brand)_45%,transparent)]',
         neutral: 'bg-[color-mix(in_srgb,var(--ink)_9%,transparent)] text-[11.5px] text-[var(--mute)]',
       },
     },

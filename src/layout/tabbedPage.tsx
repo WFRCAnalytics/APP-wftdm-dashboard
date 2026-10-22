@@ -92,7 +92,7 @@ function TabStrip({ page, plan, section, rows, kinds }: { page: string; plan: Ta
                 onClick={() => setActiveSection(page, s.id)}
                 className={cn(
                   'shrink-0 whitespace-nowrap rounded-full px-[15px] py-[6px] font-body text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-text)]',
-                  on ? 'pill-on font-medium text-[var(--ink)]' : 'text-[var(--mute)] hover:text-[var(--ink)]',
+                  on ? 'pill-on font-medium' : 'text-[var(--mute)] hover:text-[var(--ink)]',
                 )}
               >
                 {s.label}
