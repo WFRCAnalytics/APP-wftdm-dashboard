@@ -34,6 +34,33 @@ export function isPanelVisible(panel: PanelConfig, ctx: VisibilityContext): bool
   return true
 }
 
+/** The body height a tile asks for: a `height_rows` rule resolved for `scenarioCount` compared scenarios, else `height`. */
+export function authoredHeight(panel: PanelConfig, scenarioCount: number): number | undefined {
+  const p = panel as { height?: unknown; height_rows?: { base: number; per: number; max: number } }
+  const r = p.height_rows
+  if (r) return Math.min(r.max, r.base + r.per * Math.max(1, scenarioCount))
+  return typeof p.height === 'number' ? p.height : undefined
+}
+
+/**
+ * Tiles in one row share one height (project-docs/redesign/10-toolbar-layout-export-proposal.md section B): the largest
+ * height any of them asks for. A tile that did not already have it gets a copy with that `height` (and its `height_rows`
+ * rule, now resolved, dropped); tiles that already match keep their identity so panels keyed on `config` by reference
+ * are not redrawn. Rows holding a tile without a numeric height (value boxes, auto height) are left alone.
+ */
+export function equalizeRowHeights(panels: PanelConfig[], scenarioCount: number): PanelConfig[] {
+  if (panels.length < 2) return panels
+  const heights = panels.map((p) => authoredHeight(p, scenarioCount))
+  if (heights.some((h) => h === undefined) || panels.some((p) => p.type === 'valuebox')) return panels
+  const rowHeight = Math.max(...(heights as number[]))
+  return panels.map((p, i) => {
+    const hasRule = Boolean((p as { height_rows?: unknown }).height_rows)
+    if (heights[i] === rowHeight && !hasRule) return p
+    const { height_rows: _rule, ...rest } = p as PanelConfig & { height_rows?: unknown }
+    return { ...rest, height: rowHeight } as PanelConfig
+  })
+}
+
 /** A hero KPI band row (063 redesign): every panel is a `type: valuebox` with `variant: hero`. */
 export function isHeroRow(panels: PanelConfig[]): boolean {
   return isMetricStripRow(panels) && panels.every((p) => (p as { variant?: string }).variant === 'hero')

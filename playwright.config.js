@@ -6,7 +6,7 @@ import { defineConfig, devices } from '@playwright/test'
 // by globalSetup and removed by globalTeardown so it never pollutes the
 // production public/ tree (see tests/global-setup.js).
 // Specs written for the redesign (they assert on the Corridor Pro demo content).
-const REAL_SPECS = ['**/realDemo.spec.ts']
+const REAL_SPECS = ['**/realDemo.spec.ts', '**/layout*.spec.ts']
 const REDESIGN_SPECS = [
   '**/chart*.spec.ts',
   '**/settingsRedesign.spec.ts',

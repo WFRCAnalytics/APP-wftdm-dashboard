@@ -6,7 +6,7 @@ import { registry } from '@/panels/registry'
 import { PanelErrorState } from '@/panels/PanelErrorState'
 import { PanelLoadingState } from '@/panels/PanelLoadingState'
 import { useResolvedView } from '@/hooks/useViewContext'
-import { findFullPagePanel, isHeroRow, isMetricStripRow, isPanelVisible, resolveSections } from '@/layout/dashboardLayout'
+import { equalizeRowHeights, findFullPagePanel, isHeroRow, isMetricStripRow, isPanelVisible, resolveSections } from '@/layout/dashboardLayout'
 import { isMapRenderingPanel, type DashboardTabConfig, type PanelConfig } from '@/layout/types'
 import { computeTabDataRequirement, ensureRegistered } from '@/services/tabDataLoader'
 import { useActiveScenarios } from '@/hooks/useActiveScenarios'
@@ -145,6 +145,7 @@ function FullPagePanel({ config }: { config: PanelConfig }) {
 
 function OrdinaryDashboardRenderer({ tab }: { tab: DashboardTabConfig }) {
   const view = useResolvedView()
+  const scenarioCount = view.active.length
   const visibility = useMemo(() => ({ compare: view.compare, isBaseYear: view.isBaseYear }), [view.compare, view.isBaseYear])
   const rows = useMemo(() => {
     function withTabDefaultBasemap(panel: PanelConfig): PanelConfig {
@@ -160,9 +161,9 @@ function OrdinaryDashboardRenderer({ tab }: { tab: DashboardTabConfig }) {
       return { ...panel, _tabDefaultBasemap: tab.default_basemap } as PanelConfig
     }
     return Object.entries(tab.layout)
-      .map(([rowName, panels]) => [rowName, panels.filter((p) => isPanelVisible(p, visibility)).map(withTabDefaultBasemap)] as const)
+      .map(([rowName, panels]) => [rowName, equalizeRowHeights(panels.filter((p) => isPanelVisible(p, visibility)).map(withTabDefaultBasemap), scenarioCount)] as const)
       .filter(([, panels]) => panels.length > 0)
-  }, [tab, visibility])
+  }, [tab, visibility, scenarioCount])
 
   // FR-013–FR-016: for each resolved section, the FIRST row (in layout's
   // own real key order, never the section's own authored rows[] order) is
@@ -231,7 +232,7 @@ function OrdinaryDashboardRenderer({ tab }: { tab: DashboardTabConfig }) {
                 <div
                   key={`${rowName}-${index}`}
                   id={tileAnchors.has((panel as { id?: string }).id ?? '') ? `section-${tileAnchors.get((panel as { id?: string }).id ?? '')}` : undefined}
-                  className="min-w-0 scroll-mt-24"
+                  className="flex min-w-0 scroll-mt-24 flex-col [&>*]:flex-1"
                 >
                   <PanelCard config={panel} tileKey={tileKey(tab.header.tab, (panel as { id?: string }).id ?? `${rowName}-${index}`)} />
                 </div>

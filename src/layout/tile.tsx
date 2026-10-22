@@ -47,7 +47,7 @@ export function Tile({ title, subtitle, badges, controls, height, expandable, pa
   const hasPanel = panel !== null && !errorMessage
 
   return (
-    <Card>
+    <Card className="flex h-full flex-col">
       <CardHeader className="flex-row items-center gap-2 space-y-0 px-[18px] pb-0 pt-4">
         <CardTitle className="text-[15.5px]">{title}</CardTitle>
         {badges}

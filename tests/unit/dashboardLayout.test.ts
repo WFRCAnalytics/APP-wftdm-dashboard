@@ -121,3 +121,33 @@ describe('resolveSections', () => {
     warn.mockRestore()
   })
 })
+
+describe('equalizeRowHeights', () => {
+  const mv = (height?: number, rule?: { base: number; per: number; max: number }) =>
+    ({ type: 'multi-view', title: 't', views: [], height, height_rows: rule }) as unknown as PanelConfig
+
+  it('gives every tile in a row the tallest height and keeps matching tiles untouched', async () => {
+    const { equalizeRowHeights } = await import('@/layout/dashboardLayout')
+    const a = mv(400)
+    const b = mv(450)
+    const out = equalizeRowHeights([a, b], 2)
+    expect(out[0]).not.toBe(a)
+    expect((out[0] as { height: number }).height).toBe(450)
+    expect(out[1]).toBe(b)
+  })
+
+  it('resolves a height_rows rule first and drops it', async () => {
+    const { equalizeRowHeights } = await import('@/layout/dashboardLayout')
+    const out = equalizeRowHeights([mv(undefined, { base: 120, per: 40, max: 560 }), mv(300)], 5)
+    expect(out.map((p) => (p as { height: number }).height)).toEqual([320, 320])
+    expect((out[0] as { height_rows?: unknown }).height_rows).toBeUndefined()
+  })
+
+  it('leaves rows with value boxes or a tile without a height alone', async () => {
+    const { equalizeRowHeights } = await import('@/layout/dashboardLayout')
+    const row = [mv(300), mv(undefined)]
+    expect(equalizeRowHeights(row, 1)).toBe(row)
+    const kpis = [valueBox('a'), valueBox('b')] as PanelConfig[]
+    expect(equalizeRowHeights(kpis, 1)).toBe(kpis)
+  })
+})
