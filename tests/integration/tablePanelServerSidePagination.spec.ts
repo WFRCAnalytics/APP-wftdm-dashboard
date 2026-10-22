@@ -2,10 +2,8 @@ import { execFileSync } from 'node:child_process'
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { test, expect, type Page, type Route } from '@playwright/test'
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url))
 import type { WftdmDebugHook } from '../../src/main.tsx'
 
 declare global {
