@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { arc as d3arc } from 'd3-shape'
 
 import { useCompareInputs } from '@/hooks/useCompareInputs'
 import { useResolvedView } from '@/hooks/useViewContext'
@@ -47,22 +48,24 @@ const RING_W = 108
 const RING_H = 54
 const RING_R = 38
 
-/** A half-circle dial (0 at 9 o'clock, `max` at 3 o'clock): the value as a filled arc, the reference as a tick. */
+/** A half-circle dial (0 at 9 o'clock, `max` at 3 o'clock): the value as a filled arc, the reference as a tick. The paths
+ * come from d3-shape's arc, so the angles follow d3's convention (0 at 12 o'clock, clockwise). */
 function Ring({ value, reference, max, unit }: { value: number; reference: number | null; max: number; unit?: string }) {
   const cx = RING_W / 2
   const cy = RING_H - 6
-  const at = (v: number) => Math.PI * (1 - Math.min(1, Math.max(0, v / max)))
-  const pt = (a: number, r: number) => `${(cx + Math.cos(a) * r).toFixed(1)} ${(cy - Math.sin(a) * r).toFixed(1)}`
-  const arc = (a0: number, a1: number) => `M${pt(a0, RING_R)} A${RING_R} ${RING_R} 0 0 1 ${pt(a1, RING_R)}`
-  const a = at(value)
-  const ref = reference === null ? null : at(reference)
+  const angle = (v: number) => -Math.PI / 2 + Math.PI * Math.min(1, Math.max(0, v / max))
+  const band = d3arc<{ startAngle: number; endAngle: number }>().innerRadius(RING_R - 3.5).outerRadius(RING_R + 3.5).cornerRadius(3.5)
+  const tick = d3arc<{ startAngle: number; endAngle: number }>().innerRadius(RING_R - 7).outerRadius(RING_R + 7)
+  const track = band({ startAngle: -Math.PI / 2, endAngle: Math.PI / 2 }) ?? ''
+  const fill = value > 0 ? (band({ startAngle: -Math.PI / 2, endAngle: angle(value) }) ?? '') : ''
+  const mark = reference === null ? '' : (tick({ startAngle: angle(reference) - 0.025, endAngle: angle(reference) + 0.025 }) ?? '')
   return (
     <svg width={RING_W} height={RING_H} viewBox={`0 0 ${RING_W} ${RING_H}`} className="ml-auto shrink-0" role="img" aria-label={`${value.toFixed(1)} of ${max}${unit ?? ''}`} data-testid="hero-ring">
-      <path d={arc(Math.PI, 0)} fill="none" stroke="var(--grid)" strokeWidth="7" strokeLinecap="round" />
-      {value > 0 && <path d={arc(Math.PI, a)} fill="none" stroke="var(--brand)" strokeWidth="7" strokeLinecap="round" />}
-      {ref !== null && (
-        <line x1={pt(ref, RING_R - 7).split(' ')[0]} y1={pt(ref, RING_R - 7).split(' ')[1]} x2={pt(ref, RING_R + 7).split(' ')[0]} y2={pt(ref, RING_R + 7).split(' ')[1]} stroke="var(--ink)" strokeWidth="2" strokeLinecap="round" />
-      )}
+      <g transform={`translate(${cx},${cy})`}>
+        <path d={track} fill="var(--grid)" />
+        {fill && <path d={fill} fill="var(--brand)" />}
+        {mark && <path d={mark} fill="var(--ink)" />}
+      </g>
       <text x={cx - RING_R} y={RING_H} textAnchor="middle" fontSize="9" fill="var(--mute)">0</text>
       <text x={cx + RING_R} y={RING_H} textAnchor="middle" fontSize="9" fill="var(--mute)">{`${max}${unit ?? ''}`}</text>
     </svg>
