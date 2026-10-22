@@ -85,10 +85,12 @@
   --title-fg: var(--brand-text);
   /* Tile tags (Badge): accent = a computed view such as "Change vs <reference>"; neutral = a plain note, a subtle brand pill ("Side by side",
      "Same in every scenario"). The only place their colours are set. */
-  --tag-accent-bg: color-mix(in srgb, var(--brand) 26%, transparent);
+  /* the tint behind tags: a muted blue in light mode (the navy brand mixes to grey on white), the brand colour in dark */
+  --tag-hue: #3a68b0;
+  --tag-accent-bg: color-mix(in srgb, var(--tag-hue) 22%, transparent);
   --tag-accent-fg: var(--brand-text);
-  --tag-accent-ring: color-mix(in srgb, var(--brand) 45%, transparent);
-  --tag-neutral-bg: color-mix(in srgb, var(--brand) 12%, transparent);
+  --tag-accent-ring: color-mix(in srgb, var(--tag-hue) 45%, transparent);
+  --tag-neutral-bg: color-mix(in srgb, var(--tag-hue) 13%, transparent);
   --tag-neutral-fg: var(--brand-text);
 
   /* calibration status — only ever for calibration status, never for series */
@@ -293,6 +295,7 @@ body::before {
   --c-2: #ffc984;
   --c-3: #caacff;
   --brand: #c9d6f2;
+  --tag-hue: var(--brand);
   --brand-text: #c9d6f2;
   --c-obs: #eef1f5;
 
