@@ -1,5 +1,5 @@
-import { useEffect, useState, type ReactNode } from 'react'
-import { GraphicWalker } from '@kanaries/graphic-walker'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { GraphicWalker, type IChart, type VizSpecStore } from '@kanaries/graphic-walker'
 import '@kanaries/graphic-walker/dist/style.css'
 import '@/panels/graphicWalkerPanel.css'
 import { Compass } from 'lucide-react'
@@ -10,6 +10,8 @@ import * as appState from '@/state/appState'
 import * as sqlExpander from '@/services/sqlExpander'
 import { useActiveScenarios } from '@/hooks/useActiveScenarios'
 import { useColorScheme } from '@/hooks/useColorScheme'
+import { useGraphicWalkerTheme } from '@/panels/graphicWalkerTheme'
+import { installGraphicWalkerShadowStyle } from '@/panels/graphicWalkerShadowStyle'
 import { buildGraphicWalkerQuery, EMPTY_SUMMARIZE_CONFIG } from '@/panels/panelQuery'
 import { inferFields, type InferredField } from '@/panels/graphicWalkerFields'
 import { listSelectableDatasets, filterSchemaConsistent } from '@/panels/graphicWalkerDatasets'
@@ -74,6 +76,34 @@ export function GraphicWalkerPanel({ config }: { config: GraphicWalkerPanelConfi
   // prefers-color-scheme itself, which could diverge from an explicit
   // in-app override once one exists.
   const colorScheme = useColorScheme()
+  // GraphicWalker's chrome and charts track the app's own tokens/font,
+  // including tokens the app derives a moment after a theme flip
+  // (graphicWalkerTheme.ts).
+  const gwTheme = useGraphicWalkerTheme()
+  const contentRef = useRef<HTMLDivElement>(null)
+
+  // GraphicWalker only partly re-renders an EXISTING chart when its theme
+  // props change (axis/legend titles and the color ramp stayed on the old
+  // theme's values — confirmed live), so a real theme change remounts it.
+  // The viewer's charts are exported first and handed back through the
+  // `chart` prop, so a theme flip never costs them their work.
+  const storeRef = useRef<VizSpecStore | null>(null)
+  const savedCharts = useRef<IChart[] | undefined>(undefined)
+  const [themeEpoch, setThemeEpoch] = useState(0)
+  const firstTheme = useRef(true)
+  useEffect(() => {
+    if (firstTheme.current) {
+      firstTheme.current = false
+      return
+    }
+    savedCharts.current = storeRef.current?.exportCode()
+    setThemeEpoch((n) => n + 1)
+  }, [gwTheme])
+  // The remount has consumed the saved charts by now; drop them so a later
+  // dataset switch can never re-apply a stale chart from the old dataset.
+  useEffect(() => {
+    savedCharts.current = undefined
+  }, [themeEpoch])
   // Only consulted when config.scenario is unset — buildGraphicWalkerQuery's
   // own branching means a pinned config.scenario produces a
   // scenario-set-independent SQL string regardless of what this value is,
@@ -81,6 +111,14 @@ export function GraphicWalkerPanel({ config }: { config: GraphicWalkerPanelConfi
   // reset of a viewer's in-progress chart for a panel pinned to one
   // scenario (data-model.md's "Component state" section).
   const activeScenarioNames = useActiveScenarios()
+
+  // Inject the app's own font/scrollbar rules into GraphicWalker's shadow
+  // root (graphicWalkerShadowStyle.ts). Mount-once: the installer watches
+  // for GW replacing its host element itself.
+  useEffect(() => {
+    const el = contentRef.current
+    return el ? installGraphicWalkerShadowStyle(el) : undefined
+  }, [])
 
   // 028-graphic-walker-dataset-picker — the viewer's own current selection,
   // initialized from config.dataset (which stays REQUIRED regardless of
@@ -300,7 +338,18 @@ export function GraphicWalkerPanel({ config }: { config: GraphicWalkerPanelConfi
       </div>
     )
   } else {
-    content = <GraphicWalker data={rows} fields={fields} themeKey="g2" appearance={colorScheme} />
+    content = (
+      <GraphicWalker
+        key={themeEpoch}
+        storeRef={storeRef}
+        chart={savedCharts.current}
+        data={rows}
+        fields={fields}
+        appearance={colorScheme}
+        uiTheme={gwTheme.uiTheme}
+        vizThemeConfig={gwTheme.vizThemeConfig}
+      />
+    )
   }
 
   // themeKey="g2" matches embedGraphicWalker()'s own hardcoded default
@@ -336,7 +385,9 @@ export function GraphicWalkerPanel({ config }: { config: GraphicWalkerPanelConfi
           fill the panel too (a real bug caught during this feature's own
           implementation: .graphic-walker-panel-host > div originally
           matched ANY direct child div, picker's included). */}
-      <div className="graphic-walker-panel-content">{content}</div>
+      <div className="graphic-walker-panel-content" ref={contentRef}>
+        {content}
+      </div>
     </div>
   )
 }

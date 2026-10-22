@@ -28,6 +28,7 @@ layout:
   # run, and the panel responds to the Scenarios-tab Switch.
   row_explore:
     - type:    graphic-walker
-      title:   Free-form Visual Analytics — Trip Mode Share
+      title:   Free-form Visual Analytics
       dataset: trip_mode_share
+      dataset_picker: true
       width:   1.0

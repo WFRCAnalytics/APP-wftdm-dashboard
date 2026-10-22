@@ -461,12 +461,28 @@ test.describe('Polish & cross-cutting', () => {
         return null
       })
 
-    const lightBg = await findBg()
-    expect(lightBg).toBe('rgb(255, 255, 255)')
+    // GraphicWalker's chrome follows the app's own tokens
+    // (graphicWalkerTheme.ts / graphicWalkerShadowStyle.ts): the field-list
+    // shelf paints --tile-hi. Compare against that token's REAL computed
+    // value in each theme rather than a hardcoded rgb() copy.
+    const cardToken = () =>
+      page.evaluate(() => {
+        const probe = document.createElement('div')
+        probe.style.backgroundColor = 'var(--tile-hi)'
+        document.body.appendChild(probe)
+        const rgb = getComputedStyle(probe).backgroundColor
+        probe.remove()
+        return rgb
+      })
+
+    const lightCard = await cardToken()
+    expect(await findBg()).toBe(lightCard)
 
     await page.evaluate(() => document.documentElement.classList.add('dark'))
     await expect(async () => {
-      expect(await findBg()).toBe('rgb(9, 9, 11)')
+      const darkCard = await cardToken()
+      expect(darkCard).not.toBe(lightCard)
+      expect(await findBg()).toBe(darkCard)
     }).toPass({ timeout: 5000 })
   })
 })
@@ -560,7 +576,7 @@ test.describe('028-graphic-walker-dataset-picker', () => {
       const card = panelCard(page, 'Free-form Visual Analytics (Dataset Picker, Multi-Scenario)')
       await card.waitFor({ state: 'visible', timeout: 15000 })
       await datasetPickerTrigger(card).click()
-      const items = await page.getByRole('menuitemradio').allTextContents()
+      const items = await page.getByRole('option').allTextContents()
       expect(items.some((t) => t.includes('zonemap-geom') || t.includes('taz25'))).toBe(false)
     })
 
@@ -579,7 +595,7 @@ test.describe('028-graphic-walker-dataset-picker', () => {
 
       await datasetPickerTrigger(card).click()
       await expect(async () => {
-        const items = await page.getByRole('menuitemradio').allTextContents()
+        const items = await page.getByRole('option').allTextContents()
         expect(items).toContain('summary_kpis')
         expect(items).toContain('trip_mode_share')
         expect(items.length).toBeGreaterThan(30) // the real, full 35-metric catalog
@@ -591,7 +607,7 @@ test.describe('028-graphic-walker-dataset-picker', () => {
       const card = panelCard(page, 'Free-form Visual Analytics (Dataset Picker)')
       await card.waitFor({ state: 'visible', timeout: 15000 })
       await datasetPickerTrigger(card).click()
-      const options = await page.getByRole('menuitemradio').allTextContents()
+      const options = await page.getByRole('option').allTextContents()
       await page.keyboard.press('Escape')
       expect(options.length).toBeGreaterThan(30)
       // A representative sample, not all 35 — this is a real, live query

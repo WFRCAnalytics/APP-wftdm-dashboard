@@ -128,7 +128,7 @@ export function DashboardRenderer({ tab }: { tab: DashboardTabConfig }) {
 function FullPagePanel({ config }: { config: PanelConfig }) {
   const PanelComponent = registry[config.type]
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div className="flex min-h-0 flex-1 flex-col" data-full-page="true">
       {PanelComponent ? (
         <PanelErrorBoundary panelTitle={config.title}>
           {/* 042-boot-performance-fix: same Suspense requirement as

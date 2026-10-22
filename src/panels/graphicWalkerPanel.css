@@ -71,3 +71,26 @@
   height: 100%;
   width: 100%;
 }
+
+/* Chromeless full-page mode (dashboardRenderer.tsx's FullPagePanel) has no
+ * Card around its panel, so the picker pill and GraphicWalker itself sat
+ * flush against the page edges. Pad all four sides of the panel host.
+ * Scoped by the wrapper's data-full-page attribute so a panel inside an
+ * ordinary padded card is unaffected. The host is height:100% with
+ * border-box sizing, so this padding shrinks its content area rather than
+ * overflowing the page. */
+[data-full-page] .graphic-walker-panel-host {
+  padding: 16px;
+}
+
+/* Round GraphicWalker's outer edge like the app's tiles, nav and dialogs (24px). The content wrapper clips the library's
+ * own square-cornered root. Standing alone in the chromeless full-page view (no Card around it) it also takes the tile
+ * border and elevation, so it reads as one of the app's surfaces. */
+.graphic-walker-panel-content {
+  border-radius: 24px;
+  overflow: hidden;
+}
+[data-full-page] .graphic-walker-panel-content {
+  border: 1px solid var(--glass-line);
+  box-shadow: var(--sh1);
+}
