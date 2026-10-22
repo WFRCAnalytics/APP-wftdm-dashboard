@@ -46,16 +46,16 @@ function Sparkline({ points, current }: { points: { year: number; value: number 
 
 const RING_W = 108
 const RING_H = 54
-const RING_R = 38
+const RING_R = 36
 
 /** A half-circle dial (0 at 9 o'clock, `max` at 3 o'clock): the value as a filled arc, the reference as a tick. The paths
  * come from d3-shape's arc, so the angles follow d3's convention (0 at 12 o'clock, clockwise). */
 function Ring({ value, reference, max, unit }: { value: number; reference: number | null; max: number; unit?: string }) {
   const cx = RING_W / 2
-  const cy = RING_H - 6
+  const cy = RING_H - 8
   const angle = (v: number) => -Math.PI / 2 + Math.PI * Math.min(1, Math.max(0, v / max))
-  const band = d3arc<{ startAngle: number; endAngle: number }>().innerRadius(RING_R - 3.5).outerRadius(RING_R + 3.5).cornerRadius(3.5)
-  const tick = d3arc<{ startAngle: number; endAngle: number }>().innerRadius(RING_R - 7).outerRadius(RING_R + 7)
+  const band = d3arc<{ startAngle: number; endAngle: number }>().innerRadius(RING_R - 7).outerRadius(RING_R + 7).cornerRadius(4)
+  const tick = d3arc<{ startAngle: number; endAngle: number }>().innerRadius(RING_R - 10).outerRadius(RING_R + 10)
   const track = band({ startAngle: -Math.PI / 2, endAngle: Math.PI / 2 }) ?? ''
   const fill = value > 0 ? (band({ startAngle: -Math.PI / 2, endAngle: angle(value) }) ?? '') : ''
   const mark = reference === null ? '' : (tick({ startAngle: angle(reference) - 0.025, endAngle: angle(reference) + 0.025 }) ?? '')
