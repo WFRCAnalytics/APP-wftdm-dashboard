@@ -30,6 +30,7 @@ import { PanelEmptyState } from '@/panels/PanelEmptyState'
 import { PanelErrorState } from '@/panels/PanelErrorState'
 import { DEFAULT_CENTER, DEFAULT_ZOOM } from '@/panels/mapDefaults'
 import type { FlowMapPanelConfig } from '@/layout/types'
+import { settledResize } from '@/panels/settledResize'
 import { trackMap } from '@/services/mapCapture'
 
 const ALL_FILTERS: ['*'] = ['*']
@@ -358,9 +359,8 @@ export function FlowMapPanel({ config }: { config: FlowMapPanelConfig }) {
     window.__flowmapTestOverlays ??= {}
     window.__flowmapTestOverlays[config.title] = overlay
 
-    const observer = new ResizeObserver(() => {
-      mapRef.current?.resize()
-    })
+    const settled = settledResize(() => mapRef.current?.resize())
+    const observer = new ResizeObserver(() => settled.schedule())
     observer.observe(el)
 
     // window.__flowmapTestMapReadyDelayMs (see the module-level comment
@@ -376,6 +376,7 @@ export function FlowMapPanel({ config }: { config: FlowMapPanelConfig }) {
     return () => {
       window.clearTimeout(readyTimer)
       observer.disconnect()
+      settled.cancel()
       delete window.__flowmapTestMaps?.[config.title]
       delete window.__flowmapTestOverlays?.[config.title]
       tooltipRef.current?.destroy()

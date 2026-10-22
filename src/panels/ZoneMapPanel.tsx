@@ -23,6 +23,7 @@ import { loadBasemapStyle, BLANK_STYLE, freshBlankStyle } from '@/panels/basemap
 import { PanelEmptyState } from '@/panels/PanelEmptyState'
 import { PanelErrorState } from '@/panels/PanelErrorState'
 import type { ZoneMapPanelConfig } from '@/layout/types'
+import { settledResize } from '@/panels/settledResize'
 import { trackMap } from '@/services/mapCapture'
 
 const ALL_FILTERS: ['*'] = ['*']
@@ -443,9 +444,8 @@ export function ZoneMapPanel({ config }: { config: ZoneMapPanelConfig }) {
     // Matches 010-flowmap-panel's own precedent — an explicit
     // ResizeObserver, not relying solely on MapLibre's native
     // auto-resize (research.md §9, that feature's own research.md §2).
-    const observer = new ResizeObserver(() => {
-      mapRef.current?.resize()
-    })
+    const settled = settledResize(() => mapRef.current?.resize())
+    const observer = new ResizeObserver(() => settled.schedule())
     observer.observe(el)
 
     map.once('load', () => {
@@ -491,6 +491,7 @@ export function ZoneMapPanel({ config }: { config: ZoneMapPanelConfig }) {
 
     return () => {
       observer.disconnect()
+      settled.cancel()
       map.off('mousemove', FILL_LAYER_ID, onMouseMove)
       map.off('mousemove', EXTRUSION_LAYER_ID, onMouseMove)
       map.off('mouseleave', FILL_LAYER_ID, onMouseLeave)

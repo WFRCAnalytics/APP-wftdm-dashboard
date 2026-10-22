@@ -8,6 +8,7 @@ import 'maplibre-gl/dist/maplibre-gl.css'
 import type { Camera, CameraMap } from '@/charts/lib/mapMath'
 import type { MapGeometry } from '@/charts/lib/mapGeometry'
 import type { ChartTheme } from '@/charts/types'
+import { settledResize } from '@/panels/settledResize'
 import { basemapKey, resolveEffectiveBasemap } from '@/panels/basemap/resolveEffectiveBasemap'
 import { freshBlankStyle, loadBasemapStyle } from '@/panels/basemap/loadBasemapStyle'
 import type { BasemapPresetName, BasemapSelection } from '@/panels/basemap/types'
@@ -55,6 +56,7 @@ export class ZoneMap implements CameraMap {
 
   private ready = false
   private destroyed = false
+  private readonly settled = settledResize(() => this.resizeNow())
   private fills = new Map<number, string>()
   private noData = '#cccccc'
   private theme: ChartTheme | null = null
@@ -128,7 +130,7 @@ export class ZoneMap implements CameraMap {
         void this.applyBasemap(sel)
       }
     })
-    this.observer = new ResizeObserver(() => this.resize())
+    this.observer = new ResizeObserver(() => this.settled.schedule())
     this.observer.observe(parent)
   }
 
@@ -150,7 +152,12 @@ export class ZoneMap implements CameraMap {
     this.map.easeTo({ center: this.home.center, zoom: this.home.zoom, bearing: 0, pitch: 0, duration: 300 })
   }
 
+  // Deferred until the container stops changing size (see settledResize); resizeNow is the immediate form.
   resize(): void {
+    this.settled.schedule()
+  }
+
+  resizeNow(): void {
     if (!this.destroyed && this.root.clientWidth > 1 && this.root.clientHeight > 1) this.map.resize()
   }
 
@@ -328,6 +335,7 @@ export class ZoneMap implements CameraMap {
   destroy(): void {
     if (this.destroyed) return
     this.destroyed = true
+    this.settled.cancel()
     this.basemapAbort?.abort()
     this.observer.disconnect()
     this.map.remove()
