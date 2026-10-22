@@ -68,7 +68,7 @@ test.describe('063 P3 — model years', () => {
   test('the control bar shows Year and Focus, defaulting to the base year and the baseline', async ({ page }) => {
     await boot(page, ALL_RUNS)
     await expect(page.getByTestId('control-year')).toHaveValue('2023')
-    await expect(page.getByTestId('control-focus')).toHaveValue('activitysim-baseline')
+    await expect(page.getByTestId('scenario-chip-focus')).toContainText(/baseline/i)
     const state = await page.evaluate(() => window.__wftdm!.compareState.getState())
     expect(state).toMatchObject({ year: 2023, focus: 'activitysim-baseline', compare: true })
   })
@@ -115,6 +115,6 @@ test.describe('063 P3 — model years', () => {
   test('a single-year deployment has no Year control', async ({ page }) => {
     await boot(page, BASES, { dashboards: ['dashboard-6-network.yaml'] })
     await expect(page.getByTestId('control-year')).toHaveCount(0)
-    await expect(page.getByTestId('control-focus')).toBeVisible()
+    await expect(page.getByTestId('scenario-picker-button')).toBeVisible()
   })
 })

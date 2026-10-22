@@ -75,7 +75,7 @@ export function PageHeader({ title, subtitle, children, onMenu }: PageHeaderProp
           : 'pb-3 pt-[26px]',
       )}
     >
-      <div className="flex min-w-0 items-center gap-3 min-[900px]:max-w-[46%]">
+      <div className="flex min-w-0 items-center gap-3 min-[900px]:flex-1">
         {onMenu && (
           <button
             type="button"
@@ -87,14 +87,14 @@ export function PageHeader({ title, subtitle, children, onMenu }: PageHeaderProp
           </button>
         )}
         <div className="min-w-0">
-          <h1 style={{ lineHeight: 1.08 }} className={cn('font-heading font-bold tracking-[-0.025em] text-[var(--ink)]', compact ? 'text-[21px]' : 'text-[clamp(28px,3.2vw,40px)]')}>{title}</h1>
+          <h1 style={{ lineHeight: 1.08 }} className={cn('line-clamp-2 font-heading font-bold tracking-[-0.025em] text-[var(--ink)]', compact ? 'text-[21px]' : 'text-[clamp(28px,3.2vw,40px)]')}>{title}</h1>
           {subtitle && !compact && <p className="mt-[6px] font-body text-[15px] text-[var(--mute)]">{subtitle}</p>}
         </div>
       </div>
       {/* Stays at the right at desktop widths in every state: a wide bar (Compare on) wraps inside this area instead of
           dropping under the title. Below 900px there is no room beside the title, so it takes its own row. */}
       {children && (
-        <div className="flex min-w-0 flex-1 justify-end max-[899px]:basis-full max-[899px]:justify-start">{children}</div>
+        <div className="flex min-w-0 flex-none justify-end max-[899px]:basis-full max-[899px]:justify-start min-[900px]:max-w-[78%]">{children}</div>
       )}
     </header>
   )
