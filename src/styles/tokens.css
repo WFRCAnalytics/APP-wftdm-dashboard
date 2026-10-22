@@ -83,13 +83,13 @@
   --pill-hover-fg: var(--ink);
   /* page titles (the large heading of every page) */
   --title-fg: var(--brand-text);
-  /* Tile tags (Badge): accent = a computed view such as "Change vs <reference>"; neutral = a plain note ("Side by side",
+  /* Tile tags (Badge): accent = a computed view such as "Change vs <reference>"; neutral = a plain note, a subtle brand pill ("Side by side",
      "Same in every scenario"). The only place their colours are set. */
   --tag-accent-bg: color-mix(in srgb, var(--brand) 26%, transparent);
   --tag-accent-fg: var(--brand-text);
   --tag-accent-ring: color-mix(in srgb, var(--brand) 45%, transparent);
-  --tag-neutral-bg: color-mix(in srgb, var(--ink) 9%, transparent);
-  --tag-neutral-fg: var(--mute);
+  --tag-neutral-bg: color-mix(in srgb, var(--brand) 12%, transparent);
+  --tag-neutral-fg: var(--brand-text);
 
   /* calibration status — only ever for calibration status, never for series */
   --ok: #167a4a;

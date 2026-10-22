@@ -122,7 +122,7 @@ export function HeroKpi({ config }: { config: ValueBoxPanelConfig }) {
             >
               {formatDelta(delta, 'pct')}
             </span>
-            <span className="min-w-0 truncate">vs {referenceLabel}</span>
+            <span className="min-w-0 truncate rounded-full bg-[var(--tag-neutral-bg)] px-2 py-[2px] text-[var(--tag-neutral-fg)]">vs {referenceLabel}</span>
           </>
         )}
         {state.status === 'ready' && <Sparkline points={state.series} current={year} />}
