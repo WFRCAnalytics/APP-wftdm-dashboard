@@ -6,7 +6,12 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 
 import '@/styles/tokens.css'
-// 033-shadcn-default-theme: self-hosted Geist/Geist Mono variable-font
+import { configureVocab } from '@/charts/vocab'
+import { configureMetrics } from '@/charts/lib/metrics'
+import { configureUnits } from '@/charts/units'
+import { configureExport } from '@/state/exportState'
+import { configureLayout } from '@/state/layoutState'
+// 033-shadcn-default-theme: self-hosted Schibsted Grotesk / DM Mono font
 // side-effecting imports — the real replacement for the old Google-Fonts-
 // CDN runtime-injection module this project used to keep under
 // src/lib/ (retired/deleted entirely, T024; quickstart.md Scenario 3's
@@ -21,16 +26,19 @@ import '@/styles/tokens.css'
 // own --font-* values naming them. This import is therefore a genuine,
 // first-time wiring of real font loading into the production boot
 // sequence, not a like-for-like mechanism swap.
-import '@fontsource-variable/geist'
-import '@fontsource-variable/geist-mono'
+import '@fontsource-variable/schibsted-grotesk'
+import '@fontsource/dm-mono/400.css'
+import '@fontsource/dm-mono/500.css'
 import { toast } from 'sonner'
 
 import { initDuckDB } from './services/duckdb.ts'
 import { discoverScenarios } from './services/scenarioDiscovery.ts'
+import { bootCompareState } from './services/runResolution.ts'
 import { loadDashboards, loadDashboardBranding, type DashboardBranding } from './services/yamlLoader.ts'
 import { setDeployerScenarioPalette } from './panels/scenarioDisplay.ts'
 import { setDeployerProtomapsSource } from './state/protomapsSourceState.ts'
-import { setDeployerInterfaceColor, computeForegroundFor } from './panels/interfaceColor.ts'
+import { setDeployerInterfaceColor } from './panels/interfaceColor.ts'
+import { startAccentSync, startThemeSync } from './services/theme.ts'
 import { parseDashboardConfig } from './layout/types.ts'
 import { Shell } from './layout/shell.tsx'
 import { Toaster } from './components/ui/sonner.tsx'
@@ -42,6 +50,7 @@ import { get as getFilter, set as setFilter } from './state/filterState.ts'
 // below (duckdb.ts's exports spread flat, the rest namespaced).
 export type WftdmDebugHook = typeof import('./services/duckdb.ts') & {
   appState: typeof import('./state/appState.ts')
+  compareState: typeof import('./state/compareState.ts')
   filterState: typeof import('./state/filterState.ts')
   sqlExpander: typeof import('./services/sqlExpander.ts')
   yamlLoader: typeof import('./services/yamlLoader.ts')
@@ -169,7 +178,28 @@ const branding: DashboardBranding = {
   primaryColor: primaryBranding.primaryColor ?? demoBranding.primaryColor,
   secondaryColor: primaryBranding.secondaryColor ?? demoBranding.secondaryColor,
   accentColor: primaryBranding.accentColor ?? demoBranding.accentColor,
+  years: primaryBranding.years ?? demoBranding.years,
+  baseYear: primaryBranding.baseYear ?? demoBranding.baseYear,
+  defaultYear: primaryBranding.defaultYear ?? demoBranding.defaultYear,
+  compareDefault: primaryBranding.compareDefault ?? demoBranding.compareDefault,
+  compareScenarios: primaryBranding.compareScenarios ?? demoBranding.compareScenarios,
+  compareFocus: primaryBranding.compareFocus ?? demoBranding.compareFocus,
+  compareReference: primaryBranding.compareReference ?? demoBranding.compareReference,
+  vocab: primaryBranding.vocab ?? demoBranding.vocab,
+  metrics: primaryBranding.metrics ?? demoBranding.metrics,
+  units: primaryBranding.units ?? demoBranding.units,
+  exportFooter: primaryBranding.exportFooter ?? demoBranding.exportFooter,
+  layout: primaryBranding.layout ?? demoBranding.layout,
 }
+// 063 redesign: this deployment's category vocabulary (modes, purposes, income groups) for the chart kinds.
+configureVocab(branding.vocab)
+configureMetrics(branding.metrics)
+configureUnits(branding.units)
+configureLayout(branding.layout)
+configureExport({ footer: branding.exportFooter, title: branding.title })
+// 063 redesign: model years, focus and Compare defaults (project-docs/redesign/03-state-and-compare.md §1.1). Needs the
+// discovered runs and the merged config above; every tile and the control bar read the result.
+bootCompareState(branding)
 // 036-scenario-color-picker: semantic validation (is each entry a real
 // CSS color) lives here, at the one real consumption point — loadDashboardBranding()
 // itself stays a thin, format-only parse, matching its own existing
@@ -221,10 +251,12 @@ for (const [role, value] of [
 ] as const) {
   if (value && CSS.supports('color', value)) {
     setDeployerInterfaceColor(role, value)
-    document.documentElement.style.setProperty(`--${role}`, value)
-    document.documentElement.style.setProperty(`--${role}-foreground`, computeForegroundFor(value))
   }
 }
+// Derives --c-1..3 / --brand / --chart-* from the three colors (deployer default or viewer override) and keeps them
+// current across theme and color changes (services/theme.ts).
+startThemeSync()
+startAccentSync()
 // Sets the browser tab's own title — independent of whether the header
 // renders it as visible text at all (shell.tsx only falls back to
 // showing it inline when no logo is configured, see that file's own
@@ -276,11 +308,13 @@ if (typeof window !== 'undefined') {
   const duckdbService = await import('./services/duckdb.ts')
   const appState = await import('./state/appState.ts')
   const filterState = await import('./state/filterState.ts')
+  const compareState = await import('./state/compareState.ts')
   const sqlExpander = await import('./services/sqlExpander.ts')
   const yamlLoader = await import('./services/yamlLoader.ts')
   window.__wftdm = {
     ...duckdbService,
     appState,
+    compareState,
     filterState,
     sqlExpander,
     yamlLoader,

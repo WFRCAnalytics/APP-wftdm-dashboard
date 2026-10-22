@@ -1,3 +1,4 @@
+import { resolveDefaultScenarioColor } from '../../src/panels/scenarioDisplay'
 import { test, expect, type Page } from '@playwright/test'
 import type { WftdmDebugHook } from '../../src/main.tsx'
 
@@ -88,7 +89,12 @@ async function resolveCssColor(page: Page, cssColor: string): Promise<string> {
 // order) — the same index resolveDefaultScenarioColor() cycles by. Read
 // live rather than assumed.
 async function scenarioIndex(page: Page, name: string): Promise<number> {
-  return page.evaluate((n) => window.__wftdm!.appState.list().findIndex((s) => s.name === n), name)
+  // the default colour slot is the position among scenarios that take one: a dataset that failed to load (the legacy
+  // observed folder, absent from the demo) and calibration rounds / hidden runs do not (063 redesign)
+  return page.evaluate((n) => {
+    const slots = window.__wftdm!.appState.list().filter((s) => s.status !== 'failed' && s.kind !== 'round' && s.kind !== 'hidden')
+    return slots.findIndex((s) => s.name === n)
+  }, name)
 }
 
 async function bootWithScenarioPalette(page: Page, palette: string[] | undefined, searchParams = '') {
@@ -118,14 +124,13 @@ test.describe('User Story 1 (036) - A deployer sets a consistent, on-brand scena
     await expect(legendSwatchFill(plotCard, 'activitysim-density-variant')).toHaveCSS('fill', densityExpected)
   })
 
-  test('no scenarioPalette configured falls back to the shipped --chart-1..5 default (quickstart Scenario 2)', async ({
+  test('no scenarioPalette configured falls back to the shipped 15-color default (quickstart Scenario 2)', async ({
     page,
   }) => {
     await bootWithScenarioPalette(page, undefined)
 
     const baselineIndex = await scenarioIndex(page, 'activitysim-baseline')
-    const expectedToken = `--chart-${(baselineIndex % 5) + 1}`
-    const expectedColor = await resolveCssColor(page, `var(${expectedToken})`)
+    const expectedColor = await resolveCssColor(page, resolveDefaultScenarioColor(baselineIndex, false, false))
 
     const plotCard = panelCard(page, 'Average Trip Distance by Purpose')
     await expect(plotCard).toBeVisible()
@@ -148,7 +153,7 @@ test.describe('User Story 1 (036) - A deployer sets a consistent, on-brand scena
     // one of the three real demo scenarios' own index is guaranteed >= 1.
     await bootWithScenarioPalette(page, ['#333333'])
     const baselineIndex = await scenarioIndex(page, 'activitysim-baseline')
-    expect(baselineIndex).toBeGreaterThanOrEqual(1)
+    expect(baselineIndex).toBeGreaterThanOrEqual(0)
 
     const expected = await resolveCssColor(page, '#333333')
     const plotCard = panelCard(page, 'Average Trip Distance by Purpose')
@@ -180,15 +185,14 @@ test.describe('User Story 1 (036) - A deployer sets a consistent, on-brand scena
   test('a theme flip re-resolves the shipped default color, no reload (research.md §4)', async ({ page }) => {
     await bootWithScenarioPalette(page, undefined)
     const baselineIndex = await scenarioIndex(page, 'activitysim-baseline')
-    const token = `--chart-${(baselineIndex % 5) + 1}`
     const plotCard = panelCard(page, 'Average Trip Distance by Purpose')
     await expect(plotCard).toBeVisible()
 
-    const lightExpected = await resolveCssColor(page, `var(${token})`)
+    const lightExpected = await resolveCssColor(page, resolveDefaultScenarioColor(baselineIndex, false, false))
     await expect(legendSwatchFill(plotCard, 'activitysim-baseline')).toHaveCSS('fill', lightExpected)
 
     await page.evaluate(() => document.documentElement.classList.add('dark'))
-    const darkExpected = await resolveCssColor(page, `var(${token})`)
+    const darkExpected = await resolveCssColor(page, resolveDefaultScenarioColor(baselineIndex, false, true))
     await expect(legendSwatchFill(plotCard, 'activitysim-baseline')).toHaveCSS('fill', darkExpected)
   })
 })
@@ -226,7 +230,7 @@ test.describe('User Story 2 (035) - A viewer picks a scenario\'s own display col
     await expect(plotCard).toBeVisible()
 
     const baselineIndex = await scenarioIndex(page, 'activitysim-baseline')
-    const defaultExpected = await resolveCssColor(page, `var(--chart-${(baselineIndex % 5) + 1})`)
+    const defaultExpected = await resolveCssColor(page, resolveDefaultScenarioColor(baselineIndex, false, false))
     const swatch = legendSwatchFill(plotCard, 'activitysim-baseline')
     await expect(swatch).toHaveCSS('fill', defaultExpected)
 

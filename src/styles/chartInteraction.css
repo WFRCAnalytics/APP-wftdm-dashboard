@@ -1,0 +1,91 @@
+/* The shared tooltip and the hover states of side-by-side panels (project-docs/redesign/05-tooltips-and-interaction.md). */
+.wf-tip {
+  position: fixed;
+  z-index: 300;
+  pointer-events: none;
+  min-width: 168px;
+  max-width: 320px;
+  padding: 11px 13px 10px;
+  border-radius: 14px;
+  background: var(--glass);
+  -webkit-backdrop-filter: blur(16px) saturate(1.3);
+  backdrop-filter: blur(16px) saturate(1.3);
+  border: 1px solid var(--glass-line);
+  box-shadow: var(--sh2);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  line-height: 1.35;
+  opacity: 0;
+  transition: opacity 0.08s;
+}
+.tt-h {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 13px;
+  margin-bottom: 6px;
+}
+.tt-h i {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex: none;
+}
+.tt-h em {
+  font-style: normal;
+  font-weight: 400;
+  color: var(--mute);
+  margin-left: auto;
+  padding-left: 12px;
+}
+.tt-r {
+  display: grid;
+  grid-template-columns: 10px 1fr auto auto;
+  gap: 4px 8px;
+  align-items: center;
+  padding: 2px 0;
+}
+.tt-r i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+.tt-r i.n {
+  background: transparent;
+}
+.tt-k {
+  color: var(--mute);
+}
+.tt-r.b .tt-k {
+  color: var(--ink);
+}
+.tt-v {
+  font: 500 12.5px var(--font-mono);
+  text-align: right;
+}
+.tt-d {
+  font: 12px var(--font-mono);
+  font-style: normal;
+}
+.tt-f {
+  margin-top: 7px;
+  padding-top: 7px;
+  border-top: 1px solid var(--line);
+  color: var(--mute);
+  font-size: 12px;
+}
+
+/* synced hover across side-by-side panels */
+.wf-multi .sync {
+  stroke: var(--ink) !important;
+  stroke-width: 2.4px !important;
+}
+.wf-multi g.sync rect {
+  stroke: var(--ink);
+  stroke-width: 2.4px;
+}
+.wf-multi.syncing [data-key]:not(.sync) {
+  opacity: 0.5;
+}

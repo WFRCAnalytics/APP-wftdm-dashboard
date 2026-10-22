@@ -47,8 +47,7 @@ reverts to a normal source tree and the built demo output is removed.
 | Build | Vite, TypeScript (ES2022 target) |
 | Query — browser | DuckDB-WASM in a Web Worker |
 | Query — offline | Python DuckDB (`uv run`) |
-| Charts — bar/line/area | `recharts` (shadcn `ChartContainer`) — primary/default |
-| Charts — most others | Observable Plot (`@observablehq/plot`) |
+| Charts — bar/line/area/dot/cell and most others | Observable Plot (`@observablehq/plot`) |
 | Charts — Sankey | D3 (`d3-sankey`) — no Observable Plot support exists |
 | Charts — Hierarchical (treemap/sunburst) | D3 (`d3-hierarchy`/`d3-shape`) |
 | Charts — Pie/Radar | D3 (`d3-shape` for pie); radar is hand-rolled polar trig, no D3 layout pkg |
@@ -63,7 +62,8 @@ TypeScript throughout; React for all UI (constitution v2.0.0+). No branch-
 per-phase migration — work lands directly on `main`. `services/`/`state/`
 stay plain `.ts` (no JSX); anything rendering JSX is `.tsx`.
 
-Full Recharts v2→v3 upgrade history, chart-engine consolidation
+Recharts and Plotly were removed in the 063 redesign (recover them from git history, commit before
+`redesign: remove Plotly and Recharts` if ever needed). Chart-engine consolidation
 (`057-observable-plot-conversion`), and every panel-type's own build
 story are in `project-docs/IMPLEMENTATION-HISTORY.md` (items 16, 21, 28–31).
 
@@ -187,7 +187,8 @@ APP-wftdm-dashboard/
 │   └── tests/                    # pytest suite, separate from repo-root tests/ (Vitest/Playwright)
 └── src/
     ├── main.tsx                  # boot sequence
-    ├── state/                    # appState.ts, filterState.ts, basemapState.ts,
+    ├── state/                    # appState.ts, compareState.ts (year/focus/compare/reference/display),
+    │                              # filterState.ts, basemapState.ts,
     │                              # protomapsSourceState.ts, colorPreferenceState.ts,
     │                              # interfaceColorState.ts, fontPreferenceState.ts, textSizeState.ts
     ├── services/
@@ -196,18 +197,23 @@ APP-wftdm-dashboard/
     │   │                          # fetches each scenario's metric catalog only (lazy loading, see below)
     │   ├── tabDataLoader.ts       # computeTabDataRequirement()/ensureRegistered() — lazy,
     │   │                          # per-active-tab Parquet file registration
+    │   ├── viewContext.ts         # pure resolveViewContext(): compare state + run catalog -> what every tile shows
+    │   ├── runResolution.ts       # stores -> viewContext; getBaselineForYear(), bootCompareState()
     │   ├── yamlLoader.ts          # fetch + parse dashboard-*.yaml, DashboardBranding
     │   └── sqlExpander.ts         # expand $mappings/$bins/$sql/$filters/$scenario/$inputs/$baseline
     ├── hooks/                     # useFilterState, useActiveScenarios, useColorScheme, useBaseline,
     │                              # useGlobalBasemap, useScenarioList, useProtomapsSource,
     │                              # useScenarioDisplay, useInterfaceColors, useFontPreference,
-    │                              # useColorblindSafePreference
+    │                              # useColorblindSafePreference, useViewContext (useActiveScenarios and
+    │                              # useBaseline both read it: runs resolved for the current model year)
     ├── layout/
     │   ├── shell.tsx              # SidebarProvider > Sidebar + SidebarInset[DashboardRenderer]
     │   ├── sidebarNav.tsx         # sidebar tab list + accordion sub-nav (role="tablist"/"tab")
     │   ├── dashboardLayout.ts     # pure: isMetricStripRow()/findFullPagePanel()/resolveSections()
     │   ├── dashboardRenderer.tsx  # renders one tab's layout; injects tab-level default_basemap
-    │   ├── panelCard.tsx          # Card wrapper: title, scoped expand trigger, error boundary
+    │   ├── panelCard.tsx          # PanelCard: error boundary + Suspense; plain panels and multi-view tiles
+    │   ├── tile.tsx               # tile chrome: header, badges, control row, legend slot, body
+    │   ├── multiViewTile.tsx      # chrome for `type: multi-view` (view switcher, Group by, badges, hide rules)
     │   ├── panelExpandHost.tsx    # generic expand-to-dialog mechanism
     │   ├── types.ts               # DashboardTabConfig/PanelConfig types
     │   └── settings/              # settingsModal.tsx tabs: appearanceTab, scenariosTab,
@@ -221,12 +227,12 @@ APP-wftdm-dashboard/
     │   ├── chartColor.ts          # consolidated named-color-scheme + category-fallback resolver
     │   │                          # (replaces the old sankeyColor/hierarchyColor/polarChartColor)
     │   ├── scenarioDisplay.ts     # label/color resolution (viewer override → deployer palette → default)
-    │   ├── {ValueBox,Plotly,Table,Markdown,ObservablePlot,Sankey,FlowMap,ZoneMap,
-    │   │    GraphicWalker,Recharts,Treemap,Sunburst,Pie,Radar}Panel.tsx
+    │   ├── {ValueBox,Table,Markdown,ObservablePlot,Sankey,FlowMap,ZoneMap,
+    │   │    GraphicWalker,Treemap,Sunburst,Pie,Radar}Panel.tsx
     │   ├── basemap/               # basemap registry/resolution shared by FlowMap/ZoneMap panels
-    │   └── (pure per-panel-type helper modules: plotlyTraces, tableLogic, formatValue,
+    │   └── (pure per-panel-type helper modules: tableLogic, formatValue,
     │        observablePlotEncoding, sankeyGraph, flowmapData, zonemapColor, zoneGeometry,
-    │        rechartsEncoding, hierarchyData/hierarchyColor→chartColor, pieData, radarData)
+    │        hierarchyData/hierarchyColor→chartColor, pieData, radarData)
     ├── scenario/                  # scenarioManager.ts (local folder picker), manifestReader.ts
     ├── components/ui/             # shadcn-pattern primitives: button, card, tabs, tooltip, dialog,
     │                              # dropdown-menu, sidebar, chart, badge, color-picker, slider,
@@ -240,17 +246,18 @@ bug found in it and how it was fixed) is in
 
 ---
 
-## Panel types (14, in `panels/registry.tsx`)
+## Panel types (12, plus the `multi-view` wrapper, in `panels/registry.tsx`)
 
 ```tsx
 export const registry: Record<string, ComponentType<PanelProps>> = {
-  'plotly': PlotlyPanel, 'observable-plot': ObservablePlotPanel,
+  'observable-plot': ObservablePlotPanel,
   'table': TablePanel, 'valuebox': ValueBoxPanel,
   'flowmap': FlowMapPanel, 'zonemap': ZoneMapPanel,
   'sankey': SankeyPanel, 'graphic-walker': GraphicWalkerPanel,
-  'markdown': MarkdownPanel, 'recharts': RechartsPanel,
+  'markdown': MarkdownPanel,
   'treemap': TreemapPanel, 'sunburst': SunburstPanel,
   'pie': PieChartPanel, 'radar': RadarChartPanel,
+  'multi-view': MultiViewPanel,   // 063: wrapper holding several views of one dataset (panels/multiView.ts)
 }
 ```
 
@@ -259,18 +266,15 @@ are lazy-loaded (`React.lazy()`, `042-boot-performance-fix`) — wrapped in
 `<Suspense fallback={<PanelLoadingState />}>` inside `PanelErrorBoundary`
 at each of `panelCard.tsx`'s and `dashboardRenderer.tsx`'s two call sites.
 
-`recharts` (`chart_type: bar|line|area`) is the default/primary engine for
-bar/line/area charts; `observable-plot` is used for everything else that
-doesn't need Sankey/hierarchical/polar-specific rendering; `plotly`
-remains fully supported (per-category legend click-to-toggle is its one
-capability `recharts` doesn't replicate). Real demo content today uses 8
-of the 14 types across the six primary tabs; `plotly`/`recharts`/`table`
-edge cases are exercised for real via `dashboard-8-test.yaml`.
+`observable-plot` is the engine for bar/line/area/dot/cell charts and everything else that
+doesn't need Sankey/hierarchical/polar-specific rendering. Real demo content today uses 8
+of the 12 types across the six primary tabs; `table` and the other edge cases are exercised
+for real via `dashboard-8-test.yaml`.
 
 **Expand-ability is scoped per type** (`034-metric-panel-redesign`):
 `EXPANDABLE_PANEL_TYPES` in `panels/expandablePanelTypes.ts` lists the
-default-expandable types (table/markdown/plotly/observable-plot/sankey/
-recharts/flowmap/zonemap — NOT valuebox or ordinary graphic-walker). A
+default-expandable types (table/markdown/observable-plot/sankey/
+flowmap/zonemap — NOT valuebox or ordinary graphic-walker). A
 per-panel `expandable?: boolean` field on `PanelConfigBase` overrides the
 default: `config.expandable ?? EXPANDABLE_PANEL_TYPES.has(config.type)`.
 
@@ -299,7 +303,7 @@ export function Panel({ config }: PanelProps) {
   }, [config, filters])
 
   // Unmount-only teardown — a second effect, empty deps
-  useEffect(() => () => { /* e.g. Plotly.purge(containerRef.current) */ }, [])
+  useEffect(() => () => { /* e.g. map.remove() */ }, [])
 
   return <div ref={containerRef} />
 }
@@ -485,11 +489,7 @@ export default defineConfig({
       if (id.includes('@deck.gl') || id.includes('@flowmap.gl') || id.includes('@luma.gl') ||
           id.includes('@math.gl') || id.includes('@loaders.gl') || id.includes('@probe.gl'))
         return 'flowmap-deck'            // lazy — only FlowMapPanel needs this
-      if (id.includes('plotly'))              return 'plotly'
       if (id.includes('graphic-walker'))      return 'graphic-walker'
-      if (id.includes('recharts') || id.includes('@reduxjs/toolkit') ||
-          id.includes('es-toolkit') || id.includes('decimal.js-light') ||
-          id.includes('victory-vendor'))      return 'recharts'
     }}}
   },
   server: { headers: {                 // dev only
@@ -545,10 +545,8 @@ gracefully. Flagged as stale-docs, not yet fixed — see history item 32.)
   "@radix-ui/react-select": "latest",
   "js-yaml": "latest",
   "maplibre-gl": "^4.7.1",
-  "plotly.js-dist-min": "latest",
-  "recharts": "^3.10.1",
   "tw-animate-css": "latest",
-  "@fontsource-variable/geist": "latest", "@fontsource-variable/geist-mono": "latest"
+  "@fontsource-variable/schibsted-grotesk": "^5.3.0", "@fontsource/dm-mono": "^5.3.0"
 }
 ```
 
@@ -563,13 +561,52 @@ a range, every version-compatibility bug found) is in
 
 ---
 
+## 063 redesign: compare model, chart kinds, demo content
+
+The app implements the Corridor Pro design in `project-docs/redesign/` (read `00-README.md`, then `09-chart-kind-guide.md`
+before touching charts).
+
+- **View context**: `state/compareState.ts` (year, focus, compare, reference, display) plus appState's active flags feed
+  the pure `services/viewContext.ts#resolveViewContext`; read it through `hooks/useViewContext.ts`. Runs are identified by
+  manifest `alternative` + `year`; `kind: scenario | round | observed`, and `hidden: true` keeps a run loadable/pinnable
+  but out of the picker, Scenarios tab and compare set (the legacy ActivitySim runs the Test tab pins).
+- **Tiles**: `type: multi-view` wraps views, a Group by control and compare strategies (`panels/multiView.ts`,
+  `layout/multiViewTile.tsx`, `panels/CompareHost.tsx` + `compareStrategy.ts` for overlay/diff/multi/grid/switch/swipe).
+  Tile keys: panel `id` (else `row-index`), session state in `state/tileState.ts`. `show_when: compare|single`,
+  `needs_compare`, `family: calibration`, `height_rows` and `default_view` shape what is rendered.
+- **Charts**: `type: chart, kind: <name>` is drawn by `panels/ChartPanel.tsx`; each kind is one module in
+  `src/charts/kinds/` (named from its file name, auto-registered via `import.meta.glob`), shared logic in `src/charts/lib/`.
+  Kinds receive a `ChartEnv` and never read stores or DuckDB. One tooltip (`services/tooltip.ts`), crosshair/armPlot
+  (`panels/plotInteraction.ts`), mode cross-highlight (`panels/crossHighlight.ts`), grid-synced hover (`panels/gridSync.ts`).
+  Legacy panel types (`observable-plot`, `treemap`, ... ) are unchanged and still render old-style configs.
+- **Demo content sets**: the default demo (`public/demo-scenarios`, `public/demo-dashboard-config`) is the three real
+  ActivitySim example runs on the redesigned pages (single year, no observed or rounds; tiles without data are simply not
+  on the pages). The synthetic Corridor Pro dataset (15 alternatives x 6 years, `observed-2023`, 50 `round-NN`, family
+  roll-up, Wasatch zone/rail geometry; generated by `scripts/build-demo-redesign-data.py`) lives in `public/demo-synthetic`
+  and is served in place of the default only for the redesign Playwright project (`WFTDM_DEMO=synthetic`,
+  `scripts/viteLegacyDemoPlugin.ts`); the older specs run against `tests/fixtures/legacy-demo` (`WFTDM_DEMO=legacy`).
+- **Data adapters**: charts read logical tables (`trip_mode_share_by_purpose`, `trips_by_hour_purpose`, `zone_transit_share`,
+  `population_age_sex`, ...); `charts/data/adapt.ts` derives them from the tables a deployment really publishes and maps raw
+  category values onto the deployment's vocabulary. `dashboard-config/index.json` describes it: `vocab` (modes, purposes,
+  incomes, autos: label, raw `ids`, mode colour token), `metrics` (label/unit/decimals/scale/hidden for scorecard, ranking and
+  trend metrics) and `units` (`trips` divisor/suffix for time-of-day charts, `transit_share_max` for the map ramp). `panels/panelQuery.ts#resolveActiveScenarios` skips runs whose metric catalog
+  lacks a panel's metric. `wftdm-dashboard validate-observed <folder>` checks a published observed folder.
+- **Layout, toolbar and export** (`project-docs/redesign/10-toolbar-layout-export-proposal.md`): the control bar is one row (a
+  Scenarios chip for focus, compared set and reference; Show greyed out when Compare is off; Compare right-most). Tiles in a
+  row share the tallest height. Pages are `scroll` or `tabs` (`state/layoutState.ts`: viewer setting or `?layout=` >
+  `header.layout_mode` > `layout.mode` in index.json > scroll); in tabs mode `sections:` are the tabs (`mode: pick` shows one
+  tile at a time), hero rows stay above them, tiles fill the screen (`layout/fill.tsx`) and their controls move to a rail.
+  Every tile has an Export menu (`layout/tileExport.tsx`, `services/exportTile.ts`: CSV, PNG, SVG); `export.footer` in
+  index.json sets the image footer. The real demo is tabbed; the synthetic and legacy sets stay scrolling.
+- New D3 submodules (no new chart library): d3-selection/scale/array/chord/zoom/format/interpolate/transition.
+
 ## Implementation status
 
-All 14 originally-scoped panel types are built. Sidebar navigation, lazy
+All 12 remaining panel types are built (plotly and recharts were removed in the 063 redesign). Sidebar navigation, lazy
 tab-scoped data loading, server-side table pagination (≥100k rows),
 scenario label/color overrides, deployer-configurable branding/palette/
 basemap defaults, and a full shadcn/ui default-theme adoption (Tailwind
-v4, Geist typefaces, WFRC branding suspended pending a future re-branding
+v4, WFRC branding suspended pending a future re-branding
 feature) are all shipped. Appearance settings (colorblind-safe palette
 toggle, primary/secondary/accent overrides, font picker, text-size
 slider) are shipped (`061-appearance-controls`).
@@ -582,7 +619,7 @@ slider) are shipped (`061-appearance-controls`).
 `project-docs/IMPLEMENTATION-HISTORY.md` items 26/28 for full detail):
 - A systemic pre-`056` test-infrastructure gap: ~8 Playwright spec files
   (`settingsModal`, `observablePlotPanel`, `tablePanel`,
-  `scenarioManager`, `valueBoxPanel`, `sankeyPanel`, `rechartsPanel`,
+  `scenarioManager`, `valueBoxPanel`, `sankeyPanel`,
   `scenarioAutoActivation`) still depend on the retired
   `tests/fixtures/dashboard-config/` on-disk copy mechanism and fail on a
   full-suite run — confirmed pre-existing via repeated `git stash` A/B,
@@ -625,5 +662,7 @@ shipped feature, read `project-docs/IMPLEMENTATION-HISTORY.md`.
 - Create `dashboard-config.yaml` — does not exist (the `public/dashboard-config/` directory is unrelated)
 - Create `services/observedRegistry.ts` — replaced by `services/scenarioDiscovery.ts`
 - Recreate the `duckdbLoaderPool.ts` multi-instance pattern — removed, measured slower
+- Add a chart library, a per-chart tooltip element, a native `title`/`tip: true` tooltip, or hard-coded colours in a chart kind
+- Colour a difference green/red, or use status colours for series
 - Re-add per-panel-type `sankeyColor.ts`/`hierarchyColor.ts`/`polarChartColor.ts`
   duplicates — consolidated into `panels/chartColor.ts`

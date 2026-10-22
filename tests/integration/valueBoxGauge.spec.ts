@@ -83,8 +83,9 @@ test.describe('gauge: {min, max} (Summary tab, "Total VMT")', () => {
     await boot(page)
     const card = panelCard(page, 'Total VMT')
     await expect(gaugeSvg(page, 'Total VMT')).toBeVisible({ timeout: 20_000 })
-    await expect(card.getByText('0 mi', { exact: true })).toBeVisible()
-    await expect(card.getByText('20,000 mi', { exact: true })).toBeVisible()
+    // in the hero band the gauge is a small mark and its end labels are kept in the DOM but not drawn
+    await expect(card.getByText('0 mi', { exact: true })).toBeAttached()
+    await expect(card.getByText('20,000 mi', { exact: true })).toBeAttached()
   })
 
   test('the primary number stays visible and accessible independent of the gauge — the gauge never replaces it', async ({

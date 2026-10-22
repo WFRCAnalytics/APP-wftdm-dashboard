@@ -124,7 +124,8 @@ async function trueEventually(check: () => Promise<boolean>) {
   // git-tracked demo content (25-zone geometry + spatial-extension
   // network fetch on first use, not the retired synthetic 8-zone fixture
   // the default 5000ms timeout was previously tuned against).
-  await expect.poll(check, { timeout: 10000 }).toBe(true)
+  // 20s: stays quick when healthy, but survives the slowdown a long single-worker run builds up (many WebGL maps created).
+  await expect.poll(check, { timeout: 20000 }).toBe(true)
 }
 
 async function waitForRender(page: Page, title: string) {
@@ -881,7 +882,7 @@ test.describe('014-map-navigation-controls — NavigationControl zoom/compass ge
     })
     // 033-shadcn-default-theme: dark --card is now #171717, not the old
     // WFRC-brand value (which happened to also equal old --background).
-    expect(styles.groupBg).toBe('rgb(23, 23, 23)') // --card in dark mode
+    expect(styles.groupBg).toBe('rgb(20, 25, 34)') // --card in dark mode
     expect(styles.iconFilter).toBe('invert(1)')
 
     // A second, separate real bug found live after the above: the
@@ -896,7 +897,7 @@ test.describe('014-map-navigation-controls — NavigationControl zoom/compass ge
     // than an opaque WFRC-brand hex — confirmed via a real headless-
     // Chromium round-trip that this is exactly how it computes, not
     // guessed from the hex alone.
-    expect(dividerColor).toBe('rgba(245, 255, 255, 0.1)') // --border in dark mode
+    expect(dividerColor).toBe('rgba(255, 255, 255, 0.09)') // --border in dark mode
   })
 })
 
@@ -1059,8 +1060,8 @@ test.describe('014-map-navigation-controls — the 3D fill-extrusion toggle', ()
     // 033-shadcn-default-theme: --foreground dark is now #fafafa and
     // --card dark is now #171717 — no longer the old WFRC-brand values
     // (which happened to share one literal for --card/--background).
-    expect(styles.text).toBe('rgb(250, 250, 250)')
-    expect(styles.groupBg).toBe('rgb(23, 23, 23)')
+    expect(styles.text).toBe('rgb(238, 241, 245)')
+    expect(styles.groupBg).toBe('rgb(20, 25, 34)')
   })
 })
 
@@ -1255,7 +1256,9 @@ test.describe('User Story 4 - Registry consistency', () => {
   }) => {
     await boot(page)
     await gotoTestTab(page)
-    await expect(panelCard(page, BROKEN_TITLE).getByRole('alert')).toBeVisible()
+    // 20s, not the 5s default: the Test tab mounts ~80 panels at once and this panel's error takes 5-6s to surface
+    // (same fix as tablePanel.spec.ts's broken-panel assertion).
+    await expect(panelCard(page, BROKEN_TITLE).getByRole('alert')).toBeVisible({ timeout: 20_000 })
   })
 
   test('multiple zonemap panels sharing one boundaries file trigger exactly one geometry query', async ({

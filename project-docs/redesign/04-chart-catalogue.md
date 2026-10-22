@@ -215,4 +215,4 @@ School, Shopping, Other, Non-home. Income order: Under $35k, $35k to $75k, $75k 
 - **Tooltip:** title `Round 10`, sub-title ("vs observed" / "worst-segment error"); rows per series sorted by absolute gap with value and gap; footer "7 of 8 within ±1 point of observed. Click to focus this round, shift-click to compare."
 
 ## 27. Hero sparkline
-64×22 SVG path, `monotone` curve, stroke `--accent` 2px, round caps, no fill, no axes. See file 02 §1.4.
+64×22 SVG path, `monotone` curve, stroke `--brand` 2px, round caps, no fill, no axes. See file 02 §1.4.

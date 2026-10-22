@@ -22,7 +22,6 @@ import type { ResolvedColumn } from '@/panels/tableLogic'
 import type {
   GraphicWalkerPanelConfig,
   ObservablePlotPanelConfig,
-  PlotlyPanelConfig,
   ValueBoxPanelConfig,
 } from '@/layout/types'
 
@@ -34,12 +33,14 @@ const valueBoxConfig: ValueBoxPanelConfig = {
   format: '{:,.0f}',
 }
 
-const plotlyConfig: PlotlyPanelConfig = {
-  type: 'plotly',
+const plotlyConfig: ObservablePlotPanelConfig = {
+  type: 'observable-plot',
   title: 'Mode Share by Purpose',
   metric: 'trip_mode_share',
   filter: '$filters.purpose',
-  traces: [{ type: 'bar', x: '$metric.purpose', y: '$metric.share' }],
+  mark: 'barY',
+  x: 'purpose',
+  y: 'share',
 }
 
 describe('buildPanelQuery', () => {

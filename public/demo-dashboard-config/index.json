@@ -4,7 +4,6 @@
     "dashboard-2-person-household.yaml",
     "dashboard-3-tour-models.yaml",
     "dashboard-4-mode-choice.yaml",
-    "dashboard-5-trip-models.yaml",
     "dashboard-6-network.yaml",
     "dashboard-7-explore.yaml",
     "dashboard-8-test.yaml"
@@ -12,5 +11,47 @@
   "title": "WFRC TDM Calibration Dashboard",
   "logoUrl": "https://raw.githubusercontent.com/WFRCAnalytics/wfrc-brand/main/_extensions/wfrc-brand/assets/logo/horizontal/WFRC_logo_horizontal_color_transparent.png",
   "logoUrlDark": "https://raw.githubusercontent.com/WFRCAnalytics/wfrc-brand/main/_extensions/wfrc-brand/assets/logo/horizontal/WFRC_logo_horizontal_white_transparent.png",
-  "protomapsApiKey": "2c497b58fdc8c210"
+  "protomapsApiKey": "2c497b58fdc8c210",
+  "layout": { "mode": "tabs" },
+  "compare": {
+    "default": "auto",
+    "focus": "activitysim-baseline",
+    "reference": "activitysim-baseline"
+  },
+  "units": { "trips": { "divisor": 1, "suffix": "" }, "transit_share_max": 60 },
+  "metrics": {
+    "trips": { "label": "Trips", "scale": 1, "unit": "", "decimals": 0 },
+    "vmt": { "label": "Vehicle miles", "scale": 1, "unit": "mi", "decimals": 0 },
+    "len": { "decimals": 2 },
+    "boards": { "hidden": true }
+  },
+  "vocab": {
+    "modes": [
+      { "label": "Drive alone", "ids": ["SOV"], "color": "car-1" },
+      { "label": "Shared ride", "ids": ["HOV"], "color": "car-2" },
+      { "label": "Transit", "ids": ["Transit"], "color": "c1" },
+      { "label": "Walk and bike", "ids": ["Non-Motorized"], "color": "c2" },
+      { "label": "Ride hail", "ids": ["Ride Hail"], "color": "c3" }
+    ],
+    "purposes": [
+      { "label": "Work", "ids": ["work", "atwork"] },
+      { "label": "School", "ids": ["school", "univ"] },
+      { "label": "Shopping", "ids": ["shopping"] },
+      { "label": "Other", "ids": ["othmaint", "othdiscr", "eatout", "social", "escort"] }
+    ],
+    "incomes": [
+      { "label": "Very low", "ids": ["Very Low"] },
+      { "label": "Low", "ids": ["Low"] },
+      { "label": "Medium", "ids": ["Medium"] },
+      { "label": "High", "ids": ["High"] },
+      { "label": "Very high", "ids": ["Very High"] }
+    ],
+    "autos": [
+      { "label": "0 cars", "ids": [0] },
+      { "label": "1 car", "ids": [1] },
+      { "label": "2 cars", "ids": [2] },
+      { "label": "3 cars", "ids": [3] },
+      { "label": "4+ cars", "ids": [4] }
+    ]
+  }
 }

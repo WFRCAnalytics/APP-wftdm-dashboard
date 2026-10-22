@@ -15,7 +15,7 @@ import {
   EMPTY_SUMMARIZE_CONFIG,
 } from '@/panels/panelQuery'
 import { buildFlowGraph, layoutFlowGraph, type SankeyLayout } from '@/panels/sankeyGraph'
-import { resolveNamedColorScheme, resolveCategoryFallbackColors } from '@/panels/chartColor'
+import { resolveNamedColorScheme, resolveCategoryFallbackColors, CATEGORY_FALLBACK_HEX, CATEGORY_TOKEN_VARS } from '@/panels/chartColor'
 import { createMapTooltip, type MapTooltip } from '@/panels/mapTooltip'
 import { PanelEmptyState } from '@/panels/PanelEmptyState'
 import { PanelErrorState } from '@/panels/PanelErrorState'
@@ -49,12 +49,10 @@ const ALL_FILTERS: ['*'] = ['*']
 // "pairwise-distinct" check) is the genuinely correct fallback source
 // instead — real, existing infrastructure built for exactly this need,
 // not a WFRC brand reference (research.md §7's own disambiguation).
-const FALLBACK_TOKEN_VARS = ['--chart-1', '--chart-2', '--chart-3', '--chart-4']
 // Last-resort literal values (tokens.css's own current --chart-1..4
 // values) — only used if getComputedStyle somehow resolves none of the
 // vars above (e.g. no stylesheet loaded at all), so a render never ships
 // with an empty palette.
-const FALLBACK_HEX_COLORS = ['#3358be', '#ba7f00', '#cc4330', '#008029']
 
 const SVG_NS = 'http://www.w3.org/2000/svg'
 
@@ -316,7 +314,7 @@ export function SankeyPanel({ config }: { config: SankeyPanelConfig }) {
         const layout = layoutFlowGraph(graph, width, height)
         const colors =
           resolveNamedColorScheme(config.color_scheme, { colorblindSafe }) ??
-          resolveCategoryFallbackColors(el, FALLBACK_TOKEN_VARS, FALLBACK_HEX_COLORS)
+          resolveCategoryFallbackColors(el, CATEGORY_TOKEN_VARS, CATEGORY_FALLBACK_HEX)
         const svg = renderSvg(layout, width, height, colors, tooltip, el)
         // Swap ONLY the <svg> — never el.replaceChildren(svg), which would
         // also wipe the tooltip div the mount effect above appended as a

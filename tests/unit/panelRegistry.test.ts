@@ -21,16 +21,15 @@ describe('EXPANDABLE_PANEL_TYPES', () => {
   const expandable = [
     'table',
     'markdown',
-    'plotly',
     'observable-plot',
     'sankey',
-    'recharts',
     'flowmap',
     'zonemap',
     'treemap',
     'sunburst',
     'pie',
     'radar',
+    'multi-view',
   ]
   const notExpandable = ['valuebox', 'graphic-walker']
 
@@ -42,7 +41,7 @@ describe('EXPANDABLE_PANEL_TYPES', () => {
     expect(EXPANDABLE_PANEL_TYPES.has(type)).toBe(false)
   })
 
-  it('contains exactly the 12 documented types — no more, no fewer', () => {
+  it('contains exactly the documented types — no more, no fewer', () => {
     expect(EXPANDABLE_PANEL_TYPES.size).toBe(expandable.length)
   })
 })

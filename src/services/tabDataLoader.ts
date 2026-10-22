@@ -19,8 +19,10 @@
 // removed entirely by this feature, not conditionally kept.
 import { hasView, registerFileURL } from './duckdb.ts'
 import * as appState from '../state/appState.ts'
+import { getBaselineForYear } from './runResolution.ts'
 import { isComparisonDiff, resolveComparisonScenarioName } from '../panels/panelQuery.ts'
-import type { DashboardTabConfig, PanelConfig } from '../layout/types.ts'
+import type { DashboardTabConfig, MultiViewPanelConfig, PanelConfig } from '../layout/types.ts'
+import { allViewConfigs } from '../panels/multiView.ts'
 
 export interface MetricPair {
   scenario: string
@@ -62,16 +64,25 @@ export function computeTabDataRequirement(
   tab: DashboardTabConfig,
   activeScenarios: readonly string[],
 ): MetricPair[] {
-  const baseline = appState.getBaseline()
+  const baseline = getBaselineForYear()
   const seen = new Map<string, MetricPair>()
 
   function add(scenario: string | undefined, metric: string | undefined): void {
     if (!scenario || !metric) return
+    // the proactive batch skips a run whose catalog is known to lack the metric (slim runs, Observed); a panel that
+    // really needs it still surfaces its own error when it queries
+    const catalog = appState.get(scenario)?.availableMetrics
+    if (catalog && !catalog.includes(metric)) return
     const pair = { scenario, metric }
     seen.set(pairKey(pair), pair)
   }
 
   function addForPanel(config: PanelConfig): void {
+    // A multi-view needs the data of every view (default group); they usually share one metric file.
+    if (config.type === 'multi-view') {
+      for (const view of allViewConfigs(config as MultiViewPanelConfig)) addForPanel(view)
+      return
+    }
     // Markdown and an ordinary (non-picker) graphic-walker's own picker
     // list are handled elsewhere — this function only derives what a
     // panel's OWN configured reference needs, never speculative catalog

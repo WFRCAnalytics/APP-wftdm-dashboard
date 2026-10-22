@@ -156,16 +156,25 @@ async function registerScenarioGroup(
   // Phase 1: establish every scenario's appState entry (and its `order`)
   // synchronously, in listed order.
   const folderUrls = new Map<string, string>()
-  for (const name of names) {
+  // manifests are fetched concurrently (147 runs in the redesign demo) but registered in listed order
+  const manifests = await Promise.all(names.map((name) => fetchScenarioManifest(manifestUrlFor(name))))
+  for (const [index, name] of names.entries()) {
     const folderUrl = folderUrlFor(name)
     folderUrls.set(name, folderUrl)
-    const manifest = await fetchScenarioManifest(manifestUrlFor(name))
+    const manifest = manifests[index]
     appState.register(name, {
       source: 'url',
       path: folderUrl,
       color: manifest.color,
       runDate: manifest.runDate,
       notes: manifest.notes,
+      displayName: manifest.displayName,
+      kind: manifest.kind,
+      alternative: manifest.alternative,
+      year: manifest.year,
+      tag: manifest.tag,
+      family: manifest.family,
+      familyIndex: manifest.familyIndex,
     })
   }
 

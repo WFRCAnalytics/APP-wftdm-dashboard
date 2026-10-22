@@ -78,4 +78,23 @@ describe('manifestReader.readManifest', () => {
     const invalid = await readManifest(fakeDirHandle('b', 'not: [valid'))
     expect(missing.status).not.toBe(invalid.status)
   })
+
+  it('reads the optional 063 identity fields (alternative, year, kind, tag, family)', async () => {
+    const dirHandle = fakeDirHandle(
+      'freq-transit-2036',
+      ['scenario_name: freq-transit-2036', 'alternative: freq-transit', 'year: 2036', 'kind: round', 'tag: Transit', 'family: calibration', 'family_index: 12'].join(String.fromCharCode(10)),
+    )
+    const result = await readManifest(dirHandle)
+    expect(result).toMatchObject({
+      status: 'ok',
+      manifest: { alternative: 'freq-transit', year: 2036, kind: 'round', tag: 'Transit', family: 'calibration', familyIndex: 12 },
+    })
+  })
+
+  it('ignores a non-integer year and an unknown kind (a single-year run)', async () => {
+    const dirHandle = fakeDirHandle('x', ['scenario_name: x', 'year: soon', 'kind: other'].join(String.fromCharCode(10)))
+    const result = await readManifest(dirHandle)
+    expect(result.status === 'ok' && result.manifest.year).toBeUndefined()
+    expect(result.status === 'ok' && result.manifest.kind).toBeUndefined()
+  })
 })

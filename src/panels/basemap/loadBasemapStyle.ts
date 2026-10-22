@@ -108,7 +108,7 @@ async function resolvePresetName(name: string, signal?: AbortSignal): Promise<Re
   // uses (research.md §1), never a separate resolution mechanism.
   const builtIn = resolveBuiltInPreset(name)
   if (builtIn?.kind === 'url') return { kind: 'url', url: builtIn.url }
-  if (builtIn?.kind === 'composition') return { kind: 'style', style: await composeStyles(builtIn.layers, signal) }
+  if (builtIn?.kind === 'composition') return { kind: 'style', style: await composeStyles(builtIn.layers, signal, { background: builtIn.background, glyphs: builtIn.glyphs }) }
 
   // 041-protomaps-pmtiles-basemap: NOT a static BUILT_IN_PRESETS entry
   // (research.md R-6) — its real value depends on a runtime-configured
@@ -292,7 +292,9 @@ function isRasterProviderName(layerUrl: string): boolean {
   return !/^https?:\/\//i.test(layerUrl)
 }
 
-async function composeStyles(layerUrls: string[], signal?: AbortSignal): Promise<StyleSpecification> {
+async function composeStyles(layerUrls: string[], signal?: AbortSignal,
+  { background = '#ffffff', glyphs }: { background?: string; glyphs?: string } = {},
+): Promise<StyleSpecification> {
   const merged: StyleSpecification = { version: 8, sources: {}, layers: [] }
   // 017-multi-sprite-support: collected across the whole loop, one entry
   // per composed layer that declares its own sprite — see the comment
@@ -450,11 +452,13 @@ async function composeStyles(layerUrls: string[], signal?: AbortSignal): Promise
   // this fix does not change that). Skipped when a composition already
   // provides its own background layer, so a real author's intentional
   // background is never double-covered or overridden.
+  if (glyphs) merged.glyphs = glyphs
+
   if (!merged.layers.some((layer) => layer.type === 'background')) {
     merged.layers.unshift({
       id: 'background',
       type: 'background',
-      paint: { 'background-color': '#ffffff' },
+      paint: { 'background-color': background },
     })
   }
 

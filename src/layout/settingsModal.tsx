@@ -1,92 +1,138 @@
-import { Settings } from 'lucide-react'
+import { useRef, useSyncExternalStore, type KeyboardEvent, type ReactNode } from 'react'
+import * as DialogPrimitive from '@radix-ui/react-dialog'
+import { BookOpen, Layers, Map as MapIcon, Palette, Settings, X } from 'lucide-react'
 
-import { Dialog, DialogContent, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { SidebarMenuButton, useSidebar } from '@/components/ui/sidebar'
+import { DialogDescription, DialogOverlay, DialogPortal, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
+import { NavButton } from '@/layout/navButton'
 import { AppearanceTab } from '@/layout/settings/appearanceTab'
 import { ScenariosTab } from '@/layout/settings/scenariosTab'
 import { BasemapTab } from '@/layout/settings/basemapTab'
+import { DocumentationTab } from '@/layout/settings/documentationTab'
+import {
+  getSettingsOpener,
+  getSettingsUi,
+  setSettingsOpen,
+  setSettingsTab,
+  subscribe as subscribeSettings,
+  type SettingsTab,
+} from '@/state/settingsState'
 
-// 020-settings-modal: the single dashboard-wide settings entry point,
-// replacing shell.tsx's previous <ScenarioLoader />+<ThemeToggle /> pair
-// entirely (FR-001, FR-002). Reuses components/ui/dialog.tsx
-// (004-panel-expand-dialog) for modal chrome and components/ui/tabs.tsx
-// (002/003, already proven by navBar.tsx's own tab strip) for the internal
-// tab navigation (FR-003) — no new modal/tab primitive built from scratch
-// (research.md §1). Escape/overlay-click/close-button dismissal (FR-016)
-// is Dialog's own existing, unmodified behavior.
-//
-// 021-basemap-catalog-redesign (T026): DialogContent gains a fixed target
-// height alongside its existing viewport-relative caps, so the modal's
-// size is a pure function of the viewport — never of which tab is active
-// (FR-019/FR-021, research.md §7). Tabs switches from a horizontal
-// top-row strip to a vertical left-side rail (orientation="vertical" +
-// flex-row), making a future tab addition a straightforward list
-// insertion (FR-020). TabsContent keeps its existing overflow-y-auto for
-// each tab — it just needed a properly-bounded ancestor (flex-1 min-h-0)
-// to actually take effect, which it didn't have before this change.
-// scrollbar-thin (tokens.css) applied for consistency with the Basemap
-// tab below, even though Appearance rarely grows tall enough to actually
-// scroll.
-//
-// UI polish pass (post-merge correction): the Basemap tab's own
-// TabsContent no longer sets overflow-y-auto itself — basemapTab.tsx now
-// owns its OWN internal fixed-header/scrollable-sections split (its
-// preview map + description + Apply button must never scroll, only the
-// catalog sections below them), so the outer TabsContent here is just a
-// plain flex passthrough giving it real height to work with.
-//
-// Post-completion correction (explicit user request): the Documentation
-// tab is REMOVED from this modal entirely — moved to its own standalone
-// entry point (layout/documentationModal.tsx), a separate SidebarFooter
-// item below this one, not nested inside it. Down to three tabs
-// (Appearance/Scenarios/Basemap). The trigger itself also changed from a
-// bordered/boxed <Button variant="outline"> to a plain, borderless
-// SidebarMenuButton — visually consistent with the primary sidebar nav
-// list and with the new DocumentationModal trigger sitting right below
-// it, rather than looking like a distinct floating button. SidebarMenuButton
-// already has its own collapsed-state centering built in
-// (components/ui/sidebar.tsx); only the text label needs to hide here,
-// same sr-only technique as before so getByRole('button', { name:
-// 'Settings' }) keeps resolving regardless of collapse state.
+// The Settings modal (project-docs/redesign/02-layout-and-components.md section 4, P10): a 210px rail of four tabs plus a
+// Close row on the left, a scrolling body on the right, 26px radius on a --surface sheet over a blurred scrim. Built on
+// the Radix Dialog primitive for the focus trap, Esc/scrim dismissal and aria-hidden of the page behind; focus moves in on
+// open and returns to whatever opened it (the nav button, or the scenario picker's link). Below 900px the rail becomes a
+// horizontal tab row. The tab panel unmounts when its tab is left, which is what ties the Basemap preview map's lifetime
+// to the tab being visible.
+const TABS: { id: SettingsTab; label: string; icon: typeof Palette }[] = [
+  { id: 'appearance', label: 'Appearance', icon: Palette },
+  { id: 'scenarios', label: 'Scenarios', icon: Layers },
+  { id: 'basemap', label: 'Basemap', icon: MapIcon },
+  { id: 'documentation', label: 'Documentation', icon: BookOpen },
+]
+
+const PANEL: Record<SettingsTab, () => ReactNode> = {
+  appearance: () => <AppearanceTab />,
+  scenarios: () => <ScenariosTab />,
+  basemap: () => <BasemapTab />,
+  documentation: () => <DocumentationTab />,
+}
+
 export function SettingsModal() {
-  const { state } = useSidebar()
-  const collapsed = state === 'collapsed'
+  const ui = useSyncExternalStore(subscribeSettings, getSettingsUi)
+  const railRef = useRef<HTMLDivElement>(null)
+
+  // Roving tabindex with arrow keys, as the tab pattern asks.
+  function onRailKey(e: KeyboardEvent<HTMLDivElement>) {
+    const keys = ['ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight', 'Home', 'End']
+    if (!keys.includes(e.key)) return
+    e.preventDefault()
+    const i = TABS.findIndex((t) => t.id === ui.tab)
+    const next =
+      e.key === 'Home' ? 0 : e.key === 'End' ? TABS.length - 1 : (i + (e.key === 'ArrowDown' || e.key === 'ArrowRight' ? 1 : -1) + TABS.length) % TABS.length
+    setSettingsTab(TABS[next].id)
+    railRef.current?.querySelectorAll<HTMLElement>('[role="tab"]')[next]?.focus()
+  }
+
   return (
-    <Dialog>
+    <DialogPrimitive.Root open={ui.open} onOpenChange={setSettingsOpen}>
       <DialogTrigger asChild>
-        <SidebarMenuButton>
-          <Settings className="h-4 w-4 shrink-0" aria-hidden="true" />
-          <span className={cn(collapsed && 'sr-only')}>Settings</span>
-        </SidebarMenuButton>
+        <NavButton icon={<Settings className="h-5 w-5" aria-hidden="true" />}>Settings</NavButton>
       </DialogTrigger>
-      <DialogContent className="flex h-[600px] max-h-[85vh] w-[95vw] max-w-[720px] flex-col gap-4">
-        <DialogTitle>Settings</DialogTitle>
-        <Tabs defaultValue="appearance" orientation="vertical" className="flex min-h-0 flex-1 flex-row gap-4">
-          {/* 024-settings-modal-visual-redesign (US4, FR-013): the
-              Appearance tab's own System/Light/Dark control is now ALSO a
-              Tabs instance (appearanceTab.tsx), nesting a second
-              role="tablist" inside this one while the modal is open on
-              that tab. Distinct aria-labels on each TabsList (this one,
-              and appearanceTab.tsx's own "Theme") is what lets any query
-              or assistive technology tell them apart — research.md §3. */}
-          <TabsList aria-label="Settings sections">
-            <TabsTrigger value="appearance">Appearance</TabsTrigger>
-            <TabsTrigger value="scenarios">Scenarios</TabsTrigger>
-            <TabsTrigger value="basemap">Basemap</TabsTrigger>
-          </TabsList>
-          <TabsContent value="appearance" className="min-h-0 flex-1 overflow-y-auto scrollbar-thin">
-            <AppearanceTab />
-          </TabsContent>
-          <TabsContent value="scenarios" className="min-h-0 flex-1 overflow-y-auto scrollbar-thin">
-            <ScenariosTab />
-          </TabsContent>
-          <TabsContent value="basemap" className="flex min-h-0 flex-1 flex-col">
-            <BasemapTab />
-          </TabsContent>
-        </Tabs>
-      </DialogContent>
-    </Dialog>
+      <DialogPortal>
+        <DialogOverlay className="z-[60] bg-[rgba(5,7,10,0.6)]" />
+        <DialogPrimitive.Content
+          onCloseAutoFocus={(e) => {
+            const opener = getSettingsOpener()
+            if (opener?.isConnected) {
+              e.preventDefault()
+              opener.focus()
+            }
+          }}
+          className={cn(
+            'fixed left-1/2 top-1/2 z-[60] -translate-x-1/2 -translate-y-1/2 overflow-hidden outline-none',
+            'h-[min(720px,94vh)] w-[min(1040px,calc(100vw-6vw))] rounded-[26px] border border-[var(--glass-line)] bg-[var(--surface)] font-body text-[var(--ink)] shadow-[var(--sh2)]',
+            'grid grid-cols-[210px_minmax(0,1fr)] max-[900px]:grid-cols-1 max-[900px]:grid-rows-[auto_minmax(0,1fr)]',
+          )}
+        >
+          <div className="flex min-h-0 flex-col gap-[3px] border-r border-[var(--line)] bg-[var(--tile-hi)] px-3 py-[18px] max-[900px]:flex-row max-[900px]:overflow-x-auto max-[900px]:border-b max-[900px]:border-r-0 max-[900px]:py-3">
+            <DialogTitle className="mx-2 mb-[14px] font-heading text-[17px] font-semibold leading-[1.45] max-[900px]:sr-only">Settings</DialogTitle>
+            <DialogDescription className="sr-only">Appearance, scenarios, basemap and documentation.</DialogDescription>
+            <div
+              ref={railRef}
+              role="tablist"
+              aria-label="Settings sections"
+              aria-orientation="vertical"
+              onKeyDown={onRailKey}
+              className="flex flex-col gap-[3px] max-[900px]:flex-row"
+            >
+              {TABS.map(({ id, label, icon: Icon }) => {
+                const selected = ui.tab === id
+                return (
+                  <button
+                    key={id}
+                    id={`settings-tab-${id}`}
+                    type="button"
+                    role="tab"
+                    aria-selected={selected}
+                    aria-controls={`settings-panel-${id}`}
+                    tabIndex={selected ? 0 : -1}
+                    onClick={() => setSettingsTab(id)}
+                    className={cn(
+                      'flex h-10 items-center gap-2.5 whitespace-nowrap rounded-xl px-3 text-left text-sm transition-colors motion-reduce:transition-none',
+                      'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-text)]',
+                      selected
+                        ? 'bg-[var(--surface)] text-[var(--ink)] shadow-[var(--sh1)]'
+                        : 'text-[var(--mute)] hover:text-[var(--ink)]',
+                    )}
+                  >
+                    <Icon className="h-[17px] w-[17px] shrink-0" aria-hidden="true" />
+                    {label}
+                  </button>
+                )
+              })}
+            </div>
+            <div className="flex-1" />
+            <DialogPrimitive.Close
+              className={cn(
+                'flex h-10 items-center gap-2.5 whitespace-nowrap rounded-xl px-3 text-left text-sm text-[var(--mute)] transition-colors hover:text-[var(--ink)] motion-reduce:transition-none',
+                'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-text)]',
+              )}
+            >
+              <X className="h-[17px] w-[17px] shrink-0" aria-hidden="true" />
+              Close
+            </DialogPrimitive.Close>
+          </div>
+          <div
+            id={`settings-panel-${ui.tab}`}
+            role="tabpanel"
+            aria-labelledby={`settings-tab-${ui.tab}`}
+            className="scrollbar-thin min-h-0 min-w-0 overflow-auto px-7 pb-7 pt-6"
+          >
+            {PANEL[ui.tab]()}
+          </div>
+        </DialogPrimitive.Content>
+      </DialogPortal>
+    </DialogPrimitive.Root>
   )
 }

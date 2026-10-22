@@ -23,6 +23,7 @@ import { loadBasemapStyle, BLANK_STYLE, freshBlankStyle } from '@/panels/basemap
 import { PanelEmptyState } from '@/panels/PanelEmptyState'
 import { PanelErrorState } from '@/panels/PanelErrorState'
 import type { ZoneMapPanelConfig } from '@/layout/types'
+import { trackMap } from '@/services/mapCapture'
 
 const ALL_FILTERS: ['*'] = ['*']
 
@@ -317,6 +318,7 @@ export function ZoneMapPanel({ config }: { config: ZoneMapPanelConfig }) {
       attributionControl: { compact: true },
     })
     mapRef.current = map
+    trackMap(map)
     window.__zonemapTestMaps ??= {}
     window.__zonemapTestMaps[config.title] = map
 

@@ -78,6 +78,15 @@ type DashboardIndexJson =
       primaryColor?: unknown
       secondaryColor?: unknown
       accentColor?: unknown
+      years?: unknown
+      baseYear?: unknown
+      defaultYear?: unknown
+      compare?: unknown
+      vocab?: unknown
+      metrics?: unknown
+      units?: unknown
+      export?: unknown
+      layout?: unknown
     }
 
 /**
@@ -103,6 +112,13 @@ type DashboardIndexJson =
  * of problem (e.g. PlotlyPanel.tsx's own FALLBACK_FOREGROUND/
  * FALLBACK_BORDER).
  */
+/** `export: { footer: true | false | "text" }` of the deployment's index.json. */
+function parseExportFooter(raw: unknown): boolean | string | undefined {
+  if (typeof raw !== 'object' || raw === null) return undefined
+  const footer = (raw as { footer?: unknown }).footer
+  return typeof footer === 'boolean' || typeof footer === 'string' ? footer : undefined
+}
+
 export interface DashboardBranding {
   title?: string
   logoUrl?: string
@@ -168,6 +184,49 @@ export interface DashboardBranding {
   primaryColor?: string
   secondaryColor?: string
   accentColor?: string
+  /** 063 redesign (project-docs/redesign/06-data-and-config.md §2): model years, in display order. Absent or empty
+   * means a single-year deployment (the Year control is hidden). */
+  years?: ModelYear[]
+  baseYear?: number
+  defaultYear?: number
+  /** `compare.default`: 'auto' (on when there are two or more independent scenarios), 'on' or 'off'. */
+  compareDefault?: 'auto' | 'on' | 'off'
+  /** `compare.scenarios`: the alternatives compared at first load (default: every loaded one). */
+  compareScenarios?: string[]
+  /** `compare.focus` / `compare.reference`: the focus alternative and the reference (an alternative id or `observed`). */
+  compareFocus?: string
+  compareReference?: string
+  /** `vocab`: this deployment's category labels and the raw data values that map onto them (charts/vocab.ts). */
+  vocab?: import('../charts/vocab.ts').VocabConfig
+  /** `metrics`: per-metric label/unit/decimals/scale overrides for the scorecard, ranking and trend charts. */
+  metrics?: Record<string, import('../charts/lib/metrics.ts').MetricOverride>
+  /** `units.trips`: divisor and suffix for trip counts in the time-of-day charts (default thousands, "k"). */
+  units?: { trips?: { divisor?: number; suffix?: string }; transit_share_max?: number }
+  /** `export.footer`: the line under exported images. `true` (default) = source, scenarios, year and date; a string replaces
+   * it; `false` leaves it out. */
+  exportFooter?: boolean | string
+  /** `layout.mode`: how pages are shown unless the page or the viewer says otherwise (default `scroll`). */
+  layout?: { mode?: 'scroll' | 'tabs' }
+}
+
+export interface ModelYear {
+  year: number
+  label?: string
+}
+
+function parseYears(value: unknown): ModelYear[] | undefined {
+  if (!Array.isArray(value)) return undefined
+  const years: ModelYear[] = []
+  for (const entry of value) {
+    if (typeof entry === 'number' && Number.isInteger(entry)) years.push({ year: entry })
+    else if (typeof entry === 'object' && entry !== null) {
+      const { year, label } = entry as { year?: unknown; label?: unknown }
+      if (typeof year === 'number' && Number.isInteger(year)) {
+        years.push({ year, label: typeof label === 'string' ? label : undefined })
+      }
+    }
+  }
+  return years.length > 0 ? years : undefined
 }
 
 function isDashboardIndexObject(
@@ -274,8 +333,33 @@ export async function loadDashboardBranding(
       primaryColor: typeof parsed.primaryColor === 'string' ? parsed.primaryColor : undefined,
       secondaryColor: typeof parsed.secondaryColor === 'string' ? parsed.secondaryColor : undefined,
       accentColor: typeof parsed.accentColor === 'string' ? parsed.accentColor : undefined,
+      years: parseYears(parsed.years),
+      baseYear: typeof parsed.baseYear === 'number' ? parsed.baseYear : undefined,
+      defaultYear: typeof parsed.defaultYear === 'number' ? parsed.defaultYear : undefined,
+      compareDefault: parseCompareDefault(parsed.compare),
+      ...parseCompareInitial(parsed.compare),
+      exportFooter: parseExportFooter(parsed.export),
+      layout: typeof parsed.layout === 'object' && parsed.layout !== null ? (parsed.layout as DashboardBranding['layout']) : undefined,
+      units: typeof parsed.units === 'object' && parsed.units !== null ? (parsed.units as DashboardBranding['units']) : undefined,
+      metrics: typeof parsed.metrics === 'object' && parsed.metrics !== null ? (parsed.metrics as DashboardBranding['metrics']) : undefined,
+      vocab: typeof parsed.vocab === 'object' && parsed.vocab !== null ? (parsed.vocab as DashboardBranding['vocab']) : undefined,
     }
   } catch {
     return {}
   }
+}
+
+function parseCompareInitial(value: unknown): Pick<DashboardBranding, 'compareScenarios' | 'compareFocus' | 'compareReference'> {
+  const o = typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : {}
+  const scenarios = Array.isArray(o.scenarios) ? o.scenarios.filter((s): s is string => typeof s === 'string') : undefined
+  return {
+    compareScenarios: scenarios && scenarios.length > 0 ? scenarios : undefined,
+    compareFocus: typeof o.focus === 'string' ? o.focus : undefined,
+    compareReference: typeof o.reference === 'string' ? o.reference : undefined,
+  }
+}
+
+function parseCompareDefault(value: unknown): 'auto' | 'on' | 'off' | undefined {
+  const d = typeof value === 'object' && value !== null ? (value as { default?: unknown }).default : undefined
+  return d === 'auto' || d === 'on' || d === 'off' ? d : undefined
 }

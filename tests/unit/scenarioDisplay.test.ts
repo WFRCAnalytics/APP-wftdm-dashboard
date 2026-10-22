@@ -1,9 +1,13 @@
+import Color from 'color'
 import { afterEach, describe, expect, it } from 'vitest'
 
 import {
+  adaptScenarioColor,
   resolveDefaultScenarioColor,
   resolveScenarioColor,
   resolveScenarioLabel,
+  scenarioPalette15,
+  scenarioPaletteSafe15,
   setDeployerScenarioPalette,
   type ScenarioDisplayMap,
 } from '@/panels/scenarioDisplay'
@@ -69,34 +73,34 @@ describe('resolveDefaultScenarioColor', () => {
     expect(resolveDefaultScenarioColor(3)).toBe('#222222')
   })
 
-  it('falls back to the shipped --chart-1..5 default when no palette is configured', () => {
-    expect(resolveDefaultScenarioColor(0)).toBe('var(--chart-1)')
-    expect(resolveDefaultScenarioColor(4)).toBe('var(--chart-5)')
-    expect(resolveDefaultScenarioColor(5)).toBe('var(--chart-1)') // wraps
+  it('falls back to the shipped 15-color default (stable by index, wrapping at 15)', () => {
+    expect(resolveDefaultScenarioColor(0)).toBe(adaptScenarioColor(scenarioPalette15[0], false))
+    expect(resolveDefaultScenarioColor(14)).toBe(adaptScenarioColor(scenarioPalette15[14], false))
+    expect(resolveDefaultScenarioColor(15)).toBe(resolveDefaultScenarioColor(0)) // wraps
   })
 
   it('an empty configured palette also falls back to the shipped default, not a crash', () => {
     setDeployerScenarioPalette([])
-    expect(resolveDefaultScenarioColor(0)).toBe('var(--chart-1)')
+    expect(resolveDefaultScenarioColor(1)).toBe(adaptScenarioColor(scenarioPalette15[1], false))
   })
 
   it('clearing back to undefined restores the shipped default', () => {
     setDeployerScenarioPalette(['#111111'])
     expect(resolveDefaultScenarioColor(0)).toBe('#111111')
     setDeployerScenarioPalette(undefined)
-    expect(resolveDefaultScenarioColor(0)).toBe('var(--chart-1)')
+    expect(resolveDefaultScenarioColor(0)).toBe(adaptScenarioColor(scenarioPalette15[0], false))
   })
 
-  // 061-appearance-controls
-  it('with colorblindSafe true and no deployer palette configured, cycles the real Set2 colorblind-safe pool', () => {
-    expect(resolveDefaultScenarioColor(0, true)).toBe('#66c2a5')
-    expect(resolveDefaultScenarioColor(4, true)).toBe('#a6d854')
-    expect(resolveDefaultScenarioColor(5, true)).toBe('#66c2a5') // wraps
+  it('with colorblindSafe true and no deployer palette configured, cycles the Okabe-Ito based safe 15', () => {
+    expect(resolveDefaultScenarioColor(1, true)).toBe(adaptScenarioColor(scenarioPaletteSafe15[1], false))
+    expect(resolveDefaultScenarioColor(15, true)).toBe(resolveDefaultScenarioColor(0, true)) // wraps
   })
 
-  it('with colorblindSafe false or omitted, behaves exactly as before', () => {
-    expect(resolveDefaultScenarioColor(0, false)).toBe('var(--chart-1)')
-    expect(resolveDefaultScenarioColor(0)).toBe('var(--chart-1)')
+  it('adaptScenarioColor clamps HCL lightness: dark L >= 62, light L <= 60, and leaves in-range colors alone', () => {
+    const lightOf = (hex: string) => Color(hex).lch().array()[0]
+    expect(lightOf(adaptScenarioColor('#004b7a', true))).toBeGreaterThanOrEqual(61.5)
+    expect(lightOf(adaptScenarioColor('#f0e442', false))).toBeLessThanOrEqual(60.5)
+    expect(adaptScenarioColor('#4c8bf5', false)).toBe('#4c8bf5')
   })
 
   it('a deployer-configured palette always wins, regardless of colorblindSafe — an explicit deployer choice is never overridden', () => {

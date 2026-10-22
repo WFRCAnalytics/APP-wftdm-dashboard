@@ -175,7 +175,7 @@ test.describe('User Story 3 - An analyst sees a real, filter-reactive chart', ()
 
     // 033-shadcn-default-theme: --card dark is #171717 (tokens.css).
     const plotBackground = await svg.evaluate((el) => getComputedStyle(el).getPropertyValue('--plot-background').trim())
-    expect(plotBackground).toBe('#171717')
+    expect(plotBackground).toBe('#141922')
 
     // Text (axis ticks, legend labels) inherits currentColor from the
     // app's own text-foreground class — no separate fix needed for it,
@@ -352,16 +352,16 @@ test.describe('Phase 2 — shell/nav redesign (wftdm-design-system)', () => {
         return { fontSize: cs.fontSize, fontWeight: cs.fontWeight }
       })
 
-    // wftdm-design-system's Page Title role: text-xl (20px) font-semibold
-    // (600) — real computed values, not a class-name-string assertion.
+    // Corridor Pro page title: 28px/600 at the top of the page (it turns compact, 21px, after 70px of scroll) — real
+    // computed values, not a class-name-string assertion.
     let style = await readStyle()
-    expect(style.fontSize).toBe('20px')
-    expect(style.fontWeight).toBe('600')
+    expect(style.fontSize).toBe('40px') // clamp(28px, 3.2vw, 40px) at the test viewport
+    expect(style.fontWeight).toBe('700')
 
     await page.evaluate(() => document.documentElement.classList.add('dark'))
     style = await readStyle()
-    expect(style.fontSize).toBe('20px')
-    expect(style.fontWeight).toBe('600')
+    expect(style.fontSize).toBe('40px') // clamp(28px, 3.2vw, 40px) at the test viewport
+    expect(style.fontWeight).toBe('700')
   })
 
   test('panel titles render smaller than the page title in both themes — the correct hierarchy, not inverted', async ({
@@ -371,7 +371,7 @@ test.describe('Phase 2 — shell/nav redesign (wftdm-design-system)', () => {
     await page.waitForFunction(() => window.__wftdm !== undefined, null, { timeout: 30_000 })
 
     const pageTitle = page.getByRole('heading', { level: 1, name: 'Summary' })
-    const panelTitle = page.getByText('Households', { exact: true })
+    const panelTitle = page.getByRole('heading', { level: 3, name: 'Total Trips by Mode' })
     const readPx = (locator: typeof pageTitle) =>
       locator.evaluate((el) => parseFloat(getComputedStyle(el).fontSize))
 
@@ -379,7 +379,7 @@ test.describe('Phase 2 — shell/nav redesign (wftdm-design-system)', () => {
       if (dark) await page.evaluate(() => document.documentElement.classList.add('dark'))
       const [pageSize, panelSize] = await Promise.all([readPx(pageTitle), readPx(panelTitle)])
       expect(pageSize).toBeGreaterThan(panelSize)
-      expect(panelSize).toBe(16) // wftdm-design-system's Panel Title role
+      expect(panelSize).toBe(15.5) // tile title (project-docs/redesign/02-layout-and-components.md section 2)
     }
   })
 
@@ -390,20 +390,17 @@ test.describe('Phase 2 — shell/nav redesign (wftdm-design-system)', () => {
     const header = page.locator('[data-sidebar="sidebar"]')
     const readShadow = () => header.evaluate((el) => getComputedStyle(el).boxShadow)
 
-    // shadow-md's real, resolved computed value — not just "not none".
+    // The redesign's tier-1 elevation (--sh1): an inset highlight plus two drop layers, so a real computed
+    // box-shadow lists at least three layers (the exact rgba values differ per theme, so only the shape is asserted).
+    const layers = (s: string) => s.split(/,(?![^(]*\))/).length
     let shadow = await readShadow()
     expect(shadow).not.toBe('none')
-    expect(shadow).toContain('0.14')
+    expect(layers(shadow)).toBeGreaterThanOrEqual(3)
 
     await page.evaluate(() => document.documentElement.classList.add('dark'))
     shadow = await readShadow()
     expect(shadow).not.toBe('none')
-    expect(shadow).toContain('0.14')
-    // Dark mode's own distinct mechanism — an edge-highlight ring layered
-    // underneath the same shadow-md blur — a real computed box-shadow
-    // with a ring present lists TWO layers, not one.
-    const layerCount = shadow.split(/,(?![^(]*\))/).length
-    expect(layerCount).toBeGreaterThanOrEqual(2)
+    expect(layers(shadow)).toBeGreaterThanOrEqual(3)
   })
 
   test("DashboardBrand's text-only fallback uses the Page Title role's real computed size in both themes", async ({
@@ -442,5 +439,59 @@ test.describe('Phase 2 — shell/nav redesign (wftdm-design-system)', () => {
     await page.evaluate(() => document.documentElement.classList.add('dark'))
     size = await readSize()
     expect(size).toBe('20px')
+  })
+})
+
+// Redesign P2: sticky page header and the small-screen navigation sheet.
+test.describe('redesign P2 — page header and mobile navigation', () => {
+  test('the sticky page header turns compact after 70px of scroll and the title shrinks', async ({ page }) => {
+    await page.goto('/')
+    await page.waitForFunction(() => window.__wftdm !== undefined, null, { timeout: 30_000 })
+    await page.getByRole('tab', { name: 'Mode Choice' }).click()
+    const header = page.locator('header').first()
+    await expect(header).toHaveAttribute('data-compact', 'false')
+
+    await page.mouse.move(900, 400)
+    await page.mouse.wheel(0, 600)
+    await expect(header).toHaveAttribute('data-compact', 'true')
+    await expect(header.getByRole('heading', { level: 1 })).toHaveCSS('font-size', '21px')
+    // Still pinned to the top of the viewport.
+    expect((await header.boundingBox())!.y).toBe(0)
+
+    await page.mouse.wheel(0, -2000)
+    await expect(header).toHaveAttribute('data-compact', 'false')
+  })
+
+  test('below 760px the nav is a sheet opened from the header menu button', async ({ page }) => {
+    await page.setViewportSize({ width: 700, height: 800 })
+    await page.goto('/')
+    await page.waitForFunction(() => window.__wftdm !== undefined, null, { timeout: 30_000 })
+    await expect(page.locator('[data-sidebar="sidebar"]')).toHaveCount(0)
+
+    await page.getByRole('button', { name: 'Open navigation' }).click()
+    const nav = page.locator('[data-sidebar="sidebar"]')
+    await expect(nav).toBeVisible()
+    await nav.getByRole('tab', { name: 'Mode Choice' }).click()
+    // Choosing a tab closes the sheet and shows that tab.
+    await expect(nav).toHaveCount(0)
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+  })
+
+  test('the nav bottom group holds Settings and a light/dark toggle that works with Settings closed', async ({ page }) => {
+    await page.goto('/')
+    await page.waitForFunction(() => window.__wftdm !== undefined, null, { timeout: 30_000 })
+    const nav = page.locator('[data-sidebar="sidebar"]')
+    await expect(nav.getByRole('button', { name: 'Settings' })).toBeVisible()
+    // 063 redesign (P10): Documentation moved into the Settings modal as its fourth tab.
+    await expect(nav.getByRole('button', { name: 'Documentation' })).toHaveCount(0)
+
+    const before = await page.evaluate(() => document.documentElement.classList.contains('dark'))
+    // the theme button cycles System, Light, Dark: within three presses the resolved theme must have flipped
+    let flipped = false
+    for (let i = 0; i < 3 && !flipped; i++) {
+      await nav.getByRole('button', { name: /^Theme:/ }).click()
+      flipped = (await page.evaluate(() => document.documentElement.classList.contains('dark'))) !== before
+    }
+    expect(flipped).toBe(true)
   })
 })

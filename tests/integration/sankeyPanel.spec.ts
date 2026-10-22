@@ -92,7 +92,7 @@ const REAL_TABLEAU10 = [
 // disambiguation from RechartsPanel's separate, still out-of-scope
 // palette) — these are tokens.css's real LIGHT-mode --chart-1..4 hex
 // values (Playwright's default colorScheme is 'light', unset here).
-const FALLBACK_TOKEN_HEX = ['#3358be', '#ba7f00', '#cc4330', '#008029']
+const FALLBACK_TOKEN_HEX = ['#2fa598', '#c28940', '#a781eb', '#78976c', '#b48596', '#6b93c2', '#237c72', '#926730']
 
 const REAL_SANKEY_TITLE = 'Trip Purpose to Mode Flow'
 const FALLBACK_SANKEY_TITLE = 'Trip Purpose to Mode Flow (No Color Scheme)'

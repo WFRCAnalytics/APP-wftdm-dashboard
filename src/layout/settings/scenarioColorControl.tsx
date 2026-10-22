@@ -35,7 +35,7 @@ export function ScenarioColorControl({ scenario }: { scenario: Scenario }) {
         <button
           type="button"
           data-testid={`scenario-color-swatch-${scenario.name}`}
-          className="h-6 w-6 shrink-0 cursor-pointer rounded border border-input"
+          className="h-[30px] w-[30px] shrink-0 cursor-pointer rounded-full border-2 border-[var(--surface)] shadow-[0_0_0_1px_var(--line)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-text)]"
           style={{ backgroundColor: effectiveColor }}
           aria-label={`Color for ${scenario.name}`}
         />

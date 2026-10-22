@@ -1,0 +1,54 @@
+# 063 redesign: Tour models page (project-docs/redesign/02-layout-and-components.md section 3).
+
+header:
+  tab: "Tour models"
+  title: "Tour models"
+  description: "When, how far and between which districts people travel"
+  icon: route
+
+sections:
+  - { id: trip-length, label: "Trip length", rows: [row_tlfd_flows], tile: tlfd }
+  - { id: timing, label: "Timing", rows: [row_timing] }
+  - { id: districts, label: "Districts", rows: [row_tlfd_flows], tile: flows }
+
+layout:
+  row_tlfd_flows:
+    - id: tlfd
+      type: multi-view
+      title: "Trip length distribution"
+      description: "Share of trips by distance. Dashed line is observed."
+      height: 440
+      width: 0.5833
+      views:
+        - { id: ridge, label: Ridgeline, type: chart, kind: ridgeline, compare: [multi] }
+    - id: flows
+      type: multi-view
+      title: "District flows"
+      description: "Daily trips between districts, leaving out trips that stay inside one. Hover a district to isolate it."
+      height: 440
+      width: 0.4167
+      views:
+        - { id: chord, label: Chord, type: chart, kind: chord, compare: [switch] }
+        - { id: tbl, label: Table, type: chart, kind: flow-table, compare: [switch] }
+
+  row_timing:
+    - id: time
+      type: multi-view
+      title: "Trips through the day"
+      description: "Departure hour. Group by chooses what the lines or bands represent."
+      height: 330
+      width: 1.0
+      default_view: heat
+      group_by:
+        label: Group by
+        default: scn
+        options:
+          - { id: scn, label: Scenario, fields: { group: scn } }
+          - { id: mode, label: Mode, fields: { group: mode } }
+          - { id: purpose, label: Purpose, fields: { group: purpose } }
+          - { id: income, label: Income, fields: { group: income } }
+          - { id: none, label: "All trips", fields: { group: none } }
+      views:
+        - { id: lines, label: Lines, type: chart, kind: time-lines, diff: true, compare: [overlay] }
+        - { id: stream, label: Stream, type: chart, kind: time-stream, compare: [switch, multi] }
+        - { id: heat, label: Heatmap, type: chart, kind: time-heat, compare: [overlay] }

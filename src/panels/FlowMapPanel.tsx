@@ -30,6 +30,7 @@ import { PanelEmptyState } from '@/panels/PanelEmptyState'
 import { PanelErrorState } from '@/panels/PanelErrorState'
 import { DEFAULT_CENTER, DEFAULT_ZOOM } from '@/panels/mapDefaults'
 import type { FlowMapPanelConfig } from '@/layout/types'
+import { trackMap } from '@/services/mapCapture'
 
 const ALL_FILTERS: ['*'] = ['*']
 
@@ -344,6 +345,7 @@ export function FlowMapPanel({ config }: { config: FlowMapPanelConfig }) {
     const overlay = new MapboxOverlay({ interleaved: true, layers: [], pickingRadius: 8 })
     map.addControl(overlay)
     mapRef.current = map
+    trackMap(map)
     overlayRef.current = overlay
     // 015-map-controls-polish — the shared hover tooltip (mapTooltip.ts),
     // appended directly to `el` (this map's own container element) —

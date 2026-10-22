@@ -1,0 +1,51 @@
+# 063 redesign: Network page (project-docs/redesign/02-layout-and-components.md section 3).
+
+header:
+  tab: Network
+  title: Network
+  description: "Roads, rail and the places they serve"
+  icon: network
+
+sections:
+  - { id: transit, label: "Transit", rows: [row_zones_boards], tile: boards }
+  - { id: roads, label: "Roads", rows: [row_speed_vmt], tile: vmt }
+
+layout:
+  row_zones_boards:
+    - id: zones
+      type: multi-view
+      title: "Where transit grows"
+      description: "Transit share by traffic analysis zone. Scroll to zoom."
+      height: 500
+      width: 0.5833
+      views:
+        - { id: map, label: Values, type: chart, kind: zone-map, compare: [grid, switch] }
+        - { id: diffm, label: Difference, type: chart, kind: zone-diff-map, compare: [diff], needs_compare: true }
+        - { id: swipe, label: Swipe, type: chart, kind: zone-swipe-map, compare: [swipe], needs_compare: true }
+    - id: boards
+      type: multi-view
+      title: "Transit boardings by line"
+      description: "Weekday boardings. Open circle is observed."
+      height: 500
+      width: 0.4167
+      views:
+        - { id: db, label: Dumbbell, type: chart, kind: dumbbell, variant: boards, compare: [overlay] }
+
+  row_speed_vmt:
+    - id: speed
+      type: multi-view
+      title: "Average speed by hour"
+      description: "Slow hours are darkest."
+      height: 340
+      width: 0.5833
+      views:
+        - { id: heat, label: Heatmap, type: chart, kind: speed-heat, compare: [multi] }
+    - id: vmt
+      type: multi-view
+      title: "Vehicle miles by county and road type"
+      description: "Millions of miles per day."
+      height: 340
+      width: 0.4167
+      views:
+        - { id: tree, label: Treemap, type: chart, kind: treemap, variant: vmt, compare: [multi] }
+        - { id: sun, label: Sunburst, type: chart, kind: sunburst, variant: vmt, compare: [multi] }

@@ -14,6 +14,58 @@ export function isMetricStripRow(panels: PanelConfig[]): boolean {
   return panels.length > 0 && panels.every((p) => p.type === 'valuebox')
 }
 
+/** What decides whether a tile is drawn at all: Compare on/off and whether the selected year is the base year. */
+export interface VisibilityContext {
+  compare: boolean
+  isBaseYear: boolean
+}
+
+/**
+ * 063 redesign: tiles that only make sense in one mode are left out of the layout entirely (so the row's columns
+ * re-divide), not drawn empty: `show_when`, a multi-view's `needs_compare`, and calibration-family tiles outside the
+ * base year.
+ */
+export function isPanelVisible(panel: PanelConfig, ctx: VisibilityContext): boolean {
+  const p = panel as { show_when?: string; needs_compare?: boolean; family?: string; base_year_only?: boolean }
+  if (p.show_when === 'compare' && !ctx.compare) return false
+  if (p.show_when === 'single' && ctx.compare) return false
+  if (p.needs_compare && !ctx.compare) return false
+  if (p.family === 'calibration' && !ctx.isBaseYear) return false
+  return true
+}
+
+/** The body height a tile asks for: a `height_rows` rule resolved for `scenarioCount` compared scenarios, else `height`. */
+export function authoredHeight(panel: PanelConfig, scenarioCount: number): number | undefined {
+  const p = panel as { height?: unknown; height_rows?: { base: number; per: number; max: number } }
+  const r = p.height_rows
+  if (r) return Math.min(r.max, r.base + r.per * Math.max(1, scenarioCount))
+  return typeof p.height === 'number' ? p.height : undefined
+}
+
+/**
+ * Tiles in one row share one height (project-docs/redesign/10-toolbar-layout-export-proposal.md section B): the largest
+ * height any of them asks for. A tile that did not already have it gets a copy with that `height` (and its `height_rows`
+ * rule, now resolved, dropped); tiles that already match keep their identity so panels keyed on `config` by reference
+ * are not redrawn. Rows holding a tile without a numeric height (value boxes, auto height) are left alone.
+ */
+export function equalizeRowHeights(panels: PanelConfig[], scenarioCount: number): PanelConfig[] {
+  if (panels.length < 2) return panels
+  const heights = panels.map((p) => authoredHeight(p, scenarioCount))
+  if (heights.some((h) => h === undefined) || panels.some((p) => p.type === 'valuebox')) return panels
+  const rowHeight = Math.max(...(heights as number[]))
+  return panels.map((p, i) => {
+    const hasRule = Boolean((p as { height_rows?: unknown }).height_rows)
+    if (heights[i] === rowHeight && !hasRule) return p
+    const { height_rows: _rule, ...rest } = p as PanelConfig & { height_rows?: unknown }
+    return { ...rest, height: rowHeight } as PanelConfig
+  })
+}
+
+/** A hero KPI band row (063 redesign): every panel is a `type: valuebox` with `variant: hero`. */
+export function isHeroRow(panels: PanelConfig[]): boolean {
+  return isMetricStripRow(panels) && panels.every((p) => (p as { variant?: string }).variant === 'hero')
+}
+
 /**
  * FR-008/data-model.md §3: resolves whether `tab` qualifies for the
  * chromeless full-page rendering mode. Flattens every row in `tab.layout`
@@ -39,6 +91,9 @@ export interface ResolvedSection {
    * order is `layout`'s alone (data-model.md §2: "sections never reorders
    * rows"). */
   rows: string[]
+  /** Anchor on the tile with this `id` rather than the first row. */
+  tile?: string
+  mode?: 'stack' | 'pick'
 }
 
 /**
@@ -80,10 +135,51 @@ export function resolveSections(tab: DashboardTabConfig): ResolvedSection[] {
     // never reorders rows" guarantee.
     const orderedRows = Object.keys(tab.layout).filter((rowName) => validRows.includes(rowName))
     if (orderedRows.length === 0) continue
-    resolved.push({ id: section.id, label: section.label, rows: orderedRows })
+    resolved.push({ id: section.id, label: section.label, rows: orderedRows, tile: typeof section.tile === 'string' ? section.tile : undefined, mode: section.mode === 'pick' ? 'pick' : undefined })
   }
 
   return resolved
+}
+
+export interface TabSection {
+  id: string
+  label: string
+  mode: 'stack' | 'pick'
+  /** Visible rows of the tab, in layout order. */
+  rows: string[]
+}
+
+export interface TabsPlan {
+  /** Rows that stay above the tabs. */
+  pinned: string[]
+  sections: TabSection[]
+}
+
+/**
+ * The tabbed form of a page (project-docs/redesign/10-toolbar-layout-export-proposal.md section C.3): hero rows (or
+ * `header.pinned_rows`) stay on top, each section with something to show is a tab, and rows no section names go to
+ * the end of the first tab so no tile is lost. Null when the page has nothing to tab (no sections, or all empty).
+ */
+export function planTabs(tab: DashboardTabConfig, ctx: VisibilityContext): TabsPlan | null {
+  const visibleRows = new Map<string, PanelConfig[]>()
+  for (const [name, panels] of Object.entries(tab.layout)) {
+    const visible = panels.filter((p) => isPanelVisible(p, ctx))
+    if (visible.length > 0) visibleRows.set(name, visible)
+  }
+  const wanted = Array.isArray(tab.header.pinned_rows) ? tab.header.pinned_rows : null
+  const pinned = [...visibleRows.keys()].filter((name) => (wanted ? wanted.includes(name) : isHeroRow(visibleRows.get(name)!)))
+  const sections: TabSection[] = []
+  for (const s of resolveSections(tab)) {
+    const rows = s.rows.filter((r) => visibleRows.has(r) && !pinned.includes(r))
+    if (rows.length > 0 && !sections.some((x) => x.id === s.id)) sections.push({ id: s.id, label: s.label, mode: s.mode ?? 'stack', rows })
+  }
+  if (sections.length === 0) return null
+  const placed = new Set(sections.flatMap((s) => s.rows))
+  const loose = [...visibleRows.keys()].filter((r) => !pinned.includes(r) && !placed.has(r))
+  if (loose.length > 0) {
+    sections[0] = { ...sections[0], rows: Object.keys(tab.layout).filter((r) => sections[0].rows.includes(r) || loose.includes(r)) }
+  }
+  return { pinned, sections }
 }
 
 // Re-exported so callers (sidebarNav.tsx) don't need a second import from

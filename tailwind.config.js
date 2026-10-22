@@ -6,7 +6,7 @@
 // see the contract's Note for why that deviation is deliberate.
 export default {
   darkMode: ['class'],
-  content: ['./index.html', './src/**/*.{ts,tsx}'],
+  content: ['./index.html', './src/**/*.{ts,tsx}', './scripts/viteBootSkeletonPlugin.ts'],
   theme: {
     extend: {
       colors: {

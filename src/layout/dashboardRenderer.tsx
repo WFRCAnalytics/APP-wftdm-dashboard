@@ -1,12 +1,18 @@
 import { Suspense, useEffect, useMemo } from 'react'
 import { PanelCard, PanelErrorBoundary } from '@/layout/panelCard'
+import { HeroCell } from '@/layout/heroCell'
+import { TabbedPage } from '@/layout/tabbedPage'
+import { useTabsPlan } from '@/hooks/useTabsPlan'
+import { IdenticalNote } from '@/layout/identicalNote'
 import { registry } from '@/panels/registry'
 import { PanelErrorState } from '@/panels/PanelErrorState'
 import { PanelLoadingState } from '@/panels/PanelLoadingState'
-import { findFullPagePanel, isMetricStripRow, resolveSections } from '@/layout/dashboardLayout'
+import { useResolvedView } from '@/hooks/useViewContext'
+import { equalizeRowHeights, findFullPagePanel, isHeroRow, isMetricStripRow, isPanelVisible, resolveSections } from '@/layout/dashboardLayout'
 import { isMapRenderingPanel, type DashboardTabConfig, type PanelConfig } from '@/layout/types'
 import { computeTabDataRequirement, ensureRegistered } from '@/services/tabDataLoader'
 import { useActiveScenarios } from '@/hooks/useActiveScenarios'
+import { tileKey } from '@/state/tileState'
 
 // Renders one active tab's layout (project-docs/GRAMMAR.md: named rows, each a
 // flat list of panels) as ordered rows of PanelCards, each sized by its
@@ -140,8 +146,13 @@ function FullPagePanel({ config }: { config: PanelConfig }) {
 }
 
 function OrdinaryDashboardRenderer({ tab }: { tab: DashboardTabConfig }) {
+  const view = useResolvedView()
+  const scenarioCount = view.active.length
+  const visibility = useMemo(() => ({ compare: view.compare, isBaseYear: view.isBaseYear }), [view.compare, view.isBaseYear])
   const rows = useMemo(() => {
     function withTabDefaultBasemap(panel: PanelConfig): PanelConfig {
+      // a multi-view hands the tab default on to a map view
+      if (panel.type === 'multi-view') return { ...panel, _tabDefaultBasemap: tab.default_basemap } as PanelConfig
       if (!isMapRenderingPanel(panel)) return panel
       // isMapRenderingPanel already runtime-confirms `panel` is one of
       // the map-rendering PanelConfig union members — the cast below is
@@ -151,10 +162,10 @@ function OrdinaryDashboardRenderer({ tab }: { tab: DashboardTabConfig }) {
       // type-safety gap.
       return { ...panel, _tabDefaultBasemap: tab.default_basemap } as PanelConfig
     }
-    return Object.entries(tab.layout).map(
-      ([rowName, panels]) => [rowName, panels.map(withTabDefaultBasemap)] as const,
-    )
-  }, [tab])
+    return Object.entries(tab.layout)
+      .map(([rowName, panels]) => [rowName, equalizeRowHeights(panels.filter((p) => isPanelVisible(p, visibility)).map(withTabDefaultBasemap), scenarioCount)] as const)
+      .filter(([, panels]) => panels.length > 0)
+  }, [tab, visibility, scenarioCount])
 
   // FR-013–FR-016: for each resolved section, the FIRST row (in layout's
   // own real key order, never the section's own authored rows[] order) is
@@ -167,28 +178,26 @@ function OrdinaryDashboardRenderer({ tab }: { tab: DashboardTabConfig }) {
     const map = new Map<string, string>()
     for (const section of resolveSections(tab)) {
       const firstRow = section.rows[0]
-      if (firstRow && !map.has(firstRow)) map.set(firstRow, section.id)
+      // a section that names a tile anchors on that tile instead (see tileAnchors)
+      if (firstRow && !section.tile && !map.has(firstRow)) map.set(firstRow, section.id)
     }
     return map
   }, [tab])
 
+  const tileAnchors = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const section of tab.sections ?? []) if (section.tile) map.set(section.tile, section.id)
+    return map
+  }, [tab])
+
+  const plan = useTabsPlan(tab)
+  const rowMap = useMemo(() => new Map(rows), [rows])
+  if (plan) return <TabbedPage page={tab.header.tab} plan={plan} rows={rowMap} />
+
   return (
-    <div className="flex flex-col gap-6 p-6">
-      {/* wftdm-design-system, Phase 2: header.title/description are real,
-          validated fields (layout/types.ts's parseDashboardConfig — title
-          is even REQUIRED) that had no rendering consumer anywhere in the
-          app before this — confirmed via a full src/ search finding zero
-          references to header.title/header.description outside types.ts
-          itself. This is the Page Title role's first real application
-          (previously "reserved for Phase 2, if needed" — it was needed).
-          Participates in the same gap-6 rhythm as the row grid below, not
-          a separately-spaced block. */}
-      <div>
-        <h1 className="font-heading text-xl font-semibold tracking-tight">{tab.header.title}</h1>
-        {tab.header.description && (
-          <p className="mt-1 font-body text-sm text-muted-foreground">{tab.header.description}</p>
-        )}
-      </div>
+    <div className="flex flex-col gap-[14px] pb-[60px] pl-[14px] pr-7 pt-2">
+      {/* The page title and description now live in the sticky PageHeader (layout/pageHeader.tsx). */}
+      {rows.some(([, panels]) => isHeroRow(panels)) && <IdenticalNote />}
       {rows.map(([rowName, panels]) => {
         const sectionId = sectionAnchorByRow.get(rowName)
         // FR-018: a row composed entirely of valuebox panels lays out as
@@ -199,23 +208,42 @@ function OrdinaryDashboardRenderer({ tab }: { tab: DashboardTabConfig }) {
         // concept; FR-020 requires every other row's existing fraction
         // layout to stay completely unchanged.
         const metricStrip = isMetricStripRow(panels)
+        const hero = isHeroRow(panels)
         return (
           <div
             key={rowName}
             id={sectionId ? `section-${sectionId}` : undefined}
             data-testid={rowName}
-            className={metricStrip ? 'grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-6' : 'grid gap-6'}
+            className={
+              hero
+                ? // the hero KPI band (project-docs/redesign/02-layout-and-components.md section 1.4): one raised container,
+                  // equal columns split by hairlines, two columns below 1100px with the last cell spanning both
+                  'grid scroll-mt-24 grid-cols-[repeat(var(--n),minmax(0,1fr))] rounded-[26px] border border-[var(--glass-line)] bg-[var(--tile-hi)] p-[6px] shadow-[var(--sh1)] max-[1100px]:grid-cols-2'
+                : metricStrip
+                  ? 'grid scroll-mt-24 grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-[14px]'
+                  : 'grid scroll-mt-24 gap-[14px]'
+            }
             style={
-              metricStrip
-                ? undefined
-                : { gridTemplateColumns: panels.map((p) => `${(p.width ?? 1) * 100}fr`).join(' ') }
+              hero
+                ? ({ '--n': panels.length } as React.CSSProperties)
+                : metricStrip
+                  ? undefined
+                  : { gridTemplateColumns: panels.map((p) => `${(p.width ?? 1) * 100}fr`).join(' ') }
             }
           >
-            {panels.map((panel, index) => (
-              <div key={`${rowName}-${index}`} className="min-w-0">
-                <PanelCard config={panel} />
-              </div>
-            ))}
+            {panels.map((panel, index) =>
+              hero ? (
+                <HeroCell key={`${rowName}-${index}`} config={panel} />
+              ) : (
+                <div
+                  key={`${rowName}-${index}`}
+                  id={tileAnchors.has((panel as { id?: string }).id ?? '') ? `section-${tileAnchors.get((panel as { id?: string }).id ?? '')}` : undefined}
+                  className="flex min-w-0 scroll-mt-24 flex-col [&>*]:flex-1"
+                >
+                  <PanelCard config={panel} tileKey={tileKey(tab.header.tab, (panel as { id?: string }).id ?? `${rowName}-${index}`)} />
+                </div>
+              ),
+            )}
           </div>
         )
       })}

@@ -41,17 +41,17 @@ describe('typography tokens match shadcn Nova default font stack', () => {
   const rootMap = parseDeclarations(extractBlock(css, ':root'))
   const darkMap = parseDeclarations(extractBlock(css, '.dark'))
 
-  it('--font-body is Geist Variable', () => {
-    expect(rootMap['font-body']).toBe('"Geist Variable", sans-serif')
+  it('--font-body is Schibsted Grotesk Variable', () => {
+    expect(rootMap['font-body']).toBe('"Schibsted Grotesk Variable", sans-serif')
   })
 
-  it('--font-heading is Geist Variable — the SAME value as --font-body (Nova has no separate heading face)', () => {
-    expect(rootMap['font-heading']).toBe('"Geist Variable", sans-serif')
+  it('--font-heading is Schibsted Grotesk Variable — the SAME value as --font-body (Nova has no separate heading face)', () => {
+    expect(rootMap['font-heading']).toBe('"Schibsted Grotesk Variable", sans-serif')
     expect(rootMap['font-heading']).toBe(rootMap['font-body'])
   })
 
-  it('--font-mono is Geist Mono Variable', () => {
-    expect(rootMap['font-mono']).toBe('"Geist Mono Variable", monospace')
+  it('--font-mono is DM Mono', () => {
+    expect(rootMap['font-mono']).toBe('"DM Mono", monospace')
   })
 
   it('none of the three font tokens are redeclared in .dark — typography is theme-invariant', () => {

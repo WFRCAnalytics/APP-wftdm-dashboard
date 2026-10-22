@@ -267,5 +267,5 @@ extended per file 03 §4.2.
 ## 8. Backwards compatibility checklist
 - A deployment with no `years`, no `families`, one scenario, and old-style panels still renders: Compare
   hidden, Year hidden, tiles show the focus scenario, observed shown as before.
-- Old panels keep working if they use `type: plotly | recharts` (legacy) but are not restyled beyond the tile chrome.
+- `type: plotly` and `type: recharts` no longer exist (removed with the redesign); a panel using them shows the "Unknown panel type" error state. Convert such panels to `observable-plot`.
 - `scenario:`/`scenarios:` pins keep their meaning (a pinned panel ignores the compare set).

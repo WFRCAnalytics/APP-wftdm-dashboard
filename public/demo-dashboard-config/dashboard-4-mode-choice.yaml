@@ -1,174 +1,82 @@
-# 032-six-tab-demo-content — Mode Choice tab. Sections match
-# project-docs/CALIBRATION-SUMMARIES.md's own "Mode Choice Tab" submodel
-# headings exactly. Folds in the real purpose_mode_flow Sankey panel
-# from the now-dissolved dashboard-6-flows.yaml (research.md §6, FR-011)
-# under Trip Mode Choice, alongside the already-real, already-published
-# trip_mode_share/mode_share_by_period metrics.
+# 063 redesign: Mode choice page on the real ActivitySim example runs.
 
 header:
-  tab: "Mode Choice"
-  title: Mode Choice
+  tab: "Mode choice"
+  title: "Mode choice"
+  description: "How people choose between driving, transit, walking and biking"
   icon: shuffle
 
 sections:
-  - id: tour-mode-choice
-    label: "Tour Mode Choice"
-    rows: [row_tour_mode_choice]
-  - id: atwork-subtour-mode-choice
-    label: "At-Work Subtour Mode Choice"
-    rows: [row_atwork_subtour_mode]
-  - id: trip-mode-choice
-    label: "Trip Mode Choice"
-    rows: [row_trip_mode_flow, row_trip_mode_heatmap, row_trip_mode_radar, row_trip_mode_by_period]
+  - { id: shares, label: "Mode share", rows: [row_share] }
+  - { id: flow, label: "Purpose to mode", rows: [row_flowbig] }
+  - { id: day, label: "Through the day", rows: [row_time_mix] }
 
 layout:
-  row_tour_mode_choice:
-    - type:       table
-      title:      "Tour Mode Share by Segment"
-      metric:     tour_mode_share_summary
-      sort:       { column: tours, order: desc }
-      pagination: 25
-      searchable: true
-      columns:
-        # 038-all-loaded-scenarios: unpinned — the $scenario union adds this
-        # discriminator column so the table reads as a per-scenario comparison.
-        - { field: scenario, label: "Scenario" }
-        - { field: primary_purpose,   label: "Tour Purpose" }
-        - { field: tour_mode,         label: "Mode" }
-        - { field: auto_sufficiency,  label: "Auto Sufficiency" }
-        - { field: person_type,       label: "Person Type" }
-        - { field: sex,               label: "Sex" }
-        - { field: income_group,      label: "Income Group" }
-        - { field: tours,             label: "Tours", format: ",.0f" }
+  row_share:
+    - id: share
+      type: multi-view
+      title: "Mode share"
+      description: "Share of daily trips. The dashed line is the reference."
+      height: 420
       width: 1.0
+      group_by:
+        label: Compare by
+        default: scn
+        options:
+          - { id: scn, label: Scenario, fields: { group: scn } }
+          - { id: purpose, label: Purpose, fields: { group: purpose } }
+      views:
+        - { id: bars, label: Bars, type: chart, kind: mode-bars, diff: true, compare: [overlay] }
+        - { id: gap, label: Gap, type: chart, kind: gap-dots, diff: true, compare: [overlay] }
+        - { id: stack, label: "100% bars", type: chart, kind: stacked-bars, variant: scenario, compare: [overlay] }
+        - { id: slope, label: Slope, type: chart, kind: slope, compare: [switch] }
+        - { id: donut, label: Donut, type: chart, kind: donut, compare: [switch, diff] }
+        - { id: tbl, label: Table, type: chart, kind: mode-table, compare: [overlay] }
 
-  row_atwork_subtour_mode:
-    - type:       observable-plot
-      title:      "At-Work Subtour Mode Share by Purpose"
-      metric:     atwork_subtour_mode_summary
-      # 038: stays pinned — `fill` is committed to the mode split (057-
-      # observable-plot-conversion: converted from recharts; faceting to
-      # also compare scenarios is a real, available Observable Plot
-      # strength but deferred to this feature's own explicitly later
-      # polish effort, contracts/panel-conversions.md). Scope stated
-      # below; the other Mode Choice panels compare scenarios.
-      scenario:   activitysim-baseline
-      description: "Baseline scenario, split by mode. Compare runs on the other Mode Choice panels via the Scenarios tab."
-      mark:       barY
-      x:          primary_purpose
-      y:          tours
-      fill:       tour_mode
-      tip:        true
-      grid:       true
-      height:     400
-      width:      1.0
+  row_flowbig:
+    - id: flowbig
+      type: multi-view
+      title: "From purpose to mode"
+      description: "Each band is a share of daily trips."
+      height: 460
+      width: 1.0
+      views:
+        - { id: flow, label: Flow, type: chart, kind: sankey, compare: [switch] }
 
-  # Real trip counts flowing from purpose to grouped mode — the same
-  # metric/panel dashboard-6-flows.yaml (031, dissolved) already authored
-  # correctly; re-created here, now actually publishable (FR-011).
-  row_trip_mode_flow:
-    - type:   sankey
-      title:  "Trip Purpose to Mode Flow"
-      metric: purpose_mode_flow
-      # 038: unpinned. A Sankey has no per-scenario split — the $scenario
-      # union sums flows across the active scenarios, so this reads as a
-      # COMBINED purpose→mode flow that still responds to the Switch
-      # (toggle down to one scenario to see that run alone).
-      description: "Combined flow across all active scenarios. Toggle scenarios on the Scenarios tab to isolate one run."
+  row_time_mix:
+    - id: time
+      type: multi-view
+      title: "Trips through the day"
+      description: "Departure hour. Group by chooses what the lines or bands represent."
       height: 400
-      width:  0.5
-      source: primary_purpose
-      target: major_trip_mode
-      value:  trips
-      color_scheme: Tableau10
-
-    # 040-test-suite-migration (T023): the same real metric/flow, with
-    # color_scheme omitted — sankeyPanel.spec.ts's real vehicle for the
-    # token-derived-fallback-palette case (SankeyPanel.tsx's own
-    # --chart-1..4 fallback, not a named d3-scale-chromatic scheme).
-    - type:   sankey
-      title:  "Trip Purpose to Mode Flow (No Color Scheme)"
-      metric: purpose_mode_flow
-      description: "Same combined flow as the panel to the left, using the default token-derived palette instead of a named color scheme."
+      width: 0.5833
+      default_view: stream
+      group_by:
+        label: Group by
+        default: purpose
+        options:
+          - { id: scn, label: Scenario, fields: { group: scn } }
+          - { id: purpose, label: Purpose, fields: { group: purpose } }
+          - { id: none, label: "All trips", fields: { group: none } }
+      views:
+        - { id: lines, label: Lines, type: chart, kind: time-lines, diff: true, compare: [overlay] }
+        - { id: stream, label: Stream, type: chart, kind: time-stream, compare: [switch, multi] }
+        - { id: heat, label: Heatmap, type: chart, kind: time-heat, compare: [overlay] }
+    - id: mix
+      type: multi-view
+      title: "Trips by purpose and mode"
+      description: "Daily trips for the focus scenario. Hover a mode to trace it across every chart."
       height: 400
-      width:  0.5
-      source: primary_purpose
-      target: major_trip_mode
-      value:  trips
-
-  # New chart-type coverage: type: observable-plot's mark: cell — a real
-  # matrix/heatmap view of the SAME real purpose_mode_flow data the
-  # Sankey panels above already chart. `fill: trips` is a genuinely
-  # NUMERIC channel (a real COUNT(*)), not a category —
-  # resolveObservablePlotEncoding()'s own numeric-fill detection lets Plot
-  # apply its own continuous color scale here instead of this app's
-  # categorical --chart-1..5 cycling (which would otherwise try to hand
-  # each distinct trip count its own arbitrary swatch).
-  #
-  # PINNED to one scenario — a real, confirmed reason, unlike the Sankey
-  # panel above it: Sankey's own buildFlowGraph() (sankeyGraph.ts)
-  # explicitly SUMS duplicate source-target rows before drawing, so an
-  # unpinned multi-scenario union renders as one real combined diagram.
-  # A heatmap cell has no such aggregation step and no series/facet
-  # channel to separate scenarios — x/y are BOTH already spent on
-  # purpose/mode, so an unpinned union leaves 3 raw rows (one per active
-  # scenario) stacked exactly on top of each other at the same cell
-  # position, each its own <rect>. Confirmed live: the topmost one (the
-  # last scenario in paint order) silently hides the other two, with no
-  # visual indication a union even happened. Pinning avoids the
-  # silent-data-hiding problem entirely, matching row_school_location's
-  # own "already committed, pin instead of union" precedent above.
-  row_trip_mode_heatmap:
-    - type:    observable-plot
-      title:   "Trip Purpose × Mode Heatmap"
-      metric:  purpose_mode_flow
-      scenario: activitysim-baseline
-      description: "Baseline scenario. Darker cells = more trips. Compare runs on the Sankey diagram above via the Scenarios tab."
-      mark:    cell
-      x:       primary_purpose
-      y:       major_trip_mode
-      fill:    trips
-      tip:     true
-      height:  400
-      width:   1.0
-
-  # 060-radar-pie-charts — a real, first-content demo of the new `radar`
-  # panel type, reusing this section's own already-real, already-
-  # published trip_mode_share metric. Unpinned — the $scenario union
-  # produces one polygon per active scenario (`series: scenario`), a
-  # real "compare each loaded scenario's overall mode-share shape at a
-  # glance" use case.
-  row_trip_mode_radar:
-    - type:   radar
-      title:  "Trip Mode Share by Scenario"
-      metric: trip_mode_share
-      description: "One polygon per active scenario. Toggle scenarios on the Scenarios tab to compare a subset."
-      axis:   major_trip_mode
-      value:  share
-      series: scenario
-      height: 450
-      width:  1.0
-
-  row_trip_mode_by_period:
-    - type:    observable-plot
-      title:   "Trip Mode Share by Time-of-Day Period (WALK_LOC)"
-      metric:  mode_share_by_period
-      # 038: unpinned — the dynamic $scenario union already splits per
-      # scenario via `fill: scenario` below, and responds to the
-      # Scenarios-tab Switch.
-      filter:  { trip_mode: WALK_LOC }
-      # Grouped, not stacked — a real, confirmed bug fix: `x: category,
-      # fill: scenario` with no facet triggers Plot's own implicit stackY
-      # (its docs: "For a grouped bar chart, use faceting"). facet_x
-      # carries the real category (time_of_day_period, the field `x`
-      # held before this fix); x now holds the comparison dimension
-      # (scenario) — same query, same columns, only the encoding changed.
-      mark:    barY
-      facet_x: time_of_day_period
-      x:       scenario
-      y:       share
-      fill:    scenario
-      tip:     true
-      grid:    true
-      height:  400
-      width:   1.0
+      width: 0.4167
+      default_view: sun
+      group_by:
+        label: Group by
+        default: pm
+        options:
+          - { id: pm, label: "Purpose › Mode", fields: { group: pm } }
+          - { id: mp, label: "Mode › Purpose", fields: { group: mp } }
+      views:
+        - { id: tree, label: Treemap, type: chart, kind: treemap, variant: trips, compare: [multi, diff] }
+        - { id: sun, label: Sunburst, type: chart, kind: sunburst, variant: trips, compare: [multi] }
+        - { id: flow, label: Flow, type: chart, kind: sankey, compare: [switch] }
+        - { id: bars, label: "100% bars", type: chart, kind: stacked-bars, variant: trips, compare: [multi] }

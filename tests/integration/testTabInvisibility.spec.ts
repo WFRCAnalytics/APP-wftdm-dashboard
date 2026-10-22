@@ -43,7 +43,7 @@ function sidebarTabs(page: Page) {
 }
 
 test.describe('040 US1 — dashboard-8-test.yaml is a permanent, inconspicuous 8th tab', () => {
-  test('the shipped, git-committed index.json lists dashboard-8-test.yaml as the permanent 8th entry (FR-002)', () => {
+  test('the shipped, git-committed index.json lists dashboard-8-test.yaml as the permanent last entry (FR-002)', () => {
     const raw = readFileSync(
       path.join(REPO_ROOT, 'public/demo-dashboard-config/index.json'),
       'utf8',
@@ -54,7 +54,7 @@ test.describe('040 US1 — dashboard-8-test.yaml is a permanent, inconspicuous 8
       'dashboard-2-person-household.yaml',
       'dashboard-3-tour-models.yaml',
       'dashboard-4-mode-choice.yaml',
-      'dashboard-5-trip-models.yaml',
+      // 063 redesign: the Trip models tab is not part of the Corridor Pro page set
       'dashboard-6-network.yaml',
       'dashboard-7-explore.yaml',
       'dashboard-8-test.yaml',
@@ -99,6 +99,8 @@ test.describe('040 US1 — dashboard-8-test.yaml is a permanent, inconspicuous 8
     page,
   }) => {
     await boot(page)
+    // Labels fade in while the floating nav is expanded.
+    await page.locator('[data-sidebar="sidebar"]').hover()
     for (const name of REAL_SEVEN_TABS) {
       const tab = page.getByRole('tab', { name, exact: true })
       await expect(tab).toBeVisible()

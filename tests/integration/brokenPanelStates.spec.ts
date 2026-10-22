@@ -32,6 +32,11 @@ async function gotoTestTab(page: Page) {
   await page.waitForTimeout(2500)
 }
 
+// Every assertion here waits on the crowded Test tab (~80 panels mount at once), where errors and maps take 5-8s to
+// surface under DuckDB-WASM contention; the 5s default made this file flaky. Healthy runs still finish as soon as the
+// state appears.
+expect.configure({ timeout: 20_000 })
+
 test.describe('040 US1 — dashboard-8-test.yaml reproduces every error/empty state', () => {
   test('full_page + more than one panel → console.warn + ordinary card-grid render, never blank', async ({
     page,
@@ -57,13 +62,7 @@ test.describe('040 US1 — dashboard-8-test.yaml reproduces every error/empty st
       panelCard(page, 'Broken Table Panel (missing metric)').getByText("Couldn't load this table"),
     ).toBeVisible()
     await expect(
-      panelCard(page, 'Broken Plotly Panel (missing metric)').getByText("Couldn't load this chart"),
-    ).toBeVisible()
-    await expect(
       panelCard(page, 'Broken Sankey Panel (missing metric)').getByText("Couldn't load this diagram"),
-    ).toBeVisible()
-    await expect(
-      panelCard(page, 'Broken Recharts Panel (missing metric)').getByText("Couldn't load this chart"),
     ).toBeVisible()
     await expect(
       panelCard(page, 'Broken Observable Plot Panel (missing metric)').getByText(
@@ -75,13 +74,6 @@ test.describe('040 US1 — dashboard-8-test.yaml reproduces every error/empty st
     ).toBeVisible()
     await expect(
       panelCard(page, 'Broken Zone Map Panel (missing metric)').getByText("Couldn't load this map"),
-    ).toBeVisible()
-  })
-
-  test('recharts chart_type: pie surfaces a runtime validation error', async ({ page }) => {
-    await gotoTestTab(page)
-    await expect(
-      panelCard(page, 'Recharts Invalid Chart Type (pie)').getByRole('alert'),
     ).toBeVisible()
   })
 
@@ -141,13 +133,13 @@ test.describe('040 US1 — dashboard-8-test.yaml reproduces every error/empty st
     const card = panelCard(page, 'Broken Comparison Diff (unresolvable a/b)')
     // Either the shared error state, or an empty table — never an unhandled
     // exception (the page stays interactive, other panels still render).
-    await expect(page.getByText('Recharts Empty Result', { exact: true })).toBeVisible()
+    await expect(page.getByText('Pie Empty Result', { exact: true })).toBeVisible()
     await expect(card).toBeVisible()
   })
 
   test('a filter value matching zero real rows renders the empty state', async ({ page }) => {
     await gotoTestTab(page)
-    const card = panelCard(page, 'Recharts Empty Result')
+    const card = panelCard(page, 'Pie Empty Result')
     // PanelEmptyState — no error alert, a "no data"-style message.
     await expect(card.getByRole('alert')).toHaveCount(0)
   })

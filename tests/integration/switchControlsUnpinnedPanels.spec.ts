@@ -101,6 +101,7 @@ test.describe('038 US1 — the Switch universally controls every unpinned panel'
     // number at all).
     await gotoTab(page, 'Summary')
     const pinnedValue = panelCard(page, 'Households').locator('.tabular-nums').first()
+    await expect(pinnedValue).toHaveText(/\d/, { timeout: 20_000 })
     const pinnedBefore = (await pinnedValue.textContent())?.trim()
     expect(pinnedBefore).toMatch(/\d/)
 

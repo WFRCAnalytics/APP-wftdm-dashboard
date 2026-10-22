@@ -15,13 +15,12 @@ import {
   Satellite,
   Mountain,
   Star,
-  Layers,
   Contrast,
   CircleDashed,
   type LucideIcon,
 } from 'lucide-react'
 
-import { Button } from '@/components/ui/button'
+import { GroupHeading, PillButton, TabHeader } from '@/layout/settings/settingsParts'
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 import {
@@ -135,6 +134,7 @@ const SECTIONS: Section[] = [
     icon: Landmark,
     entries: [
       { name: 'ugrc-vector-lite', label: 'Vector Lite', icon: MapIcon },
+      { name: 'ugrc-vector-dark', label: 'Vector Dark', icon: Moon },
       { name: 'ugrc-vector-hybrid', label: 'Vector Hybrid', icon: Satellite },
       { name: 'ugrc-vector-outdoors', label: 'Vector Outdoors', icon: Mountain },
     ],
@@ -374,298 +374,232 @@ export function BasemapTab() {
   }, [])
 
   const stagedIsRaster = isRasterProviderSelection(stagedSelection)
+  const effectiveApplied: BasemapPresetName = appliedBasemap ?? APP_DEFAULT
+  const unchanged = stagedSelection === effectiveApplied
 
   return (
-    // UI polish pass: this component now owns its OWN internal scroll
-    // split — settingsModal.tsx's Basemap TabsContent no longer sets
-    // overflow-y-auto itself (unlike every other tab, which still relies
-    // on that shared behavior unchanged). h-full so the fixed-height
-    // ancestor chain (DialogContent -> Tabs -> TabsContent) actually
-    // reaches this component; min-h-0 so the flex-1 scroll region below
-    // can shrink correctly instead of forcing the whole tab to grow.
-    <div className="flex h-full min-h-0 flex-col gap-4">
-      {/* FIXED header block — preview map, description, and Apply never
-          scroll, regardless of how long the sections list below gets. */}
-      <div className="flex flex-shrink-0 flex-col gap-4">
-        {/* T012/T016 — the ONE shared preview area, above the four sections.
-            024-settings-modal-visual-redesign (US2): raster providers now
-            render real tiles here just like every vector entry (FR-004/
-            FR-008) — the placeholder that used to always show for a
-            raster selection is gone; a failure message shows only when
-            this selection's own tiles genuinely fail to load (FR-007). */}
-        <div className="relative h-[220px] w-full overflow-hidden rounded-md border border-border">
-          <div ref={previewContainerRef} className="h-full w-full" />
-          {previewError && (
-            <div
-              data-testid="basemap-preview-error"
-              className="absolute inset-0 flex items-center justify-center bg-muted p-4 text-center text-sm text-muted-foreground"
-            >
-              Couldn't load tiles for this raster provider.
-            </div>
-          )}
-        </div>
-
-        <div className="flex items-center justify-between gap-2">
-          <p className="text-sm text-muted-foreground">
-            Applies to every flowmap/zonemap panel that has no basemap configured by its own
-            dashboard author.
-          </p>
-          {/* T018 — the ONLY call to setGlobalBasemap() in this component. */}
-          <Button type="button" size="sm" onClick={() => setGlobalBasemap(stagedSelection)}>
-            Apply
-          </Button>
-        </div>
-      </div>
-
-      {/* SCROLLABLE region — only the catalog sections scroll. scrollbar-thin
-          — see tokens.css's own comment for why (a codebase-wide search
-          found no existing custom scrollbar style to match, so this
-          feature proposes one and applies it consistently, not just here). */}
-      <div
-        data-testid="basemap-sections-scroll"
-        className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto scrollbar-thin pr-1"
-      >
-        {/* T014 — UGRC Vector Tiles / CARTO Vector Tiles / OpenFreeMap.
-            024-settings-modal-visual-redesign (US3) — REAL redesign, not
-            the prior round's incremental border/color tweak on the same
-            vertical button list. Grounded in two concrete sources:
-            (1) 021's own research.md already named ArcGIS's real
-            BasemapGallery widget as the closest comparable pattern for
-            this exact problem — a flat grid of tiles, not an accordion,
-            not a dropdown; (2) `gropaul/dash` (project-docs/PIPELINE.md's own
-            on-record inspiration note) solves the adjacent "pick one view
-            mode from several" problem with a real, installed
-            `view-mode-picker.tsx`, fetched and read directly: a
-            responsive `grid-cols-[repeat(auto-fit,minmax(_,1fr))]` of
-            square-ish tiles (icon on top, label below), the SELECTED
-            tile using the accent color pair, resting tiles using the
-            card surface with muted text.
-
-            061-appearance-controls (follow-up): a real, confirmed,
-            PRE-EXISTING bug found while researching a separate fix —
-            `--accent` was byte-identical to `--muted` (a real, confirmed
-            shadcn "Nova" default-theme characteristic, not unique to this
-            app), so a resting tile's own `hover:bg-muted` and the staged
-            tile's `bg-accent` rendered the EXACT SAME color — a
-            merely-hovered (not staged) tile was visually indistinguishable
-            from the actually-staged one, confirmed live via screenshot.
-            `--accent` itself has since been fixed app-wide (tokens.css's
-            own comment on that declaration has the full, final story —
-            it's now deliberately more distinct from `--muted` than
-            shadcn's own stock value, for consistency across every real
-            `--accent` consumer, not just Tabs), so `bg-accent` alone would
-            now already look distinct from `hover:bg-muted` here too. The
-            colored border added below (`border-primary`) is kept anyway,
-            as an extra, deliberate signal specific to this grid-of-tiles
-            shape (unlike a single active tab, several tiles can sit
-            adjacent to each other, so a border reinforces which one is
-            selected at a glance, same 1px width as every other tile's
-            border — no layout shift when a tile becomes/stops being
-            staged). No thumbnail images exist or are implied (out of scope, per
-            the original spec) — each tile gets a per-entry CATEGORY icon
-            instead (Sun/Moon/Satellite/Mountain/Waves/Palette/Compass,
-            see the `VectorEntry` interface's own comment) — an honest
-            categorical cue, not a fabricated preview. Section headings
-            keep the border-b/uppercase/muted treatment from the prior
-            round — that part already worked and needed no further
-            change. */}
-        {SECTIONS.map((section) => (
-          <div key={section.heading} className="flex flex-col gap-1.5">
-            <h3 className="flex items-center gap-1.5 border-b border-border pb-1 font-heading text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              <section.icon className="h-3.5 w-3.5" aria-hidden="true" />
-              {section.heading}
-            </h3>
-            <div
-              className="grid grid-cols-[repeat(auto-fit,minmax(84px,1fr))] gap-2"
-              role="radiogroup"
-              aria-label={section.heading}
-            >
-              {section.entries.map((entry) => {
-                const staged = stagedSelection === entry.name
-                const EntryIcon = entry.icon
-                return (
-                  <button
-                    key={entry.name}
-                    type="button"
-                    role="radio"
-                    aria-checked={staged}
-                    data-staged={staged || undefined}
-                    onClick={() => setStagedSelection(entry.name)}
-                    title={entry.recommended ? 'Recommended — the app default for unconfigured map panels' : undefined}
-                    className={cn(
-                      'flex flex-col items-center justify-center gap-1.5 rounded-lg border px-2 py-3 text-center text-sm font-medium transition-colors',
-                      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                      staged
-                        ? 'border-primary bg-accent text-accent-foreground'
-                        : 'border-border bg-card text-muted-foreground hover:bg-muted',
-                    )}
-                  >
-                    <EntryIcon className="h-5 w-5" aria-hidden="true" />
-                    <span className="flex items-center gap-1">
-                      {entry.label}
-                      {entry.recommended && (
-                        // Marks the entry matching registry.ts's APP_DEFAULT.
-                        // text-primary keeps it legible on the resting
-                        // (bg-card) AND staged (bg-accent) tile in both
-                        // themes; the sr-only text carries the meaning for
-                        // assistive tech (the accessible name becomes
-                        // "Positron recommended default").
-                        <>
-                          <Star className="h-3 w-3 shrink-0 fill-current text-primary" aria-hidden="true" />
-                          <span className="sr-only"> recommended default</span>
-                        </>
-                      )}
-                    </span>
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-        ))}
-
-        {/* 041-protomaps-pmtiles-basemap: "Protomaps" — positioned
-            directly above Raster Tiles, after the three vector sections
-            above (spec.md FR-001). Not one more SECTIONS entry — unlike
-            those three static sections, whether these 5 tiles are
-            selectable at all depends on runtime state (is a deployer-
-            configured Protomaps source currently resolvable — a
-            self-hosted PMTiles file or a hosted-API key?), a genuinely
-            different rendering shape (contracts/basemap-tab-ui.md). */}
-        <div className="flex flex-col gap-1.5">
-          <h3 className="flex items-center gap-1.5 border-b border-border pb-1 font-heading text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            <Layers className="h-3.5 w-3.5" aria-hidden="true" />
-            Protomaps
-          </h3>
+    // The tab fills the modal body: a fixed title, then two columns. The style cards on the left scroll on their own; the
+    // preview card on the right never scrolls with them.
+    <div className="flex h-full min-h-0 flex-col max-[1100px]:h-auto">
+      <TabHeader title="Basemap">
+        Choose the map underneath every zone map and flow map. Pick a style to preview it, then apply. Nothing changes until
+        you apply.
+      </TabHeader>
+      <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_310px] gap-5 max-[1100px]:grid-cols-1">
+        <div className="flex min-h-0 flex-col gap-2">
           <div
-            className="grid grid-cols-[repeat(auto-fit,minmax(84px,1fr))] gap-2"
-            role="radiogroup"
-            aria-label="Protomaps"
+            data-testid="basemap-sections-scroll"
+            className="scrollbar-thin flex min-h-0 flex-1 flex-col overflow-y-auto pr-1 max-[1100px]:overflow-visible"
           >
-            {PROTOMAPS_FLAVOR_NAMES.map((name) => {
-              const { label, icon: EntryIcon } = PROTOMAPS_FLAVOR_LABEL_AND_ICON[name]
-              const staged = stagedSelection === name
-              return (
-                <button
-                  key={name}
-                  type="button"
-                  role="radio"
-                  aria-checked={staged}
-                  data-staged={staged || undefined}
-                  disabled={!protomapsSource}
-                  onClick={() => setStagedSelection(name)}
-                  title={!protomapsSource ? 'No Protomaps source configured' : undefined}
-                  className={cn(
-                    'flex flex-col items-center justify-center gap-1.5 rounded-lg border px-2 py-3 text-center text-sm font-medium transition-colors',
-                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                    'disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-card',
-                    staged
-                      ? 'border-primary bg-accent text-accent-foreground'
-                      : 'border-border bg-card text-muted-foreground hover:bg-muted',
-                  )}
-                >
-                  <EntryIcon className="h-5 w-5" aria-hidden="true" />
-                  {label}
-                </button>
-              )
-            })}
+            {SECTIONS.map((section) => (
+              <div key={section.heading}>
+                <GroupHeading>{section.heading}</GroupHeading>
+                <div className="grid grid-cols-[repeat(auto-fill,minmax(104px,1fr))] gap-2.5" role="radiogroup" aria-label={section.heading}>
+                  {section.entries.map((entry) => (
+                    <StyleCard
+                      key={entry.name}
+                      name={entry.name}
+                      label={entry.label}
+                      icon={entry.icon}
+                      staged={stagedSelection === entry.name}
+                      inUse={effectiveApplied === entry.name}
+                      recommended={entry.recommended}
+                      onPick={() => setStagedSelection(entry.name)}
+                    />
+                  ))}
+                </div>
+              </div>
+            ))}
+
+            {/* Protomaps needs a configured PMTiles source; without one its styles stay disabled, as before. */}
+            <div>
+              <GroupHeading>Protomaps</GroupHeading>
+              <div className="grid grid-cols-[repeat(auto-fill,minmax(104px,1fr))] gap-2.5" role="radiogroup" aria-label="Protomaps">
+                {PROTOMAPS_FLAVOR_NAMES.map((name) => {
+                  const { label, icon } = PROTOMAPS_FLAVOR_LABEL_AND_ICON[name]
+                  return (
+                    <StyleCard
+                      key={name}
+                      name={name}
+                      label={label}
+                      icon={icon}
+                      staged={stagedSelection === name}
+                      inUse={effectiveApplied === name}
+                      disabled={!protomapsSource}
+                      note={!protomapsSource ? 'Needs a PMTiles source' : undefined}
+                      onPick={() => setStagedSelection(name)}
+                    />
+                  )
+                })}
+              </div>
+              {!protomapsSource ? (
+                <p className="mt-2 text-sm text-[var(--mute)]" data-testid="protomaps-not-configured">
+                  No Protomaps source configured for this deployment.
+                </p>
+              ) : (
+                <p className="mt-2 text-xs text-[var(--mute)]" data-testid="protomaps-source-status">
+                  Using this deployment's configured Protomaps source.
+                </p>
+              )}
+            </div>
           </div>
-
-          {/* FR-010 — clearly distinguishable from the error state below:
-              this means "nothing is set up here at all," not "something
-              is set up here and it's broken." */}
-          {!protomapsSource && (
-            <p className="text-sm text-muted-foreground" data-testid="protomaps-not-configured">
-              No Protomaps source configured for this deployment.
-            </p>
-          )}
-          {protomapsSource && (
-            // Deployer-only, revised — there is no viewer-facing override
-            // anymore (see state/protomapsSourceState.ts's header
-            // comment), so this is always the deployment's own
-            // configured source, self-hosted PMTiles or Protomaps'
-            // hosted API.
-            <p className="text-xs text-muted-foreground" data-testid="protomaps-source-status">
-              Using this deployment's configured Protomaps source.
-            </p>
-          )}
-        </div>
-
-        {/* T015/T016/T017 — Raster Tiles: loading/error/empty/ready.
-            Participates in the SAME stage-then-Apply flow as the sections
-            above (FR-013) — it just never drives the live preview
-            (FR-008). "Explore options" sits beside the heading itself
-            (same flex row), not stacked below the dropdown. Heading
-            treatment matches the other three sections above (US3) —
-            same border-b/uppercase/muted convention, for one consistent
-            section-heading style across all five sections. */}
-        <div className="flex flex-col gap-1.5">
-          <div className="flex items-center justify-between gap-2 border-b border-border pb-1">
-            <h3 className="font-heading text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Raster Tiles
-            </h3>
+          {/* Raster Tiles: pinned under the scrolling vector styles so the picker is always reachable. Loading / error /
+              empty / ready; part of the same stage-then-Apply flow. */}
+          <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-[var(--line)] pt-3">
+            <span className="text-[12.5px] font-medium text-[var(--ink)]">Raster tiles</span>
+            {rasterStatus.kind === 'loading' && (
+              <div data-testid="raster-loading-skeleton" className="h-9 flex-1 animate-pulse rounded-md bg-muted motion-reduce:animate-none" />
+            )}
+            {rasterStatus.kind === 'error' && <PanelErrorState message={rasterStatus.message} />}
+            {rasterStatus.kind === 'ready' && rasterStatus.providers.length === 0 && (
+              <PanelEmptyState icon={MapIcon} message="No raster tile providers available." />
+            )}
+            {rasterStatus.kind === 'ready' && rasterStatus.providers.length > 0 && (
+              // The app's own Radix Select, not a native one: a native listbox is drawn by the OS with its own accent.
+              <Select value={stagedIsRaster ? stagedSelection : undefined} onValueChange={(value) => setStagedSelection(value)}>
+                <SelectTrigger aria-label="Raster tile provider" className="h-9 flex-1">
+                  <SelectValue placeholder="Select a raster provider…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {rasterStatus.providers.map((provider) =>
+                    provider.variants.length === 0 ? (
+                      <SelectItem key={provider.name} value={provider.name}>
+                        {provider.name}
+                      </SelectItem>
+                    ) : (
+                      <SelectGroup key={provider.name}>
+                        <SelectLabel>{provider.name}</SelectLabel>
+                        {provider.variants.map((variant) => (
+                          <SelectItem key={variant} value={`${provider.name}.${variant}`}>
+                            {variant}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    ),
+                  )}
+                </SelectContent>
+              </Select>
+            )}
             <a
               href="https://leaflet-extras.github.io/leaflet-providers/preview/"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-sm text-primary underline-offset-2 hover:underline"
+              className="rounded text-[12.5px] text-[var(--brand-text)] underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-text)]"
             >
               Explore options
             </a>
           </div>
-          {rasterStatus.kind === 'loading' && (
-            <div
-              data-testid="raster-loading-skeleton"
-              className="h-9 w-full animate-pulse rounded-md bg-muted"
-            />
-          )}
-          {rasterStatus.kind === 'error' && <PanelErrorState message={rasterStatus.message} />}
-          {rasterStatus.kind === 'ready' && rasterStatus.providers.length === 0 && (
-            <PanelEmptyState icon={MapIcon} message="No raster tile providers available." />
-          )}
-          {rasterStatus.kind === 'ready' && rasterStatus.providers.length > 0 && (
-            // 061-appearance-controls (follow-up): a native <select>'s own
-            // open dropdown listbox is rendered by the OS/browser, not this
-            // app's CSS — its hovered/highlighted option always used the
-            // system accent color (blue on Chromium/Windows), inconsistent
-            // with the rest of the app's now-unified --accent hover/active
-            // language everywhere else (Sidebar, Settings nav, dropdown-
-            // menu, basemap tile grid). Switched to this app's own
-            // Radix-based Select primitive (components/ui/select.tsx,
-            // 033-shadcn-default-theme) instead — a real, custom-rendered
-            // listbox this app's own CSS controls, whose SelectItem already
-            // uses `focus:bg-accent focus:text-accent-foreground` (the same
-            // token every other hover/active surface now uses). Already a
-            // real, working consumer elsewhere (color-picker.tsx's own mode
-            // switcher), not a first-time/unproven primitive.
-            <Select
-              value={stagedIsRaster ? stagedSelection : undefined}
-              onValueChange={(value) => setStagedSelection(value)}
-            >
-              <SelectTrigger aria-label="Raster tile provider" className="h-9 w-full">
-                <SelectValue placeholder="Select a raster provider…" />
-              </SelectTrigger>
-              <SelectContent>
-                {rasterStatus.providers.map((provider) =>
-                  provider.variants.length === 0 ? (
-                    <SelectItem key={provider.name} value={provider.name}>
-                      {provider.name}
-                    </SelectItem>
-                  ) : (
-                    <SelectGroup key={provider.name}>
-                      <SelectLabel>{provider.name}</SelectLabel>
-                      {provider.variants.map((variant) => (
-                        <SelectItem key={variant} value={`${provider.name}.${variant}`}>
-                          {variant}
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
-                  ),
-                )}
-              </SelectContent>
-            </Select>
-          )}
         </div>
+
+        <aside className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--tile-hi)] max-[1100px]:order-first">
+          <div className="relative min-h-[220px] w-full flex-1">
+            <div ref={previewContainerRef} className="h-full w-full" />
+            {previewError && (
+              <div
+                data-testid="basemap-preview-error"
+                className="absolute inset-0 flex items-center justify-center bg-muted p-4 text-center text-sm text-muted-foreground"
+              >
+                Couldn't load tiles for this raster provider.
+              </div>
+            )}
+          </div>
+          <div className="shrink-0 px-3.5 py-3">
+            <b className="block font-medium">{describeSelection(stagedSelection).name}</b>
+            <small className="text-[var(--mute)]">{describeSelection(stagedSelection).group}</small>
+            {isProtomapsFlavorName(stagedSelection) && !protomapsSource && (
+              <p className="mt-2 text-[12.5px] text-[var(--warn)]">
+                This style needs a PMTiles source in the deployment settings. Until one is set, it shows a blank map.
+              </p>
+            )}
+            <p className="mt-2 text-xs text-[var(--mute)]">
+              Applies to every flowmap/zonemap panel that has no basemap configured by its own dashboard author.
+            </p>
+            <div className="mt-3 flex gap-2">
+              {/* The ONLY call to setGlobalBasemap() in this component. */}
+              <PillButton primary disabled={unchanged} onClick={() => setGlobalBasemap(stagedSelection)}>
+                Apply
+              </PillButton>
+              <PillButton disabled={unchanged} onClick={() => setStagedSelection(effectiveApplied)}>
+                Revert
+              </PillButton>
+            </div>
+            <small className="mt-2.5 block text-[var(--mute)]">Applied now: {describeSelection(effectiveApplied).name}</small>
+          </div>
+        </aside>
       </div>
     </div>
+  )
+}
+
+/** The display name and source group of a catalog selection, for the preview card. */
+function describeSelection(name: BasemapPresetName): { name: string; group: string } {
+  for (const section of SECTIONS) {
+    const entry = section.entries.find((e) => e.name === name)
+    if (entry) return { name: entry.label, group: `${section.heading} · vector` }
+  }
+  if (isProtomapsFlavorName(name)) {
+    return { name: PROTOMAPS_FLAVOR_LABEL_AND_ICON[name].label, group: 'Protomaps · vector' }
+  }
+  return { name, group: 'Raster Tiles · raster' }
+}
+
+const DARK_STYLE = /dark|black|fiord|matter/i
+
+interface StyleCardProps {
+  name: BasemapPresetName
+  label: string
+  icon: LucideIcon
+  staged: boolean
+  inUse: boolean
+  recommended?: boolean
+  disabled?: boolean
+  note?: string
+  onPick: () => void
+}
+
+// One style card: a 48px thumbnail area (a tint matching the style's brightness and its category icon; the styles have no
+// bundled preview images), the name, and optional captions. A radio of its section's radiogroup.
+function StyleCard({ name, label, icon: Icon, staged, inUse, recommended, disabled, note, onPick }: StyleCardProps) {
+  return (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={staged}
+      data-staged={staged || undefined}
+      disabled={disabled}
+      onClick={onPick}
+      title={disabled ? 'No Protomaps source configured' : recommended ? 'Recommended: the app default for unconfigured map panels' : undefined}
+      className={cn(
+        'flex flex-col items-stretch justify-start overflow-hidden rounded-[12px] border-2 bg-[var(--tile-hi)] p-0 text-left shadow-[0_0_0_1px_var(--line)] transition-colors motion-reduce:transition-none',
+        'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-text)]',
+        'disabled:cursor-not-allowed disabled:opacity-50',
+        staged
+          ? 'border-[var(--brand-text)]'
+          : 'border-transparent hover:bg-[color-mix(in_srgb,var(--ink)_6%,var(--tile-hi))] disabled:hover:bg-[var(--tile-hi)]',
+      )}
+    >
+      <span
+        aria-hidden="true"
+        className={cn(
+          'flex h-[48px] w-full shrink-0 items-center justify-center',
+          DARK_STYLE.test(name)
+            ? 'bg-[linear-gradient(135deg,#2c3644,#1a212b)] text-[#9fb0c4]'
+            : 'bg-[linear-gradient(135deg,#eef2f6,#d6dee8)] text-[#5b6b80]',
+        )}
+      >
+        <Icon className="h-5 w-5" />
+      </span>
+      <span className="flex items-center gap-1 px-2.5 py-[7px] text-[12.5px]">
+        {label}
+        {recommended && (
+          <>
+            <Star className="h-3 w-3 shrink-0 fill-current text-[var(--brand-text)]" aria-hidden="true" />
+            <span className="sr-only"> recommended default</span>
+          </>
+        )}
+      </span>
+      {note && <small className="-mt-1 block px-2.5 pb-[7px] text-[11px] text-[var(--warn)]">{note}</small>}
+      {inUse && <small className="-mt-1 block px-2.5 pb-[7px] text-[11px] text-[var(--brand-text)]">In use</small>}
+    </button>
   )
 }

@@ -32,8 +32,12 @@ async function boot(page: Page) {
   await page.waitForFunction(() => window.__wftdm !== undefined, null, { timeout: 30_000 })
 }
 
+// Choosing a tab with the mouse dismisses the hover-expanded nav until the pointer leaves and returns, so re-open it
+// (move out, then hover) to reach the section sub-list.
 async function gotoTab(page: Page, name: string) {
   await page.getByRole('tablist').getByRole('tab', { name, exact: true }).click()
+  await page.mouse.move(900, 400)
+  await page.locator('[data-sidebar="sidebar"]').hover()
 }
 
 test.describe('030-sidebar-navigation — User Story 3 (accordion sub-navigation)', () => {
@@ -66,6 +70,15 @@ test.describe('030-sidebar-navigation — User Story 3 (accordion sub-navigation
       navigated = true
     })
 
+    // Panels above the target keep growing as their data arrives; a smooth scroll started mid-growth can land short.
+    // Wait for the page height to hold still before asking for the scroll.
+    await expect
+      .poll(async () => {
+        const h1 = await page.evaluate(() => document.documentElement.scrollHeight)
+        await page.waitForTimeout(600)
+        return h1 === (await page.evaluate(() => document.documentElement.scrollHeight))
+      }, { timeout: 20_000 })
+      .toBe(true)
     await page.getByRole('button', { name: 'Trip Mode Choice' }).click()
     await page.waitForFunction(() => {
       const el = document.getElementById('section-trip-mode-choice')
@@ -110,10 +123,12 @@ test.describe('030-sidebar-navigation — User Story 3 (accordion sub-navigation
   }) => {
     await boot(page)
     await gotoTab(page, 'Mode Choice')
+    const sidebar = page.locator('[data-sidebar="sidebar"]')
+    await sidebar.hover()
     await expect(page.getByRole('button', { name: 'Tour Mode Choice', exact: true })).toBeVisible()
 
-    await page.getByRole('button', { name: /toggle sidebar/i }).click()
-    await expect(page.locator('[data-sidebar="sidebar"]')).toHaveAttribute('data-state', 'collapsed')
+    await page.mouse.move(900, 400)
+    await expect(sidebar).toHaveAttribute('data-state', 'collapsed')
     await expect(page.getByRole('button', { name: 'Tour Mode Choice', exact: true })).toHaveCount(0)
   })
 })

@@ -5,6 +5,13 @@ import { defineConfig, devices } from '@playwright/test'
 // faithfully exercise these). Fixture Parquet data is copied into public/
 // by globalSetup and removed by globalTeardown so it never pollutes the
 // production public/ tree (see tests/global-setup.js).
+// Specs written for the redesign (they assert on the Corridor Pro demo content).
+const REAL_SPECS = ['**/realDemo.spec.ts', '**/layout*.spec.ts']
+const REDESIGN_SPECS = [
+  '**/chart*.spec.ts',
+  '**/settingsRedesign.spec.ts',
+]
+
 export default defineConfig({
   testDir: 'tests/integration',
   testMatch: '**/*.spec.ts',
@@ -28,18 +35,46 @@ export default defineConfig({
     // hostname-sensitive behavior in the whole suite.
     baseURL: 'http://127.0.0.1:5199/APP-wftdm-dashboard/',
   },
-  webServer: {
-    // --host 127.0.0.1 explicit, not left to Vite's own 'localhost'
-    // default: on this machine that default resolves to binding only the
-    // IPv6 [::1] interface, not IPv4 127.0.0.1 — found when the baseURL
-    // fix above (127.0.0.1, not 'localhost') made Playwright's own
-    // webServer readiness poll against 127.0.0.1 time out even though the
-    // server had actually started (confirmed via `netstat`: TIME_WAIT
-    // entries only on [::1]:5199, nothing on 127.0.0.1:5199).
-    command: 'npx vite --port 5199 --strictPort --host 127.0.0.1',
-    url: 'http://127.0.0.1:5199/APP-wftdm-dashboard/',
-    reuseExistingServer: !process.env.CI,
-    timeout: 60_000,
-  },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  // Two dev servers (see scripts/viteLegacyDemoPlugin.ts): the redesign specs run against the synthetic Corridor Pro
+  // dataset (5198, WFTDM_DEMO=synthetic); the older specs, written against the ActivitySim example panels, run against
+  // the pre-redesign pages for the real runs (5199, WFTDM_DEMO=legacy, tests/fixtures/legacy-demo).
+  webServer: [
+    {
+      command: 'npx vite --port 5199 --strictPort --host 127.0.0.1',
+      env: { WFTDM_DEMO: 'legacy' },
+      url: 'http://127.0.0.1:5199/APP-wftdm-dashboard/',
+      reuseExistingServer: !process.env.CI,
+      timeout: 60_000,
+    },
+    {
+      command: 'npx vite --port 5198 --strictPort --host 127.0.0.1',
+      env: { WFTDM_DEMO: 'synthetic' },
+      url: 'http://127.0.0.1:5198/APP-wftdm-dashboard/',
+      reuseExistingServer: !process.env.CI,
+      timeout: 60_000,
+    },
+    {
+      command: 'npx vite --port 5197 --strictPort --host 127.0.0.1',
+      url: 'http://127.0.0.1:5197/APP-wftdm-dashboard/',
+      reuseExistingServer: !process.env.CI,
+      timeout: 60_000,
+    },
+  ],
+  projects: [
+    {
+      name: 'chromium',
+      testIgnore: [...REDESIGN_SPECS, ...REAL_SPECS],
+      use: { ...devices['Desktop Chrome'] },
+    },
+    {
+      name: 'redesign',
+      testMatch: REDESIGN_SPECS,
+      use: { ...devices['Desktop Chrome'], baseURL: 'http://127.0.0.1:5198/APP-wftdm-dashboard/' },
+    },
+    {
+      name: 'real',
+      testMatch: REAL_SPECS,
+      use: { ...devices['Desktop Chrome'], baseURL: 'http://127.0.0.1:5197/APP-wftdm-dashboard/' },
+    },
+  ],
 })

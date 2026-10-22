@@ -11,7 +11,7 @@ import * as appState from '@/state/appState'
 import type {
   DashboardTabConfig,
   PanelConfig,
-  PlotlyPanelConfig,
+  ObservablePlotPanelConfig,
   ValueBoxPanelConfig,
 } from '@/layout/types'
 
@@ -25,11 +25,11 @@ function tab(layout: Record<string, PanelConfig[]>): DashboardTabConfig {
   return { header: { tab: 'Test', title: 'Test Tab' }, filters: [], layout }
 }
 
-const plotly = (metric: string, extra: Partial<PlotlyPanelConfig> = {}): PlotlyPanelConfig => ({
-  type: 'plotly',
+const plotly = (metric: string, extra: Partial<ObservablePlotPanelConfig> = {}): ObservablePlotPanelConfig => ({
+  type: 'observable-plot',
   title: 'A Chart',
   metric,
-  traces: [],
+  mark: 'barY',
   ...extra,
 })
 

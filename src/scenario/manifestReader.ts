@@ -3,8 +3,9 @@
 // loadConfig/loadManifest are fetch-only, research.md §4). See
 // contracts/scenario-manager.md.
 import { parseYAMLText } from '@/services/yamlLoader'
+import type { ScenarioIdentity } from '@/state/appState'
 
-export interface ParsedManifest {
+export interface ParsedManifest extends ScenarioIdentity {
   scenarioName?: string
   runDate?: string
   color?: string
@@ -70,6 +71,18 @@ export function manifestFromObject(obj: Record<string, unknown>): ParsedManifest
     runDate: asDateString(obj.run_date),
     color: typeof obj.color === 'string' ? obj.color : undefined,
     notes: typeof obj.notes === 'string' ? obj.notes : undefined,
+    displayName: typeof obj.display_name === 'string' && obj.display_name ? obj.display_name : undefined,
+    kind:
+      obj.hidden === true
+        ? 'hidden'
+        : obj.kind === 'scenario' || obj.kind === 'round' || obj.kind === 'observed'
+          ? obj.kind
+          : undefined,
+    alternative: typeof obj.alternative === 'string' && obj.alternative ? obj.alternative : undefined,
+    year: typeof obj.year === 'number' && Number.isInteger(obj.year) ? obj.year : undefined,
+    tag: typeof obj.tag === 'string' ? obj.tag : undefined,
+    family: typeof obj.family === 'string' ? obj.family : undefined,
+    familyIndex: typeof obj.family_index === 'number' ? obj.family_index : undefined,
   }
 }
 

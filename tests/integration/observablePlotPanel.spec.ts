@@ -567,7 +567,7 @@ test.describe('Polish - dark mode (015-theme-toggle)', () => {
     // too — they resolve identically in this theme, so the dialog title
     // check below needs the same new value regardless of which of the two
     // it technically inherits from).
-    expect(inlineFill).toBe('rgb(250, 250, 250)')
+    expect(inlineFill).toBe('rgb(143, 153, 169)')
 
     await expandTrigger(page, 'Average Trip Distance by Purpose').click()
     const dialog = page.getByRole('dialog')
@@ -576,13 +576,13 @@ test.describe('Polish - dark mode (015-theme-toggle)', () => {
     const dialogTitleColor = await dialog
       .getByRole('heading', { name: 'Average Trip Distance by Purpose' })
       .evaluate((el) => getComputedStyle(el).color)
-    expect(dialogTitleColor).toBe('rgb(250, 250, 250)')
+    expect(dialogTitleColor).toBe('rgb(238, 241, 245)')
 
     const expandedFill = await dialog
       .locator('.observable-plot-chart svg[viewBox] text')
       .first()
       .evaluate((el) => getComputedStyle(el).fill)
-    expect(expandedFill).toBe('rgb(250, 250, 250)')
+    expect(expandedFill).toBe('rgb(143, 153, 169)')
   })
 
   // A real, confirmed dark-mode bug found post-implementation, same class
@@ -623,8 +623,8 @@ test.describe('Polish - dark mode (015-theme-toggle)', () => {
     // would still be caught.
     // 033-shadcn-default-theme: dark --card is now #171717 and
     // --foreground is now #fafafa — no longer the old WFRC-brand values.
-    expect(tipBoxFill).toBe('rgb(23, 23, 23)') // --card in dark mode
-    expect(tipTextFill).toBe('rgb(250, 250, 250)') // --foreground in dark mode
+    expect(tipBoxFill).toBe('rgb(20, 25, 34)') // --card in dark mode
+    expect(tipTextFill).toBe('rgb(143, 153, 169)') // --mute in dark mode (chart text)
     expect(tipBoxFill).not.toBe(tipTextFill)
   })
 
@@ -653,8 +653,8 @@ test.describe('Polish - dark mode (015-theme-toggle)', () => {
     // directly — this element's explicit `bg-background`/`text-foreground`
     // classes are what's actually being asserted here).
     expect(styles.colorScheme).toBe('dark')
-    expect(styles.background).toBe('rgb(10, 10, 10)') // --background in dark mode
-    expect(styles.color).toBe('rgb(250, 250, 250)') // --foreground in dark mode
+    expect(styles.background).toBe('rgb(9, 12, 17)') // --background in dark mode
+    expect(styles.color).toBe('rgb(238, 241, 245)') // --foreground in dark mode
   })
 })
 

@@ -50,7 +50,7 @@ test.describe('User Story 1 - Colorblind-safe preference', () => {
       .getAttribute('fill')
 
     await openAppearanceTab(page)
-    const toggle = page.getByRole('switch', { name: 'Prefer colorblind-safe palettes' })
+    const toggle = page.getByRole('switch', { name: 'Colour-blind-safe scenario palette' })
     await expect(toggle).toHaveAttribute('aria-checked', 'false')
     await toggle.click()
     await expect(toggle).toHaveAttribute('aria-checked', 'true')
@@ -74,7 +74,7 @@ test.describe('User Story 1 - Colorblind-safe preference', () => {
     // Reload — the preference is session-only, never persisted.
     await boot(page)
     await openAppearanceTab(page)
-    await expect(page.getByRole('switch', { name: 'Prefer colorblind-safe palettes' })).toHaveAttribute(
+    await expect(page.getByRole('switch', { name: 'Colour-blind-safe scenario palette' })).toHaveAttribute(
       'aria-checked',
       'false',
     )
@@ -83,13 +83,13 @@ test.describe('User Story 1 - Colorblind-safe preference', () => {
   test('only the Switch itself toggles it — clicking the label text does nothing', async ({ page }) => {
     await boot(page)
     await openAppearanceTab(page)
-    const toggle = page.getByRole('switch', { name: 'Prefer colorblind-safe palettes' })
+    const toggle = page.getByRole('switch', { name: 'Colour-blind-safe scenario palette' })
     await expect(toggle).toHaveAttribute('aria-checked', 'false')
 
     // Clicking the visible title text must NOT toggle it — it's a plain
     // <span>, not a <label htmlFor>, specifically so it carries no native
     // click-to-toggle association.
-    await page.getByText('Prefer colorblind-safe palettes', { exact: true }).click()
+    await page.getByText('Colour-blind-safe scenario palette', { exact: true }).click()
     await expect(toggle).toHaveAttribute('aria-checked', 'false')
 
     // The Switch itself still works.
@@ -104,7 +104,7 @@ test.describe('User Story 1 - Colorblind-safe preference', () => {
     await expect(card).toBeVisible()
 
     await openAppearanceTab(page)
-    await page.getByRole('switch', { name: 'Prefer colorblind-safe palettes' }).click()
+    await page.getByRole('switch', { name: 'Colour-blind-safe scenario palette' }).click()
     await page.keyboard.press('Escape')
 
     const firstVertexFill = await card.locator('.radar-chart circle[data-series]').first().getAttribute('fill')
@@ -123,14 +123,14 @@ test.describe('User Story 2 - Text size', () => {
 
     const slider = page.getByRole('slider', { name: 'Text size' })
     await slider.focus()
-    await page.keyboard.press('End') // jumps to max (150)
-    await expect(page.getByText('150%')).toBeVisible()
+    await page.keyboard.press('End') // jumps to max (125)
+    await expect(page.getByText('125%')).toBeVisible()
 
     const maxFontSize = await page.evaluate(() => getComputedStyle(document.documentElement).fontSize)
     expect(parseFloat(maxFontSize)).toBeGreaterThan(parseFloat(baselineFontSize))
 
-    await page.keyboard.press('Home') // jumps to min (80)
-    await expect(page.getByText('80%')).toBeVisible()
+    await page.keyboard.press('Home') // jumps to min (85)
+    await expect(page.getByText('85%')).toBeVisible()
     const minFontSize = await page.evaluate(() => getComputedStyle(document.documentElement).fontSize)
     expect(parseFloat(minFontSize)).toBeLessThan(parseFloat(baselineFontSize))
 
@@ -142,6 +142,25 @@ test.describe('User Story 2 - Text size', () => {
     expect(resetFontSize).toBe(baselineFontSize)
   })
 })
+
+// WCAG contrast helpers evaluated in the page, so colors resolve exactly as the browser sees them.
+async function contrastBetween(page: Page, a: string, b: string): Promise<number> {
+  return page.evaluate(([x, y]) => {
+    const lum = (c: string) => {
+      const ctx = document.createElement('canvas').getContext('2d')!
+      ctx.fillStyle = c
+      ctx.fillRect(0, 0, 1, 1)
+      const [r, g, bl] = Array.from(ctx.getImageData(0, 0, 1, 1).data).slice(0, 3).map((v) => {
+        const s = v / 255
+        return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4)
+      })
+      return 0.2126 * r + 0.7152 * g + 0.0722 * bl
+    }
+    const [l1, l2] = [lum(x), lum(y)]
+    return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05)
+  }, [a, b])
+}
+const contrastOnWhite = (page: Page, c: string) => contrastBetween(page, c, '#ffffff')
 
 test.describe('User Story 3 - Primary / Secondary / Accent colors', () => {
   test('a deployer default applies with no override; a viewer override takes precedence live; reset reverts; text stays legible; reload clears only the override', async ({
@@ -162,7 +181,9 @@ test.describe('User Story 3 - Primary / Secondary / Accent colors', () => {
     const primaryBefore = await page.evaluate(() =>
       getComputedStyle(document.documentElement).getPropertyValue('--primary').trim(),
     )
-    expect(primaryBefore).toBe('#1447e6')
+    // services/theme.ts adapts the deployer color for the theme: light mode darkens it to 4.5:1 on white.
+    expect(primaryBefore).toMatch(/^#[0-9a-f]{6}$/)
+    expect(await contrastOnWhite(page, primaryBefore)).toBeGreaterThanOrEqual(4.5)
 
     await openAppearanceTab(page)
     await page.getByTestId('interface-color-swatch-primary').click()
@@ -173,18 +194,19 @@ test.describe('User Story 3 - Primary / Secondary / Accent colors', () => {
     const primaryAfterOverride = await page.evaluate(() =>
       getComputedStyle(document.documentElement).getPropertyValue('--primary').trim(),
     )
-    expect(primaryAfterOverride.toLowerCase()).toBe('#00ff00')
-    // A light green background must pair with a legible (black) foreground.
+    expect(primaryAfterOverride.toLowerCase()).not.toBe(primaryBefore.toLowerCase())
+    expect(await contrastOnWhite(page, primaryAfterOverride)).toBeGreaterThanOrEqual(4.5)
+    // Whatever the adapted fill is, the foreground must be legible on it.
     const foregroundAfterOverride = await page.evaluate(() =>
       getComputedStyle(document.documentElement).getPropertyValue('--primary-foreground').trim(),
     )
-    expect(foregroundAfterOverride.toLowerCase()).toBe('#000000')
+    expect(await contrastBetween(page, foregroundAfterOverride, primaryAfterOverride)).toBeGreaterThanOrEqual(4.5)
 
     await page.getByRole('button', { name: 'Reset to default' }).click()
     const primaryAfterReset = await page.evaluate(() =>
       getComputedStyle(document.documentElement).getPropertyValue('--primary').trim(),
     )
-    expect(primaryAfterReset).toBe('#1447e6')
+    expect(primaryAfterReset).toBe(primaryBefore)
 
     // Set the override again, then reload — the override must be gone,
     // but the deployer default (re-fetched from the routed index.json)
@@ -194,7 +216,7 @@ test.describe('User Story 3 - Primary / Secondary / Accent colors', () => {
     const primaryAfterReload = await page.evaluate(() =>
       getComputedStyle(document.documentElement).getPropertyValue('--primary').trim(),
     )
-    expect(primaryAfterReload).toBe('#1447e6')
+    expect(primaryAfterReload).toBe(primaryBefore)
   })
 
 })
@@ -224,7 +246,7 @@ test.describe('User Story 3 - live OS theme reactivity (real bug fix)', () => {
   }) => {
     await boot(page)
     await openAppearanceTab(page)
-    await expect(page.getByRole('tab', { name: 'System' })).toHaveAttribute('aria-selected', 'true')
+    await expect(page.getByRole('group', { name: 'Theme' }).getByRole('button', { name: 'System' })).toHaveAttribute('aria-pressed', 'true')
 
     const swatch = page.getByTestId('interface-color-swatch-primary')
     const before = await swatch.evaluate((el) => getComputedStyle(el).backgroundColor)
@@ -237,7 +259,7 @@ test.describe('User Story 3 - live OS theme reactivity (real bug fix)', () => {
     await expect
       .poll(() => swatch.evaluate((el) => getComputedStyle(el).backgroundColor))
       .not.toBe(before)
-    await expect(swatch).toHaveCSS('background-color', 'rgb(229, 229, 229)') // dark --primary, #e5e5e5
+    await expect(swatch).toHaveCSS('background-color', 'rgb(201, 214, 242)') // dark --primary, #c9d6f2
   })
 })
 
@@ -248,6 +270,8 @@ test.describe('User Story 4 - Fonts', () => {
     await boot(page)
     await openAppearanceTab(page)
 
+    // The custom-font inputs sit in a disclosure under the four type cards.
+    await page.getByText('Custom fonts', { exact: true }).click()
     const bodyInput = page.locator('#font-picker-body')
     await bodyInput.fill('Merriweather')
 
@@ -270,6 +294,7 @@ test.describe('User Story 4 - Fonts', () => {
 
     await boot(page)
     await openAppearanceTab(page)
+    await page.getByText('Custom fonts', { exact: true }).click()
     await expect(page.locator('#font-picker-body')).toHaveValue('')
     await expect(page.locator('#font-picker-heading')).toHaveValue('')
   })

@@ -6,8 +6,9 @@ import '@/styles/tokens.css'
 // font-loading mount-effect call (T024, that module deleted) — this demo
 // entry point now loads real fonts the same side-effecting-import way the
 // real app's src/main.tsx does.
-import '@fontsource-variable/geist'
-import '@fontsource-variable/geist-mono'
+import '@fontsource-variable/schibsted-grotesk'
+import '@fontsource/dm-mono/400.css'
+import '@fontsource/dm-mono/500.css'
 import { DesignTokenDemo } from '@/demo/DesignTokenDemo'
 
 // Bootstrap for demo.html — the separate Vite entry point kept out of

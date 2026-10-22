@@ -1,7 +1,7 @@
 # WFRC TDM Calibration Dashboard — YAML Grammar Specification
 
 **Version:** 0.2  
-**Stack:** DuckDB (Python + WASM) · Parquet · GeoParquet · Vite · Plotly · Observable Plot · MapLibre · flowmap.gl · Graphic Walker
+**Stack:** DuckDB (Python + WASM) · Parquet · GeoParquet · Vite · Observable Plot · D3 · MapLibre · flowmap.gl · Graphic Walker
 
 ---
 
@@ -889,24 +889,15 @@ layout:
       width:   0.25
 
   row_charts:
-    - type:    plotly
+    - type:    observable-plot
       title:   Mode Share by Purpose — All Scenarios vs Observed
       metric:  trip_mode_share
       filter:  $filters.purpose
       height:  400
-      traces:
-        - type:    bar
-          x:       $metric.purpose
-          y:       $metric.share
-          color:   $metric.mode
-          barmode: group
-      observed:
-        source: observed_mode_share
-        x:      purpose
-        y:      share
-        color:  mode
-        style:  dot
-        name:   Observed
+      mark:    barY
+      x:       purpose
+      y:       share
+      fill:    mode
       width: 0.6
 
     - type:    table
@@ -1078,39 +1069,9 @@ color key — the three existing fields are the whole interface, matching
 `donut`/`dataset_picker`'s own "one boolean/small-object flag, sensible
 built-in behavior" convention elsewhere in this grammar.
 
-### `type: plotly`
-
-Plotly chart — default for most calibration panels. Provides interactive legend,
-fullscreen, PNG export, and formatted hover tooltips. Use `Plotly.react()` internally.
-
-```yaml
-- type:    plotly
-  title:   Volume vs Count Scatter
-  metric:  screenlines
-  height:  500
-  traces:
-    - type:  scatter
-      x:     $metric.observed
-      y:     $metric.modeled
-      mode:  markers
-      name:  $scenario           # auto-replaced per loaded scenario
-      text:  $metric.link_id    # hover label
-  reference_lines:
-    - type:  diagonal            # y = x perfect fit line
-    - type:  band
-      slope: 1
-      offset_pct: [10, -10]     # ±10% error bands
-      style: { dash: dot, color: grey }
-  observed:
-    source: observed_counts
-    style:  scatter
-  layout:
-    xaxis: { title: Observed AADT, type: log }
-    yaxis: { title: Modeled Volume, type: log }
-    showlegend: true
-```
-
-Also accepts `comparison:`/`compare_on:` (019-baseline-diff-consumption) — see "Scenario comparison / diff mode" under `type: zonemap` below, the shared grammar all four comparison-capable panel types use identically.
+> **Removed:** `type: plotly` and `type: recharts` were removed in the 063 UI redesign. A dashboard that still uses
+> them shows the shared "Unknown panel type" error state for that panel. Use `type: observable-plot` (bar, line,
+> area, dot, cell and more). The old grammar is in git history before the commit `redesign: remove Plotly and Recharts`.
 
 ### `type: observable-plot`
 
@@ -1195,109 +1156,6 @@ Also accepts `comparison:`/`compare_on:` (019-baseline-diff-consumption) — see
   tip:     true
   width:   1.0
 ```
-
-### `type: recharts` (029-shadcn-chart-panel)
-
-shadcn/ui's official chart component — a themed layer over Recharts using
-this app's own CSS custom-property token system (`--chart-1`..`--chart-5`,
-verified WFRC-brand-consistent, WCAG-checked in both themes). This is the
-new **default/primary** engine for bar/line/area charts going forward —
-use `type: plotly` or `type: observable-plot` instead only when you need
-something this panel type doesn't do (see "Explicitly out of scope"
-below).
-
-```yaml
-- type:       recharts
-  title:      Mode Share by Purpose
-  metric:     trip_mode_share
-  chart_type: bar            # 'bar' | 'line' | 'area'
-  x:          purpose
-  y:          share
-  series:     mode           # optional — omit for a single-series chart
-  stacked:    false          # optional, default false
-  scenario:   good_scenario  # optional, same meaning as every other type
-  filter:     purpose        # optional, same $ref/inline-map grammar
-  comparison: side_by_side   # optional, same grammar as plotly/table/observable-plot
-  height:     350
-  width:      1.0
-```
-
-`series` (optional) pivots tidy query rows into one Recharts series per
-distinct value — omit it for a single-series chart bound directly to `y`.
-Colors cycle `--chart-1`..`--chart-5` in first-seen (query result) order,
-wrapping past the fifth distinct series value. `stacked: true` sets a
-shared `stackId` across every series, stacking bar/area marks instead of
-grouping them side by side. Tooltips and (when more than one series is
-present) a legend render automatically with zero extra author
-configuration (US3) — real, on-brand, theme-correct in both light and
-dark mode with no `tip:`/`legend:` key needed, unlike `type: observable-
-plot`'s own explicit `tip: true`.
-
-Also accepts `comparison:`/`compare_on:` (019-baseline-diff-consumption)
-— see "Scenario comparison / diff mode" under `type: zonemap` below, the
-same shared grammar every other comparison-capable panel type uses.
-Not available for `chart_type: combo` — see that section below.
-
-**`chart_type: combo`** — several independently-typed marks (bar/line/
-area) layered into one chart, sharing the panel's own `x`, optionally on
-two Y axes. Uses `layers:` instead of `y:`/`series:`/`stacked:` (all
-three are ignored for this chart_type — a combo layer has no series
-pivot of its own, see below):
-
-```yaml
-- type:       recharts
-  title:      Trip Volume vs. Average Distance by Purpose
-  metric:     trip_distance_by_purpose
-  scenario:   activitysim-baseline   # see the note below — pin or otherwise ensure one row per x
-  chart_type: combo
-  x:          primary_purpose
-  layers:
-    - { chart_type: bar,  y: trips,             label: "Trips",              y_axis: left }
-    - { chart_type: line, y: avg_distance_miles, label: "Avg. Distance (mi)", y_axis: right }
-  height:     400
-  width:      1.0
-```
-
-Each `layers[]` entry names its own literal `y` column (the query already
-returns every column a metric provides via `SELECT *` — no separate
-query per layer). `y_axis: right` renders a second, independent Y axis
-(mounted but hidden, matching this panel type's own "no visible axis —
-the tooltip is the source of exact values" convention throughout) — only
-present at all when at least one layer requests it; every layer defaults
-to `y_axis: left`. `label` is optional, defaulting to the bare `y`
-column name in the legend/tooltip. A legend renders automatically
-whenever more than one layer is configured, same as the multi-series
-case above.
-
-No `series:` field in combo mode — combining Recharts' one-element-per-
-distinct-series-value pivot with several independently-typed layers at
-once (which layer owns which pivoted series? do they share a color
-cycle?) is a real, deliberate scope line, not an oversight; a genuine
-per-category comparison (e.g. by scenario) within ONE combo layer is
-already well served by an ordinary single-chart_type panel instead.
-
-PIN a combo panel to one scenario (or otherwise ensure `x` is unique per
-row) — the same real, confirmed gotcha `type: cell` heatmaps have above:
-a combo layer has no series/facet channel to separate an unpinned
-`$scenario` union's multiple rows sharing one `x` value, so they'd
-silently stack multiple scenarios' bars/line-points on top of each
-other at the same x position.
-
-**What this panel type does NOT do** — use `type: plotly` or `type:
-observable-plot` instead for these:
-
-- Sankey diagrams — use `type: sankey`. `chart_type` has no `'sankey'`
-  option at all; this is enforced by the type union itself.
-- Interactive per-category legend click-to-toggle-trace-visibility —
-  shadcn's shipped `ChartLegendContent` wires up no click handler, despite
-  Recharts' own `Legend` exposing a real `onClick` prop (a real, closed
-  upstream request, `shadcn-ui/ui#4188`). `type: plotly`'s own legend
-  already does this and is unaffected — keep using it where this
-  capability matters.
-- `pie`/`radar`/`radial` charts — not in the `chart_type` union in this
-  version, even though shadcn's own component supports them.
-- Panel-local reactive `inputs:` (Observable Plot's own capability) — not
-  part of this panel type's grammar.
 
 ### `type: table`
 
@@ -1459,7 +1317,7 @@ MapLibre choropleth — zone-level metric joined to TAZ GeoParquet geometry.
 
 #### Scenario comparison / diff mode (013-zonemap-panel, extended by 019-baseline-diff-consumption)
 
-`comparison:`/`compare_on:` — one shared grammar, identically shaped and named, across all four comparison-capable panel types: `zonemap` (above), `plotly`, `table`, and `observable-plot`. `comparison:` accepts `side_by_side` (the default — a panel's own single selected/active scenario, unchanged) or a `diff` object:
+`comparison:`/`compare_on:` — one shared grammar, identically shaped and named, across all four comparison-capable panel types: `zonemap` (above), `table`, and `observable-plot`. `comparison:` accepts `side_by_side` (the default — a panel's own single selected/active scenario, unchanged) or a `diff` object:
 
 ```yaml
 comparison:
@@ -1467,7 +1325,7 @@ comparison:
   a:    base_tbm      # OR the literal string '$baseline' — see below
   b:    abm_2026       # OR '$baseline'
   expr: "b.vmt_per_capita - a.vmt_per_capita"   # any SQL expression, referencing the a/b table aliases
-compare_on: [taz_id]   # required for plotly/table/observable-plot; optional for
+compare_on: [taz_id]   # required for table/observable-plot; optional for
                         # zonemap, where it defaults to metric_id (existing configs
                         # need no change)
 ```
@@ -1607,6 +1465,45 @@ either type. (Donut/hollow-center rendering was a non-goal of this
 feature specifically but was added later, as a small additive `donut:`
 field on `type: pie` — see that type's own section above.)
 
+### `type: multi-view` (063 redesign)
+
+One tile holding several views of the same data. The tile shows a view switcher (hidden with one view) and, when
+`group_by` is set, a Group by select. The choices are session state keyed `pageId:tileId`.
+
+```yaml
+- type: multi-view
+  title: Trips by Purpose and Mode
+  description: Daily trips for the baseline.            # shown under the title; not passed to the views
+  metric: purpose_mode_flow                              # defaults for every view that omits them:
+  scenario: activitysim-baseline                         #   metric, height, scenario(s), filter
+  height: 430
+  group_by:                                              # optional
+    label: Group by
+    default: pm
+    options:
+      - { id: pm, label: "Purpose > Mode", fields: { path: [primary_purpose, major_trip_mode] } }
+      - { id: mp, label: "Mode > Purpose", fields: { path: [major_trip_mode, primary_purpose] } }
+  views:                                                 # first view is the default
+    - { id: tree, label: Treemap,  type: treemap,  path: $group.path, value: trips, compare: [multi, diff] }
+    - { id: sun,  label: Sunburst, type: sunburst, path: $group.path, value: trips }
+    - { id: flow, label: Flow,     type: sankey,   source: primary_purpose, target: major_trip_mode, value: trips, compare: [] }
+```
+
+- A view is an ordinary panel config for its `type`; the keys `id`, `label`, `compare`, `scenario_independent`,
+  `base_year_only` and `family` are for the wrapper and never reach the panel.
+- A string value of exactly `$group.<field>` is replaced by the active group option's `fields.<field>`; a field the
+  option leaves out stays unset. A view that omits a field the option defines gets it merged in.
+- `compare:` lists the strategies the view supports (`overlay | diff | multi | grid | switch | swipe`), first = default.
+  Omitted = the type's default (file 03 section 4.1); `[]` = the view does not vary by scenario (badge "Same in every
+  scenario" in Compare mode). The strategy controls are built but hidden until CompareHost lands (P5).
+- Tile flags: `needs_compare: true` hides the tile when Compare is off; `family: calibration` hides it outside the base
+  year; `base_year_only: true` adds the badge "Measured on the base year" outside it; `scenario_independent: true` on
+  the tile or a view adds "Same in every scenario".
+- Validated at render time, never thrown: no views, a view without `id` or `type`, duplicate view ids, a nested
+  multi-view, an unknown strategy, an unknown `$group` field, duplicate or unknown group options. The tile shows the
+  panel error state with a precise message and the rest of the tab is unaffected.
+- A treemap, sunburst, sankey or pie has no series channel: pin the tile (`scenario:`) until CompareHost (P5) takes over.
+
 ### `type: graphic-walker`
 
 Graphic Walker — full-tab free-form Tableau-style sandbox. Explore tab only.
@@ -1704,27 +1601,25 @@ Add `scenario:` key to each panel. Each panel queries only its own view.
 
 ```yaml
 row_compare:
-  - type:     plotly
+  - type:     observable-plot
     title:    Base TBM — Mode Share
     metric:   trip_mode_share
     scenario: base_tbm
-    traces:
-      - type: bar
-        x: $metric.purpose
-        y: $metric.share
-        color: $metric.mode
-    width: 0.5
+    mark:     barY
+    x:        purpose
+    y:        share
+    fill:     mode
+    width:    0.5
 
-  - type:     plotly
+  - type:     observable-plot
     title:    ABM 2026 — Mode Share
     metric:   trip_mode_share
     scenario: abm_2026
-    traces:
-      - type: bar
-        x: $metric.purpose
-        y: $metric.share
-        color: $metric.mode
-    width: 0.5
+    mark:     barY
+    x:        purpose
+    y:        share
+    fill:     mode
+    width:    0.5
 ```
 
 ---
@@ -1747,7 +1642,18 @@ pinned:         false               # observed/reference entry marker — exclud
                                     # first. Does NOT control activation: every
                                     # `status: ready` scenario is active by default
                                     # (038-all-loaded-scenarios).
+# Optional identity fields (063 redesign). A manifest without alternative/year is a single-year run:
+alternative:    freq-transit        # groups the runs of one alternative across model years (UI identity)
+year:           2036                # model year of this run; the Year control appears when two or more exist
+kind:           scenario            # scenario | round | observed (default scenario; pinned implies observed)
+tag:            Transit             # free text, for picker chips
+family:         calibration         # rounds only: the family id
+family_index:   12                  # rounds only: 1-based position in the family
 ```
+
+`dashboard-config/index.json` may also carry `years` (`[{year, label}]`), `baseYear`, `defaultYear` and
+`compare: {default: auto|on|off}`. When `years` is absent the years are taken from the manifests' `year` values and the
+base year is the earliest. Rounds and Observed exist only in the base year; a run without a `year` belongs to every year.
 
 **Observed manifest** (`public/observed/manifest.yaml`):
 ```yaml
@@ -1871,7 +1777,38 @@ placeholder — write each filter-gated condition on its own line.
 | Three config files only | summarize.yaml, dashboard-*.yaml, manifest.yaml | No topsheet.yaml (first dashboard = landing page), no dashboard-config.yaml |
 | First dashboard = landing page | dashboard-1-summary.yaml | Eliminates redundant topsheet file type |
 | File format | Parquet / GeoParquet throughout | No CSV, GeoJSON, or OMX in browser |
-| Charting | Plotly default, Observable Plot for reactive inputs | Each excels at different things — see SPEC.md |
+| Charting | Observable Plot (bars, lines, areas, dots, cells) and D3 (sankey, treemap, sunburst, pie, radar) | Plotly and Recharts were removed in the 063 redesign |
 | Scenario comparison | Both overlaid and side-by-side supported | `scenario:` key controls which; omit for overlaid |
 | Observed data | Permanent registered views, no prefix | Always available, no per-panel loading config |
 | Geography | Four levels in zones.parquet; super_district default | TAZ only for map panels |
+
+---
+
+## 063 redesign additions
+
+### `type: chart`
+```yaml
+- type: chart
+  kind: mode-bars            # a module in src/charts/kinds (kebab-case of its file name)
+  group: scn                 # what the series are; usually set by a multi-view group option (fields: { group: scn })
+  variant: trips             # kind-specific options are plain keys
+```
+Reads per-run Parquet tables chosen by the kind, for every compared run, the reference and the focus. See
+`project-docs/redesign/09-chart-kind-guide.md` for the kind catalogue and the data tables.
+
+### Tile and layout keys
+| Key | Where | Meaning |
+|---|---|---|
+| `id` | any tile | Stable tile id: keys the viewer's chosen view/group/strategy and section anchors. |
+| `show_when: compare \| single` | any tile | Render only with Compare on / off; the row's columns re-divide. |
+| `needs_compare: true` | multi-view or a view | Hidden while Compare is off (scorecard, ranking, difference/swipe maps). |
+| `family: calibration`, `base_year_only: true` | multi-view / view | Calibration-rounds tile, shown only in the base year. |
+| `height_rows: {base, per, max}` | multi-view | Height grows with the number of compared scenarios. |
+| `default_view: <view id>` | multi-view | View shown first. |
+| `scenario_independent: true` | multi-view / view | "Same in every scenario" badge in Compare mode. |
+| `sections[].tile: <id>` | tab | Sub-navigation entry scrolls to that tile instead of the row. |
+
+### `dashboard-config/index.json` additions
+`years` (`[{year,label}]`), `baseYear`, `defaultYear`, `compare: { default: auto|on|off, scenarios: [alternative ids],
+focus, reference }`. Run manifests may carry `kind`, `alternative`, `year`, `tag`, `family`, `family_index`, `hidden`,
+and (for an observed run) `observed: { source, sample, metrics: { <table>: { source, sample } } }`.

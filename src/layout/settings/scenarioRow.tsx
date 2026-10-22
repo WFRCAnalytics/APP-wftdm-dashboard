@@ -1,9 +1,8 @@
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { ChevronDown, ChevronUp, GripVertical, X } from 'lucide-react'
+import { ArrowDown, ArrowUp, GripVertical, X } from 'lucide-react'
 
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
+import { MiniButton } from '@/components/ui/mini-button'
 import { Switch } from '@/components/ui/switch'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
@@ -11,49 +10,31 @@ import { removeLocalScenario } from '@/scenario/scenarioManager'
 import { scenarioStatusTreatment } from '@/layout/settings/scenarioStatusColor'
 import { ScenarioColorControl } from '@/layout/settings/scenarioColorControl'
 import * as appState from '@/state/appState'
+import { getState, setReference, setAlternativeActive } from '@/state/compareState'
+import { alternativeOf } from '@/services/runResolution'
 import type { Scenario } from '@/state/appState'
 
-// 037-scenarios-tab-redesign: one Scenarios-tab row, extracted from
-// scenariosTab.tsx's own .map() body so @dnd-kit/sortable's useSortable()
-// hook has a clean, unconditional per-row call site.
-//
-// Part B — the up/down move buttons moved from the trailing actions
-// cluster to the row's LEADING edge, next to a new drag handle.
-// Part C — the row is an @dnd-kit sortable node; a dedicated GripVertical
-// handle (not the whole row) carries the drag listeners so the row's own
-// interactive controls (name input, Switch, swatch, baseline control,
-// remove button) are never swallowed by a drag. The relocated arrow
-// buttons remain a complete, keyboard-accessible fallback (FR-005) and
-// funnel through the SAME appState reorder path (moveScenario now
-// delegates to reorderScenario — FR-004).
-//
-// 037 item 5 (row-layout refinement):
-//   - The green/red ready/failed status DOT is removed. The row's own
-//     border-colour + background-wash treatment (036 Part C,
-//     scenarioStatusColor.ts) already communicates ready/failed — the dot
-//     was redundant. Only the 'registering' state keeps a dedicated
-//     signal: the "Loading…" text (its own indicator since an earlier
-//     round), rendered where the dot used to sit.
-//   - The colour swatch (ScenarioColorControl) moves from the trailing
-//     actions cluster to sit at the LEFT of the whole two-line identity
-//     block (name on line 1, path on line 2), vertically centred against
-//     both lines together — the "leading avatar/icon beside a two-line
-//     title+subtitle" pattern common in list rows (e.g. GitHub's repo
-//     list). A legend-key "this colour = this scenario" association.
+// One Scenarios-tab card (project-docs/redesign/02-layout-and-components.md section 4.2):
+//   [grip] [swatch] [name input + "tag - caption"] [Include switch] [Baseline chip | Set as baseline] [up] [down]
+// The grip is the @dnd-kit sortable handle; the up/down buttons are the keyboard-accessible fallback. Both end in
+// appState.reorderScenario (the buttons through ScenariosTab's moveBy, the drag through its onDragEnd).
 export interface ScenarioRowProps {
   scenario: Scenario
   index: number
   total: number
   baselineName: string | undefined
+  onMove: (name: string, delta: -1 | 1) => void
 }
 
-export function ScenarioRow({ scenario: s, index, total, baselineName }: ScenarioRowProps) {
+export function ScenarioRow({ scenario: s, index, total, baselineName, onMove }: ScenarioRowProps) {
   const isBaseline = s.name === baselineName
   const treatment = scenarioStatusTreatment(s.status)
+  const failed = s.status === 'failed'
 
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-    id: s.name,
-  })
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: s.name })
+
+  // The caption: the manifest tag, then where the run was loaded from.
+  const caption = [s.tag, s.path].filter(Boolean).join(' · ')
 
   return (
     <div
@@ -62,213 +43,136 @@ export function ScenarioRow({ scenario: s, index, total, baselineName }: Scenari
       style={{
         transform: CSS.Transform.toString(transform),
         transition,
-        ...treatment.rowBackgroundStyle,
+        ...(failed ? treatment.rowBackgroundStyle : undefined),
       }}
       className={cn(
-        'flex items-center gap-3 border-b border-border px-3 py-2.5 text-sm last:border-b-0 hover:bg-muted',
-        treatment.rowBorderClassName,
-        // While dragging: lift the row above its siblings and keep it
-        // opaque so it reads as picked-up, not a translucent ghost.
-        isDragging && 'relative z-10 bg-card opacity-90 shadow-md',
+        'mb-2 grid grid-cols-[22px_34px_minmax(140px,1fr)_auto_auto_auto] items-center gap-3 rounded-[14px] border border-[var(--line)] bg-[var(--tile-hi)] px-2.5 py-2',
+        'max-[900px]:grid-cols-[22px_34px_minmax(0,1fr)_auto]',
+        // Only a failed run is flagged on its card; a healthy one looks like any other.
+        failed && treatment.rowBorderClassName,
+        isDragging && 'relative z-10 bg-[var(--surface)] opacity-90 shadow-[var(--sh1)]',
       )}
     >
-      {/* Leading edge — reorder controls (Part B): a drag handle then the
-          up/down arrow column. */}
-      <div className="flex shrink-0 items-center gap-0.5">
-        {/* Drag handle (Part C) — carries the @dnd-kit sortable
-            listeners; `touch-none` so a touch drag doesn't scroll the
-            list instead. Keyboard: focus this, Space to lift, arrows to
-            move, Space to drop, Escape to cancel (KeyboardSensor). */}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-6 w-6 cursor-grab touch-none active:cursor-grabbing"
-          aria-label={`Reorder ${s.name}`}
-          {...attributes}
-          {...listeners}
-        >
-          <GripVertical className="h-4 w-4 text-muted-foreground" />
-        </Button>
-        {/* 020-settings-modal (US3, FR-007): move up/down — a purely
-            display-order concern (appState.moveScenario(), now a thin
-            wrapper over reorderScenario()). Disabled, not hidden, at
-            either boundary — no error, no wraparound. Relocated here
-            from the trailing cluster by 037's Part B; behavior and
-            aria-label text unchanged. */}
-        <div className="flex flex-col">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-4 w-5"
-            disabled={index === 0}
-            onClick={() => appState.moveScenario(s.name, 'up')}
-            aria-label={`Move ${s.name} up`}
-          >
-            <ChevronUp className="h-3 w-3" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-4 w-5"
-            disabled={index === total - 1}
-            onClick={() => appState.moveScenario(s.name, 'down')}
-            aria-label={`Move ${s.name} down`}
-          >
-            <ChevronDown className="h-3 w-3" />
-          </Button>
-        </div>
-      </div>
+      {/* Drag handle. Carries the sortable listeners; touch-none so a touch drag doesn't scroll the list. Keyboard: focus
+          it, Space to lift, arrows to move, Space to drop, Escape to cancel. */}
+      <button
+        type="button"
+        aria-label={`Reorder ${s.name}`}
+        title="Drag to reorder"
+        className="grid h-6 w-[22px] cursor-grab touch-none place-items-center rounded text-[var(--mute)] hover:text-[var(--ink)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-text)] active:cursor-grabbing"
+        {...attributes}
+        {...listeners}
+      >
+        <GripVertical className="h-4 w-4" aria-hidden="true" />
+      </button>
 
-      {/* 'registering' is the ONLY status that still gets a dedicated
-          leading indicator (037 item 5) — the ready/failed dot is gone,
-          carried by the row border/background instead. role="status" +
-          aria-label keep this announced for non-visual users. */}
-      {s.status === 'registering' && (
-        <span
-          role="status"
-          aria-label={treatment.label}
-          data-testid={`scenario-status-loading-${s.name}`}
-          className="shrink-0 text-xs text-muted-foreground"
-        >
-          {treatment.label}…
-        </span>
-      )}
-
-      {/* 036-scenario-color-picker: Popover-hosted colour picker (swatch,
-          hex, RGB). 037 item 5 places it at the LEFT of the whole
-          identity block — the row's own `items-center` vertically centres
-          it against both the name and path lines together (leading
-          avatar/icon pattern). */}
-      <div className="flex shrink-0 items-center">
+      <div className="flex items-center justify-center">
         <ScenarioColorControl scenario={s} />
       </div>
 
-      {/* Identity block — name (+ baseline chip) on line 1, path on line 2. */}
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-1.5">
-          {/* 020-settings-modal (US4): a fully store-driven controlled
-              input — no local draft state. Typing calls appState.setLabel()/
-              clearLabel() directly; the input's `value` reflects the store
-              on the next render. Empty string clears back to the real name
-              (shown via the placeholder). */}
-          <input
-            data-testid="scenario-name"
-            className="min-w-0 flex-1 truncate bg-transparent text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            value={s.label ?? ''}
-            placeholder={s.name}
-            aria-label={`Custom label for ${s.name}`}
-            onChange={(e) => {
-              const value = e.target.value
-              if (value === '') {
-                appState.clearLabel(s.name)
-              } else {
-                appState.setLabel(s.name, value)
-              }
-            }}
-          />
-          <BaselineChip name={s.name} isBaseline={isBaseline} />
-        </div>
-        <div className="truncate font-mono text-xs text-muted-foreground" title={s.path}>
-          {s.path}
+      <div className="min-w-0">
+        {/* Store-driven controlled input: typing sets the viewer's label override, an empty value clears it (the real name
+            shows as the placeholder). */}
+        <input
+          data-testid="scenario-name"
+          className="h-[34px] w-full min-w-0 truncate rounded-[10px] border border-[var(--line)] bg-[var(--surface)] px-2.5 text-sm outline-offset-2 focus-visible:outline-2 focus-visible:outline-[var(--brand-text)]"
+          value={s.label ?? ''}
+          placeholder={s.name}
+          aria-label={`Custom label for ${s.name}`}
+          onChange={(e) => {
+            const value = e.target.value
+            if (value === '') appState.clearLabel(s.name)
+            else appState.setLabel(s.name, value)
+          }}
+        />
+        <div className="mt-[3px] flex items-center gap-2 text-xs text-[var(--mute)]">
+          {s.status === 'registering' && (
+            <span role="status" aria-label={treatment.label} data-testid={`scenario-status-loading-${s.name}`} className="shrink-0">
+              {treatment.label}&hellip;
+            </span>
+          )}
+          <span className="truncate" title={s.path}>
+            {caption}
+          </span>
         </div>
       </div>
 
-      {/* Actions cluster — trailing. */}
-      <div className="flex shrink-0 items-center gap-0.5">
-        {/* 036-scenario-color-picker, Part C (FR-019/FR-020): wired
-            DIRECTLY to appState's existing active/setActive() — no new
-            mechanism. Reactively affects every $scenario.-driven panel
-            via the existing, unmodified useActiveScenarios() hook.
-            037 Part E: a scoped hover/focus Tooltip. Its text is
-            deliberately scoped to the Switch's REAL effect (confirmed by
-            the 037 investigation): it only changes what a panel shows if
-            that panel has NO `scenario:`/`scenarios:` key — a pinned
-            panel names its scenario directly and is independent of
-            `appState.active` by design (services/sqlExpander.ts). No
-            change to the Switch's aria-label / checked / onCheckedChange
-            (FR-013). TooltipProvider is scoped per row, matching this
-            feature's existing convention. */}
-        <TooltipProvider>
-          <Tooltip>
-            {/* Trigger on a wrapping <span>, not the Switch itself: Radix
-                Tooltip.Trigger writes its own `data-state` onto the
-                element it's applied to, which would clobber the Switch's
-                own `data-[state=checked|unchecked]` styling. The span is
-                the hoverable surface (FR-012); the Switch keeps its
-                aria-label / checked / onCheckedChange untouched (FR-013). */}
-            <TooltipTrigger asChild>
-              <span className="mr-1 inline-flex">
-                <Switch
-                  size="sm"
-                  checked={s.active}
-                  onCheckedChange={(checked) => appState.setActive(s.name, checked)}
-                  aria-label={
-                    s.active ? `Exclude ${s.name} from queries` : `Include ${s.name} in queries`
-                  }
-                />
-              </span>
-            </TooltipTrigger>
-            <TooltipContent>
-              Include this scenario when panels aren&rsquo;t pinned to a specific scenario
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-        {/* The colour swatch sits left of the identity block (037 item 5);
-            the baseline chip sits inside it (Part D). Neither is in this
-            trailing cluster any more. */}
+      {/* Include in the compare set (every model year of the scenario follows). The tooltip is scoped to the switch's real
+          effect: it only matters to panels that are not pinned to one scenario. */}
+      <TooltipProvider>
+        <Tooltip>
+          {/* The trigger is a wrapping span: Radix writes its own data-state onto its trigger, which would clobber the
+              switch's checked styling. */}
+          <TooltipTrigger asChild>
+            <span className="inline-flex">
+              <Switch
+                size="lg"
+                checked={s.active}
+                onCheckedChange={(checked) => setAlternativeActive(alternativeOf(s), checked)}
+                aria-label={s.active ? `Exclude ${s.name} from queries` : `Include ${s.name} in queries`}
+              />
+            </span>
+          </TooltipTrigger>
+          <TooltipContent>Include this scenario when panels aren&rsquo;t pinned to a specific scenario</TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+
+      <BaselineChip name={s.name} isBaseline={isBaseline} currentBaseline={baselineName} />
+
+      <div className="flex items-center gap-1.5">
+        <MiniButton
+          className="w-8 justify-center px-0"
+          disabled={index === 0}
+          onClick={() => onMove(s.name, -1)}
+          aria-label={`Move ${s.name} up`}
+        >
+          <ArrowUp className="h-3.5 w-3.5" aria-hidden="true" />
+        </MiniButton>
+        <MiniButton
+          className="w-8 justify-center px-0"
+          disabled={index === total - 1}
+          onClick={() => onMove(s.name, 1)}
+          aria-label={`Move ${s.name} down`}
+        >
+          <ArrowDown className="h-3.5 w-3.5" aria-hidden="true" />
+        </MiniButton>
         {s.source === 'handle' && (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-6 w-6"
-            onClick={() => removeLocalScenario(s.name)}
-            aria-label={`Remove ${s.name}`}
-          >
-            <X className="h-3.5 w-3.5" />
-          </Button>
+          <MiniButton className="w-8 justify-center px-0" onClick={() => removeLocalScenario(s.name)} aria-label={`Remove ${s.name}`}>
+            <X className="h-3.5 w-3.5" aria-hidden="true" />
+          </MiniButton>
         )}
       </div>
     </div>
   )
 }
 
-// 037-scenarios-tab-redesign, Part D: the SINGLE baseline indicator,
-// beside the scenario name. Replaces the Star / Star+"Baseline"-text
-// control (036) entirely — its own text always states what is true
-// ("Baseline") or exactly what clicking it does ("Set as baseline"), so
-// it needs no tooltip to explain either state (FR-011).
-//
-//   - Current baseline row: a filled Badge reading "Baseline". A pure
-//     status display — NOT wrapped in a button, no onClick (FR-009).
-//   - Every other row: an outline Badge reading "Set as baseline",
-//     wrapped in a <button> that calls the same appState.setBaseline()
-//     the Star used to (FR-010).
-//
-// Both states occupy an identical reserved width (an invisible sizer
-// rendering the wider "Set as baseline" label, stacked in the same grid
-// cell), so the identity block never shifts width between a baseline and
-// a non-baseline row (FR-015 — the same "render the widest state, hide
-// it" technique this session already proved for the Star control).
-function BaselineChip({ name, isBaseline }: { name: string; isBaseline: boolean }) {
+// The single baseline indicator. The current baseline row shows a non-interactive "Baseline" chip; every other row shows a
+// "Set as baseline" button that calls appState.setBaseline. Both occupy the same reserved width (an invisible sizer renders
+// the wider label in the same grid cell), so the identity column never shifts between a baseline and a non-baseline row.
+// Moving the baseline also moves the reference with it when the reference was the old baseline.
+function BaselineChip({ name, isBaseline, currentBaseline }: { name: string; isBaseline: boolean; currentBaseline: string | undefined }) {
+  function setAsBaseline() {
+    const reference = getState().reference
+    appState.setBaseline(name)
+    if (reference.kind === 'scenario' && currentBaseline && reference.name === currentBaseline) {
+      setReference({ kind: 'scenario', name })
+    }
+  }
+
   return (
-    <span data-testid={`baseline-chip-${name}`} className="grid shrink-0 justify-items-start">
+    <span data-testid={`baseline-chip-${name}`} className="grid shrink-0 justify-items-start max-[900px]:col-start-3">
       <span aria-hidden className="invisible col-start-1 row-start-1">
-        <Badge variant="outline">Set as baseline</Badge>
+        <MiniButton tabIndex={-1}>Set as baseline</MiniButton>
       </span>
       <span className="col-start-1 row-start-1">
         {isBaseline ? (
-          <Badge variant="default">Baseline</Badge>
+          <span className="inline-flex h-7 items-center rounded-full border border-[var(--brand-text)] bg-[color-mix(in_srgb,var(--brand)_16%,transparent)] px-3 text-[12.5px] font-medium text-[var(--brand-text)]">
+            Baseline
+          </span>
         ) : (
-          <button
-            type="button"
-            onClick={() => appState.setBaseline(name)}
-            aria-label={`Mark ${name} as baseline scenario`}
-            className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            <Badge variant="outline" className="cursor-pointer hover:bg-muted">
-              Set as baseline
-            </Badge>
-          </button>
+          <MiniButton onClick={setAsBaseline} aria-label={`Mark ${name} as baseline scenario`}>
+            Set as baseline
+          </MiniButton>
         )}
       </span>
     </span>

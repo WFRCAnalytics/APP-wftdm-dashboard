@@ -26,14 +26,14 @@ Prototype reference: `prototype/corridor-pro.html` (open it) and `prototype/src/
 - Width **68px** collapsed, **248px** on `:hover` or `:focus-within`, `transition: width .22s`. Content has
   `overflow: hidden`. Labels fade (opacity 0→1, .15s) when expanded. The main area does **not** reflow when
   the nav expands; it overlays the content.
-- Top: brand block (38×38 mark with radius 13 filled with `--accent`, inset top highlight, soft accent glow
-  `0 6px 14px -6px var(--accent)`; to the right the dashboard **title** (bold) and a small **subtitle**).
+- Top: brand block (38×38 mark with radius 13 filled with `--brand`, inset top highlight, soft accent glow
+  `0 6px 14px -6px var(--brand)`; to the right the dashboard **title** (bold) and a small **subtitle**).
   Title, logo (`logoUrl` / `logoUrlDark`) and colors are deployer-configurable from `dashboard-config/index.json`
   exactly as today (`DashboardBranding` in `services/yamlLoader.ts`). If a logo image is configured, show it
   instead of the mark.
 - Items: one button per dashboard tab (`dashboard-*.yaml`), 46px tall, radius 15, 20px icon + label, color
   `--mute`. Hover: `--ink` text + `ink 7%` background. Selected: background
-  `color-mix(in srgb, var(--accent) 16%, var(--tile))`, `--ink` text, icon colored `--accent`.
+  `color-mix(in srgb, var(--brand) 16%, var(--tile))`, `--ink` text, icon colored `--brand`.
   `role="tablist"` on the nav, `role="tab"` + `aria-selected` on items.
 - **Sub-navigation (sections):** the selected tab shows its YAML `sections:` as an indented list
   (`margin-left: 33px`, 1px left border `--line`, items 30px tall, radius 8). Clicking scrolls the
@@ -64,7 +64,7 @@ Control bar items, in order. Hide rules are in the third column.
 
 Pill style: height 38, padding `0 6px 0 14px`, radius 999, 1px `--glass-line` border, background `--tile-hi`,
 inset top highlight; a 12px `--mute` label then a native `<select>` with weight 500 and 2px focus offset.
-Toggle on-state: border `--accent`, background `accent 14%`, knob moves 14px and turns `#04161A`.
+Toggle on-state: border `--brand`, background `accent 14%`, knob moves 14px and turns `#04161A`.
 Segmented: container padding 3px, background `ink 8%`; button padding `7px 13px`; pressed button gets
 `--tile-hi` fill and a small shadow. All are real `<button>`/`<select>` elements with `aria-pressed` / labels.
 
@@ -99,7 +99,7 @@ glass tier, radius 22, flex column, `role="dialog"`. Esc and the × button close
   five equal columns separated by 1px `--line` dividers. Below 1100px: two columns (the fifth spans both).
 - Each cell (padding `16px 20px 14px`): label (13px `--mute`); value (mono, `clamp(30px,3vw,42px)`, 500, tracking
   −.04em, no wrap) with a small unit; then a row with a **delta pill**, a caption "vs Baseline" (the reference
-  name), and a **sparkline** (64×22, stroke `--accent` 2px, no fill) pushed to the right.
+  name), and a **sparkline** (64×22, stroke `--brand` 2px, no fill) pushed to the right.
 - Cells, in order: **Daily trips** (M), **Transit boardings** (k), **Vehicle miles** (M), **Average trip length** (mi),
   **Calibration** ("5 of 8" = submodels within tolerance, plus eight 14px status squares; no sparkline).
 - Values are for the **focus** scenario in the **selected year**. The delta is against the **active reference**
@@ -132,7 +132,7 @@ A tile is one card. Structure (top to bottom), all inside `<section class="tile"
 Badges (inline after the title):
 | Badge | When | Style |
 |---|---|---|
-| `Change vs Baseline` / `% change vs Baseline` | The view supports differences, Compare is on, Show ≠ Values, and the strategy is not *side by side* | mono 11.5px, background `accent 16%`, text `--accent`, radius 999 |
+| `Change vs Baseline` / `% change vs Baseline` | The view supports differences, Compare is on, Show ≠ Values, and the strategy is not *side by side* | mono 11.5px, background `accent 16%`, text `--brand`, radius 999 |
 | `Same in every scenario` | Compare is on and the tile's data does not vary by scenario | neutral: `ink 9%` background, `--mute` text, 11.5px |
 | `Measured on the base year` | Tile is flagged *base-year only* and the current year is not the base year | neutral |
 
@@ -241,8 +241,8 @@ in `src/layout/documentationModal.tsx`'s content source, updated.
 | `Segmented` | `role="group"`; buttons `aria-pressed`; container `ink 7–8%` background, pill radius, padding 3; pressed = `--tile-hi` + 1px inset highlight + small drop shadow. Variants: *chart type* (neutral) and *compare as* (pressed fill `accent 22%` mixed into `--tile-hi`). |
 | `PillSelect` | Native `<select>` inside a pill with a muted label. Options in `--surface` with `--ink` text. |
 | `MiniButton` | 28px pill, 12.5px, border `--glass-line`, text `--mute`; hover `--ink`; pressed = `--ink` background, `--bg` text; disabled opacity .4. |
-| `Button` | 38px pill. Primary: `--accent` fill, `#04161A` text. Default: transparent with `--line` border. |
-| `Switch` | 42×24, knob 18px, on = `--accent` track and `#04161A` knob. `role="switch"`. |
+| `Button` | 38px pill. Primary: `--brand` fill, `#04161A` text. Default: transparent with `--line` border. |
+| `Switch` | 42×24, knob 18px, on = `--brand` track and `#04161A` knob. `role="switch"`. |
 | `Checkbox` (scenario) | 20×20 radius 6, 1.5px `--mute` border; checked = scenario color fill + dark tick. |
 | `Legend` | Items 12.5px `--mute`, 10px round swatch, 7px gap, 14px between items. Variants: scenario, mode, purpose, income, diverging ramp, calibration-metric (file 04). |
 | `Badge` | see §2. |

@@ -24,6 +24,8 @@ export interface FilterDefinition {
 // exist (data-model.md).
 export interface PanelConfigBase {
   title: string
+  /** A short note shown under the tile title (63 redesign). */
+  description?: string
   height?: number
   width?: number
   // 034-metric-panel-redesign, Part A addendum (spec.md FR-023–FR-025):
@@ -35,6 +37,9 @@ export interface PanelConfigBase {
   // resolved via `??`, not `||`, specifically so an explicit `false`
   // (a real, meaningful override) is never confused with "unset."
   expandable?: boolean
+  /** 063 redesign: render this tile only with Compare on (`compare`) or off (`single`). Lets one page lay out its tiles
+   * differently per mode (project-docs/redesign/02-layout-and-components.md section 3). */
+  show_when?: 'compare' | 'single'
 }
 
 // Fields only a *querying* panel type needs. Everything that reads
@@ -100,6 +105,15 @@ export interface ValueBoxGaugeConfig {
 
 export interface ValueBoxPanelConfig extends DataBoundPanelConfigBase {
   type: 'valuebox'
+  /** `hero`: a row made only of `variant: hero` value boxes draws as the hero KPI band (063 redesign): label, large value,
+   * delta against the reference and a per-year sparkline for the focus scenario. Any other value-box row keeps the cards. */
+  variant?: 'hero'
+  /** Hero cells: multiply the stored value before formatting (trips 1e-6 for millions, boardings 1e-3 for thousands). */
+  scale?: number
+  /** Hero cells: `calibration` draws "N of M submodels within tolerance" from the `calibration_errors` table. */
+  kpi?: 'calibration'
+  /** Calibration cell: the within-tolerance threshold in percent (default 3). */
+  tolerance?: number
   column: string
   format: string
   unit?: string
@@ -110,30 +124,6 @@ export interface ValueBoxPanelConfig extends DataBoundPanelConfigBase {
   sparkline?: ValueBoxSparklineConfig
   baseline_trend?: ValueBoxBaselineTrendConfig
   gauge?: ValueBoxGaugeConfig
-}
-
-export interface PlotlyTraceConfig {
-  type: string
-  x?: string
-  y?: string
-  color?: string
-  mode?: string
-  name?: string
-  text?: string
-  barmode?: string
-}
-
-// 019-baseline-diff-consumption: ComparisonCapablePanelConfig (below,
-// defined alongside ComparisonDiff) is mixed into PlotlyPanelConfig here —
-// see that interface's own doc comment for why.
-export interface PlotlyPanelConfig
-  extends DataBoundPanelConfigBase,
-    ComparisonCapablePanelConfig {
-  type: 'plotly'
-  traces: PlotlyTraceConfig[]
-  layout?: Record<string, unknown>
-  observed?: { source: string; style?: string } & Record<string, unknown>
-  reference_lines?: unknown[]
 }
 
 /** One entry in a `table` panel's `columns:` list (project-docs/GRAMMAR.md).
@@ -239,84 +229,6 @@ export interface SankeyPanelConfig extends DataBoundPanelConfigBase {
   target: string
   value: string
   color_scheme?: string
-}
-
-/**
- * The tenth panel type — 029-shadcn-chart-panel. Extends
- * DataBoundPanelConfigBase + ComparisonCapablePanelConfig exactly like
- * PlotlyPanelConfig/TablePanelConfig/ObservablePlotPanelConfig already
- * do (spec.md Assumptions — reuses the shared comparison/compare_on
- * mechanism rather than inventing a fourth one). x/y/series are
- * author-configurable field-mapping keys naming literal columns already
- * present in the queried result set — never $metric.<column>-prefixed —
- * matching ObservablePlotPanelConfig's own x/y/fill/stroke precedent
- * (research.md §2), not PlotlyTraceConfig's older $metric.-prefixed
- * convention. `series` is deliberately NOT named `fill`/`stroke`
- * (Observable Plot's own vocabulary for a single SVG visual channel) —
- * Recharts' own real API has no equivalent single-channel concept; a
- * Recharts chart is composed of one <Bar>/<Line>/<Area> element PER
- * series, each needing its own literal dataKey. `series` names the
- * SOURCE COLUMN whose distinct values become those separate elements;
- * panels/rechartsEncoding.ts's encodeRechartsData() is what actually
- * pivots tidy rows into that one-dataKey-per-distinct-value shape
- * (data-model.md §3).
- */
-/**
- * One mark within a `chart_type: combo` panel — a real, independent
- * bar/line/area layer bound to its own literal `y` column, optionally on
- * a second (`right`) Y axis. Deliberately NO `series` field of its own —
- * combining Recharts' one-element-per-distinct-series-value pivot
- * (encodeRechartsData()'s multi-series case) with several independently-
- * typed layers at once would multiply real complexity (which layer owns
- * which pivoted series? do they share a color cycle?) for a use case
- * (comparing categories, e.g. scenarios, within ONE combo layer) already
- * well served by an ordinary single-chart-type panel — a genuine,
- * deliberate scope line, not an oversight.
- */
-export interface RechartsComboLayerConfig {
-  chart_type: 'bar' | 'line' | 'area'
-  y: string
-  /** Optional display label for the legend/tooltip — defaults to the
-   * literal `y` column name when omitted. */
-  label?: string
-  /** Optional — which Y axis this layer plots against. Defaults to
-   * 'left'. A second, real `<YAxis yAxisId="right">` only renders when at
-   * least one layer sets this to 'right' (RechartsPanel.tsx). */
-  y_axis?: 'left' | 'right'
-}
-
-export interface RechartsPanelConfig
-  extends DataBoundPanelConfigBase,
-    ComparisonCapablePanelConfig {
-  type: 'recharts'
-  /** bar/line/area/combo. pie/radar/radial remain a deliberate, explicit
-   * non-goal (spec.md FR-004 of 029-shadcn-chart-panel) — those are
-   * their own dedicated panel types (`type: pie`/`type: radar`), not a
-   * RechartsPanel chart_type. `combo` (later addition) mixes several
-   * independently-typed layers — see `layers` below — rather than
-   * repeating one mark type per distinct `series` value. */
-  chart_type: 'bar' | 'line' | 'area' | 'combo'
-  x: string
-  /** Required for chart_type bar/line/area; unused for combo (each
-   * layer names its own `y` instead) — validated at runtime
-   * (RechartsPanel.tsx), not the TypeScript type, matching this app's own
-   * "YAML has no runtime schema" convention (every other runtime-only
-   * config validation in this file works the same way). */
-  y?: string
-  /** Meaningless (ignored) for chart_type: combo — see
-   * RechartsComboLayerConfig's own doc comment for why a combo panel has
-   * no single shared series pivot. */
-  series?: string
-  /** For chart_type: bar/area with `series` set — whether multiple
-   * series stack on top of each other (true) or render side-by-side/
-   * overlaid (false, default). Meaningless with no `series` configured,
-   * and for chart_type: combo (each layer is independently one mark, not
-   * pivoted into multiple stackable series). */
-  stacked?: boolean
-  /** Required for chart_type: combo; ignored otherwise. One entry per
-   * independently-typed mark layered into the same chart, sharing this
-   * panel's own `x`. */
-  layers?: RechartsComboLayerConfig[]
 }
 
 /**
@@ -580,9 +492,81 @@ export interface UnknownPanelConfig extends PanelConfigBase {
   type: string
 }
 
+/** How a tile draws a comparison (project-docs/redesign/03-state-and-compare.md section 4). */
+export type CompareStrategy = 'overlay' | 'diff' | 'multi' | 'grid' | 'switch' | 'swipe'
+
+export interface MultiViewGroupOption {
+  id: string
+  label: string
+  /** Merged into the active view's config; `$group.<field>` strings in a view are replaced from here. */
+  fields: Record<string, unknown>
+}
+
+export interface MultiViewGroupBy {
+  label?: string
+  default?: string
+  options: MultiViewGroupOption[]
+}
+
+/** One view of a `multi-view` tile: an ordinary panel config for its `type` plus the keys below. */
+export interface MultiViewViewConfig {
+  id: string
+  label?: string
+  type: string
+  /** Strategies this view supports, first = default. Omitted = the type's default; `[]` = does not vary by scenario. */
+  compare?: CompareStrategy[]
+  scenario_independent?: boolean
+  base_year_only?: boolean
+  family?: string
+  [key: string]: unknown
+}
+
+/** 063 redesign (project-docs/redesign/06-data-and-config.md section 7): several views of the same data in one tile. */
+export interface MultiViewPanelConfig extends PanelConfigBase {
+  type: 'multi-view'
+  description?: string
+  metric?: string
+  scenario?: string
+  scenarios?: string[]
+  filter?: string | Record<string, string>
+  group_by?: MultiViewGroupBy
+  /** Height that grows with the number of compared scenarios: `min(max, base + per x scenarios)` (the scorecard). */
+  height_rows?: { base: number; per: number; max: number }
+  /** The view shown first (default: the first listed). */
+  default_view?: string
+  views: MultiViewViewConfig[]
+  scenario_independent?: boolean
+  /** Hides the tile when Compare is off (scorecard, ranking). */
+  needs_compare?: boolean
+  base_year_only?: boolean
+  family?: string
+}
+
+/**
+ * 063 redesign (project-docs/redesign/04-chart-catalogue.md): one of the catalogue's compare-aware charts. `kind` picks
+ * the drawing module in src/charts/kinds; everything else is that kind's own options. Reads the scenario run
+ * tables named by `tables` (default `[metric]`) for every compared run, the reference and the focus.
+ */
+export interface ChartPanelConfig extends PanelConfigBase {
+  type: 'chart'
+  kind: string
+  metric?: string
+  tables?: string[]
+  scenario?: string
+  scenarios?: string[]
+  /** What the series are (Scenario, Mode, Purpose, Income, ...): set from a multi-view `$group.group`. */
+  group?: string
+  /** Which headline metric (rank, years): set from a multi-view `$group.metric`. */
+  metric_id?: string
+  /** Kind-specific options. */
+  options?: Record<string, unknown>
+  [key: string]: unknown
+}
+
 export type PanelConfig =
+  | ChartPanelConfig
+  | MultiViewPanelConfig
   | ValueBoxPanelConfig
-  | PlotlyPanelConfig
   | TablePanelConfig
   | MarkdownPanelConfig
   | ObservablePlotPanelConfig
@@ -590,7 +574,6 @@ export type PanelConfig =
   | FlowMapPanelConfig
   | ZoneMapPanelConfig
   | GraphicWalkerPanelConfig
-  | RechartsPanelConfig
   | TreemapPanelConfig
   | SunburstPanelConfig
   | PieChartPanelConfig
@@ -609,6 +592,10 @@ export interface SectionConfig {
   id: string
   label: string
   rows: string[]
+  /** Tabbed pages: `stack` (default) shows every tile of the tab; `pick` shows one at a time, chosen from a list. */
+  mode?: 'stack' | 'pick'
+  /** 063 redesign: scroll to the tile with this `id` instead of the section's first row (two tiles can share a row). */
+  tile?: string
 }
 
 export interface DashboardTabConfig {
@@ -632,6 +619,10 @@ export interface DashboardTabConfig {
      * Cases). Default false/absent — every existing dashboard-*.yaml is
      * unaffected. */
     full_page?: boolean
+    /** `tabs`: each section is a tab and the page does not scroll; `scroll`: all rows in order. Default: the deployment's. */
+    layout_mode?: 'scroll' | 'tabs'
+    /** Rows that stay above the tabs in tabbed mode (default: the hero KPI rows). */
+    pinned_rows?: string[]
     /** 040-test-suite-migration, FR-019–FR-021: an explicit accessible
      * name for this tab's sidebar button, set as its `aria-label`. Only
      * `public/demo-dashboard-config/dashboard-8-test.yaml` uses it — that
