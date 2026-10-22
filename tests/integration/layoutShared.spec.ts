@@ -128,3 +128,24 @@ test.describe('scenario picker', () => {
     await expect(box).toHaveAttribute('aria-checked', before === 'true' ? 'false' : 'true')
   })
 })
+
+test.describe('chart hover', () => {
+  test('the waffle highlights a group the same way with Compare off as in the side-by-side grid', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 })
+    await boot(page)
+    await setCompare(page, false)
+    await openPage(page, 'Person and household')
+    const waffle = page.locator('[data-chart-kind="waffle"] svg').first()
+    await expect(waffle).toBeVisible({ timeout: 30_000 })
+    const rects = waffle.locator('rect[data-key]')
+    await rects.first().hover()
+    // the same classes the grid uses: the group is outlined and the rest drop to half strength
+    await expect(waffle).toHaveClass(/syncing/)
+    expect(await waffle.locator('rect.sync').count()).toBeGreaterThan(0)
+    const dimmed = waffle.locator('rect[data-key]:not(.sync)').first()
+    await expect(dimmed).toHaveCSS('opacity', '0.5')
+    await expect(waffle.locator('rect.sync').first()).toHaveCSS('stroke-width', '2.4px')
+    await page.mouse.move(5, 5)
+    await expect(waffle).not.toHaveClass(/syncing/)
+  })
+})

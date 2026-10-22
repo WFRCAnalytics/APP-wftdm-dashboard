@@ -78,14 +78,18 @@
 }
 
 /* synced hover across side-by-side panels */
-.wf-multi .sync {
+/* One highlight for both: inside a side-by-side grid (.wf-multi) and in a tile on its own (.wf-hl) */
+.wf-multi .sync,
+.wf-hl .sync {
   stroke: var(--ink) !important;
   stroke-width: 2.4px !important;
 }
-.wf-multi g.sync rect {
+.wf-multi g.sync rect,
+.wf-hl g.sync rect {
   stroke: var(--ink);
   stroke-width: 2.4px;
 }
-.wf-multi.syncing [data-key]:not(.sync) {
+.wf-multi.syncing [data-key]:not(.sync),
+.wf-hl.syncing [data-key]:not(.sync) {
   opacity: 0.5;
 }

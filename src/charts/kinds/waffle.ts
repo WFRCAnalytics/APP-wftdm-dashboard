@@ -51,20 +51,25 @@ const kind: ChartKind = {
       .attr('height', Math.max(1, lay.cs - 3))
       .attr('rx', Math.max(2, lay.cs * 0.2))
       .attr('fill', (d) => cols[d])
+    // Every square carries its key. Side by side (05 section 4) the grid owns hover, highlight and the one synced tooltip;
+    // on its own the tile draws the same highlight itself (the `wf-hl` rules in chartInteraction.css: an ink outline on the
+    // hovered group, the rest at half strength), so hover looks the same with Compare on or off.
+    rect.attr('data-key', (d) => AUTOS[d])
     if (pinned) {
-      // Side-by-side contract (05 section 4): the grid owns hover, highlight and the one synced tooltip.
       rect
-        .attr('data-key', (d) => AUTOS[d])
         .attr('data-title', (d) => AUTOS[d])
         .attr('data-val', (d) => `${f1(share[d])}%`)
         .attr('data-num', (d) => share[d])
         .attr('data-unit', ' pts')
+    } else {
+      root.classed('wf-hl', true)
     }
 
     const hl = (j: number | null) => {
       if (pinned) return
-      rect.attr('opacity', (d) => (j === null || d === j ? 1 : 0.18))
-      legendRows?.attr('opacity', (j2) => (j === null || j2 === j ? 1 : 0.45))
+      root.classed('syncing', j !== null)
+      rect.classed('sync', (d) => j !== null && d === j)
+      legendRows?.attr('opacity', (j2) => (j === null || j2 === j ? 1 : 0.5))
     }
     let legendRows: Selection<SVGGElement, number, SVGGElement, unknown> | undefined
 
