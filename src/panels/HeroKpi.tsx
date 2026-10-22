@@ -11,6 +11,7 @@ import { runNameFor } from '@/services/runResolution'
 import { getDeployment } from '@/state/compareState'
 import { cn } from '@/lib/utils'
 import { tagTintStyle } from '@/lib/tagTint'
+import { niceRingMax } from '@/panels/ringMax'
 
 // One KPI of the hero band (project-docs/redesign/02-layout-and-components.md section 1.4): the focus scenario's value in
 // the selected year, a delta pill against the active reference with its caption, and a sparkline of the metric at each
@@ -139,10 +140,10 @@ export function HeroKpi({ config }: { config: ValueBoxPanelConfig }) {
           )}
         </div>
         {config.ring && state.status === 'ready' && state.value !== null && (
-          <Ring value={state.value} reference={refRun ? state.reference : null} max={config.ring.max} unit={config.unit} />
+          <Ring value={state.value} reference={refRun ? state.reference : null} max={config.ring.max ?? niceRingMax([state.value, refRun ? (state.reference ?? 0) : 0], config.unit === '%')} unit={config.unit} />
         )}
       </div>
-      <div className="flex min-h-[22px] items-center gap-2 font-body text-[12.5px] text-[var(--mute)]">
+      <div className="flex min-h-[22px] flex-wrap items-center gap-x-2 gap-y-1 font-body text-[12.5px] text-[var(--mute)]">
         {state.status === 'ready' && refRun && (
           <>
             <span
@@ -160,8 +161,11 @@ export function HeroKpi({ config }: { config: ValueBoxPanelConfig }) {
             <span
               className="min-w-0 truncate rounded-full bg-[var(--tag-neutral-bg)] px-2 py-[2px] text-[var(--tag-neutral-fg)]"
               style={referenceColor ? tagTintStyle(referenceColor, 18) : undefined}
+              title={`vs ${referenceLabel}`}
             >
-              vs {referenceLabel}
+              {/* a narrow cell says "vs reference" instead of cutting the scenario's name short */}
+              <span className="@max-[212px]:hidden">vs {referenceLabel}</span>
+              <span className="hidden @max-[212px]:inline">vs reference</span>
             </span>
           </>
         )}

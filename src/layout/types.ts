@@ -124,8 +124,9 @@ export interface ValueBoxPanelConfig extends DataBoundPanelConfigBase {
   sparkline?: ValueBoxSparklineConfig
   baseline_trend?: ValueBoxBaselineTrendConfig
   gauge?: ValueBoxGaugeConfig
-  /** Hero cells: draw the value on a half-circle dial from 0 to `max` (in the scaled unit), with a tick at the reference. */
-  ring?: { max: number }
+  /** Hero cells: draw the value on a half-circle dial from 0 to `max` (in the scaled unit), with a tick at the reference.
+   * Without a `max` the dial picks one: a round number with headroom above the value and the reference. */
+  ring?: { max?: number }
 }
 
 /** One entry in a `table` panel's `columns:` list (project-docs/GRAMMAR.md).

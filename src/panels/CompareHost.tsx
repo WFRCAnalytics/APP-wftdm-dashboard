@@ -13,6 +13,7 @@ import { registry } from '@/panels/registry'
 import { planCompare, type Cell } from '@/panels/compareStrategy'
 import { resolveScenarioColor } from '@/panels/scenarioDisplay'
 import { Layers } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import { syncGrid } from '@/panels/gridSync'
 
 // Renders one view of a tile according to its compare strategy
@@ -72,6 +73,8 @@ export function CompareHost({ panel, strategy, tileKey, title }: CompareHostProp
   const total = plan.cells.length
   const cols = total <= 2 ? total : 2
   const rows = Math.ceil(total / cols)
+  // an odd last cell takes the whole row instead of leaving a gap
+  const odd = cols === 2 && total % 2 === 1
   const bodyHeight = (panel.height ?? 400) - (plan.pages > 1 ? PAGER_HEIGHT : 0)
   // each cell: 1px borders, 8px padding, the caption row and its 4px margin
   const cellChrome = 2 + 16 + CAPTION_HEIGHT
@@ -90,7 +93,7 @@ export function CompareHost({ panel, strategy, tileKey, title }: CompareHostProp
             data-testid={`compare-cell-${cell.run}`}
             data-s={cell.run}
             data-c={resolveScenarioColor(cell.run, display) ?? 'var(--mute)'}
-            className="min-w-0 rounded-[14px] border border-[var(--glass-line)] p-2"
+            className={cn('min-w-0 rounded-[14px] border border-[var(--glass-line)] p-2', odd && cell === plan.cells[total - 1] && 'col-span-2')}
           >
             <div className="mb-1 flex items-center gap-2 font-body text-[12.5px] text-[var(--ink)]" style={{ height: CAPTION_HEIGHT - 4 }}>
               <span
