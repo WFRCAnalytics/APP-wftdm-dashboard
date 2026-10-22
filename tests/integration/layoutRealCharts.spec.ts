@@ -47,3 +47,22 @@ test('by default the first scenario is the reference and the second the focus', 
   await expect(page.getByTestId('scenario-chip-reference')).toHaveCount(1)
   await expect(page.getByTestId('scenario-chip-focus')).not.toHaveText('ActivitySim Baseline')
 })
+
+test('an expanded tile fills the dialog, side by side included', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await boot(page)
+  await page.hover('[data-sidebar=sidebar]')
+  await page.getByRole('tab', { name: 'Mode choice' }).first().click()
+  await page.getByRole('tab', { name: 'Through the day', exact: true }).click()
+  await page.getByRole('button', { name: 'Side by side' }).last().click()
+  await page.getByRole('button', { name: 'Expand Trips by purpose and mode' }).click()
+  const dialog = page.getByRole('dialog')
+  await expect(dialog.getByTestId('compare-cells')).toBeVisible({ timeout: 30_000 })
+  await page.waitForTimeout(800)
+  const box = async (loc: ReturnType<typeof dialog.locator>) => (await loc.boundingBox())!
+  const cells = await box(dialog.getByTestId('compare-cells'))
+  const dlg = await box(dialog)
+  await page.screenshot({ path: 'test-results/real-expanded-grid.png' })
+  // the grid reaches (nearly) the bottom of the dialog
+  expect(cells.y + cells.height).toBeGreaterThan(dlg.y + dlg.height - 80)
+})

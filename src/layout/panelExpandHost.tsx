@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
+import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
 import { Maximize2 } from 'lucide-react'
 
@@ -56,6 +56,11 @@ import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 // regular effect, so by the time a portaled panel's own `useEffect` reads
 // its container's real layout dimensions, this hook's DOM move has
 // already attached it to a visible anchor.
+/** The height of the expanded dialog's body while a tile is expanded (undefined otherwise): panels drawn at a fixed height
+ * read it so they fill the dialog instead of keeping their card height. */
+const ExpandedHeightContext = createContext<number | undefined>(undefined)
+export const useExpandedHeight = () => useContext(ExpandedHeightContext)
+
 export function usePanelExpandHost(
   title: string,
   children: ReactNode,
@@ -73,6 +78,18 @@ export function usePanelExpandHost(
   const [dialogAnchor, setDialogAnchor] = useState<HTMLDivElement | null>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
   const dialogRef = useRef<HTMLDivElement>(null)
+  const [dialogHeight, setDialogHeight] = useState<number | undefined>()
+  useEffect(() => {
+    if (!expanded || !dialogAnchor) {
+      setDialogHeight(undefined)
+      return
+    }
+    const measure = () => setDialogHeight((prev) => (dialogAnchor.clientHeight > 80 && (prev === undefined || Math.abs(prev - dialogAnchor.clientHeight) >= 3) ? Math.round(dialogAnchor.clientHeight) : prev))
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(dialogAnchor)
+    return () => ro.disconnect()
+  }, [expanded, dialogAnchor])
 
   // Lazy-created once, on first render, and never replaced — see the
   // comment above for why this specific node must never change identity.
@@ -167,7 +184,7 @@ export function usePanelExpandHost(
         </DialogContent>
       </Dialog>
 
-      {createPortal(children, portalHostRef.current)}
+      {createPortal(<ExpandedHeightContext.Provider value={expanded ? dialogHeight : undefined}>{children}</ExpandedHeightContext.Provider>, portalHostRef.current)}
     </>
   )
 

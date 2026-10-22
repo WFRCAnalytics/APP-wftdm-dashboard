@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 
 import { PanelErrorBoundary } from '@/layout/panelCard'
+import { useExpandedHeight } from '@/layout/panelExpandHost'
 import type { MultiViewPanelConfig } from '@/layout/types'
 import { useResolvedView } from '@/hooks/useViewContext'
 import { useTileKey, useTileState } from '@/hooks/useTileState'
@@ -16,7 +17,12 @@ export function MultiViewPanel({ config: rawConfig }: PanelProps<MultiViewPanelC
   const key = useTileKey() || `multi-view:${rawConfig.title}`
   const [tile] = useTileState(key)
   const ctx = useResolvedView()
-  const config = useMemo(() => withRowHeight(rawConfig, ctx.active.length), [rawConfig, ctx.active.length])
+  // expanded: the view fills the dialog instead of keeping the card's height
+  const expandedHeight = useExpandedHeight()
+  const config = useMemo(() => {
+    const sized = withRowHeight(rawConfig, ctx.active.length)
+    return expandedHeight ? { ...sized, height: expandedHeight } : sized
+  }, [rawConfig, ctx.active.length, expandedHeight])
   const error = useMemo(() => validateMultiView(config), [config])
   const resolved = useMemo(
     () => (error ? null : resolveMultiView(config, tile, { compare: ctx.compare })),
