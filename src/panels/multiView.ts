@@ -26,6 +26,15 @@ const DEFAULT_STRATEGIES: Record<string, CompareStrategy[]> = {
   markdown: [],
 }
 
+export const STRATEGY_LABEL: Record<CompareStrategy, string> = {
+  overlay: 'Overlay',
+  diff: 'Difference',
+  multi: 'Side by side',
+  grid: 'Side by side',
+  switch: 'One at a time',
+  swipe: 'Swipe',
+}
+
 export function defaultStrategies(type: string): CompareStrategy[] {
   return DEFAULT_STRATEGIES[type] ?? ['overlay']
 }

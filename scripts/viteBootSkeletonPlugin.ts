@@ -142,7 +142,7 @@ function tabRowHtml(tab: SkeletonTab): string {
 /**
  * The boot skeleton: the real app shell in its resting state, taken from layout/shell.tsx, floatingNav.tsx, pageHeader.tsx
  * and dashboardRenderer.tsx rather than approximated: the collapsed floating glass nav (68px rail, 14px inset, 24px radius,
- * brand mark on top, one row per configured tab, Settings and Theme at the bottom), then, at 96px in from the left, the page
+ * brand mark on top, one row per configured tab, the Show menu labels toggle, Settings and Theme at the bottom), then, at 96px in from the left, the page
  * header (title and subtitle at the left, the glass control bar at the right) and the page body (the hero KPI band, then a
  * row of two tiles). The nav is hidden and the content starts at the edge below 760px, where the real nav is a sheet.
  * Only the number of tab rows comes from the build's dashboard config, as before; the branding title/logo cannot show in a
@@ -161,6 +161,7 @@ function buildSkeletonHtml(tabs: SkeletonTab[]): string {
         <div class="mb-[14px] flex min-h-[46px] items-center px-[3px]"><div class="h-[38px] w-[38px] shrink-0 rounded-[13px] ${BAR}"></div></div>
         <div class="flex min-h-0 flex-1 flex-col gap-1 overflow-hidden">${tabRows}</div>
         <div class="mt-2 flex flex-col gap-1 border-t border-[var(--line)] pt-2">
+          <div class="flex h-[46px] items-center px-[14px] max-[759px]:hidden"><div class="h-5 w-5 rounded-md ${BAR}"></div></div>
           <div class="flex h-[46px] items-center px-[14px]"><div class="h-5 w-5 rounded-md ${BAR}"></div></div>
           <div class="flex h-[46px] items-center px-[14px]"><div class="h-5 w-5 rounded-md ${BAR}"></div></div>
         </div>

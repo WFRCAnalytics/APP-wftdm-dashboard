@@ -14,19 +14,10 @@ import type { CompareStrategy, MultiViewPanelConfig } from '@/layout/types'
 import { PanelLoadingState } from '@/panels/PanelLoadingState'
 import { registry } from '@/panels/registry'
 import { effectiveStrategy } from '@/panels/compareStrategy'
-import { isBaseYearOnly, isCalibrationFamily, resolveMultiView, validateMultiView, withRowHeight } from '@/panels/multiView'
+import { STRATEGY_LABEL, isBaseYearOnly, isCalibrationFamily, resolveMultiView, validateMultiView, withRowHeight } from '@/panels/multiView'
 
 // The tile for `type: multi-view`: the chrome (badges, group-by, compare-as, view switcher) around MultiViewPanel,
 // which draws the active view. Hidden entirely when the tile only makes sense in another mode.
-
-const STRATEGY_LABEL: Record<CompareStrategy, string> = {
-  overlay: 'Overlay',
-  diff: 'Difference',
-  multi: 'Side by side',
-  grid: 'Side by side',
-  switch: 'One at a time',
-  swipe: 'Swipe',
-}
 
 export function MultiViewTile({ config: rawConfig, tileKey }: { config: MultiViewPanelConfig; tileKey: string }) {
   const ctx = useResolvedView()
@@ -100,7 +91,7 @@ export function MultiViewTile({ config: rawConfig, tileKey }: { config: MultiVie
       />,
     )
   }
-  if (ctx.compare && resolved.strategies.length >= 2 && !resolved.scenarioIndependent) {
+  if (ctx.compare && resolved.strategies.length >= 2 && !resolved.scenarioIndependent && !lifted.has('strategy')) {
     controls.push(
       <Segmented
         key="strategy"

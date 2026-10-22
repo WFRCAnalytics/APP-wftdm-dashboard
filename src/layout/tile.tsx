@@ -7,6 +7,7 @@ import { RailContext } from '@/components/ui/railContext'
 import { useFill } from '@/layout/fill'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { cn } from '@/lib/utils'
+import { registerPageTile } from '@/layout/pageExport'
 import { createExportRegistry, ExportMenu, TileExportContext } from '@/layout/tileExport'
 
 // The tile chrome (project-docs/redesign/02-layout-and-components.md section 2), top to bottom: header row (title,
@@ -68,14 +69,15 @@ export function Tile({ title, subtitle, badges, controls, height, expandable, pa
   const chrome = (
     <>
       {badges && <div className="flex flex-wrap items-center gap-2">{badges}</div>}
-      {controls && <div className="flex flex-wrap items-center gap-[10px]">{controls}</div>}
+      {controls && <div data-export-skip="" className="flex flex-wrap items-center gap-[10px]">{controls}</div>}
     </>
   )
 
   // Called unconditionally (rules of hooks); see panelExpandHost.tsx for why `body` is simply never placed when the
   // tile is not expandable.
-  const { trigger, body } = usePanelExpandHost(title, panel, { height: fill.active ? '100%' : height, chrome: <>{subtitle && <p className="text-[12.5px] text-[var(--mute)]">{subtitle}</p>}{chrome}</> })
+  const { trigger, body } = usePanelExpandHost(title, panel, { height: fill.active ? '100%' : height, chrome: <>{subtitle && <p className="text-[12.5px] text-[var(--mute)]">{subtitle}</p>}{chrome}</>, exportMenu: (ref) => <ExportMenu title={title} cardRef={ref} tables={exports.all} /> })
   const hasPanel = panel !== null && !errorMessage
+  useEffect(() => (hasPanel ? registerPageTile({ title, cardRef, tables: exports.all }) : undefined), [hasPanel, title, exports])
 
   return (
     <TileExportContext.Provider value={exports.registry}>

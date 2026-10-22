@@ -5,13 +5,14 @@ import { FillProvider } from '@/layout/fill'
 import { HeroBand } from '@/layout/heroBand'
 import { IdenticalNote } from '@/layout/identicalNote'
 import { PanelCard } from '@/layout/panelCard'
-import { SharedControlsBar, SharedKindsContext } from '@/layout/sharedControlsBar'
-import { sharedControl } from '@/layout/sharedControls'
+import { PageExportButton } from '@/layout/pageExport'
+import { SharedControlsBar, SharedKindsContext, useSharedContext } from '@/layout/sharedControlsBar'
+import { sharedControl, type SharedContext } from '@/layout/sharedControls'
 import type { TabsPlan, TabSection } from '@/layout/dashboardLayout'
 import type { PanelConfig, SharedControlKind } from '@/layout/types'
 import { cn } from '@/lib/utils'
 import { getActiveSection, getPickedTile, setActiveSection, setPickedTile, useLayoutVersion } from '@/state/layoutState'
-import { tileKey } from '@/state/tileState'
+import { getTileVersion, tileKey } from '@/state/tileState'
 
 // A page shown as tabs (project-docs/redesign/10-toolbar-layout-export-proposal.md section C): the pinned rows (the KPI
 // band) stay on top, one tab strip, and the active tab's tiles fill the rest of the screen. A "stack" tab shows all of
@@ -38,7 +39,10 @@ export function TabbedPage({ page, plan, rows }: { page: string; plan: TabsPlan;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page])
 
-  const kinds = useMemo(() => activeKinds(section, rows), [section, rows])
+  const ids = useMemo(() => new Map(section.rows.flatMap((name) => (rows.get(name) ?? []).map((p, i) => [p, tileId(p, name, i)] as const))), [section, rows])
+  const sharedCtx = useSharedContext(page, ids)
+  const version = getTileVersion()
+  const kinds = useMemo(() => activeKinds(section, rows, sharedCtx), [section, rows, sharedCtx.compare, version]) // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-[14px] overflow-y-auto pb-[14px] pl-[14px] pr-7 pt-1" data-testid="tabbed-page" data-section={section.id}>
       {plan.pinned.length > 0 && <IdenticalNote />}
@@ -54,9 +58,9 @@ export function TabbedPage({ page, plan, rows }: { page: string; plan: TabsPlan;
 }
 
 /** The shared controls this tab declares that its tiles really offer (two or more options in common). */
-function activeKinds(section: TabSection, rows: Rows): ReadonlySet<SharedControlKind> {
+function activeKinds(section: TabSection, rows: Rows, ctx: SharedContext): ReadonlySet<SharedControlKind> {
   const panels = section.rows.flatMap((name) => rows.get(name) ?? [])
-  return new Set(section.shared.filter((k) => sharedControl(k, panels) !== null))
+  return new Set(section.shared.filter((k) => sharedControl(k, panels, ctx) !== null))
 }
 
 function TabStrip({ page, plan, section, rows, kinds }: { page: string; plan: TabsPlan; section: TabSection; rows: Rows; kinds: ReadonlySet<SharedControlKind> }) {
@@ -112,6 +116,9 @@ function TabStrip({ page, plan, section, rows, kinds }: { page: string; plan: Ta
           <SharedControlsBar page={page} sectionId={section.id} kinds={[...kinds]} rows={rows} rowNames={section.rows} />
         </div>
       )}
+      <div className="ml-auto">
+        <PageExportButton pageTitle={page} />
+      </div>
     </div>
   )
 }

@@ -348,7 +348,16 @@ export function ScenarioPicker() {
                       {isFocus && <span className="size-[10px] rounded-full" style={{ background: r.color ?? 'var(--mute)' }} />}
                     </button>
                   )}
-                  <span className="min-w-0">
+                  <span
+                    className="min-w-0 cursor-pointer"
+                    onClick={() => {
+                      if (compareOn) setAlternativeActive(r.alt, !r.active)
+                      else {
+                        setFocus(r.alt)
+                        setAlternativeActive(r.alt, true)
+                      }
+                    }}
+                  >
                     <span className="block truncate font-body text-sm font-medium text-[var(--ink)]">{r.label}</span>
                     <span className="block truncate font-body text-xs text-[var(--mute)]">
                       {[

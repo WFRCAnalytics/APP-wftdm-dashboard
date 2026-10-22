@@ -3,6 +3,7 @@ import { PanelCard, PanelErrorBoundary } from '@/layout/panelCard'
 import { HeroCell } from '@/layout/heroCell'
 import { TabbedPage } from '@/layout/tabbedPage'
 import { useTabsPlan } from '@/hooks/useTabsPlan'
+import { PageExportButton } from '@/layout/pageExport'
 import { IdenticalNote } from '@/layout/identicalNote'
 import { registry } from '@/panels/registry'
 import { PanelErrorState } from '@/panels/PanelErrorState'
@@ -198,6 +199,9 @@ function OrdinaryDashboardRenderer({ tab }: { tab: DashboardTabConfig }) {
     <div className="flex flex-col gap-[14px] pb-[60px] pl-[14px] pr-7 pt-2">
       {/* The page title and description now live in the sticky PageHeader (layout/pageHeader.tsx). */}
       {rows.some(([, panels]) => isHeroRow(panels)) && <IdenticalNote />}
+      <div className="-mb-1 flex justify-end">
+        <PageExportButton pageTitle={tab.header.tab} />
+      </div>
       {rows.map(([rowName, panels]) => {
         const sectionId = sectionAnchorByRow.get(rowName)
         // FR-018: a row composed entirely of valuebox panels lays out as

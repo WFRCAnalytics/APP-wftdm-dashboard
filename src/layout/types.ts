@@ -588,7 +588,7 @@ export type PanelConfig =
  * DOM scroll-to anchor (`section-${id}`, dashboardRenderer.tsx). Grouping
  * `rows` never reorders them; row render order stays exactly `layout`'s
  * own object-key order regardless of `sections`. */
-export type SharedControlKind = 'group' | 'view'
+export type SharedControlKind = 'group' | 'view' | 'strategy'
 
 export interface SectionConfig {
   id: string

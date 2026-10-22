@@ -212,11 +212,13 @@ section; the loader warns).
   buttons are not squeezed above the chart: when the tile is at least 760px wide the controls stack in a rail on the
   right of the chart (labels above full-width options); narrower tiles keep them above the chart. The legend stays
   above the chart.
-- **Shared controls.** A section may declare `shared_controls: [group, view]`. The tab strip then shows one Group by and/or
+- **Shared controls.** A section may declare `shared_controls: [group, view, strategy]`. The tab strip then shows one Group by and/or
   one View control (the union of the option ids the tab's multi-view tiles offer; the first tile decides label, order and
   default), and the tiles hide their own copy. Choosing an option writes it to every tile of the tab that offers that
   option id, so tiles must use matching ids to move together (a tile without the option keeps its default). A kind that
-  fewer than two options share is not lifted. `Compare as` and `Scenario` stay per tile.
+  fewer than two options share is not lifted. `strategy` is the Compare as control: it shows only while Compare is on, its
+  options are the strategies of the view each tile shows now (so it follows the tile View), and it is not lifted when the
+  tiles share no strategy. `Scenario` (the one-at-a-time picker) stays per tile.
 
 **Tabs are the existing `sections:`.** No second concept. Everything that makes a section navigable in the sidebar
 already exists (`id`, `label`, `rows`, optional `tile`). New optional fields:
@@ -434,7 +436,8 @@ Docs to update in the same PRs: `02-layout-and-components.md` (control bar §1.2
   `services/mapCapture.ts` (reads a map's pixels inside its `render` event, so no `preserveDrawingBuffer`),
   `charts/exportRows.ts` (default CSV rows; a kind may provide `exportRows`). The image is a faithful walk of the tile as
   drawn (so legacy panels and maps export too); controls and buttons are left out. Deployer setting
-  `export: { footer: true | false | "text" }` in `index.json`. Not built: the Export menu inside the expanded dialog.
+  `export: { footer: true | false | "text" }` in `index.json`. The expanded dialog has the same Export menu, and Export all
+  (`layout/pageExport.tsx`) zips the tiles on screen.
 - **C** `state/layoutState.ts`, `hooks/useTabsPlan.ts`, `layout/tabbedPage.tsx`, `layout/fill.tsx`, `layout/heroBand.tsx`;
   tiles measure their body and report the height to their cell (`useFill`); panels draw at the measured height (the
   panel config is rewritten, `height_rows` dropped). Inactive tabs are unmounted. The page header is always compact in
@@ -451,8 +454,12 @@ deployer setting.
 Still open:
 
 6. ~~Shared tab controls~~ built as `shared_controls` on a section (`layout/sharedControls.ts`, `layout/sharedControlsBar.tsx`);
-   see section C. Not built: a shared `Compare as`.
-7. **Export from the expanded dialog**, and a page-level "Export all tiles".
+   see section C (group, view and Compare as).
+7. ~~Export from the expanded dialog and a page-level Export all~~ built: the dialog header has its own Export menu (it
+   exports the expanded chart as drawn), and an **Export all** button (right end of the tab strip on tabbed pages, top right of
+   scrolling pages) downloads every tile that is on screen as one ZIP of CSV files or of PNG pictures
+   (`layout/pageExport.tsx`, `services/zip.ts`, a stored-only ZIP writer; no new dependency). Tiles register while mounted,
+   so a tabbed page exports the open tab.
 
 ### Earlier questions (kept for the record)
 

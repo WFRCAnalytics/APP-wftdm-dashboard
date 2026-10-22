@@ -20,6 +20,12 @@ export interface TileState {
 const EMPTY: TileState = Object.freeze({})
 const tiles = new Map<string, TileState>()
 const subscribers = new Set<() => void>()
+let version = 0
+
+/** Changes whenever any tile state does (for code that reads many tiles at once). */
+export function getTileVersion(): number {
+  return version
+}
 
 export function subscribe(fn: () => void): () => void {
   subscribers.add(fn)
@@ -37,11 +43,13 @@ export function getTileState(key: string): TileState {
 
 export function setTileState(key: string, patch: Partial<TileState>): void {
   tiles.set(key, { ...getTileState(key), ...patch })
+  version++
   for (const fn of subscribers) fn()
 }
 
 /** Test helper: forget every tile. */
 export function resetTileStates(): void {
   tiles.clear()
+  version++
   for (const fn of subscribers) fn()
 }

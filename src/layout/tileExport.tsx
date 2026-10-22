@@ -67,9 +67,31 @@ export interface ExportMenuProps {
 const ITEM =
   'flex w-full items-center rounded-lg px-3 py-[7px] text-left font-body text-sm text-[var(--ink)] hover:bg-[color-mix(in_srgb,var(--ink)_8%,transparent)] disabled:cursor-not-allowed disabled:opacity-45 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--brand-text)]'
 
-export function ExportMenu({ title, cardRef, tables }: ExportMenuProps) {
+/** Scenarios and year that name an export file and fill its footer. */
+export function useExportContext(): { scenarios: string; year: number | undefined } {
   const view = useResolvedView()
   const display = useScenarioDisplay()
+  const runs = view.compare ? view.active : [view.focusRun ?? view.focus]
+  return {
+    scenarios: runs.map((r) => resolveScenarioLabel(r, display)).join(', '),
+    year: getDeployment().years.length > 1 ? view.year : undefined,
+  }
+}
+
+/** The data a tile drew: what its panels registered, else the HTML tables on screen. */
+export function collectTables(own: ExportTable[], card: HTMLElement | null): ExportTable[] {
+  const found = own.filter((t) => t.rows.length > 0)
+  if (found.length > 0) return found
+  return card ? tablesFromDom(card) : []
+}
+
+/** The tile as it looks on screen, as an SVG document and the size it was drawn at. */
+export async function renderTileImage(card: HTMLElement, ctx: { scenarios: string; year: number | undefined }) {
+  const background = getComputedStyle(document.body).backgroundColor
+  return cardToSvg(card, { footer: exportFooter(ctx), background, captureMap })
+}
+
+export function ExportMenu({ title, cardRef, tables }: ExportMenuProps) {
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const [note, setNote] = useState('')
@@ -95,16 +117,10 @@ export function ExportMenu({ title, cardRef, tables }: ExportMenuProps) {
     }
   }, [open])
 
-  const runs = view.compare ? view.active : [view.focusRun ?? view.focus]
-  const scenarios = runs.map((r) => resolveScenarioLabel(r, display)).join(', ')
-  const year = getDeployment().years.length > 1 ? view.year : undefined
+  const { scenarios, year } = useExportContext()
   const base = [title, scenarios, year]
 
-  const collect = (): ExportTable[] => {
-    const own = tables().filter((t) => t.rows.length > 0)
-    if (own.length > 0) return own
-    return cardRef.current ? tablesFromDom(cardRef.current) : []
-  }
+  const collect = (): ExportTable[] => collectTables(tables(), cardRef.current)
   const hasMap = () => Boolean(cardRef.current?.querySelector('.maplibregl-map'))
   const flash = (text: string) => {
     setNote(text)
@@ -127,8 +143,7 @@ export function ExportMenu({ title, cardRef, tables }: ExportMenuProps) {
   const image = async (kind: 'png' | 'svg') => {
     const card = cardRef.current
     if (!card) return
-    const background = getComputedStyle(document.body).backgroundColor
-    const { svg, width, height } = await cardToSvg(card, { footer: exportFooter({ scenarios, year }), background, captureMap })
+    const { svg, width, height } = await renderTileImage(card, { scenarios, year })
     if (kind === 'svg') downloadBlob(new Blob([svg], { type: 'image/svg+xml;charset=utf-8' }), fileName(base, 'svg'))
     else downloadBlob(await svgToPng(svg, width, height, 2), fileName(base, 'png'))
   }

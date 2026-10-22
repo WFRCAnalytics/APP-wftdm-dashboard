@@ -86,7 +86,7 @@ export function findFullPagePanel(tab: DashboardTabConfig): PanelConfig | null {
 /** Keeps only the kinds the app knows; anything else in the YAML is ignored. */
 export function sharedKinds(value: unknown): SharedControlKind[] | undefined {
   if (!Array.isArray(value)) return undefined
-  const kinds = value.filter((k): k is SharedControlKind => k === 'group' || k === 'view')
+  const kinds = value.filter((k): k is SharedControlKind => k === 'group' || k === 'view' || k === 'strategy')
   return kinds.length > 0 ? [...new Set(kinds)] : undefined
 }
 

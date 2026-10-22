@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+import { useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
 import { Maximize2 } from 'lucide-react'
 
@@ -64,12 +64,15 @@ export function usePanelExpandHost(
     /** Rendered under the title inside the dialog (badges, view and group controls), so every control keeps working
      * while the tile is expanded (project-docs/redesign/02-layout-and-components.md section 2). */
     chrome?: ReactNode
+    /** The Export menu shown beside the title while expanded; it exports the dialog as it looks (its element is the ref). */
+    exportMenu?: (dialogRef: RefObject<HTMLElement | null>) => ReactNode
   },
 ): { trigger: ReactNode; body: ReactNode } {
   const [expanded, setExpanded] = useState(false)
   const [inlineAnchor, setInlineAnchor] = useState<HTMLDivElement | null>(null)
   const [dialogAnchor, setDialogAnchor] = useState<HTMLDivElement | null>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
+  const dialogRef = useRef<HTMLDivElement>(null)
 
   // Lazy-created once, on first render, and never replaced — see the
   // comment above for why this specific node must never change identity.
@@ -128,6 +131,7 @@ export function usePanelExpandHost(
             it explicitly here achieves the same user-visible guarantee
             without needing <DialogTrigger>. */}
         <DialogContent
+          ref={dialogRef}
           // gap-4 — not a regression, a genuine pre-existing gap in 004's
           // original design (confirmed via `git show` on the 004 commit:
           // DialogContent's className never had a gap-* class, in either
@@ -153,7 +157,11 @@ export function usePanelExpandHost(
             triggerRef.current?.focus()
           }}
         >
-          <DialogTitle>{title}</DialogTitle>
+          <div className="flex items-center gap-2 pr-8">
+            <DialogTitle>{title}</DialogTitle>
+            <span className="flex-1" />
+            {options?.exportMenu?.(dialogRef)}
+          </div>
           {options?.chrome}
           <div ref={setDialogAnchor} className="min-h-0 flex-1" />
         </DialogContent>
