@@ -304,6 +304,13 @@ export class ZoneMap implements CameraMap {
       map.off('error', onLoadError)
       this.applyTheme()
       this.applyOpacity()
+      // The first styledata of a swap can arrive while the previous style's sources are still listed (online basemap to
+      // blank), so settle once more when the map goes idle. Both calls are idempotent.
+      map.once('idle', () => {
+        if (this.destroyed || gen !== this.basemapGen) return
+        this.applyTheme()
+        this.applyOpacity()
+      })
     }
     const onLoadError = () => {
       map.off('error', onLoadError)
@@ -314,6 +321,11 @@ export class ZoneMap implements CameraMap {
       map.once('styledata', () => {
         this.applyTheme()
         this.applyOpacity()
+        map.once('idle', () => {
+          if (this.destroyed || gen !== this.basemapGen) return
+          this.applyTheme()
+          this.applyOpacity()
+        })
       })
       map.setStyle(freshBlankStyle(), { transformStyle: (prev, next) => this.keepOwn(prev, next) })
     }

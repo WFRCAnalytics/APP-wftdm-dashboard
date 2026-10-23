@@ -51,6 +51,14 @@ async function gotoTab(page: Page, name: string) {
   await page.getByRole('tablist').getByRole('tab', { name, exact: true }).click()
 }
 
+// The tile redraws as its data lands, which can close an open dropdown under the pointer: open it and pick as one retried step.
+async function chooseGroup(page: Page, card: ReturnType<typeof tile>, option: RegExp) {
+  await expect(async () => {
+    await card.getByRole('combobox', { name: 'Group by' }).click({ timeout: 5_000 })
+    await page.getByRole('option', { name: option }).click({ timeout: 5_000 })
+  }).toPass({ timeout: 25_000 })
+}
+
 test.describe('063 P4 — multi-view tile', () => {
   test('shows the view switcher and Group by, with the first view drawn', async ({ page }) => {
     await boot(page)
@@ -90,8 +98,7 @@ test.describe('063 P4 — multi-view tile', () => {
     await expect(card.locator('g[data-node-name="work"]').first()).toBeVisible({ timeout: 20_000 })
     await expect(card.locator('g[data-node-name="SOV"]')).toHaveCount(0)
 
-    await card.getByRole('combobox', { name: 'Group by' }).click()
-    await page.getByRole('option', { name: /^Mode/ }).click()
+    await chooseGroup(page, card, /^Mode/)
     await expect(card.locator('g[data-node-name="SOV"]').first()).toBeVisible({ timeout: 20_000 })
     await expect(card.locator('g[data-node-name="work"]')).toHaveCount(0)
   })
@@ -101,8 +108,7 @@ test.describe('063 P4 — multi-view tile', () => {
     await gotoTab(page, 'Mode Choice')
     let card = tile(page)
     await card.getByRole('group', { name: 'View' }).getByRole('button', { name: 'Sunburst' }).click()
-    await card.getByRole('combobox', { name: 'Group by' }).click()
-    await page.getByRole('option', { name: /^Mode/ }).click()
+    await chooseGroup(page, card, /^Mode/)
 
     await gotoTab(page, 'Trip')
     await gotoTab(page, 'Mode Choice')
