@@ -1,16 +1,18 @@
-import { Suspense, useEffect, useMemo, useRef } from 'react'
+import { Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 import { useCompareInputs } from '@/hooks/useCompareInputs'
 import { useScenarioDisplay } from '@/hooks/useScenarioDisplay'
 import { useTileState } from '@/hooks/useTileState'
+import { useFill } from '@/layout/fill'
 import { PanelErrorBoundary } from '@/layout/panelCard'
+import { useExpandedHeight } from '@/layout/panelExpandHost'
 import type { CompareStrategy, PanelConfig } from '@/layout/types'
 import { PanelEmptyState } from '@/panels/PanelEmptyState'
 import { PanelErrorState } from '@/panels/PanelErrorState'
 import { PanelLoadingState } from '@/panels/PanelLoadingState'
 import { registry } from '@/panels/registry'
-import { planCompare, type Cell } from '@/panels/compareStrategy'
+import { GRID_GAP, minCellWidth, pickColumns, planCompare, type Cell } from '@/panels/compareStrategy'
 import { resolveScenarioColor } from '@/panels/scenarioDisplay'
 import { Layers } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -42,17 +44,31 @@ export interface CompareHostProps {
 /** Fixed chrome inside a side-by-side body: the pager row. */
 const PAGER_HEIGHT = 30
 const CAPTION_HEIGHT = 26
-
 export function CompareHost({ panel, strategy, tileKey, title }: CompareHostProps) {
   const { inputs } = useCompareInputs()
   const display = useScenarioDisplay()
   const [tile, setTile] = useTileState(tileKey)
   const gridRef = useRef<HTMLDivElement>(null)
+  const fill = useFill()
+  const expandedHeight = useExpandedHeight()
 
   const plan = useMemo(
     () => planCompare(panel, strategy, inputs, { scenario: tile.scenario, page: tile.page }),
     [panel, strategy, inputs, tile.scenario, tile.page],
   )
+
+  // The grid's own width drives the column count; measured before paint so the first frame is already right.
+  const [gridWidth, setGridWidth] = useState(0)
+  const hasCells = plan.kind === 'cells'
+  useLayoutEffect(() => {
+    const grid = gridRef.current
+    if (!grid) return
+    const measure = () => setGridWidth((prev) => (Math.abs(prev - grid.clientWidth) < 4 ? prev : grid.clientWidth))
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(grid)
+    return () => ro.disconnect()
+  }, [hasCells])
 
   const cellKey = plan.kind === 'cells' ? plan.cells.map((c) => c.run).join('|') : ''
   useEffect(() => {
@@ -71,21 +87,21 @@ export function CompareHost({ panel, strategy, tileKey, title }: CompareHostProp
 
   // Side by side: the reference first, then the compared scenarios, paged.
   const total = plan.cells.length
-  const cols = total <= 2 ? total : 2
+  const cols = pickColumns({ total, width: gridWidth, minCell: minCellWidth(panel), tabbed: fill.active && !expandedHeight, layout: tile.layout })
   const rows = Math.ceil(total / cols)
   // an odd last cell takes the whole row instead of leaving a gap
   const odd = cols === 2 && total % 2 === 1
   const bodyHeight = (panel.height ?? 400) - (plan.pages > 1 ? PAGER_HEIGHT : 0)
   // each cell: 1px borders, 8px padding, the caption row and its 4px margin
   const cellChrome = 2 + 16 + CAPTION_HEIGHT
-  const cellHeight = Math.max(100, Math.floor((bodyHeight - (rows - 1) * 10) / rows) - cellChrome)
+  const cellHeight = Math.max(100, Math.floor((bodyHeight - (rows - 1) * GRID_GAP) / rows) - cellChrome)
 
   return (
     <div className="flex flex-col gap-2" data-testid="compare-cells">
       <div
         ref={gridRef}
-        className="wf-multi grid gap-[10px]"
-        style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
+        className="wf-multi grid"
+        style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`, gap: GRID_GAP }}
       >
         {plan.cells.map((cell: Cell) => (
           <div

@@ -11,6 +11,8 @@ export interface TileState {
   strategy?: CompareStrategy
   /** The local scenario for the `switch` strategy. */
   scenario?: string
+  /** Side-by-side arrangement: `auto` (default) picks columns from the width, `row` puts every cell in one row, `grid` uses two columns. */
+  layout?: 'auto' | 'row' | 'grid'
   /** Pager index for `multi` / `grid`. */
   page?: number
   /** Synced-map group id, generated once per tile. */

@@ -12,6 +12,33 @@ export const UNION_HAZARD_TYPES: ReadonlySet<string> = new Set(['treemap', 'sunb
 /** Side-by-side cells per page: the reference plus three more. */
 export const CELLS_PER_PAGE = 4
 
+export const GRID_GAP = 10
+const MIN_FORCED_ROW_CELL = 160
+
+/** Narrowest a cell may get before it wraps to the next row: maps need more room than small charts. */
+export function minCellWidth(panel: PanelConfig): number {
+  const p = panel as { type: string; kind?: string }
+  return p.type === 'zonemap' || p.type === 'flowmap' || /map/i.test(p.kind ?? '') ? 280 : 220
+}
+
+/**
+ * Columns for a side-by-side grid, from the width it really has: as many as fit at `minCell`, never more than there are
+ * cells. Four cells that fit go in one row (full height each, not half), otherwise 2x2 rather than 3+1. A tabbed page
+ * already gives the tile the whole screen height, so there 2 columns is the most (2x2 reads fine); a phone gets 1.
+ * A viewer's Layout choice (`row`/`grid`) overrides this. Width 0 (not yet measured) falls back to the old two-column rule.
+ */
+export function pickColumns({ total, width, minCell, tabbed, layout = 'auto' }: { total: number; width: number; minCell: number; tabbed: boolean; layout?: 'auto' | 'row' | 'grid' }): number {
+  if (total <= 1) return 1
+  // a manual choice wins, unless a row would squeeze cells below a readable width
+  if (layout === 'grid') return 2
+  if (layout === 'row' && (width === 0 || width >= total * MIN_FORCED_ROW_CELL + (total - 1) * GRID_GAP)) return total
+  let cols = width > 0 ? Math.floor((width + GRID_GAP) / (minCell + GRID_GAP)) : 2
+  if (tabbed) cols = Math.min(cols, 2)
+  cols = Math.max(1, Math.min(cols, total))
+  if (cols === 3 && total === 4) cols = 2
+  return cols
+}
+
 export interface CompareInputs {
   compare: boolean
   display: DisplayMode

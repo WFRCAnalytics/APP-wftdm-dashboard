@@ -104,6 +104,17 @@ export function MultiViewTile({ config: rawConfig, tileKey }: { config: MultiVie
   } else if (ctx.compare && resolved.strategies.length === 1 && (strategy === 'multi' || strategy === 'grid')) {
     badges.push(<Badge key="sbs" variant="neutral">Side by side</Badge>)
   }
+  if (ctx.compare && (strategy === 'multi' || strategy === 'grid') && inputs.active.length >= 3) {
+    controls.push(
+      <Segmented
+        key="layout"
+        label="Layout"
+        value={tile.layout ?? 'auto'}
+        options={[{ id: 'auto', label: 'Auto' }, { id: 'row', label: 'Row' }, { id: 'grid', label: 'Grid' }]}
+        onChange={(layout) => setTile({ layout: layout as 'auto' | 'row' | 'grid' })}
+      />,
+    )
+  }
   if (strategy === 'switch' || strategy === 'swipe') {
     const runs = inputs.active
     const value = tile.scenario && runs.includes(tile.scenario) ? tile.scenario : (inputs.focusRun ?? runs[0] ?? '')
