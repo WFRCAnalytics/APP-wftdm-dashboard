@@ -88,6 +88,8 @@ export function ControlBar() {
   const showYear = deployment.years.length > 1
   const showFocus = scenarios.length + rounds.length > 1
   const showCompare = independent.length >= 2
+  // a hook, so it stays above the early return: the bar appears and disappears as scenarios come and go
+  const showShort = useMediaQuery('(max-width: 1399px)')
   if (!showYear && !showFocus && !showCompare) return null
 
   const yearOptions = deployment.years.map((y) => ({ value: String(y.year), label: y.label ? `${y.year} · ${y.label}` : String(y.year) }))
@@ -95,7 +97,6 @@ export function ControlBar() {
 
   // One row in every state (project-docs/redesign/10-toolbar-layout-export-proposal.md section A): Year, the Scenarios
   // chip (focus, compared, reference), Show (greyed out while Compare is off) and the Compare toggle, right-most. Nothing wraps; the chip is the flexible item.
-  const showShort = useMediaQuery('(max-width: 1399px)')
   return (
     <div
       className="glass flex min-w-0 max-w-full origin-top-right flex-nowrap items-center gap-2 rounded-full px-2 py-[7px] max-[640px]:flex-wrap max-[640px]:rounded-[24px] [animation:control-bar-expand_260ms_cubic-bezier(0.2,0.8,0.2,1)]"

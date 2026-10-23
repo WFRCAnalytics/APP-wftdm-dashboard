@@ -32,10 +32,7 @@ async function gotoTestTab(page: Page) {
   await page.waitForTimeout(2500)
 }
 
-// Every assertion here waits on the crowded Test tab (~80 panels mount at once), where errors and maps take 5-8s to
-// surface under DuckDB-WASM contention; the 5s default made this file flaky. Healthy runs still finish as soon as the
-// state appears.
-expect.configure({ timeout: 20_000 })
+// (assertions here use _testTab's 20s expect: the crowded Test tab surfaces errors and maps slowly)
 
 test.describe('040 US1 — dashboard-8-test.yaml reproduces every error/empty state', () => {
   test('full_page + more than one panel → console.warn + ordinary card-grid render, never blank', async ({

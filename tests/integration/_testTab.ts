@@ -6,9 +6,14 @@
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
-import { test as base } from '@playwright/test'
+import { test as base, expect as baseExpect } from '@playwright/test'
 
 export * from '@playwright/test'
+
+// The Test tab mounts ~80 panels at once, so errors and empty states take several seconds to surface under DuckDB-WASM
+// contention. Specs on it get a 20s assertion timeout instead of the 5s default; a healthy run still finishes as soon as
+// the state appears. (`expect.configure(...)` returns a NEW expect: calling it and dropping the result does nothing.)
+export const expect = baseExpect.configure({ timeout: 20_000 })
 
 const here = dirname(fileURLToPath(import.meta.url))
 const TEST_TAB_FILE = 'dashboard-8-test.yaml'
