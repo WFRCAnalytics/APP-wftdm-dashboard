@@ -13,10 +13,11 @@ export interface RawSource {
 
 const num = (r: Row, k: string): number => Number(r[k])
 
-/** Sums `sumCols` over rows grouped by the given dimensions, mapping each dimension through the vocabulary. */
+/** Sums `sumCols` over rows grouped by the given dimensions, mapping each dimension through the vocabulary (a `null`
+ * dimension, like the departure hour, has none and groups on the raw value). */
 export function regroup(
   rows: readonly Row[],
-  dims: { column: string; dimension: Parameters<typeof aliasValue>[0] }[],
+  dims: { column: string; dimension: Parameters<typeof aliasValue>[0] | null }[],
   sumCols: string[],
 ): Row[] {
   const out = new Map<string, Row>()
@@ -24,7 +25,7 @@ export function regroup(
     const mapped: Record<string, string> = {}
     let skip = false
     for (const d of dims) {
-      const label = hasAliases(d.dimension) ? aliasValue(d.dimension, r[d.column]) : String(r[d.column])
+      const label = d.dimension && hasAliases(d.dimension) ? aliasValue(d.dimension, r[d.column]) : String(r[d.column])
       if (label === undefined) {
         skip = true
         break
@@ -54,7 +55,10 @@ export async function adaptTable(table: string, src: RawSource): Promise<Row[] |
   switch (table) {
     case 'trip_mode_share': {
       if (!src.has(table)) return null
-      if (!hasAliases('major_trip_mode')) return src.rows(table)
+      if (!hasAliases('major_trip_mode')) {
+        const rows = await src.rows(table)
+        return rows.every((r) => r.share !== undefined) ? rows : withShare(rows, 'trips')
+      }
       return withShare(regroup(await src.rows(table), [{ column: 'major_trip_mode', dimension: 'major_trip_mode' }], ['trips']), 'trips')
     }
     case 'purpose_mode_flow': {
@@ -98,7 +102,7 @@ export async function adaptTable(table: string, src: RawSource): Promise<Row[] |
         await src.rows('trip_scheduling'),
         [
           { column: 'primary_purpose', dimension: 'primary_purpose' },
-          { column: 'depart_hour', dimension: 'district' },
+          { column: 'depart_hour', dimension: null },
         ],
         ['trips'],
       )
@@ -161,8 +165,11 @@ export async function adaptTable(table: string, src: RawSource): Promise<Row[] |
       const bands = Array.from({ length: 17 }, (_, i) => (i === 16 ? '80+' : `${i * 5}-${i * 5 + 4}`))
       const counts = new Map<string, number>()
       for (const r of await src.rows('person_household_profile')) {
-        const band = bands[Math.min(16, Math.floor(num(r, 'age') / 5))]
-        const sex = num(r, 'sex') === 1 ? 'Male' : 'Female'
+        // a missing, blank or non-numeric age, or a sex code other than 1 (male) / 2 (female), is not a person we can place
+        const age = r.age == null || r.age === '' ? NaN : num(r, 'age')
+        const sex = num(r, 'sex') === 1 ? 'Male' : num(r, 'sex') === 2 ? 'Female' : undefined
+        if (!(age >= 0) || !sex) continue
+        const band = bands[Math.min(16, Math.floor(age / 5))]
         counts.set(`${band}|${sex}`, (counts.get(`${band}|${sex}`) ?? 0) + 1)
       }
       return bands.flatMap((age_band) => ['Male', 'Female'].map((sex) => ({ age_band, sex, persons: counts.get(`${age_band}|${sex}`) ?? 0 })))
