@@ -624,14 +624,12 @@ slider) are shipped (`061-appearance-controls`).
 
 **Known, deliberately-deferred gaps** (see `project-docs/PIPELINE.md` and
 `project-docs/IMPLEMENTATION-HISTORY.md` items 26/28 for full detail):
-- A systemic pre-`056` test-infrastructure gap: ~8 Playwright spec files
-  (`settingsModal`, `observablePlotPanel`, `tablePanel`,
-  `scenarioManager`, `valueBoxPanel`, `sankeyPanel`,
-  `scenarioAutoActivation`) still depend on the retired
-  `tests/fixtures/dashboard-config/` on-disk copy mechanism and fail on a
-  full-suite run — confirmed pre-existing via repeated `git stash` A/B,
-  not caused by any recent feature. A real, separate test-migration
-  project of its own.
+- Playwright suite health: the old "~8 specs depend on the retired `tests/fixtures/dashboard-config/`" gap is closed
+  (`settingsModal`, `scenarioManager`, `scenarioAutoActivation` and the rest now run on real demo content; the Test tab
+  specs use `tests/integration/_testTab.ts`'s 20s `expect`). What remains is load flakiness: on a full run with the
+  default parallel workers about two dozen specs that crowd the ~80-panel Test tab or draw several maps can time out,
+  and pass when re-run with `--workers=1`. `chartMaps` "Compare switched to one at a time" can also fail when it runs
+  right after another map spec (hover timing). Re-run failures with `--workers=1` before treating them as real.
 - `coi-serviceworker.js` no longer exists; the deployed app runs without
   cross-origin isolation.
 - DuckDB-WASM's parquet extension still requires one real network fetch
