@@ -381,7 +381,7 @@ test.describe('User Story 3 - Sankey panel behaves consistently with the rest of
   })
 
   // Adapted to the REAL Mode Choice tab's own actual composition — the
-  // retired fixture mixed sankey with valuebox/the old chart library/table/markdown/
+  // retired fixture mixed sankey with valuebox/the retired chart library/table/markdown/
   // observable-plot all on one Summary-tab-equivalent; the real Mode
   // Choice tab (where the real sankey panel actually lives) mixes it with
   // table + observable-plot x2 instead, matching markdownPanel.spec.ts's

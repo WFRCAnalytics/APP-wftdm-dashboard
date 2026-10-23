@@ -62,8 +62,8 @@ TypeScript throughout; React for all UI (constitution v2.0.0+). No branch-
 per-phase migration — work lands directly on `main`. `services/`/`state/`
 stay plain `.ts` (no JSX); anything rendering JSX is `.tsx`.
 
-the old chart library and the old chart library were removed in the 063 redesign (recover them from git history, commit before
-`redesign: remove the old chart library and the old chart library` if ever needed). Chart-engine consolidation
+The two earlier chart engines (the old default `type:` panels) were removed in the 063 redesign; recover them from git
+history, from the commit before `b90e525` (`redesign: remove Plotly and Recharts`), if ever needed. Chart-engine consolidation
 (`057-observable-plot-conversion`), and every panel-type's own build
 story are in `project-docs/IMPLEMENTATION-HISTORY.md` (items 16, 21, 28–31).
 
@@ -107,7 +107,7 @@ manifest.yaml         per-scenario metadata
   `DashboardBranding`: `title`, `logoUrl`/`logoUrlDark` (full logo, shown when the nav
   is expanded), `markUrl`/`markUrlDark` (abbreviated logo, shown on the collapsed rail;
   the generic mark when unset), `scenarioPalette`,
-  `protomapsPmtilesUrl`, `primaryColor`/`secondaryColor`/`accentColor` (the three DATA colours: transit, walking, biking and the chart palette) and `brandColor` (the
+  `protomapsPmtilesUrl`/`protomapsApiKey` (a self-hosted PMTiles file, or a Protomaps hosted-API key), `primaryColor`/`secondaryColor`/`accentColor` (the three DATA colours: transit, walking, biking and the chart palette) and `brandColor` (the
   interface colour for selected pills, titles, tags and focus rings; separate so a data colour never recolours the chrome). All
   optional; an unconfigured deployment renders exactly as it always did.
 - Parquet outputs live in `{scenario-dir}/summary/` — written by the post-processor.
@@ -222,7 +222,7 @@ APP-wftdm-dashboard/
     │   └── settings/              # settingsModal.tsx tabs: appearanceTab, scenariosTab,
     │                              # basemapTab, documentationTab
     ├── panels/
-    │   ├── registry.tsx           # type → lazy-loaded component map (14 panel types, see below)
+    │   ├── registry.tsx           # type → lazy-loaded component map (14 registry keys, see below)
     │   ├── expandablePanelTypes.ts # EXPANDABLE_PANEL_TYPES — default expand-scope per panel type
     │   ├── panelQuery.ts          # PanelConfig + filters → SQL; buildComparisonDiffQuery(),
     │   │                          # buildTableDrivenPageQuery() (server-side pagination ≥100k rows)
@@ -249,7 +249,7 @@ bug found in it and how it was fixed) is in
 
 ---
 
-## Panel types (12, plus the `multi-view` wrapper, in `panels/registry.tsx`)
+## Panel types (12, plus `chart` and the `multi-view` wrapper, in `panels/registry.tsx`)
 
 ```tsx
 export const registry: Record<string, ComponentType<PanelProps>> = {
@@ -260,6 +260,7 @@ export const registry: Record<string, ComponentType<PanelProps>> = {
   'markdown': MarkdownPanel,
   'treemap': TreemapPanel, 'sunburst': SunburstPanel,
   'pie': PieChartPanel, 'radar': RadarChartPanel,
+  'chart': ChartPanel,            // 063: `type: chart, kind: <name>` — the catalogue kinds in src/charts/kinds/
   'multi-view': MultiViewPanel,   // 063: wrapper holding several views of one dataset (panels/multiView.ts)
 }
 ```
@@ -508,7 +509,7 @@ heavy per-chart-library code out of the eager entry graph. See
 `project-docs/IMPLEMENTATION-HISTORY.md` item 26 for the three real
 leak-sources found and fixed (a static import in `basemapTab.tsx`, a
 merged maps/deck.gl chunk, and React itself getting bundled into
-`'the old chart library'` transitively).
+a chart-library chunk transitively).
 
 ---
 
@@ -519,10 +520,9 @@ merged maps/deck.gl chunk, and React itself getting bundled into
 <script type="module" src="/src/main.tsx"></script>
 ```
 
-(`public/coi-serviceworker.js`, once referenced here, no longer exists in
-this checkout — the real production app currently runs with no
-cross-origin isolation; `@duckdb/duckdb-wasm` picks a non-threaded bundle
-gracefully. Flagged as stale-docs, not yet fixed — see history item 32.)
+(There is no `coi-serviceworker.js`: the production app runs with no cross-origin isolation and
+`@duckdb/duckdb-wasm` picks its non-threaded bundle. `public/asset-cache-serviceworker.js` is a different thing — it
+caches the DuckDB/Parquet assets. The dev server alone sets COOP/COEP, see `vite.config.ts`.)
 
 ---
 
@@ -558,7 +558,7 @@ Tailwind v4 via the `@config` bridge (`033-shadcn-default-theme`) —
 `postcss.config.js`/`autoprefixer`. `components.json` `style` is
 `"new-york-v4"`.
 
-Full dependency-history detail (the old chart library v2→v3, why each pin is exact vs.
+Full dependency-history detail (the old chart engines' major-version upgrades, why each pin is exact vs.
 a range, every version-compatibility bug found) is in
 `project-docs/IMPLEMENTATION-HISTORY.md`.
 
@@ -609,7 +609,7 @@ before touching charts).
 
 ## Implementation status
 
-All 12 remaining panel types are built (the old chart library and the old chart library were removed in the 063 redesign). Sidebar navigation, lazy
+All 12 panel types (plus `chart` and the `multi-view` wrapper) are built; the two earlier chart engines were removed in the 063 redesign. Sidebar navigation, lazy
 tab-scoped data loading, server-side table pagination (≥100k rows),
 scenario label/color overrides, deployer-configurable branding/palette/
 basemap defaults, and a full shadcn/ui default-theme adoption (Tailwind
@@ -645,7 +645,7 @@ shipped feature, read `project-docs/IMPLEMENTATION-HISTORY.md`.
 
 | Repo | What to copy |
 |---|---|
-| `ar-puuk/omx-viewer` | DuckDB-WASM init, Arrow handoff, Vite config, coi-serviceworker, GH Actions |
+| `ar-puuk/omx-viewer` | DuckDB-WASM init, Arrow handoff, Vite config (its coi-serviceworker and GH Actions parts are NOT used here) |
 | `WFRCAnalytics/APP-Commute-Explorer` | MapboxOverlay + FlowmapLayer + MapLibre wiring, hover/pick pattern |
 | `ar-puuk/spatial-sql-explorer` | DuckDB spatial extension lazy-load, MapLibre choropleth, basemap switching |
 | `ar-puuk/parquet-viewer` | GeoParquet metadata detection, registerFileBuffer, spatial extension fallback, buffer-pool collision fix |

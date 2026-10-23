@@ -126,7 +126,7 @@ export function usePanelExpandHost(
           actually renders. Hidden (not removed) while expanded, so it
           stays available the instant the dialog closes. Given an
           explicit height only when the panel config specifies one
-          (options.height, e.g. a the old chart library panel's `height:` key, a common
+          (options.height, e.g. a retired chart library panel's `height:` key, a common
           field across panel types per data-model.md) — left `auto`
           otherwise, so a panel with no height opinion (e.g. a value box)
           renders exactly as it did before this feature existed. */}
@@ -154,7 +154,7 @@ export function usePanelExpandHost(
           // DialogContent's className never had a gap-* class, in either
           // dialog.tsx or here). It went unnoticed because every panel
           // type except flowmap/zonemap happens to have its own incidental
-          // top spacing (the old chart library/table/markdown content, a value box's own
+          // top spacing (the retired chart library/table/markdown content, a value box's own
           // layout) between its rendered content and its top edge — a real
           // user report on the map panel types surfaced it: their
           // containerRef div (FlowMapPanel.tsx/ZoneMapPanel.tsx) is

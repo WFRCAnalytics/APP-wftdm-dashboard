@@ -96,7 +96,7 @@ export async function initDuckDB(): Promise<void> {
       // this: ZoneMapPanel.tsx's choropleth-value join
       // (031-all-panel-demo-content), GraphicWalkerPanel.tsx's whole-row
       // conversion (found live on the Explore tab, same root cause), and
-      // a the old chart library y-value silently rendering zero geometry
+      // a retired chart library y-value silently rendering zero geometry
       // (040-test-suite-migration's Batch B,
       // avoided by data-source substitution rather than patched). Every
       // DuckDB BIGINT column (any COUNT(*)-derived aggregate) arrives

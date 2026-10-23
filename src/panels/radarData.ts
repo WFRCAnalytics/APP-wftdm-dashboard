@@ -94,7 +94,7 @@ export interface RadarPolygon {
 /**
  * Pure polar-coordinate geometry (research.md §4) — no D3 layout
  * package. Angles start at -π/2 (12 o'clock) and proceed clockwise,
- * matching the old chart library'/Chart.js's own real radar-chart convention. A fixed
+ * matching the retired chart library's/Chart.js's own real radar-chart convention. A fixed
  * 0 domain min (values are already clamped to >= 0 by
  * aggregateRadarSeries). A `maxValue` of 0 degenerates every point to
  * the exact center — still a valid, non-crashing polygon.

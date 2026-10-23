@@ -14,7 +14,7 @@ declare global {
 // requirement for a single-series -> multi-series change).
 //
 // 057-observable-plot-conversion: "Total Trips by Mode" and "Average Trip
-// Distance by Purpose" were `the old chart library`/`the old chart library` until this feature
+// Distance by Purpose" were the retired chart library/the retired chart library until this feature
 // converted both to `observable-plot` (contracts/panel-conversions.md) —
 // the dual-theme per-scenario-series test below is rewritten accordingly
 // (it originally checked three DISTINCT engines' own DOM shapes; now two

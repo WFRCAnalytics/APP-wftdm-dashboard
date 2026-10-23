@@ -19,7 +19,7 @@ Parquet / GeoParquet summary files  (scenario folder)
         ▼  DuckDB-WASM (browser, runtime)
         │  reads Parquet, joins observed data, passes to panels
         ▼
-Dashboard panels (the old chart library / Observable Plot / MapLibre / Graphic Walker)
+Dashboard panels (Observable Plot / D3 / MapLibre / Graphic Walker)
 ```
 
 All format conversion (CSV→Parquet, OMX→Parquet, shapefile→GeoParquet) happens **offline**. The browser only ever reads Parquet.
@@ -89,17 +89,25 @@ they run. Neither this repo's Python package nor its JS app validates or
 transforms these files ahead of time; runtime parsing (constitution Principle IV)
 is the only thing that ever touches them.
 
-### the old chart library + Observable Plot (not one or the other)
+### Observable Plot + D3 (one chart system, no third library)
 
-**the old chart library:** interactive legend (toggle scenarios), modebar (fullscreen/export), rich hover. Use for: volume scatter, screenline comparison, VMT by facility type.
+**Observable Plot** draws bars, lines, areas, dots and cells (grammar-of-graphics, faceted small multiples, reactive
+filter inputs). **D3** submodules draw what Plot cannot: Sankey (`d3-sankey`), treemap and sunburst (`d3-hierarchy`),
+pie, radar and chord (`d3-shape`/`d3-chord`, hand-rolled polar geometry). Both read the same colour tokens, so a chart
+looks the same in light and dark and across the two engines.
 
-**Observable Plot:** grammar-of-graphics, reactive filter inputs. Use for: mode share filtered by purpose, TLFD by mode, time-of-day by purpose.
+Two ways to author a chart: the original `type: observable-plot` (and `sankey`, `treemap`, `sunburst`, `pie`, `radar`)
+panels, and, since the 063 redesign, `type: chart, kind: <name>` — a catalogue of ready-made kinds, one module each in
+`src/charts/kinds/`, wrapped by `multi-view` tiles that add a view switcher, Group by and the compare strategies. Kinds
+never read stores or DuckDB; they get a `ChartEnv`. The two earlier chart engines were removed in that redesign (recover
+them from git history, from the commit before `b90e525`); do not add another chart library.
 
-**Extensibility:** adding a charting library = one new `XxxPanel.tsx` + one registry line. Nothing else changes.
+**Extensibility:** a new chart kind is one file in `src/charts/kinds/` (auto-registered); a new panel type is one
+`XxxPanel.tsx` plus one line in `panels/registry.tsx`. Nothing else changes.
 
 ### MapLibre + flowmap.gl
 
-MapLibre (not Mapbox — no token required). `MapboxOverlay` from `@deck.gl/mapbox` renders `FlowmapLayer` in non-interleaved mode over MapLibre canvas. Proven in production in Commute Explorer. Imperative lifecycle: create overlay once, `setProps()` on update, `map.remove()` on destroy. Never recreate the map instance on data change.
+MapLibre (not Mapbox — no token required). `MapboxOverlay` from `@deck.gl/mapbox` renders `FlowmapLayer` in interleaved mode (`interleaved: true`, which keeps the WebGL context count at one per map) over the MapLibre canvas. Proven in production in Commute Explorer. Imperative lifecycle: create overlay once, `setProps()` on update, `map.remove()` on destroy. Never recreate the map instance on data change.
 
 ### Graphic Walker for the Explore tab
 
@@ -115,7 +123,7 @@ The JS app (`APP-wftdm-dashboard`) is deployed in three modes from the same code
 
 **Hosted web app** — static files at `wfrcanalytics.github.io/APP-wftdm-dashboard` or `wfrc.utah.gov/wftdm-dashboard`. At startup the app registers `public/observed/` (always pre-loaded, deselectable) and all entries in `public/scenarios/index.json` (published model runs). Analysts can additionally load local scenario folders via `showDirectoryPicker()` (Chrome/Edge). URL params (`?s=observed&s=2027-rtp-baseyear`) enable shareable deep links into any scenario combination.
 
-**GitHub Pages demo build — current mechanism (`039-github-pages-restructure`):** the demo dashboard is deployed to `wfrcanalytics.github.io/APP-wftdm-dashboard/` by a **local build committed by hand**, not a CI pipeline. `npm run build:pages` runs `tsc --noEmit && vite build --outDir docs --emptyOutDir` — same `base: '/APP-wftdm-dashboard/'` as the normal build, output into `docs/` instead of `dist/`. GitHub Pages is configured **"Deploy from a branch → `/docs` folder"**, so committing `docs/` publishes it. `docs/.nojekyll` (sourced from `public/.nojekyll`) turns off Jekyll. There is deliberately **no `.github/workflows/` file** — building and committing `docs/` is a manual step. Vite copies `public/` verbatim, so `public/demo-dashboard-config/`, `public/demo-scenarios/`, `public/demo-geometry/`, `public/basemap/`, and `public/coi-serviceworker.js` all land correctly in `docs/`; verified against a real local build served through a static file server at the Pages path (all seven demo tabs load, zero asset 404s). Note the naming clash this creates: **`docs/` currently holds a built app, not documentation** — the internal reference docs moved to **`project-docs/`** (`ARCHITECTURE.md`, `SPEC.md`, `GRAMMAR.md`, `PIPELINE.md`, `CALIBRATION-SUMMARIES.md`, `UX-REDESIGN-PROPOSAL.md`, `BASEMAP-PICKER-PROPOSAL.md`). Once the real dashboard deploys from WFRC's own server, `docs/` is emptied of build output and reverts to a normal documentation source tree (Python package / YAML authoring docs).
+**GitHub Pages demo build — current mechanism (`039-github-pages-restructure`):** the demo dashboard is deployed to `wfrcanalytics.github.io/APP-wftdm-dashboard/` by a **local build committed by hand**, not a CI pipeline. `npm run build:pages` runs `tsc --noEmit && vite build --outDir docs --emptyOutDir` — same `base: '/APP-wftdm-dashboard/'` as the normal build, output into `docs/` instead of `dist/`. GitHub Pages is configured **"Deploy from a branch → `/docs` folder"**, so committing `docs/` publishes it. `docs/.nojekyll` (sourced from `public/.nojekyll`) turns off Jekyll. There is deliberately **no `.github/workflows/` file** — building and committing `docs/` is a manual step. Vite copies `public/` verbatim, so `public/demo-dashboard-config/`, `public/demo-scenarios/`, `public/demo-geometry/` and `public/basemap/` all land correctly in `docs/`; verified against a real local build served through a static file server at the Pages path (every demo tab loads, zero asset 404s). Note the naming clash this creates: **`docs/` currently holds a built app, not documentation** — the internal reference docs moved to **`project-docs/`** (`ARCHITECTURE.md`, `SPEC.md`, `GRAMMAR.md`, `PIPELINE.md`, `CALIBRATION-SUMMARIES.md`, `UX-REDESIGN-PROPOSAL.md`, `BASEMAP-PICKER-PROPOSAL.md`). Once the real dashboard deploys from WFRC's own server, `docs/` is emptied of build output and reverts to a normal documentation source tree (Python package / YAML authoring docs).
 
 **`wftdm-dashboard serve`** — thin Python file server on `localhost:8050`. Analyst runs from any folder containing model output; visits the hosted web app which detects `localhost` and switches from folder picker to HTTP loading. Firefox/Safari compatible. Analogous to `simwrapper serve`.
 
@@ -129,7 +137,7 @@ The Python package (`wftdm-dashboard`) bundles the built `dist/` as `static/` at
 
 **TDM repo structure:** the post-processor writes `summary/` into each existing scenario folder (`Scenarios/{run-name}/summary/`). No new top-level folders; the existing TDM repo structure is unchanged. When ready to publish, the analyst uses any file manager (FileZilla, Windows Explorer, etc.) to copy `Scenarios/{run-name}/summary/` and `manifest.yaml` from the TDM repo into `public/scenarios/{run-name}/` in the dashboard repo — the two repos are separate project folders on disk. The analyst then adds the scenario name to `public/scenarios/index.json`, commits, and pushes the dashboard repo.
 
-**`wftdm-dashboard init --scenario-dir <path>`** — scaffolds a new scenario directory in the TDM repo with a starting `summarize.yaml` and WFRC's default `dashboard-*.yaml` set (seven files today), so a modeler setting up a new model run doesn't start from a blank file. Creates a file only if it doesn't already exist at `<path>` — never overwrites an existing `summarize.yaml` or `dashboard-*.yaml`, so re-running `init` against a directory that's already been customized is always safe (a no-op for every file that already exists). `init` scaffolds the TDM-repo authoring side only — it never touches the dashboard repo's `public/dashboard-config/`, so it has no `index.json` to produce; that file is maintained as part of the separate publish step below.
+**`wftdm-dashboard init --scenario-dir <path>`** — scaffolds a new scenario directory in the TDM repo with a starting `summarize.yaml` and WFRC's default `dashboard-*.yaml` set (six tabs today), so a modeler setting up a new model run doesn't start from a blank file. Creates a file only if it doesn't already exist at `<path>` — never overwrites an existing `summarize.yaml` or `dashboard-*.yaml`, so re-running `init` against a directory that's already been customized is always safe (a no-op for every file that already exists). `init` scaffolds the TDM-repo authoring side only — it never touches the dashboard repo's `public/dashboard-config/`, so it has no `index.json` to produce; that file is maintained as part of the separate publish step below.
 
 **Threading note:** GitHub Pages cannot set custom response headers at all, so COOP/COEP (and therefore SharedArrayBuffer / full threaded DuckDB-WASM) are unavailable there — the app runs single-threaded WASM on GitHub Pages, which is the current deploy target while the dashboard is under active development. `wfrc.utah.gov` is hosted on Bluehost (Apache/cPanel), which can typically set custom response headers via `.htaccess` — unlike GitHub Pages, this makes COOP/COEP support *possible* there, but it is not confirmed: whether this specific Bluehost account/plan actually allows the needed headers must be verified empirically against that account when the team is ready to deploy there, not assumed from what Bluehost/Apache can do in general. For summary Parquet under 100MB, single-threaded WASM is fast enough regardless, so this isn't blocking anything now. A second deploy path to `wfrc.utah.gov` (with its own `.htaccess`) is deferred until GitHub Pages testing is complete — not something to build yet. (The GitHub Pages deploy itself is a manual local build committed into `docs/`, see the "GitHub Pages demo build" note above — no GitHub Actions job exists for either target.)
 
@@ -140,7 +148,7 @@ The Python package (`wftdm-dashboard`) bundles the built `dist/` as `static/` at
 documented in `project-docs/CALIBRATION-SUMMARIES.md` — income group, auto sufficiency,
 the four geography levels (TAZ / small / medium / large / super district),
 person type, and the rest of that document's Standard Segmentation Definitions
-— and the default `dashboard-*.yaml` files (seven today) matching the tab
+— and the default `dashboard-*.yaml` files (six today) matching the tab
 structure in `project-docs/SPEC.md`'s Navigation model. This count is not pinned
 anywhere in code — it's simply how many files ship in `templates/` today;
 `public/dashboard-config/index.json` (the dashboard repo's separate, published
@@ -177,7 +185,7 @@ either a fresh scenario directory or a manual edit, by design.
 
 | Repo | Proves |
 |---|---|
-| `ar-puuk/omx-viewer` | DuckDB-WASM + Arrow + Vite config + coi-serviceworker + GH Actions |
+| `ar-puuk/omx-viewer` | DuckDB-WASM + Arrow + Vite config (its coi-serviceworker and GH Actions parts are not used here) |
 | `WFRCAnalytics/APP-Commute-Explorer` | MapboxOverlay + FlowmapLayer + MapLibre + deck.gl v9 compat |
 | `ar-puuk/spatial-sql-explorer` | DuckDB spatial + MapLibre choropleth + basemap switching (plain JS) |
 | `ar-puuk/parquet-viewer` | GeoParquet metadata detection + spatial extension lazy-load + buffer-pool fix |

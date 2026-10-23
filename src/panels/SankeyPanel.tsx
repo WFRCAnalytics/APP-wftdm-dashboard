@@ -165,7 +165,7 @@ function renderSvg(
     text.setAttribute('font-size', '12')
     // wftdm-design-system skill audit (Phase 3 Batch 2) — a real,
     // confirmed dark-mode bug, the same class this project has hit
-    // before (the old chart library's hardcoded backgrounds, Observable Plot's tip
+    // before (the retired chart library's hardcoded backgrounds, Observable Plot's tip
     // fill): raw SVG's own initial `fill` value is black, and nothing
     // here or in any stylesheet ever set one — confirmed live,
     // getComputedStyle() read a literal `rgb(0, 0, 0)` in dark mode.

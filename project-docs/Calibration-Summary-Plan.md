@@ -112,7 +112,7 @@ Defines the post-processing pipeline: data sources (CSV, OMX, geometry), column 
 
 One file per dashboard tab. Defines the tab title, global sidebar filters, and a row-by-row layout of panels. Each panel entry declares its type, data source, filter bindings, and chart-specific options. Files are discovered automatically by the dashboard app at runtime — adding a new tab means adding a new file, no code change required.
 
-| Example snippet: `type: the old chart library title: Mode Share by Purpose metric: mode_share filter: $filters.purpose observed:   source: observed_mode_share   style: dot`   |
+| Example snippet: `type: the retired chart library title: Mode Share by Purpose metric: mode_share filter: $filters.purpose observed:   source: observed_mode_share   style: dot`   |
 | :---- |
 
 ### manifest.yaml
@@ -130,8 +130,8 @@ Each technology in the stack was chosen for a specific reason. The table below r
 | [Python DuckDB](https://duckdb.org/docs/current/clients/python/overview) (post-processor) | Offline pipeline: reads ActivitySim CSV output, converts OMX skims via `h5db` (fallback: `openmatrix`), converts geometry to GeoParquet, applies mode recoding and binning, writes named Parquet files. Configured by `summarize.yaml`. Run via `uv` — reproducible environment, no conda/venv setup.  |
 | [Parquet / GeoParquet](https://parquet.apache.org/docs/file-format/) | Universal file format across both pipeline layers. All format conversions (CSV, OMX, shapefile) happen offline in the post-processor; the browser only ever sees Parquet. Columnar storage means DuckDB-WASM reads only the columns a given query touches. GeoParquet used for zone geometry and network links. |
 | [DuckDB `h5db` extension](https://duckdb.org/community_extensions/extensions/h5db) | Community extension for reading HDF5/OMX skim matrices directly in Python DuckDB (`INSTALL h5db FROM community`). Preferred over `openmatrix` because it keeps the pipeline pure DuckDB SQL. Falls back to `openmatrix` if the extension is unavailable. |
-| [the old chart library](https://the old chart library.com/javascript/) (default charts) | Default charting library for calibration panels. Chosen for: interactive legend (click to hide/show a scenario series), modebar (fullscreen, PNG export, zoom/pan), and rich formatted hover tooltips. Best fit for volume scatter plots (model vs observed AADT with log axes and error bands), screenline comparison, and any panel the analyst will explore in depth. |
-| [Observable Plot](https://observablehq.com/plot/) (reactive panels) | Charting library for panels with user-controlled filter inputs. Grammar-of-graphics syntax (mark composition) produces complex faceted charts in fewer lines than the old chart library. The team already uses Observable Plot in existing Quarto validation documents. Used specifically where a sidebar dropdown or slider should update the chart reactively — mode share by income group, Trip Length Frequency Distribution by mode, time-of-day by purpose. |
+| [the retired chart library](https://the retired chart library.com/javascript/) (default charts) | Default charting library for calibration panels. Chosen for: interactive legend (click to hide/show a scenario series), modebar (fullscreen, PNG export, zoom/pan), and rich formatted hover tooltips. Best fit for volume scatter plots (model vs observed AADT with log axes and error bands), screenline comparison, and any panel the analyst will explore in depth. |
+| [Observable Plot](https://observablehq.com/plot/) (reactive panels) | Charting library for panels with user-controlled filter inputs. Grammar-of-graphics syntax (mark composition) produces complex faceted charts in fewer lines than the retired chart library. The team already uses Observable Plot in existing Quarto validation documents. Used specifically where a sidebar dropdown or slider should update the chart reactively — mode share by income group, Trip Length Frequency Distribution by mode, time-of-day by purpose. |
 | [MapLibre GL](https://maplibre.org/projects/gl-js/) | Open-source map rendering library (no Mapbox token required). Used for TAZ-level choropleth maps (VMT per capita, mode share deviation by zone) and as the base map for O-D flow overlays. Already in use at WFRC. |
 | [flowmap.g](https://flowmap.gl/)l \+ deck.gl | O-D desire line visualization layer on top of MapLibre. Uses `MapboxOverlay` from `@deck.gl/mapbox` to render `FlowmapLayer` in non-interleaved mode over the MapLibre canvas. Supports zoom-adaptive clustering, pickable flows with hover tooltips, and animation. The O-D flow data (`od_flows.parquet`) is produced by the post-processor as a pre-aggregated `(orig_taz, dest_taz, purpose, mode, trips)` table — no skim data needed at runtime.  |
 | js-yaml | Runtime YAML parser. All config files (`dashboard-*.yaml`, `manifest.yaml`) are fetched and parsed in the browser at load time — the app does not know dashboard content at build time. This is the mechanism that makes the dashboard config-driven rather than code-driven. |
@@ -139,16 +139,16 @@ Each technology in the stack was chosen for a specific reason. The table below r
 
 # **Charting Library Decision Detail**
 
-Both the old chart library and Observable Plot are used — not as alternatives, but as complementary tools assigned to different panel types. The decision rule is:
+Both the retired chart library and Observable Plot are used — not as alternatives, but as complementary tools assigned to different panel types. The decision rule is:
 
-| Use the old chart library when… | Use Observable Plot when… |
+| Use the retired chart library when… | Use Observable Plot when… |
 | :---- | :---- |
 | The analyst needs to toggle individual series on/off (interactive legend) | The panel has a filter control (purpose dropdown, mode selector, income group) that updates the chart |
 | The panel should be expandable to full screen or exportable as PNG (modebar) | Multiple charts on the same tab should respond to one shared input |
 | Hover tooltip needs formatted custom text (link ID, % error) | Grammar-of-graphics composition produces the chart more concisely (faceted small multiples, layered marks) |
 | Log-scale axes are needed (volume scatter) | The chart is one of several on a row and should be lightweight |
 
-In practice: volume scatter (model vs observed AADT), screenline comparison bars, and VMT by facility type use **the old chart library**. Mode share filtered by purpose, TLFD filtered by mode, and time-of-day filtered by purpose use **Observable Plot**. Both libraries are imported as standard ES modules — the panel registry routes to one or the other based on the `type:` key in the YAML config.
+In practice: volume scatter (model vs observed AADT), screenline comparison bars, and VMT by facility type use **the retired chart library**. Mode share filtered by purpose, TLFD filtered by mode, and time-of-day filtered by purpose use **Observable Plot**. Both libraries are imported as standard ES modules — the panel registry routes to one or the other based on the `type:` key in the YAML config.
 
 ### Library Extensibility
 

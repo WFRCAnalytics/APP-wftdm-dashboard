@@ -16,8 +16,8 @@ export interface PanelProps<TConfig extends PanelConfig = PanelConfig> {
 // dynamic import(), not a static top-level import — a real, confirmed
 // finding from the 042 investigation (docs/PIPELINE.md): this module used
 // to statically import all ten panel components unconditionally, which
-// made every one of their heavy library dependencies (the old chart library, MapLibre/
-// deck.gl, GraphicWalker, the old chart library, D3-sankey — ~3.5MB compressed)
+// made every one of their heavy library dependencies (the retired chart library, MapLibre/
+// deck.gl, GraphicWalker, the retired chart library, D3-sankey — ~3.5MB compressed)
 // transitively reachable from main.tsx's own entry graph, so Vite emitted
 // a <link rel="modulepreload"> for every one of them in index.html and the
 // browser fetched all of it on every single page load, regardless of

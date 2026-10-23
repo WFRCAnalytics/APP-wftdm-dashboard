@@ -105,7 +105,7 @@ test.describe('User Story 2 - An analyst sees a real number, computed from real 
 })
 
 test.describe('User Story 3 - An analyst sees a real, filter-reactive chart', () => {
-  // 057-observable-plot-conversion: this panel was `type: the old chart library` until
+  // 057-observable-plot-conversion: this panel was `type: the retired chart library` until
   // this feature converted it to `type: observable-plot` (contracts/
   // panel-conversions.md) — the query/data it renders is byte-for-byte
   // unchanged (FR-005), only the rendering engine differs.
@@ -181,7 +181,7 @@ test.describe('User Story 3 - An analyst sees a real, filter-reactive chart', ()
     // app's own text-foreground class — no separate fix needed for it,
     // confirmed by ObservablePlotPanel.tsx's own header comment; not
     // re-asserted here since it was never the bug this file's own prior
-    // the old chart library-specific version guarded.
+    // the retired chart library-specific version guarded.
 
     // A theme flip must not re-query DuckDB-WASM — only colors change.
     await page.waitForTimeout(300)

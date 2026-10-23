@@ -53,7 +53,7 @@ Scenarios/{run-name}/
         │  observed/ always pre-loaded · public/scenarios/* auto-discovered
         │  ?s=observed&s=2027-rtp-baseyear for shareable deep links
         ▼
-Dashboard panels (the old chart library / Observable Plot / MapLibre / flowmap.gl)
+Dashboard panels (Observable Plot / D3 / MapLibre / flowmap.gl / Graphic Walker)
 ```
 
 All computation happens locally. The hosted web app is static HTML/JS/CSS.
@@ -61,6 +61,9 @@ All computation happens locally. The hosted web app is static HTML/JS/CSS.
 ---
 
 ## Deployment modes
+
+> **Status:** the hosted web app and `wftdm-dashboard summarize` (the Python post-processor) exist today. The `serve`,
+> `here` and `init` commands described below are designed but not built yet.
 
 ### Web app (primary)
 Visit the hosted URL in Chrome or Edge. Published scenarios from `public/scenarios/` load
@@ -100,13 +103,13 @@ this repository. Output is written to `Scenarios/{run-name}/summary/`.
 before hand-writing anything:
 ```bash
 wftdm-dashboard init --scenario-dir Scenarios/2027-RTP-BaseYear
-# creates summarize.yaml + dashboard-1-summary.yaml ... dashboard-7-explore.yaml,
+# creates summarize.yaml + the default dashboard-*.yaml set,
 # only for files that don't already exist — never overwrites your edits
 ```
 `init` copies from the package's bundled `templates/`: a default `summarize.yaml`
 pre-filled with the standard WFRC segmentations (income group, auto sufficiency, the
 four geography levels, person type, etc. — see `project-docs/CALIBRATION-SUMMARIES.md`) and
-the seven default `dashboard-*.yaml` files matching the Navigation model in
+the default `dashboard-*.yaml` files matching the Navigation model in
 `project-docs/SPEC.md`. It's a one-time scaffold, not a synced resource — once these files
 exist, editing them is a plain YAML edit with zero package involvement (see
 `project-docs/ARCHITECTURE.md`).
@@ -165,8 +168,7 @@ See `project-docs/GRAMMAR.md` for the full YAML grammar reference.
 | Build | Vite + TypeScript | TypeScript throughout `src/`; React arrives with whichever feature first needs it, not before (constitution v2.1.1 — no phase gate, no dedicated branch for either) |
 | In-browser query | DuckDB-WASM | Columnar SQL, same dialect as Python pipeline |
 | Offline pipeline | Python DuckDB | Same SQL, reads CSV/OMX/shapefiles |
-| Charts (default) | the old chart library | Interactive legend, fullscreen, modebar |
-| Charts (reactive) | Observable Plot | Grammar-of-graphics, reactive filter inputs |
+| Charts | Observable Plot + D3 | Observable Plot draws bars, lines, areas, dots and cells; D3 draws Sankey, treemap, sunburst, pie, radar and chord. One tooltip, one palette, light and dark |
 | Explore tab | Graphic Walker | Tableau-style drag-and-drop sandbox |
 | Base maps | MapLibre GL | Open-source, no Mapbox token required |
 | O-D flow maps | flowmap.gl + deck.gl | Zoom-adaptive desire line clustering |
@@ -227,7 +229,8 @@ APP-wftdm-dashboard/
 │                                 demo app (`npm run build:pages`), not docs.
 │                                 Reverts to a docs tree post-WFRC-server deploy.
 ├── public/
-│   ├── coi-serviceworker.js    ← Enables SharedArrayBuffer on GitHub Pages
+│   ├── asset-cache-serviceworker.js ← Caches the DuckDB and Parquet assets
+│   ├── demo-scenarios/ · demo-dashboard-config/ · demo-geometry/  ← the git-tracked demo content
 │   ├── observed/               ← Observed validation data (always pre-loaded, deselectable)
 │   │   ├── manifest.yaml
 │   │   └── summary/
@@ -241,7 +244,7 @@ APP-wftdm-dashboard/
 │   └── dashboard-config/       ← Published tab layout (discovered + fetched at startup)
 │       ├── index.json          ← ["dashboard-1-summary.yaml", "dashboard-2-person.yaml", ...]
 │       ├── dashboard-1-summary.yaml
-│       └── ...                 ← whatever else index.json lists (seven, by default)
+│       └── ...                 ← whatever else index.json lists (six, by default)
 ├── src/                        ← Dashboard application source
 ├── python/
 │   └── wftdm_dashboard/        ← Python package (CLI + embedded app)

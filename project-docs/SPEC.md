@@ -114,9 +114,9 @@ export function Panel({ config }: PanelProps) {
   const filters = useFilterState(config.filter_ids ?? ALL_FILTERS)
   const containerRef = useRef<HTMLDivElement>(null)
 
-  // Data fetch + draw — re-runs when config or filters change. For the old chart library
-  // panels this calls the old library API, never newPlot() (see Panel types
-  // below) and never purges — react() diffs against the existing plot.
+  // Data fetch + draw — re-runs when config or filters change. A chart panel redraws from the new rows
+  // (Observable Plot returns a fresh element each time); a map panel updates its layer/source in place and
+  // never recreates the map instance.
   useEffect(() => {
     let cancelled = false
     query(buildSQL(config, filters)).then((rows) => {
@@ -128,7 +128,7 @@ export function Panel({ config }: PanelProps) {
   // Teardown on actual unmount only — a separate effect with an empty
   // dependency array, not folded into the effect above.
   useEffect(() => {
-    return () => { /* lib cleanup, e.g. the old library APIcontainerRef.current) */ }
+    return () => { /* lib cleanup, e.g. map.remove(), a D3 selection's teardown */ }
   }, [])
 
   return <div ref={containerRef} />
@@ -159,13 +159,16 @@ inline literal.
 
 | type | Library | Notes |
 |---|---|---|
-| `the old chart library` | the old chart library | Default. Use `the old library API` not `newPlot()` for updates |
-| `observable-plot` | Observable Plot | For panels with reactive filter inputs |
-| `table` | plain DOM | Sortable, paginated |
-| `valuebox` | plain DOM | Single scalar KPI with threshold coloring |
-| `flowmap` | flowmap.gl + MapLibre | `MapboxOverlay` + `FlowmapLayer`; `setProps()` on update |
-| `zonemap` | MapLibre | GeoParquet join; `setData()` on update |
+| `observable-plot` | Observable Plot | Bars, lines, areas, dots, cells; panels with reactive filter inputs |
+| `chart` | Observable Plot + D3 | `kind: <name>` from the catalogue in `src/charts/kinds/`; usually inside a `multi-view` tile |
+| `multi-view` | — | Wrapper: several views of one dataset, a view switcher, Group by and the compare strategies |
+| `table` | plain DOM | Sortable, searchable, paginated (server-side from 100k rows) |
+| `valuebox` | plain DOM + SVG | Single scalar KPI with threshold coloring, optional sparkline, dial or trend |
+| `flowmap` | flowmap.gl + MapLibre | `MapboxOverlay` + `FlowmapLayer`, interleaved; `setProps()` on update |
+| `zonemap` | MapLibre | GeoParquet join; data-driven `fill-color`, `setData()` on update |
 | `sankey` | d3-sankey | Mode shift / tour-to-trip consistency |
+| `treemap`, `sunburst` | d3-hierarchy | Zoomable hierarchies |
+| `pie`, `radar` | d3-shape | Part-to-whole and multi-axis comparison |
 | `graphic-walker` | Graphic Walker | Explore tab only; snapshot model |
 | `markdown` | marked.js | Text/methodology panels |
 
@@ -290,18 +293,14 @@ layout:
       observed: 0.847
       width: 0.25
 
-    - type: the old chart library
+    - type: observable-plot
+      title: Mode share
       metric: trip_mode_share
       filter: $filters.purpose
-      traces:
-        - type: bar
-          x: $metric.mode
-          y: $metric.share
-          color: $metric.mode
-          barmode: group
-      observed:
-        source: observed_mode_share
-        style: dot
+      mark: barY
+      x: mode
+      y: share
+      fill: scenario
       width: 0.75
 
   row2:
@@ -422,12 +421,11 @@ map.getSource('zones').setData(geojson)
 
 ## Charting library decision
 
-| the old chart library | Observable Plot |
-|---|---|
-| Interactive legend (toggle scenarios) | Reactive filter inputs (dropdowns → chart updates) |
-| Modebar: fullscreen, PNG export | Grammar-of-graphics (faceted small multiples) |
-| Rich formatted hover tooltips | Multiple panels share one input |
-| Log-scale axes (volume scatter) | Lightweight, one of several panels in a row |
+One chart system, two engines, no third: **Observable Plot** for everything that is bars, lines, areas, dots or cells
+(grammar-of-graphics, faceted small multiples, panels that share one input), and **D3** submodules for what Plot cannot
+draw (Sankey, treemap, sunburst, pie, radar, chord). Both read the app's colour tokens, so charts match in light and dark,
+and every chart shares one tooltip (`services/tooltip.ts`). The two chart engines used before the 063 redesign were
+removed; do not reintroduce a charting library (see `project-docs/redesign/00-README.md`).
 
 ---
 

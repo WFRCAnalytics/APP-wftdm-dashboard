@@ -50,7 +50,7 @@ function isMultiselectInputPlaceholder(
  *
  * - undefined -> [] (no WHERE clause)
  * - a string matching ^\$filters\.<id>$ -> [[id, filter]] (today's exact
- *   behavior for valuebox/the old chart library/table — column assumed equal to id, per
+ *   behavior for valuebox/the retired chart library/table — column assumed equal to id, per
  *   the SQL placeholder reference table's own literal example)
  * - any other string (a literal, non-placeholder value) -> [] (unchanged —
  *   never produces a WHERE clause)

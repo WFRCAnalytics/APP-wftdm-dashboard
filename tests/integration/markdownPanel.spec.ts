@@ -172,10 +172,10 @@ test.describe('User Story 3 - Panel behaves consistently with the rest of the re
     // Real Summary tab composition: valuebox + observable-plot ×2 +
     // (now) markdown together — the same "coexists cleanly with every
     // other real panel type" guarantee the retired fixture's own
-    // valuebox/the old chart library/table trio proved, adapted to the real tab's own
+    // valuebox/the retired chart library/table trio proved, adapted to the real tab's own
     // actual panel-type mix (no table panel exists on this tab).
     // 057-observable-plot-conversion: both charts below were
-    // the old chart library until this feature converted both to
+    // the retired chart library until this feature converted both to
     // observable-plot (contracts/panel-conversions.md) — this test is
     // title-only and needed no locator change.
     await expect(page.getByText('Households', { exact: true })).toBeVisible() // valuebox

@@ -168,9 +168,9 @@ describe('resolveObservablePlotEncoding', () => {
 
   // Real, confirmed visual bug: @observablehq/plot's own default rendered
   // font-size (10px) reads noticeably smaller than the retired chart panel's own
-  // charts, which render at the old chart library's own default (12px — the retired chart panel
+  // charts, which render at the retired chart library's own default (12px — the retired chart panel
   // sets no explicit font.size at all, confirmed by direct read, so 12px
-  // is the old chart library's own real, live-confirmed rendered default, not a guessed
+  // is the retired chart library's own real, live-confirmed rendered default, not a guessed
   // value). Matched here via Plot.plot()'s own top-level `style` option
   // (a CSSStyleDeclaration-shaped object, confirmed against the installed
   // package's own plot.d.ts) — unconditional, applied to every observable-

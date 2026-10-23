@@ -667,7 +667,7 @@ export function ZoneMapPanel({ config }: { config: ZoneMapPanelConfig }) {
     // BIGINT column is cast to DOUBLE inside the query engine itself,
     // before this row ever exists — no bigint can reach here anymore.
     // This was independently found and ad hoc patched THREE times
-    // (this file, GraphicWalkerPanel.tsx, and a the old chart library y-value —
+    // (this file, GraphicWalkerPanel.tsx, and a retired chart library y-value —
     // 040-test-suite-migration's Batch B) before
     // the shared root cause was fixed once, globally, per
     // PIPELINE.md's own recorded finding.

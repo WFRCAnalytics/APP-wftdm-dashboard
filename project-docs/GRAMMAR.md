@@ -1069,9 +1069,10 @@ color key — the three existing fields are the whole interface, matching
 `donut`/`dataset_picker`'s own "one boolean/small-object flag, sensible
 built-in behavior" convention elsewhere in this grammar.
 
-> **Removed:** `type: the old chart library` and `type: the old chart library` were removed in the 063 UI redesign. A dashboard that still uses
-> them shows the shared "Unknown panel type" error state for that panel. Use `type: observable-plot` (bar, line,
-> area, dot, cell and more). The old grammar is in git history before the commit `redesign: remove the old chart library and the old chart library`.
+> **Removed:** the two earlier chart panel types (the former default `type:` values) were removed in the 063 UI redesign.
+> A dashboard that still uses them shows the shared "Unknown panel type" error state for that panel. Use
+> `type: observable-plot` (bar, line, area, dot, cell and more). The old grammar is in git history before the commit
+> `b90e525` (`redesign: remove Plotly and Recharts`).
 
 ### `type: observable-plot`
 
@@ -1777,7 +1778,7 @@ placeholder — write each filter-gated condition on its own line.
 | Three config files only | summarize.yaml, dashboard-*.yaml, manifest.yaml | No topsheet.yaml (first dashboard = landing page), no dashboard-config.yaml |
 | First dashboard = landing page | dashboard-1-summary.yaml | Eliminates redundant topsheet file type |
 | File format | Parquet / GeoParquet throughout | No CSV, GeoJSON, or OMX in browser |
-| Charting | Observable Plot (bars, lines, areas, dots, cells) and D3 (sankey, treemap, sunburst, pie, radar) | the old chart library and the old chart library were removed in the 063 redesign |
+| Charting | Observable Plot (bars, lines, areas, dots, cells) and D3 (sankey, treemap, sunburst, pie, radar) | the two earlier chart engines were removed in the 063 redesign |
 | Scenario comparison | Both overlaid and side-by-side supported | `scenario:` key controls which; omit for overlaid |
 | Observed data | Permanent registered views, no prefix | Always available, no per-panel loading config |
 | Geography | Four levels in zones.parquet; super_district default | TAZ only for map panels |

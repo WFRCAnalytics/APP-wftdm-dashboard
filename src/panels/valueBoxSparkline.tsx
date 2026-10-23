@@ -10,7 +10,7 @@ import type { ValueBoxSparklineConfig } from '@/layout/types'
 // optional sparkline mode.
 //
 // 057-observable-plot-conversion: re-implemented against
-// @observablehq/plot instead of bare the old chart library primitives (contracts/
+// @observablehq/plot instead of bare the retired chart library primitives (contracts/
 // valuebox-sparkline-plot.md) — same exported function signature, same
 // fixed h-10 (40px), axis-less, chrome-less presentation. Deliberately
 // NOT a reuse of the full ObservablePlotPanel.tsx component — that one
@@ -19,7 +19,7 @@ import type { ValueBoxSparklineConfig } from '@/layout/types'
 // which apply at sparkline scale (this component is only ever rendered
 // once ValueBoxPanel.tsx's own sparklineStatus is already 'ready' — see
 // that file). This mirrors the SAME "reuse the library, not the full
-// chrome" reasoning this file's own previous the old chart library version already
+// chrome" reasoning this file's own previous the retired chart library version already
 // established, just pointed at a different library.
 const FALLBACK_CARD = { light: '#ffffff', dark: '#141922' } as const
 
@@ -84,7 +84,7 @@ export function ValueBoxSparkline({
     // The value-box's own card width can change after this effect's
     // first run (sidebar collapse, window resize, panel-expand dialog) —
     // a ResizeObserver keeps the sparkline's own drawn width in sync, the
-    // same real-time responsiveness the old chart library' own ResponsiveContainer
+    // same real-time responsiveness the retired chart library's own ResponsiveContainer
     // provided before this conversion (Plot.plot() has no equivalent
     // built in, research.md §6).
     const observer = new ResizeObserver(() => draw())

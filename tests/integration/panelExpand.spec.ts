@@ -18,10 +18,10 @@ declare global {
 // role "Mode Share by Purpose" played in the retired fixture).
 //
 // 057-observable-plot-conversion: "Average Trip Distance by Purpose" was
-// `type: the old chart library` until this feature converted it to `type: observable-plot`
+// `type: the retired chart library` until this feature converted it to `type: observable-plot`
 // (contracts/panel-conversions.md) — every `old-chart-root` locator below
 // was rewritten to `.observable-plot-chart` accordingly. The one test this
-// conversion genuinely removes coverage for (the old chart library's own legend click-to-
+// conversion genuinely removes coverage for (the retired chart library's own legend click-to-
 // toggle-trace-visibility) is deleted, not retargeted — see its own removed
 // location below for why.
 //
@@ -209,19 +209,19 @@ test.describe('User Story 1 - Expand a panel to a large view', () => {
     await expect(allDialogRoots).toHaveCount(0)
   })
 
-  // REMOVED (057-observable-plot-conversion): this test proved the old chart library's own
+  // REMOVED (057-observable-plot-conversion): this test proved the retired chart library's own
   // legend click-to-toggle-trace-visibility interaction on CHART_TITLE,
-  // which — per this feature's conversion — no longer renders via the old chart library.
-  // Not retargeted: no real the old chart library panel remains anywhere in
+  // which — per this feature's conversion — no longer renders via retired chart library.
+  // Not retargeted: no real the retired chart library panel remains anywhere in
   // public/demo-dashboard-config/'s real content after this feature (every
   // one converted, per FR-001/FR-002), and Observable Plot has no built-in
   // equivalent interaction to prove instead — confirmed during this
   // feature's own research (spec.md's own Assumptions section records this
   // as a disclosed, accepted first-pass trade-off, the same class of gap
   // 029-shadcn-chart-panel's own contracts/retired-chart-panel.md already
-  // recorded for the old chart library). The old chart library panel TYPE itself still has this
+  // recorded for the retired chart library). The retired chart library's panel TYPE itself still has this
   // capability, unaffected — a retired chart panel file's own "an existing
-  // the old chart library panel's own legend click-to-toggle-trace-visibility still
+  // the retired chart library panel's own legend click-to-toggle-trace-visibility still
   // works" test (against a fixture-only panel, not real demo content)
   // continues to cover the mechanism at the panel-type level.
 
@@ -320,7 +320,7 @@ test.describe('User Story 2 - Return to the dashboard without losing panel state
     // via direct read of ObservablePlotPanel.tsx — NOT unique on this tab
     // though (the retired chart panel/the retired chart panel share the identical
     // "Couldn't load this chart" string, and the Test tab has its own
-    // broken the old chart library panels too), so scoped to this panel's own
+    // broken the retired chart library panels too), so scoped to this panel's own
     // card specifically, not a page-wide text search.
     // A default 5s timeout is no longer reliable here — the Test tab has
     // grown substantially crowded across several later features, so this
@@ -392,8 +392,8 @@ test.describe('User Story 3 - Charts render correctly sized inside the expanded 
     // div (ObservablePlotPanel.tsx's `containerRef`) — NOT on the inner
     // `svg[viewBox]`. Confirmed against that component's own source
     // (research.md of 007-observable-plot-panel, and this feature's own
-    // research.md §6): unlike the old chart library's `old-chart-root` div (which
-    // the old chart library itself creates once and updates in place via
+    // research.md §6): unlike the retired chart library's `old-chart-root` div (which
+    // the retired chart library itself creates once and updates in place via
     // the old library's render call), `Plot.plot()` returns a brand-new detached SVG/
     // figure element on every draw, which ObservablePlotPanel.tsx removes
     // and re-appends INSIDE the stable container div — so the svg itself

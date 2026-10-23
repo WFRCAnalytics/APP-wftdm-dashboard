@@ -48,7 +48,7 @@ export interface PanelConfigBase {
 export interface DataBoundPanelConfigBase extends PanelConfigBase {
   metric: string
   // Two documented forms (project-docs/GRAMMAR.md's common-keys table: "filter:
-  // <inline | $ref>"), not a bolt-on for this feature — valuebox/the old chart library/
+  // <inline | $ref>"), not a bolt-on for this feature — valuebox/the retired chart library/
   // table only ever exercised the bare $ref string form until
   // 007-observable-plot-panel, whose own filter: examples are the first to
   // use the inline map form (a column name -> $filters.<id>/$inputs.<id>
@@ -188,7 +188,7 @@ export interface ObservablePlotInputConfig {
  * x/y/fill/stroke/facet_x/facet_y are literal column names from the
  * queried result set — NOT $metric.<column>-prefixed like
  * RetiredChartTraceConfig's own fields (research.md §4, a confirmed grammar
- * difference from type: the old chart library).
+ * difference from type: the retired chart library).
  */
 // 019-baseline-diff-consumption: ComparisonCapablePanelConfig mixed in —
 // see that interface's own doc comment (defined below, alongside
@@ -314,7 +314,7 @@ export interface ComparisonDiff {
  * fields a specific subset of panel types opt into via `extends`, not
  * promoted onto the universal DataBoundPanelConfigBase (data-model.md).
  * `comparison` is ZoneMapPanelConfig's own pre-existing field (013),
- * generalized here so the old chart library/table/observable-plot share the identical
+ * generalized here so the retired chart library/table/observable-plot share the identical
  * field name/shape rather than three independently-invented mechanisms
  * (spec.md's own explicit requirement). `compare_on` is new: names the
  * column(s) that jointly identify a "comparable row" between the two

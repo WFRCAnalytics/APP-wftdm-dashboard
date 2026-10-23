@@ -26,12 +26,12 @@ declare global {
 // comparison" coverage.
 //
 // 057-observable-plot-conversion: both Summary-tab panels were
-// `the old chart library`/`the old chart library` until this feature converted both to
+// the retired chart library/the retired chart library until this feature converted both to
 // `observable-plot` (contracts/panel-conversions.md) — every assertion
 // below queries by real scenario-name TEXT (`getByText`), which resolves
 // identically regardless of rendering engine (a scenario's name is a
 // real, visible text node in Observable Plot's own swatch legend, same
-// as it was in the old chart library's/the old chart library' own legends), so no locator needed to
+// as it was in the retired chart library's/the retired chart library's own legends), so no locator needed to
 // change; only the two variable names below (`totalTripsCard`/`avgDistanceCard`)
 // are renamed for accuracy.
 
