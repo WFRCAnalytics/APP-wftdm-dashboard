@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '@playwright/test'
+import { test, expect, type Page } from './_testTab'
 import type maplibregl from 'maplibre-gl'
 import type { WftdmDebugHook } from '../../src/main.tsx'
 
@@ -26,11 +26,22 @@ function panelCard(page: Page, title: string) {
   return page.getByText(title, { exact: true }).locator('..').locator('..')
 }
 
-async function boot(page: Page) {
+// 040-test-suite-migration: the retired fixture world (observed / good_scenario / broken_scenario) is rebuilt from real
+// demo content. The Scenarios tab lists independent scenarios only (observed data is a reference, not a row):
+// `activitysim-baseline` is the old good_scenario and `broken_scenario` is listed with no manifest, so it registers as
+// `failed`. The 037 reorder/baseline tests need three rows, so they add `activitysim-density-variant` (the retired
+// `observed` row's role: a second ready scenario, first in registration order).
+const SCENARIO_WORLD = ['activitysim-baseline', 'broken_scenario']
+const THREE_WORLD = ['activitysim-density-variant', 'activitysim-baseline', 'broken_scenario']
+
+async function boot(page: Page, world: string[] = SCENARIO_WORLD) {
+  await page.route('**/demo-scenarios/index.json', (r) =>
+    r.fulfill({ contentType: 'application/json', body: JSON.stringify(world) }),
+  )
   await page.goto('/')
   await page.waitForFunction(() => window.__wftdm !== undefined, null, { timeout: 30_000 })
   await page.waitForFunction(
-    () => window.__wftdm!.appState.get('good_scenario')?.status !== 'registering',
+    () => window.__wftdm!.appState.get('activitysim-baseline')?.status !== 'registering',
     null,
     { timeout: 30_000 },
   )
@@ -174,9 +185,9 @@ test.describe('User Story 1 - One place to manage dashboard-wide settings', () =
     // Name — scoped to the name input's own placeholder (US4's editable
     // label control; textContent-based assertions don't see it — see
     // scenarioManager.spec.ts's own comment on this for the full reason).
-    await expect(page.getByRole('textbox', { name: 'Custom label for good_scenario' })).toHaveAttribute(
+    await expect(page.getByRole('textbox', { name: 'Custom label for activitysim-baseline' })).toHaveAttribute(
       'placeholder',
-      'good_scenario',
+      'activitysim-baseline',
     )
     // 063 redesign (P10): only independent scenarios are listed; observed data is not.
     await expect(page.getByRole('textbox', { name: 'Custom label for observed' })).toHaveCount(0)
@@ -184,10 +195,10 @@ test.describe('User Story 1 - One place to manage dashboard-wide settings', () =
     // "(ready)"/"(failed)" text, and since 037 item 5 there is no status
     // DOT either — the row's own left-border colour + background wash
     // (036 Part C, FR-017/FR-018) is the sole ready/failed channel.
-    await expect(list).toContainText('scenarios/good_scenario/summary')
+    await expect(list).toContainText('scenarios/activitysim-baseline/summary')
     await expect(list).not.toContainText('observed/summary')
     const readyBorder = await page
-      .getByTestId('scenario-row-good_scenario')
+      .getByTestId('scenario-row-activitysim-baseline')
       .evaluate((el) => getComputedStyle(el).borderLeftColor)
     const failedBorder = await page
       .getByTestId('scenario-row-broken_scenario')
@@ -210,10 +221,10 @@ test.describe('User Story 1 - One place to manage dashboard-wide settings', () =
     await page.getByRole('button', { name: 'Settings' }).click()
     await page.getByRole('tab', { name: 'Scenarios' }).click()
 
-    const readyRow = page.getByTestId('scenario-row-good_scenario')
+    const readyRow = page.getByTestId('scenario-row-activitysim-baseline')
     const failedRow = page.getByTestId('scenario-row-broken_scenario')
     // No status dot anywhere in the list any more (037 item 5).
-    await expect(page.getByTestId('scenario-status-dot-good_scenario')).toHaveCount(0)
+    await expect(page.getByTestId('scenario-status-dot-activitysim-baseline')).toHaveCount(0)
 
     const [readyBorder, failedBorder, readyBg, failedBg] = await Promise.all([
       readyRow.evaluate((el) => getComputedStyle(el).borderLeftColor),
@@ -266,7 +277,7 @@ test.describe('User Story 1 - One place to manage dashboard-wide settings', () =
 
   test('rest of the dashboard renders normally alongside the new control', async ({ page }) => {
     await boot(page)
-    await expect(panelCard(page, 'Total Households')).toBeVisible()
+    await expect(panelCard(page, 'Total Trips by Mode')).toBeVisible()
   })
 })
 
@@ -409,8 +420,13 @@ function sectionRadioGroup(page: Page, heading: string) {
 }
 
 test.describe('User Story 1 - Sectioned basemap catalog with stage-then-Apply', () => {
-  const UNCONFIGURED_FLOWMAP = 'Flow Map Trip Distribution Desire Lines' // Summary tab — no panel/tab basemap:
-  const CONFIGURED_FLOWMAP = 'Flowmap Panel Basemap Override' // Basemaps tab — basemap: carto-voyager
+  const UNCONFIGURED_FLOWMAP = 'Trip Distribution Desire Lines (Default View)' // Network tab — no panel/tab basemap
+  const CONFIGURED_FLOWMAP = 'Basemap Precedence — panel override wins' // Test tab — basemap: openfreemap-positron
+
+  // The flow maps live on the Network tab (an unconfigured one) and the Test tab (one with its own basemap).
+  async function gotoNetworkTab(page: Page) {
+    await page.getByRole('tab', { name: 'Network' }).click()
+  }
 
   test('renders four labeled sections in order, with three named UGRC entries (FR-001, FR-002)', async ({
     page,
@@ -545,11 +561,12 @@ test.describe('User Story 1 - Sectioned basemap catalog with stage-then-Apply', 
     page,
   }) => {
     await boot(page)
+    await gotoNetworkTab(page) // a map with no basemap of its own has to be on the page
     await page.getByRole('button', { name: 'Settings' }).click()
     await page.getByRole('tab', { name: 'Basemap' }).click()
 
     await sectionRadioGroup(page, 'UGRC Vector Tiles').getByRole('radio', { name: 'Vector Hybrid' }).click()
-    const globalBeforeApply = await page.evaluate(() => window.__wftdm!.appState.get('good_scenario')) // sanity: page still alive
+    const globalBeforeApply = await page.evaluate(() => window.__wftdm!.appState.get('activitysim-baseline')) // sanity: page still alive
     expect(globalBeforeApply).toBeTruthy()
 
     await page.getByRole('button', { name: 'Apply' }).click()
@@ -564,6 +581,7 @@ test.describe('User Story 1 - Sectioned basemap catalog with stage-then-Apply', 
 
   test('closing the modal with a staged, unapplied selection discards it (FR-014)', async ({ page }) => {
     await boot(page)
+    await gotoNetworkTab(page)
     const card = panelCard(page, UNCONFIGURED_FLOWMAP)
     await trueEventually(async () => (await card.locator('.flowmap-chart').getAttribute('data-render-count')) !== null)
 
@@ -780,6 +798,13 @@ test.describe('User Story 1 - Sectioned basemap catalog with stage-then-Apply', 
     await page.getByRole('button', { name: 'Settings' }).click()
     await page.getByRole('tab', { name: 'Basemap' }).click()
     await trueEventually(async () => page.evaluate(() => window.__basemapPreviewTestMap !== undefined))
+    // the controls are added just after the map object exists
+    await trueEventually(async () =>
+      page.evaluate(() => {
+        const box = window.__basemapPreviewTestMap!.getContainer()
+        return box.querySelector('.maplibregl-ctrl-zoom-in') !== null && box.querySelector('.maplibregl-ctrl-attrib.maplibregl-compact') !== null
+      }),
+    )
 
     const state = await page.evaluate(() => {
       const map = window.__basemapPreviewTestMap!
@@ -787,8 +812,9 @@ test.describe('User Story 1 - Sectioned basemap catalog with stage-then-Apply', 
       return {
         center: [center.lng, center.lat],
         zoom: map.getZoom(),
-        hasNavigationControl: document.querySelector('.maplibregl-ctrl-zoom-in, .maplibregl-ctrl-compass') !== null,
-        hasCompactAttribution: document.querySelector('.maplibregl-ctrl-attrib.maplibregl-compact') !== null,
+        // scoped to the preview map's own container: no other map is on the page to satisfy a document-wide query
+        hasNavigationControl: map.getContainer().querySelector('.maplibregl-ctrl-zoom-in, .maplibregl-ctrl-compass') !== null,
+        hasCompactAttribution: map.getContainer().querySelector('.maplibregl-ctrl-attrib.maplibregl-compact') !== null,
       }
     })
     // Same DEFAULT_CENTER/DEFAULT_ZOOM FlowMapPanel.tsx exports and uses
@@ -823,6 +849,7 @@ test.describe('User Story 1 - Sectioned basemap catalog with stage-then-Apply', 
     page.on('request', (req) => requestUrls.push(req.url()))
 
     await boot(page)
+    await gotoNetworkTab(page)
     const card = panelCard(page, UNCONFIGURED_FLOWMAP)
     await trueEventually(async () => (await card.locator('.flowmap-chart').getAttribute('data-render-count')) !== null)
     // The app-default tier resolves first, before any viewer pick exists.
@@ -844,7 +871,7 @@ test.describe('User Story 1 - Sectioned basemap catalog with stage-then-Apply', 
     page,
   }) => {
     await boot(page)
-    await page.getByRole('tab', { name: 'Basemaps' }).click() // dashboard-3-basemaps.yaml's own nav tab
+    await page.getByRole('tab', { name: 'Test' }).click()
     await trueEventually(async () => page.evaluate(() => window.__flowmapTestMaps !== undefined))
     await trueEventually(async () =>
       page.evaluate(
@@ -871,7 +898,7 @@ test.describe('User Story 1 - Sectioned basemap catalog with stage-then-Apply', 
       (t) => window.__flowmapTestMaps![t].getStyle(),
       CONFIGURED_FLOWMAP,
     )
-    expect(stylesAfter).toEqual(stylesBefore) // carto-voyager, completely untouched
+    expect(stylesAfter).toEqual(stylesBefore) // openfreemap-positron (the panel's own), completely untouched
   })
 })
 
@@ -880,10 +907,10 @@ test.describe('User Story 3 - Reorder loaded scenarios', () => {
   // (scenarioDiscovery.ts's registerObserved() always runs before
   // registerPublishedScenarios()), then whatever
   // public/scenarios/index.json lists — this fixture set's own
-  // index.json (tests/fixtures/scenarios) lists good_scenario then
+  // index.json (tests/fixtures/scenarios) lists activitysim-baseline then
   // broken_scenario.
   // 063 redesign (P10): observed data is not listed in the Scenarios tab, so only the two independent scenarios remain.
-  const DEFAULT_ORDER = ['good_scenario', 'broken_scenario']
+  const DEFAULT_ORDER = ['activitysim-baseline', 'broken_scenario']
 
   test('moving a scenario up changes display order, boundary buttons stay correctly disabled (FR-007)', async ({
     page,
@@ -893,35 +920,35 @@ test.describe('User Story 3 - Reorder loaded scenarios', () => {
     await page.getByRole('tab', { name: 'Scenarios' }).click()
 
     await expect.poll(() => scenarioNamesInOrder(page)).toEqual(DEFAULT_ORDER)
-    await expect(page.getByRole('button', { name: 'Move good_scenario up' })).toBeDisabled()
+    await expect(page.getByRole('button', { name: 'Move activitysim-baseline up' })).toBeDisabled()
     await expect(page.getByRole('button', { name: 'Move broken_scenario down' })).toBeDisabled()
-    await expect(page.getByRole('button', { name: 'Move good_scenario down' })).toBeEnabled()
+    await expect(page.getByRole('button', { name: 'Move activitysim-baseline down' })).toBeEnabled()
     await expect(page.getByRole('button', { name: 'Move broken_scenario up' })).toBeEnabled()
 
-    // Move the second entry up — swaps with good_scenario.
+    // Move the second entry up — swaps with activitysim-baseline.
     await page.getByRole('button', { name: 'Move broken_scenario up' }).click()
 
-    await expect.poll(() => scenarioNamesInOrder(page)).toEqual(['broken_scenario', 'good_scenario'])
+    await expect.poll(() => scenarioNamesInOrder(page)).toEqual(['broken_scenario', 'activitysim-baseline'])
     // Boundary state follows the NEW order, not the old one.
     await expect(page.getByRole('button', { name: 'Move broken_scenario up' })).toBeDisabled()
-    await expect(page.getByRole('button', { name: 'Move good_scenario down' })).toBeDisabled()
-    await expect(page.getByRole('button', { name: 'Move good_scenario up' })).toBeEnabled()
+    await expect(page.getByRole('button', { name: 'Move activitysim-baseline down' })).toBeDisabled()
+    await expect(page.getByRole('button', { name: 'Move activitysim-baseline up' })).toBeEnabled()
   })
 
   test('reordering never changes the automatic-default baseline (FR-008)', async ({ page }) => {
     await boot(page)
     await expect
       .poll(() => page.evaluate(() => window.__wftdm!.appState.getBaseline()))
-      .toBe('good_scenario')
+      .toBe('activitysim-baseline')
 
     await page.getByRole('button', { name: 'Settings' }).click()
     await page.getByRole('tab', { name: 'Scenarios' }).click()
     await page.getByRole('button', { name: 'Move broken_scenario up' }).click()
-    await expect.poll(() => scenarioNamesInOrder(page)).toEqual(['broken_scenario', 'good_scenario'])
+    await expect.poll(() => scenarioNamesInOrder(page)).toEqual(['broken_scenario', 'activitysim-baseline'])
 
     // UNCHANGED — getBaseline() never reads display order (research.md §3).
     await expect(page.evaluate(() => window.__wftdm!.appState.getBaseline())).resolves.toBe(
-      'good_scenario',
+      'activitysim-baseline',
     )
   })
 })
@@ -934,22 +961,22 @@ test.describe('User Story 4 - Custom scenario label', () => {
     await page.getByRole('button', { name: 'Settings' }).click()
     await page.getByRole('tab', { name: 'Scenarios' }).click()
 
-    const labelInput = page.getByRole('textbox', { name: 'Custom label for good_scenario' })
+    const labelInput = page.getByRole('textbox', { name: 'Custom label for activitysim-baseline' })
     await expect(labelInput).toHaveValue('')
-    await expect(labelInput).toHaveAttribute('placeholder', 'good_scenario')
+    await expect(labelInput).toHaveAttribute('placeholder', 'activitysim-baseline')
 
     await labelInput.fill('Base Year')
     await expect(labelInput).toHaveValue('Base Year')
-    const entry = await page.evaluate(() => window.__wftdm!.appState.get('good_scenario'))
+    const entry = await page.evaluate(() => window.__wftdm!.appState.get('activitysim-baseline'))
     expect(entry?.label).toBe('Base Year')
-    expect(entry?.name).toBe('good_scenario') // the real name is untouched
+    expect(entry?.name).toBe('activitysim-baseline') // the real name is untouched
 
     // Clearing it back to empty reverts to showing the real name (FR-009's
     // own "optional" — an empty label is the same as no label).
     await labelInput.fill('')
     await expect(labelInput).toHaveValue('')
-    await expect(labelInput).toHaveAttribute('placeholder', 'good_scenario')
-    expect((await page.evaluate(() => window.__wftdm!.appState.get('good_scenario')))?.label).toBeUndefined()
+    await expect(labelInput).toHaveAttribute('placeholder', 'activitysim-baseline')
+    expect((await page.evaluate(() => window.__wftdm!.appState.get('activitysim-baseline')))?.label).toBeUndefined()
   })
 
   test('a label is display-only — resolution still uses the real name; label is gone after reload (FR-010, FR-015)', async ({
@@ -959,22 +986,22 @@ test.describe('User Story 4 - Custom scenario label', () => {
     await page.getByRole('button', { name: 'Settings' }).click()
     await page.getByRole('tab', { name: 'Scenarios' }).click()
 
-    await page.evaluate(() => window.__wftdm!.appState.setLabel('good_scenario', 'Base Year'))
+    await page.evaluate(() => window.__wftdm!.appState.setLabel('activitysim-baseline', 'Base Year'))
     // Scoped to the name inputs specifically — the row's own `path` text
-    // legitimately still contains the literal substring "good_scenario"
-    // (e.g. ".../scenarios/good_scenario/summary"), so a page-wide
-    // "not toContainText('good_scenario')" would be wrong, not a real bug.
-    await expect.poll(() => scenarioNamesInOrder(page)).toEqual(['observed', 'Base Year', 'broken_scenario'])
+    // legitimately still contains the literal substring "activitysim-baseline"
+    // (e.g. ".../scenarios/activitysim-baseline/summary"), so a page-wide
+    // "not toContainText('activitysim-baseline')" would be wrong, not a real bug.
+    await expect.poll(() => scenarioNamesInOrder(page)).toEqual(['Base Year', 'broken_scenario'])
 
     // The real name still drives resolution — appState.get() keys on it
     // directly, and the underlying view is still queryable under its real
     // name (the label is a Scenario.label field nothing else reads; the
     // exhaustive "never substituted into SQL" guarantee is unit-tested
     // directly in tests/unit/appState.test.ts's own FR-010 case).
-    const entry = await page.evaluate(() => window.__wftdm!.appState.get('good_scenario'))
+    const entry = await page.evaluate(() => window.__wftdm!.appState.get('activitysim-baseline'))
     expect(entry?.label).toBe('Base Year')
-    expect(entry?.name).toBe('good_scenario')
-    const rows = await page.evaluate(() => window.__wftdm!.query('SELECT * FROM good_scenario__summary_kpis'))
+    expect(entry?.name).toBe('activitysim-baseline')
+    const rows = await page.evaluate(() => window.__wftdm!.query('SELECT * FROM "activitysim-baseline__summary_kpis"'))
     expect(rows.length).toBeGreaterThan(0)
 
     await page.reload()
@@ -982,7 +1009,7 @@ test.describe('User Story 4 - Custom scenario label', () => {
     await page.getByRole('button', { name: 'Settings' }).click()
     await page.getByRole('tab', { name: 'Scenarios' }).click()
     // FR-015 — no persistence: back to the real name after reload.
-    await expect.poll(() => scenarioNamesInOrder(page)).toEqual(['observed', 'good_scenario', 'broken_scenario'])
+    await expect.poll(() => scenarioNamesInOrder(page)).toEqual(['activitysim-baseline', 'broken_scenario'])
   })
 })
 
@@ -1000,36 +1027,20 @@ test.describe('User Story 2 (036-scenario-color-picker) - Redesigned color picke
     return page.getByTestId(`scenario-color-swatch-${name}`)
   }
 
-  async function resolveCssColor(page: Page, cssColor: string): Promise<string> {
-    return page.evaluate((color) => {
-      const probe = document.createElement('div')
-      probe.style.cssText = 'position:absolute;visibility:hidden;'
-      probe.style.color = color
-      document.body.appendChild(probe)
-      const resolved = getComputedStyle(probe).color
-      probe.remove()
-      return resolved
-    }, cssColor)
-  }
-
-  async function scenarioIndex(page: Page, name: string): Promise<number> {
-    return page.evaluate((n) => window.__wftdm!.appState.list().findIndex((s) => s.name === n), name)
-  }
-
   test('the swatch previews the current effective (shipped-default) color, before any override', async ({
     page,
   }) => {
-    await boot(page)
+    await boot(page, THREE_WORLD)
     await page.getByRole('button', { name: 'Settings' }).click()
     await page.getByRole('tab', { name: 'Scenarios' }).click()
 
-    const goodIndex = await scenarioIndex(page, 'good_scenario')
-    const observedIndex = await scenarioIndex(page, 'observed')
-    const goodExpected = await resolveCssColor(page, `var(--chart-${(goodIndex % 5) + 1})`)
-    const observedExpected = await resolveCssColor(page, `var(--chart-${(observedIndex % 5) + 1})`)
-
-    await expect(colorSwatch(page, 'good_scenario')).toHaveCSS('background-color', goodExpected)
-    await expect(colorSwatch(page, 'observed')).toHaveCSS('background-color', observedExpected)
+    // The shipped default is resolved by hooks/useScenarioDisplay.ts (a theme-adapted pool colour per alternative), the
+    // same value every chart series uses: here, each swatch is a real colour and the two scenarios get different ones.
+    // (A scenario that failed to load takes no palette slot, so two READY scenarios are compared here.)
+    const first = await colorSwatch(page, 'activitysim-density-variant').evaluate((e) => getComputedStyle(e).backgroundColor)
+    const second = await colorSwatch(page, 'activitysim-baseline').evaluate((e) => getComputedStyle(e).backgroundColor)
+    for (const c of [first, second]) expect(c).toMatch(/^rgb\(/)
+    expect(first).not.toBe(second)
     // No "Reset to default" control yet — nothing is overridden, and the
     // popover itself hasn't even been opened.
     await expect(page.getByRole('button', { name: 'Reset to default' })).toHaveCount(0)
@@ -1042,23 +1053,24 @@ test.describe('User Story 2 (036-scenario-color-picker) - Redesigned color picke
     await page.getByRole('button', { name: 'Settings' }).click()
     await page.getByRole('tab', { name: 'Scenarios' }).click()
 
-    await colorSwatch(page, 'good_scenario').click()
+    const manifestColor = (await page.evaluate(() => window.__wftdm!.appState.get('activitysim-baseline')))?.color
+    await colorSwatch(page, 'activitysim-baseline').click()
     const hexField = page.getByRole('textbox', { name: 'Hex color' })
     await expect(hexField).toBeVisible()
 
     await hexField.fill('#ff0000')
-    await expect.poll(() => page.evaluate(() => window.__wftdm!.appState.get('good_scenario')?.colorOverride)).toBe(
+    await expect.poll(() => page.evaluate(() => window.__wftdm!.appState.get('activitysim-baseline')?.colorOverride)).toBe(
       '#FF0000',
     )
     // The manifest color itself is untouched, and confirmed still
     // unconsulted by the actual resolution chain (036 Part A).
-    expect((await page.evaluate(() => window.__wftdm!.appState.get('good_scenario')))?.color).toBe('#4e79a7')
+    expect((await page.evaluate(() => window.__wftdm!.appState.get('activitysim-baseline')))?.color).toBe(manifestColor)
 
     const resetButton = page.getByRole('button', { name: 'Reset to default' })
     await expect(resetButton).toBeVisible()
     await resetButton.click()
     expect(
-      (await page.evaluate(() => window.__wftdm!.appState.get('good_scenario')))?.colorOverride,
+      (await page.evaluate(() => window.__wftdm!.appState.get('activitysim-baseline')))?.colorOverride,
     ).toBeUndefined()
   })
 
@@ -1067,7 +1079,7 @@ test.describe('User Story 2 (036-scenario-color-picker) - Redesigned color picke
     await page.getByRole('button', { name: 'Settings' }).click()
     await page.getByRole('tab', { name: 'Scenarios' }).click()
 
-    await colorSwatch(page, 'good_scenario').click()
+    await colorSwatch(page, 'activitysim-baseline').click()
     await page.getByRole('combobox').click() // ColorPickerOutput's mode Select
     await page.getByRole('option', { name: 'RGB' }).click()
 
@@ -1078,28 +1090,30 @@ test.describe('User Story 2 (036-scenario-color-picker) - Redesigned color picke
     const blueField = page.getByRole('textbox', { name: 'Blue' })
     await blueField.fill('0')
 
-    await expect.poll(() => page.evaluate(() => window.__wftdm!.appState.get('good_scenario')?.colorOverride)).toBe(
+    await expect.poll(() => page.evaluate(() => window.__wftdm!.appState.get('activitysim-baseline')?.colorOverride)).toBe(
       '#FF0000',
     )
   })
 
   test('a color override is gone after reload', async ({ page }) => {
     await boot(page)
-    await page.evaluate(() => window.__wftdm!.appState.setColorOverride('good_scenario', '#ff0000'))
+    await page.getByRole('button', { name: 'Settings' }).click()
+    await page.getByRole('tab', { name: 'Scenarios' }).click()
+    const before = await colorSwatch(page, 'activitysim-baseline').evaluate((e) => getComputedStyle(e).backgroundColor)
+
+    await page.evaluate(() => window.__wftdm!.appState.setColorOverride('activitysim-baseline', '#ff0000'))
+    await expect(colorSwatch(page, 'activitysim-baseline')).toHaveCSS('background-color', 'rgb(255, 0, 0)')
 
     await page.reload()
     await page.waitForFunction(() => window.__wftdm !== undefined, null, { timeout: 30_000 })
     await page.waitForFunction(
-      () => window.__wftdm!.appState.get('good_scenario')?.status !== 'registering',
+      () => window.__wftdm!.appState.get('activitysim-baseline')?.status !== 'registering',
       null,
       { timeout: 30_000 },
     )
     await page.getByRole('button', { name: 'Settings' }).click()
     await page.getByRole('tab', { name: 'Scenarios' }).click()
-
-    const goodIndex = await scenarioIndex(page, 'good_scenario')
-    const expected = await resolveCssColor(page, `var(--chart-${(goodIndex % 5) + 1})`)
-    await expect(colorSwatch(page, 'good_scenario')).toHaveCSS('background-color', expected)
+    await expect(colorSwatch(page, 'activitysim-baseline')).toHaveCSS('background-color', before)
   })
 })
 
@@ -1128,7 +1142,7 @@ test.describe('User Story 3 (036-scenario-color-picker Part C) - Row status trea
     await page.getByRole('button', { name: 'Settings' }).click()
     await page.getByRole('tab', { name: 'Scenarios' }).click()
 
-    const readyRow = scenarioRow(page, 'good_scenario')
+    const readyRow = scenarioRow(page, 'activitysim-baseline')
     const failedRow = scenarioRow(page, 'broken_scenario')
 
     for (const dark of [false, true]) {
@@ -1153,41 +1167,37 @@ test.describe('User Story 3 (036-scenario-color-picker Part C) - Row status trea
     }
   })
 
-  test('toggling a scenario\'s Switch off immediately excludes it from a $scenario.-driven panel, and back on restores it (FR-019/FR-020)', async ({
+  test("toggling a scenario's Switch off immediately excludes it from a $scenario.-driven panel, and back on restores it (FR-019/FR-020)", async ({
     page,
   }) => {
-    // `?s=good_scenario` activates good_scenario alongside the always-
-    // active observed. row_scenario_display's table panel unions every
-    // currently active scenario with no scenario:/scenarios: pin —
-    // summary_kpis publishes 2 rows per scenario, so both active is 4.
-    await page.goto('/?s=good_scenario')
-    await page.waitForFunction(() => window.__wftdm !== undefined, null, { timeout: 30_000 })
-    await page.waitForFunction(
-      () => window.__wftdm!.appState.get('good_scenario')?.status !== 'registering',
-      null,
-      { timeout: 30_000 },
-    )
-    const table = panelCard(page, 'Scenario Split (Table)').locator('tbody tr')
-    await expect(table).toHaveCount(4)
+    // "Accessibility by Zone" (Network tab) is unpinned: it unions every active scenario via $scenario and publishes 25
+    // zones per scenario, so two active scenarios read "of 50 rows" and one fits a single page.
+    await boot(page, THREE_WORLD)
+    await page.getByRole('tab', { name: 'Network' }).click()
+    const card = panelCard(page, 'Accessibility by Zone')
+    await expect(card.getByText(/of 50 rows/)).toBeVisible({ timeout: 20_000 })
 
     await page.getByRole('button', { name: 'Settings' }).click()
     await page.getByRole('tab', { name: 'Scenarios' }).click()
     // Located by row identity, not by the aria-label text itself — that
     // label flips with the toggle's own state.
-    const observedSwitch = scenarioRow(page, 'observed').getByRole('switch')
-    await expect(observedSwitch).toBeChecked()
+    const variantSwitch = scenarioRow(page, 'activitysim-density-variant').getByRole('switch')
+    await expect(variantSwitch).toBeChecked()
 
-    await observedSwitch.click()
-    await expect(observedSwitch).not.toBeChecked()
-    expect(await page.evaluate(() => window.__wftdm!.appState.get('observed')?.active)).toBe(false)
+    await variantSwitch.click()
+    await expect(variantSwitch).not.toBeChecked()
+    expect(await page.evaluate(() => window.__wftdm!.appState.get('activitysim-density-variant')?.active)).toBe(false)
     await page.getByRole('button', { name: /^Close$/ }).click()
-    await expect(table).toHaveCount(2)
+    // one scenario's 25 zones fit one page: no "of N rows" footer, and only the remaining scenario's rows
+    await expect(card.getByText(/of 50 rows/)).toHaveCount(0, { timeout: 20_000 })
+    await expect(card.locator('tbody tr')).toHaveCount(25)
+    await expect(card.locator('tbody tr td').filter({ hasText: 'activitysim-density-variant' })).toHaveCount(0)
 
     await page.getByRole('button', { name: 'Settings' }).click()
     await page.getByRole('tab', { name: 'Scenarios' }).click()
-    await scenarioRow(page, 'observed').getByRole('switch').click()
+    await scenarioRow(page, 'activitysim-density-variant').getByRole('switch').click()
     await page.getByRole('button', { name: /^Close$/ }).click()
-    await expect(table).toHaveCount(4)
+    await expect(card.getByText(/of 50 rows/)).toBeVisible({ timeout: 20_000 })
   })
 
   // NOTE: the 036 Part C Star / Star+"Baseline"-text baseline control was
@@ -1217,28 +1227,28 @@ test.describe('User Story (037-scenarios-tab-redesign)', () => {
   //
   // 038-all-loaded-scenarios: the "inactive scenario" side now uses
   // `broken_scenario` (status `failed` → never auto-activated). Under 038
-  // `good_scenario` (status `ready`) DOES auto-activate on a plain boot,
+  // `activitysim-baseline` (status `ready`) DOES auto-activate on a plain boot,
   // so it is the second ACTIVE example here, not the inactive one.
   for (const dark of [false, true]) {
     test(`FR-001: the active/inactive Switch's checked state equals the real \`active\` value for both an active and an inactive scenario (${dark ? 'dark' : 'light'})`, async ({
       page,
     }) => {
-      await boot(page)
+      await boot(page, THREE_WORLD)
       await openScenariosTab(page)
       await page.evaluate((d) => document.documentElement.classList.toggle('dark', d), dark)
 
       // Real values straight from the store.
       const [observedActive, goodActive, brokenActive] = await page.evaluate(() => [
-        window.__wftdm!.appState.get('observed')?.active,
-        window.__wftdm!.appState.get('good_scenario')?.active,
+        window.__wftdm!.appState.get('activitysim-density-variant')?.active,
+        window.__wftdm!.appState.get('activitysim-baseline')?.active,
         window.__wftdm!.appState.get('broken_scenario')?.active,
       ])
       expect(observedActive).toBe(true) // ready → auto-active
       expect(goodActive).toBe(true) // ready → auto-active (038)
       expect(brokenActive).toBeFalsy() // failed → never auto-active
 
-      const observedSwitch = row(page, 'observed').getByRole('switch')
-      const goodSwitch = row(page, 'good_scenario').getByRole('switch')
+      const observedSwitch = row(page, 'activitysim-density-variant').getByRole('switch')
+      const goodSwitch = row(page, 'activitysim-baseline').getByRole('switch')
       const brokenSwitch = row(page, 'broken_scenario').getByRole('switch')
 
       // Rendered state matches the store, in BOTH directions, together.
@@ -1262,7 +1272,7 @@ test.describe('User Story (037-scenarios-tab-redesign)', () => {
 
   function orderNames(page: Page) {
     return page.evaluate(() =>
-      window.__wftdm!.appState.listByDisplayOrder().map((s: { name: string }) => s.name),
+      window.__wftdm!.appState.listByDisplayOrder().map((s: { name: string }) => s.name).filter((n: string) => n !== 'observed'),
     )
   }
   function dragHandle(page: Page, name: string) {
@@ -1287,17 +1297,17 @@ test.describe('User Story (037-scenarios-tab-redesign)', () => {
   test('T007: a pointer drag of a row handle past another row reorders the list, no reload', async ({
     page,
   }) => {
-    await boot(page)
+    await boot(page, THREE_WORLD)
     await openScenariosTab(page)
-    expect(await orderNames(page)).toEqual(['observed', 'good_scenario', 'broken_scenario'])
+    expect(await orderNames(page)).toEqual(['activitysim-density-variant', 'activitysim-baseline', 'broken_scenario'])
 
-    const observedBox = await row(page, 'observed').boundingBox()
-    // Drag good_scenario's handle up above observed.
-    await pointerDrag(page, dragHandle(page, 'good_scenario'), observedBox!.y - 5)
+    const observedBox = await row(page, 'activitysim-density-variant').boundingBox()
+    // Drag activitysim-baseline's handle up above observed.
+    await pointerDrag(page, dragHandle(page, 'activitysim-baseline'), observedBox!.y - 5)
 
     await expect.poll(() => orderNames(page)).toEqual([
-      'good_scenario',
-      'observed',
+      'activitysim-baseline',
+      'activitysim-density-variant',
       'broken_scenario',
     ])
     // Rendered order matches the store.
@@ -1305,15 +1315,15 @@ test.describe('User Story (037-scenarios-tab-redesign)', () => {
       .getByTestId('scenario-load-list')
       .locator('[data-testid^="scenario-row-"]')
       .evaluateAll((els) => els.map((e) => e.getAttribute('data-testid')!.replace('scenario-row-', '')))
-    expect(renderedOrder).toEqual(['good_scenario', 'observed', 'broken_scenario'])
+    expect(renderedOrder).toEqual(['activitysim-baseline', 'activitysim-density-variant', 'broken_scenario'])
   })
 
   test('T008: a keyboard drag (Space to lift, arrows to move, Space to drop) reorders the list, with position-based live announcements (FR-006)', async ({
     page,
   }) => {
-    await boot(page)
+    await boot(page, THREE_WORLD)
     await openScenariosTab(page)
-    expect(await orderNames(page)).toEqual(['observed', 'good_scenario', 'broken_scenario'])
+    expect(await orderNames(page)).toEqual(['activitysim-density-variant', 'activitysim-baseline', 'broken_scenario'])
 
     // @dnd-kit's own off-screen live region (NOT react-beautiful-dnd's
     // leftover #rbd-announcement-* from graphic-walker, also on the page).
@@ -1355,15 +1365,15 @@ test.describe('User Story (037-scenarios-tab-redesign)', () => {
     // broken_scenario was dragged all the way to the top by keyboard.
     await expect.poll(() => orderNames(page)).toEqual([
       'broken_scenario',
-      'observed',
-      'good_scenario',
+      'activitysim-density-variant',
+      'activitysim-baseline',
     ])
   })
 
   test('T008b: a keyboard drag cancelled with Escape leaves the order unchanged (FR-007)', async ({
     page,
   }) => {
-    await boot(page)
+    await boot(page, THREE_WORLD)
     await openScenariosTab(page)
     const before = await orderNames(page)
 
@@ -1378,22 +1388,22 @@ test.describe('User Story (037-scenarios-tab-redesign)', () => {
   test('T009: the relocated leading-edge arrows still reorder one step; boundary arrows are disabled', async ({
     page,
   }) => {
-    await boot(page)
+    await boot(page, THREE_WORLD)
     await openScenariosTab(page)
 
     await row(page, 'broken_scenario').getByRole('button', { name: 'Move broken_scenario up' }).click()
     await expect.poll(() => orderNames(page)).toEqual([
-      'observed',
+      'activitysim-density-variant',
       'broken_scenario',
-      'good_scenario',
+      'activitysim-baseline',
     ])
 
     // observed is at the top → its "up" arrow is disabled, still present.
-    const observedUp = row(page, 'observed').getByRole('button', { name: 'Move observed up' })
+    const observedUp = row(page, 'activitysim-density-variant').getByRole('button', { name: 'Move activitysim-density-variant up' })
     await expect(observedUp).toBeVisible()
     await expect(observedUp).toBeDisabled()
-    // good_scenario is now at the bottom → its "down" arrow is disabled.
-    const goodDown = row(page, 'good_scenario').getByRole('button', { name: 'Move good_scenario down' })
+    // activitysim-baseline is now at the bottom → its "down" arrow is disabled.
+    const goodDown = row(page, 'activitysim-baseline').getByRole('button', { name: 'Move activitysim-baseline down' })
     await expect(goodDown).toBeVisible()
     await expect(goodDown).toBeDisabled()
   })
@@ -1401,7 +1411,7 @@ test.describe('User Story (037-scenarios-tab-redesign)', () => {
   test('T010: reordering the list never changes the resolved baseline (FR / Edge Case)', async ({
     page,
   }) => {
-    await boot(page)
+    await boot(page, THREE_WORLD)
     await openScenariosTab(page)
     const baselineBefore = await page.evaluate(() => window.__wftdm!.appState.getBaseline())
     expect(baselineBefore).toBeTruthy()
@@ -1410,16 +1420,16 @@ test.describe('User Story (037-scenarios-tab-redesign)', () => {
     await row(page, 'broken_scenario').getByRole('button', { name: 'Move broken_scenario up' }).click()
     await row(page, 'broken_scenario').getByRole('button', { name: 'Move broken_scenario up' }).click()
 
-    expect(await orderNames(page)).toEqual(['broken_scenario', 'observed', 'good_scenario'])
+    expect(await orderNames(page)).toEqual(['broken_scenario', 'activitysim-density-variant', 'activitysim-baseline'])
     expect(await page.evaluate(() => window.__wftdm!.appState.getBaseline())).toBe(baselineBefore)
   })
 
   test('T011: every non-reorder control is pixel-aligned across all rows, both themes (FR-015)', async ({
     page,
   }) => {
-    await boot(page)
+    await boot(page, THREE_WORLD)
     await openScenariosTab(page)
-    const names = ['observed', 'good_scenario', 'broken_scenario']
+    const names = ['activitysim-density-variant', 'activitysim-baseline', 'broken_scenario']
 
     for (const dark of [false, true]) {
       await page.evaluate((d) => document.documentElement.classList.toggle('dark', d), dark)
@@ -1447,9 +1457,9 @@ test.describe('User Story (037-scenarios-tab-redesign)', () => {
   test('T011b: the colour swatch is vertically centred against the WHOLE name+path identity block, both themes', async ({
     page,
   }) => {
-    await boot(page)
+    await boot(page, THREE_WORLD)
     await openScenariosTab(page)
-    const names = ['observed', 'good_scenario', 'broken_scenario']
+    const names = ['activitysim-density-variant', 'activitysim-baseline', 'broken_scenario']
 
     for (const dark of [false, true]) {
       await page.evaluate((d) => document.documentElement.classList.toggle('dark', d), dark)
@@ -1457,16 +1467,16 @@ test.describe('User Story (037-scenarios-tab-redesign)', () => {
         const r = row(page, n)
         const swatch = (await r.getByTestId(`scenario-color-swatch-${n}`).boundingBox())!
         const name = (await r.getByTestId('scenario-name').boundingBox())!
-        const path = (await r.locator('.font-mono').first().boundingBox())!
+        const path = (await r.locator('span.truncate[title]').first().boundingBox())!
 
         const swatchCentreY = swatch.y + swatch.height / 2
-        // Midpoint between the name line's centre and the path line's centre.
+        // The identity block is the name input (34px) with the caption under it: its vertical middle is halfway
+        // between the input's top and the caption's bottom.
         const nameCentreY = name.y + name.height / 2
-        const pathCentreY = path.y + path.height / 2
-        const blockMidY = (nameCentreY + pathCentreY) / 2
+        const blockMidY = (name.y + (path.y + path.height)) / 2
 
-        // Swatch centre lands on the two-line block's midpoint — not on
-        // the name line alone (which would be ~one half-line higher).
+        // Swatch centre lands on the two-part block's midpoint — not on
+        // the name input alone (which would be about half the caption higher).
         expect(
           Math.abs(swatchCentreY - blockMidY),
           `${n} swatch not centred on the 2-line block (${dark ? 'dark' : 'light'})`,
@@ -1487,7 +1497,7 @@ test.describe('User Story (037-scenarios-tab-redesign)', () => {
   test('T017: the baseline row shows a filled, non-interactive "Baseline" chip beside the name; no tooltip', async ({
     page,
   }) => {
-    await boot(page)
+    await boot(page, THREE_WORLD)
     await openScenariosTab(page)
     const baselineName = (await page.evaluate(() => window.__wftdm!.appState.getBaseline()))!
 
@@ -1504,10 +1514,10 @@ test.describe('User Story (037-scenarios-tab-redesign)', () => {
   test('T018: a non-baseline row shows an outline clickable "Set as baseline" chip; clicking it moves the baseline', async ({
     page,
   }) => {
-    await boot(page)
+    await boot(page, THREE_WORLD)
     await openScenariosTab(page)
     const baselineName = (await page.evaluate(() => window.__wftdm!.appState.getBaseline()))!
-    const other = baselineName === 'good_scenario' ? 'observed' : 'good_scenario'
+    const other = baselineName === 'activitysim-baseline' ? 'activitysim-density-variant' : 'activitysim-baseline'
 
     const otherChipButton = baselineChip(page, other).getByRole('button', {
       name: `Mark ${other} as baseline scenario`,
@@ -1532,7 +1542,7 @@ test.describe('User Story (037-scenarios-tab-redesign)', () => {
   test('T019: no Star icon / no separate Badge remains; the chip is the only baseline control, fixed width, both themes', async ({
     page,
   }) => {
-    await boot(page)
+    await boot(page, THREE_WORLD)
     await openScenariosTab(page)
 
     // No leftover Star-era control anywhere in the list.
@@ -1543,7 +1553,7 @@ test.describe('User Story (037-scenarios-tab-redesign)', () => {
     await expect(list.locator('[aria-pressed]')).toHaveCount(0)
 
     const baselineName = (await page.evaluate(() => window.__wftdm!.appState.getBaseline()))!
-    const other = baselineName === 'good_scenario' ? 'observed' : 'good_scenario'
+    const other = baselineName === 'activitysim-baseline' ? 'activitysim-density-variant' : 'activitysim-baseline'
 
     for (const dark of [false, true]) {
       await page.evaluate((d) => document.documentElement.classList.toggle('dark', d), dark)
@@ -1570,11 +1580,11 @@ test.describe('User Story (037-scenarios-tab-redesign)', () => {
     test(`T024: hovering the active/inactive Switch shows an explanatory tooltip; the baseline chip has none (${dark ? 'dark' : 'light'})`, async ({
       page,
     }) => {
-      await boot(page)
+      await boot(page, THREE_WORLD)
       await openScenariosTab(page)
       await page.evaluate((d) => document.documentElement.classList.toggle('dark', d), dark)
 
-      const sw = row(page, 'good_scenario').getByRole('switch')
+      const sw = row(page, 'activitysim-baseline').getByRole('switch')
       const ariaLabelBefore = await sw.getAttribute('aria-label')
       const checkedBefore = await sw.getAttribute('aria-checked')
 
@@ -1587,7 +1597,7 @@ test.describe('User Story (037-scenarios-tab-redesign)', () => {
 
       // FR-013: the tooltip changes nothing about the Switch's wiring —
       // aria-label and checked state are exactly what they were before
-      // the hover (038: good_scenario is auto-active, so `checkedBefore`
+      // the hover (038: activitysim-baseline is auto-active, so `checkedBefore`
       // is 'true' here — the point is the hover doesn't alter it).
       expect(await sw.getAttribute('aria-label')).toBe(ariaLabelBefore)
       expect(await sw.getAttribute('aria-checked')).toBe(checkedBefore)
@@ -1616,7 +1626,7 @@ test.describe('User Story 5 - Documentation tab', () => {
   test('Documentation is the fourth Settings tab (no separate nav button) and shows the written guide with the compare table', async ({
     page,
   }) => {
-    await boot(page)
+    await boot(page, THREE_WORLD)
 
     // 063 redesign (P10, spec 4.4): the nav's bottom group holds Settings and the light/dark toggle only.
     await expect(page.getByRole('button', { name: 'Documentation' })).toHaveCount(0)

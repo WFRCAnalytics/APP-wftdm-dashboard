@@ -49,7 +49,9 @@ export function ScenarioRow({ scenario: s, index, total, baselineName, onMove }:
         'mb-2 grid grid-cols-[22px_34px_minmax(140px,1fr)_auto_auto_auto] items-center gap-3 rounded-[14px] border border-[var(--line)] bg-[var(--tile-hi)] px-2.5 py-2',
         'max-[900px]:grid-cols-[22px_34px_minmax(0,1fr)_auto]',
         // Only a failed run is flagged on its card; a healthy one looks like any other.
-        failed && treatment.rowBorderClassName,
+        // The accent border is 4px against the normal 1px, so the row gives back 3px of left padding: its content
+        // (swatch, name, controls) stays on the same x as every other row.
+        failed && cn(treatment.rowBorderClassName, 'pl-[7px]'),
         isDragging && 'relative z-10 bg-[var(--surface)] opacity-90 shadow-[var(--sh1)]',
       )}
     >
