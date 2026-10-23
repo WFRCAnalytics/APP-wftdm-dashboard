@@ -608,10 +608,26 @@ test.describe('Polish - dark mode (015-theme-toggle)', () => {
     const card = panelCard(page, 'Observable Plot Line Trip Distance by Purpose')
     const dataLine = card.locator('.observable-plot-chart svg[viewBox] path[stroke]').first()
     await expect(dataLine).toBeVisible({ timeout: 20_000 })
-    await dataLine.hover({ force: true })
-
+    // Hover a data point that is really ON the line (the centre of its bounding box is not, for a diagonal line, and the
+    // tip only shows near a data point). The Test tab is long and its panels change height as they finish loading, so
+    // the point is recomputed on every try instead of once.
     const tip = card.locator('.observable-plot-chart svg[viewBox] g[aria-label="tip"]')
-    await expect(tip).not.toBeEmpty()
+    await expect
+      .poll(
+        async () => {
+          await dataLine.scrollIntoViewIfNeeded()
+          const vertex = await dataLine.evaluate((path: SVGPathElement) => {
+            const n = (path.getAttribute('d') ?? '').match(/-?[0-9.]+/g)!.map(Number)
+            const m = path.getScreenCTM()!
+            return { x: m.a * n[0] + m.c * n[1] + m.e, y: m.b * n[0] + m.d * n[1] + m.f }
+          })
+          await page.mouse.move(vertex.x - 15, vertex.y)
+          await page.mouse.move(vertex.x, vertex.y, { steps: 5 })
+          return tip.evaluate((g) => g.childElementCount)
+        },
+        { timeout: 20_000, intervals: [300, 500, 800] },
+      )
+      .toBeGreaterThan(0)
 
     const tipBoxFill = await tip.locator('path').first().evaluate((el) => getComputedStyle(el).fill)
     const tipTextFill = await tip.locator('text').first().evaluate((el) => getComputedStyle(el).fill)

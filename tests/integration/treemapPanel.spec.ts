@@ -56,15 +56,15 @@ test.describe('User Story 1 - Author renders a real hierarchical breakdown as a 
 
     // Each region has its own real, distinct fill color (depth-1-ancestor
     // colored — research.md's own coloring-convention addendum), cycling
-    // through the app's real --chart-1..5 tokens with wraparound (10
-    // purposes, 5 tokens).
+    // through the app's real --chart-1..8 tokens with wraparound (10
+    // purposes, 8 tokens).
     // Direct child rect only — a node's own <clipPath> also contains a
     // nested <rect> (for label clipping), which `regions.locator('rect')`
     // would also match (its own default, unset SVG fill, `rgb(0,0,0)`,
     // masquerading as a spurious 6th "color" — a real bug found and fixed
     // in this test's own locator, not an app bug).
     const fills = await regions.locator('> rect').evaluateAll((els) => els.map((el) => getComputedStyle(el).fill))
-    expect(new Set(fills).size).toBe(5)
+    expect(new Set(fills).size).toBe(8)
   })
 
   test('clicking a region zooms into its real mode breakdown; the title bar zooms back out', async ({ page }) => {

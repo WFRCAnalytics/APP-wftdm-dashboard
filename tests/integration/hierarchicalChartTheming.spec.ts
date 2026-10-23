@@ -33,7 +33,7 @@ async function currentChartTokens(page: Page): Promise<string[]> {
     const rootStyle = getComputedStyle(document.documentElement)
     const probe = document.createElement('div')
     document.body.appendChild(probe)
-    const colors = [1, 2, 3, 4, 5].map((n) => {
+    const colors = [1, 2, 3, 4, 5, 6, 7, 8].map((n) => {
       probe.style.color = rootStyle.getPropertyValue(`--chart-${n}`).trim()
       return getComputedStyle(probe).color
     })
@@ -43,7 +43,7 @@ async function currentChartTokens(page: Page): Promise<string[]> {
 }
 
 test.describe('User Story 3 - A viewer cannot tell these charts use a different rendering technology', () => {
-  test('light mode: every fill on both new panel types resolves to a real --chart-1..5 value', async ({ page }) => {
+  test('light mode: every fill on both new panel types resolves to a real --chart-1..8 value', async ({ page }) => {
     await boot(page)
     await gotoTestTab(page)
 
@@ -72,7 +72,7 @@ test.describe('User Story 3 - A viewer cannot tell these charts use a different 
     expect(sunburstFills).not.toContain('rgb(0, 0, 0)')
   })
 
-  test('dark mode: every fill remains resolved to the current (dark) --chart-1..5 values, and stays legible', async ({
+  test('dark mode: every fill remains resolved to the current (dark) --chart-1..8 values, and stays legible', async ({
     page,
   }) => {
     await boot(page)

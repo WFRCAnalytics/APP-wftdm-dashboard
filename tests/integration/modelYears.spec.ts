@@ -60,12 +60,13 @@ async function scenarioCells(page: Page) {
 }
 
 test.describe('063 P3 — model years', () => {
-  test('the control bar shows Year and Focus, defaulting to the base year and the baseline', async ({ page }) => {
+  test('the control bar shows Year and Focus, defaulting to the base year, the first scenario as reference and the second as focus', async ({ page }) => {
     await boot(page, ALL_RUNS)
     await expect(page.getByTestId('control-year')).toContainText('2023')
-    await expect(page.getByTestId('scenario-chip-focus')).toContainText(/baseline/i)
+    await expect(page.getByTestId('scenario-chip-reference')).toContainText(/baseline/i)
+    await expect(page.getByTestId('scenario-chip-focus')).toContainText(/density-variant/i)
     const state = await page.evaluate(() => window.__wftdm!.compareState.getState())
-    expect(state).toMatchObject({ year: 2023, focus: 'activitysim-baseline', compare: true })
+    expect(state).toMatchObject({ year: 2023, focus: 'activitysim-density-variant', compare: true })
   })
 
   test('the Year select lists every configured year with its label', async ({ page }) => {

@@ -82,7 +82,7 @@ test.describe('User Story 2 - Author renders the same real hierarchy as a zoomab
           .map((el) => getComputedStyle(el).fill),
       )
       .then((fills) => fills)
-    expect(new Set(topLevelFills).size).toBe(5)
+    expect(new Set(topLevelFills).size).toBe(8)
   })
 
   test('clicking a non-leaf arc zooms so it becomes the center; clicking the center circle zooms back out', async ({
