@@ -43,9 +43,9 @@ description: "Task list for 035-scenario-label-color"
 
 ## Phase 3: User Story 1 - Scenario labels appear everywhere a name is shown (Priority: P1) 🎯 MVP
 
-**Goal**: `label ?? name` resolves at every confirmed real display surface (spec.md's audit): the old chart library trace legends, the old chart library chart config labels, Observable Plot legend/axis text, table cell values in a `scenario` column — with zero change to any query/join/state key.
+**Goal**: `label ?? name` resolves at every confirmed real display surface (spec.md's audit): the retired chart library trace legends, the retired chart library chart config labels, Observable Plot legend/axis text, table cell values in a `scenario` column — with zero change to any query/join/state key.
 
-**Independent Test**: Set a custom label on an active scenario; open a the old chart library panel (trace split by `$scenario`), a the old chart library panel (`series: scenario`), an Observable Plot panel (`fill`/`stroke: scenario`), and a table panel with a `scenario` column; confirm the label — not the raw name — renders in every legend/tooltip/cell, and that `window.__wftdm.__debugQueryLog()` still shows the real name in every SQL statement. Fully testable and shippable with zero US2 work.
+**Independent Test**: Set a custom label on an active scenario; open a retired chart library panel (trace split by `$scenario`), a retired chart library panel (`series: scenario`), an Observable Plot panel (`fill`/`stroke: scenario`), and a table panel with a `scenario` column; confirm the label — not the raw name — renders in every legend/tooltip/cell, and that `window.__wftdm.__debugQueryLog()` still shows the real name in every SQL statement. Fully testable and shippable with zero US2 work.
 
 ### Tests for User Story 1
 
@@ -60,7 +60,7 @@ description: "Task list for 035-scenario-label-color"
 - [X] T012 [US1] Extend `src/panels/a retired chart helper`'s `encodeRechartsData()` — **DONE**. Same real deviation — color branch (T026) landed in the same edit.
 - [X] T013 [US1] Extend `src/panels/observablePlotEncoding.ts`'s `resolveObservablePlotEncoding()` — **DONE**. Same real deviation — the domain/range all-or-nothing logic (T027) landed in the same edit, since research.md §4's rule needs the same distinct-scenario-values pass the label substitution already computes.
 - [X] T014 [US1] Extend `src/panels/the retired chart panel` — **DONE, with a real addition beyond the original plan**: `useScenarioDisplay()` alone wasn't enough for FR-005/FR-012 reactivity without a new query — this panel's data-fetch effect is imperative (`the old library API` inside a `.then()`), so a NEW `lastRowsRef` cache plus a dedicated scenario-display-only re-render effect were added, mirroring the existing theme-only effect's own "re-derive from cached data, no new query" pattern exactly.
-- [X] T015 [US1] Extend `src/panels/the retired chart panel` — **DONE**. Simpler than the old chart library: this panel type is fully declarative (`encodeRechartsData()` called directly in the render body from `rows` state) — `useScenarioDisplay()` alone is sufficient, no extra effect needed.
+- [X] T015 [US1] Extend `src/panels/the retired chart panel` — **DONE**. Simpler than the retired chart library: this panel type is fully declarative (`encodeRechartsData()` called directly in the render body from `rows` state) — `useScenarioDisplay()` alone is sufficient, no extra effect needed.
 - [X] T016 [US1] Extend `src/panels/ObservablePlotPanel.tsx` — **DONE**. `rows` is already React state consumed by an existing redraw effect — `scenarioDisplay` added to that effect's own dependency array, no new effect needed.
 - [X] T017 [US1] Extend `src/panels/TablePanel.tsx` — **DONE** exactly as planned.
 - [X] T018 [US1] Run unit tests — **DONE**. 45/45 passing (a retired chart helper 14, a retired chart helper 10, observablePlotEncoding 21).
@@ -72,7 +72,7 @@ description: "Task list for 035-scenario-label-color"
 
 ## Phase 4: User Story 2 - A viewer picks a scenario's own display color (Priority: P2)
 
-**Goal**: Manifest `color` becomes each scenario's real, consistent default color across `the old chart library`/`the old chart library`/`observable-plot`; a new Scenarios-tab swatch lets a viewer override it for the session, reflected immediately in every already-rendered panel.
+**Goal**: Manifest `color` becomes each scenario's real, consistent default color across the retired chart library/the retired chart library/`observable-plot`; a new Scenarios-tab swatch lets a viewer override it for the session, reflected immediately in every already-rendered panel.
 
 **Independent Test**: Load two scenarios with different manifest colors; confirm consistent per-scenario color across the three panel types with no override set; override one scenario's color from the Scenarios tab; confirm every already-rendered panel updates immediately; clear the override, confirm it reverts. Fully testable without touching US1's own code paths again (only extends the same functions US1 already modified).
 

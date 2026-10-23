@@ -12,10 +12,10 @@
 | `graphic-walker` (ordinary card, not `full_page`) | No |
 | `table` | Yes, unchanged |
 | `markdown` | Yes, unchanged |
-| `the old chart library` | Yes, unchanged |
+| the retired chart library | Yes, unchanged |
 | `observable-plot` | Yes, unchanged |
 | `sankey` | Yes, unchanged |
-| `the old chart library` | Yes, unchanged |
+| the retired chart library | Yes, unchanged |
 | `flowmap` | Yes, unchanged |
 | `zonemap` | Yes, unchanged |
 | `graphic-walker` (`header.full_page: true`) | N/A — no `PanelCard`/registry lookup involved at all (`FullPagePanel`, unchanged by this feature) |

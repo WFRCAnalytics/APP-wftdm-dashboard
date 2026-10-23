@@ -75,7 +75,7 @@ export function useScenarioDisplay(): ScenarioDisplayMap
 the same reason that hook's own cache exists). `getSnapshot` builds a
 fresh `Map<string, ScenarioDisplay>` from `appState.list()`, one entry per
 registered scenario (not just active ones — a `comparison: diff` panel or
-a the old chart library panel including a currently-inactive-but-just-deactivated
+a retired chart library panel including a currently-inactive-but-just-deactivated
 scenario in its last-fetched rows should still resolve correctly rather
 than silently falling back to the raw name mid-transition), with `color:
 s.colorOverride ?? s.color` already resolved (§2's `ScenarioDisplay.color`
@@ -89,7 +89,7 @@ export function resolveTraces(
   trace: RetiredChartTraceConfig,
   rows: Record<string, unknown>[],
   scenarioDisplay?: ScenarioDisplayMap,   // NEW, optional
-): Partial<the old chart library.PlotData>[]
+): Partial<the retired chart library.PlotData>[]
 
 // panels/a retired chart helper
 export function encodeRechartsData(

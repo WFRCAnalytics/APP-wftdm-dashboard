@@ -129,7 +129,7 @@ Single project — `src/`, `tests/` at repository root (plan.md's own Project St
 
 - [X] T030 [P] [US4] Integration test — 004 expand/collapse on a zonemap panel shows the same choropleth (same underlying query result and geometry, not re-fetched), map instance preserved (Acceptance Scenario 1).
 - [X] T031 [US4] Integration test — the "Zone Map Broken Panel (intentional)" fixture entry (T003) renders the shared `PanelErrorState`, not an unhandled exception, with no partially-initialized map instance left in the DOM (Acceptance Scenario 2, SC-006).
-- [X] T032 [US4] Integration test — extend the mixed-panel-types tab test to include a zonemap panel alongside `valuebox`/`the old chart library`/`table`/`markdown`/`observable-plot`/`sankey`/`flowmap`, confirming all eight now-built panel types render without error in one load (Acceptance Scenario 3, SC-005).
+- [X] T032 [US4] Integration test — extend the mixed-panel-types tab test to include a zonemap panel alongside `valuebox`/the retired chart library/`table`/`markdown`/`observable-plot`/`sankey`/`flowmap`, confirming all eight now-built panel types render without error in one load (Acceptance Scenario 3, SC-005).
 - [X] T033 [US4] Integration test — multiple zonemap panels referencing the same `boundaries` file trigger exactly one `registerFileURL()`/geometry query, not one per panel instance (research.md §4, Edge Cases).
 - [X] T034 [US4] Integration test — a live network capture confirms the `spatial` extension fetch to `extensions.duckdb.org` happens exactly once per session regardless of how many zonemap panels mount (research.md §2, quickstart.md manual scenario 10's automated equivalent).
 

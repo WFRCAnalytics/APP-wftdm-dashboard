@@ -354,7 +354,7 @@ US1 already built.
       required manual refresh (FR-007's window-resize half, distinct from
       T019's dialog-transition half)
 - [X] T022 [P] [US3] Playwright test in `tests/integration/sankeyPanel.spec.ts`:
-      a tab mixing `sankey` panels with `valuebox`/`the old chart library`/`table`/
+      a tab mixing `sankey` panels with `valuebox`/the retired chart library/`table`/
       `markdown`/`observable-plot` panels (this fixture file's full row
       set) renders all of them without error, and a `sankey` panel's card
       has the same title bar and expand trigger every other panel type has

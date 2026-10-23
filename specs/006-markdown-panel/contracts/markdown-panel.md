@@ -2,7 +2,7 @@
 
 Satisfies: FR-001 through FR-008. The fourth panel type — proves
 config → sanitized-render, deliberately *not* following the config →
-query → render shape `contracts/valuebox-panel.md`/`contracts/the old chart library-
+query → render shape `contracts/valuebox-panel.md`/`contracts/the retired chart library-
 panel.md`/`contracts/table-panel.md` all established, because this panel
 type has no query at all (research.md §4).
 
@@ -133,7 +133,7 @@ relocation only (FR-008, SC-005).
   mechanism exists (FR-008, SC-005) — the exact same sanitized HTML
   string renders in both the inline card and the dialog, since it's the
   same mounted component instance either way.
-- **Given** a markdown panel alongside valuebox/the old chart library/table panels on
+- **Given** a markdown panel alongside valuebox/the retired chart library/table panels on
   the same tab, **when** the tab renders, **then** all panel types render
   without error, and the markdown panel's lack of a query causes no
   visible difference in card chrome (title bar, expand trigger) from any

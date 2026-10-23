@@ -26,7 +26,7 @@ app doesn't have yet (Input/Select/Checkbox/Switch/RadioGroup/Textarea/
 Label), updates every real, direct WFRC-brand-token reference outside the
 semantic token system (Sankey's `FALLBACK_TOKEN_VARS`, `tableLogic.ts`/
 `zonemapColor.ts`'s `--brand-wfrc-blue` anchor — explicitly NOT the
-already-non-brand `--chart-1..5` the old chart library palette), individually
+already-non-brand `--chart-1..5` the retired chart library palette), individually
 re-verifies all six of this project's own previously-proven dark-mode
 fixes against the new tokens, and updates the `wftdm-design-system` skill
 to state its brand-consistency rule is deliberately suspended, not

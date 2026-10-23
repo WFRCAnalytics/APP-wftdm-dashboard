@@ -6,7 +6,7 @@ A new exported constant, `EXPANDABLE_PANEL_TYPES: Set<string>`, in its own new f
 
 ```ts
 export const EXPANDABLE_PANEL_TYPES = new Set([
-  'table', 'markdown', 'the old chart library', 'observable-plot', 'sankey', 'the old chart library', 'flowmap', 'zonemap',
+  'table', 'markdown', the retired chart library, 'observable-plot', 'sankey', the retired chart library, 'flowmap', 'zonemap',
 ])
 ```
 
@@ -81,7 +81,7 @@ export interface ValueBoxPanelConfig extends DataBoundPanelConfigBase {
 | `sparkline.metric` | yes | The grouped metric (a different table than the panel's own `metric`) whose rows the mini-chart summarizes. |
 | `sparkline.x` | yes | Category column from `sparkline.metric` — becomes the mini-chart's category axis. |
 | `sparkline.y` | yes | Value column from `sparkline.metric` — becomes the mini-chart's plotted value. |
-| `sparkline.chart_type` | no | `'bar'` (default) or `'line'` — reuses the same two the old chart library mark components `the old chart library` panels already use. |
+| `sparkline.chart_type` | no | `'bar'` (default) or `'line'` — reuses the same two the retired chart library mark components the retired chart library panels already use. |
 | `baseline_trend.expr` | yes | Free-form SQL expression, referencing `a`/`b` table aliases (the panel's own resolved scenario, and the resolved baseline scenario, respectively) — identical convention to `ComparisonDiff.expr`. |
 | `baseline_trend.format` | no | Python-style format string (`formatValue.ts`'s existing syntax) for the displayed diff magnitude; defaults to the panel's own `format`. |
 
@@ -103,7 +103,7 @@ Four independent visual zones inside the card, each with its own data-readiness 
 1. **Label + icon** (existing `title`/`icon`, restyled per FR-005 — smaller, secondary text above the value, `tabular-nums` value).
 2. **Primary value** (existing `column`/`format`/`unit` — FR-006/FR-007, unchanged data/formatting, restyled placement).
 3. **Baseline-trend badge** (new, optional, FR-015–FR-020) — sits beside the primary value, matching shadcn's own real badge-beside-value placement (research.md §4): a `TrendingUp`/`TrendingDown`/`Minus` icon (the last for a real "no change" diff, per spec.md's own baseline-equals-current edge case) plus the formatted magnitude. Deliberately NEUTRAL styling (`outline` badge variant) rather than green-for-up/red-for-down — this app has no per-metric "which direction is good" metadata, and asserting one would misrepresent a metric where a decrease is the desired outcome (e.g. VMT).
-4. **Sparkline** (new, optional, FR-010–FR-014) — a small, fixed-height chart region below the primary value, rendered via bare the old chart library primitives + `encodeRechartsData()` (research.md §2), no axes/tooltip/legend/grid chrome.
+4. **Sparkline** (new, optional, FR-010–FR-014) — a small, fixed-height chart region below the primary value, rendered via bare the retired chart library primitives + `encodeRechartsData()` (research.md §2), no axes/tooltip/legend/grid chrome.
 
 Each zone's own loading state is a `bg-muted animate-pulse` placeholder matching the app's existing skeleton convention (`wftdm-design-system` skill), sized to that zone's own real footprint — never a full-card skeleton replacing zones 3/4 that were never going to render at all for a panel that didn't configure them.
 

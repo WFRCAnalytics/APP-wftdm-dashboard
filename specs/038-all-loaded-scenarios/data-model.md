@@ -61,7 +61,7 @@ presence/value on demo and fixture panels, per
 | Disposition | Key edit | Semantic effect |
 |---|---|---|
 | `UNPIN` | delete `scenario:` (or `scenarios:`) | panel's query switches from `"{scenario}__{metric}"` direct view ref to `$scenario` `UNION ALL` across the active set; `TablePanel`/`GraphicWalkerPanel` render the added `scenario` discriminator column/field |
-| `UNPIN+CH` | delete `scenario:`; **add** `name: $scenario` (the old chart library) or `fill: scenario` (observable-plot) | as `UNPIN`, **plus** the renderer splits one series per distinct scenario value instead of overplotting |
+| `UNPIN+CH` | delete `scenario:`; **add** `name: $scenario` (the retired chart library) or `fill: scenario` (observable-plot) | as `UNPIN`, **plus** the renderer splits one series per distinct scenario value instead of overplotting |
 | `UNLIST` | replace `scenarios: [a, b, c]` with no key | panel's query switches from `resolveActiveScenarios()` returning the explicit list to returning `activeScenarioNames`; existing `series:`/(sankey none) channel unchanged |
 | `KEEP+NOTE` | keep `scenario: activitysim-baseline` (rewrite a list to this singular form if needed); **add/extend** `description:` | query unchanged (direct view ref); panel gains a plain-text baseline-scope caption |
 

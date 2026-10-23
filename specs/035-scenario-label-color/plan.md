@@ -9,7 +9,7 @@
 Two independent, presentation-only additions to how scenario identity
 renders. **Part A**: propagate the existing `Scenario.label` field
 (`020-settings-modal`) to the four real display surfaces confirmed by
-spec.md's own audit — the old chart library trace legend names, the old chart library `chartConfig`
+spec.md's own audit — the retired chart library trace legend names, the retired chart library `chartConfig`
 labels, Observable Plot's row-driven legend/axis text, and table cell
 values in a `scenario`-keyed column — via `label ?? name`, resolved only
 after all query/grouping/join logic (which keeps using the real name)
@@ -30,7 +30,7 @@ panel type, no new query, no change to `services/sqlExpander.ts` or
 
 **Language/Version**: TypeScript (ES2022 target), React 18.3 — matching the existing panel-layer convention (constitution v2.2.0)
 
-**Primary Dependencies**: None new. Reuses `services/duckdb.ts` (unmodified), `state/appState.ts` (extended), `the old chart library`, `the old chart library`, `@observablehq/plot`, `lucide-react` (all already installed)
+**Primary Dependencies**: None new. Reuses `services/duckdb.ts` (unmodified), `state/appState.ts` (extended), the retired chart library, the retired chart library, `@observablehq/plot`, `lucide-react` (all already installed)
 
 **Storage**: N/A (in-memory only — no persistence, per FR-013 and constitution's no-`localStorage`/`sessionStorage` rule)
 
@@ -44,7 +44,7 @@ panel type, no new query, no change to `services/sqlExpander.ts` or
 
 **Constraints**: Must not change any DuckDB view name, SQL, or React state key (FR-003); must not persist (FR-013); must not touch `$baseline`/comparison-diff query logic (spec.md's explicit exclusion)
 
-**Scale/Scope**: 4 panel types touched for Part A (`the old chart library`, `the old chart library`, `observable-plot`, `table`); 3 of those 4 touched for Part B (`the old chart library`, `the old chart library`, `observable-plot` — `table` has no per-scenario color dimension); 1 new field + 2 new functions on `state/appState.ts`; 1 new hook; 1 new pure module; 1 new UI control in `layout/settings/scenariosTab.tsx`
+**Scale/Scope**: 4 panel types touched for Part A (the retired chart library, the retired chart library, `observable-plot`, `table`); 3 of those 4 touched for Part B (the retired chart library, the retired chart library, `observable-plot` — `table` has no per-scenario color dimension); 1 new field + 2 new functions on `state/appState.ts`; 1 new hook; 1 new pure module; 1 new UI control in `layout/settings/scenariosTab.tsx`
 
 ## Constitution Check
 

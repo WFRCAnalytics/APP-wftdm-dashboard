@@ -32,7 +32,7 @@ This is a per-panel-**type** default, not an unconditional rule: a deployer or d
 
 1. **Given** a dashboard tab with a value-box panel and no explicit override configured, **When** the analyst views its card, **Then** no expand-to-dialog control appears anywhere on that card.
 2. **Given** a dashboard tab with a graphic-walker panel rendered as an ordinary (non-full-page) panel and no explicit override configured, **When** the analyst views its card, **Then** no expand-to-dialog control appears on that card either.
-3. **Given** a dashboard tab with a table, markdown, the old chart library, observable-plot, sankey, the old chart library, flowmap, or zonemap panel and no explicit override configured, **When** the analyst views its card, **Then** the expand-to-dialog control still appears and still works exactly as it does today.
+3. **Given** a dashboard tab with a table, markdown, the retired chart library, observable-plot, sankey, the retired chart library, flowmap, or zonemap panel and no explicit override configured, **When** the analyst views its card, **Then** the expand-to-dialog control still appears and still works exactly as it does today.
 4. **Given** a tab whose graphic-walker panel is configured as a chromeless full-page Explore tab, **When** the analyst views it, **Then** nothing changes — that mode already has no card/expand chrome at all, and an override configured on it has no effect (there is no card to add the control to).
 5. **Given** a value-box panel explicitly configured to opt back into the expand control, **When** the analyst views its card, **Then** the control appears and works exactly like any other expandable panel's. **Given** a table (or any normally-expandable type) explicitly configured to opt out, **When** the analyst views its card, **Then** no expand control appears on it, even though every other table panel on the same tab still has one.
 
@@ -103,7 +103,7 @@ An analyst comparing a calibration run against the designated baseline scenario 
 
 - **FR-001**: The system MUST NOT show an expand-to-dialog control on a value-box panel, by default (no explicit override configured on that panel).
 - **FR-002**: The system MUST NOT show an expand-to-dialog control on a graphic-walker panel rendered as an ordinary (card) panel, by default.
-- **FR-003**: The system MUST continue to show a working expand-to-dialog control, unchanged, on every table, markdown, the old chart library, observable-plot, sankey, the old chart library, flowmap, and zonemap panel, by default.
+- **FR-003**: The system MUST continue to show a working expand-to-dialog control, unchanged, on every table, markdown, the retired chart library, observable-plot, sankey, the retired chart library, flowmap, and zonemap panel, by default.
 - **FR-004**: The system MUST leave the chromeless full-page Explore rendering mode for graphic-walker panels completely unaffected — it already has no expand mechanism to remove, and an override configured on a full-page panel has no effect.
 
 **Part A addendum — per-panel expand-ability override** (added during planning, before implementation of Part A completed; every requirement above still describes the correct DEFAULT behavior, now explicitly overridable per this addendum)
@@ -154,7 +154,7 @@ An analyst comparing a calibration run against the designated baseline scenario 
 
 ### Measurable Outcomes
 
-- **SC-001**: On any dashboard tab containing every panel type with no overrides configured, only the intended panel types (table, markdown, the old chart library, observable-plot, sankey, the old chart library, flowmap, zonemap) show a working expand control; value-box and ordinary graphic-walker panels show none.
+- **SC-001**: On any dashboard tab containing every panel type with no overrides configured, only the intended panel types (table, markdown, the retired chart library, observable-plot, sankey, the retired chart library, flowmap, zonemap) show a working expand control; value-box and ordinary graphic-walker panels show none.
 - **SC-001a**: A panel with an explicit expand-ability override renders according to that override, not its type's own default, in both override directions — with zero change to any other panel of the same type on the same tab that has no override of its own.
 - **SC-002**: Every existing value-box panel in this app's real demo content renders with the redesigned layout, showing identical underlying values to before, in both light and dark themes, with zero visual regressions in legibility or alignment.
 - **SC-003**: A value-box panel configured with sparkline mode shows a real, correctly-computed distribution chart sourced from real underlying data, with no effect on any panel that doesn't opt in.
@@ -163,7 +163,7 @@ An analyst comparing a calibration run against the designated baseline scenario 
 
 ## Assumptions
 
-- **Sparkline chart shape**: a bar-shaped mini-chart is the reasonable default for showing a categorical breakdown (this app's own established the old chart library bar rendering, already used elsewhere) unless overridden by future configuration; the request's own wording ("a mini bar/line shape") treats this as illustrative, not prescriptive.
+- **Sparkline chart shape**: a bar-shaped mini-chart is the reasonable default for showing a categorical breakdown (this app's own established the retired chart library bar rendering, already used elsewhere) unless overridden by future configuration; the request's own wording ("a mini bar/line shape") treats this as illustrative, not prescriptive.
 - **Baseline-diff presentation**: shown as a directional icon plus a percentage or absolute magnitude (mirroring the badge-style trend indicator confirmed in shadcn's own real reference metric card, described under Research above), not a full breakdown table — that remains the job of this app's existing dedicated comparison-diff panels.
 - **Baseline-diff query mechanism for a scalar value**: value-box metrics are typically single-row-per-scenario scalars with no natural per-row identity column, unlike every existing comparison-capable panel type's own comparable data. Reusing the existing comparison-diff computation (FR-018) for this scalar case is a real design detail for planning to resolve — accounted for here as a known constraint, not assumed away.
 - **`observed`/`threshold_warn`/`threshold_fail`**: `project-docs/GRAMMAR.md` documents these existing value-box fields, but the current `ValueBoxPanel.tsx` component does not actually read or render them — a pre-existing gap unrelated to this feature. This feature does not fix that gap; it is called out only so baseline-diff mode (a new, different comparison concept) is not confused with it.

@@ -433,7 +433,7 @@ import { FlowMapPanel } from '@/panels/FlowMapPanel'
 // ...
 export const registry: Record<string, ComponentType<PanelProps<any>>> = {
   valuebox: ValueBoxPanel,
-  the old chart library: the retired chart panel,
+  the retired chart library: the retired chart panel,
   table: TablePanel,
   markdown: MarkdownPanel,
   'observable-plot': ObservablePlotPanel,

@@ -160,10 +160,10 @@ this session, fact.
 ## §4. Dashboard content placement — two new tabs, three existing tabs extended
 
 **Decision**:
-- `dashboard-1-overview.yaml` (existing) gains one new row: a `the old chart library`
+- `dashboard-1-overview.yaml` (existing) gains one new row: a retired chart library
   panel and an `observable-plot` panel, each bound to the already-real
   `trip_mode_share` metric (User Story 1) — placed here because it's
-  already the tab surfacing that exact metric via `the old chart library`.
+  already the tab surfacing that exact metric via retired chart library.
 - A new `dashboard-4-flows.yaml` tab ("Network Flows") holds the new
   `sankey` (`purpose_mode_flow`), `flowmap` (`od_flows`), and `zonemap`
   (`trips_by_destination_zone` + the new boundary geometry) panels

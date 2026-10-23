@@ -146,7 +146,7 @@ export interface RadarPolygon {
  * series (computed by the caller from `aggregateRadarSeries()`'s own
  * output) — a fixed 0 domain min (never negative, since values are
  * already clamped to >= 0 by aggregateRadarSeries). Angles start at
- * -π/2 (12 o'clock) and proceed clockwise, matching the old chart library'/Chart.js's
+ * -π/2 (12 o'clock) and proceed clockwise, matching the retired chart library's/Chart.js's
  * own real radar-chart convention. A `maxValue` of 0 (every value is 0)
  * degenerates every point to the exact center — still a valid, non-
  * crashing polygon (a single point repeated N times), matching FR-014's

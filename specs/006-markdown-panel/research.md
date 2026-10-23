@@ -47,7 +47,7 @@ headcount). Checked both documented sources for the full panel-type
 roster before deciding:
 
 - `project-docs/SPEC.md`'s Panel types table — the authoritative, exhaustive list:
-  `the old chart library`, `observable-plot`, `table`, `valuebox`, `flowmap`, `zonemap`,
+  the retired chart library, `observable-plot`, `table`, `valuebox`, `flowmap`, `zonemap`,
   `sankey`, `graphic-walker`, `markdown`. Of these nine, `markdown` is the
   only one with zero query. `graphic-walker` looks close (its own
   `project-docs/GRAMMAR.md` example is a "snapshot" that doesn't respond to

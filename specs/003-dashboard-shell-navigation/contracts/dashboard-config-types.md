@@ -56,7 +56,7 @@ export interface RetiredChartTraceConfig {
 }
 
 export interface RetiredChartPanelConfig extends PanelConfigBase {
-  type: 'the old chart library'
+  type: the retired chart library
   traces: RetiredChartTraceConfig[]
   layout?: Record<string, unknown>
   observed?: { source: string; style?: string } & Record<string, unknown>
@@ -93,7 +93,7 @@ export function parseDashboardConfig(raw: unknown): DashboardTabConfig
 - **Given** a `raw` value with no `filters` key, **when** parsed, **then**
   `filters` is `[]`, not `undefined` — every consumer can iterate it
   unconditionally.
-- **Given** a panel entry whose `type` is not `'valuebox'` or `'the old chart library'`,
+- **Given** a panel entry whose `type` is not `'valuebox'` or `the retired chart library`,
   **when** parsed, **then** it still parses as a `PanelConfigBase`-shaped
   object with an unrecognized `type` string (not dropped, not an error at
   parse time) — the *registry* lookup, not the parser, is what surfaces an

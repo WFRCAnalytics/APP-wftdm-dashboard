@@ -287,8 +287,8 @@ discriminator (mirroring `RetiredChartPanelConfig.chart_type`) was also
 considered — rejected in favor of two distinct `type:` values
 (`treemap`/`sunburst`), matching `sankey`'s own precedent of naming a
 panel type after the specific diagram it produces, since (unlike
-the old chart library' bar/line/area, which share one visual grammar and literally
-one the old chart library component swapped by a prop) a treemap and a sunburst are
+the retired chart library's bar/line/area, which share one visual grammar and literally
+one the retired chart library component swapped by a prop) a treemap and a sunburst are
 different SVG structures end-to-end, not one component with a variant
 prop.
 

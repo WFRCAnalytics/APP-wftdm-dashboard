@@ -247,7 +247,7 @@ layout grid/panel-card chrome with no special-casing, and a missing/empty
 `content:` fails predictably (an empty state) rather than crashing.
 
 **Independent Test**: Register the `markdown` type, load a tab mixing it
-with valuebox/the old chart library/table panels, confirm standard panel-card chrome and
+with valuebox/the retired chart library/table panels, confirm standard panel-card chrome and
 grid placement; confirm a panel with missing/empty `content:` shows a
 defined empty state.
 
@@ -259,7 +259,7 @@ already built.
 ### Tests for User Story 3
 
 - [x] T017 [P] [US3] Playwright test in `tests/integration/markdownPanel.spec.ts`:
-      a tab mixing a markdown panel with valuebox/the old chart library/table panels (the
+      a tab mixing a markdown panel with valuebox/the retired chart library/table panels (the
       fixture's `row_markdown` alongside `row_kpis`/`row_chart`/`row_table`)
       renders all panel types without error, and the markdown panel's card
       has the same title bar and expand trigger every other panel type has

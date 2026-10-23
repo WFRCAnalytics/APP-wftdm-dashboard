@@ -152,11 +152,11 @@ conventions):
 
 | Tab (file) | Sections (sidebar sub-nav, per `030-sidebar-navigation`) | Panel types used |
 |---|---|---|
-| `dashboard-1-summary.yaml` | none (single flat KPI + chart row, matching the existing Summary-tab convention) | `valuebox`, `the old chart library`, `the old chart library` |
-| `dashboard-2-person-household.yaml` | Auto Ownership, Work from Home (gap note), School Location, Workplace Location, Transit Pass (gap note), Telecommute Frequency (gap note), CDAP | `table`, `observable-plot`, `markdown`, `graphic-walker`, `the old chart library` |
-| `dashboard-3-tour-models.yaml` | Mandatory Tour Frequency/Scheduling, Joint Tour Frequency/Participation/Destination/Scheduling, Non-Mandatory Tour Frequency/Destination/Scheduling, At-Work Subtour Frequency/Destination/Scheduling, Stop Frequency | `the old chart library`, `table`, `observable-plot` |
-| `dashboard-4-mode-choice.yaml` | Tour Mode Choice, At-Work Subtour Mode Choice, Trip Mode Choice | `sankey`, `the old chart library`, `the old chart library`, `table` |
-| `dashboard-5-trip-models.yaml` | Trip Purpose, Trip Destination, Trip Scheduling, Zone Trip Ends by Mode | `table`, `observable-plot`, `the old chart library`, `zonemap` |
+| `dashboard-1-summary.yaml` | none (single flat KPI + chart row, matching the existing Summary-tab convention) | `valuebox`, the retired chart library, the retired chart library |
+| `dashboard-2-person-household.yaml` | Auto Ownership, Work from Home (gap note), School Location, Workplace Location, Transit Pass (gap note), Telecommute Frequency (gap note), CDAP | `table`, `observable-plot`, `markdown`, `graphic-walker`, the retired chart library |
+| `dashboard-3-tour-models.yaml` | Mandatory Tour Frequency/Scheduling, Joint Tour Frequency/Participation/Destination/Scheduling, Non-Mandatory Tour Frequency/Destination/Scheduling, At-Work Subtour Frequency/Destination/Scheduling, Stop Frequency | the retired chart library, `table`, `observable-plot` |
+| `dashboard-4-mode-choice.yaml` | Tour Mode Choice, At-Work Subtour Mode Choice, Trip Mode Choice | `sankey`, the retired chart library, the retired chart library, `table` |
+| `dashboard-5-trip-models.yaml` | Trip Purpose, Trip Destination, Trip Scheduling, Zone Trip Ends by Mode | `table`, `observable-plot`, the retired chart library, `zonemap` |
 | `dashboard-6-network.yaml` | Screenline/VMT-by-facility (gap note), VMT by Home TAZ, O-D Desire Lines, Home-Workplace Flows, Land Use, Accessibility | `markdown`, `zonemap`, `flowmap`, `table`, `valuebox` |
 
 `dashboard-5-explore.yaml` is unaffected — not listed above (`research.md`

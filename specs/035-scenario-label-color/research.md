@@ -13,10 +13,10 @@ literal string `'scenario'`, uniformly across all three chart panel types.
 **Rationale**: `services/sqlExpander.ts`'s `$scenario.<metric>` union
 (the only mechanism that ever populates this column) always names it
 literally `scenario` (`'${name}' AS scenario`, confirmed in spec.md's
-research). For `the old chart library`, `trace.color`/`trace.name` go through
+research). For the retired chart library, `trace.color`/`trace.name` go through
 `resolveColumnName()` first — `resolveColumnName('$scenario')` already
 returns `'scenario'` today, so checking `splitColumn === 'scenario'` in
-`resolveTraces()` needs no new resolution step. For `the old chart library`/
+`resolveTraces()` needs no new resolution step. For the retired chart library/
 `observable-plot`, `series`/`fill`/`stroke` are literal column names
 already (not `$`-prefixed placeholders — confirmed directly against a real
 published config, `public/demo-dashboard-config/dashboard-1-summary.yaml`'s
@@ -100,7 +100,7 @@ true}` for the "show a legend" case): an explicit `range` array is
 matched positionally against `domain` and replaces Plot's own internal
 default cycling for the WHOLE scale — there is no way to say "use my
 color for category A, but fall back to your own default cycle color for
-category B" within one scale. `the old chart library`/`the old chart library` don't have this
+category B" within one scale. the retired chart library/the retired chart library don't have this
 constraint (`a retired chart helper` sets `marker.color` per-trace independently;
 `a retired chart helper` sets `chartConfig[key].color` per-series
 independently), so only `observable-plot` needs this all-or-nothing rule.
@@ -130,8 +130,8 @@ shallow row copy with that one field's value replaced by
 
 **Rationale**: Per spec.md's own research, Observable Plot reads legend/
 axis/facet text directly from each row's own cell value (no separate
-"trace name" or "chart config label" indirection the way `the old chart library`/
-`the old chart library` have) — this is the one point in this whole feature where
+"trace name" or "chart config label" indirection the way the retired chart library/
+the retired chart library have) — this is the one point in this whole feature where
 label substitution genuinely happens to the DATA the chart renders from,
 not to a separate display-string field. This is still safe under FR-002/
 FR-003: by the time `resolveObservablePlotEncoding()` runs, the SQL query

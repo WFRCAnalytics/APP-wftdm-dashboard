@@ -53,7 +53,7 @@ back multiple independent pieces of UI from one persistent set of state).
 |---|---|---|
 | `title` (param) | `string` | `config.title` — becomes the Dialog's visible `DialogTitle` |
 | `children` (param) | `ReactNode` | Exactly one `<PanelComponent config={config} />` element (or `null`), rendered by `panelCard.tsx` and passed through unmodified |
-| `options.height` (param, optional) | `number \| undefined` | `config.height` — a common `PanelConfig` field, not the old chart library-specific; sizes only the inline (collapsed) anchor, so a panel with no height opinion (e.g. `valuebox`) stays naturally auto-sized exactly as before this feature |
+| `options.height` (param, optional) | `number \| undefined` | `config.height` — a common `PanelConfig` field, not the retired chart library-specific; sizes only the inline (collapsed) anchor, so a panel with no height opinion (e.g. `valuebox`) stays naturally auto-sized exactly as before this feature |
 | `trigger` (return) | `ReactNode` | The icon-only expand `Button` — placed in `CardHeader` |
 | `body` (return) | `ReactNode` | The inline anchor `<div>` + `Dialog` + the portaled `children` (via the persistent host node) — placed in `CardContent` |
 

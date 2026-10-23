@@ -634,9 +634,9 @@ discriminator column).
   panel genuinely has: toggling one active scenario's own Switch
   (`appState.setActive`) — cross-checked against real, live-queried
   work→SOV values (324 combined, 107 baseline-only). The "tab mixing
-  sankey with valuebox/the old chart library/table/markdown/observable-plot" test was
+  sankey with valuebox/the retired chart library/table/markdown/observable-plot" test was
   adapted to the REAL Mode Choice tab's own actual composition
-  (table + observable-plot ×2 + sankey — no valuebox/the old chart library/markdown
+  (table + observable-plot ×2 + sankey — no valuebox/the retired chart library/markdown
   live there), matching `markdownPanel.spec.ts`'s own identical
   adaptation precedent.
 
@@ -715,7 +715,7 @@ Remaining scope, re-confirmed still open and still real: `T018`
 `tablePanel` (large — a new sortable/searchable/paginated dataset + 2
 new `$baseline`-diff panels), `T021` `observablePlotPanel` (large — the
 `inputs:` grammar has zero real usage anywhere in demo content today),
-`T022` `the retired chart panel` (medium — zero working `type: the old chart library` panels
+`T022` `the retired chart panel` (medium — zero working `type: the retired chart library` panels
 exist anywhere in real demo content; needs a real content-strategy
 decision on where new ones belong before authoring), `T032`
 `scenarioManager` (medium — a real structural fix needed: its
@@ -727,12 +727,12 @@ own existing ordering), and Phase 7/8 cleanup.
 
 **Direct re-read of the file first, per this session's own explicit
 instruction not to trust the Batch A closing estimate.** Confirmed: zero
-working `type: the old chart library` panels exist anywhere in real demo content —
-`057-observable-plot-conversion` deliberately moved every real the old chart library
+working `type: the retired chart library` panels exist anywhere in real demo content —
+`057-observable-plot-conversion` deliberately moved every real the retired chart library
 panel off the demo tabs onto Observable Plot, per this file's/CLAUDE.md's
 own on-record decision. Per direct user decision this session, rather
-than inventing an artificial "real" the old chart library use on a demo tab, real
-the old chart library panel(s) were added directly to `dashboard-8-test.yaml` (the
+than inventing an artificial "real" the retired chart library use on a demo tab, real
+the retired chart library panel(s) were added directly to `dashboard-8-test.yaml` (the
 permanent Test tab) instead — the same role that tab already serves for
 `sankeyPanel.spec.ts`'s own Batch A addition.
 
@@ -744,15 +744,15 @@ document's Batch A section and CLAUDE.md item 28's own independent
 record).
 
 **Content added to `dashboard-8-test.yaml`**: two new rows.
-`row_retired_chart_fixture` — three real, live-queried `type: the old chart library` panels:
+`row_retired_chart_fixture` — three real, live-queried `type: the retired chart library` panels:
 a `chart_type: bar` panel (`trip_purpose_share`, `x`/`series: primary_
 purpose`, `y: share`, 10 real categories, 5-token wraparound); a
 `chart_type: line` panel and a `chart_type: area` panel (both `trip_
-destination_summary`, `y: avg_distance_miles`). `row_the old chart library_legend` — one
-real `type: the old chart library` bar panel (`trip_mode_share`, one trace per distinct
+destination_summary`, `y: avg_distance_miles`). `row_the retired chart library_legend` — one
+real `type: the retired chart library` bar panel (`trip_mode_share`, one trace per distinct
 `major_trip_mode` via `color: $metric.major_trip_mode`) needed for the
-existing "the old chart library legend click-to-toggle still works" regression test,
-which had no real non-fixture the old chart library panel with a genuine multi-trace
+existing "the retired chart library legend click-to-toggle still works" regression test,
+which had no real non-fixture the retired chart library panel with a genuine multi-trace
 legend to target.
 
 **Two real, confirmed, OUT-OF-SCOPE application bugs found and
@@ -772,7 +772,7 @@ source reads, not guessed):
    around by switching the bar panel's data source to `trip_purpose_
    share` (10 real purposes, all single words, no spaces).
 2. **DuckDB-WASM's already-documented `bigint` gap has a second, new
-   manifestation: the old chart library' own internal numeric geometry computation
+   manifestation: the retired chart library's own internal numeric geometry computation
    silently renders zero `<path>` elements for a `bigint` y-value** (not
    just `formatValue.ts`'s already-known display-string gap). Confirmed
    via a temporary, since-deleted debug spec that hit `TypeError: Do not
@@ -853,7 +853,7 @@ own already-extensively-documented resource-contention noise. Two real,
 confirmed application bugs were found and deliberately worked around
 rather than fixed, per this whole effort's scope discipline: a space in a
 real category value breaking `chart.tsx`'s generated CSS custom
-property, and DuckDB-WASM's bigint gap silently breaking the old chart library' own
+property, and DuckDB-WASM's bigint gap silently breaking the retired chart library's own
 geometry computation (a new manifestation of an already-documented gap,
 not previously recorded for this panel type). Remaining scope, unchanged
 from the Batch A conclusion above: `T018` `valueBoxPanel`, `T019`

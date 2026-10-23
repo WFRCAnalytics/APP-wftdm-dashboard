@@ -60,7 +60,7 @@ plus one variant per panel type this feature implements.
 
 | Field | Type | Notes |
 |---|---|---|
-| `type` | `'valuebox' \| 'the old chart library'` | Discriminant; registry lookup key |
+| `type` | `'valuebox' \| the retired chart library` | Discriminant; registry lookup key |
 | `title` | `string` | Panel card header |
 | `metric` | `string` | Parquet file name (no extension) to query |
 | `filter` | `string?` | Inline `$filters.x` reference used in the panel's query |
@@ -81,16 +81,16 @@ plus one variant per panel type this feature implements.
 | `threshold_warn` | `number?` | Absolute diff from `observed` → warn styling |
 | `threshold_fail` | `number?` | Absolute diff from `observed` → fail styling |
 
-### RetiredChartPanelConfig (`type: 'the old chart library'`)
+### RetiredChartPanelConfig (`type: the retired chart library`)
 
 | Field | Type | Notes |
 |---|---|---|
 | `traces` | `RetiredChartTraceConfig[]` | See below |
-| `layout` | `Record<string, unknown>?` | Passed through to the old chart library's own `layout` object (e.g. `xaxis`/`yaxis`/`showlegend`) — not re-typed field-by-field; the old chart library's own types govern its shape |
+| `layout` | `Record<string, unknown>?` | Passed through to the retired chart library's own `layout` object (e.g. `xaxis`/`yaxis`/`showlegend`) — not re-typed field-by-field; the retired chart library's own types govern its shape |
 | `observed` | `{ source: string; style?: string } & Record<string, unknown>?` | Optional observed-data overlay (out of this feature's required scope; parsed if present, not required to render for FR-005/FR-006 to be satisfied) |
 | `reference_lines` | `unknown[]?` | Parsed and passed through if present; not required by this feature's stories |
 
-**RetiredChartTraceConfig**: `{ type: string; x?: string; y?: string; color?: string; mode?: string; name?: string; text?: string; barmode?: string }` — each of `x`/`y`/`color`/`name`/`text` may hold a literal value, a `$metric.<column>` reference, or the bare `$scenario` sentinel (research.md §3); `the retired chart panel` resolves these against the query result before constructing the actual the old chart library trace object.
+**RetiredChartTraceConfig**: `{ type: string; x?: string; y?: string; color?: string; mode?: string; name?: string; text?: string; barmode?: string }` — each of `x`/`y`/`color`/`name`/`text` may hold a literal value, a `$metric.<column>` reference, or the bare `$scenario` sentinel (research.md §3); `the retired chart panel` resolves these against the query result before constructing the actual the retired chart library trace object.
 
 **Invariant**: a `RetiredChartPanelConfig` MUST have at least one trace with both
 `x` and `y` set for FR-006's "renders it as a chart" to be satisfiable —
@@ -108,7 +108,7 @@ The mapping this feature populates for the first time
 | `type` string | Component |
 |---|---|
 | `valuebox` | `ValueBoxPanel` |
-| `the old chart library` | `the retired chart panel` |
+| the retired chart library | `the retired chart panel` |
 
 **Contract**: every entry is a React `ComponentType<PanelProps<TConfig>>`
 (constitution v2.2.0) — `panelCard.tsx` looks up `registry[config.type]`,
@@ -143,7 +143,7 @@ FilterDefinition[]                PanelConfig[] (per layout row)
                                    literal SQL
                                          |
                                          v  services/duckdb.ts's query()
-                                   rows -> rendered value / the old chart library chart
+                                   rows -> rendered value / the retired chart library chart
 ```
 
 `hooks/useFilterState.ts` sits alongside this flow, not inside it: any

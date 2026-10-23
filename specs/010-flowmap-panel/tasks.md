@@ -45,7 +45,7 @@ Project Structure (no new top-level directory).
       package ships its own types).
 - [X] T002 [P] Add a `manualChunks` entry to `vite.config.ts` for the new
       map libraries (`maplibre-gl`/`@deck.gl/*`/`@flowmap.gl/layers`) —
-      the real current file only splits `duckdb`/`the old chart library` today
+      the real current file only splits `duckdb`/the retired chart library today
       (quickstart.md's own corrected Prerequisites note); exact chunk
       boundary (one combined chunk vs. per-package) is this task's own
       call.
@@ -237,7 +237,7 @@ a broken config renders the shared error state instead of crashing.
 - [X] T025 [US3] Integration test — extend (or add, matching
       `008-sankey-panel`'s own precedent) the mixed-panel-types tab test
       to include a flowmap panel alongside
-      valuebox/the old chart library/table/markdown/observable-plot/sankey, confirming
+      valuebox/the retired chart library/table/markdown/observable-plot/sankey, confirming
       all seven now-built panel types render without error in one load
       (Acceptance Scenario 3, SC-005).
 

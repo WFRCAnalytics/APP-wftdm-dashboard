@@ -61,7 +61,7 @@ A dashboard tab contains a flowmap panel alongside other panel types. It uses th
 
 **Why this priority**: Inherited "for free" from the registry pattern by construction, but this panel's own real map-instance lifecycle (unlike any prior panel's simpler DOM-node lifecycle) must not break that guarantee — worth its own independently-testable story rather than assumed as a side effect of User Story 1.
 
-**Independent Test**: Can be fully tested by loading a tab mixing a flowmap panel with valuebox/the old chart library/table/markdown/observable-plot/sankey panels and confirming all render without error, plus confirming a deliberately broken config (unresolvable metric, or a missing required field mapping) renders the shared error state instead of crashing.
+**Independent Test**: Can be fully tested by loading a tab mixing a flowmap panel with valuebox/the retired chart library/table/markdown/observable-plot/sankey panels and confirming all render without error, plus confirming a deliberately broken config (unresolvable metric, or a missing required field mapping) renders the shared error state instead of crashing.
 
 **Acceptance Scenarios**:
 
@@ -112,7 +112,7 @@ A dashboard tab contains a flowmap panel alongside other panel types. It uses th
 - **SC-002**: Changing a bound global filter updates the flowmap panel's flow lines without a full page reload, without recreating the underlying map instance, and without any other panel re-rendering unnecessarily.
 - **SC-003**: 100% of checks that expand a flowmap panel into the 004 dialog and collapse it again show a correctly proportioned map on both ends of the transition, with zero data re-fetch and zero map-instance recreation triggered solely by that transition.
 - **SC-004**: A zero-row query result and a rejected/unresolvable configuration each produce the same defined empty/error state already used by sibling panel types, with zero unhandled exceptions surfaced to the user, and no partially-initialized map instance left in the DOM.
-- **SC-005**: A dashboard tab combining all seven now-built panel types (`valuebox`, `the old chart library`, `table`, `markdown`, `observable-plot`, `sankey`, `flowmap`) renders all of them without error in a single load.
+- **SC-005**: A dashboard tab combining all seven now-built panel types (`valuebox`, the retired chart library, `table`, `markdown`, `observable-plot`, `sankey`, `flowmap`) renders all of them without error in a single load.
 
 ## Assumptions
 

@@ -10,12 +10,12 @@ One row per integration spec file. "Real target" = the real demo tab/panel/scena
 | `tablePanel.spec.ts` | Mode Choice "Tour Mode Share by Segment" (`tour_mode_share_summary`, 2738 rows) | — | page-2 navigation, sort, search over real rows; `scenario` column values |
 | `markdownPanel.spec.ts` | gap-note `markdown` panels (×5) | XSS / empty / whitespace `content:` | rendered heading text from a real gap-note |
 | `observablePlotPanel.spec.ts` | Trip "Trip Destination Distance Distribution" (`trip_destination_summary`) | missing-metric | `barY` marks; `fill` legend = real `primary_purpose` values |
-| `a retired chart panel file` | Overview / Mode Choice `the old chart library` (×2) | `chart_type: pie`; empty-result filter | bars as `<path class="old-chart-class">`; theme-correct series color |
+| `a retired chart panel file` | Overview / Mode Choice the retired chart library (×2) | `chart_type: pie`; empty-result filter | bars as `<path class="old-chart-class">`; theme-correct series color |
 | `sankeyPanel.spec.ts` | Mode Choice `purpose_mode_flow` sankey | missing-metric | node labels from real `primary_purpose` / `major_trip_mode` |
 | `flowmapPanel.spec.ts` | Network `od_flows` flowmap | unreachable basemap; broken composition; basemap precedence | flow lines render; base map host = `tiles.openfreemap.org/styles/positron` |
 | `zonemapPanel.spec.ts` | Trip "SOV Trip Attractions by Zone" + Network zonemap | unreachable basemap | 25 zones tiled; `taz25.geoparquet`; auto-fit bounds |
 | `graphicWalkerPanel.spec.ts` | Person & Households `person_household_profile`; Explore full-page `trip_mode_share` | bad fixed dataset; `dataset_picker` no-match; empty-result filter | `<GraphicWalker>` mounts; real field names in the schema |
-| `panelExpand.spec.ts` | any expandable real demo panel (`table`/`the old chart library`/`sankey`/…) | — | expand → dialog → same panel instance preserved |
+| `panelExpand.spec.ts` | any expandable real demo panel (`table`/the retired chart library/`sankey`/…) | — | expand → dialog → same panel instance preserved |
 | `demoContentAllPanels.spec.ts` | already demo-based | — | **drop** `page.route(fixture→404)` + `_sharedFixtureLock`; still 7/7 |
 | `demoMultiScenario.spec.ts` | already demo-based | — | **drop** `_sharedFixtureLock`; 3 per-scenario series in both themes |
 

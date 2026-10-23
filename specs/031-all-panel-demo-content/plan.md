@@ -11,7 +11,7 @@
 Extend the real, already-working `026-activitysim-demo-content` pipeline
 (`summarize.yaml`, the `wftdm-dashboard summarize` CLI, the three real
 scenarios) so all ten panel types render real, non-fabricated data. Five
-panel types (`observable-plot`, `the old chart library`, `graphic-walker`, `markdown`,
+panel types (`observable-plot`, the retired chart library, `graphic-walker`, `markdown`,
 and `zonemap`) need only new `dashboard-*.yaml` content against metrics
 that already exist. Two (`sankey`, `flowmap`) need one small new
 `summarize.yaml` metric each, both computed from already-loaded real

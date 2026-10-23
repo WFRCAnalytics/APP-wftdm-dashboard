@@ -58,7 +58,7 @@ Label all render and behave correctly, both themes.
 ```powershell
 npm run test:unit -- tokenContrast
 npx playwright test tests/integration/graphicWalkerPanel.spec.ts   # theme test
-# plus new, equivalent assertions for the old chart library/Observable Plot/Sankey/map-controls/dialog, per data-model.md §6
+# plus new, equivalent assertions for the retired chart library/Observable Plot/Sankey/map-controls/dialog, per data-model.md §6
 ```
 
 **Done when**: all six cases individually pass their real, direct

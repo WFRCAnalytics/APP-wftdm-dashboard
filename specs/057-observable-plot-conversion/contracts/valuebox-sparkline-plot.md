@@ -4,7 +4,7 @@ Satisfies FR-003. Same exported function name, same props, same
 container size/placement — only the rendering library underneath
 changes, matching this file's own existing "reuse the library, not a new
 rendering engine" convention (now pointed at `@observablehq/plot` instead
-of `the old chart library`).
+of the retired chart library).
 
 ## Props (unchanged)
 
@@ -93,7 +93,7 @@ during implementation:
    not guaranteed stable across a sidebar collapse/window resize/panel-
    expand-dialog transition, so this keeps `Plot.plot()`'s own explicit
    `width` (it has no `responsive:true` equivalent) in sync the same way
-   the old chart library' `ResponsiveContainer` did before this conversion.
+   the retired chart library's `ResponsiveContainer` did before this conversion.
 2. **The container reuses the `observable-plot-chart` class** — the same
    one `ObservablePlotPanel.tsx`'s own container carries, rather than a
    second, sparkline-only class name — so the established test convention
@@ -120,6 +120,6 @@ during implementation:
 
 - A `fill`/color-by-category mode for the sparkline — no current
   behavior to preserve here, and none is being added (data-model.md §3).
-- Any `tip`/hover-tooltip affordance — the current the old chart library sparkline has
+- Any `tip`/hover-tooltip affordance — the current the retired chart library sparkline has
   none (`isAnimationActive={false}`, no `<Tooltip>` element); this stays
   a purely visual mini-chart.

@@ -1,4 +1,4 @@
-# Phase 1 Data Model: shadcn/the old chart library Chart Panel Type
+# Phase 1 Data Model: shadcn/the retired chart library Chart Panel Type
 
 ## 1. `RetiredChartPanelConfig` (new, `src/layout/types.ts`)
 
@@ -6,7 +6,7 @@
 export interface RetiredChartPanelConfig
   extends DataBoundPanelConfigBase,
     ComparisonCapablePanelConfig {
-  type: 'the old chart library'
+  type: the retired chart library
   chart_type: 'bar' | 'line' | 'area'
   x: string           // required — the category/axis column, a real,
                         // literal result-set column name
@@ -44,7 +44,7 @@ field for any of them.
 type TidyRow = Record<string, unknown> // e.g. { purpose: 'HBW', mode: 'SOV', share: 0.62 }
 ```
 
-### Wide chart row (what the old chart library' own `<BarChart data={...}>` needs)
+### Wide chart row (what the retired chart library's own `<BarChart data={...}>` needs)
 
 ```ts
 type WideChartRow = { [xValue: string]: string | number }
@@ -63,13 +63,13 @@ type ChartConfig = Record<string, { label: string; color: string }>
 
 ```ts
 /**
- * Pivots tidy SQL rows into the old chart library' own wide-row shape plus a matching
+ * Pivots tidy SQL rows into the retired chart library's own wide-row shape plus a matching
  * ChartConfig, cycling through --chart-1..--chart-5 in order (wrapping
  * after the fifth distinct series value). Pure — no DOM, no React.
  *
  * @param rows the tidy query result rows
  * @param config the panel's own x/y/series field-mapping
- * @returns wide-format rows ready for the old chart library' `data` prop, plus the
+ * @returns wide-format rows ready for the retired chart library's `data` prop, plus the
  *   ChartConfig ready for `ChartContainer`'s own `config` prop
  */
 export function encodeRechartsData(

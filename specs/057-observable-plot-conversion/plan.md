@@ -6,10 +6,10 @@
 
 ## Summary
 
-Re-author the demo dashboard's real chart panels (4 the old chart library, 2 the old chart library — 6
+Re-author the demo dashboard's real chart panels (4 the retired chart library, 2 the retired chart library — 6
 panels across 4 `dashboard-*.yaml` tabs) to use `type: observable-plot`
 instead, and convert the value-box sparkline's shared rendering component
-from bare the old chart library primitives to Observable Plot. No query/data-layer code
+from bare the retired chart library primitives to Observable Plot. No query/data-layer code
 changes anywhere (`panelQuery.ts`, `sqlExpander.ts` untouched) — this is a
 YAML re-authoring + one component swap, using panel grammar and encoding
 logic (`ObservablePlotPanelConfig`, `resolveObservablePlotEncoding()`) that
@@ -17,8 +17,8 @@ already exists and is already proven by the app's five existing
 Observable Plot panels. The Sankey panel is explicitly excluded (confirmed:
 Observable Plot has no native or composable Sankey support) and stays on
 its current D3 (`d3-sankey`) implementation, unchanged. The deliberately
-broken/edge-case 8th test tab is explicitly untouched. The `the old chart library` and
-`the old chart library` panel types, their components, and their registry entries all
+broken/edge-case 8th test tab is explicitly untouched. The the retired chart library and
+the retired chart library panel types, their components, and their registry entries all
 remain — this feature stops using them in the real demo content, it does
 not remove or deprecate them.
 
@@ -26,7 +26,7 @@ not remove or deprecate them.
 
 **Language/Version**: TypeScript (ES2022 target), React 18.3, existing Vite build — no version changes
 
-**Primary Dependencies**: `@observablehq/plot` (already installed, already used by `ObservablePlotPanel.tsx`/`resolveObservablePlotEncoding()`) — no new dependency added. `the old chart library` and `the old chart library` remain installed and registered (both panel types stay supported; `dashboard-8-test.yaml`'s own broken-panel coverage still exercises both) but are no longer referenced by any real demo-content panel after this feature, aside from `the old chart library`'s continued, unrelated use as the underlying engine of `components/ui/chart.tsx` (shadcn's chart primitives) if any non-panel surface still references it — confirmed not the case; `the retired chart panel` is its only real consumer.
+**Primary Dependencies**: `@observablehq/plot` (already installed, already used by `ObservablePlotPanel.tsx`/`resolveObservablePlotEncoding()`) — no new dependency added. the retired chart library and the retired chart library remain installed and registered (both panel types stay supported; `dashboard-8-test.yaml`'s own broken-panel coverage still exercises both) but are no longer referenced by any real demo-content panel after this feature, aside from the retired chart library's continued, unrelated use as the underlying engine of `components/ui/chart.tsx` (shadcn's chart primitives) if any non-panel surface still references it — confirmed not the case; `the retired chart panel` is its only real consumer.
 
 **Storage**: N/A — no change to Parquet/DuckDB-WASM query layer
 
@@ -36,11 +36,11 @@ not remove or deprecate them.
 
 **Project Type**: Web (single frontend app + separate Python post-processor; this feature touches only `src/` and `public/demo-dashboard-config/` and `tests/`)
 
-**Performance Goals**: Parity — a converted panel's render time and interactivity must not regress relative to its the old chart library predecessor; no new, explicit performance target introduced by this feature.
+**Performance Goals**: Parity — a converted panel's render time and interactivity must not regress relative to its the retired chart library predecessor; no new, explicit performance target introduced by this feature.
 
-**Constraints**: Zero changes to `panels/panelQuery.ts`, `services/sqlExpander.ts`, or any other panel type's own component (FR-005, FR-011). `public/demo-dashboard-config/dashboard-8-test.yaml` MUST NOT be modified (FR-010). Every existing Playwright spec that asserts on a converted panel's engine-specific DOM (`old-chart-root`, `.old-chart-class`) or engine-specific interaction (the old chart library legend click-to-toggle) must be updated to Observable Plot's own established test convention (`.observable-plot-chart svg[viewBox] ...`), not left failing.
+**Constraints**: Zero changes to `panels/panelQuery.ts`, `services/sqlExpander.ts`, or any other panel type's own component (FR-005, FR-011). `public/demo-dashboard-config/dashboard-8-test.yaml` MUST NOT be modified (FR-010). Every existing Playwright spec that asserts on a converted panel's engine-specific DOM (`old-chart-root`, `.old-chart-class`) or engine-specific interaction (the retired chart library legend click-to-toggle) must be updated to Observable Plot's own established test convention (`.observable-plot-chart svg[viewBox] ...`), not left failing.
 
-**Scale/Scope**: 6 real chart-panel conversions (4 the old chart library, 2 the old chart library) across 4 `dashboard-*.yaml` files; 1 shared component conversion (`panels/valueBoxSparkline.tsx`); an idiomatic-use audit of 5 existing Observable Plot panels (no code changes expected — see research.md); ~9 Playwright spec files with selector/assertion updates; 0 new panel types, 0 query-layer changes.
+**Scale/Scope**: 6 real chart-panel conversions (4 the retired chart library, 2 the retired chart library) across 4 `dashboard-*.yaml` files; 1 shared component conversion (`panels/valueBoxSparkline.tsx`); an idiomatic-use audit of 5 existing Observable Plot panels (no code changes expected — see research.md); ~9 Playwright spec files with selector/assertion updates; 0 new panel types, 0 query-layer changes.
 
 ## Constitution Check
 
@@ -58,7 +58,7 @@ Checked directly against `.specify/memory/constitution.md` v2.4.1, principle by 
 - **VIII. Reuse proven reference implementations** — PASS/N/A, no DuckDB/MapLibre/spatial work here.
 - **IX. Fixed Python/JS source split** — PASS, not touched.
 
-**Non-blocking documentation note** (not a Core Principle, does not gate this feature): the constitution's own **Technology Stack Reference** table (a separate section from the nine numbered principles) lists `Charts — default: the old chart library`. That cell was already stale before this feature — `CLAUDE.md`'s own `029-shadcn-chart-panel` entry documents the old chart library as "this app's new default/primary engine for bar/line/area charts" with no corresponding constitution amendment on record. This feature makes that cell stale in a second, distinct way: after it ships, the real demo content's bar/distribution charts are rendered by Observable Plot, not the old chart library. Recommending (out of this feature's own scope, per spec.md's own "Does not include" list, which never asked for a constitution edit) a future documentation-only PATCH amendment updating that table row to reflect actual usage — not a gate on this feature, since no numbered Core Principle addresses "default chart engine" at all.
+**Non-blocking documentation note** (not a Core Principle, does not gate this feature): the constitution's own **Technology Stack Reference** table (a separate section from the nine numbered principles) lists `Charts — default: the retired chart library`. That cell was already stale before this feature — `CLAUDE.md`'s own `029-shadcn-chart-panel` entry documents the retired chart library as "this app's new default/primary engine for bar/line/area charts" with no corresponding constitution amendment on record. This feature makes that cell stale in a second, distinct way: after it ships, the real demo content's bar/distribution charts are rendered by Observable Plot, not the retired chart library. Recommending (out of this feature's own scope, per spec.md's own "Does not include" list, which never asked for a constitution edit) a future documentation-only PATCH amendment updating that table row to reflect actual usage — not a gate on this feature, since no numbered Core Principle addresses "default chart engine" at all.
 
 **Result: PASS.** No Core Principle is violated or requires an amendment. Proceeding to Phase 0.
 
@@ -96,17 +96,17 @@ specs/057-observable-plot-conversion/
 # Single project (existing structure, unchanged) — this feature touches:
 public/
 └── demo-dashboard-config/
-    ├── dashboard-1-summary.yaml       # 2 panels re-authored (the old chart library → observable-plot)
-    ├── dashboard-3-tour-models.yaml   # 1 panel re-authored (the old chart library → observable-plot)
-    ├── dashboard-4-mode-choice.yaml   # 2 panels re-authored (the old chart library → observable-plot);
+    ├── dashboard-1-summary.yaml       # 2 panels re-authored (the retired chart library → observable-plot)
+    ├── dashboard-3-tour-models.yaml   # 1 panel re-authored (the retired chart library → observable-plot)
+    ├── dashboard-4-mode-choice.yaml   # 2 panels re-authored (the retired chart library → observable-plot);
     │                                  #   sankey panel UNCHANGED
-    └── dashboard-5-trip-models.yaml   # 1 panel re-authored (the old chart library → observable-plot)
+    └── dashboard-5-trip-models.yaml   # 1 panel re-authored (the retired chart library → observable-plot)
     # dashboard-2-person-household.yaml, dashboard-6-network.yaml,
     # dashboard-7-explore.yaml, dashboard-8-test.yaml: UNCHANGED
 
 src/
 └── panels/
-    ├── valueBoxSparkline.tsx          # re-implemented: the old chart library primitives → @observablehq/plot
+    ├── valueBoxSparkline.tsx          # re-implemented: the retired chart library primitives → @observablehq/plot
     ├── observablePlotEncoding.ts      # audited (research.md) — no code change expected
     └── ObservablePlotPanel.tsx        # audited (research.md) — no code change expected
     # panels/the retired chart panel, panels/a retired chart helper, panels/the retired chart panel,

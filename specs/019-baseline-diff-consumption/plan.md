@@ -6,7 +6,7 @@
 
 ## Summary
 
-Generalize `013-zonemap-panel`'s existing `buildComparisonDiffQuery()` (currently zonemap-only, hardcoded to `metric_id` as the join key) into one shared mechanism parameterized on an author-named `compare_on: string[]` join key, reused by `the old chart library`/`table`/`observable-plot`/`zonemap` alike. Add a `$baseline` sentinel value, resolved by each panel's own component (never inside the query-builder itself, matching the existing "caller pre-resolves" convention) via the new `useBaseline()` hook (018-baseline-scenario-designation), gated so an unresolved baseline shows the panel's existing error state rather than building a broken query. Fix two real, confirmed gaps found during research — `formatValue()` renders the literal string `"null"` today, and `TablePanel`'s `cellColor()` gives a null value no distinct visual treatment — so `diff_value: null` (the zero-baseline degenerate case) renders as a defined "N/A" state, not raw artifacts.
+Generalize `013-zonemap-panel`'s existing `buildComparisonDiffQuery()` (currently zonemap-only, hardcoded to `metric_id` as the join key) into one shared mechanism parameterized on an author-named `compare_on: string[]` join key, reused by the retired chart library/`table`/`observable-plot`/`zonemap` alike. Add a `$baseline` sentinel value, resolved by each panel's own component (never inside the query-builder itself, matching the existing "caller pre-resolves" convention) via the new `useBaseline()` hook (018-baseline-scenario-designation), gated so an unresolved baseline shows the panel's existing error state rather than building a broken query. Fix two real, confirmed gaps found during research — `formatValue()` renders the literal string `"null"` today, and `TablePanel`'s `cellColor()` gives a null value no distinct visual treatment — so `diff_value: null` (the zero-baseline degenerate case) renders as a defined "N/A" state, not raw artifacts.
 
 ## Technical Context
 
@@ -102,7 +102,7 @@ src/
 │   ├── a retired chart helper       # Unchanged — diff_value is just another
 │   │                         #   column name an author's own trace x/y/
 │   │                         #   color config can reference; no new
-│   │                         #   trace-building logic needed. the old chart library's
+│   │                         #   trace-building logic needed. the retired chart library's
 │   │                         #   own native null-point handling satisfies
 │   │                         #   FR-014 for chart-type panels (research.md).
 │   ├── TablePanel.tsx        # MODIFIED — comparison: diff branch added to
@@ -135,7 +135,7 @@ src/
 │                             #   sees it (research.md §6, corrected).
 └── docs/
     └── GRAMMAR.md            # MODIFIED — comparison/compare_on documented
-                              #   for the old chart library/table/observable-plot; $baseline
+                              #   for the retired chart library/table/observable-plot; $baseline
                               #   sentinel documented for a/b wherever
                               #   comparison: diff already appears.
 

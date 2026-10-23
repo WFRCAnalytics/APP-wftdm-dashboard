@@ -6,7 +6,7 @@
 
 **Status**: Draft
 
-**Input**: User description: "Add a fifth panel type — observable-plot — to the registry, following the same pattern as ValueBoxPanel/the retired chart panel/TablePanel/MarkdownPanel and inheriting 004's expand-to-dialog mechanism automatically. Uses @observablehq/plot. Reuse the retired chart panel's proven pattern where it genuinely applies (query/fetch chain, loading/empty/error states); research whether Observable Plot needs its own resize treatment rather than assuming the retired chart panel's ResizeObserver fix transfers unchanged. Confirm, against project-docs/GRAMMAR.md, whether `type: observable-plot` uses the same `$metric.<column>` convention the retired chart panel resolves or something else, and whether panel-local reactive input widgets (`$inputs.x` or similar) are real, documented grammar or just an illustrative example — if real, scope this as a materially bigger feature than 'swap the old chart library for Observable Plot,' not silently included or excluded."
+**Input**: User description: "Add a fifth panel type — observable-plot — to the registry, following the same pattern as ValueBoxPanel/the retired chart panel/TablePanel/MarkdownPanel and inheriting 004's expand-to-dialog mechanism automatically. Uses @observablehq/plot. Reuse the retired chart panel's proven pattern where it genuinely applies (query/fetch chain, loading/empty/error states); research whether Observable Plot needs its own resize treatment rather than assuming the retired chart panel's ResizeObserver fix transfers unchanged. Confirm, against project-docs/GRAMMAR.md, whether `type: observable-plot` uses the same `$metric.<column>` convention the retired chart panel resolves or something else, and whether panel-local reactive input widgets (`$inputs.x` or similar) are real, documented grammar or just an illustrative example — if real, scope this as a materially bigger feature than 'swap the retired chart library for Observable Plot,' not silently included or excluded."
 
 ## Grammar findings (pre-spec verification)
 
@@ -21,7 +21,7 @@ spec, per this project's established discipline (005/006 required the same):
    entry.
 2. **Chart encodings (`mark`, `x`, `y`, `fill`, `stroke`, `facet_x`, `facet_y`) are
    bare column names from the queried result set — NOT `$metric.<column>`-prefixed.**
-   This is a real, confirmed grammar difference from `type: the old chart library`, whose trace
+   This is a real, confirmed grammar difference from `type: the retired chart library`, whose trace
    axes (`x: $metric.observed`) *do* use the `$metric.` placeholder convention.
    `the retired chart panel`'s trace-resolution logic (`a retired chart helper`) does not transfer
    directly — Observable Plot's encoding channels map straight onto whatever
@@ -38,7 +38,7 @@ spec, per this project's established discipline (005/006 required the same):
    deferred to a future feature. `project-docs/SPEC.md`'s one-line description of this
    panel type ("For panels with reactive filter inputs") is not incidental
    color — it is this panel type's entire reason for existing as a distinct type
-   from `the old chart library`, so a version of this feature that omits panel-local inputs would
+   from the retired chart library, so a version of this feature that omits panel-local inputs would
    not actually deliver what `type: observable-plot` is documented to do.
 4. **No global filter-bar UI exists anywhere in this codebase yet.** The
    top-level `filters:` block (`FilterDefinition` — `select | multiselect |
@@ -118,7 +118,7 @@ not affect any other panel on the tab, including other `observable-plot`
 panels.
 
 **Why this priority**: This is the capability that makes `type: observable-plot`
-distinct from `type: the old chart library` per `project-docs/SPEC.md`'s own description ("for panels
+distinct from `type: the retired chart library` per `project-docs/SPEC.md`'s own description ("for panels
 with reactive filter inputs") — real, documented grammar (see Grammar findings
 above), not a stretch goal. It is scoped as P2 rather than folded into User
 Story 1 because it is independently testable and buildable on top of a working
@@ -158,7 +158,7 @@ is affected.
 
 ### User Story 3 - Panel behaves consistently with the rest of the registry (Priority: P3)
 
-An `observable-plot` panel sits alongside `valuebox`/`the old chart library`/`table`/`markdown`
+An `observable-plot` panel sits alongside `valuebox`/the retired chart library/`table`/`markdown`
 panels on the same dashboard tab. It uses the same card chrome, the same
 loading-skeleton convention, the same shared empty/error-state components, and
 requires no special-case code anywhere outside `panels/ObservablePlotPanel.tsx`
@@ -171,7 +171,7 @@ not new end-user-visible capability.
 
 **Acceptance Scenarios**:
 
-1. **Given** a dashboard tab with `valuebox`, `the old chart library`, `table`, `markdown`, and
+1. **Given** a dashboard tab with `valuebox`, the retired chart library, `table`, `markdown`, and
    `observable-plot` panels all present, **When** the tab loads, **Then** every
    panel renders without error and the `observable-plot` panel's expand trigger
    and card chrome are visually consistent with the others.
@@ -292,7 +292,7 @@ not new end-user-visible capability.
 - **SC-004**: A zero-row query result and a rejected query each produce the
   same defined empty/error state already used by the sibling panel types, with
   zero unhandled exceptions surfaced to the user.
-- **SC-005**: A dashboard tab combining `valuebox`, `the old chart library`, `table`,
+- **SC-005**: A dashboard tab combining `valuebox`, the retired chart library, `table`,
   `markdown`, and `observable-plot` panels renders all of them without error in
   a single load.
 

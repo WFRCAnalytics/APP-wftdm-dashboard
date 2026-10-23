@@ -161,7 +161,7 @@ sort/paginate/search interactivity required yet.
       `the retired chart panel` already use — no new state-handling pattern
 - [x] T016 [P] [US1] Playwright test in `tests/integration/tablePanel.spec.ts`:
       a table panel's card uses the same border/shadow/spacing/typography
-      tokens as a `valuebox`/`the old chart library` panel on the same tab (SC-004)
+      tokens as a `valuebox`/the retired chart library panel on the same tab (SC-004)
 
 ### Implementation for User Story 1
 
@@ -367,7 +367,7 @@ feature scoped itself to is implemented end to end.
       table panel's `sortState`/`searchTerm`/`currentPage` — all three
       together — are unchanged after an expand → collapse round trip via
       `004`'s mechanism, the same rigor `004`'s own test suite gave the
-      analogous the old chart library-zoom-state-persists property, not assumed to "just
+      analogous the retired chart library-zoom-state-persists property, not assumed to "just
       work" by extension. Depends on T042
 - [x] T044 [P] Run `quickstart.md`'s full validation pass end to end — the
       automated `npm run test:unit -- tableLogic formatValue` and

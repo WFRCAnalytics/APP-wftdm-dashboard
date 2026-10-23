@@ -90,7 +90,7 @@ builds from `ValueBoxSparklineConfig` to call `Plot.plot()`:
 ```
 
 No `fill`/`color`/`legend` option — the sparkline renders exactly one
-series, matching its current the old chart library behavior (no color-by-category
+series, matching its current the retired chart library behavior (no color-by-category
 mode exists for a sparkline today, and none is being added).
 
 ## 4. Excluded from this data model

@@ -11,7 +11,7 @@ sort/search/pagination) — no `@tanstack/react-table` or similar added.
 
 **Rationale**: `project-docs/SPEC.md`'s own Panel types table already answers
 this: `table | plain DOM | Sortable, paginated`. Every other row in that
-same table names the actual rendering library used (`the old chart library` → the old chart library,
+same table names the actual rendering library used (the retired chart library → the retired chart library,
 `flowmap` → flowmap.gl + MapLibre, `graphic-walker` → Graphic Walker) —
 `table`'s own row says "plain DOM," not a library name, which is either a
 deliberate statement that no library is intended, or at minimum the
@@ -109,7 +109,7 @@ spec.md's own stated order of operations (filter the full set, sort the
 filtered subset, then paginate what's left).
 
 **Rationale**: Same reasoning as `003`'s `a retired chart helper` split
-(`the old chart library` references `self` at module load, breaking Vitest —
+(the retired chart library references `self` at module load, breaking Vitest —
 not applicable here, but the *shape* of the win is identical): this
 feature's actual algorithmic risk — sorting numbers correctly, filtering
 against rendered rather than raw values, resolving columns correctly with

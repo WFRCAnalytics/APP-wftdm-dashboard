@@ -88,16 +88,16 @@ the fetch/parse layer.
 a CONCRETE color value, not a raw CSS variable reference. Confirmed
 directly: `the retired chart panel`'s own existing `resolveThemeLayout()` already
 resolves every token color it needs via `getComputedStyle(el)` rather than
-ever handing the old chart library a raw `var(--x)` string — the established, proven
+ever handing the retired chart library a raw `var(--x)` string — the established, proven
 pattern in this exact codebase for "a CSS token needs to reach a
 rendering library that doesn't sit inside the normal DOM/CSS cascade the
 way a plain styled `<div>` does." `a retired chart helper`'s own EXISTING
 `` `var(--chart-${n})` `` fallback is the one case that already works
-un-resolved (the old chart library renders through ordinary React-owned DOM elements
+un-resolved (the retired chart library renders through ordinary React-owned DOM elements
 with a real inherited CSS cascade) — but `observablePlotEncoding.ts`'s
 `range` array is new territory for this exact string shape (035 never put
 a raw CSS-var string there before, only real resolved hex values from
-`Scenario.color`), and the old chart library's own SVG-attribute rendering path is
+`Scenario.color`), and the retired chart library's own SVG-attribute rendering path is
 confirmed NOT to reliably honor `var()` the same way.
 
 **Decision**: Resolve `var(--chart-N)` to a concrete value in exactly one

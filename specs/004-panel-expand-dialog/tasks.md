@@ -157,7 +157,7 @@ confirming focus returns to the trigger each time.
 
 - [x] T005 [P] [US1] Playwright test in `tests/integration/panelExpand.spec.ts`:
       clicking a panel's expand trigger opens a dialog showing the same
-      rendered content — covering both a `valuebox` panel and a `the old chart library`
+      rendered content — covering both a `valuebox` panel and a retired chart library
       panel from the fixture data, asserting neither is treated as a
       special case (spec.md's explicit no-opt-out requirement)
 - [x] T006 [P] [US1] Playwright test in `tests/integration/panelExpand.spec.ts`:
@@ -194,12 +194,12 @@ confirming focus returns to the trigger each time.
       entry, and assert (a) the corresponding trace's visibility actually
       toggled and (b) the dialog is still open afterward — research.md §2's
       required, not-assumed check of Radix's outside-click detection against
-      the old chart library's own in-tree click interactivity
+      the retired chart library's own in-tree click interactivity
       — **Confirmed safe, as predicted, with two real test-mechanics fixes
-      needed along the way** (not the mechanism itself): the old chart library's modebar
+      needed along the way** (not the mechanism itself): the retired chart library's modebar
       visually overlaps the legend and physically intercepts the click at
       the browser's hit-testing level (removed via a test-only DOM
-      cleanup, `.modebar-container`'s `.remove()`); and the old chart library updates its
+      cleanup, `.modebar-container`'s `.remove()`); and the retired chart library updates its
       internal trace-visibility state slightly after the click event fires,
       so the assertion polls rather than reading once immediately.
 
@@ -306,7 +306,7 @@ together. **Verified**: 4/4 US2 tests pass.
 
 ## Phase 5: User Story 3 - Charts render correctly sized inside the expanded view (Priority: P3)
 
-**Goal**: A chart-type panel's the old chart library rendering correctly fills the
+**Goal**: A chart-type panel's the retired chart library rendering correctly fills the
 expanded dialog's actual size in both directions of the transition.
 
 **Independent Test**: Expand a chart panel and confirm it redraws to fill
@@ -467,11 +467,11 @@ regressions.
 
 ```bash
 # Once Phase 2 (T002-T004) is complete, author all US1 test scenarios together:
-Task: "Playwright test: expand trigger opens dialog with same content (valuebox + the old chart library) in tests/integration/panelExpand.spec.ts"
+Task: "Playwright test: expand trigger opens dialog with same content (valuebox + the retired chart library) in tests/integration/panelExpand.spec.ts"
 Task: "Playwright test: Escape/outside-click/close-control all close, focus returns to trigger in tests/integration/panelExpand.spec.ts"
 Task: "Playwright test: Tab/Shift+Tab focus trap while dialog open in tests/integration/panelExpand.spec.ts"
 Task: "Playwright test: DialogContent root not visible when never expanded (quickstart.md scenario 9) in tests/integration/panelExpand.spec.ts"
-Task: "Playwright test: the old chart library legend click doesn't close the dialog in tests/integration/panelExpand.spec.ts"
+Task: "Playwright test: the retired chart library legend click doesn't close the dialog in tests/integration/panelExpand.spec.ts"
 
 # Then, once tests exist and fail as expected:
 Task: "Wire PanelExpandHost into panelCard.tsx + before/after screenshot comparison"

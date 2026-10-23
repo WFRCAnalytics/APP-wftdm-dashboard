@@ -13,7 +13,7 @@ to `string | Record<string, string> | undefined`, and rewrite
 `panelQuery.ts`'s `buildPanelQuery` to accept either shape. This is not new
 grammar invented for this feature — `project-docs/GRAMMAR.md`'s own common-keys table
 (the block every panel type shares) already documents `filter: <inline |
-$ref>`, i.e. two forms were always allowed; `valuebox`/`the old chart library`/`table` simply
+$ref>`, i.e. two forms were always allowed; `valuebox`/the retired chart library/`table` simply
 never happened to exercise the `inline` (map) form in any example so far.
 `type: observable-plot`'s own worked examples are the first to use it:
 
@@ -45,7 +45,7 @@ need auditing instead of one.
 `[column, placeholderString]` pairs before building the template:
 - `undefined` → `[]` (unchanged behavior — no `WHERE`)
 - a string matching `^\$filters\.([A-Za-z0-9_]+)$` → `[[id, filter]]` (exactly
-  today's behavior, column assumed equal to id — existing valuebox/the old chart library/
+  today's behavior, column assumed equal to id — existing valuebox/the retired chart library/
   table fixtures and `tests/unit/panelQuery.test.ts` are unaffected byte for
   byte)
 - a string that does *not* match that pattern (a literal, non-placeholder
@@ -171,7 +171,7 @@ substitution is applied to these fields, unlike `the retired chart panel`'s trac
 `type: observable-plot` examples — `x: distance_bin`, `y: trips`, `stroke:
 purpose`, and separately `x: income_category`, `y: share`, `fill: mode` — none
 prefixed with `$metric.`, in explicit contrast to the immediately preceding
-`type: the old chart library` example's `x: $metric.observed`, `y: $metric.modeled` in the
+`type: the retired chart library` example's `x: $metric.observed`, `y: $metric.modeled` in the
 same document. `a retired chart helper`'s `resolveColumnName`/`resolveField`
 placeholder-parsing logic therefore does not transfer to this panel type —
 reusing it here would silently break on any `observable-plot` config, since
@@ -277,7 +277,7 @@ useEffect(() => {
 
 There is no built-in container-resize awareness — `Plot.plot({width,
 height})` takes explicit numeric dimensions read once at call time; unlike
-the old chart library's `responsive: true` + `the old library API`, nothing inside
+the retired chart library's `responsive: true` + `the old library API`, nothing inside
 `@observablehq/plot` itself observes the container's size. (Observable
 *Framework*'s notebook-specific `resize()` reactive helper, surfaced in
 search results, is a Framework-only primitive tied to its own reactive
@@ -303,7 +303,7 @@ is the concrete reason `panels/the retired chart panel`'s two-effect split (fetc
 effect + resize-only effect calling a different, cheap API) is not reused
 unchanged — the render-and-swap step itself has to be shared between both
 triggers here, not split into a "full render" path and a "cheap resize" path
-the way the old chart library's own API allows.
+the way the retired chart library's own API allows.
 
 ## §6. `observablePlotEncoding.ts` stays a pure, DOM-free module — Vitest-testable, same reasoning as `a retired chart helper`
 
@@ -314,7 +314,7 @@ returns a plain data object; only `ObservablePlotPanel.tsx` itself calls
 `Plot[markName](data, options)`.
 
 **Reasoning**: Confirmed by direct inspection of `@observablehq/plot`'s real
-source (`src/plot.js`) that, unlike `the old chart library` (which references
+source (`src/plot.js`) that, unlike the retired chart library (which references
 `self` at module load and is the reason `a retired chart helper` was split out in
 003-dashboard-shell-navigation), `@observablehq/plot` has no top-level
 browser-global reference — it would not throw merely on import inside
@@ -375,7 +375,7 @@ vocabulary (`layout/types.ts`) is fully typed and stored but never rendered
 anywhere in `src/`. Panel-local `inputs:` reuses that same three-value
 vocabulary, but there is nothing to copy the actual control markup/behavior
 from — this is why spec.md scoped this feature as materially bigger than
-005/006 rather than "swap the old chart library for Observable Plot": it is also, concretely,
+005/006 rather than "swap the retired chart library for Observable Plot": it is also, concretely,
 this application's first interactive filter-value-setting UI of any kind.
 
 ## §9. Panel-local input option lists — sourcing, and the mismatched-default edge case (spec.md's Edge Cases)

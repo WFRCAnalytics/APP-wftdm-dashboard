@@ -39,7 +39,7 @@ markdown characters — styled with the dashboard's existing typography.
    standard markdown semantics (headings, emphasis, lists, links,
    paragraphs).
 2. **Given** a rendered markdown panel, **When** compared visually against
-   a the old chart library or table panel on the same tab, **Then** headings use the same
+   a retired chart library or table panel on the same tab, **Then** headings use the same
    heading typeface/weight and body text uses the same body typeface as
    the rest of the dashboard's design system — not marked.js's unstyled
    default output.
@@ -102,7 +102,7 @@ rendering behavior — but still needed before this panel type is genuinely
 "done" per the project's own panel pattern.
 
 **Independent Test**: Register the `markdown` type in the panel registry
-and load a tab that mixes a markdown panel alongside valuebox/the old chart library/table
+and load a tab that mixes a markdown panel alongside valuebox/the retired chart library/table
 panels. Confirm the markdown panel appears in its assigned grid position
 with standard panel-card chrome (title, expand icon), and that a markdown
 panel with a missing/empty `content:` value renders a defined empty state
@@ -202,7 +202,7 @@ rather than throwing.
   the same dashboard tab (valuebox titles, table headers, panel-card
   chrome) — same font family per element role.
 - **SC-004**: A dashboard tab mixing a markdown panel with valuebox,
-  the old chart library, and table panels loads and renders all panel types with zero
+  the retired chart library, and table panels loads and renders all panel types with zero
   additional errors attributable to the markdown panel.
 - **SC-005**: Expanding a markdown panel to its dialog view and
   collapsing it back requires zero markdown-specific code — proven by

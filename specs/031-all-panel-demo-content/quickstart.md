@@ -56,7 +56,7 @@ run — not merely "the Parquet file has the expected columns."
 ```ts
 // tests/integration — one assertion per newly-covered panel type
 for (const [tab, title] of [
-  ['Overview', 'the old chart library Mode Share'],
+  ['Overview', 'the retired chart library Mode Share'],
   ['Overview', 'Observable Plot Mode Share'],
   ['Network Flows', 'Purpose → Mode Flow'],
   ['Network Flows', 'Trip Distribution Desire Lines'],

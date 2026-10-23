@@ -103,9 +103,9 @@ One row per `primary_purpose`.
 
 | File | `header.tab` | Panels | Panel types used |
 |---|---|---|---|
-| `dashboard-1-overview.yaml` | Overview | KPI value boxes (`summary_kpis`); overall mode share (`trip_mode_share`); trip purpose breakdown (`trip_purpose_share`) | `valuebox`, `the old chart library` |
-| `dashboard-2-destination-choice.yaml` | Destination Choice | Side-by-side trips-by-zone chart, all 3 scenarios (`trips_by_destination_zone`); a `$baseline` diff table, `a: '$baseline'`, `b: activitysim-density-variant`, `compare_on: [destination_zone_id, primary_purpose]` (User Story 3) | `the old chart library`, `table` |
-| `dashboard-3-transit-service.yaml` | Transit Service | `WALK_LOC`-highlighted mode share by period, baseline vs. transit-variant (`mode_share_by_period`) | `the old chart library` or `observable-plot` (facet by period) |
+| `dashboard-1-overview.yaml` | Overview | KPI value boxes (`summary_kpis`); overall mode share (`trip_mode_share`); trip purpose breakdown (`trip_purpose_share`) | `valuebox`, the retired chart library |
+| `dashboard-2-destination-choice.yaml` | Destination Choice | Side-by-side trips-by-zone chart, all 3 scenarios (`trips_by_destination_zone`); a `$baseline` diff table, `a: '$baseline'`, `b: activitysim-density-variant`, `compare_on: [destination_zone_id, primary_purpose]` (User Story 3) | the retired chart library, `table` |
+| `dashboard-3-transit-service.yaml` | Transit Service | `WALK_LOC`-highlighted mode share by period, baseline vs. transit-variant (`mode_share_by_period`) | the retired chart library or `observable-plot` (facet by period) |
 
 No `zonemap` panel anywhere in this set (FR-007, research Finding #5).
 

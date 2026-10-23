@@ -35,7 +35,7 @@ the query.
 - Cost: for a chart panel specifically, two mounted `the retired chart panel` instances
   means two real `the old library API` calls against two separate DOM containers,
   reading the same cached rows — i.e. the expensive part (SVG/canvas
-  construction, the old chart library's internal figure state, its own event listeners)
+  construction, the retired chart library's internal figure state, its own event listeners)
   really is duplicated, exactly the "double mounted" cost the user asked to
   weigh, and it lands on the heaviest part of the system, not the lightest.
 - Cost: two independent effects watching the same cache entry is a second,
@@ -52,12 +52,12 @@ its face this keeps one component instance (`useState`/`useEffect` survive,
 no re-fetch) — but React's reconciliation unmounts and remounts a subtree
 when the branch it sits under changes structurally (going from a plain
 `<CardContent>` child to a `<DialogContent>` child is exactly that). For a
-chart panel, the actual `<div ref={containerRef}>` the old chart library draws into would
+chart panel, the actual `<div ref={containerRef}>` the retired chart library draws into would
 be destroyed and re-created on every expand/collapse, even though the
 *component* instance never unmounts. That's not a data reset (no new query
 fires — `rows` is still in React state), but it does force a full
 `the old library API` redraw into a brand-new container, silently dropping any
-the old chart library-internal UI state (zoom, pan, which legend entries are toggled off).
+the retired chart library-internal UI state (zoom, pan, which legend entries are toggled off).
 Not disqualifying on its own against the FRs as written, but strictly worse
 than necessary for no offsetting benefit over Candidate C below, which pays
 none of this cost.
@@ -256,21 +256,21 @@ re-asserted from theory a second time.
 
 ---
 
-## 2. Radix outside-click detection vs. the old chart library's own click interactivity (e.g. legend toggling)
+## 2. Radix outside-click detection vs. the retired chart library's own click interactivity (e.g. legend toggling)
 
 FR-004 requires outside-click-to-close, inherited from Radix's
 `DismissableLayer` (used internally by `Dialog.Content`). The specific risk
-flagged: does clicking a the old chart library legend entry (to toggle a trace's
+flagged: does clicking a retired chart library legend entry (to toggle a trace's
 visibility) get misidentified as "outside the dialog" and close it?
 
 **Reasoning**: Radix's outside-click detection is a DOM-containment check —
 on `pointerdown`, it asks whether `event.target` is a descendant of the
-dialog content's own ref'd DOM node, not anything the old chart library-specific. Once a
-panel is expanded, its container (and everything the old chart library draws inside it —
+dialog content's own ref'd DOM node, not anything the retired chart library-specific. Once a
+panel is expanded, its container (and everything the retired chart library draws inside it —
 the legend included) is a real DOM descendant of `DialogContent` (portaled
 to `document.body`, but still a descendant *of that portaled node*, which is
 what Radix's containment check is against). A legend entry is not a
-separate overlay the old chart library portals elsewhere in the document — the old chart library draws its
+separate overlay the retired chart library portals elsewhere in the document — the retired chart library draws its
 legend as ordinary SVG content inside the same chart container the rest of
 the trace lives in, with a click handler bound directly on that in-tree
 element. On DOM-containment grounds alone, this should not misfire.
@@ -281,9 +281,9 @@ dialog's DOM subtree (e.g. a native `<select>`'s dropdown, or a third-party
 picker appended directly to `document.body` as a sibling rather than a
 descendant) — Radix's containment check would then correctly-by-its-own-
 logic, but incorrectly-for-the-user, treat a click on that surface as
-"outside." the old chart library's legend isn't that shape for the specific interaction
+"outside." the retired chart library's legend isn't that shape for the specific interaction
 this spec calls out (toggle-trace-visibility by clicking a legend entry).
-the old chart library *does* have features that behave more like true overlays in other
+the retired chart library *does* have features that behave more like true overlays in other
 configurations (e.g. `config.editable`'s inline text-editing input,
 certain modebar dropdown menus) — none of which this feature's scope
 touches, but worth naming so a future feature enabling those doesn't
@@ -408,7 +408,7 @@ established, covering:
 - The chart-container-identity/resize check from `003`'s own regression
   class: an expanded chart panel actually redraws to fill the larger
   container (not left at its small-card size).
-- The old chart library-legend-click-does-not-close-the-dialog case from §2.
+- The retired chart library-legend-click-does-not-close-the-dialog case from §2.
 - A value-box panel (the "less obviously useful" case named in spec.md)
   expands with no per-type exception or missing control.
 
@@ -437,7 +437,7 @@ at install time.
 | 1 | Single panel-component instance per card, relocated (not swapped via `createPortal`'s own target — tried, found to unmount/remount, §1b) between an inline location and a Dialog location via a persistent portal host node, imperatively moved by `useLayoutEffect` — chosen over lifting query state into a shared cache (would rewrite the panel pattern itself) and over literal dual-render-from-one-instance (silently recreates the chart container on every toggle) |
 | 1a | `forceMount` (the original plan for keeping the dialog-side target always available) was tried and reverted — it caused Radix's MODAL `Content` variant to hide the whole page from assistive tech on mount, confirmed via a real Playwright regression, not just source-reading |
 | 1b | The relocation mechanism itself needed correcting mid-implementation: `createPortal(children, targetNode)` with a changing `targetNode` does not preserve mounted state (verified via a query-count log and a container-identity marker, both showing a real remount) — replaced with a stable portal container, moved imperatively outside React's reconciliation (the same technique `react-reverse-portal` implements) |
-| 2 | Radix's default outside-click handling is safe against the old chart library legend clicks (confirmed via a real Playwright test, not just DOM-containment reasoning) — needed two real test-mechanics fixes along the way (removing the old chart library's modebar overlay, polling for the old chart library's own async trace-visibility update), not a mechanism change |
+| 2 | Radix's default outside-click handling is safe against the retired chart library legend clicks (confirmed via a real Playwright test, not just DOM-containment reasoning) — needed two real test-mechanics fixes along the way (removing the retired chart library's modebar overlay, polling for the retired chart library's own async trace-visibility update), not a mechanism change |
 | 3 | New `src/components/ui/dialog.tsx`, hand-authored to match `tabs.tsx`/`tooltip.tsx`'s existing pattern; leaves `aria-describedby` to Radix's own correct default, always shows a visible title, no `forceMount` handling (§1a) |
 | 4 | Expand trigger: `Maximize2` icon, ghost/icon `Button`, in `CardHeader`; `DialogContent` sized `w-[95vw] h-[90vh] max-w-[1600px]` — required adding an `icon` size variant to `button.tsx` (none of the existing variants fit a label-less trigger) |
 | 5 | `expanded` state is local per panel card, not lifted to a dashboard-level store — single-open-at-a-time and tab-switch-closes-it both fall out for free (confirmed: switching tabs while expanded is structurally unreachable, not merely handled — Radix's modal blocks the click from ever landing on a nav tab) |

@@ -266,19 +266,19 @@ the six tabs, each chosen for a genuine data-shape fit:
 | Panel type | Tab | Real data it renders |
 |---|---|---|
 | `valuebox` | Summary | Total households/persons/tours/trips, VMT (KPI cards) |
-| `the old chart library` | Summary | Total trips by mode (bar) |
+| the retired chart library | Summary | Total trips by mode (bar) |
 | `table` | Person/Household Models | Auto Ownership distribution by segment |
 | `observable-plot` | Person/Household Models | School/Workplace Location distance distribution (histogram, reactive by segment) |
 | `markdown` | Person/Household Models | Honest note on the 4 real gaps in this tab (Work from Home, Telecommute, Transit Pass ×2) |
-| `the old chart library` | Tour Models | Mandatory/Non-Mandatory/Joint tour scheduling (start/end time distributions) |
+| the retired chart library | Tour Models | Mandatory/Non-Mandatory/Joint tour scheduling (start/end time distributions) |
 | `sankey` | Mode Choice | `purpose_mode_flow` — real purpose × grouped-mode flow |
 | `graphic-walker` | Person/Household Models | Open-ended exploration of a new real, rich `person_household_profile` dataset |
 | `zonemap` | Network | VMT by home TAZ (choropleth) |
 | `flowmap` | Network | `od_flows` — real O-D desire lines |
 
 **Rationale**: Every assignment maps to a real, already-audited-computable
-summary from `data-model.md` §1 — none is a quota-filler. `the old chart library`,
-`table`, and `the old chart library` recur across more than one tab beyond the single
+summary from `data-model.md` §1 — none is a quota-filler. the retired chart library,
+`table`, and the retired chart library recur across more than one tab beyond the single
 instance each needs for FR-013 (e.g. `table` also appears on Trip Models
 for the Trip Purpose breakdown) — reuse across tabs is expected and fine;
 FR-013 only requires *at least one* real instance of each type somewhere

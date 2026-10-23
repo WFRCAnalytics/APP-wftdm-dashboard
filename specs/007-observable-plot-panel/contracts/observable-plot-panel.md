@@ -31,7 +31,7 @@ export interface ResolvedObservablePlotEncoding {
  * x/y/fill/stroke/facet_x/facet_y are literal column names — NOT
  * $metric.<column>-prefixed (research.md §4, confirmed against
  * project-docs/GRAMMAR.md's own observable-plot examples, in explicit contrast to
- * type: the old chart library's traces). Only keys actually present on `config` are
+ * type: the retired chart library's traces). Only keys actually present on `config` are
  * copied through, so Plot's own per-mark defaults apply to anything the
  * author omitted.
  */
@@ -487,7 +487,7 @@ render at the correct size (FR-007), not `usePanelExpandHost` itself.
   expands it into `004`'s dialog and closes it again, **then** the input's
   current value (not its `default`) is still in effect, and no query was
   triggered solely by that transition (FR-006, US2).
-- **Given** a dashboard tab combining `valuebox`/`the old chart library`/`table`/`markdown`/
+- **Given** a dashboard tab combining `valuebox`/the retired chart library/`table`/`markdown`/
   `observable-plot` panels, **when** the tab loads, **then** every panel
   renders without error and the `observable-plot` panel's card chrome/expand
   trigger match the others (US3, SC-005).

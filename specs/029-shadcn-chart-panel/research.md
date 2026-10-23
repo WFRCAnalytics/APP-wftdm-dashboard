@@ -1,4 +1,4 @@
-# Phase 0 Research: shadcn/the old chart library Chart Panel Type
+# Phase 0 Research: shadcn/the retired chart library Chart Panel Type
 
 No `[NEEDS CLARIFICATION]` markers remained in the Technical Context. This
 document records the concrete decisions made resolving the spec's own
@@ -55,7 +55,7 @@ specifically: `--brand-wfrc-secondary-blue` (`#52b6d5`) computes to
 **2.33:1** against `#ffffff`, and `--brand-wfrc-yellow` (`#f8b93e`)
 computes to **1.75:1** — both real fails. This has been invisible for
 Sankey itself (its nodes/links are filled, bordered shapes on a
-`bg-card` surface, not thin, borderless strokes), but a `the old chart library` line
+`bg-card` surface, not thin, borderless strokes), but a retired chart library line
 chart's own thin stroke, or an unbordered bar fill, would make this a
 real, visible legibility problem in light mode specifically. Reusing the
 raw values verbatim for `--chart-2`/`--chart-3` was therefore rejected;
@@ -119,7 +119,7 @@ distinct check rather than conflated with the text-contrast one.
 **Decision**:
 
 ```yaml
-- type:       the old chart library
+- type:       the retired chart library
   title:      Mode Share by Purpose
   metric:     trip_mode_share
   chart_type: bar          # 'bar' | 'line' | 'area'
@@ -137,23 +137,23 @@ distinct check rather than conflated with the text-contrast one.
 placeholder string (`RetiredChartTraceConfig`'s older convention). `series` is
 named distinctly from Observable Plot's own `fill`/`stroke` (which name a
 literal SVG visual channel, Observable-Plot-specific vocabulary) because
-the old chart library' own real API has no equivalent single-channel concept — a
-the old chart library chart is composed of one `<Bar>`/`<Line>`/`<Area>` element PER
+the retired chart library's own real API has no equivalent single-channel concept — a
+the retired chart library chart is composed of one `<Bar>`/`<Line>`/`<Area>` element PER
 series, each needing its own literal `dataKey`. `series` names the
 SOURCE COLUMN whose distinct values become those separate elements — the
 transform in `a retired chart helper` (§3 below) is what actually produces
-the one-`dataKey`-per-distinct-value shape the old chart library needs from it.
+the one-`dataKey`-per-distinct-value shape the retired chart library needs from it.
 
 **Rationale**: matches the spec's own Assumptions section directly
 (precedent-based field naming, no `$metric.` prefix) — `x`/`y` are
 immediately recognizable from `observable-plot`'s own grammar; `series` is
-a new but self-explanatory name for a genuinely new concept (the old chart library'
+a new but self-explanatory name for a genuinely new concept (the retired chart library's
 own per-series `dataKey` composition has no direct Observable Plot
 equivalent to borrow a name from).
 
 **Alternatives considered**:
 - `fill`/`color` (borrowing Observable Plot's own name) — rejected: would
-  imply a single visual-channel mapping, but the old chart library' real API needs a
+  imply a single visual-channel mapping, but the retired chart library's real API needs a
   literal per-series `dataKey`, a structurally different mechanism the
   transform module has to build regardless of what the config field is
   named; `series` names the actual role (which column defines the
@@ -166,7 +166,7 @@ equivalent to borrow a name from).
 format (one row per `x`/`series` combination, one shared `y` value
 column) — the same shape every other panel type's own query already
 returns. A new, pure, DOM-free module, `panels/a retired chart helper`,
-pivots that tidy result into the wide-row shape the old chart library' own
+pivots that tidy result into the wide-row shape the retired chart library's own
 `<BarChart>`/`<LineChart>`/`<AreaChart>` actually require (`{ x: 'HBW',
 SOV: 0.62, HOV: 0.18, ... }`, one column per distinct `series` value),
 and builds the accompanying shadcn `ChartConfig` object (one entry per
@@ -191,7 +191,7 @@ same class of problem, not a new architectural pattern.
 ## §4. Reusing `buildPanelQuery()` — confirmed, not assumed
 
 **Decision**: `RetiredChartPanelConfig` extends `DataBoundPanelConfigBase` +
-`ComparisonCapablePanelConfig` (the same mixin `the old chart library`/`table`/
+`ComparisonCapablePanelConfig` (the same mixin the retired chart library/`table`/
 `observable-plot` already use). `panels/panelQuery.ts`'s
 `buildPanelQuery(config: DataBoundPanelConfigBase, filters)` is called
 completely unmodified — confirmed by direct read that its own signature
@@ -199,7 +199,7 @@ already accepts any `DataBoundPanelConfigBase`-extending config, with no
 per-panel-type branching this new type would need to hook into for the
 basic query path. `comparison: diff` support (if a dashboard author
 configures it) reuses `buildComparisonDiffQuery()` the same way
-`zonemap`/`the old chart library`/`table`/`observable-plot` already do — no new
+`zonemap`/the retired chart library/`table`/`observable-plot` already do — no new
 comparison-query logic.
 
 **Rationale**: directly confirms the spec's own FR-002 and Assumptions —
@@ -220,7 +220,7 @@ present at the repo root, correctly configured: `tailwind.css` points at
 the real `src/styles/tokens.css`, `ui` alias points at the real
 `@/components/ui`) was never actually exercised to confirm that claim
 either way. `chart.tsx` is real, substantially larger (10,544 bytes) and
-more actively evolving (shadcn's own docs reference a "the old chart library v3
+more actively evolving (shadcn's own docs reference a "the retired chart library v3
 migration" already) than any prior hand-authored component — running the
 real CLI against this repo's own already-correct `components.json`
 produces an exact, unmodified copy of the real upstream source with zero
@@ -237,17 +237,17 @@ itself.
   risk given the file's size, with a working CLI path available that
   removes that risk entirely at no cost.
 
-## §6. `vite.config.ts` — a new `the old chart library` chunk
+## §6. `vite.config.ts` — a new the retired chart library chunk
 
-**Decision**: add a `manualChunks` branch splitting `the old chart library` and its
+**Decision**: add a `manualChunks` branch splitting the retired chart library and its
 own real dependency additions into its own chunk, matching the existing
-`the old chart library`/`maps`/`graphic-walker` chunk precedent exactly.
+the retired chart library/`maps`/`graphic-walker` chunk precedent exactly.
 
 **Correction, found during implementation, not assumed**: this section
-originally planned around the old chart library npm's own "latest" tag (`3.10.1`) and
+originally planned around the retired chart library npm's own "latest" tag (`3.10.1`) and
 its real, heavy dependency chain (`@reduxjs/toolkit`, `react-redux`,
 `immer`). Running the real shadcn CLI (§5) installed a **different,
-older, deliberately-pinned version — `the old chart library@^2.15.4`** — shadcn's own
+older, deliberately-pinned version — `the retired chart library@^2.15.4`** — shadcn's own
 registry entry for `chart.tsx` pins the version it's actually tested
 against, which is not automatically npm's newest release. Confirmed via
 `git diff package-lock.json` exactly what this install actually added:
@@ -258,12 +258,12 @@ addition at all (those packages are already present in `node_modules`
 from an unrelated, pre-existing transitive dependency elsewhere in this
 project — confirmed via the same lockfile diff showing zero new lines
 for any of them). The `manualChunks` decision itself is unchanged — a
-dashboard that never renders a `the old chart library` panel still shouldn't pay any
+dashboard that never renders a retired chart library panel still shouldn't pay any
 load cost for it — only the specific package list to split changed:
-`the old chart library`, `lodash`, `react-smooth`, `old-chart-class`, `victory-vendor`.
+the retired chart library, `lodash`, `react-smooth`, `old-chart-class`, `victory-vendor`.
 
 **Rationale**: every prior large, previously-absent library this project
-has added (the old chart library, the maplibre/deck.gl family, `@kanaries/graphic-
+has added (the retired chart library, the maplibre/deck.gl family, `@kanaries/graphic-
 walker`) got its own chunk for exactly this reason — the same reasoning
 applies here, with the real, confirmed (not researched-in-advance) package
 list above.
@@ -271,9 +271,9 @@ list above.
 ## Real dependency/version compatibility check
 
 **Corrected during implementation**: the version actually installed by
-the real shadcn CLI is `the old chart library@^2.15.4`, not npm's "latest" tag
+the real shadcn CLI is `the retired chart library@^2.15.4`, not npm's "latest" tag
 (`3.10.1`) originally researched before implementation began. Re-verified
-directly against the real, installed `node_modules/the old chart library/package.json`
+directly against the real, installed `node_modules/the retired chart library/package.json`
 (not assumed to carry over from the different version originally
 checked): its own `peerDependencies` list `react`/`react-dom` as
 `"^16.0.0 || ^17.0.0 || ^18.0.0 || ^19.0.0"` — still genuinely compatible
@@ -319,9 +319,9 @@ CLI's own `chart.tsx` was pulled from in §5) — not assumed —
 - `<Line type="linear" strokeWidth={2} dot={false} />`, no `fill`.
 - `<Area type="linear" fillOpacity={0.4} />`, no `strokeWidth` override.
 - `<ChartTooltip cursor={false} .../>` in 3 of the 4 examples (the
-  exception, `chart-bar-stacked.json`, left the old chart library' own default) —
+  exception, `chart-bar-stacked.json`, left the retired chart library's own default) —
   adopted universally. A real, secondary, confirmed benefit: with
-  `cursor={false}`, the old chart library never renders its own shared-cursor
+  `cursor={false}`, the retired chart library never renders its own shared-cursor
   highlight rect (`.old-chart-class`) at all — the exact element
   that made `a retired chart panel file`'s own sequential-bar-hover
   interaction fragile during the original implementation (tasks.md T021's
@@ -355,7 +355,7 @@ code changes needed to any test.
 **A real, confirmed layout bug, caught only from a user-reported
 screenshot, not this pass's own initial visual check** (the initial
 verification zoomed on colors/shapes and missed the actual card
-boundaries): every the old chart library panel's chart content — bars, axis labels,
+boundaries): every the retired chart library panel's chart content — bars, axis labels,
 legend — was rendering far WIDER than its own `PanelCard`, visibly
 bleeding across into neighboring panels' own columns. Root-caused via a
 direct, live `getBoundingClientRect()`/`getComputedStyle()` measurement
@@ -370,7 +370,7 @@ pixel. Fixed with `className="aspect-auto w-full"` on `ChartContainer`
 (`cn()`'s own `tailwind-merge`, already used by `chart.tsx`, correctly
 resolves both conflicts against the default classes). A second, related,
 real fixture issue surfaced by the SAME investigation: all six
-`row_the old chart library` panels shared one CSS Grid row (`dashboardRenderer.tsx`'s
+`row_the retired chart library` panels shared one CSS Grid row (`dashboardRenderer.tsx`'s
 `fr`-unit column sizing), diluting the primary bar/line/area trio to a
 much narrower column share than the fixture's own authored `width`
 values implied — once the layout bug above was fixed and charts actually
@@ -378,7 +378,7 @@ respected their real (narrow) column width, the multi-series legend
 wrapped onto extra lines, which made `a retired chart panel file`'s own
 legend-click test intermittently land outside the default Playwright
 test viewport. Fixed by splitting the fixture into two rows
-(`row_the old chart library` for the bar/line/area trio, `row_retired_chart_fixture` for
+(`row_the retired chart library` for the bar/line/area trio, `row_retired_chart_fixture` for
 the invalid/empty/broken trio), matching this fixture file's own
 established per-concern row-grouping convention (`row_table`/
 `row_markdown`/`row_observable_plot` are each already their own row) —
@@ -467,7 +467,7 @@ itself is reproduced here for the definitive, current record).
 `ChartLegendContent`'s own className
 (`"flex items-center justify-center gap-4"`, `pb-3`/`pt-3` — confirmed
 UNCHANGED from the version this app's own installed chart.tsx already
-has) sets **no `flex-wrap`** — combined with the old chart library' own
+has) sets **no `flex-wrap`** — combined with the retired chart library's own
 `position: absolute` legend-wrapper positioning and this app's
 `ChartContainer` div having `overflow: visible` (confirmed via the same
 live DOM measurement §7's own bug used), a legend needing more
@@ -494,7 +494,7 @@ renders visibly brighter/more categorical.
 ## §9. Round 3 — dimmed gridlines, tooltip border, real v3-source diff
 
 **Follow-up feature, third round**: user asked to be inspired further by
-"shadcn's upgrade over the old chart library v3 defaults" specifically —
+"shadcn's upgrade over the retired chart library v3 defaults" specifically —
 "dimmed horizontal reference lines. tooltip, legend, fit, etc." — and
 confirmed chart-series colors are explicitly EXEMPT from WFRC brand
 matching (only the surrounding dashboard chrome — card/border/text —
@@ -507,7 +507,7 @@ slash-opacity-modifier syntax against this app's custom color tokens in
 TWO places — `stroke-border/50` (CartesianGrid lines) and
 `border-border/50` (the tooltip surface's own border). Confirmed live,
 directly: a real gridline's computed `stroke` was `rgb(204, 204, 204)`
-(the old chart library' own hardcoded `#ccc` default, entirely unoverridden) and the
+(the retired chart library's own hardcoded `#ccc` default, entirely unoverridden) and the
 tooltip's own computed `border-color` was `rgb(229, 231, 235)`
 (Tailwind's generic `gray-200` fallback) — NEITHER ever resolved to this
 app's real `--border` token in either theme. This is the exact same
@@ -552,9 +552,9 @@ this codebase has no existing `data-slot` convention to join):
    320, height: 200}`) forwarded to `ResponsiveContainer`, avoiding a
    0×0-flash on first paint before `ResizeObserver` reports the real
    size. Confirmed the underlying capability already exists in this
-   project's own installed `the old chart library@2.15.4` (`ResponsiveContainer`'s own
+   project's own installed `the retired chart library@2.15.4` (`ResponsiveContainer`'s own
    real `.d.ts`/compiled source already accepts `initialDimension` —
-   this is not a v3-only the old chart library feature, only a v3 chart.tsx
+   this is not a v3-only the retired chart library feature, only a v3 chart.tsx
    convenience). NOT backported: this app's own panel lifecycle already
    renders a same-sized `animate-pulse` loading skeleton BEFORE
    `the retired chart panel` ever mounts the real `<ChartContainer>`, so by the
@@ -605,7 +605,7 @@ with one real, necessary addition their own example never needed: a
 by a real per-PANEL-INSTANCE `useId()` prefix. Their own real example
 renders exactly one chart per page, so a bare literal id like
 `"fillDesktop"` never collides — this app's own fixture tab renders 3
-real the old chart library panels on one page at once, and `id` values are DOM-global
+real the retired chart library panels on one page at once, and `id` values are DOM-global
 (an SVG `url(#id)` reference resolves against the whole document, not
 scoped to the nearest ancestor), so an unnamespaced id would have let
 one panel's gradient silently resolve to a DIFFERENT panel's own
@@ -756,8 +756,8 @@ Observable Plot-derived categorical palette.
 **Follow-up feature, sixth round**: direct user question — "the tooltip
 feels much more snappy in ui.shadcn.com/charts/tooltip than in our dev
 server, why is that?" A real, root-caused answer, not a guess: traced
-directly to a specific line in this project's own INSTALLED the old chart library
-source (`node_modules/the old chart library/lib/component/TooltipBoundingBox.js`):
+directly to a specific line in this project's own INSTALLED the retired chart library
+source (`node_modules/the retired chart library/lib/component/TooltipBoundingBox.js`):
 
 ```js
 transition: isAnimationActive && active
@@ -765,9 +765,9 @@ transition: isAnimationActive && active
   : undefined
 ```
 
-the old chart library' own `Tooltip` component defaults `isAnimationActive: true`,
+the retired chart library's own `Tooltip` component defaults `isAnimationActive: true`,
 `animationDuration: 400`, `animationEasing: 'ease'` (confirmed directly
-in `node_modules/the old chart library/lib/component/Tooltip.js`'s own
+in `node_modules/the retired chart library/lib/component/Tooltip.js`'s own
 `defaultProps`) — meaning the tooltip wrapper's own CSS `transform`
 (its position) GLIDES to each new bar/point over 400ms by default,
 instead of snapping there instantly. That 400ms-per-move glide is what
@@ -786,10 +786,10 @@ unaffected by this change.
 
 Not confirmed either way (and not chased further, given the fix already
 directly answers the user's own question with a real, reproducible
-mechanism): whether the old chart library v3 (which shadcn's own live site now uses,
-per the "Updating to the old chart library v3" note already found in round 3) changed
+mechanism): whether the retired chart library v3 (which shadcn's own live site now uses,
+per the "Updating to the retired chart library v3" note already found in round 3) changed
 this particular default — this project stays deliberately pinned to
-the old chart library v2 regardless, so the fix here is scoped to what this app's own
+the retired chart library v2 regardless, so the fix here is scoped to what this app's own
 installed version actually does, not to matching v3's internals
 speculatively.
 
@@ -798,17 +798,17 @@ Re-verified: `npx tsc --noEmit` clean, `npm run test:unit` 308/308, all 8
 together — the same already-documented intermittent legend-click flake
 recurred once more, still not a new regression).
 
-## §13. Round 7 — a deliberate `the old chart library` v2→v3 upgrade
+## §13. Round 7 — a deliberate the retired chart library v2→v3 upgrade
 
 **Follow-up feature, seventh round**: explicit user instruction to
-upgrade the deliberately-pinned `the old chart library@^2.15.4` to the current 3.x
+upgrade the deliberately-pinned `the retired chart library@^2.15.4` to the current 3.x
 release — a real, informed upgrade requiring full re-verification, not a
 version bump to quietly accept.
 
 **Research first — does `npx shadcn@latest add chart` pull a v3-adapted
 component for this project?** Fetched shadcn's own real
 `ui.shadcn.com/docs/components/chart` page directly: it documents an
-"Updating to the old chart library v3" section with four real migration notes — use
+"Updating to the retired chart library v3" section with four real migration notes — use
 `var(--chart-1)` not `hsl(var(--chart-1))` (already true of this app's
 own plain-hex tokens, nothing to change), use `ChartTooltip.defaultIndex`
 for initial tooltip state only (not used here), remove `layout` from
@@ -817,7 +817,7 @@ and keep a height/`min-h-*`/`aspect-*` on `ChartContainer` (already true —
 this app's own `className="aspect-auto w-full"` fix from §7 already
 satisfies this). Fetched the CURRENT registry JSON directly
 (`ui.shadcn.com/r/styles/new-york-v4/chart.json`, raw, not
-summarized) — confirms `the old chart library@3.8.0` as its own pinned dependency, and
+summarized) — confirms `the retired chart library@3.8.0` as its own pinned dependency, and
 a real, meaningfully different `chart.tsx` source (function components
 not `forwardRef`, `initialDimension`, `data-slot`, Tailwind v4 arbitrary-
 property syntax `border-(--color-border)`, and genuinely different
@@ -827,29 +827,29 @@ own real API).
 **A real, confirmed, load-bearing discovery, found only by actually
 running the CLI against THIS repo (not by reading docs)**: `npx
 shadcn@latest add chart --dry-run` in this project reports it would
-install `the old chart library@2.15.4` — NOT `3.8.0` — and `--diff` shows the
+install `the retired chart library@2.15.4` — NOT `3.8.0` — and `--diff` shows the
 `chart.tsx` it would write is the OLD, pre-v3, pre-this-feature's-own-
 fixes source verbatim (`item.value &&`, not `!= null`; no `Omit<
 DefaultTooltipContentProps...>` intersection at all). Root cause,
 confirmed via direct read of this repo's own `components.json`:
 `"style": "default"` — this project has always used shadcn's LEGACY style
 track. shadcn maintains (at least) two parallel style/registry trees:
-`default` (legacy — Tailwind v3, the old chart library@2.15.4, never upgraded to v3 at
-all) and `new-york-v4` (current — Tailwind v4, the old chart library@3.8.0, the one
-`ui.shadcn.com/docs/components/chart` and its "Updating to the old chart library v3"
+`default` (legacy — Tailwind v3, the retired chart library@2.15.4, never upgraded to v3 at
+all) and `new-york-v4` (current — Tailwind v4, the retired chart library@3.8.0, the one
+`ui.shadcn.com/docs/components/chart` and its "Updating to the retired chart library v3"
 note actually describe). **This directly answers the user's own research
 question**: re-running the CLI after this upgrade would NOT pull a
 genuinely different, v3-adapted component for this project — it would
 regress `chart.tsx` back to the old, pre-fix v2 source, and it would not
-even touch the `the old chart library` npm dependency version at all (that's a
+even touch the retired chart library npm dependency version at all (that's a
 separate `package.json` edit either way, CLI or not). Switching
 `components.json` to `"style": "new-york-v4"` was considered and
 rejected — out of scope and far too broad a change (it would alter every
 existing shadcn-pattern component's own default classes project-wide,
 not just this one file).
 
-**Version chosen**: `the old chart library@^3.10.1` — npm's own real, current latest
-(confirmed via `npm view the old chart library versions`), not `new-york-v4`'s own
+**Version chosen**: `the retired chart library@^3.10.1` — npm's own real, current latest
+(confirmed via `npm view the retired chart library versions`), not `new-york-v4`'s own
 pinned `3.8.0` snapshot — matching "the current 3.x release" as asked,
 not shadcn's specific registry version. Peer deps confirmed compatible
 with this app's pinned `react`/`react-dom` `^18.3.1`
@@ -863,35 +863,35 @@ package individually, not assumed from a changelog): `react-smooth` and
 New, old-chart-class additions: `@reduxjs/toolkit` (2.12.0),
 `es-toolkit` (1.52.0), `decimal.js-light` (2.5.1). `victory-vendor`
 stayed old-chart-class but bumped `36.6.8` → `37.3.6`. Also new to
-the old chart library but NOT exclusive to it — each independently already present via
+the retired chart library but NOT exclusive to it — each independently already present via
 an unrelated, pre-existing dependency, confirmed via `npm ls`: `immer`
-(the old chart library@3 needs 11.1.18; `@kanaries/graphic-walker` already carries its
+(the retired chart library@3 needs 11.1.18; `@kanaries/graphic-walker` already carries its
 own separate 9.0.21, no conflict), `react-redux` (8.1.3, deduped —
 `@kanaries/react-beautiful-dnd` already needed the exact same version),
-`reselect` (the old chart library wants 5.2.0, `@reduxjs/toolkit` wants 5.3.0 deduped;
+`reselect` (the retired chart library wants 5.2.0, `@reduxjs/toolkit` wants 5.3.0 deduped;
 `@flowmap.gl/data` already needed 5.3.0), `use-sync-external-store`
 (1.6.0, deduped via `react-redux`). **A real, confirmed pre-existing
 inaccuracy surfaced, unrelated to the version itself**: `lodash`
-(4.18.1) was never actually a `the old chart library` dependency at all, in v2 OR
+(4.18.1) was never actually a retired chart library dependency at all, in v2 OR
 v3 — `npm ls lodash` traces it entirely to `@kanaries/graphic-walker`'s
 own transitive chain (`react-color`, `react-resize-detector`). The
 original `vite.config.ts` `manualChunks` rule matching `/lodash/` into
-the `the old chart library` chunk was therefore always incidentally bundling an
+the retired chart library chunk was therefore always incidentally bundling an
 unrelated panel type's own dependency — harmless before (lodash's real
 owner, graphic-walker, already has its own chunk lodash would also land
 in), but worth fixing now rather than perpetuating. Fixed: the
-`the old chart library` chunk rule now matches `the old chart library`/`@reduxjs/toolkit`/
+the retired chart library chunk rule now matches the retired chart library/`@reduxjs/toolkit`/
 `es-toolkit`/`decimal.js-light`/`victory-vendor` only — `lodash` dropped
 entirely, and `immer`/`react-redux`/`reselect`/`use-sync-external-store`
 deliberately left unmatched (each shared with another already-existing
 dependency; forcing a shared package into the old-chart-class chunk
-would make every OTHER consumer pay for the whole `the old chart library` chunk too).
+would make every OTHER consumer pay for the whole the retired chart library chunk too).
 Verified via a real production build (`npm run build`) plus a direct
 content-marker grep of the built chunks: `@@redux/INIT` (a real, unique
-`redux`-core string) appears in BOTH the `the old chart library` and `graphic-walker`
+`redux`-core string) appears in BOTH the retired chart library and `graphic-walker`
 chunks — investigated as a possible duplication bug, but confirmed to be
 two structurally UNRELATED copies (`@reduxjs/toolkit`'s own nested
-`redux` dependency inside the `the old chart library` chunk vs. `@kanaries/
+`redux` dependency inside the retired chart library chunk vs. `@kanaries/
 react-beautiful-dnd`'s own separately-vendored, statically-inlined
 `redux`-shaped code inside its own published bundle, present in the
 graphic-walker chunk since long before this upgrade) — not a new
@@ -905,7 +905,7 @@ TooltipValueType, TooltipNameType>, "accessibilityLayer">` (a new local
 `TooltipNameType = number | string` alias, matching v3's new-york-v4
 source exactly, since `NameType` itself isn't re-exported from the
 package's own top-level types) — v3 restructured `DefaultTooltipContent`'s
-own exported prop shape (the old chart library wiki's own "Update TooltipProps to
+own exported prop shape (the retired chart library wiki's own "Update TooltipProps to
 TooltipContentProps for custom tooltips" breaking-change entry), and the
 old v2-shaped type no longer typechecked (`payload`/`label` "does not
 exist" TS2339 errors). (2) `ChartLegendContent` switched from
@@ -915,14 +915,14 @@ exist" TS2339 errors). (2) `ChartLegendContent` switched from
 the real error: "Property 'payload' is missing... required"), breaking
 every real call site in `the retired chart panel` that renders
 `<ChartLegendContent className="..." />` without passing `payload`
-explicitly (the old chart library' own `<Legend content={...}>` mechanism injects it
+explicitly (the retired chart library's own `<Legend content={...}>` mechanism injects it
 at runtime via `cloneElement`, invisible to static analysis either way);
 `DefaultLegendContentProps` (the content-renderer's own separate prop
 type, confirmed via direct `.d.ts` read to keep `payload` optional)
 matches the real runtime contract correctly. (3) The tooltip payload
 map's `key={item.dataKey}` became `key={index}` — v3's real `DataKey<any>`
 type now permits a function accessor, which isn't assignable to React's
-`key` prop (`TS2322`); `payload` is freshly built by the old chart library on every
+`key` prop (`TS2322`); `payload` is freshly built by the retired chart library on every
 render, so an index key is safe here, matching v3's own new-york-v4
 source exactly. All three ported directly from the real, fetched v3
 source — not Tailwind v4 syntax, `data-slot`, or `initialDimension`,
@@ -966,7 +966,7 @@ Re-verified: `npx tsc --noEmit` clean (after the real type fixes above),
 existing assertion reads live token/DOM values, none hardcoded a
 old-chart-class detail), all 8 `a retired chart panel file`
 integration tests passing unchanged, a full production build
-(`npm run build`) succeeding with the `the old chart library` chunk correctly isolated
+(`npm run build`) succeeding with the retired chart library chunk correctly isolated
 (379.55 kB / 105.60 kB gzip, a real, separate chunk — confirmed via
 direct build output, not assumed), and real before/after screenshots in
 both themes for bar/line/area confirming every originally-fixed bug and

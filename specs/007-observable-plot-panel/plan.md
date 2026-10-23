@@ -17,7 +17,7 @@ established discipline), shape the design: chart encodings (`x`/`y`/`fill`/
 `stroke`) are bare column names, not `$metric.`-prefixed like `the retired chart panel`'s
 traces (research.md §4); and `$inputs.<id>` — panel-local reactive input
 widgets — is real, documented grammar, not illustrative-only, making this
-feature materially bigger than "swap the old chart library for Observable Plot" (spec.md's
+feature materially bigger than "swap the retired chart library for Observable Plot" (spec.md's
 Grammar findings, research.md §2/§3/§8). A third finding, confirmed directly
 against `@observablehq/plot`'s real docs/source rather than assumed to work
 like `the retired chart panel`'s `the old library API` + `the old library API` pattern:
@@ -85,7 +85,7 @@ its existing string-form assertions required to stay green unchanged.
 `tests/unit/sqlExpander.test.ts` (exists — extended, not new) gains cases for
 the new `inputs` placeholder kind. Playwright:
 `tests/integration/observablePlotPanel.spec.ts`, matching old-chart-panel-style
-coverage (this project has no standalone `a retired chart spec` file — the old chart library
+coverage (this project has no standalone `a retired chart spec` file — the retired chart library
 coverage lives inside `dashboardShell.spec.ts`; this feature gets its own
 dedicated spec file instead, matching `005`/`006`'s precedent of one
 dedicated integration spec per new panel type) — rendering at least two mark
@@ -136,7 +136,7 @@ boundary). Scoped larger than `005`/`006` specifically because panel-local
 reactive input controls (real, documented grammar — spec.md's Grammar
 findings) are this application's first interactive filter-value-setting UI of
 any kind (research.md §8), not merely a second chart-rendering library swapped
-in alongside the old chart library.
+in alongside the retired chart library.
 
 ## Constitution Check
 

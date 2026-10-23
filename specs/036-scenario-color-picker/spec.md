@@ -15,19 +15,19 @@ against real, current source — this project's own installed packages, its
 own already-shipped code, and shadcn's real, current registry — not
 assumed.
 
-**Part A — the old chart library' vs Observable Plot's real default categorical
+**Part A — the retired chart library's vs Observable Plot's real default categorical
 schemes, compared directly:**
 
-- **the old chart library has no real default categorical palette to compare.**
+- **the retired chart library has no real default categorical palette to compare.**
   Confirmed by reading the installed package directly:
-  `node_modules/the old chart library/lib/cartesian/Line.js` defaults `stroke` to a
+  `node_modules/the retired chart library/lib/cartesian/Line.js` defaults `stroke` to a
   single hardcoded `'#3182bd'` (one blue, never cycled); `Bar.js` defaults
   `fill` to `'#eee'`. The one real multi-color array in the package,
   `COLOR_PANEL` (`lib/util/Constants.js`, 24 colors starting `#1890FF`),
   is `Treemap`'s own internal fallback only — not a general Bar/Line/Area
   categorical scheme. This project's own `panels/a retired chart helper`
   already had to build its own `--chart-1..5` cycling logic for exactly
-  this reason (`029-shadcn-chart-panel`) — the old chart library genuinely provides
+  this reason (`029-shadcn-chart-panel`) — the retired chart library genuinely provides
   nothing to fall back to here.
 - **Observable Plot's `schemeObservable10`** (`d3-scale-chromatic`,
   already installed) is a real, complete 10-color categorical scheme,
@@ -40,7 +40,7 @@ schemes, compared directly:**
   lightness-adjusted derivatives of `schemeObservable10`'s first 5 colors
   — WCAG-contrast-verified per token, per theme, by
   `tests/unit/tokenContrast.test.ts`'s own existing coverage. There is no
-  real decision left to make between the two schemes: the old chart library has no
+  real decision left to make between the two schemes: the retired chart library has no
   scheme to compete with `schemeObservable10` in the first place, and this
   project has already adopted (and verified) an accessible derivative of
   it. The shipped default palette is therefore `var(--chart-1)` through
@@ -244,7 +244,7 @@ all).
 **Independent Test**: Configure a `scenarioPalette` in a test
 `dashboard-config/index.json`, load two scenarios with no color override,
 confirm each renders in the configured palette (cycled by position)
-consistently across the old chart library/Observable Plot. Fully testable
+consistently across the retired chart library/Observable Plot. Fully testable
 without Part B.
 
 **Acceptance Scenarios**:
@@ -582,7 +582,7 @@ clicking another row's own baseline control still moves it.
 - The shipped default palette reuses this app's own existing
   `--chart-1..5` tokens verbatim rather than introducing a new 10-color
   palette from raw `schemeObservable10` — informed by direct confirmation
-  that the old chart library has no comparable built-in scheme to weigh against it, and
+  that the retired chart library has no comparable built-in scheme to weigh against it, and
   that this app has already adopted and WCAG-verified an accessible
   derivative of `schemeObservable10` for exactly this "categorical chart
   color" purpose.

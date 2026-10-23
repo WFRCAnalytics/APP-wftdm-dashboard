@@ -119,7 +119,7 @@ plain window resize) therefore requires **recomputing the full layout**
 with the new extent and rebuilding the SVG, not an in-place geometry patch
 — structurally the same "no cheap incremental update, must rebuild" shape
 007 found for `Plot.plot()`, and a genuinely different situation from
-the old chart library's own internal diffing/resize support. Confirmed by directly
+the retired chart library's own internal diffing/resize support. Confirmed by directly
 inspecting `d3-sankey`'s real API rather than assuming either prior fix
 transfers, per the feature description's explicit instruction.
 
@@ -246,7 +246,7 @@ library's own default colors." Checked directly against both existing
 chart panels' real code before accepting that as precedent, and it's
 **not accurate**: `a retired chart helper` explicitly sets no `marker.color` on
 split/categorical traces, with its own doc comment stating this lets
-"the old chart library's own default palette assign each trace a distinct color";
+"the retired chart library's own default palette assign each trace a distinct color";
 `observablePlotEncoding.ts` likewise sets no explicit color array for
 `fill`/`stroke` — only `{legend: true}` — leaving Observable Plot's own
 default categorical scheme (`d3.schemeObservable10`) in effect. The one
@@ -303,7 +303,7 @@ both fully Vitest-testable without a real DOM. `SankeyPanel.tsx` owns only
 the SVG construction/update from the module's output, the ResizeObserver
 wiring (§3), and the loading/empty/error state wrapper — the same
 component/pure-module split boundary every prior panel type already uses,
-for the same reason (the old chart library's module-load `self` reference was
+for the same reason (the retired chart library's module-load `self` reference was
 the original forcing reason for `a retired chart helper`; this module has no such
 forcing constraint itself, but keeping the transform logic Vitest-testable
 without a DOM is independently valuable per the feature description's own

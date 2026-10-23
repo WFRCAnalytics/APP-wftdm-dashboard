@@ -74,7 +74,7 @@ query) and asserts:
    not just inferred from the diagram's absence of that link (research.md
    §5).
 7. A dashboard tab combining all six built panel types (`valuebox`,
-   `the old chart library`, `table`, `markdown`, `observable-plot`, `sankey`) renders
+   the retired chart library, `table`, `markdown`, `observable-plot`, `sankey`) renders
    without error in a single load (SC-005).
 8. **Filter change without any resize** (regression coverage for the
    `useRef`-vs-local-variable resize-guard bug found and fixed in

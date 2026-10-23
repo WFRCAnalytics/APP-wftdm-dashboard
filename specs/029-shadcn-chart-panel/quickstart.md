@@ -1,18 +1,18 @@
-# Quickstart: Validating the shadcn/the old chart library Chart Panel Type
+# Quickstart: Validating the shadcn/the retired chart library Chart Panel Type
 
 ## Prerequisites
 
-- `npm install` run after `the old chart library` and `components/ui/chart.tsx` are
+- `npm install` run after the retired chart library and `components/ui/chart.tsx` are
   added (see tasks.md for the exact CLI command — research.md §5).
 - Fixture content available: `npm run dev:fixtures`.
 
-## 1. Author a `the old chart library` panel
+## 1. Author a retired chart library panel
 
 Add to a fixture `dashboard-*.yaml`:
 
 ```yaml
-- type:       the old chart library
-  title:      Mode Share by Purpose (the old chart library)
+- type:       the retired chart library
+  title:      Mode Share by Purpose (the retired chart library)
   metric:     trip_mode_share
   chart_type: bar
   x:          purpose
@@ -57,13 +57,13 @@ Confirm, via real inspection (not a glance):
 
 ## 4. Confirm existing panel types are unaffected
 
-Load a dashboard tab with existing `the old chart library`/`observable-plot`/`sankey`
-panels alongside the new `the old chart library` one. Confirm all render correctly, and
-that the old chart library's own legend click-to-toggle still works exactly as before.
+Load a dashboard tab with existing the retired chart library/`observable-plot`/`sankey`
+panels alongside the new the retired chart library one. Confirm all render correctly, and
+that the retired chart library's own legend click-to-toggle still works exactly as before.
 
 ## 5. Confirm the unsupported-chart-type edge case
 
-Author a second `the old chart library` panel with an invalid `chart_type` (e.g.
+Author a second the retired chart library panel with an invalid `chart_type` (e.g.
 `chart_type: pie`). Confirm this fails clearly and visibly (a config
 error), never a silent blank panel or an unintended fallback chart type.
 
@@ -82,5 +82,5 @@ error), never a silent blank panel or an unintended fallback chart type.
   dual-theme `getComputedStyle()` checks FR-012 requires (real computed
   `fill`/`stroke` values in both themes, not a screenshot diff); the
   invalid-`chart_type` edge case; a regression sweep confirming
-  `the old chart library`/`observable-plot`/`sankey` panels on the same tab are
+  the retired chart library/`observable-plot`/`sankey` panels on the same tab are
   byte-for-byte unaffected.

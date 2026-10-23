@@ -8,7 +8,7 @@ shape the constitution's v2.2.0 amendment already specifies.
 ```tsx
 export const registry: Record<string, ComponentType<PanelProps>> = {
   valuebox: ValueBoxPanel,
-  the old chart library: the retired chart panel,
+  the retired chart library: the retired chart panel,
 }
 ```
 

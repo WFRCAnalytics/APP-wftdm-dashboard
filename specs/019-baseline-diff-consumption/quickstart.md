@@ -25,7 +25,7 @@ expect(resolveComparisonScenarioName('base_tbm', 'abm_2026')).toBe('base_tbm') /
 expect(resolveComparisonScenarioName('$baseline', undefined)).toBeUndefined()
 ```
 
-**Done when**: the generated SQL correctly resolves `$baseline` on either side, and a real, running `the old chart library`/`table`/`observable-plot`/`zonemap` panel configured with `a: '$baseline'` shows correct per-row `diff_value`s against whichever scenario is currently baseline.
+**Done when**: the generated SQL correctly resolves `$baseline` on either side, and a real, running the retired chart library/`table`/`observable-plot`/`zonemap` panel configured with `a: '$baseline'` shows correct per-row `diff_value`s against whichever scenario is currently baseline.
 
 ## Scenario 2 — Percent difference, zero-baseline degenerate case (User Story 2)
 
@@ -43,7 +43,7 @@ Real integration check (Playwright, `tests/integration/tablePanel.spec.ts`): a f
 ```ts
 // The SAME buildComparisonDiffQuery() call, varying only which fixture
 // metric/columns are used, produces a `diff_value` column consumed
-// identically by the old chart library (y: diff_value), table (field: diff_value),
+// identically by the retired chart library (y: diff_value), table (field: diff_value),
 // observable-plot (y: diff_value), and zonemap (implicit — its own
 // existing valueField branch already reads 'diff_value' literally).
 ```

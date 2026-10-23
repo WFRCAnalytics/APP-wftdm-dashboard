@@ -17,7 +17,7 @@
   map libraries — checked the real current file (not `CLAUDE.md`'s own
   aspirational `vite.config.ts` sketch, which names a `maplibre` chunk
   that doesn't actually exist yet): today it only splits `duckdb` and
-  `the old chart library` (the `the old chart library` entry's own comment: "split... unimplemented
+  the retired chart library (the retired chart library entry's own comment: "split... unimplemented
   until now since nothing depended on it before this feature" — the same
   situation this feature is now in for `maplibre-gl`/`@deck.gl/*`/
   `@flowmap.gl/layers`). Exact chunk boundary (one combined chunk vs.

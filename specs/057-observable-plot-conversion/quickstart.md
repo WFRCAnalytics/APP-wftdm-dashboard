@@ -93,7 +93,7 @@ Expect no output (zero changes) — FR-005/FR-011.
 
 ## Expected outcome
 
-- SC-001: `git grep -l "type:.*the old chart library\|type:.*the old chart library" public/demo-dashboard-config/dashboard-1-summary.yaml public/demo-dashboard-config/dashboard-3-tour-models.yaml public/demo-dashboard-config/dashboard-4-mode-choice.yaml public/demo-dashboard-config/dashboard-5-trip-models.yaml` returns nothing (the Sankey panel's own `type: sankey` is a separate, intentional exception — not a leftover the old chart library panel).
+- SC-001: `git grep -l "type:.*the retired chart library\|type:.*the retired chart library" public/demo-dashboard-config/dashboard-1-summary.yaml public/demo-dashboard-config/dashboard-3-tour-models.yaml public/demo-dashboard-config/dashboard-4-mode-choice.yaml public/demo-dashboard-config/dashboard-5-trip-models.yaml` returns nothing (the Sankey panel's own `type: sankey` is a separate, intentional exception — not a leftover the retired chart library panel).
 - SC-002/SC-003: manual spot-check in step 1 confirms unchanged figures.
 - SC-004: the Sankey panel and its tab are visually and functionally unaffected.
 - SC-005: `observablePlotPanel.spec.ts` passes unchanged; no code diff in `observablePlotEncoding.ts`/`ObservablePlotPanel.tsx` unless a real defect was found and fixed (research.md §7).

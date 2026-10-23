@@ -14,7 +14,7 @@ singular + 4 with a redundant list); the 5 markdown notes are untouched.
 | Action | Edit | Count |
 |---|---|--:|
 | **UNPIN** | delete the `scenario:` / `scenarios:` line. **For a `table` with an explicit `columns:` list** (all 18 unpinned demo tables), also prepend `- { field: scenario, label: "Scenario" }` — an explicit `columns:` list renders ONLY the listed fields (`tableLogic.ts`), so without this the `$scenario` discriminator column is invisible and the union reads as unlabeled duplicated rows. | 20 |
-| **UNPIN+CH** | delete `scenario:`; add `name: $scenario` (the old chart library) **or** `fill: scenario` (observable-plot) | 3 |
+| **UNPIN+CH** | delete `scenario:`; add `name: $scenario` (the retired chart library) **or** `fill: scenario` (observable-plot) | 3 |
 | **UNLIST** | delete the `scenarios: [...]` line; keep the existing per-scenario channel (`series: scenario` #6 / `name: $scenario` in traces #7, #34) or none (#33 sankey — combined flow) | 4 |
 | **KEEP+NOTE** | keep `scenario: activitysim-baseline` (rewrite a list to this singular form); add/extend `description:` with a baseline-scope note | 14 |
 
@@ -30,8 +30,8 @@ singular + 4 with a redundant list); the 5 markdown notes are untouched.
 | 3 | Tours | KEEP+NOTE | KPI valuebox |
 | 4 | Trips | KEEP+NOTE | KPI valuebox |
 | 5 | Total VMT | KEEP+NOTE | KPI valuebox |
-| 6 | Total Trips by Mode | UNLIST | the old chart library; `series: scenario` already present — keep it |
-| 7 | Average Trip Distance by Purpose | UNPIN+CH | the old chart library; add `name: $scenario` |
+| 6 | Total Trips by Mode | UNLIST | the retired chart library; `series: scenario` already present — keep it |
+| 7 | Average Trip Distance by Purpose | UNPIN+CH | the retired chart library; add `name: $scenario` |
 
 ### `dashboard-2-person-household.yaml`
 | # | Title | Action | Detail |
@@ -52,7 +52,7 @@ singular + 4 with a redundant list); the 5 markdown notes are untouched.
 | 21 | Joint Tour Participation | UNPIN | table |
 | 22 | Joint Tour Destination Distance | KEEP+NOTE | obs-plot; `fill: primary_purpose` committed |
 | 23 | Joint Tour Scheduling | UNPIN | table |
-| 24 | Non-Mandatory Tour Frequency by Purpose | UNPIN+CH | the old chart library; add `name: $scenario` |
+| 24 | Non-Mandatory Tour Frequency by Purpose | UNPIN+CH | the retired chart library; add `name: $scenario` |
 | 25 | Non-Mandatory Tour Destination Distance | KEEP+NOTE | obs-plot; `fill: primary_purpose` committed |
 | 26 | Non-Mandatory Tour Scheduling | UNPIN | table |
 | 27 | At-Work Subtour Frequency | UNPIN | table |
@@ -64,16 +64,16 @@ singular + 4 with a redundant list); the 5 markdown notes are untouched.
 | # | Title | Action | Detail |
 |--:|---|---|---|
 | 31 | Tour Mode Share by Segment | UNPIN | table |
-| 32 | At-Work Subtour Mode Share by Purpose | KEEP+NOTE | the old chart library; `series: tour_mode` committed, no faceting (research.md §4) |
+| 32 | At-Work Subtour Mode Share by Purpose | KEEP+NOTE | the retired chart library; `series: tour_mode` committed, no faceting (research.md §4) |
 | 33 | Trip Purpose to Mode Flow | UNLIST | sankey; union sums flows across active scenarios — combined flow, not a comparison; responds to the Switch; accepted per spec item-2 |
-| 34 | Trip Mode Share by Time-of-Day Period (WALK_LOC) | UNPIN+CH | the old chart library; add `name: $scenario` |
+| 34 | Trip Mode Share by Time-of-Day Period (WALK_LOC) | UNPIN+CH | the retired chart library; add `name: $scenario` |
 
 ### `dashboard-5-trip-models.yaml`
 | # | Title | Action | Detail |
 |--:|---|---|---|
 | 35 | Trip Purpose Breakdown | UNPIN | table |
 | 36 | Trip Destination Distance Distribution | KEEP+NOTE | obs-plot; `fill: primary_purpose` committed |
-| 37 | Trip Departure Hour (Work Trips) | UNPIN+CH | the old chart library; add `name: $scenario` |
+| 37 | Trip Departure Hour (Work Trips) | UNPIN+CH | the retired chart library; add `name: $scenario` |
 | 38 | SOV Trip Attractions by Zone | KEEP+NOTE | zonemap; one draw per dataset (FR-010) |
 
 ### `dashboard-6-network.yaml`

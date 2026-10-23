@@ -243,7 +243,7 @@ when the filter changes.
 - [x] T014 [P] [US1] Playwright test in
       `tests/integration/observablePlotPanel.spec.ts`: changing the global
       Trip Purpose filter re-queries and re-renders the "Mode Share by
-      Purpose (Bar)" panel's chart, while a sibling `the old chart library`/`observable-plot`
+      Purpose (Bar)" panel's chart, while a sibling the retired chart library/`observable-plot`
       panel bound to a *different* filter is unaffected (SC-002)
 - [x] T015 [P] [US1] Playwright test in
       `tests/integration/observablePlotPanel.spec.ts`: expanding the "Mode
@@ -405,7 +405,7 @@ their two distinct mismatched-default outcomes are both verified.
 registry/layout grid/panel-card chrome with no special-casing.
 
 **Independent Test**: Load a tab mixing `observable-plot` with
-`valuebox`/`the old chart library`/`table`/`markdown` panels, confirm standard panel-card
+`valuebox`/the retired chart library/`table`/`markdown` panels, confirm standard panel-card
 chrome, grid placement, and loading-skeleton convention.
 
 **Note**: Like `006`'s US2/US3, this story is test-only — T017-T020's
@@ -417,7 +417,7 @@ what US1 already built.
 
 - [x] T031 [P] [US3] Playwright test in
       `tests/integration/observablePlotPanel.spec.ts`: a tab mixing
-      `observable-plot` panels with `valuebox`/`the old chart library`/`table`/`markdown`
+      `observable-plot` panels with `valuebox`/the retired chart library/`table`/`markdown`
       panels (this fixture file's full `row_kpis`/`row_chart`/`row_table`/
       `row_markdown`/`row_observable_plot` set) renders all of them without
       error, and an `observable-plot` panel's card has the same title bar and
@@ -650,7 +650,7 @@ contracts anticipated:**
    feature's own coverage. Fixed by scoping both to their specific panel's
    card, matching the `panelCard()` pattern newer suites already use.
 6. **Fixture panel titles "Mode Share by Purpose (Bar)"/"(Multiselect
-   Filter)" collided by prefix** with the pre-existing the old chart library panel titled
+   Filter)" collided by prefix** with the pre-existing the retired chart library panel titled
    exactly "Mode Share by Purpose", breaking several `panelExpand.spec.ts`/
    `markdownPanel.spec.ts` assertions that queried by non-exact
    substring match. Renamed both to "Observable Plot Mode Share (...)".

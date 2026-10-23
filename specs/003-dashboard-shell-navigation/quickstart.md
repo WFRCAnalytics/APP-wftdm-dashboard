@@ -10,7 +10,7 @@ Playwright spec that automates the same flow.
 ## Prerequisites
 
 - `001-data-state-layer` and `002-design-tokens` already in place.
-- `npm install` run after this feature adds `the old chart library` to
+- `npm install` run after this feature adds the retired chart library to
   `package.json`.
 - `tests/fixtures/dashboard-shell-config.yaml` present (research.md §1) and
   `tests/fixtures/generate.py`'s existing Parquet fixtures generated
@@ -44,7 +44,7 @@ loads `dashboard-shell-config.yaml`'s tabs, and asserts:
    (FR-002).
 3. The value-box panel's displayed number matches the fixture's
    `summary_kpis` data (SC-002).
-4. Changing the `purpose` filter re-queries and redraws the old chart library panel
+4. Changing the `purpose` filter re-queries and redraws the retired chart library panel
    without a page reload (SC-003).
 5. A deliberately-broken panel config (used only in this test, not the
    main fixture) shows a scoped error without affecting sibling panels
@@ -65,7 +65,7 @@ npm run dev
    entry, only XHR/fetch activity if any).
 3. **Value-box panel renders real data** — confirm the displayed number
    matches the corresponding fixture Parquet column.
-4. **the old chart library panel renders and is filter-reactive** — confirm the chart
+4. **the retired chart library panel renders and is filter-reactive** — confirm the chart
    renders real data; change the `purpose` filter (via `state/
    filterState.ts`'s `set()`, e.g. from the browser console during manual
    verification, since no filter-control UI is part of this feature) and

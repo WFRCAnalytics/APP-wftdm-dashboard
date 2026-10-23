@@ -349,7 +349,7 @@ something correctly out of scope:
   categorical data-series palette **already derived from Observable Plot's
   own real default scheme**, not from any WFRC brand token, per a prior,
   separate, explicit user exception recorded in this project's own
-  history (`029-shadcn-chart-panel`'s "the old chart library version history"/
+  history (`029-shadcn-chart-panel`'s "the retired chart library version history"/
   `wftdm-design-system` skill's own Brand Identity exception paragraph).
   This is correctly OUT of scope per spec.md's own Assumptions — **do not
   touch it**, and do not assume `FALLBACK_TOKEN_VARS` is "the same thing,
@@ -367,7 +367,7 @@ substitute:
 
 | Fix | Where | Original verification technique |
 |---|---|---|
-| the old chart library transparent chart backgrounds | `panels/the retired chart panel` (`paper_bgcolor`/`plot_bgcolor` resolved from tokens, not the old chart library's opaque-white default) | Direct computed-style/rendered-pixel check |
+| the retired chart library transparent chart backgrounds | `panels/the retired chart panel` (`paper_bgcolor`/`plot_bgcolor` resolved from tokens, not the retired chart library's opaque-white default) | Direct computed-style/rendered-pixel check |
 | Observable Plot tooltip contrast + legend overflow + font-size match | `panels/ObservablePlotPanel.tsx`/`observablePlotEncoding.ts` | Direct computed-style check (`016`-era fix, `c6fffbd`) |
 | Sankey node-label legibility | `panels/SankeyPanel.tsx` (`fill="currentColor"` on raw `document.createElementNS` text nodes) | `getComputedStyle()` reading the real resolved `rgb(...)` in both themes |
 | Map controls' icon legibility (dark-gray SVG data-URI icons with no dark variant) | `panels/mapControls.css` (`filter: invert(1)` group) | Live visual + the same class of computed-style check |
@@ -401,7 +401,7 @@ already-established patterns exactly:
   `document.documentElement.classList.add('dark')` and re-asserting the
   dark-mode `rgb(...)`. This is the pattern each of §8's six fixes needs —
   a real rendered-DOM assertion, in both themes, of the SPECIFIC property
-  that fix depends on (the old chart library's `paper_bgcolor` config value reaching the
+  that fix depends on (the retired chart library's `paper_bgcolor` config value reaching the
   chart, Sankey's `<text>` `fill` computed value, the dialog's computed
   `color`, etc.) — never a screenshot-only "looks right" check standing in
   for a property that was originally proven via a real assertion.

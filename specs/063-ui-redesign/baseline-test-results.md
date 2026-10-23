@@ -95,7 +95,7 @@ them on their own (`npx playwright test <file> -g "<title>"`) before calling the
 - `a retired chart spec:84` chart_type: combo (Trip tab, "Trip Volume vs. Average Distance by Purpose") › the line layer uses its own independent right-axis scale, not the bar layer's left-axis range
 - `a retired chart panel file:241` User Story 1 - Author renders a bar, line, or area chart with the new default engine › chart_type: line and chart_type: area render correctly with the same data-binding and theming, changing only the visual mark
 - `a retired chart panel file:300` User Story 1 - Author renders a bar, line, or area chart with the new default engine › a zero-row query renders PanelEmptyState; a rejected query renders PanelErrorState
-- `a retired chart panel file:324` User Story 2 - Existing panel types remain completely unaffected › the old chart library, observable-plot, and sankey panels each render without error, including two side by side on one tab
+- `a retired chart panel file:324` User Story 2 - Existing panel types remain completely unaffected › the retired chart library, observable-plot, and sankey panels each render without error, including two side by side on one tab
 - `a retired chart panel file:395` User Story 3 - A viewer gets useful, on-brand tooltips without extra author work › hovering a bar shows a real tooltip matching the underlying query value(s) for that point
 - `a retired chart panel file:442` User Story 3 - A viewer gets useful, on-brand tooltips without extra author work › the tooltip surface and text remain legible in both light and dark mode
 - `sunburstPanel.spec.ts:88` User Story 2 - Author renders the same real hierarchy as a zoomable sunburst › clicking a non-leaf arc zooms so it becomes the center; clicking the center circle zooms back out
@@ -151,7 +151,7 @@ spec files ran 162 tests: 152 passed, 10 failed. Three of the ten are baseline f
 border/tooltip assertions fixed afterwards and then verified passing. The remaining three zonemap tests
 (`zonemapPanel.spec.ts:535, 553, 657`) wait on `data-render-count` for the Test tab's maps, which takes about 10 s here
 against a 10 s poll. That same ~10 s appears on the P0 commit (`cc88765`, measured in a worktree), so it is a timing
-edge, not a P1 regression. The earlier the old chart library, sunburst, treemap and demoMultiScenario failures passed on the re-run
+edge, not a P1 regression. The earlier the retired chart library, sunburst, treemap and demoMultiScenario failures passed on the re-run
 (load-sensitive).
 
 ## P3 (model years, compare state)
@@ -185,7 +185,7 @@ A full pass plus retry found 22 failures outside the baseline list. Causes found
 open after a mouse click and covered the left of the page, so hover and click targets there were blocked (the nav now
 steps aside after a mouse click and expands on keyboard focus only); a mouse press expanded the nav and inserted the
 sub-list mid-click, dropping the click (focus-based expansion is now `:focus-visible` only); specs that read nav labels
-or sub-items now hover the nav first; a the old chart library combo-chart spec measured before the bar paths existed (now waits). With
+or sub-items now hover the nav first; a retired chart library combo-chart spec measured before the bar paths existed (now waits). With
 one worker the affected files finish with only timing-edge failures: `flowmapPanel.spec.ts:1743` (offline fallback, 10 s
 poll) and `zonemapPanel.spec.ts:1261` (shared boundaries file, 10 s poll), the same kind as the P1 zonemap entries.
 

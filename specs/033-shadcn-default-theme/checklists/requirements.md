@@ -32,7 +32,7 @@
 ## Notes
 
 - Naming "shadcn/ui," "Tailwind," specific color-token names, or specific
-  prior bug-fix descriptions (the old chart library's transparent background, Sankey's
+  prior bug-fix descriptions (the retired chart library's transparent background, Sankey's
   `currentColor` labels, etc.) is not a leaked implementation detail here —
   adopting a specific named vendor's own real, current default output is
   literally the outcome this feature asks for, and those prior fixes are

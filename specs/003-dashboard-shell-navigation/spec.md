@@ -229,7 +229,7 @@ scratch on every redraw.
 - **Dashboard Tab**: One entry from the discovered dashboard-config set —
   a name and an ordered collection of panels to render when active.
 - **Panel**: A single configured visualization or value display on a tab,
-  identified by a `type` (this feature adds `valuebox` and `the old chart library`) and
+  identified by a `type` (this feature adds `valuebox` and the retired chart library) and
   the query/display configuration that type needs.
 - **Panel Registry Entry**: The mapping from a panel `type` string to the
   component responsible for rendering it — the mechanism by which a new

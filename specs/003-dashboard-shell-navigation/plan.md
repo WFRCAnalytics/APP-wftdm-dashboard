@@ -12,7 +12,7 @@ navigated via `002-design-tokens`' shadcn `Tabs` component, styled entirely
 through the established token set. Add the panel registry the constitution's
 v2.2.0 amendment already specifies (`panels/registry.tsx`, a `type` →
 component map) and populate it with the first two panel types — `valuebox`
-(config → query → rendered scalar) and `the old chart library` (YAML config → SQL
+(config → query → rendered scalar) and the retired chart library (YAML config → SQL
 expansion → query → `the old library API`, using `project-docs/SPEC.md`'s corrected
 two-effect pattern). Technical approach: introduce typed parsing of
 `dashboard-*.yaml`'s `header`/`filters`/`layout` structure (currently opaque
@@ -34,8 +34,8 @@ existing fixture models a real multi-tab, multi-panel `dashboard-*.yaml`.
 (all already installed, `002-design-tokens`) for navigation; the existing
 `Card`/`Tabs` shadcn components (`src/components/ui/`) for panel cards and
 tab navigation; `lucide-react` (already installed) for value-box icons
-(`project-docs/GRAMMAR.md`'s `icon:` key); **new** — `the old chart library`, not yet
-in `package.json`, for the `the old chart library` panel type
+(`project-docs/GRAMMAR.md`'s `icon:` key); **new** — the retired chart library, not yet
+in `package.json`, for the retired chart library panel type
 
 **Component source**: New layout (`shell.tsx`, `navBar.tsx`,
 `dashboardRenderer.tsx`, `panelCard.tsx`) and panel
@@ -136,7 +136,7 @@ Single-project web frontend, additive to `001`'s and `002`'s existing
 scaffold. Only the paths this feature creates/touches are listed.
 
 ```text
-package.json                      # + the old chart library
+package.json                      # + the retired chart library
 
 src/
 ├── hooks/
@@ -154,19 +154,19 @@ src/
 │   └── panelCard.tsx              # new — shadcn Card wrapper: title, loading/error
 │                                   # states, hosts one registry-resolved panel
 ├── panels/
-│   ├── registry.tsx                # new — type -> component map (valuebox, the old chart library)
+│   ├── registry.tsx                # new — type -> component map (valuebox, the retired chart library)
 │   ├── panelQuery.ts                # new — PanelConfig + filter values -> SQL
 │   │                                # template for sqlExpander.expand() (see
 │   │                                # contracts/panel-query.md)
 │   ├── ValueBoxPanel.tsx            # new — see contracts/valuebox-panel.md
 │   ├── the retired chart panel              # new — see contracts/retired-chart-panel.md
 │   ├── a retired chart helper              # new — pure trace-resolution logic split out
-│   │                                 # of the retired chart panel: the old chart library
+│   │                                 # of the retired chart panel: the retired chart library
 │   │                                 # references `self` at module-load time,
 │   │                                 # which throws in Vitest's Node environment
 │   │                                 # even to reach a pure helper defined
 │   │                                 # alongside it — kept Vitest-testable by
-│   │                                 # depending on the old chart library's types only, never
+│   │                                 # depending on the retired chart library's types only, never
 │   │                                 # its runtime module
 │   ├── PanelEmptyState.tsx           # new — ported from APP-Project-Scoresheet's
 │   │                                 # EmptyState.tsx (research.md §8)

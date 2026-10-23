@@ -122,7 +122,7 @@ dashboard-*.yaml's type: sankey entry
         v  sankeyGraph.ts's d3-sankey layout call (pure, no DOM —
         |  research.md §2): sankey().nodeId(...).extent([[0,0],[w,h]])(graph)
         |  — recomputed on every data change AND every container-resize
-        |  (research.md §3), unlike the old chart library's cheap resize() call; may throw
+        |  (research.md §3), unlike the retired chart library's cheap resize() call; may throw
         |  a real Error("circular link"), caught into PanelErrorState
   SankeyLayout { nodes (with x0/x1/y0/y1), links (with y0/y1/width) }
         |

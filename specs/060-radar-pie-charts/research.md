@@ -25,9 +25,9 @@ deliberate, explicit non-goal (spec.md FR-004): no dashboard anywhere in
 this project authors one today." This feature does not reverse that
 decision by extending `RetiredChartPanelConfig.chart_type` — it adds two
 independent, dedicated `pie`/`radar` panel TYPES instead, leaving
-`029-shadcn-chart-panel`'s own scope decision for the old chart library specifically
-untouched. the old chart library does have real `PieChart`/`RadarChart` components,
-but reusing them would mean pulling the full the old chart library runtime in for two
+`029-shadcn-chart-panel`'s own scope decision for the retired chart library specifically
+untouched. the retired chart library does have real `PieChart`/`RadarChart` components,
+but reusing them would mean pulling the full the retired chart library runtime in for two
 chart shapes it wasn't chosen for (`029`'s own scope was bar/line/area),
 and would leave this app inconsistent with its own established "reach for
 D3 directly when the gap is in Observable Plot's polar/arc coverage"
@@ -70,7 +70,7 @@ their own). Two options were considered:
   reimplementing D3's `d3-transition` behavior by hand.
 - **Hand-rolled** (chosen): compute each axis's angle as
   `-π/2 + i * (2π / axisCount)` (starting at 12 o'clock, matching every
-  real-world radar chart convention, including the old chart library' own
+  real-world radar chart convention, including the retired chart library's own
   `RadarChart` and Chart.js's `RadarController`), a linear radius scale
   (`value / maxValue * R`, clamped to `[0, R]`), and each vertex's
   Cartesian point via `x = cx + r * cos(angle)`, `y = cy + r * sin(angle)`.
@@ -112,7 +112,7 @@ legend today (a Sankey's own node labels ARE its legend; a
 treemap/sunburst's own segment labels serve the same role) — so there is
 no existing legend component to reuse. `the retired chart panel`'s legend comes
 from shadcn's `ChartLegendContent` (`components/ui/chart.tsx`), which is
-the old chart library-payload-shaped and not reusable by a hand-built D3/SVG chart.
+the retired chart library-payload-shaped and not reusable by a hand-built D3/SVG chart.
 `ObservablePlotPanel.tsx`'s legend is Observable Plot's own internal
 DOM-generated swatches element — also not reusable outside Plot's own
 render pipeline.

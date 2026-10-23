@@ -7,7 +7,7 @@
 ## Summary
 
 Add a generic expand-to-dialog affordance at the `panelCard.tsx` level so
-any panel — every current type (`valuebox`, `the old chart library`) and every future
+any panel — every current type (`valuebox`, the retired chart library) and every future
 registry entry — can be viewed in a large, near-fullscreen Radix `Dialog`
 with zero per-panel-type wiring. The central technical decision (weighed in
 research.md §1, not picked for implementation speed) is to keep exactly one
@@ -17,7 +17,7 @@ either lifting query state into a shared cache for two mounted instances,
 or letting the toggle silently recreate the chart's container. This
 structurally guarantees FR-007/FR-008 (no reset, no duplicate query)
 instead of merely testing for it. The second flagged risk — Radix's
-outside-click detection against the old chart library's own legend-click interactivity
+outside-click detection against the retired chart library's own legend-click interactivity
 (research.md §2) — is carried forward as a required, named Playwright
 assertion, not assumed safe; both pass.
 
@@ -45,7 +45,7 @@ simpler and sufficient once §1b's mechanism no longer needed it.
 **Primary Dependencies**: **new** — `@radix-ui/react-dialog` (`^1.1.x`,
 matching the version line already pinned for `@radix-ui/react-tabs`/
 `@radix-ui/react-tooltip`, research.md §7). Existing, unmodified: `react`/
-`react-dom`, `lucide-react` (`Maximize2`/`X` icons), `the old chart library`
+`react-dom`, `lucide-react` (`Maximize2`/`X` icons), the retired chart library
 (already installed by `003`; this feature adds no new chart capability,
 only re-verifies `003`'s existing `ResizeObserver` fix against a new
 container context), the existing `Card`/`Button` shadcn components and
@@ -218,7 +218,7 @@ tests/
     └── panelExpand.spec.ts         # new — Playwright: expand/collapse
                                      # round trip, focus management, no
                                      # duplicate query, chart container
-                                     # identity, the old chart library-legend-vs-outside-
+                                     # identity, the retired chart library-legend-vs-outside-
                                      # click (research.md §2)
 ```
 

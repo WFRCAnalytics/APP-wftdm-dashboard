@@ -26,11 +26,11 @@ Single-project web frontend, additive to `001-data-state-layer`'s and
 
 ## Phase 1: Setup (Shared Infrastructure)
 
-- [X] T001 Add `the old chart library` to `package.json`; run `npm install`
+- [X] T001 Add the retired chart library to `package.json`; run `npm install`
 - [X] T002 [P] Write `tests/fixtures/dashboard-shell-config.yaml` — a real,
   `project-docs/GRAMMAR.md`-shaped `dashboard-*.yaml` with `header`, one `filters`
   entry (`purpose`), and a `layout` with at least one `valuebox` row bound
-  to `summary_kpis.total_households` and one `the old chart library` row bound to
+  to `summary_kpis.total_households` and one the retired chart library row bound to
   `trip_mode_share` with `filter: $filters.purpose` (research.md §1) —
   matches `tests/fixtures/generate.py`'s existing Parquet schema exactly,
   no new fixture data needed
@@ -191,7 +191,7 @@ confirm the chart redraws in place (not torn down and rebuilt).
   using `PanelEmptyState`/`PanelErrorState`, loading placeholder kept
   DOM-but-hidden so `the old library API` always has a mounted container to
   target (depends on T003, T005)
-- [X] T019 [US3] Register `the old chart library: the retired chart panel` in `src/panels/registry.tsx`
+- [X] T019 [US3] Register `the retired chart library: the retired chart panel` in `src/panels/registry.tsx`
   (T008) (depends on T018)
 - [X] T020 [US3] Manually verify `quickstart.md` step 4: confirm the chart
   renders real fixture data, then change the `purpose` filter (via
@@ -219,7 +219,7 @@ verified.
   extends `boot.spec.ts`'s pattern (real browser, real DuckDB-WASM,
   `tests/fixtures/generate.py`'s Parquet) against the new fixture: tab set
   matches config (SC-001), tab switch with no reload (FR-002), value-box
-  number matches fixture data (SC-002), filter change redraws the old chart library
+  number matches fixture data (SC-002), filter change redraws the retired chart library
   panel without a reload (SC-003), and a deliberately-broken panel config
   (test-local, not the main fixture) shows a scoped error without
   affecting sibling panels (SC-006) — depends on T014, T017, T020

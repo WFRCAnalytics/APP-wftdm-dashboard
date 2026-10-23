@@ -18,14 +18,14 @@ named `scenario`
 
 **Then**:
 
-1. `the old chart library` — a trace split by the `scenario` column (`color`/`name`
+1. the retired chart library — a trace split by the `scenario` column (`color`/`name`
    resolving to `$scenario`) gets, per distinct scenario value: `name =
    resolveScenarioLabel(scenarioName, map)`; `marker.color =
    resolveScenarioColor(scenarioName, map)` set ONLY when defined (an
-   `undefined` `marker.color` is never explicitly assigned — the old chart library's own
+   `undefined` `marker.color` is never explicitly assigned — the retired chart library's own
    default per-trace palette cycling applies exactly as it does today,
    FR-008).
-2. `the old chart library` — when `config.series === 'scenario'`, each `seriesKey`'s
+2. the retired chart library — when `config.series === 'scenario'`, each `seriesKey`'s
    `chartConfig[key]` gets `label = resolveScenarioLabel(key, map)` and
    `color = resolveScenarioColor(key, map) ?? \`var(--chart-${tokenNumber})\``
    (the existing token-cycling fallback, unchanged when no color

@@ -167,7 +167,7 @@ check, per `research.md` §9:
 
 | Case | Assertion |
 |---|---|
-| the old chart library transparent background | `page.evaluate()` reads the real the old chart library `layout.paper_bgcolor`/`plot_bgcolor` the chart was actually drawn with, both themes |
+| the retired chart library transparent background | `page.evaluate()` reads the real the retired chart library `layout.paper_bgcolor`/`plot_bgcolor` the chart was actually drawn with, both themes |
 | Observable Plot tooltip contrast | `tokenContrast.test.ts`-style ratio check against the new token values, both themes |
 | Sankey label legibility | `getComputedStyle()` on a real rendered `<text>` node's `fill`, both themes |
 | Map control icon legibility | Live visual + existing `filter: invert(1)` mechanism confirmed still resolving against the new `--card`/`--foreground` values |
