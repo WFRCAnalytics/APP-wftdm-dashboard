@@ -16,6 +16,9 @@ export default defineConfig({
   testDir: 'tests/integration',
   testMatch: '**/*.spec.ts',
   fullyParallel: false,
+  // Two workers: the default (half the cores) crowds DuckDB-WASM and the map specs enough to time out dozens of tests
+  // that pass on their own. `--workers=1` is the slowest, most deterministic option.
+  workers: 2,
   reporter: 'list',
   globalSetup: './tests/global-setup.js',
   globalTeardown: './tests/global-teardown.js',
