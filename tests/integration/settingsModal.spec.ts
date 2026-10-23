@@ -1333,12 +1333,14 @@ test.describe('User Story (037-scenarios-tab-redesign)', () => {
     const announcements: string[] = []
     await page.exposeFunction('__recordAnnouncement', (t: string) => announcements.push(t))
     await page.evaluate(() => {
-      const el = document.querySelector('[id^="DndLiveRegion"]')
-      if (!el) return
+      // Observe the whole document and re-query the region on every change: the region element can be re-created when
+      // a drag starts, which would silently detach an observer attached to the element itself.
+      let last = ''
       new MutationObserver(() => {
-        const t = el.textContent?.trim()
-        if (t) (window as unknown as { __recordAnnouncement: (s: string) => void }).__recordAnnouncement(t)
-      }).observe(el, { childList: true, characterData: true, subtree: true })
+        const t = document.querySelector('[id^="DndLiveRegion"]')?.textContent?.trim() ?? ''
+        if (t && t !== last) (window as unknown as { __recordAnnouncement: (s: string) => void }).__recordAnnouncement(t)
+        last = t
+      }).observe(document.body, { childList: true, characterData: true, subtree: true })
     })
 
     await dragHandle(page, 'broken_scenario').focus()

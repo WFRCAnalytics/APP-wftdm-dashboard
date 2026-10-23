@@ -626,10 +626,10 @@ slider) are shipped (`061-appearance-controls`).
 `project-docs/IMPLEMENTATION-HISTORY.md` items 26/28 for full detail):
 - Playwright suite health: the old "~8 specs depend on the retired `tests/fixtures/dashboard-config/`" gap is closed
   (`settingsModal`, `scenarioManager`, `scenarioAutoActivation` and the rest now run on real demo content; the Test tab
-  specs use `tests/integration/_testTab.ts`'s 20s `expect`). What remains is load flakiness: on a full run with the
-  default parallel workers about two dozen specs that crowd the ~80-panel Test tab or draw several maps can time out,
-  and pass when re-run with `--workers=1`. `chartMaps` "Compare switched to one at a time" can also fail when it runs
-  right after another map spec (hover timing). Re-run failures with `--workers=1` before treating them as real.
+  specs use `tests/integration/_testTab.ts`'s 20s `expect`). `playwright.config.js` runs 2 workers: on a full run a
+  handful of specs that crowd the ~80-panel Test tab or draw several maps can still time out (6 of 529 on the last
+  run) and pass when re-run alone. `chartMaps` "Compare switched to one at a time" can also fail right after another
+  map spec (hover timing). Re-run a failure with `--workers=1` before treating it as real.
 - `coi-serviceworker.js` no longer exists; the deployed app runs without
   cross-origin isolation.
 - DuckDB-WASM's parquet extension still requires one real network fetch

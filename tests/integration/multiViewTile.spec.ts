@@ -54,6 +54,8 @@ async function gotoTab(page: Page, name: string) {
 // The tile redraws as its data lands, which can close an open dropdown under the pointer: open it and pick as one retried step.
 async function chooseGroup(page: Page, card: ReturnType<typeof tile>, option: RegExp) {
   await expect(async () => {
+    // a dropdown left open by a failed try hides the rest of the page from the role queries: close it first
+    await page.keyboard.press('Escape')
     await card.getByRole('combobox', { name: 'Group by' }).click({ timeout: 5_000 })
     await page.getByRole('option', { name: option }).click({ timeout: 5_000 })
   }).toPass({ timeout: 25_000 })
