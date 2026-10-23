@@ -13,8 +13,12 @@ export interface RawSource {
 
 const num = (r: Row, k: string): number => Number(r[k])
 
+/** The label for raw values a configured vocabulary does not list. */
+export const OTHER = 'Other'
+
 /** Sums `sumCols` over rows grouped by the given dimensions, mapping each dimension through the vocabulary (a `null`
- * dimension, like the departure hour, has none and groups on the raw value). */
+ * dimension, like the departure hour, has none and groups on the raw value). Values the vocabulary does not list are
+ * summed under "Other", joining a vocabulary entry already labelled that. */
 export function regroup(
   rows: readonly Row[],
   dims: { column: string; dimension: Parameters<typeof aliasValue>[0] | null }[],
@@ -23,16 +27,10 @@ export function regroup(
   const out = new Map<string, Row>()
   for (const r of rows) {
     const mapped: Record<string, string> = {}
-    let skip = false
     for (const d of dims) {
-      const label = d.dimension && hasAliases(d.dimension) ? aliasValue(d.dimension, r[d.column]) : String(r[d.column])
-      if (label === undefined) {
-        skip = true
-        break
-      }
-      mapped[d.column] = label
+      // a value the deployment's vocabulary does not list is folded into "Other", so totals and shares stay whole
+      mapped[d.column] = d.dimension && hasAliases(d.dimension) ? (aliasValue(d.dimension, r[d.column]) ?? OTHER) : String(r[d.column])
     }
-    if (skip) continue
     const key = dims.map((d) => mapped[d.column]).join('\u0001')
     const row = out.get(key) ?? { ...mapped, ...Object.fromEntries(sumCols.map((c) => [c, 0])) }
     for (const c of sumCols) row[c] = (row[c] as number) + (num(r, c) || 0)

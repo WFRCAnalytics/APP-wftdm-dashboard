@@ -47,14 +47,26 @@ describe('a deployment vocabulary with raw ids', () => {
     expect((rows ?? []).reduce((s, r) => s + (r.share as number), 0)).toBeCloseTo(1)
   })
 
-  it('leaves out raw values the vocabulary does not list, and shares are over what is left', async () => {
+  it('folds raw values the vocabulary does not list into Other, so the shares still cover every trip', async () => {
     configureVocab(vocab)
     const rows = await adaptTable(
       'trip_mode_share',
-      source({ trip_mode_share: [{ major_trip_mode: 'SOV', trips: 90 }, { major_trip_mode: 'TNC', trips: 10 }] }),
+      source({ trip_mode_share: [{ major_trip_mode: 'SOV', trips: 80 }, { major_trip_mode: 'TNC', trips: 10 }, { major_trip_mode: 'FERRY', trips: 10 }] }),
+    )
+    const m = byKey(rows, 'major_trip_mode')
+    expect(Object.keys(m).sort()).toEqual(['Drive alone', 'Other'])
+    expect(m.Other).toMatchObject({ trips: 20, share: 0.2 })
+    expect(m['Drive alone'].share).toBeCloseTo(0.8)
+  })
+
+  it('adds unlisted values to a vocabulary entry that is already called Other', async () => {
+    configureVocab(vocab)
+    const rows = await adaptTable(
+      'purpose_mode_flow',
+      source({ purpose_mode_flow: [{ primary_purpose: 'shop', major_trip_mode: 'SOV', trips: 5 }, { primary_purpose: 'escort', major_trip_mode: 'SOV', trips: 7 }] }),
     )
     expect(rows).toHaveLength(1)
-    expect(rows![0]).toMatchObject({ major_trip_mode: 'Drive alone', share: 1 })
+    expect(rows![0]).toMatchObject({ primary_purpose: 'Other', trips: 12 })
   })
 
   it('maps both dimensions of the purpose to mode flow and derives share within each purpose', async () => {
