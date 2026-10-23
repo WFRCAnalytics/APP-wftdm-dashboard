@@ -195,7 +195,7 @@ and its title/subtitle makes the single-scenario scope explicit.
    scenarios, **Then** `Total Trips by Mode` and `Trip Mode Share by
    Time-of-Day Period` show three series, one per scenario, and respond to the
    Switch.
-2. **Given** a formerly-singular-pinned the retired chart library/the retired chart library/`observable-plot`
+2. **Given** a formerly-singular-pinned retired chart library/the retired chart library/`observable-plot`
    panel, **When** it is unpinned, **Then** its config also gains the
    per-scenario series channel (`color: $scenario` / `series: scenario` /
    `fill: scenario`) so it renders as a real comparison, not an overplot.

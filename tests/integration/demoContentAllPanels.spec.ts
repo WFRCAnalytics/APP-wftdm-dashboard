@@ -164,7 +164,7 @@ test.describe('032-six-tab-demo-content — User Story 2 (real data, honest gaps
 // 057-observable-plot-conversion: 032-six-tab-demo-content's own original
 // success criterion here was "all ten registered panel types render real,
 // non-empty content across the six primary tabs." This feature's own
-// explicit FR-001/FR-002 (convert EVERY real the retired chart library chart panel
+// explicit FR-001/FR-002 (convert EVERY real retired chart library chart panel
 // in the demo content to Observable Plot, no exception carved out to
 // preserve type-coverage) deliberately supersedes that — a real,
 // confirmed, INTENTIONAL conflict found and resolved during this

@@ -125,7 +125,7 @@ rendering panel types would violate the feature's own core premise.
 
 **Independent Test**: Render a dashboard tab containing one panel of each
 existing chart-rendering type (the retired chart library, `observable-plot`, `sankey`)
-alongside a new the retired chart library panel; confirm all four render correctly, and
+alongside a new retired chart library panel; confirm all four render correctly, and
 that none of the three pre-existing types' own rendering, theming, or
 test coverage changed.
 
@@ -153,7 +153,7 @@ configured any tooltip behavior explicitly.
 chart usable at all, but it's a supporting capability to User Story 1's
 core "render a themed chart" value, not the reason this feature exists.
 
-**Independent Test**: Hover over a rendered the retired chart library panel's chart; a
+**Independent Test**: Hover over a rendered retired chart library panel's chart; a
 tooltip appears showing the real value(s) at that point, legible in both
 light and dark mode.
 
@@ -214,7 +214,7 @@ light and dark mode.
   are explicitly OUT OF SCOPE for this feature (no real dashboard in this
   project authors one today) and MAY be added later as a separate,
   deliberate extension once a real need is confirmed.
-- **FR-005**: Every visual aspect of a rendered the retired chart library panel (series
+- **FR-005**: Every visual aspect of a rendered retired chart library panel (series
   colors, axis text, gridlines, tooltip surface and text, legend) MUST
   resolve from this app's own real design tokens (existing tokens plus
   the new chart-color tokens this feature adds), automatically following

@@ -505,9 +505,9 @@ test.describe('User Story 3 - Panel behaves consistently with the rest of the re
     await boot(page)
     // The real Summary tab's own real composition — valuebox/observable-
     // plot/markdown (confirmed via a direct grep sweep: this tab has no
-    // real the retired chart library/table panel; both types' own registry-consistency
+    // real retired chart library/table panel; both types' own registry-consistency
     // coverage lives in their own dedicated spec files —
-    // tablePanel.spec.ts and the Test tab's real the retired chart library fixtures).
+    // tablePanel.spec.ts and the Test tab's real retired chart library fixtures).
     await expect(panelCard(page, 'Households')).toBeVisible() // valuebox
     await expect(
       panelCard(page, 'Methodology Notes').getByRole('heading', { name: 'Straight-Line Distance Proxy' }),

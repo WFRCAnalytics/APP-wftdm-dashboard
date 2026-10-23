@@ -72,7 +72,7 @@ export default defineConfig({
           // `\0vite/preload-helper.js` (every `import()` call site needs
           // it, including all ten of panels/registry.tsx's own lazy()
           // factories, which live in the entry chunk itself) — confirmed
-          // present in both the retired chart library and 'flowmap-deck' chunks' own
+          // present in both retired chart library and 'flowmap-deck' chunks' own
           // module lists from the earlier react-vendor investigation.
           // Rollup's automatic algorithm, with no explicit rule of mine to
           // guide it, placed this ALWAYS-NEEDED shared helper physically
@@ -211,7 +211,7 @@ export default defineConfig({
           // graph leak, same class as 042's three react-vendor/app-shared
           // findings, discovered while investigating why Summary's
           // landing tab still downloaded the full the retired chart library vendor chunk
-          // after every real the retired chart library panel there was converted to
+          // after every real retired chart library panel there was converted to
           // observable-plot). `@observablehq/plot`'s own real dependency
           // (`d3`, the umbrella package) and the retired chart library' own real
           // dependency (via `victory-vendor`) both genuinely,

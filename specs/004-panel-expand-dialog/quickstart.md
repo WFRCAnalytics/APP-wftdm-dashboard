@@ -45,7 +45,7 @@ pattern as `dashboardShell.spec.ts`) and asserts, per
    (research.md §1b, FR-009). This assertion is what actually caught
    research.md §1b's finding during implementation — the original
    `createPortal`-target-swap design lost the marker on every expand.
-7. Clicking a rendered the retired chart library legend entry inside the expanded dialog
+7. Clicking a rendered retired chart library legend entry inside the expanded dialog
    toggles that trace's visibility and does **not** close the dialog —
    the specific Radix-vs-the retired chart library check research.md §2 flagged as
    required, not assumed.

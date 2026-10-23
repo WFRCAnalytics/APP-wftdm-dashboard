@@ -212,7 +212,7 @@ test.describe('User Story 1 - Expand a panel to a large view', () => {
   // REMOVED (057-observable-plot-conversion): this test proved the retired chart library's own
   // legend click-to-toggle-trace-visibility interaction on CHART_TITLE,
   // which — per this feature's conversion — no longer renders via retired chart library.
-  // Not retargeted: no real the retired chart library panel remains anywhere in
+  // Not retargeted: no real retired chart library panel remains anywhere in
   // public/demo-dashboard-config/'s real content after this feature (every
   // one converted, per FR-001/FR-002), and Observable Plot has no built-in
   // equivalent interaction to prove instead — confirmed during this

@@ -582,7 +582,7 @@ clicking another row's own baseline control still moves it.
 - The shipped default palette reuses this app's own existing
   `--chart-1..5` tokens verbatim rather than introducing a new 10-color
   palette from raw `schemeObservable10` — informed by direct confirmation
-  that the retired chart library has no comparable built-in scheme to weigh against it, and
+  that retired chart library has no comparable built-in scheme to weigh against it, and
   that this app has already adopted and WCAG-verified an accessible
   derivative of `schemeObservable10` for exactly this "categorical chart
   color" purpose.

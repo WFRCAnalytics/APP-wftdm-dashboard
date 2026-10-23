@@ -36,7 +36,7 @@ not remove or deprecate them.
 
 **Project Type**: Web (single frontend app + separate Python post-processor; this feature touches only `src/` and `public/demo-dashboard-config/` and `tests/`)
 
-**Performance Goals**: Parity — a converted panel's render time and interactivity must not regress relative to its the retired chart library predecessor; no new, explicit performance target introduced by this feature.
+**Performance Goals**: Parity — a converted panel's render time and interactivity must not regress relative to its retired chart library predecessor; no new, explicit performance target introduced by this feature.
 
 **Constraints**: Zero changes to `panels/panelQuery.ts`, `services/sqlExpander.ts`, or any other panel type's own component (FR-005, FR-011). `public/demo-dashboard-config/dashboard-8-test.yaml` MUST NOT be modified (FR-010). Every existing Playwright spec that asserts on a converted panel's engine-specific DOM (`old-chart-root`, `.old-chart-class`) or engine-specific interaction (the retired chart library legend click-to-toggle) must be updated to Observable Plot's own established test convention (`.observable-plot-chart svg[viewBox] ...`), not left failing.
 

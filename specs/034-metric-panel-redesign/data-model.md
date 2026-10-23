@@ -81,7 +81,7 @@ export interface ValueBoxPanelConfig extends DataBoundPanelConfigBase {
 | `sparkline.metric` | yes | The grouped metric (a different table than the panel's own `metric`) whose rows the mini-chart summarizes. |
 | `sparkline.x` | yes | Category column from `sparkline.metric` — becomes the mini-chart's category axis. |
 | `sparkline.y` | yes | Value column from `sparkline.metric` — becomes the mini-chart's plotted value. |
-| `sparkline.chart_type` | no | `'bar'` (default) or `'line'` — reuses the same two the retired chart library mark components the retired chart library panels already use. |
+| `sparkline.chart_type` | no | `'bar'` (default) or `'line'` — reuses the same two retired chart library mark components the retired chart library panels already use. |
 | `baseline_trend.expr` | yes | Free-form SQL expression, referencing `a`/`b` table aliases (the panel's own resolved scenario, and the resolved baseline scenario, respectively) — identical convention to `ComparisonDiff.expr`. |
 | `baseline_trend.format` | no | Python-style format string (`formatValue.ts`'s existing syntax) for the displayed diff magnitude; defaults to the panel's own `format`. |
 

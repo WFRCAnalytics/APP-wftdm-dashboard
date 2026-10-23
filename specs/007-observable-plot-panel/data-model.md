@@ -49,7 +49,7 @@ input.
 
 | Field | Type | Notes |
 |---|---|---|
-| `mark` | `string` | Names an `@observablehq/plot` mark-constructor export (e.g. `'barY'`, `'lineY'`) — looked up dynamically as `Plot[markName]`, not an exhaustive hardcoded enum, matching how `RetiredChartTraceConfig.type` is a plain `string` rather than a closed union of every the retired chart library trace type |
+| `mark` | `string` | Names an `@observablehq/plot` mark-constructor export (e.g. `'barY'`, `'lineY'`) — looked up dynamically as `Plot[markName]`, not an exhaustive hardcoded enum, matching how `RetiredChartTraceConfig.type` is a plain `string` rather than a closed union of every retired chart library trace type |
 | `x` | `string?` | Literal column name — **not** `$metric.`-prefixed (research.md §4) |
 | `y` | `string?` | Literal column name |
 | `fill` | `string?` | Literal column name |

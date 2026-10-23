@@ -73,7 +73,7 @@ already the default `dev:fixtures` state.
    cluster shows a small color swatch (previewing the scenario's current
    effective color) before the baseline star.
 2. Pick a new color for `good_scenario` from its swatch.
-3. **Expect**: every already-rendered the retired chart library/Observable Plot
+3. **Expect**: every already-rendered retired chart library/Observable Plot
    panel showing `good_scenario` updates to the new color immediately, no
    reload.
 4. Click the swatch row's new "clear override" (X) button.

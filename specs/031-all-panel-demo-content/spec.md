@@ -316,7 +316,7 @@ metric.
 **Panel types needing no new metric (User Story 1)**
 
 - **FR-003**: `dashboard-*.yaml` content MUST include at least one
-  `observable-plot` panel and at least one the retired chart library panel, each bound
+  `observable-plot` panel and at least one retired chart library panel, each bound
   to an existing real metric, rendering the same real values already
   proven correct by an existing panel type using that metric.
 - **FR-004**: `dashboard-*.yaml` content MUST include at least one

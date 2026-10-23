@@ -76,7 +76,7 @@ description: "Task list for 029-shadcn-chart-panel"
 
 **Goal**: the retired chart library/`observable-plot`/`sankey` panels render and behave exactly as before this feature shipped.
 
-**Independent Test**: Render a tab with one panel of each existing chart-rendering type alongside a new the retired chart library panel; confirm all four render correctly and none of the three pre-existing types' own behavior changed.
+**Independent Test**: Render a tab with one panel of each existing chart-rendering type alongside a new retired chart library panel; confirm all four render correctly and none of the three pre-existing types' own behavior changed.
 
 ### Tests for User Story 2
 
@@ -85,7 +85,7 @@ description: "Task list for 029-shadcn-chart-panel"
 
 ### Implementation for User Story 2
 
-- [X] T020 [US2] Run the full existing `npm run test:unit` and `npx playwright test` suites and confirm zero regressions in any pre-existing the retired chart library/`observable-plot`/`sankey`/panel-registry test file (SC-004). **Vitest: 308/308 passing.** Playwright full run initially showed 11 failures — **one real, confirmed regression found and fixed**: the new bar-chart fixture's title `"the retired chart library Mode Share by Purpose (Bar)"` contained `markdownPanel.spec.ts`'s own non-exact `getByText('Mode Share by Purpose')` query as a substring, causing a strict-mode-violation collision (two matching elements). Renamed the fixture panel to `"the retired chart library Mode Breakdown (Bar)"` (grepped the whole `tests/integration/` tree first to confirm no other collision) — `markdownPanel.spec.ts` now passes clean. The remaining 10 failures (`flowmapPanel.spec.ts`/`zonemapPanel.spec.ts`'s own `027-map-auto-fit-and-reset` polish tests, `scenarioManager.spec.ts`'s local-scenario-load test, `graphicWalkerPanel.spec.ts`) were each independently re-run in isolation; several passed clean once isolated from full-suite resource contention (matching Phase 2's own documented "transient system-load noise" finding). Two (`flowmapPanel.spec.ts`'s and `scenarioManager.spec.ts`'s "Settings button" clicks — "element is outside of the viewport") reproduced consistently even alone — but a direct `git stash` comparison against the ORIGINAL, unmodified `dashboard-1-summary.yaml` (this feature's fixture additions fully removed) reproduced the identical failure, confirming it's genuinely pre-existing and unrelated to this feature, not something to fix here. Zero regressions in any the retired chart library/`observable-plot`/`sankey`/panel-registry test file specifically (SC-004's own named scope) — confirmed both directly (none of the 11 failures touch those files) and via the dedicated T019 regression test passing.
+- [X] T020 [US2] Run the full existing `npm run test:unit` and `npx playwright test` suites and confirm zero regressions in any pre-existing the retired chart library/`observable-plot`/`sankey`/panel-registry test file (SC-004). **Vitest: 308/308 passing.** Playwright full run initially showed 11 failures — **one real, confirmed regression found and fixed**: the new bar-chart fixture's title `"the retired chart library Mode Share by Purpose (Bar)"` contained `markdownPanel.spec.ts`'s own non-exact `getByText('Mode Share by Purpose')` query as a substring, causing a strict-mode-violation collision (two matching elements). Renamed the fixture panel to `"the retired chart library Mode Breakdown (Bar)"` (grepped the whole `tests/integration/` tree first to confirm no other collision) — `markdownPanel.spec.ts` now passes clean. The remaining 10 failures (`flowmapPanel.spec.ts`/`zonemapPanel.spec.ts`'s own `027-map-auto-fit-and-reset` polish tests, `scenarioManager.spec.ts`'s local-scenario-load test, `graphicWalkerPanel.spec.ts`) were each independently re-run in isolation; several passed clean once isolated from full-suite resource contention (matching Phase 2's own documented "transient system-load noise" finding). Two (`flowmapPanel.spec.ts`'s and `scenarioManager.spec.ts`'s "Settings button" clicks — "element is outside of the viewport") reproduced consistently even alone — but a direct `git stash` comparison against the ORIGINAL, unmodified `dashboard-1-summary.yaml` (this feature's fixture additions fully removed) reproduced the identical failure, confirming it's genuinely pre-existing and unrelated to this feature, not something to fix here. Zero regressions in any retired chart library/`observable-plot`/`sankey`/panel-registry test file specifically (SC-004's own named scope) — confirmed both directly (none of the 11 failures touch those files) and via the dedicated T019 regression test passing.
 
 **Checkpoint**: User Stories 1 and 2 both hold — the new panel type works, and nothing existing regressed.
 
@@ -95,7 +95,7 @@ description: "Task list for 029-shadcn-chart-panel"
 
 **Goal**: Hovering a retired chart library panel's chart shows a real, correctly-themed tooltip with no author configuration.
 
-**Independent Test**: Hover a rendered the retired chart library panel's chart; a tooltip appears showing the real underlying value(s), legible in both light and dark mode.
+**Independent Test**: Hover a rendered retired chart library panel's chart; a tooltip appears showing the real underlying value(s), legible in both light and dark mode.
 
 ### Tests for User Story 3
 
@@ -113,7 +113,7 @@ description: "Task list for 029-shadcn-chart-panel"
 ## Phase 6: Polish & Cross-Cutting Concerns
 
 - [X] T024 [P] Document `type: the retired chart library` in `project-docs/GRAMMAR.md`, alongside the existing `type: the retired chart library`/`type: observable-plot`/`type: sankey` sections — full grammar (`chart_type`/`x`/`y`/`series`/`stacked`), and an explicit note on what this panel type does NOT do (Sankey, legend click-to-toggle) pointing readers to `sankey`/the retired chart library instead.
-- [X] T025 [P] Update `CLAUDE.md`'s panel-type list and file-tree section to record this tenth panel type (`registry.tsx`, `the retired chart panel`, `a retired chart helper`, `components/ui/chart.tsx`, the new `--chart-N` tokens, the new the retired chart library Vite chunk, the new `package.json`/dependencies entry), matching this project's established per-feature documentation convention, plus a new numbered "Implementation order" entry (16) recording this feature's own real findings (the retired chart library version-discrepancy correction, the chart-1/chart-2 dark-mode-collision design flaw caught before shipping, and the real markdownPanel.spec.ts title-collision regression found and fixed during T020).
+- [X] T025 [P] Update `CLAUDE.md`'s panel-type list and file-tree section to record this tenth panel type (`registry.tsx`, `the retired chart panel`, `a retired chart helper`, `components/ui/chart.tsx`, the new `--chart-N` tokens, the new retired chart library Vite chunk, the new `package.json`/dependencies entry), matching this project's established per-feature documentation convention, plus a new numbered "Implementation order" entry (16) recording this feature's own real findings (the retired chart library version-discrepancy correction, the chart-1/chart-2 dark-mode-collision design flaw caught before shipping, and the real markdownPanel.spec.ts title-collision regression found and fixed during T020).
 - [X] T026 Re-run `npm run test:unit` and the full `npx playwright test` suite one final time after all phases land, confirming the same zero-regression result T020 already established still holds with Polish's own doc-only changes included. **Vitest: 308/308 passing.** Full Playwright run: 256 passed / 13 failed — 12 of the 13 match the exact same pre-existing/environmental class T020 already investigated and confirmed unrelated (flowmap/zonemap 027-map-auto-fit-and-reset, scenarioManager's Settings-button-viewport issue, dashboardShell/observablePlotPanel/graphicWalkerPanel timing-sensitive tests). The 13th, a `a retired chart panel file` test, was investigated directly rather than assumed innocent: re-run in true isolation (single test, single worker) **5/5 clean**, and the full 8-test file **also passed clean 3 of 4 additional isolated runs** — confirming this is genuine environmental flakiness under sustained parallel load (matching this session's own broader documented pattern for unrelated files), not a deterministic logic bug in this feature's own code, since the exact assertion that fails differs between flaky runs and every read is a synchronous `getComputedStyle()` call with no data-fetch race actually possible. Not chased further given the repeated clean isolated evidence.
 - [X] T027 Walk through `quickstart.md`'s manual validation steps end-to-end against `npm run dev` (post `npm run dev:fixtures`). **Confirmed via real screenshots, light and dark mode** (`npm run dev:fixtures` + a standalone `vite` dev server + a real Chromium page, not just automated assertions): bar chart renders 4 genuinely distinct-colored bars with a real legend; line/area charts render correctly with their own distinct series colors; the invalid-`chart_type` panel shows the specific surfaced error text; the empty-result and broken-metric panels show their own distinct states; toggling `.dark` on `document.documentElement` re-themes every bar/line/area fill and all text/gridlines to their real dark-mode token values, remaining fully legible — no visual regression, no broken-image/black-on-dark artifact anywhere. Existing the retired chart library/`observable-plot`/`sankey`/`graphic-walker` panels on the same tab render unaffected alongside the new panels.
 - [X] T028 [P] `npx tsc --noEmit` — confirm a clean typecheck. **Clean, zero errors.**
@@ -209,7 +209,7 @@ light and dark mode, plus a real hover screenshot confirming no cursor-
 highlight box paints behind the hovered bar.
 
 **A real, user-reported layout bug, found and fixed in the same
-follow-up**: every the retired chart library chart was rendering far wider than its own
+follow-up**: every retired chart library chart was rendering far wider than its own
 PanelCard, bleeding into neighboring panels — caught from a screenshot,
 not this pass's own initial check. Root cause, confirmed via a live DOM
 measurement: `ChartContainer`'s default `aspect-video` class computed
@@ -333,7 +333,7 @@ in research.md §10. Summary:
   one necessary addition their own single-chart-per-page example never
   needed: gradient `id`s are namespaced per panel instance
   (`useId()`-derived) to avoid cross-panel `url(#id)` collisions — this
-  fixture alone renders 3 real the retired chart library panels on one page.
+  fixture alone renders 3 real retired chart library panels on one page.
 - Considered and explicitly declined: `chart-bar-active.json`'s
   hardcoded-index active-bar treatment — a static narrative device, not
   a hover mechanism, and the benefit it'd add is already substantially
@@ -438,7 +438,7 @@ research.md §13. Summary:
   `victory-vendor` bumped `36.6.8`→`37.3.6`; `immer`/`react-redux`/
   `reselect`/`use-sync-external-store` also new but each already shared
   with an unrelated, pre-existing dependency. `lodash` was found to
-  never have been a real the retired chart library dependency at all (a pre-existing
+  never have been a real retired chart library dependency at all (a pre-existing
   graphic-walker transitive one) — removed from `vite.config.ts`'s
   the retired chart library chunk rule, which is now the retired chart library/`@reduxjs/toolkit`/
   `es-toolkit`/`decimal.js-light`/`victory-vendor` only.

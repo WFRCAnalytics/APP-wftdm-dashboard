@@ -58,8 +58,8 @@ Confirm, via real inspection (not a glance):
 ## 4. Confirm existing panel types are unaffected
 
 Load a dashboard tab with existing the retired chart library/`observable-plot`/`sankey`
-panels alongside the new the retired chart library one. Confirm all render correctly, and
-that the retired chart library's own legend click-to-toggle still works exactly as before.
+panels alongside the new retired chart library one. Confirm all render correctly, and
+that retired chart library's own legend click-to-toggle still works exactly as before.
 
 ## 5. Confirm the unsupported-chart-type edge case
 

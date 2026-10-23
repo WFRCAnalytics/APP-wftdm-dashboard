@@ -199,7 +199,7 @@ panel types, without touching Part A at all.
    scenario's currently-effective color (its override if set, else its
    manifest color, else a neutral placeholder if neither exists).
 4. **Given** a viewer picks a new color for a scenario, **When** the pick
-   is made, **Then** every already-rendered the retired chart library/Observable
+   is made, **Then** every already-rendered retired chart library/Observable
    Plot panel showing that scenario updates to the new color immediately,
    with no reload or manual re-fetch.
 5. **Given** an overridden scenario, **When** a viewer clears the
@@ -225,7 +225,7 @@ panel types, without touching Part A at all.
   comparison-diff output columns never embed a scenario name or color
   (confirmed in Research above).
 - A single dashboard tab has two panels of different types (e.g. one
-  the retired chart library, one the retired chart library) both splitting by scenario: each independently
+  the retired chart library, one retired chart library) both splitting by scenario: each independently
   resolves label/color the same way, so the same scenario shows
   consistently between them.
 

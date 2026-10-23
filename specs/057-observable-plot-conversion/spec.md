@@ -57,7 +57,7 @@ The same consistency goal, for every chart panel currently rendered by the retir
 
 **Why this priority**: Fewer panels affected than User Story 1, but the same visual-consistency value, plus it closes a second, distinct rendering-engine gap (the retired chart library) rather than leaving one converted engine and one not.
 
-**Independent Test**: Open the Summary and Mode Choice tabs and confirm the two the retired chart library-rendered chart panels now render via Observable Plot; independently, configure (or exercise the existing test-tab configuration of) a value-box sparkline and confirm it renders via Observable Plot at its existing compact size.
+**Independent Test**: Open the Summary and Mode Choice tabs and confirm the two retired chart library-rendered chart panels now render via Observable Plot; independently, configure (or exercise the existing test-tab configuration of) a value-box sparkline and confirm it renders via Observable Plot at its existing compact size.
 
 **Acceptance Scenarios**:
 

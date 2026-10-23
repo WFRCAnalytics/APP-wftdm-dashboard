@@ -9,7 +9,7 @@
 **Decision**: Add a new fixture, `tests/fixtures/dashboard-shell-config.yaml`
 — a real, `project-docs/GRAMMAR.md`-shaped `dashboard-*.yaml` with `header`, one
 `filters` entry, and a `layout` containing at least two tabs' worth of rows
-(one `valuebox` row, one the retired chart library row) — rather than extending
+(one `valuebox` row, one retired chart library row) — rather than extending
 `all-placeholders-config.yaml`.
 
 **Rationale**: Confirmed by reading `all-placeholders-config.yaml` directly
@@ -37,7 +37,7 @@ Scenarios): at least 2 tabs (for SC-001's "at least two different configured
 tab counts" — achieved by testing against a 1-tab and a 2-tab variant, or by
 editing this fixture's tab count between test runs), one `valuebox` panel
 bound to a real fixture metric column (`summary_kpis.total_households`, from
-`tests/fixtures/generate.py`'s existing schema), one the retired chart library panel bound to
+`tests/fixtures/generate.py`'s existing schema), one retired chart library panel bound to
 `trip_mode_share` with a `filter: $filters.purpose` reference (existing
 fixture data already has a `purpose` column), and one global `purpose`
 filter definition.

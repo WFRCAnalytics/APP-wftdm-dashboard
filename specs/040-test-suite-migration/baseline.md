@@ -728,7 +728,7 @@ own existing ordering), and Phase 7/8 cleanup.
 **Direct re-read of the file first, per this session's own explicit
 instruction not to trust the Batch A closing estimate.** Confirmed: zero
 working `type: the retired chart library` panels exist anywhere in real demo content —
-`057-observable-plot-conversion` deliberately moved every real the retired chart library
+`057-observable-plot-conversion` deliberately moved every real retired chart library
 panel off the demo tabs onto Observable Plot, per this file's/CLAUDE.md's
 own on-record decision. Per direct user decision this session, rather
 than inventing an artificial "real" the retired chart library use on a demo tab, real

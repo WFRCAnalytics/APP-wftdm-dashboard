@@ -30,7 +30,7 @@ Single-project web frontend, additive to `001-data-state-layer`'s and
 - [X] T002 [P] Write `tests/fixtures/dashboard-shell-config.yaml` — a real,
   `project-docs/GRAMMAR.md`-shaped `dashboard-*.yaml` with `header`, one `filters`
   entry (`purpose`), and a `layout` with at least one `valuebox` row bound
-  to `summary_kpis.total_households` and one the retired chart library row bound to
+  to `summary_kpis.total_households` and one retired chart library row bound to
   `trip_mode_share` with `filter: $filters.purpose` (research.md §1) —
   matches `tests/fixtures/generate.py`'s existing Parquet schema exactly,
   no new fixture data needed

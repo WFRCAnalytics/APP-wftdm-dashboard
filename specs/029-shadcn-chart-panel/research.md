@@ -237,7 +237,7 @@ itself.
   risk given the file's size, with a working CLI path available that
   removes that risk entirely at no cost.
 
-## §6. `vite.config.ts` — a new the retired chart library chunk
+## §6. `vite.config.ts` — a new retired chart library chunk
 
 **Decision**: add a `manualChunks` branch splitting the retired chart library and its
 own real dependency additions into its own chunk, matching the existing
@@ -355,7 +355,7 @@ code changes needed to any test.
 **A real, confirmed layout bug, caught only from a user-reported
 screenshot, not this pass's own initial visual check** (the initial
 verification zoomed on colors/shapes and missed the actual card
-boundaries): every the retired chart library panel's chart content — bars, axis labels,
+boundaries): every retired chart library panel's chart content — bars, axis labels,
 legend — was rendering far WIDER than its own `PanelCard`, visibly
 bleeding across into neighboring panels' own columns. Root-caused via a
 direct, live `getBoundingClientRect()`/`getComputedStyle()` measurement
@@ -605,7 +605,7 @@ with one real, necessary addition their own example never needed: a
 by a real per-PANEL-INSTANCE `useId()` prefix. Their own real example
 renders exactly one chart per page, so a bare literal id like
 `"fillDesktop"` never collides — this app's own fixture tab renders 3
-real the retired chart library panels on one page at once, and `id` values are DOM-global
+real retired chart library panels on one page at once, and `id` values are DOM-global
 (an SVG `url(#id)` reference resolves against the whole document, not
 scoped to the nearest ancestor), so an unnamespaced id would have let
 one panel's gradient silently resolve to a DIFFERENT panel's own

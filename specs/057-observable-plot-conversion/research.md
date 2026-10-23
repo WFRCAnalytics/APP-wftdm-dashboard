@@ -91,7 +91,7 @@ provided) — faceting is a genuine *available* improvement, not a
 requirement, consistent with spec.md's own "free re-authoring allowed, no
 over-investment" framing.
 
-`dashboard-8-test.yaml` is confirmed **excluded**: its the retired chart library/
+`dashboard-8-test.yaml` is confirmed **excluded**: its retired chart library/
 the retired chart library/`sankey` entries all deliberately reference
 `__nonexistent_metric__` (proving each panel type's own error-state
 rendering) or an intentionally-invalid `chart_type: pie`. Converting
@@ -238,7 +238,7 @@ concluding" discipline:
   feature's US1/US2 convert. This is a genuine, confirmed conflict
   between that prior feature's own success criterion (all ten types show
   real content) and this feature's own explicit FR-001/FR-002 (convert
-  *every* real the retired chart library panel, no exception carved out to
+  *every* real retired chart library panel, no exception carved out to
   preserve type-coverage). Per this feature's own spec — a deliberate,
   explicit instruction, not an oversight — the conversion wins: after
   this feature ships, real, non-empty content covers **eight** of the
