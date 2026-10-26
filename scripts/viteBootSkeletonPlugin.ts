@@ -153,7 +153,7 @@ function tabRowHtml(tab: SkeletonTab): string {
  * The boot skeleton: the real app shell in its resting state, taken from layout/shell.tsx, floatingNav.tsx, pageHeader.tsx
  * and dashboardRenderer.tsx rather than approximated: the collapsed floating glass nav (68px rail, 14px inset, 24px radius,
  * brand mark on top, one row per configured tab, the Show menu labels toggle, Settings and Theme at the bottom), then, at 96px in from the left, the page
- * header (title and subtitle at the left, the glass control bar at the right, with the 38px Assistant circle beside it unless the deployment turns the assistant off) and the page body (the hero KPI band, then a
+ * header (title and subtitle at the left, the glass control bar at the right, with the 38px Assistant circle beside it unless the deployment turns the assistant off) and the page body (the hero KPI band, the dial row, the page-tabs strip, then a
  * row of two tiles). The nav is hidden and the content starts at the edge below 760px, where the real nav is a sheet.
  * Only the number of tab rows comes from the build's dashboard config, as before; the branding title/logo cannot show in a
  * collapsed rail so it no longer affects the markup.
@@ -161,7 +161,12 @@ function tabRowHtml(tab: SkeletonTab): string {
 function buildSkeletonHtml(tabs: SkeletonTab[], assistant: boolean): string {
   const tabRows = tabs.map(tabRowHtml).join('')
   const kpiCell = (last: boolean) =>
-    `<div class="flex h-[148px] flex-col gap-3 px-[22px] py-5 ${last ? 'max-[1100px]:col-span-2' : 'min-[1101px]:border-r min-[1101px]:border-[var(--glass-line)]'}"><div class="h-3 w-24 rounded-full ${BAR}"></div><div class="h-9 w-28 rounded-lg ${BAR}"></div><div class="h-4 w-36 rounded-full ${BAR}"></div></div>`
+    `<div class="flex h-[137px] flex-col gap-3 px-[22px] py-5 ${last ? 'max-[1100px]:col-span-2' : 'min-[1101px]:border-r min-[1101px]:border-[var(--glass-line)]'}"><div class="h-3 w-24 rounded-full ${BAR}"></div><div class="h-9 w-28 rounded-lg ${BAR}"></div><div class="h-4 w-36 rounded-full ${BAR}"></div></div>`
+  // The dial row (valuebox with a ring): label, value and delta pill at the left, a half-circle dial at the right.
+  const dialCell = (i: number) =>
+    `<div class="relative flex h-[136px] flex-col gap-3 px-[22px] py-5 ${i < 2 ? 'min-[761px]:border-r min-[761px]:border-[var(--glass-line)]' : ''}"><div class="h-3 w-20 rounded-full ${BAR}"></div><div class="h-9 w-28 rounded-lg ${BAR}"></div><div class="h-4 w-40 rounded-full ${BAR}"></div><div class="absolute right-[22px] top-[26px] h-[44px] w-[88px] rounded-t-full ${BAR}"></div></div>`
+  // The page-tabs strip (pill track of sections at the left, "Export all" at the right).
+  const tabsStrip = `<div class="flex items-center justify-between"><div class="flex h-[38px] w-[400px] max-w-full items-center gap-2 rounded-full bg-[color-mix(in_srgb,var(--ink)_8%,transparent)] p-[3px]"><div class="h-8 w-[98px] rounded-full ${BAR}"></div><div class="h-3 w-20 rounded-full ${BAR}"></div><div class="h-3 w-20 rounded-full ${BAR}"></div><div class="h-3 w-12 rounded-full ${BAR}"></div></div><div class="h-4 w-20 rounded-full ${BAR} max-[759px]:hidden"></div></div>`
   const tile = `<div class="h-[320px] rounded-[22px] border border-[var(--glass-line)] bg-card p-[18px] shadow-[var(--sh1)]"><div class="h-4 w-40 rounded-full ${BAR}"></div><div class="mt-2 h-3 w-64 max-w-full rounded-full ${BAR}"></div></div>`
 
   return `
@@ -198,6 +203,10 @@ function buildSkeletonHtml(tabs: SkeletonTab[], assistant: boolean): string {
           <div class="grid grid-cols-5 rounded-[26px] border border-[var(--glass-line)] bg-[var(--tile-hi)] p-[6px] shadow-[var(--sh1)] max-[1100px]:grid-cols-2">
             ${[0, 1, 2, 3, 4].map((i) => kpiCell(i === 4)).join('')}
           </div>
+          <div class="grid grid-cols-3 rounded-[26px] border border-[var(--glass-line)] bg-[var(--tile-hi)] p-[6px] shadow-[var(--sh1)] max-[760px]:grid-cols-1">
+            ${[0, 1, 2].map(dialCell).join('')}
+          </div>
+          ${tabsStrip}
           <div class="grid grid-cols-2 gap-[14px] max-[900px]:grid-cols-1">${tile}${tile}</div>
         </div>
       </main>
