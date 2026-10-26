@@ -46,6 +46,8 @@ interface SkeletonTab {
 interface SkeletonBranding {
   title?: string
   hasLogo: boolean
+  /** `assistant: { enabled: false }` in index.json (the deployment turned the AI assistant off). */
+  assistantEnabled?: boolean
 }
 
 interface SkeletonRoot {
@@ -54,6 +56,13 @@ interface SkeletonRoot {
 }
 
 const EMPTY_ROOT: SkeletonRoot = { tabs: [], branding: { hasLogo: false } }
+
+// Same reading as services/yamlLoader.ts#parseAssistantEnabled: `assistant: false` or `assistant: { enabled: false }`.
+function parseAssistantEnabled(value: unknown): boolean | undefined {
+  if (typeof value === 'boolean') return value
+  const e = typeof value === 'object' && value !== null ? (value as { enabled?: unknown }).enabled : undefined
+  return typeof e === 'boolean' ? e : undefined
+}
 
 function readJSONSafe(path: string): unknown {
   try {
@@ -96,6 +105,7 @@ function readDashboardRoot(rootDir: string): SkeletonRoot {
         hasLogo: Boolean(
           (index as Record<string, unknown>).logoUrl || (index as Record<string, unknown>).logoUrlDark,
         ),
+        assistantEnabled: parseAssistantEnabled((index as Record<string, unknown>).assistant),
       }
 
   const tabs: SkeletonTab[] = []
@@ -143,12 +153,12 @@ function tabRowHtml(tab: SkeletonTab): string {
  * The boot skeleton: the real app shell in its resting state, taken from layout/shell.tsx, floatingNav.tsx, pageHeader.tsx
  * and dashboardRenderer.tsx rather than approximated: the collapsed floating glass nav (68px rail, 14px inset, 24px radius,
  * brand mark on top, one row per configured tab, the Show menu labels toggle, Settings and Theme at the bottom), then, at 96px in from the left, the page
- * header (title and subtitle at the left, the glass control bar at the right) and the page body (the hero KPI band, then a
+ * header (title and subtitle at the left, the glass control bar at the right, with the 38px Assistant circle beside it unless the deployment turns the assistant off) and the page body (the hero KPI band, then a
  * row of two tiles). The nav is hidden and the content starts at the edge below 760px, where the real nav is a sheet.
  * Only the number of tab rows comes from the build's dashboard config, as before; the branding title/logo cannot show in a
  * collapsed rail so it no longer affects the markup.
  */
-function buildSkeletonHtml(tabs: SkeletonTab[]): string {
+function buildSkeletonHtml(tabs: SkeletonTab[], assistant: boolean): string {
   const tabRows = tabs.map(tabRowHtml).join('')
   const kpiCell = (last: boolean) =>
     `<div class="flex h-[148px] flex-col gap-3 px-[22px] py-5 ${last ? 'max-[1100px]:col-span-2' : 'min-[1101px]:border-r min-[1101px]:border-[var(--glass-line)]'}"><div class="h-3 w-24 rounded-full ${BAR}"></div><div class="h-9 w-28 rounded-lg ${BAR}"></div><div class="h-4 w-36 rounded-full ${BAR}"></div></div>`
@@ -175,10 +185,13 @@ function buildSkeletonHtml(tabs: SkeletonTab[]): string {
               <div class="mt-[10px] h-4 w-[min(360px,70vw)] rounded-full ${BAR}"></div>
             </div>
           </div>
-          <div class="glass flex h-[52px] w-[min(620px,100%)] items-center gap-2 rounded-[26px] px-2">
-            <div class="h-9 flex-1 rounded-full ${BAR}"></div>
-            <div class="h-9 flex-1 rounded-full ${BAR}"></div>
-            <div class="h-9 w-[120px] rounded-full ${BAR}"></div>
+          <div class="flex w-[min(670px,100%)] items-center gap-2">
+            <div class="glass flex h-[52px] min-w-0 flex-1 items-center gap-2 rounded-[26px] px-2">
+              <div class="h-9 flex-1 rounded-full ${BAR}"></div>
+              <div class="h-9 flex-1 rounded-full ${BAR}"></div>
+              <div class="h-9 w-[120px] rounded-full ${BAR}"></div>
+            </div>
+            ${assistant ? `<div class="h-[38px] w-[38px] shrink-0 rounded-full ${BAR}"></div>` : ''}
           </div>
         </header>
         <div class="flex flex-col gap-[14px] pb-[60px] pl-[14px] pr-7 pt-2">
@@ -217,7 +230,10 @@ export function bootSkeletonPlugin(): Plugin {
       // Tabs concatenate like main.tsx's real boot sequence: the deployer's own first, then the demo's.
       const tabs = [...primary.tabs, ...demo.tabs]
 
-      const generated = `${MARKER_START}\n${buildSkeletonHtml(tabs)}\n${MARKER_END}`
+      // The assistant's header button is on unless the deployment turns it off (the deployer's own config wins).
+      const assistant = (primary.branding.assistantEnabled ?? demo.branding.assistantEnabled) !== false
+
+      const generated = `${MARKER_START}\n${buildSkeletonHtml(tabs, assistant)}\n${MARKER_END}`
       return html.slice(0, startIdx) + generated + html.slice(endIdx + MARKER_END.length)
     },
   }
