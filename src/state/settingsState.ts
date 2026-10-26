@@ -1,6 +1,6 @@
 // Whether the Settings modal is open, and on which tab, so something other than its nav button (the scenario picker's
 // "Edit colours, names and order" link) can open it. Session-only module state, like every other store here.
-export type SettingsTab = 'appearance' | 'scenarios' | 'basemap' | 'documentation'
+export type SettingsTab = 'appearance' | 'scenarios' | 'basemap' | 'ai' | 'documentation'
 
 interface SettingsUi {
   open: boolean

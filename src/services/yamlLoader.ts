@@ -90,6 +90,7 @@ type DashboardIndexJson =
       units?: unknown
       export?: unknown
       layout?: unknown
+      assistant?: unknown
     }
 
 /**
@@ -179,6 +180,9 @@ export interface DashboardBranding {
    * Never commit a key here that isn't already restricted to this
    * deployment's real origin(s). */
   protomapsApiKey?: string
+  /** 064-ai-chat-assistant: `assistant: { enabled: false }` in dashboard-config/index.json turns the AI assistant off for
+   * this deployment (no header button, no Settings tab). Absent or anything else -> enabled. */
+  assistantEnabled?: boolean
   /** 061-appearance-controls: an optional deployer-configured default for
    * each of the three Primary/Secondary/Accent visual roles — same
    * discovery/precedence rules as every other field above (the real
@@ -347,6 +351,7 @@ export async function loadDashboardBranding(
       secondaryColor: typeof parsed.secondaryColor === 'string' ? parsed.secondaryColor : undefined,
       accentColor: typeof parsed.accentColor === 'string' ? parsed.accentColor : undefined,
       brandColor: typeof parsed.brandColor === 'string' ? parsed.brandColor : undefined,
+      assistantEnabled: parseAssistantEnabled(parsed.assistant),
       years: parseYears(parsed.years),
       baseYear: typeof parsed.baseYear === 'number' ? parsed.baseYear : undefined,
       defaultYear: typeof parsed.defaultYear === 'number' ? parsed.defaultYear : undefined,
@@ -361,6 +366,12 @@ export async function loadDashboardBranding(
   } catch {
     return {}
   }
+}
+
+function parseAssistantEnabled(value: unknown): boolean | undefined {
+  if (typeof value === 'boolean') return value
+  const e = typeof value === 'object' && value !== null ? (value as { enabled?: unknown }).enabled : undefined
+  return typeof e === 'boolean' ? e : undefined
 }
 
 function parseCompareInitial(value: unknown): Pick<DashboardBranding, 'compareScenarios' | 'compareFocus' | 'compareReference'> {

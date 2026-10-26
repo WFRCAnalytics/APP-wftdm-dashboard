@@ -30,7 +30,7 @@ async function openSettings(page: Page, tab?: string) {
 test.describe('Settings modal shell', () => {
   test.use({ viewport: { width: 1500, height: 900 } })
 
-  test('is a 1040x720 dialog with a 210px rail of four tabs and a Close row', async ({ page }) => {
+  test('is a 1040x720 dialog with a 210px rail of five tabs and a Close row', async ({ page }) => {
     await boot(page)
     await openSettings(page)
     const dialog = page.getByRole('dialog', { name: 'Settings' })
@@ -40,7 +40,7 @@ test.describe('Settings modal shell', () => {
     await expect(dialog).toHaveCSS('border-top-left-radius', '26px')
 
     const tablist = dialog.getByRole('tablist', { name: 'Settings sections' })
-    for (const name of ['Appearance', 'Scenarios', 'Basemap', 'Documentation']) {
+    for (const name of ['Appearance', 'Scenarios', 'Basemap', 'Assistant', 'Documentation']) {
       const tab = tablist.getByRole('tab', { name })
       await expect(tab).toBeVisible()
       expect(Math.round((await tab.boundingBox())!.height)).toBe(40)

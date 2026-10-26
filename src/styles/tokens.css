@@ -23,6 +23,12 @@
 @import "tw-animate-css";
 
 :root {
+  /* SQL syntax colours (the assistant's code blocks); each is >= 4.5:1 on the code block's tinted background */
+  --sql-keyword: #6d28d9;
+  --sql-function: #1d4ed8;
+  --sql-string: #0f7a4d;
+  --sql-number: #b45309;
+  --sql-comment: #5f6b7a;
   /* shadcn semantic roles — light */
   --background: #e6eaf0;
   --foreground: #0e131a;
@@ -193,6 +199,45 @@ body::before {
 /* 021-basemap-catalog-redesign: a single, simple, token-driven custom scrollbar style, applied to every
    significant scrollable region. Plain custom properties, not a Tailwind plugin. Colors reference the same
    --border/--muted-foreground tokens used everywhere else, so it follows the theme automatically. */
+/* Edge fade for scrolling panes inside a modal or sheet (hooks/useScrollEdges.ts sets the data attributes): content
+   dissolves over the last 96px instead of ending in a hard line, with an eased curve so there is no visible band. Each
+   edge fades only while there is more content beyond it, so a pane at rest (scrolled to its start or end) is not dimmed. */
+.scroll-fade {
+  --fade-top: 0px;
+  --fade-bottom: 0px;
+  -webkit-mask-image:
+    linear-gradient(to bottom, transparent 0, rgb(0 0 0 / 0.12) calc(var(--fade-top) * 0.25), rgb(0 0 0 / 0.45) calc(var(--fade-top) * 0.5), rgb(0 0 0 / 0.82) calc(var(--fade-top) * 0.75), #000 var(--fade-top)),
+    linear-gradient(to top, transparent 0, rgb(0 0 0 / 0.12) calc(var(--fade-bottom) * 0.25), rgb(0 0 0 / 0.45) calc(var(--fade-bottom) * 0.5), rgb(0 0 0 / 0.82) calc(var(--fade-bottom) * 0.75), #000 var(--fade-bottom));
+  -webkit-mask-composite: source-in;
+  mask-image:
+    linear-gradient(to bottom, transparent 0, rgb(0 0 0 / 0.12) calc(var(--fade-top) * 0.25), rgb(0 0 0 / 0.45) calc(var(--fade-top) * 0.5), rgb(0 0 0 / 0.82) calc(var(--fade-top) * 0.75), #000 var(--fade-top)),
+    linear-gradient(to top, transparent 0, rgb(0 0 0 / 0.12) calc(var(--fade-bottom) * 0.25), rgb(0 0 0 / 0.45) calc(var(--fade-bottom) * 0.5), rgb(0 0 0 / 0.82) calc(var(--fade-bottom) * 0.75), #000 var(--fade-bottom));
+  mask-composite: intersect;
+}
+.scroll-fade[data-scroll-top] {
+  --fade-top: 96px;
+}
+.scroll-fade[data-scroll-bottom] {
+  --fade-bottom: 96px;
+}
+
+.scroll-frame {
+  border-top: 1px solid transparent;
+  border-bottom: 1px solid transparent;
+  transition: border-color 150ms ease;
+}
+.scroll-frame:has(> [data-scroll-top]) {
+  border-top-color: var(--line);
+}
+.scroll-frame:has(> [data-scroll-bottom]) {
+  border-bottom-color: var(--line);
+}
+@media (prefers-reduced-motion: reduce) {
+  .scroll-frame {
+    transition: none;
+  }
+}
+
 .scrollbar-thin {
   scrollbar-width: thin;
   scrollbar-color: var(--border) transparent;
@@ -272,6 +317,11 @@ body::before {
 }
 
 .dark {
+  --sql-keyword: #c4b5fd;
+  --sql-function: #93c5fd;
+  --sql-string: #86efac;
+  --sql-number: #fcd34d;
+  --sql-comment: #9aa7b8;
   /* shadcn semantic roles — dark */
   --background: #090c11;
   --foreground: #eef1f5;

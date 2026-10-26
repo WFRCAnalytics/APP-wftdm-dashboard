@@ -206,6 +206,16 @@ export async function queryArrow(sql: string) {
 }
 
 /**
+ * 064-ai-chat-assistant: cancels the statement the shared connection is running right now (the assistant's Stop
+ * button). Resolves false when nothing was running. This module stays the only owner of the connection.
+ */
+export async function cancelRunning(): Promise<boolean> {
+  if (!connectionPromise) return false
+  const conn = await connectionPromise
+  return conn.cancelSent()
+}
+
+/**
  * Registers every summary/*.parquet file reachable from a local folder
  * handle (showDirectoryPicker() mode) as a view named `{name}__{fileStem}`.
  * Re-registering the same `name` replaces its prior views cleanly — no

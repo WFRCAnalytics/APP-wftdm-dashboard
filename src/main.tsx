@@ -34,6 +34,7 @@ import { toast } from 'sonner'
 import { initDuckDB } from './services/duckdb.ts'
 import { discoverScenarios } from './services/scenarioDiscovery.ts'
 import { bootCompareState } from './services/runResolution.ts'
+import { setAssistantEnabled } from './state/assistantAvailability.ts'
 import { loadDashboards, loadDashboardBranding, type DashboardBranding } from './services/yamlLoader.ts'
 import { setDeployerScenarioPalette } from './panels/scenarioDisplay.ts'
 import { setDeployerProtomapsSource } from './state/protomapsSourceState.ts'
@@ -193,7 +194,9 @@ const branding: DashboardBranding = {
   units: primaryBranding.units ?? demoBranding.units,
   exportFooter: primaryBranding.exportFooter ?? demoBranding.exportFooter,
   layout: primaryBranding.layout ?? demoBranding.layout,
+  assistantEnabled: primaryBranding.assistantEnabled ?? demoBranding.assistantEnabled,
 }
+setAssistantEnabled(branding.assistantEnabled !== false)
 // 063 redesign: this deployment's category vocabulary (modes, purposes, income groups) for the chart kinds.
 configureVocab(branding.vocab)
 configureMetrics(branding.metrics)

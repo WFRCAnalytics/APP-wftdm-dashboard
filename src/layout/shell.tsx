@@ -3,6 +3,7 @@ import { LayoutDashboard } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 
+import { AssistantButton, ChatHost } from '@/layout/chat/chatLauncher'
 import { ControlBar } from '@/layout/controlBar'
 import { DashboardRenderer } from '@/layout/dashboardRenderer'
 import { findFullPagePanel } from '@/layout/dashboardLayout'
@@ -72,7 +73,10 @@ export function Shell({
       <main className={cn('flex flex-col', chromeless || tabbed ? 'h-dvh' : 'min-h-screen', tabbed && 'overflow-hidden', !mobile && 'transition-[padding-left] duration-[220ms] ease-out', !mobile && (navPinned ? 'pl-[276px]' : 'pl-[96px]'))}>
         {!chromeless && (
           <PageHeader title={active.header.title} subtitle={active.header.description} onMenu={mobile ? () => setMenuOpen(true) : undefined}>
-            <ControlBar />
+            <div className="flex min-w-0 max-w-full items-center gap-2.5">
+              <ControlBar />
+              <AssistantButton />
+            </div>
           </PageHeader>
         )}
         {chromeless && mobile && (
@@ -87,6 +91,8 @@ export function Shell({
         )}
         <DashboardRenderer tab={active} />
       </main>
+      {chromeless && <AssistantButton floating />}
+      <ChatHost />
     </div>
   )
 }

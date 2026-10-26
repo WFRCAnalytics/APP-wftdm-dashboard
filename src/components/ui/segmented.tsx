@@ -42,7 +42,7 @@ export function Segmented({ label, options, value, onChange, size = 'md', classN
             className={cn(
               rail && 'w-full text-left',
               size === 'lg' ? 'px-[13px] py-[5px] text-sm' : 'px-[11px] py-1 text-[12.5px]',
-              'rounded-full font-body leading-[1.45] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-text)] disabled:opacity-40',
+              'whitespace-nowrap rounded-full font-body leading-[1.45] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-text)] disabled:opacity-40',
               pressed
                 ? 'pill-on'
                 : 'pill-off',

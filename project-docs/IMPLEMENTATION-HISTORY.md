@@ -6520,3 +6520,36 @@ first cross-reference this list was built from). ✅ done,
 - Create `summarize-preprocessor.yaml` — join logic lives in sql_fragments
 - Create `dashboard-config.yaml` — does not exist (the `public/dashboard-config/` directory is unrelated — see Config file set above)
 - Create `services/observedRegistry.ts` — replaced by `services/scenarioDiscovery.ts`
+
+---
+
+## 064 AI chat assistant (`specs/064-ai-chat-assistant/`)
+
+Bring-your-own-model chat: Settings → AI tab plus a floating button opening a side panel on every tab. Design decisions
+and the contracts are in the spec folder; the non-obvious ones:
+
+- **No SDK, no new dependency.** `services/ai/providers.ts` calls OpenAI-compatible servers (OpenAI, Deepseek, Ollama,
+  gateways) and Anthropic with plain `fetch`, non-streaming (the panel shows step lines instead). Anthropic needs the
+  `anthropic-dangerous-direct-browser-access` header for browser calls; Ollama needs `OLLAMA_ORIGINS`.
+- **Permissions are enforced in code** (`services/ai/sqlGuard.ts`, pure): it lexes the SQL (comments and string
+  contents never count), splits statements, classifies each, and refuses the WHOLE request if any statement is not
+  allowed. Read-Only = SELECT/WITH/VALUES/FROM/DESCRIBE/SHOW/SUMMARIZE/EXPLAIN/three read PRAGMAs. Modify allows
+  everything except INSTALL/LOAD/ATTACH/SET/PRAGMA/CALL, URL-scheme string literals (`https:`, `s3:` ...), and any
+  statement whose TARGET is a dashboard view name (`{scenario}__{metric}` for every scenario x metric, registered or
+  not). A TEMP table named like a dashboard view would shadow it for every panel, so CREATE counts as a target too.
+  Reading a protected view into a new object stays allowed (`CREATE TABLE x AS SELECT ... FROM protected`).
+  Only the DROP/ALTER/TRUNCATE/RENAME/COMMENT/IMPORT verbs refuse on any mention of a protected name.
+- **Read-Only second opinion**: `sqlRunner` asks DuckDB's `json_serialize_sql` whether a SELECT-looking statement is
+  really a SELECT; best-effort, disabled for the session the first time it cannot run.
+- **Reset session data** drops every user-created table/view/macro that is not a protected name. It does not recreate
+  dashboard views: they cannot be changed in the first place.
+- **Privacy** (`toolSchema.ts#shapeForModel`): schema only = columns, row count and truncation flag; schema and
+  results = at most 50 rows and 8 KB. The viewer always sees the full capped result (1000 rows). Known trade-off: with
+  schema only the model cannot see category spellings, so it may filter wrongly and has to retry on a 0-row result.
+- **State** is session-only (`state/aiState.ts`, `state/chatState.ts`): the token and the conversation are gone on
+  reload (constitution VI). The chat survives tab switches because the shell, not `DashboardRenderer`, owns the panel.
+- The panel is a separate lazy chunk (~15 KB); only the launcher button is in the entry graph.
+- The assistant's SQL goes through `services/duckdb.ts` (`queryArrow`, plus the new `cancelRunning()` for Stop): still
+  one connection, so a long assistant query queues behind panel queries.
+- Tests: Vitest `tests/unit/ai*.test.ts` (guard, providers, loop, catalogue); Playwright `tests/integration/aiChat.spec.ts`
+  (project `real`, provider mocked with `page.route`).

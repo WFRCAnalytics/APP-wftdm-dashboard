@@ -607,6 +607,25 @@ before touching charts).
 - Dial KPIs: a hero `valuebox` with `ring: {}` draws its value (a `max` is picked automatically unless given) on a half-circle dial with a tick at the reference. Mode share has a `mode-radar` view, trips by purpose a `purpose-radar` view and purpose to mode a `purpose-chord` view; all three read tables the real demo publishes.
 - New D3 submodules (no new chart library): d3-selection/scale/array/chord/zoom/format/interpolate/transition.
 
+## AI assistant (`064-ai-chat-assistant`)
+
+Settings → **AI** tab (provider OpenAI/Anthropic/Deepseek/Ollama, token, model, Check and Save, Read-Only/Modify,
+privacy schema-only vs schema+results, Reset session data) and a floating button (`layout/chat/chatLauncher.tsx`, in
+`layout/shell.tsx`) opening a lazy side panel (`chatPanel.tsx`). Code: `services/ai/` (`providers`, `sqlGuard`,
+`catalog`, `sqlRunner`, `toolSchema`/`tools`, `agentLoop`, `assistant`, `chatSession`), `state/aiState.ts`,
+`state/chatState.ts`. Session-only: the token and chat are in-memory, never in Web Storage. The assistant's SQL runs
+through `services/duckdb.ts` and is authorized by `sqlGuard.authorize()` first: never bypass it, and never add a
+second connection. No new dependency (plain `fetch`). Design and history: `specs/064-ai-chat-assistant/` and
+`project-docs/IMPLEMENTATION-HISTORY.md` ("064 AI chat assistant").
+The Assistant button is a glass circle in the page header beside the control bar (`AssistantButton` in `chatLauncher.tsx`;
+fixed top right on chromeless pages). A deployer turns the whole feature off with `"assistant": { "enabled": false }` in
+`dashboard-config/index.json` (`DashboardBranding.assistantEnabled`, read once at boot into
+`state/assistantAvailability.ts`): no button, no panel, no Settings tab. Enabled by default. The Model field is a
+searchable combobox (`components/ui/combobox-input.tsx`) over per-provider presets in `state/aiState.ts`; any other model
+name can be typed.
+
+---
+
 ## Implementation status
 
 All 12 panel types (plus `chart` and the `multi-view` wrapper) are built; the two earlier chart engines were removed in the 063 redesign. Sidebar navigation, lazy

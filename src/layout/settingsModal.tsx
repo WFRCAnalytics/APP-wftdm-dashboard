@@ -1,13 +1,16 @@
 import { useRef, useSyncExternalStore, type KeyboardEvent, type ReactNode } from 'react'
 import * as DialogPrimitive from '@radix-ui/react-dialog'
-import { BookOpen, Layers, Map as MapIcon, Palette, Settings, X } from 'lucide-react'
+import { BookOpen, Layers, Map as MapIcon, Palette, Settings, Sparkles, X } from 'lucide-react'
 
 import { DialogDescription, DialogOverlay, DialogPortal, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
+import { useScrollEdges } from '@/hooks/useScrollEdges'
+import { isAssistantEnabled } from '@/state/assistantAvailability'
 import { NavButton } from '@/layout/navButton'
 import { AppearanceTab } from '@/layout/settings/appearanceTab'
 import { ScenariosTab } from '@/layout/settings/scenariosTab'
 import { BasemapTab } from '@/layout/settings/basemapTab'
+import { AiTab } from '@/layout/settings/aiTab'
 import { DocumentationTab } from '@/layout/settings/documentationTab'
 import {
   getSettingsOpener,
@@ -18,16 +21,17 @@ import {
   type SettingsTab,
 } from '@/state/settingsState'
 
-// The Settings modal (project-docs/redesign/02-layout-and-components.md section 4, P10): a 210px rail of four tabs plus a
+// The Settings modal (project-docs/redesign/02-layout-and-components.md section 4, P10): a 210px rail of five tabs plus a
 // Close row on the left, a scrolling body on the right, 26px radius on a --surface sheet over a blurred scrim. Built on
 // the Radix Dialog primitive for the focus trap, Esc/scrim dismissal and aria-hidden of the page behind; focus moves in on
 // open and returns to whatever opened it (the nav button, or the scenario picker's link). Below 900px the rail becomes a
 // horizontal tab row. The tab panel unmounts when its tab is left, which is what ties the Basemap preview map's lifetime
 // to the tab being visible.
-const TABS: { id: SettingsTab; label: string; icon: typeof Palette }[] = [
+const ALL_TABS: { id: SettingsTab; label: string; icon: typeof Palette }[] = [
   { id: 'appearance', label: 'Appearance', icon: Palette },
   { id: 'scenarios', label: 'Scenarios', icon: Layers },
   { id: 'basemap', label: 'Basemap', icon: MapIcon },
+  { id: 'ai', label: 'Assistant', icon: Sparkles },
   { id: 'documentation', label: 'Documentation', icon: BookOpen },
 ]
 
@@ -35,12 +39,18 @@ const PANEL: Record<SettingsTab, () => ReactNode> = {
   appearance: () => <AppearanceTab />,
   scenarios: () => <ScenariosTab />,
   basemap: () => <BasemapTab />,
+  ai: () => <AiTab />,
   documentation: () => <DocumentationTab />,
 }
 
 export function SettingsModal() {
   const ui = useSyncExternalStore(subscribeSettings, getSettingsUi)
   const railRef = useRef<HTMLDivElement>(null)
+  // The body scrolls inside the rounded frame: fade its cut-off edges (re-measured when the tab changes).
+  const bodyRef = useScrollEdges<HTMLDivElement>([ui.tab])
+  // A deployment can switch the assistant off (state/assistantAvailability.ts, set once at boot): no tab then. Read at
+  // render, not at module load, which runs before main.tsx has read the deployment's config.
+  const TABS = ALL_TABS.filter((t) => t.id !== 'ai' || isAssistantEnabled())
 
   // Roving tabindex with arrow keys, as the tab pattern asks.
   function onRailKey(e: KeyboardEvent<HTMLDivElement>) {
@@ -77,7 +87,7 @@ export function SettingsModal() {
         >
           <div className="flex min-h-0 flex-col gap-[3px] border-r border-[var(--line)] bg-[var(--tile-hi)] px-3 py-[18px] max-[900px]:flex-row max-[900px]:overflow-x-auto max-[900px]:border-b max-[900px]:border-r-0 max-[900px]:py-3">
             <DialogTitle className="mx-2 mb-[14px] font-heading text-[17px] font-semibold leading-[1.45] max-[900px]:sr-only">Settings</DialogTitle>
-            <DialogDescription className="sr-only">Appearance, scenarios, basemap and documentation.</DialogDescription>
+            <DialogDescription className="sr-only">Appearance, scenarios, basemap, assistant and documentation.</DialogDescription>
             <div
               ref={railRef}
               role="tablist"
@@ -123,13 +133,17 @@ export function SettingsModal() {
               Close
             </DialogPrimitive.Close>
           </div>
+          {/* The body is inset from the rounded frame (py-3) so content never reaches its edge; a hairline appears on
+              whichever side has more content beyond it, and the content itself fades into it (.scroll-frame/.scroll-fade). */}
           <div
             id={`settings-panel-${ui.tab}`}
             role="tabpanel"
             aria-labelledby={`settings-tab-${ui.tab}`}
-            className="scrollbar-thin min-h-0 min-w-0 overflow-auto px-7 pb-7 pt-6"
+            className="scroll-frame flex min-h-0 min-w-0 flex-col py-3"
           >
-            {PANEL[ui.tab]()}
+            <div ref={bodyRef} className="scrollbar-thin scroll-fade min-h-0 flex-1 overflow-auto px-7 pb-5 pt-3">
+              {(TABS.some((t) => t.id === ui.tab) ? PANEL[ui.tab] : PANEL.appearance)()}
+            </div>
           </div>
         </DialogPrimitive.Content>
       </DialogPortal>
