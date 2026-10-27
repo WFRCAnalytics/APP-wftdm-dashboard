@@ -336,3 +336,9 @@
 .xb .scroll{padding-right:0}
 .xb .gridwrap::after{right:6px;border-radius:0}
 .xb .dlg.wide .gridwrap{padding-right:0}
+/* a filter fills the row: column and value share the space, the operator and remove button keep their size */
+.xb .frow.fl{flex-wrap:nowrap}
+.xb .frow.fl>[role=combobox]{max-width:none;min-width:0}
+.xb .frow.fl>[role=combobox]:nth-child(1){flex:1 1 0}
+.xb .frow.fl>[role=combobox]:nth-child(2){flex:0 0 auto}
+.xb .frow.fl>input.mini{flex:1.4 1 0;width:auto;max-width:none;height:28px}

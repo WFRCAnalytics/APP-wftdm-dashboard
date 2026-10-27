@@ -204,7 +204,7 @@ function Builder({ m, openPicker }: { m: DataTabModel; openPicker(kind: 'cols' |
 
         <Step tone="s-flt" icon={<Filter size={16} aria-hidden="true" />} title="Filter" count={model.where.length ? rows(m.counts.filter) : ''} summary={model.where.length ? model.where.map((w) => `${w.col} ${w.op} ${w.val || '…'}`).join(', ') : 'none'} open={openStep === 'filter'} onToggle={toggle('filter')}>
           {model.where.map((w, i) => (
-            <div className="frow" key={i}>
+            <div className="frow fl" key={i}>
               <XSelect className="mini sel2" aria-label="Filter column" value={w.col} onChange={(e) => update({ where: model.where.map((x, k) => (k === i ? { ...x, col: e.target.value } : x)) })}>{plan.names.map((n) => <option key={n} value={n}>{n}</option>)}</XSelect>
               <XSelect className="mini sel2" aria-label="Filter operator" value={w.op} onChange={(e) => update({ where: model.where.map((x, k) => (k === i ? { ...x, op: e.target.value as FilterOp } : x)) })}>{OPS.map((o) => <option key={o} value={o}>{o}</option>)}</XSelect>
               <input className="mini w" aria-label="Filter value" value={w.val} placeholder="value" onChange={(e) => update({ where: model.where.map((x, k) => (k === i ? { ...x, val: e.target.value } : x)) })} />
