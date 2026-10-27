@@ -286,12 +286,14 @@ function Builder({ m, openPicker }: { m: DataTabModel; openPicker(kind: 'cols' |
 
         <Step icon={<ArrowUpDown size={16} aria-hidden="true" />} title="Columns, sort and limit" summary={[plan.selCols.length ? `${plan.selCols.length} of ${plan.cols.length} columns` : 'all columns', model.order ? `sorted by ${model.order}` : '', model.limit ? `limit ${model.limit}` : ''].filter(Boolean).join(', ')} open={openStep === 'cols'} onToggle={toggle('cols')}>
           <div className="frow"><Btn small aria-haspopup="dialog" onClick={(e) => openPicker('cols', e.currentTarget.getBoundingClientRect())}>{plan.selCols.length ? `${plan.selCols.length} of ${plan.cols.length} columns` : `All ${plan.cols.length} columns`}</Btn></div>
-          <div className="frow">
+          <div className="frow nw">
             <span className="lab">Sort by</span>
             <XSelect className="mini sel2" aria-label="Sort column" value={plan.outCols.some((c) => c.name === model.order) ? model.order : ''} onChange={(e) => update({ order: e.target.value })}>
               <option value="">none</option>{plan.outCols.map((c) => <option key={c.name} value={c.name}>{c.name}</option>)}
             </XSelect>
             <XSelect className="mini sel2" aria-label="Sort direction" value={model.dir} onChange={(e) => update({ dir: e.target.value as 'asc' | 'desc' })}><option value="desc">descending</option><option value="asc">ascending</option></XSelect>
+          </div>
+          <div className="frow nw">
             <span className="lab">Limit</span>
             <input className="mini w" aria-label="Row limit" value={model.limit} placeholder="none" onChange={(e) => update({ limit: e.target.value.replace(/[^0-9]/g, '') })} />
           </div>
