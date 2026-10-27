@@ -231,18 +231,18 @@ first and see it fail where the task says so.
 
 These tasks supersede or extend the ones above where they overlap. Build order: T074-T081 (pure core), then T082-T090 (Data tab UI and wiring), then the chart phases above.
 
-- [ ] T074 [P] [US1] Replace the 4-type column model with the 10 data types and chart roles in `src/charts/builder/columnTypes.ts` (inference from the DuckDB type, name, distinct count and text length), with `tests/unit/chartBuilderColumnTypes.test.ts`; update T011 accordingly
-- [ ] T075 [P] [US1] Column profile SQL builders (rows, nulls, distinct, quantiles, histogram bins, top values, text length) in `src/explore/profile/profileSql.ts` plus a pure `shapeProfile()` in `src/explore/profile/profileShape.ts`, with `tests/unit/exploreProfile.test.ts`
-- [ ] T076 [P] [US2] Query model with joins in `src/explore/sql/queryModel.ts` (`planQuery`, `buildSql`: union across scenarios, up to 4 joins, key renaming, group, where, order, limit) with `tests/unit/exploreQueryModel.test.ts`; supersedes the QueryModel part of T032/T033
-- [ ] T077 [P] [US2] SQL syntax tokenizer for the editor overlay in `src/explore/sql/highlight.ts` (reuse `--sql-*` tokens), with tests
-- [ ] T078 [US2] `src/explore/relations.ts`: tables common to the selected scenarios, scenario-union relation names, lazy registration through `ensureRegistered`
-- [ ] T079 [US2] `src/explore/sql/runUserSql.ts`: guard (`authorize`), mutex, 60 s timeout through `cancelRunning`, paged execution, Arrow cell conversion
-- [ ] T080 [US2] `src/state/exploreState.ts`: scenarios, table, query model, SQL text and detached flag, run status, My tables, profile selection, tabs
-- [ ] T081 [US2] Join suggestions (`suggestJoins`) and starter queries in `src/explore/sql/starters.ts`, with tests
-- [ ] T082 [US1] Explore styles `src/explore/explore.css` (prototype rules mapped to the app tokens, light and dark)
-- [ ] T083 [US1] Shell: top bar with scenario picker (searchable, 10-15 scenarios), table select, tabs; `src/explore/ExploreBuilderPanel.tsx`, `ScenarioPicker.tsx`, generic `SearchPopover.tsx`
-- [ ] T084 [US1] Data tab: `ColumnsPanel.tsx` (search, present-type filters, sparkline rows, detail card), `PreviewTable.tsx` (sticky first column, per-type cells, paging to fit)
-- [ ] T085 [US2] Query box: `QueryBox.tsx` with Builder and SQL tabs, step cards (`StepTable`, `StepJoin`, `StepFilter`, `StepSummarize`, `StepColumns`), `SqlEditor.tsx` with gutter and highlight, shared Run and Save footer, pinned `MyTables.tsx`
-- [ ] T086 Register `explore-builder` (lazy) in `src/panels/registry.tsx` and `src/layout/types.ts`; point the demo Explore tab (`public/demo-dashboard-config/dashboard-7-explore.yaml`) at it and remove Graphic Walker from navigation (code kept)
-- [ ] T087 Unit tests for T074-T081 pass and `npx tsc --noEmit` is clean
-- [ ] T088 Playwright `tests/integration/explore-builder-data.spec.ts`: open Explore, pick scenarios, browse, profile a column, run a join, save a table, in light and dark
+- [X] T074 [P] [US1] Replace the 4-type column model with the 10 data types and chart roles in `src/charts/builder/columnTypes.ts` (inference from the DuckDB type, name, distinct count and text length), with `tests/unit/chartBuilderColumnTypes.test.ts`; update T011 accordingly
+- [X] T075 [P] [US1] Column profile SQL builders (rows, nulls, distinct, quantiles, histogram bins, top values, text length) in `src/explore/profile/profileSql.ts` plus a pure `shapeProfile()` in `src/explore/profile/profileShape.ts`, with `tests/unit/exploreProfile.test.ts`
+- [X] T076 [P] [US2] Query model with joins in `src/explore/sql/queryModel.ts` (`planQuery`, `buildSql`: union across scenarios, up to 4 joins, key renaming, group, where, order, limit) with `tests/unit/exploreQueryModel.test.ts`; supersedes the QueryModel part of T032/T033
+- [X] T077 [P] [US2] SQL syntax tokenizer for the editor overlay in `src/explore/sql/highlight.ts` (reuse `--sql-*` tokens), with tests
+- [X] T078 [US2] `src/explore/relations.ts`: tables common to the selected scenarios, scenario-union relation names, lazy registration through `ensureRegistered`
+- [X] T079 [US2] `src/explore/sql/runUserSql.ts`: guard (`authorize`), mutex, 60 s timeout through `cancelRunning`, paged execution, Arrow cell conversion
+- [X] T080 [US2] `src/state/exploreState.ts`: scenarios, table, query model, SQL text and detached flag, run status, My tables, profile selection, tabs
+- [X] T081 [US2] Join suggestions (`suggestJoins`) and starter queries in `src/explore/sql/starters.ts`, with tests
+- [X] T082 [US1] Explore styles `src/explore/explore.css` (prototype rules mapped to the app tokens, light and dark)
+- [X] T083 [US1] Shell: top bar with scenario picker (searchable, 10-15 scenarios), table select, tabs; `src/explore/ExploreBuilderPanel.tsx`, `ScenarioPicker.tsx`, generic `SearchPopover.tsx`
+- [X] T084 [US1] Data tab: `ColumnsPanel.tsx` (search, present-type filters, sparkline rows, detail card), `PreviewTable.tsx` (sticky first column, per-type cells, paging to fit)
+- [X] T085 [US2] Query box: `QueryBox.tsx` with Builder and SQL tabs, step cards (`StepTable`, `StepJoin`, `StepFilter`, `StepSummarize`, `StepColumns`), `SqlEditor.tsx` with gutter and highlight, shared Run and Save footer, pinned `MyTables.tsx`
+- [X] T086 Register `explore-builder` (lazy) in `src/panels/registry.tsx` and `src/layout/types.ts`; point the demo Explore tab (`public/demo-dashboard-config/dashboard-7-explore.yaml`) at it and remove Graphic Walker from navigation (code kept)
+- [X] T087 Unit tests for T074-T081 pass and `npx tsc --noEmit` is clean
+- [X] T088 Playwright `tests/integration/explore-builder-data.spec.ts`: open Explore, pick scenarios, browse, profile a column, run a join, save a table, in light and dark

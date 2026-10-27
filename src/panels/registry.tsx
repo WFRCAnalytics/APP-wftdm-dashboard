@@ -49,6 +49,9 @@ export const registry: Record<string, ComponentType<PanelProps<any>>> = {
   sankey: lazy(() => import('@/panels/SankeyPanel').then((m) => ({ default: m.SankeyPanel }))),
   flowmap: lazy(() => import('@/panels/FlowMapPanel').then((m) => ({ default: m.FlowMapPanel }))),
   zonemap: lazy(() => import('@/panels/ZoneMapPanel').then((m) => ({ default: m.ZoneMapPanel }))),
+  // 065-chart-builder: the Explore builder. Graphic Walker stays registered (hidden from the demo navigation) until the
+  // builder is accepted; User Story 7 removes it.
+  'explore-builder': lazy(() => import('@/explore/ExploreBuilderPanel').then((m) => ({ default: m.ExploreBuilderPanel }))),
   'graphic-walker': lazy(() =>
     import('@/panels/GraphicWalkerPanel').then((m) => ({ default: m.GraphicWalkerPanel })),
   ),
