@@ -30,7 +30,7 @@ export function Segmented({ label, options, value, onChange, size = 'md', classN
     <div
       role="group"
       aria-label={label}
-      className={cn('pill-track inline-flex items-center rounded-full p-[3px]', rail && 'flex w-full flex-col items-stretch rounded-[18px]', className)}
+      className={cn('pill-track inline-flex items-stretch rounded-full', size === 'lg' ? 'p-1' : 'p-[3px]', rail && 'flex w-full flex-col items-stretch rounded-[18px]', className)}
     >
       {options.map((o) => {
         const pressed = o.id === value
