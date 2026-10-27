@@ -171,7 +171,7 @@ function ChartCard({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: Cha
   useEffect(() => { if (plotRef.current) setTheme(readChartTheme(plotRef.current)) }, [scheme, size.w])
   const setSpec = (fn: (x: ChartSpec) => ChartSpec) => updateChart(tab.id, (t) => ({ ...t, spec: fn(t.spec) }))
   const roleOf = (f: string) => chartRole(data.cols.find((c) => c.name === f)?.type ?? 'text')
-  const model = useMemo<ChartModel | null>(() => (theme ? buildChart({ spec, cols: data.cols, rows: data.rows, theme, width: size.w, height: size.h, hot }) : null), [theme, spec, data.cols, data.rows, size, hot])
+  const model = useMemo<ChartModel | null>(() => (theme ? buildChart({ spec: data.spec, cols: data.cols, rows: data.rows, theme, width: size.w, height: size.h, hot }) : null), [theme, data.spec, data.cols, data.rows, size, hot])
   const dragging = s.selectedField
   const dragRole = dragging ? roleOf(dragging) : ''
 
@@ -191,7 +191,7 @@ function ChartCard({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: Cha
   return (
     <section className="tile col card" ref={cardRef}>
       <div className="cardhead">
-        <span className="ci">{tab.name} · {data.relationName} · {data.rows.length.toLocaleString('en-US')} rows</span>
+        <span className="ci">{tab.name} · {data.relationName} · {(data.total ?? data.rows.length).toLocaleString('en-US')} rows</span>
         <span className={`cn ${s.noticeBad ? 'bad' : ''}`} role="status">{s.notice}</span>
         <button type="button" className="btn sm" onClick={swap}><ArrowLeftRight size={14} aria-hidden="true" />Swap x and y</button>
         <button type="button" className="btn sm" onClick={() => { setSpec((x) => ({ ...x, enc: {} })); setExplore({ notice: 'Shelves cleared.', noticeBad: false }) }}>Clear</button>
@@ -250,7 +250,7 @@ function ChartCard({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: Cha
         </div>
         {txt('src').t && <p className={`tb tfoot ${cls('src')}`} style={{ marginTop: 8 }}>{txt('src').t}</p>}
         {txt('note').t && <p className={`tb tfoot ${cls('note')}`} style={{ marginTop: 4 }}>{txt('note').t}</p>}
-        {(data.truncated || drawn?.limitedSeries) && <p className="hint" style={{ marginTop: 4 }}>{data.truncated ? `Showing the first ${ROW_CAP.toLocaleString('en-US')} rows. ` : ''}{drawn?.limitedSeries ? 'Showing the first 15 values of a legend field.' : ''}</p>}
+        {(data.truncated || drawn?.limitedSeries) && <p className="hint" style={{ marginTop: 4 }}>{data.truncated ? (data.mode === 'raw' ? 'Showing a sample of the points. ' : `Showing the first ${ROW_CAP.toLocaleString('en-US')} groups. `) : ''}{drawn?.limitedSeries ? 'Showing the first 15 values of a legend field.' : ''}</p>}
       </div>
       {exportOpen && <ExportDialog tab={tab} data={data} cardEl={() => cardRef.current?.querySelector<HTMLElement>('[data-testid="chart-export-card"]') ?? null} onClose={() => setExportOpen(false)} />}
     </section>

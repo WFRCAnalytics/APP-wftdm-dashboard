@@ -117,7 +117,9 @@ export function buildChart(input: BuildInput): ChartModel {
   if (problem) return { problem }
   let rows = input.rows
   if (spec.filter.f && spec.filter.v !== '') rows = rows.filter((r) => String(r[spec.filter.f]) === spec.filter.v)
-  const used = Object.values(enc).map((e) => e!.f)
+  // box statistics from DuckDB carry no raw y value
+  const preBox = rows[0]?.__q1 !== undefined
+  const used = Object.values(enc).map((e) => e!.f).filter((f) => !(preBox && f === enc.y?.f))
   rows = rows.filter((r) => used.every((f) => r[f] !== null && r[f] !== undefined))
   if (!rows.length) return { problem: 'No rows match this data and filter.' }
   if (mark === 'pie' && uniqSorted(rows, enc.color!.f).length > 12) return { problem: `Pie and donut charts need 12 slices or fewer. ${enc.color!.f} has ${uniqSorted(rows, enc.color!.f).length}.` }
@@ -353,12 +355,14 @@ export function buildChart(input: BuildInput): ChartModel {
     }
   } else if (mark === 'histogram') {
     const xf = enc.x!.f, nb = 12
+    // rows from DuckDB arrive already binned: x is the bin centre, __n the count, __lo/__hi the true range
+    const weighted = rows[0]?.__n !== undefined
     let lo = Infinity, hi = -Infinity
-    for (const r of rows) { lo = Math.min(lo, r[xf]); hi = Math.max(hi, r[xf]) }
+    if (weighted) { lo = Number(rows[0].__lo); hi = Number(rows[0].__hi) } else for (const r of rows) { lo = Math.min(lo, r[xf]); hi = Math.max(hi, r[xf]) }
     const bw0 = (hi - lo) / nb || 1
     for (const pn of panels) {
       pn.B = Array.from({ length: nb }, () => ({}))
-      for (const r of pn.prows) { const b = Math.min(nb - 1, Math.floor((r[xf] - lo) / bw0)), k = skey(r); pn.B[b][k] = (pn.B[b][k] ?? 0) + 1 }
+      for (const r of pn.prows) { const b = Math.max(0, Math.min(nb - 1, Math.floor((r[xf] - lo) / bw0))), k = skey(r); pn.B[b][k] = (pn.B[b][k] ?? 0) + (weighted ? Number(r.__n) : 1) }
     }
     let ymax = 1
     for (const pn of panels) for (const b of pn.B!) ymax = Math.max(ymax, Object.values(b).reduce((a, c) => a + c, 0))
@@ -380,6 +384,16 @@ export function buildChart(input: BuildInput): ChartModel {
     let lo = Infinity, hi = -Infinity
     for (const pn of panels) {
       pn.S = new Map()
+      if (rows[0]?.__q1 !== undefined) {
+        // statistics computed by DuckDB: one row per category and series
+        for (const r of pn.prows) {
+          let out: number[] = []
+          try { out = r.__out ? (JSON.parse(String(r.__out)) as number[]).slice(0, 12) : [] } catch { out = [] }
+          pn.S.set(`${r[xf]}${skey(r)}`, { q1: Number(r.__q1), md: Number(r.__md), q3: Number(r.__q3), wl: Number(r.__wl), wh: Number(r.__wh), out, n: Number(r.__n) })
+          lo = Math.min(lo, Number(r.__wl), ...(out.length ? out : [Number(r.__wl)])); hi = Math.max(hi, Number(r.__wh), ...(out.length ? out : [Number(r.__wh)]))
+        }
+        continue
+      }
       for (const c of cats) for (const s of series) {
         const v = pn.prows.filter((r) => r[xf] === c && skey(r) === s.key).map((r) => r[yf] as number).sort((a, b) => a - b)
         if (!v.length) continue

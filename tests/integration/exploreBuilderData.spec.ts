@@ -71,3 +71,52 @@ test('a chart tab builds a bar chart from the shelves and exports its configurat
   await expect(page.getByRole('dialog', { name: 'Export this chart' }).locator('textarea')).toHaveValue(/"mark": "bar"/)
   expect(errors).toEqual([])
 })
+
+test.describe('DuckDB computes the chart data for every mark', () => {
+  const place = async (page: Page, field: string, shelf: string) => {
+    await page.locator('.xb .fchip', { hasText: field }).first().click()
+    await page.locator('.xb .sp', { hasText: shelf }).getByRole('button', { name: new RegExp(`Place ${field}`) }).click()
+  }
+  const setup = async (page: Page, errors: string[], mark: string) => {
+    await openExplore(page, errors)
+    await expect(page.locator('.xb .tbl tbody tr').first()).toBeVisible({ timeout: 60_000 })
+    await page.getByRole('button', { name: 'Add chart tab' }).click()
+    await page.locator('.xb .mk', { hasText: mark }).click()
+  }
+  const drawn = async (page: Page) => {
+    await expect(page.locator('.xb svg.plot [data-t]').first()).toBeVisible({ timeout: 30_000 })
+    await expect(page.getByText('The data could not be read')).toHaveCount(0)
+  }
+
+  test('histogram bins in DuckDB', async ({ page }) => {
+    const errors: string[] = []
+    await setup(page, errors, 'Histogram')
+    await place(page, 'auPkTotal', 'Values to bin')
+    await drawn(page)
+    expect(errors).toEqual([])
+  })
+  test('box statistics come from DuckDB', async ({ page }) => {
+    const errors: string[] = []
+    await setup(page, errors, 'Box')
+    await place(page, 'scenario', 'X axis')
+    await place(page, 'auPkTotal', 'Y axis')
+    await drawn(page)
+    expect(errors).toEqual([])
+  })
+  test('scatter takes a repeatable sample', async ({ page }) => {
+    const errors: string[] = []
+    await setup(page, errors, 'Scatter')
+    await place(page, 'auPkTotal', 'X axis')
+    await place(page, 'trPkTotal', 'Y axis')
+    await drawn(page)
+    expect(errors).toEqual([])
+  })
+  test('pie groups in DuckDB', async ({ page }) => {
+    const errors: string[] = []
+    await setup(page, errors, 'Pie')
+    await place(page, 'scenario', 'Colour')
+    await place(page, 'auPkTotal', 'Slice size')
+    await drawn(page)
+    expect(errors).toEqual([])
+  })
+})
