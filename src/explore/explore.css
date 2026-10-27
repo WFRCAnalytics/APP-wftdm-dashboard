@@ -3,9 +3,9 @@
 .xb{--gl:var(--glass-line);--c1:var(--c-1);--c2:var(--c-2);--c3:var(--c-3);--brand-fg:var(--primary-foreground);--track:var(--pill-track);
   --sql-kw:var(--sql-keyword);--sql-fn:var(--sql-function);--sql-str:var(--sql-string);--sql-num:var(--sql-number);--sql-cm:var(--sql-comment);
   --sh1:var(--shadow-md);--sh2:var(--shadow-lg);
-  position:relative;display:flex;flex-direction:column;gap:14px;height:100%;min-height:0;color:var(--ink);font:14px/1.45 var(--font-body)}
+  position:relative;display:flex;flex-direction:column;gap:14px;height:100%;min-height:0;padding-top:12px;color:var(--ink);font:14px/1.45 var(--font-body)}
 .xb *{box-sizing:border-box}
-.xb button,.xb select,.xb input,.xb textarea{font:inherit;color:inherit}
+@layer base{.xb button,.xb select,.xb input,.xb textarea{font:inherit;color:inherit}}
 .xb button{cursor:pointer}
 .xb :focus-visible{outline:2px solid var(--brand);outline-offset:2px}
 .xb .mono{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
@@ -289,5 +289,18 @@
 .xb.xb-portal{display:contents}
 .xb .xb-fill{flex:1;min-height:0}
 .xb .tabs .pill[disabled]{opacity:.5;cursor:not-allowed}
-.xb .top{padding-right:64px}
+.xb .top{margin-right:72px}
 .xb .rail2 .rsec{padding-top:20px}
+
+/* accordion steps, full-height SQL editor, app Segmented in the builder */
+.xb .sacc{display:flex;align-items:center;gap:6px;min-width:0;flex:1;border:0;background:none;padding:0;text-align:left}
+.xb .sacc .chev{flex:none;color:var(--mute);transition:transform .15s}
+.xb .sacc[aria-expanded="true"] .chev{transform:rotate(90deg)}
+.xb .ssum{color:var(--mute);font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.xb .step.shut .sbody{padding-bottom:10px}
+.xb .step.shut{padding-bottom:8px}
+.xb .xseg{display:inline-flex;flex:none}
+.xb .qscroll.sqlfull{display:flex;flex-direction:column;overflow:hidden;max-height:none}
+.xb .sqlpane{flex:1;min-height:0;display:flex;flex-direction:column}
+.xb .sqlpane .ed{flex:1;min-height:0;display:flex;flex-direction:column}
+.xb .sqlpane .edscroll{flex:1;max-height:none;min-height:0}

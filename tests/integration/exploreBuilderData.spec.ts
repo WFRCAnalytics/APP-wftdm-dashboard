@@ -19,7 +19,7 @@ test('Explore opens the builder, previews a table and summarises a column', asyn
   await openExplore(page, errors)
   await expect(page.locator('.xb .tbl tbody tr').first()).toBeVisible({ timeout: 60_000 })
   // the type filter lists only the types present, with counts
-  await expect(page.locator('.xb .psearch .pill').first()).toContainText('All')
+  await expect(page.locator('.xb .psearch .xseg button').first()).toContainText('All')
   // a column row gets a summary line
   await expect(page.locator('.xb .prow2 .pm').first()).not.toHaveText(/^\s*$/, { timeout: 30_000 })
   // the selected column shows summary statistics
@@ -32,7 +32,7 @@ test('the SQL tab shows the builder query and Run works', async ({ page }) => {
   const errors: string[] = []
   await openExplore(page, errors)
   await expect(page.locator('.xb .tbl tbody tr').first()).toBeVisible({ timeout: 60_000 })
-  await page.getByRole('tab', { name: 'SQL', exact: true }).click()
+  await page.getByRole('button', { name: 'SQL', exact: true }).click()
   await expect(page.locator('.xb .edc pre')).toContainText('SELECT')
   await page.getByRole('button', { name: 'Run query' }).click()
   await expect(page.locator('.xb .runmsg')).toContainText('rows', { timeout: 30_000 })
@@ -43,7 +43,7 @@ test('a refused statement is explained and not run', async ({ page }) => {
   const errors: string[] = []
   await openExplore(page, errors)
   await expect(page.locator('.xb .tbl tbody tr').first()).toBeVisible({ timeout: 60_000 })
-  await page.getByRole('tab', { name: 'SQL', exact: true }).click()
+  await page.getByRole('button', { name: 'SQL', exact: true }).click()
   await page.getByLabel('SQL query').fill('DROP TABLE x')
   await expect(page.getByText('This statement is not allowed')).toBeVisible({ timeout: 15_000 })
   expect(errors).toEqual([])

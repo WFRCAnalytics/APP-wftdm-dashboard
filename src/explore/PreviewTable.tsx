@@ -2,7 +2,7 @@
 // pinned while the rest scrolls sideways (tables can have hundreds of columns); cells render by data type.
 import { useEffect, useRef } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
-import { TypeChip } from '@/explore/parts'
+import { Btn, TypeChip } from '@/explore/parts'
 import type { DataTabModel } from '@/explore/useDataTab'
 import { setExplore } from '@/state/exploreState'
 
@@ -44,8 +44,8 @@ export function PreviewTable({ m }: { m: DataTabModel }) {
         <div><h2 className="tt">{name || 'Table'}</h2><p className="ts">{sub}</p></div>
         <div className="pager">
           <span className="mono">{from}–{to}{m.total !== null ? ` of ${m.total.toLocaleString('en-US')}` : ''}</span>
-          <button type="button" className="btn ico" aria-label="Previous page" disabled={s.page <= 0} onClick={() => setExplore({ page: s.page - 1 })}><ChevronLeft size={14} /></button>
-          <button type="button" className="btn ico" aria-label="Next page" disabled={!m.hasMore} onClick={() => setExplore({ page: s.page + 1 })}><ChevronRight size={14} /></button>
+          <Btn icon aria-label="Previous page" disabled={s.page <= 0} onClick={() => setExplore({ page: s.page - 1 })}><ChevronLeft size={14} /></Btn>
+          <Btn icon aria-label="Next page" disabled={!m.hasMore} onClick={() => setExplore({ page: s.page + 1 })}><ChevronRight size={14} /></Btn>
         </div>
       </div>
       {m.status === 'error' || m.status === 'refused' ? (

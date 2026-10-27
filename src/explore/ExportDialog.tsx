@@ -2,6 +2,7 @@
 // source), the chart as PNG or SVG (through the same renderer the dashboard tiles use) and its data as CSV. Import takes a
 // configuration, lists every problem by path, and opens the chart as a new tab: nothing existing is changed.
 import { useState } from 'react'
+import { Btn } from '@/explore/parts'
 import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 import { fromConfig, defaultSpec, toConfig } from '@/charts/builder/spec'
@@ -50,13 +51,13 @@ export function ExportDialog({ tab, data, cardEl, onClose }: { tab: ChartTab; da
   return (
     <Modal title="Export this chart" onClose={onClose}>
       <div className="rrow">
-        <button type="button" className="btn" disabled={busy} onClick={() => void image('png')}>PNG</button>
-        <button type="button" className="btn" disabled={busy} onClick={() => void image('svg')}>SVG</button>
-        <button type="button" className="btn" onClick={() => { downloadCsv(data.rows, fileName(base, 'csv')); setMsg('CSV saved.') }}>Data (CSV)</button>
-        <button type="button" className="btn" onClick={() => { downloadBlob(new Blob([json], { type: 'application/json' }), fileName([...base, 'chart'], 'json')); setMsg('Configuration saved.') }}>Configuration (JSON)</button>
+        <Btn disabled={busy} onClick={() => void image('png')}>PNG</Btn>
+        <Btn disabled={busy} onClick={() => void image('svg')}>SVG</Btn>
+        <Btn onClick={() => { downloadCsv(data.rows, fileName(base, 'csv')); setMsg('CSV saved.') }}>Data (CSV)</Btn>
+        <Btn onClick={() => { downloadBlob(new Blob([json], { type: 'application/json' }), fileName([...base, 'chart'], 'json')); setMsg('Configuration saved.') }}>Configuration (JSON)</Btn>
       </div>
       <textarea readOnly aria-label="Chart configuration" value={json} />
-      <div className="rrow"><button type="button" className="btn pri" onClick={() => void copy()}>Copy configuration</button><span className="runmsg" role="status">{msg}</span></div>
+      <div className="rrow"><Btn variant="primary" onClick={() => void copy()}>Copy configuration</Btn><span className="runmsg" role="status">{msg}</span></div>
     </Modal>
   )
 }
@@ -87,7 +88,7 @@ export function ImportDialog({ onClose }: { onClose(): void }) {
       <p className="hint">Paste a chart configuration. It opens as a new tab, and nothing existing is changed.</p>
       <textarea aria-label="Chart configuration" value={text} placeholder="Paste exported JSON here" onChange={(e) => setText(e.target.value)} />
       {errors.length > 0 && <ul className="errs">{errors.map((e) => <li key={e}>{e}</li>)}</ul>}
-      <div className="rrow"><button type="button" className="btn pri" onClick={() => void run()}>Import chart</button></div>
+      <div className="rrow"><Btn variant="primary" onClick={() => void run()}>Import chart</Btn></div>
     </Modal>
   )
 }

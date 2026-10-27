@@ -12,7 +12,8 @@ import {
 } from '@/charts/builder/spec'
 import { readChartTheme } from '@/charts/theme'
 import type { ChartTheme } from '@/charts/types'
-import { Sparkline, TypeChip } from '@/explore/parts'
+import { Segmented } from '@/components/ui/segmented'
+import { Btn, Sparkline, TypeChip, XSelect } from '@/explore/parts'
 import { loadProfile } from '@/explore/profile/profileRun'
 import { typeColorKey, type ColumnProfile } from '@/explore/profile/profile'
 import { quoteIdent } from '@/explore/relations'
@@ -97,16 +98,13 @@ function FieldsPanel({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: C
     <aside className="tile col">
       <div className="th"><div><h2 className="tt">Fields</h2><p className="ts">{cols.length} columns in {data.relationName || 'this table'}.</p></div></div>
       <div className="psearch">
-        <select className="sel" style={{ width: '100%' }} aria-label="Data source" value={tab.source} onChange={(e) => updateChart(tab.id, (t) => ({ ...t, source: e.target.value, spec: { ...t.spec, enc: {}, filter: { f: '', v: '' } } }))}>
+        <XSelect className="sel" style={{ width: '100%' }} aria-label="Data source" value={tab.source} onChange={(e) => updateChart(tab.id, (t) => ({ ...t, source: e.target.value, spec: { ...t.spec, enc: {}, filter: { f: '', v: '' } } }))}>
           {s.mine.map((m) => <option key={m.id} value={`m:${m.id}`}>{m.name}</option>)}
           {tab.source.startsWith('t:') && <option value={tab.source}>{tab.source.slice(2)}</option>}
           {s.table.startsWith('t:') && s.table !== tab.source && <option value={s.table}>{s.table.slice(2)}</option>}
-        </select>
+        </XSelect>
         <input className="inp" type="search" aria-label="Search fields" placeholder="Search fields" value={s.fieldQuery} onChange={(e) => setExplore({ fieldQuery: e.target.value, fieldShow: 60 })} />
-        <div className="pills sm" role="group" aria-label="Field type">
-          <button type="button" className={`pill ${active === 'all' ? 'on' : ''}`} aria-pressed={active === 'all'} onClick={() => setExplore({ fieldType: 'all' })}>All {cols.length}</button>
-          {present.map((p) => <button key={p.type} type="button" className={`pill ${active === p.type ? 'on' : ''}`} aria-pressed={active === p.type} onClick={() => setExplore({ fieldType: p.type })}>{TYPE_LABEL[p.type]} {p.count}</button>)}
-        </div>
+        <div className="xseg"><Segmented label="Field type" value={active} onChange={(id) => setExplore({ fieldType: id as typeof active })} options={[{ id: 'all', label: `All ${cols.length}` }, ...present.map((p) => ({ id: p.type, label: `${TYPE_LABEL[p.type]} ${p.count}` }))]} /></div>
       </div>
       <div className="flist grow">
         {nodes}
@@ -193,9 +191,9 @@ function ChartCard({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: Cha
       <div className="cardhead">
         <span className="ci">{tab.name} · {data.relationName} · {(data.total ?? data.rows.length).toLocaleString('en-US')} rows</span>
         <span className={`cn ${s.noticeBad ? 'bad' : ''}`} role="status">{s.notice}</span>
-        <button type="button" className="btn sm" onClick={swap}><ArrowLeftRight size={14} aria-hidden="true" />Swap x and y</button>
-        <button type="button" className="btn sm" onClick={() => { setSpec((x) => ({ ...x, enc: {} })); setExplore({ notice: 'Shelves cleared.', noticeBad: false }) }}>Clear</button>
-        <button type="button" className="btn sm" onClick={() => setExportOpen(true)}><Download size={14} aria-hidden="true" />Export</button>
+        <Btn small onClick={swap}><ArrowLeftRight size={14} aria-hidden="true" />Swap x and y</Btn>
+        <Btn small onClick={() => { setSpec((x) => ({ ...x, enc: {} })); setExplore({ notice: 'Shelves cleared.', noticeBad: false }) }}>Clear</Btn>
+        <Btn small onClick={() => setExportOpen(true)}><Download size={14} aria-hidden="true" />Export</Btn>
       </div>
       <div className="strip">
         {SLOTS[spec.mark].map((slot) => {
@@ -211,7 +209,7 @@ function ChartCard({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: Cha
                 <>
                   <TypeChip type={col.type} /><span className="fname">{e.f}</span>
                   {channelAggregates(spec.mark, slot.ch) && chartRole(col.type) === 'q' && (
-                    <select className="agg" aria-label={`Aggregate for ${label}`} value={e.agg ?? 'sum'} onChange={(ev) => setSpec((x) => ({ ...x, enc: { ...x.enc, [slot.ch]: { ...e, agg: ev.target.value as Agg } } }))}>{AGGS.map((a) => <option key={a} value={a}>{a}</option>)}</select>
+                    <XSelect className="agg" aria-label={`Aggregate for ${label}`} value={e.agg ?? 'sum'} onChange={(ev) => setSpec((x) => ({ ...x, enc: { ...x.enc, [slot.ch]: { ...e, agg: ev.target.value as Agg } } }))}>{AGGS.map((a) => <option key={a} value={a}>{a}</option>)}</XSelect>
                   )}
                   <button type="button" className="x" aria-label={`Remove ${e.f} from ${label}`} onClick={() => setSpec((x) => { const n = { ...x.enc }; delete n[slot.ch]; return { ...x, enc: n } })}><X size={12} aria-hidden="true" /></button>
                 </>
@@ -267,11 +265,11 @@ function Rail({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: ChartDat
   const values = useDistinct(data.relSql, spec.filter.f)
   const tabs: [typeof s.railTab, string][] = [['chart', 'Chart'], ['style', 'Style'], ['axes', 'Axes'], ['filter', 'Filter']]
   const pills = <T extends string | boolean>(opts: [T, string][], cur: T, set: (v: T) => void, label: string) => (
-    <div className="pills" role="group" aria-label={label}>{opts.map(([v, l]) => <button key={String(v)} type="button" className={`pill ${cur === v ? 'on' : ''}`} aria-pressed={cur === v} onClick={() => set(v)}>{l}</button>)}</div>
+    <div className="xseg"><Segmented label={label} value={String(cur)} onChange={(id) => set(opts.find(([v]) => String(v) === id)![0])} options={opts.map(([v, l]) => ({ id: String(v), label: l }))} /></div>
   )
   return (
     <aside className="tile rail2">
-      <div className="rtabs"><div className="pills" role="tablist" aria-label="Chart settings">{tabs.map(([k, l]) => <button key={k} type="button" role="tab" className={`pill ${s.railTab === k ? 'on' : ''}`} aria-selected={s.railTab === k} onClick={() => setExplore({ railTab: k })}>{l}</button>)}</div></div>
+      <div className="rtabs"><div className="xseg"><Segmented label="Chart settings" value={s.railTab} onChange={(id) => setExplore({ railTab: id as typeof s.railTab })} options={tabs.map(([k, l]) => ({ id: k, label: l }))} /></div></div>
       {s.railTab === 'chart' && (
         <div className="rsec">
           <div className="mkgrid">
@@ -308,7 +306,7 @@ function Rail({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: ChartDat
                 <label className="lab" htmlFor={`tx-${k}`}>{label}</label>
                 <input id={`tx-${k}`} className="inp" value={t.t} placeholder={ph} onChange={(e) => patch({ t: e.target.value })} />
                 <div className="rrow">
-                  <select className="mini sel2" aria-label={`${label} size`} value={t.size} onChange={(e) => patch({ size: e.target.value as typeof t.size })}>{TEXT_SIZES.map((o) => <option key={o.v} value={o.v}>{o.label}</option>)}</select>
+                  <XSelect className="mini sel2" aria-label={`${label} size`} value={t.size} onChange={(e) => patch({ size: e.target.value as typeof t.size })}>{TEXT_SIZES.map((o) => <option key={o.v} value={o.v}>{o.label}</option>)}</XSelect>
                   <button type="button" className="tgl" aria-label="Bold" aria-pressed={t.b} onClick={() => patch({ b: !t.b })}>B</button>
                   <button type="button" className="tgl" aria-label="Italic" aria-pressed={t.i} style={{ fontStyle: 'italic' }} onClick={() => patch({ i: !t.i })}>I</button>
                 </div>
@@ -328,14 +326,14 @@ function Rail({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: ChartDat
       {s.railTab === 'filter' && (
         <div className="rsec">
           <p className="hint">Keep only the rows where a column equals a value. Applies to this chart's data.</p>
-          <select className="sel" style={{ width: '100%' }} aria-label="Filter column" value={spec.filter.f} onChange={(e) => setSpec((x) => ({ ...x, filter: { f: e.target.value, v: '' } }))}>
+          <XSelect className="sel" style={{ width: '100%' }} aria-label="Filter column" value={spec.filter.f} onChange={(e) => setSpec((x) => ({ ...x, filter: { f: e.target.value, v: '' } }))}>
             <option value="">No filter</option>
             {data.cols.filter((c) => (['category', 'ordinal', 'boolean'] as DataType[]).includes(c.type)).map((c) => <option key={c.name} value={c.name}>{c.name}</option>)}
-          </select>
-          <select className="sel" style={{ width: '100%' }} aria-label="Filter value" value={spec.filter.v} onChange={(e) => setSpec((x) => ({ ...x, filter: { ...x.filter, v: e.target.value } }))}>
+          </XSelect>
+          <XSelect className="sel" style={{ width: '100%' }} aria-label="Filter value" value={spec.filter.v} onChange={(e) => setSpec((x) => ({ ...x, filter: { ...x.filter, v: e.target.value } }))}>
             <option value="">All values</option>
             {values.map((v) => <option key={v} value={v}>{v}</option>)}
-          </select>
+          </XSelect>
         </div>
       )}
     </aside>

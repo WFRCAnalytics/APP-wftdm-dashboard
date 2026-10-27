@@ -9,7 +9,7 @@ import '@/explore/explore.css'
 import { ColumnsPanel } from '@/explore/ColumnsPanel'
 import { PreviewTable } from '@/explore/PreviewTable'
 import { QueryBox } from '@/explore/QueryBox'
-import { SearchPopover } from '@/explore/parts'
+import { Btn, SearchPopover, XSelect } from '@/explore/parts'
 import { dropMyTable } from '@/explore/sql/myTables'
 import { useDataTab, type DataTabModel } from '@/explore/useDataTab'
 import { resetQuery, setExplore } from '@/state/exploreState'
@@ -29,17 +29,17 @@ function TopBar({ m }: { m: DataTabModel }) {
     <header className="top">
       <div className="grp">
         <span className="lab">Scenarios</span>
-        <button type="button" className="btn" aria-haspopup="dialog" aria-expanded={!!rect} onClick={(e) => setRect(e.currentTarget.getBoundingClientRect())}>
+        <Btn aria-haspopup="dialog" aria-expanded={!!rect} onClick={(e) => setRect(e.currentTarget.getBoundingClientRect())}>
           <span className="dots" aria-hidden="true">{s.scenarios.slice(0, 5).map((n) => <i key={n} style={{ background: dotColor(names.indexOf(n)) }} />)}</span>
           {label || 'Pick scenarios'}<ChevronDown size={12} aria-hidden="true" />
-        </button>
+        </Btn>
       </div>
       <label className="grp">
         <span className="lab">Table</span>
-        <select className="sel" aria-label="Table to browse" value={s.table} onChange={(e) => setExplore(resetQuery({ table: e.target.value }))}>
+        <XSelect className="sel" aria-label="Table to browse" value={s.table} onChange={(e) => setExplore(resetQuery({ table: e.target.value }))}>
           {m.tableOptions.map((t) => <option key={t.name} value={`t:${t.name}`} disabled={t.missingIn.length > 0}>{t.name}{t.missingIn.length ? ` (missing in ${t.missingIn.join(', ')})` : ''}</option>)}
           {s.mine.map((t) => <option key={t.id} value={`m:${t.id}`}>My table · {t.name}</option>)}
-        </select>
+        </XSelect>
       </label>
       <div className="tabs" role="tablist" aria-label="Explore tabs">
         <button type="button" role="tab" className={`pill ${s.activeTab === 'data' ? 'on' : ''}`} aria-selected={s.activeTab === 'data'} onClick={() => setExplore({ activeTab: 'data' })}><Table2 size={15} aria-hidden="true" />Data</button>
@@ -55,7 +55,7 @@ function TopBar({ m }: { m: DataTabModel }) {
           return { charts: [...st.charts, { id, name: `Chart ${st.charts.length + 1}`, source, spec: defaultSpec() }], activeTab: id, nextId: st.nextId + 1, notice: '', selectedField: null }
         })}><Plus size={15} aria-hidden="true" /></button>
       </div>
-      <div className="grp end"><button type="button" className="btn" onClick={() => setImporting(true)}><Upload size={15} aria-hidden="true" />Import</button></div>
+      <div className="grp end"><Btn onClick={() => setImporting(true)}><Upload size={15} aria-hidden="true" />Import</Btn></div>
       {importing && <ImportDialog onClose={() => setImporting(false)} />}
       {rect && (
         <SearchPopover
@@ -87,7 +87,7 @@ function MyTables({ m }: { m: DataTabModel }) {
         {s.mine.map((t) => (
           <div className="mrow" key={t.id}>
             <div className="grow2"><div className="mn">{t.name}</div><div className="mi">{t.rowCount.toLocaleString('en-US')} rows, {t.columns.length} columns</div></div>
-            <button type="button" className="btn sm" onClick={() => setExplore(resetQuery({ table: `m:${t.id}` }))}>Preview</button>
+            <Btn small onClick={() => setExplore(resetQuery({ table: `m:${t.id}` }))}>Preview</Btn>
             <button type="button" className="x2" aria-label={`Delete ${t.name}`} onClick={() => {
               void dropMyTable(t.name).then(() => setExplore((st) => ({ mine: st.mine.filter((x) => x.id !== t.id), ...(st.table === `m:${t.id}` ? resetQuery({ table: '' }) : {}) })))
             }}><Trash2 size={14} /></button>

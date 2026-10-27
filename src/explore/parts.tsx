@@ -85,3 +85,63 @@ export function useInView<T extends Element>(): [React.RefObject<T>, boolean] {
   }, [seen])
   return [ref, seen]
 }
+
+// ------------------------------------------------------------------------------------------------ shared controls
+// The builder uses the app's own controls so it matches every other page: the Radix Select (themed list, not the browser's),
+// Button and Segmented. `XSelect` takes native <option> children, so a native <select> can be swapped in one rename.
+import { Children, Fragment, isValidElement } from 'react'
+import { Button } from '@/components/ui/button'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { cn } from '@/lib/utils'
+
+const EMPTY = '__empty__'
+interface Opt { value: string; label: ReactNode; disabled?: boolean }
+
+function collectOptions(children: ReactNode, out: Opt[] = []): Opt[] {
+  Children.forEach(children, (c) => {
+    if (!isValidElement(c)) return
+    const el = c as React.ReactElement<{ value?: string; disabled?: boolean; children?: ReactNode }>
+    if (el.type === 'option') out.push({ value: String(el.props.value ?? ''), label: el.props.children, disabled: el.props.disabled })
+    else if (el.type === Fragment || el.props.children) collectOptions(el.props.children, out)
+  })
+  return out
+}
+
+export interface XSelectProps {
+  value: string
+  onChange(e: { target: { value: string } }): void
+  children: ReactNode
+  className?: string
+  style?: React.CSSProperties
+  'aria-label'?: string
+  disabled?: boolean
+}
+
+export function XSelect({ value, onChange, children, className = '', style, disabled, ...rest }: XSelectProps) {
+  const options = collectOptions(children)
+  const size = /\b(mini|agg)\b/.test(className) ? 'xs' : /\btsel\b/.test(className) ? 'bare' : 'md'
+  const trigger = cn(
+    size === 'md' && 'h-9 min-w-[150px] font-medium',
+    size === 'xs' && 'h-7 max-w-[190px] min-w-0 gap-1.5 px-2 text-[12.5px]',
+    size === 'bare' && 'h-6 w-auto gap-1 border-0 bg-transparent px-1 text-xs shadow-none',
+    /\bagg\b/.test(className) && 'h-6 rounded-full px-2 text-[11.5px]',
+    style?.width === '100%' && 'w-full',
+  )
+  const current = options.some((o) => o.value === value) ? value : ''
+  return (
+    <Select value={current === '' && !options.some((o) => o.value === '') ? undefined : current === '' ? EMPTY : current} onValueChange={(v) => onChange({ target: { value: v === EMPTY ? '' : v } })} disabled={disabled}>
+      <SelectTrigger size="sm" className={trigger} aria-label={rest['aria-label']}>
+        <SelectValue placeholder={options[0]?.label} />
+      </SelectTrigger>
+      <SelectContent position="popper" className="max-h-72">
+        {options.map((o) => <SelectItem key={o.value || EMPTY} value={o.value === '' ? EMPTY : o.value} disabled={o.disabled}>{o.label}</SelectItem>)}
+      </SelectContent>
+    </Select>
+  )
+}
+
+export interface BtnProps extends React.ButtonHTMLAttributes<HTMLButtonElement> { variant?: 'primary' | 'outline' | 'ghost'; small?: boolean; icon?: boolean }
+/** The app's Button at the builder's compact sizes. Primary uses the interface (brand) colour, like the selected pills. */
+export function Btn({ variant = 'outline', small, icon, className, type = 'button', ...p }: BtnProps) {
+  return <Button type={type} variant={variant} size={icon ? 'icon' : 'sm'} className={cn(small && 'h-7 px-2.5 text-[12.5px]', icon && 'h-8 w-8', !small && !icon && 'h-8', variant === 'primary' && 'bg-[var(--pill-on-bg)] text-[var(--pill-on-fg)] hover:bg-[var(--pill-on-bg)] hover:opacity-90', className)} {...p} />
+}
