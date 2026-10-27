@@ -98,7 +98,7 @@ export function ColumnsPanel({ m }: { m: DataTabModel }) {
       <div className="th"><div><h2 className="tt">Columns</h2><p className="ts">{columns.length} column{columns.length === 1 ? '' : 's'}. Pick one to see its distribution and summary.</p></div></div>
       <div className="psearch">
         <input className="inp" type="search" aria-label="Search columns" placeholder="Search columns" value={s.profileQuery} onChange={(e) => setExplore({ profileQuery: e.target.value, profileShow: 40 })} />
-        <div className="xseg"><Segmented label="Column type" value={active} onChange={(id) => setExplore({ profileType: id as typeof active, profileShow: 40 })} options={[{ id: 'all', label: `All ${columns.length}` }, ...present.map((p) => ({ id: p.type, label: `${TYPE_LABEL[p.type]} ${p.count}` }))]} /></div>
+        <div className="xseg"><Segmented label="Column type" value={active} onChange={(id) => setExplore({ profileType: id as typeof active, profileShow: 40 })} options={[{ id: 'all', label: 'All', count: columns.length }, ...present.map((p) => ({ id: p.type, label: TYPE_LABEL[p.type], count: p.count }))]} /></div>
       </div>
       <div className="plist grow">
         {shown.map((c) => <ProfileRow key={`${c.name}|${c.type}`} sql={sql} col={c} selected={c.name === selected?.name} />)}
