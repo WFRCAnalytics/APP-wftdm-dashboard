@@ -21,6 +21,8 @@ export type ChartModel =
   | { problem: string }
   | { problem?: undefined; panels: Panel[]; legend: LegendGroup[]; defs: PatternDef[]; W: number; H: number; rows: number; limitedSeries: boolean }
 
+export type DrawnChart = Exclude<ChartModel, { problem: string }>
+
 export interface BuildInput {
   spec: ChartSpec
   cols: Col[]

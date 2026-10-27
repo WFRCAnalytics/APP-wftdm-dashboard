@@ -48,3 +48,26 @@ test('a refused statement is explained and not run', async ({ page }) => {
   await expect(page.getByText('This statement is not allowed')).toBeVisible({ timeout: 15_000 })
   expect(errors).toEqual([])
 })
+
+test('a chart tab builds a bar chart from the shelves and exports its configuration', async ({ page }) => {
+  const errors: string[] = []
+  await openExplore(page, errors)
+  await expect(page.locator('.xb .tbl tbody tr').first()).toBeVisible({ timeout: 60_000 })
+  await page.getByRole('button', { name: 'Add chart tab' }).click()
+  // chart-first: an empty bar chart says what it needs
+  await expect(page.getByText('This chart needs a little more')).toBeVisible()
+  // select a category field, then press the X shelf (keyboard path); then a number on Y
+  await page.locator('.xb .fchip', { hasText: 'scenario' }).first().click()
+  await page.locator('.xb .sp', { hasText: 'X axis' }).getByRole('button', { name: /Place scenario/ }).click()
+  await page.locator('.xb .fchip', { hasText: 'auPkTotal' }).first().click()
+  await page.locator('.xb .sp', { hasText: 'Y axis' }).getByRole('button', { name: /Place auPkTotal/ }).click()
+  await expect(page.locator('.xb svg.plot rect[data-t]').first()).toBeVisible({ timeout: 30_000 })
+  // with a category selected, the Colour shelf accepts it
+  await page.locator('.xb .fchip', { hasText: 'scenario' }).first().click()
+  await expect(page.locator('.xb .sp', { hasText: 'Colour' }).getByRole('button', { name: /Place scenario/ })).toBeEnabled()
+  await page.screenshot({ path: 'test-results/explore-chart-tab.png' })
+  // switch to a line and open the export dialog
+  await page.getByRole('button', { name: 'Export' }).click()
+  await expect(page.getByRole('dialog', { name: 'Export this chart' }).locator('textarea')).toHaveValue(/"mark": "bar"/)
+  expect(errors).toEqual([])
+})

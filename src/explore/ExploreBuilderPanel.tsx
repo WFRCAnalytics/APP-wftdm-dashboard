@@ -1,7 +1,10 @@
 // 065-chart-builder: the Explore builder (full-page panel). Top bar (scenarios, table, tabs) over the Data tab: Columns
 // (summaries), the paged preview, and the Query box with the pinned My tables list. Chart tabs arrive in the next step.
 import { useState } from 'react'
-import { ChevronDown, Trash2, Table2 } from 'lucide-react'
+import { ChevronDown, Plus, Table2, Trash2, Upload, X } from 'lucide-react'
+import { defaultSpec } from '@/charts/builder/spec'
+import { ChartTabView } from '@/explore/ChartTabView'
+import { ImportDialog } from '@/explore/ExportDialog'
 import '@/explore/explore.css'
 import { ColumnsPanel } from '@/explore/ColumnsPanel'
 import { PreviewTable } from '@/explore/PreviewTable'
@@ -18,6 +21,7 @@ const dotColor = (i: number) => `var(--chart-${(i % 8) + 1})`
 function TopBar({ m }: { m: DataTabModel }) {
   const s = m.state
   const [rect, setRect] = useState<DOMRect | null>(null)
+  const [importing, setImporting] = useState(false)
   const names = m.scenarioOptions.map((o) => o.name)
   const label = s.scenarios.length === 1 ? s.scenarios[0] : `${s.scenarios.length} of ${names.length} scenarios`
   const apply = (scenarios: string[]) => setExplore((st) => ({ scenarios, ...resetQuery({ table: st.table.startsWith('m:') ? st.table : '' }) }))
@@ -38,8 +42,21 @@ function TopBar({ m }: { m: DataTabModel }) {
         </select>
       </label>
       <div className="tabs" role="tablist" aria-label="Explore tabs">
-        <button type="button" role="tab" className="pill on" aria-selected="true"><Table2 size={15} aria-hidden="true" />Data</button>
+        <button type="button" role="tab" className={`pill ${s.activeTab === 'data' ? 'on' : ''}`} aria-selected={s.activeTab === 'data'} onClick={() => setExplore({ activeTab: 'data' })}><Table2 size={15} aria-hidden="true" />Data</button>
+        {s.charts.map((c) => (
+          <span key={c.id} className={`tabw ${s.activeTab === c.id ? 'on' : ''}`}>
+            <button type="button" role="tab" className="pill" aria-selected={s.activeTab === c.id} onClick={() => setExplore({ activeTab: c.id, notice: '', selectedField: null })}>{c.name}</button>
+            <button type="button" className="x" aria-label={`Close tab ${c.name}`} onClick={() => setExplore((st) => ({ charts: st.charts.filter((x) => x.id !== c.id), activeTab: st.activeTab === c.id ? 'data' : st.activeTab }))}><X size={12} aria-hidden="true" /></button>
+          </span>
+        ))}
+        <button type="button" className="pill" aria-label="Add chart tab" onClick={() => setExplore((st) => {
+          const id = `c${st.nextId}`
+          const source = st.table.startsWith('m:') ? st.table : st.table || `t:${m.tableOptions.find((t) => t.missingIn.length === 0)?.name ?? ''}`
+          return { charts: [...st.charts, { id, name: `Chart ${st.charts.length + 1}`, source, spec: defaultSpec() }], activeTab: id, nextId: st.nextId + 1, notice: '', selectedField: null }
+        })}><Plus size={15} aria-hidden="true" /></button>
       </div>
+      <div className="grp end"><button type="button" className="btn" onClick={() => setImporting(true)}><Upload size={15} aria-hidden="true" />Import</button></div>
+      {importing && <ImportDialog onClose={() => setImporting(false)} />}
       {rect && (
         <SearchPopover
           anchor={rect}
@@ -83,9 +100,11 @@ function MyTables({ m }: { m: DataTabModel }) {
 
 export function ExploreBuilderPanel(_props: PanelProps<ExploreBuilderPanelConfig>) {
   const m = useDataTab()
+  const chart = m.state.charts.find((c) => c.id === m.state.activeTab)
   return (
     <div className="xb" data-testid="explore-builder">
       <TopBar m={m} />
+      {chart ? <ChartTabView key={chart.id} tab={chart} s={m.state} /> : (
       <div className="dgrid">
         <ColumnsPanel m={m} />
         <PreviewTable m={m} />
@@ -94,6 +113,7 @@ export function ExploreBuilderPanel(_props: PanelProps<ExploreBuilderPanelConfig
           <MyTables m={m} />
         </aside>
       </div>
+      )}
     </div>
   )
 }

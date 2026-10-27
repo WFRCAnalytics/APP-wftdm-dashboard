@@ -2,6 +2,7 @@
 // survives tab switches and is gone on reload, by design. Export/import of a chart configuration is how work is kept.
 import { useSyncExternalStore } from 'react'
 import type { DataType } from '@/charts/builder/columnTypes'
+import type { ChartSpec } from '@/charts/builder/spec'
 import { emptyModel, type ColumnInfo, type QueryModel } from '@/explore/sql/queryModel'
 
 export interface MyTable {
@@ -12,6 +13,16 @@ export interface MyTable {
   columns: ColumnInfo[]
   rowCount: number
 }
+
+export interface ChartTab {
+  id: string
+  name: string
+  /** `t:<table>` or `m:<id>`: each chart tab holds its own data source. */
+  source: string
+  spec: ChartSpec
+}
+
+export type RailTab = 'chart' | 'style' | 'axes' | 'filter'
 
 export interface ExploreState {
   /** Selected scenarios; empty until the registry has scenarios to pick from. */
@@ -35,11 +46,24 @@ export interface ExploreState {
   nextId: number
   /** Bumped by the Run button to run the same SQL again. */
   runNonce: number
+  charts: ChartTab[]
+  /** `data` or a chart tab id. */
+  activeTab: string
+  railTab: RailTab
+  selectedField: string | null
+  fieldQuery: string
+  fieldType: DataType | 'all'
+  fieldShow: number
+  fieldOpen: Record<string, boolean>
+  /** A short message under the chart controls (a refused drop, a switched mark). */
+  notice: string
+  noticeBad: boolean
 }
 
 const initial = (): ExploreState => ({
   scenarios: [], table: '', model: emptyModel(), detached: false, sql: '', queryTab: 'builder', page: 0, pageSize: 12,
   typeOverride: {}, profileCol: null, profileQuery: '', profileType: 'all', profileShow: 40, mine: [], nextId: 1, runNonce: 0,
+  charts: [], activeTab: 'data', railTab: 'chart', selectedField: null, fieldQuery: '', fieldType: 'all', fieldShow: 60, fieldOpen: {}, notice: '', noticeBad: false,
 })
 
 let state: ExploreState = initial()
@@ -67,4 +91,8 @@ export function resetExploreForTests(): void {
 
 export function useExplore(): ExploreState {
   return useSyncExternalStore(subscribeExplore, getExplore, getExplore)
+}
+
+export function updateChart(id: string, fn: (t: ChartTab) => ChartTab): void {
+  setExplore((s) => ({ charts: s.charts.map((c) => (c.id === id ? fn(c) : c)) }))
 }
