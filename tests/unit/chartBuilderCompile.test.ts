@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildChart, shelfProblem, type ChartModel, type Col, type Row } from '../../src/charts/builder/compile.ts'
+import { buildChart, fmtTick, shelfProblem, type ChartModel, type Col, type Row } from '../../src/charts/builder/compile.ts'
 import { defaultSpec } from '../../src/charts/builder/spec.ts'
 import type { ChartTheme } from '../../src/charts/types.ts'
 
@@ -101,6 +101,13 @@ describe('other marks', () => {
   it('draws a box per category', () => {
     const m = ok(build({ mark: 'box', enc: { x: { f: 'mode' }, y: { f: 'trips' } } }))
     expect(m.panels[0].rects).toHaveLength(3)
+  })
+})
+
+describe('axis labels', () => {
+  it('labels a narrow axis with enough decimals to tell ticks apart', () => {
+    expect([12.4, 12.45, 12.5].map((v) => fmtTick(v, 0.05))).toEqual(['12.40', '12.45', '12.50'])
+    expect(fmtTick(12000, 2000)).toBe('12k')
   })
 })
 

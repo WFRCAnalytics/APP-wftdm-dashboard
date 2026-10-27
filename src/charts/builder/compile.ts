@@ -72,6 +72,12 @@ export function fmtCompact(v: number): string {
   if (a >= 1e3) return `${(v / 1e3).toFixed(1).replace(/\.0$/, '')}k`
   return Number.isInteger(v) ? String(v) : String(Math.round(v * 10) / 10)
 }
+/** An axis label with just the decimals the tick step needs, so close ticks on a narrow range never repeat (12.4, 12.45, 12.5). */
+export function fmtTick(v: number, step: number): string {
+  if (!step || Math.abs(step) >= 1) return fmtCompact(v)
+  const d = Math.min(6, Math.ceil(-Math.log10(Math.abs(step)) - 1e-9))
+  return v.toFixed(d)
+}
 export const fmtExact = (v: unknown): string =>
   typeof v === 'number' ? (Number.isInteger(v) ? v.toLocaleString('en-US') : (Math.round(v * 100) / 100).toLocaleString('en-US')) : String(v)
 
@@ -196,7 +202,7 @@ export function buildChart(input: BuildInput): ChartModel {
     for (const v of nt.ticks) {
       const y = sy(v)
       if (spec.grid) ln(o, bx.x0, y, bx.x1, y, T.grid, 1)
-      tx(o, bx.x0 - 8, y + 3.5, f ? f(v) : fmtCompact(v), 'end')
+      tx(o, bx.x0 - 8, y + 3.5, f ? f(v) : fmtTick(v, nt.ticks[1] - nt.ticks[0]), 'end')
     }
     ln(o, bx.x0, bx.y1, bx.x1, bx.y1, T.line, 1)
     return { sy, min: nt.min, max: nt.max }
@@ -214,7 +220,7 @@ export function buildChart(input: BuildInput): ChartModel {
   const xNum = (o: P, bx: ReturnType<typeof frame>, lo: number, hi: number) => {
     const nt = niceScale(lo, hi, Math.max(3, Math.min(8, Math.round((bx.x1 - bx.x0) / 90))))
     const sx = (v: number) => bx.x0 + ((v - nt.min) / (nt.max - nt.min || 1)) * (bx.x1 - bx.x0)
-    for (const v of nt.ticks) tx(o, sx(v), bx.y1 + 18, fmtCompact(v), 'middle')
+    for (const v of nt.ticks) tx(o, sx(v), bx.y1 + 18, fmtTick(v, nt.ticks[1] - nt.ticks[0]), 'middle')
     ln(o, bx.x0, bx.y1, bx.x1, bx.y1, T.line, 1)
     return { sx }
   }
