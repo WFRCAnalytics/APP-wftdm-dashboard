@@ -1,13 +1,14 @@
 // 065-chart-builder: the Data tab's Columns panel. Every column gets a small distribution and a one-line summary; the
 // selected column gets a larger distribution and summary statistics. Only the columns on screen are summarised.
 import { useEffect, useState } from 'react'
+import { ChevronDown } from 'lucide-react'
 import { DATA_TYPES, TYPE_LABEL, typesPresent, type DataType } from '@/charts/builder/columnTypes'
 import { loadProfile } from '@/explore/profile/profileRun'
 import { typeColorKey, type ColumnProfile } from '@/explore/profile/profile'
-import { Sparkline, TypeChip, TypeFilter, useInView, XSelect } from '@/explore/parts'
+import { SearchPopover, Sparkline, TypeChip, TypeFilter, useInView, XSelect, type PopItem } from '@/explore/parts'
 import type { DataTabModel } from '@/explore/useDataTab'
 import type { ColumnInfo } from '@/explore/sql/queryModel'
-import { setExplore } from '@/state/exploreState'
+import { resetQuery, setExplore } from '@/state/exploreState'
 
 const colorOf = (t: DataType) => `var(--${typeColorKey(t) === 'mute' ? 'mute' : { c1: 'c-1', c2: 'c-2', c3: 'c-3' }[typeColorKey(t) as 'c1' | 'c2' | 'c3']})`
 
@@ -84,6 +85,28 @@ function Detail({ sql, col }: { sql: string; col: ColumnInfo }) {
   )
 }
 
+// The table this page works on. The list is searchable because a deployment can publish dozens of tables, and it sits here, with the
+// columns it describes, the same place the chart tab keeps its data source.
+function TablePicker({ m }: { m: DataTabModel }) {
+  const s = m.state
+  const [rect, setRect] = useState<DOMRect | null>(null)
+  const mine = s.mine.find((x) => `m:${x.id}` === s.table)
+  const label = mine ? `My table · ${mine.name}` : s.table.replace(/^t:/, '') || 'Pick a table'
+  const pick = (table: string) => { setExplore(resetQuery({ table })); setRect(null) }
+  const items: PopItem[] = [
+    ...m.tableOptions.filter((t) => t.missingIn.length === 0).map((t) => ({ key: `t:${t.name}`, label: t.name, on: s.table === `t:${t.name}`, onPick: () => pick(`t:${t.name}`) })),
+    ...s.mine.map((t) => ({ key: `m:${t.id}`, label: `My table · ${t.name}`, on: s.table === `m:${t.id}`, onPick: () => pick(`m:${t.id}`) })),
+  ]
+  return (
+    <>
+      <button type="button" className="sel tpick" aria-label="Table" aria-haspopup="dialog" aria-expanded={!!rect} onClick={(e) => setRect(e.currentTarget.getBoundingClientRect())}>
+        <span className="mono">{label}</span><ChevronDown size={14} aria-hidden="true" />
+      </button>
+      {rect && <SearchPopover anchor={rect} title="Choose a table" placeholder={`Search ${items.length} tables`} single items={items} onClose={() => setRect(null)} />}
+    </>
+  )
+}
+
 export function ColumnsPanel({ m }: { m: DataTabModel }) {
   const { state: s, columns, sql } = m
   const present = typesPresent(columns)
@@ -96,6 +119,7 @@ export function ColumnsPanel({ m }: { m: DataTabModel }) {
     <section className="tile col">
       <div className="th"><div><h2 className="tt">Columns</h2><p className="ts">{columns.length} column{columns.length === 1 ? '' : 's'}. Pick one to see its distribution and summary.</p></div></div>
       <div className="psearch">
+        <TablePicker m={m} />
         <input className="inp" type="search" aria-label="Search columns" placeholder="Search columns" value={s.profileQuery} onChange={(e) => setExplore({ profileQuery: e.target.value, profileShow: 40 })} />
         <TypeFilter label="Column type" value={active} total={columns.length} present={present} onChange={(id) => setExplore({ profileType: id as typeof active, profileShow: 40 })} />
       </div>

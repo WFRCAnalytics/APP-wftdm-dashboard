@@ -1,7 +1,6 @@
-// 065-chart-builder: the Explore builder (full-page panel). Top bar (scenarios, table, tabs) over the Data tab: Columns
+// 065-chart-builder: the Explore builder (full-page panel). Top bar (scenarios, tabs) over the Data tab: Columns
 // (summaries), the paged preview, and the Query box with the pinned My tables list. Chart tabs arrive in the next step.
 import { useState } from 'react'
-import { PillSelect } from '@/components/ui/pill-select'
 import { AssistantButton } from '@/layout/chat/chatLauncher'
 import { ChevronDown, Plus, Table2, Trash2, Upload, X } from 'lucide-react'
 import { defaultSpec } from '@/charts/builder/spec'
@@ -37,11 +36,6 @@ function TopBar({ m }: { m: DataTabModel }) {
         <span className="min-w-0 max-w-[170px] truncate font-medium">{label || 'Pick scenarios'}</span>
         <ChevronDown size={14} className="text-[var(--mute)]" aria-hidden="true" />
       </button>
-      <PillSelect label="Table" value={s.table} onChange={(v) => setExplore(resetQuery({ table: v }))} wide
-        options={[
-          ...m.tableOptions.filter((x) => x.missingIn.length === 0).map((x) => ({ value: `t:${x.name}`, label: x.name })),
-          ...s.mine.map((x) => ({ value: `m:${x.id}`, label: `My table · ${x.name}` })),
-        ]} />
       <div className="tabs" role="tablist" aria-label="Explore tabs">
         <button type="button" role="tab" className={`pill ${s.activeTab === 'data' ? 'on' : ''}`} aria-selected={s.activeTab === 'data'} onClick={() => setExplore({ activeTab: 'data' })}><Table2 size={15} aria-hidden="true" />Data</button>
         {s.charts.map((c) => (

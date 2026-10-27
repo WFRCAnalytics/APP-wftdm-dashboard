@@ -388,3 +388,8 @@
 .xb .tfc{font-family:var(--font-mono);font-size:11px;font-variant-numeric:tabular-nums;opacity:.6}
 .xb .tf.on .tyi{background:color-mix(in srgb,var(--brand-fg) 22%,transparent);color:var(--brand-fg)}
 .xb .tf .tyi{border-radius:50%}
+
+/* the table picker at the top of the Columns panel: the same look as the chart tab's data source select, full width */
+.xb .sel.tpick{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;min-width:0;height:36px;text-align:left;padding-right:10px;background-image:none}
+.xb .sel.tpick .mono{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}
+.xb .sel.tpick svg{flex:none;color:var(--mute)}
