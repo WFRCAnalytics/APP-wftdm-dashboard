@@ -5,8 +5,8 @@ All notable changes to the WFRC TDM Calibration Dashboard, rebuilt from the git 
 
 Notes on how to read it:
 
-- **Versions come from the git tags.** `v0.0.1`, `v0.0.2` and `v0.0.3` are the only tags; each section is dated by the
-  commit the tag points at. Everything after `v0.0.3` is listed under **Unreleased**.
+- **Versions come from the git tags.** `v0.0.1` to `v0.0.4` are the only tags; each section is dated by the
+  commit the tag points at. New work goes under **Unreleased** until it is tagged.
 - **This file was written afterwards.** The project was not versioned before `v0.0.1`, so that section covers the whole
   of the early history. It is split into dated stages so it stays readable. The stages are not releases.
 - Numbers in brackets such as `(030)` are the feature spec numbers under `specs/` and `project-docs/`. Short hashes point
@@ -15,9 +15,9 @@ Notes on how to read it:
 - The full per-feature design history, with root causes and verification numbers, is in
   `project-docs/IMPLEMENTATION-HISTORY.md`.
 
-## [Unreleased]
+## [0.0.4] - 2026-10-27
 
-Work after `v0.0.3`, merged to `main` on 2026-10-27 as `38c9f1e` (not yet tagged or pushed).
+The Explore chart builder, merged to `main` on 2026-10-27 as `38c9f1e`.
 
 ### Added
 
@@ -322,7 +322,7 @@ the history is grouped into stages by date.
   editor configs, and a reworked scenario publishing model with the JS, TS and React migration phases (`d1f9bd9`,
   `34032b4`, `c0de8a2`, `c7ae67d`).
 
-[Unreleased]: https://github.com/WFRCAnalytics/APP-wftdm-dashboard/compare/v0.0.3...HEAD
+[0.0.4]: https://github.com/WFRCAnalytics/APP-wftdm-dashboard/compare/v0.0.3...v0.0.4
 [0.0.3]: https://github.com/WFRCAnalytics/APP-wftdm-dashboard/compare/v0.0.2...v0.0.3
 [0.0.2]: https://github.com/WFRCAnalytics/APP-wftdm-dashboard/compare/v0.0.1...v0.0.2
 [0.0.1]: https://github.com/WFRCAnalytics/APP-wftdm-dashboard/commits/v0.0.1
