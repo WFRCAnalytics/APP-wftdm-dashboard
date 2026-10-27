@@ -72,6 +72,29 @@ test('a chart tab builds a bar chart from the shelves and exports its configurat
   expect(errors).toEqual([])
 })
 
+test('a chart tab can be renamed by double-click or F2', async ({ page }) => {
+  const errors: string[] = []
+  await openExplore(page, errors)
+  await expect(page.locator('.xb .tbl tbody tr').first()).toBeVisible({ timeout: 60_000 })
+  await page.getByRole('button', { name: 'Add chart tab' }).click()
+  await page.getByRole('tab', { name: 'Chart 1' }).dblclick()
+  await page.getByLabel('Rename chart tab').fill('Trips by hour')
+  await page.keyboard.press('Enter')
+  await expect(page.getByRole('tab', { name: 'Trips by hour' })).toBeVisible()
+  await expect(page.locator('.xb .cardhead .ci')).toContainText('Trips by hour')
+  // Escape cancels, an empty name keeps the old one
+  await page.getByRole('tab', { name: 'Trips by hour' }).focus()
+  await page.keyboard.press('F2')
+  await page.getByLabel('Rename chart tab').fill('Nope')
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('tab', { name: 'Trips by hour' })).toBeVisible()
+  await page.getByRole('tab', { name: 'Trips by hour' }).dblclick()
+  await page.getByLabel('Rename chart tab').fill('   ')
+  await page.keyboard.press('Enter')
+  await expect(page.getByRole('tab', { name: 'Trips by hour' })).toBeVisible()
+  expect(errors).toEqual([])
+})
+
 test.describe('DuckDB computes the chart data for every mark', () => {
   const place = async (page: Page, field: string, shelf: string) => {
     await page.locator('.xb .fchip', { hasText: field }).first().click()

@@ -1,6 +1,6 @@
 // 065-chart-builder: the Explore builder (full-page panel). Top bar (scenarios, tabs) over the Data tab: Columns
 // (summaries), the paged preview, and the Query box with the pinned My tables list. Chart tabs arrive in the next step.
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { AssistantButton } from '@/layout/chat/chatLauncher'
 import { ChevronDown, Plus, Table2, Trash2, Upload, X } from 'lucide-react'
 import { defaultSpec } from '@/charts/builder/spec'
@@ -13,7 +13,7 @@ import { QueryBox } from '@/explore/QueryBox'
 import { Btn, SearchPopover } from '@/explore/parts'
 import { dropMyTable } from '@/explore/sql/myTables'
 import { useDataTab, type DataTabModel } from '@/explore/useDataTab'
-import { resetQuery, setExplore } from '@/state/exploreState'
+import { resetQuery, setExplore, updateChart } from '@/state/exploreState'
 import type { PanelProps } from '@/panels/registry'
 import type { ExploreBuilderPanelConfig } from '@/layout/types'
 
@@ -40,7 +40,7 @@ function TopBar({ m }: { m: DataTabModel }) {
         <button type="button" role="tab" className={`pill ${s.activeTab === 'data' ? 'on' : ''}`} aria-selected={s.activeTab === 'data'} onClick={() => setExplore({ activeTab: 'data' })}><Table2 size={15} aria-hidden="true" />Data</button>
         {s.charts.map((c) => (
           <span key={c.id} className={`tabw ${s.activeTab === c.id ? 'on' : ''}`}>
-            <button type="button" role="tab" className="pill" aria-selected={s.activeTab === c.id} onClick={() => setExplore({ activeTab: c.id, notice: '', selectedField: null })}>{c.name}</button>
+            <ChartTabLabel id={c.id} name={c.name} selected={s.activeTab === c.id} />
             <button type="button" className="x" aria-label={`Close tab ${c.name}`} onClick={() => setExplore((st) => ({ charts: st.charts.filter((x) => x.id !== c.id), activeTab: st.activeTab === c.id ? 'data' : st.activeTab }))}><X size={12} aria-hidden="true" /></button>
           </span>
         ))}
@@ -90,6 +90,32 @@ function MyTables({ m }: { m: DataTabModel }) {
         ))}
       </div>
     </section>
+  )
+}
+
+/** A chart tab's label. Double-click it, or press F2 on the tab, to rename it; Enter or leaving the field saves, Escape cancels. */
+function ChartTabLabel({ id, name, selected }: { id: string; name: string; selected: boolean }) {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(name)
+  const input = useRef<HTMLInputElement>(null)
+  useEffect(() => { if (editing) { input.current?.focus(); input.current?.select() } }, [editing])
+  const start = () => { setDraft(name); setEditing(true) }
+  const finish = (save: boolean) => {
+    setEditing(false)
+    const next = draft.trim().slice(0, 40)
+    if (save && next && next !== name) updateChart(id, (t) => ({ ...t, name: next }))
+  }
+  if (editing) {
+    return (
+      <input ref={input} className="renm" aria-label="Rename chart tab" value={draft} maxLength={40} size={Math.max(6, draft.length + 1)}
+        onChange={(e) => setDraft(e.target.value)} onBlur={() => finish(true)}
+        onKeyDown={(e) => { if (e.key === 'Enter') finish(true); else if (e.key === 'Escape') finish(false) }} />
+    )
+  }
+  return (
+    <button type="button" role="tab" className="pill" aria-selected={selected} aria-keyshortcuts="F2"
+      onClick={() => setExplore({ activeTab: id, notice: '', selectedField: null })} onDoubleClick={start}
+      onKeyDown={(e) => { if (e.key === 'F2') { e.preventDefault(); start() } }}>{name}</button>
   )
 }
 
