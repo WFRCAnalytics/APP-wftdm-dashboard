@@ -371,3 +371,10 @@
 .xb .dlg .tbl th{background:color-mix(in srgb,var(--tc,var(--mute)) 8%,var(--surface))}
 .xb .dlg .tbl th.hsel{background:color-mix(in srgb,var(--tc,var(--mute)) 18%,var(--surface))}
 .xb .dlg .tbl td.hsel{background:color-mix(in srgb,var(--tc,var(--mute)) 10%,var(--surface))}
+/* the 6px margin lives outside the scroller, so scrolled columns cannot show in a gap beside the pinned first column */
+.xb .scroll{padding-left:0}
+.xb .gridwrap{padding-left:6px}
+.xb .gridwrap::before{left:6px}
+.xb .dlg.wide .gridwrap{padding-left:6px}
+/* no fade over the pinned first column: it already shows that the table is scrolled */
+.xb .gridwrap::before{display:none}
