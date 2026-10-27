@@ -30,6 +30,8 @@ export interface DataTabModel {
   ms: number | null
   counts: StepCounts
   ready: boolean
+  /** True while the shown result belongs to the current statement and succeeded, including while another page loads. */
+  settled: boolean
 }
 
 const applyOverrides = (cols: ColumnInfo[], o: Record<string, DataType>): ColumnInfo[] => cols.map((c) => ({ ...c, type: o[c.name] ?? c.type }))
@@ -88,7 +90,7 @@ export function useDataTab(): DataTabModel {
   const sql = isMine ? (mine ? `SELECT * FROM ${mine.name}` : '') : s.detached ? s.sql : plan ? buildSql(plan, s.model) : ''
 
   // The paged result.
-  const [result, setResult] = useState<{ status: RunStatus; res?: UserQueryResult; ms: number | null }>({ status: 'idle', ms: null })
+  const [result, setResult] = useState<{ status: RunStatus; res?: UserQueryResult; ms: number | null; forSql?: string }>({ status: 'idle', ms: null })
   const token = useRef(0)
   useEffect(() => {
     if (!sql) return
@@ -98,17 +100,20 @@ export function useDataTab(): DataTabModel {
     const h = setTimeout(() => {
       void runUserSql(sql, { page: s.page, pageSize: s.pageSize }).then((res) => {
         if (mine_ !== token.current) return
-        setResult({ status: res.outcome === 'ok' ? 'ok' : res.outcome, res, ms: Math.round(performance.now() - t0) })
+        setResult({ status: res.outcome === 'ok' ? 'ok' : res.outcome, res, ms: Math.round(performance.now() - t0), forSql: sql })
       })
     }, 120)
     return () => clearTimeout(h)
   }, [sql, s.page, s.pageSize, s.runNonce])
 
+  // The statement whose result is on screen. It stays the same while another page loads, and changes only with the statement.
+  const okSql = result.res?.outcome === 'ok' && result.forSql === sql ? sql : ''
+
   // The total row count, only when the SQL is allowed.
   const [total, setTotal] = useState<number | null>(null)
   useEffect(() => {
     setTotal(null)
-    if (!sql || result.status !== 'ok') return
+    if (!okSql) return
     let dead = false
     void runUserSql(`SELECT count(*) AS n FROM (\n${sql.replace(/[;\s]+$/, '')}\n) AS c`, { page: 0, pageSize: 1 }).then((r) => {
       if (!dead && r.outcome === 'ok') setTotal(Number(r.rows[0]?.[0] ?? 0))
@@ -116,13 +121,13 @@ export function useDataTab(): DataTabModel {
     return () => { dead = true }
     // only when the statement changes, not on every page turn
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sql, result.status === 'ok'])
+  }, [okSql])
 
   // Row counts after each builder step.
   const [counts, setCounts] = useState<StepCounts>({ joins: [] })
   useEffect(() => {
     setCounts({ joins: [] })
-    if (!plan || s.detached) return
+    if (!plan || s.detached || !okSql) return
     let dead = false
     const run = async (stage: SqlStage) => {
       const text = buildSql(plan, s.model, stage)
@@ -139,7 +144,10 @@ export function useDataTab(): DataTabModel {
       if (!dead) setCounts(next)
     })()
     return () => { dead = true }
-  }, [plan, s.model, s.detached])
+    // keyed on the statement whose result has landed (its views exist by then), not on the plan object or the page: another
+    // table's description arriving rebuilds the plan with the same SQL, and a page turn changes neither
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [okSql, s.detached])
 
   const res = result.res?.outcome === 'ok' ? result.res : undefined
   const columns = useMemo<ColumnInfo[]>(() => {
@@ -157,7 +165,7 @@ export function useDataTab(): DataTabModel {
         : failed && result.res && 'reason' in result.res ? result.res.reason : ''
   return {
     state: s, scenarioOptions, tableOptions, isMine, tables, plan, sql, columns, rows: res?.rows ?? [], hasMore: res?.hasMore ?? false,
-    total, status: result.status, message, ms: result.ms, counts, ready,
+    total, status: result.status, settled: !!okSql, message, ms: result.ms, counts, ready,
   }
 }
 

@@ -130,7 +130,7 @@ export function ColumnsPanel({ m }: { m: DataTabModel }) {
           <button type="button" className="more" onClick={() => setExplore({ profileShow: s.profileShow + 60 })}>Show {Math.min(60, matches.length - shown.length)} more of {matches.length - shown.length} left</button>
         )}
       </div>
-      {selected && m.status === 'ok' && <Detail sql={sql} col={selected} />}
+      {selected && m.settled && <Detail sql={sql} col={selected} />}
     </section>
   )
 }

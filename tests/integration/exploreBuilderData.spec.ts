@@ -28,6 +28,38 @@ test('Explore opens the builder, previews a table and summarises a column', asyn
   expect(errors).toEqual([])
 })
 
+test('turning the page leaves the column summary and the row count alone', async ({ page }) => {
+  const errors: string[] = []
+  await openExplore(page, errors)
+  await expect(page.locator('.xb .tbl tbody tr').first()).toBeVisible({ timeout: 60_000 })
+  await expect(page.locator('.xb .det .st').first()).toBeVisible({ timeout: 30_000 })
+  // the Table step's row count (the footer says "rows on this page", which is a different thing)
+  const stepCount = /\d[\d,]* rows(?! on this page)/
+  await expect(page.locator('.xb .qt')).toContainText(stepCount, { timeout: 30_000 })
+  // watch the summary card and the count while the page turns: neither may be removed, blanked or show its loading text
+  await page.evaluate(() => {
+    const w = window as unknown as { __flick: string[] }
+    w.__flick = []
+    const root = document.querySelector('.xb')!
+    new MutationObserver((recs) => {
+      for (const r of recs) {
+        r.removedNodes.forEach((n) => { if (n instanceof Element && (n.matches('.det') || n.querySelector('.det'))) w.__flick.push('summary removed') })
+      }
+      if (root.textContent?.includes('Summarising')) w.__flick.push('summarising')
+      const qt = document.querySelector('.xb .qt')?.textContent ?? ''
+      if (!/\d[\d,]* rows(?! on this page)/.test(qt)) w.__flick.push('count blanked')
+    }).observe(root, { childList: true, subtree: true, characterData: true })
+  })
+  const next = page.getByRole('button', { name: 'Next page' })
+  await expect(next).toBeEnabled()
+  const first = await page.locator('.xb .tbl tbody tr').first().innerText()
+  await next.click()
+  await expect(async () => expect(await page.locator('.xb .tbl tbody tr').first().innerText()).not.toBe(first)).toPass({ timeout: 15_000 })
+  await page.waitForTimeout(600)
+  expect(await page.evaluate(() => (window as unknown as { __flick: string[] }).__flick)).toEqual([])
+  expect(errors).toEqual([])
+})
+
 test('the SQL tab shows the builder query and Run works', async ({ page }) => {
   const errors: string[] = []
   await openExplore(page, errors)
