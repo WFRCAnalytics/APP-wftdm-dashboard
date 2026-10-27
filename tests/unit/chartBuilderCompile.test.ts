@@ -111,6 +111,40 @@ describe('axis labels', () => {
   })
 })
 
+describe('more marks and channels', () => {
+  it('fills a waffle with exactly 100 squares, split by share', () => {
+    const m = ok(build({ mark: 'waffle', enc: { color: { f: 'mode' }, size: { f: 'trips', agg: 'sum' } } }))
+    expect(m.panels[0].rects).toHaveLength(100)
+    expect(m.legend[0].items).toHaveLength(3)
+  })
+  it('refuses a waffle with more than 12 groups', () => {
+    const many = Array.from({ length: 13 }, (_, i) => ({ mode: `m${i}`, trips: 1, scenario: 'a', hour: 0, notes: '' }))
+    expect(build({ mark: 'waffle', enc: { color: { f: 'mode' }, size: { f: 'trips' } } }, many).problem).toContain('12 groups or fewer')
+  })
+  it('draws a tick per row, banded by the category', () => {
+    const m = ok(build({ mark: 'tick', enc: { x: { f: 'trips' }, y: { f: 'mode' } } }))
+    expect(m.panels[0].rects).toHaveLength(rows.length)
+    const one = ok(build({ mark: 'tick', enc: { x: { f: 'trips' } } }))
+    expect(one.panels[0].rects).toHaveLength(rows.length)
+  })
+  it('writes the aggregated number in each cell of a text table', () => {
+    const m = ok(build({ mark: 'text', enc: { x: { f: 'mode' }, y: { f: 'scenario' }, label: { f: 'trips', agg: 'sum' } } }))
+    expect(m.panels[0].rects).toHaveLength(6)
+    expect(m.panels[0].texts.some((t) => t.t === '46')).toBe(true)
+  })
+  it('splits a line by a detail field without adding a legend', () => {
+    const m = ok(build({ mark: 'line', enc: { x: { f: 'hour' }, y: { f: 'trips', agg: 'sum' }, detail: { f: 'mode' } } }))
+    expect(m.panels[0].paths.filter((p) => p.d && p.fill === 'none' && p.sw > 2)).toHaveLength(3)
+    expect(m.legend).toHaveLength(0)
+  })
+  it('fades scatter points by an opacity number and labels sparse points', () => {
+    const m = ok(build({ mark: 'scatter', enc: { x: { f: 'hour' }, y: { f: 'trips' }, opacity: { f: 'trips' }, label: { f: 'mode' } } }))
+    const ops = m.panels[0].paths.map((p) => p.op)
+    expect(Math.min(...ops)).toBeLessThan(Math.max(...ops))
+    expect(m.panels[0].texts.some((t) => t.t === 'Car')).toBe(true)
+  })
+})
+
 describe('data handling', () => {
   it('makes a panel per facet value', () => {
     const m = ok(build({ enc: { x: { f: 'mode' }, y: { f: 'trips', agg: 'sum' }, column: { f: 'scenario' } } }))

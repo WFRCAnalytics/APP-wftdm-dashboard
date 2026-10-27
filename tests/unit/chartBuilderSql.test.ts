@@ -35,6 +35,15 @@ describe('chartQuery: aggregated marks', () => {
     expect(norm(p.sql)).toContain('GROUP BY "mode"')
     expect(p.spec.enc.size?.agg).toBe('sum')
   })
+  it('groups a text table by both axes and a waffle like a pie; a detail field splits a line', () => {
+    const x = chartQuery(defaultSpec({ mark: 'text', enc: { x: { f: 'a' }, y: { f: 'b' }, label: { f: 'v', agg: 'mean' } } }), rel)
+    expect(norm(x.sql)).toContain('SELECT "a", "b", AVG(CAST("v" AS DOUBLE)) AS "v"')
+    expect(x.spec.enc.label?.agg).toBe('sum')
+    const w = chartQuery(defaultSpec({ mark: 'waffle', enc: { color: { f: 'mode' }, size: { f: 'trips', agg: 'sum' } } }), rel)
+    expect(norm(w.sql)).toContain('GROUP BY "mode"')
+    const l = chartQuery(defaultSpec({ mark: 'line', enc: { x: { f: 'a' }, y: { f: 'v', agg: 'sum' }, detail: { f: 'g' } } }), rel)
+    expect(norm(l.sql)).toContain('GROUP BY "a", "g"')
+  })
   it('caps the result', () => {
     expect(chartQuery(defaultSpec({ enc: { x: { f: 'mode' }, y: { f: 'trips' } } }), rel).sql).toContain('LIMIT 50001')
   })

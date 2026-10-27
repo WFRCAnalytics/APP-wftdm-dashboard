@@ -25,7 +25,7 @@ function aggExpr(f: FieldDef, fallback = 'sum'): string {
   return fn === 'count' ? `COUNT(${q(f.f)})` : `${AGG_SQL[fn]}(CAST(${q(f.f)} AS DOUBLE))`
 }
 
-const SERIES: Channel[] = ['color', 'pattern', 'dash', 'shape']
+const SERIES: Channel[] = ['color', 'pattern', 'dash', 'shape', 'detail']
 
 /** Fields that split the data into series and panels (the compiler's grouping keys), in a stable order. */
 function seriesFields(spec: ChartSpec): string[] {
@@ -70,9 +70,13 @@ export function chartQuery(spec: ChartSpec, relSql: string): ChartQuery {
     const v = spec.enc.color!
     return { mode: 'aggregated', sql: grouped([spec.enc.x!.f, spec.enc.y!.f, ...fac], aggExpr(v), v.f), spec: resetAgg(spec, 'color') }
   }
-  if (mark === 'pie') {
+  if (mark === 'pie' || mark === 'waffle') {
     const v = spec.enc.size!
     return { mode: 'aggregated', sql: grouped([...ser, ...fac], aggExpr(v), v.f), spec: resetAgg(spec, 'size') }
+  }
+  if (mark === 'text') {
+    const v = spec.enc.label!
+    return { mode: 'aggregated', sql: grouped([spec.enc.x!.f, spec.enc.y!.f, ...fac], aggExpr(v), v.f), spec: resetAgg(spec, 'label') }
   }
   if (mark === 'histogram') {
     const x = q(spec.enc.x!.f)

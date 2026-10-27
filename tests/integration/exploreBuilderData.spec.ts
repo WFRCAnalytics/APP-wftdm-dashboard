@@ -111,6 +111,50 @@ test.describe('DuckDB computes the chart data for every mark', () => {
     await drawn(page)
     expect(errors).toEqual([])
   })
+  test('waffle fills 100 squares', async ({ page }) => {
+    const errors: string[] = []
+    await setup(page, errors, 'Waffle')
+    await place(page, 'scenario', 'Colour')
+    await place(page, 'auPkTotal', 'Share of squares')
+    await drawn(page)
+    await expect(page.locator('.xb svg.plot rect[data-t]')).toHaveCount(100)
+    expect(errors).toEqual([])
+  })
+  test('tick strip takes a number and an optional category', async ({ page }) => {
+    const errors: string[] = []
+    await setup(page, errors, 'Tick strip')
+    await place(page, 'auPkTotal', 'X axis')
+    await place(page, 'scenario', 'Y axis')
+    await drawn(page)
+    expect(errors).toEqual([])
+  })
+  test('text table writes the aggregate in each cell', async ({ page }) => {
+    const errors: string[] = []
+    await openExplore(page, errors)
+    await expect(page.locator('.xb .tbl tbody tr').first()).toBeVisible({ timeout: 60_000 })
+    await page.locator('.xb .tpick').click()
+    await page.getByRole('dialog', { name: 'Choose a table' }).getByLabel('Search').fill('purpose_mode_flow')
+    await page.getByRole('option', { name: 'purpose_mode_flow', exact: true }).click()
+    await expect(page.locator('.xb .prow2', { hasText: 'major_trip_mode' })).toBeVisible({ timeout: 30_000 })
+    await page.getByRole('button', { name: 'Add chart tab' }).click()
+    await page.locator('.xb .mk', { hasText: 'Text table' }).click()
+    await place(page, 'primary_purpose', 'X axis')
+    await place(page, 'major_trip_mode', 'Y axis')
+    await place(page, 'trips', 'Cell text')
+    await drawn(page)
+    expect(errors).toEqual([])
+  })
+  test('scatter accepts opacity, detail and label', async ({ page }) => {
+    const errors: string[] = []
+    await setup(page, errors, 'Scatter')
+    await place(page, 'auPkTotal', 'X axis')
+    await place(page, 'trPkTotal', 'Y axis')
+    await place(page, 'trPkTotal', 'Opacity')
+    await place(page, 'scenario', 'Detail')
+    await place(page, 'scenario', 'Label')
+    await drawn(page)
+    expect(errors).toEqual([])
+  })
   test('pie groups in DuckDB', async ({ page }) => {
     const errors: string[] = []
     await setup(page, errors, 'Pie')

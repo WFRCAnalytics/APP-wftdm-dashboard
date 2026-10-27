@@ -207,7 +207,6 @@ function ChartCard({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: Cha
             </div>
           )
         })}
-        <span className="sp tp" data-tip="Opacity, order, detail and text arrive with the full build" style={{ opacity: 0.6 }}><span className="spl">More channels</span></span>
       </div>
       <div className="cardbody" data-testid="chart-export-card">
         {txt('title').t && <h3 className={`tb ${cls('title')}`}>{txt('title').t}</h3>}

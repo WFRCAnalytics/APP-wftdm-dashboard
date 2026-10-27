@@ -129,6 +129,7 @@ export function buildChart(input: BuildInput): ChartModel {
   rows = rows.filter((r) => used.every((f) => r[f] !== null && r[f] !== undefined))
   if (!rows.length) return { problem: 'No rows match this data and filter.' }
   if (mark === 'pie' && uniqSorted(rows, enc.color!.f).length > 12) return { problem: `Pie and donut charts need 12 slices or fewer. ${enc.color!.f} has ${uniqSorted(rows, enc.color!.f).length}.` }
+  if (mark === 'waffle' && uniqSorted(rows, enc.color!.f).length > 12) return { problem: `Waffle charts need 12 groups or fewer. ${enc.color!.f} has ${uniqSorted(rows, enc.color!.f).length}.` }
 
   const rf = enc.row?.f, cf = enc.column?.f
   const rv: any[] = rf ? uniqSorted(rows, rf).slice(0, 6) : [null], cv: any[] = cf ? uniqSorted(rows, cf).slice(0, 6) : [null]
@@ -144,6 +145,9 @@ export function buildChart(input: BuildInput): ChartModel {
     const e = enc[ch]
     if (e && !(mark === 'heatmap' && ch === 'color') && !serF.includes(e.f)) serF.push(e.f)
   }
+  // a detail field splits the data into more series without giving them a look of their own
+  const nStyle = serF.length
+  if (enc.detail && !serF.includes(enc.detail.f)) serF.push(enc.detail.f)
   const dom: Record<string, any[]> = {}
   let limitedSeries = false
   for (const f of serF) {
@@ -161,13 +165,13 @@ export function buildChart(input: BuildInput): ChartModel {
   const raw: { r: Row; ci: number; pi: number; di: number; si: number }[] = []
   for (const r of combos) {
     const ci = ix('color', r), pi = ix('pattern', r), di = ix('dash', r), si = ix('shape', r)
-    if ((enc.color && mark !== 'heatmap' && ci < 0) || (enc.pattern && pi < 0) || (enc.dash && di < 0) || (enc.shape && si < 0)) continue
+    if ((enc.color && mark !== 'heatmap' && ci < 0) || (enc.pattern && pi < 0) || (enc.dash && di < 0) || (enc.shape && si < 0) || (enc.detail && !dom[enc.detail.f].includes(r[enc.detail.f]))) continue
     raw.push({ r, ci, pi, di: Math.max(0, di), si: Math.max(0, si) })
   }
   raw.sort((a, b) => a.ci - b.ci || a.pi - b.pi || a.di - b.di || a.si - b.si)
   if (!raw.length) raw.push({ r: rows[0], ci: -1, pi: -1, di: 0, si: 0 })
   const series: Series[] = raw.map((q, i) => {
-    const color = colorField ? colorFor(colorField, q.r[colorField], q.ci) : serF.length ? T.mix(T.surface, T.ink, 0.55) : T.cat(0)
+    const color = colorField ? colorFor(colorField, q.r[colorField], q.ci) : nStyle ? T.mix(T.surface, T.ink, 0.55) : T.cat(0)
     const has: Record<string, 1> = {}
     for (const f of serF) has[`${f}=${q.r[f]}`] = 1
     const s: Series = { key: serF.length ? skey(q.r) : '', label: serF.map((f) => q.r[f]).join(' · '), color, fill: color, pat: q.pi >= 0, di: q.di, si: q.si, has, r: q.r }
@@ -337,11 +341,12 @@ export function buildChart(input: BuildInput): ChartModel {
       refLine(pn, bx, ax.sy)
     }
   } else if (mark === 'scatter') {
-    const xf = enc.x!.f, yf = enc.y!.f, szf = enc.size?.f
-    let xl = Infinity, xh = -Infinity, yl = Infinity, yh = -Infinity, sl = Infinity, sh = -Infinity
+    const xf = enc.x!.f, yf = enc.y!.f, szf = enc.size?.f, opf = enc.opacity?.f, lbf = enc.label?.f
+    let xl = Infinity, xh = -Infinity, yl = Infinity, yh = -Infinity, sl = Infinity, sh = -Infinity, ol = Infinity, oh = -Infinity
     for (const r of rows) {
       xl = Math.min(xl, r[xf]); xh = Math.max(xh, r[xf]); yl = Math.min(yl, r[yf]); yh = Math.max(yh, r[yf])
       if (szf) { sl = Math.min(sl, r[szf]); sh = Math.max(sh, r[szf]) }
+      if (opf) { ol = Math.min(ol, r[opf]); oh = Math.max(oh, r[opf]) }
     }
     if (spec.zero) { xl = Math.min(0, xl); yl = Math.min(0, yl) }
     yh = refMax(yh)
@@ -355,7 +360,12 @@ export function buildChart(input: BuildInput): ChartModel {
         const g = glyph(s.si % 5, nx.sx(r[xf]), ax.sy(r[yf]), rr)
         const pairs: [string, string][] = [[xf, fmtExact(r[xf])], [yf, fmtExact(r[yf])]]
         if (szf) pairs.push([szf, fmtExact(r[szf])])
-        pa(pn, g.d, g.line ? 'none' : s.color, g.line ? s.color : T.surface, g.line ? 2 : 1.4, '', op(s), tip(s.label || 'Point', pairs))
+        if (opf) pairs.push([opf, fmtExact(r[opf])])
+        if (lbf) pairs.push([lbf, fmtExact(r[lbf])])
+        const po = opf ? 0.15 + 0.85 * ((r[opf] - ol) / (oh - ol || 1)) : 1
+        pa(pn, g.d, g.line ? 'none' : s.color, g.line ? s.color : T.surface, g.line ? 2 : 1.4, '', op(s) * po, tip(s.label || 'Point', pairs))
+        // labels stay readable only on a sparse chart: past 60 points the field shows in the tooltip alone
+        if (lbf && pn.prows.length / stride <= 60) { const t = String(r[lbf]); tx(pn, nx.sx(r[xf]) + rr + 3, ax.sy(r[yf]) + 3.5, t.length > 18 ? `${t.slice(0, 17)}…` : t, 'start', T.fs, '', T.ink) }
       })
       refLine(pn, bx, ax.sy)
     }
@@ -479,6 +489,65 @@ export function buildChart(input: BuildInput): ChartModel {
         a = a1
       })
       if (spec.donut) { tx(pn, cx, cy + 2, fmtCompact(tot), 'middle', 20, '', T.ink); tx(pn, cx, cy + 20, sz, 'middle') }
+    }
+  } else if (mark === 'waffle') {
+    // 100 squares, one per percent of the total; groups get whole squares by largest remainder so the grid always fills
+    const sz = enc.size!.f, agg = enc.size!.agg ?? 'sum', head = small ? 20 : 0
+    for (const pn of panels) {
+      const vals = series.map((s) => Math.max(0, aggregate(pn.prows.filter((r) => skey(r) === s.key).map((r) => r[sz] as number), agg)))
+      const tot = vals.reduce((a, b) => a + b, 0) || 1
+      const exact = vals.map((v) => (v / tot) * 100), count = exact.map((e) => Math.floor(e))
+      let left = 100 - count.reduce((a, b) => a + b, 0)
+      exact.map((e, i) => [e - Math.floor(e), i] as [number, number]).sort((a, b) => b[0] - a[0]).forEach(([, i]) => { if (left > 0 && vals[i] > 0) { count[i]++; left-- } })
+      const side = Math.max(60, Math.min(pw - 20, ph - head - 36)), cell = side / 10, x0 = (pw - side) / 2, y0 = head + 6
+      let k = 0
+      series.forEach((s, i) => {
+        for (let n = 0; n < count[i]; n++, k++) {
+          const col = Math.floor(k / 10), row = k % 10
+          rect(pn, x0 + col * cell + 1.5, y0 + side - (row + 1) * cell + 1.5, cell - 3, cell - 3, s, tip(s.label || 'Group', [[sz, fmtExact(vals[i])], ['share', `${Math.round((vals[i] / tot) * 1000) / 10}%`]]), 2)
+        }
+      })
+      tx(pn, pw / 2, y0 + side + 18, 'Each square is 1% of the total', 'middle')
+    }
+  } else if (mark === 'tick') {
+    const xf = enc.x!.f, yf = enc.y?.f, cats = yf ? uniqSorted(rows, yf) : [null]
+    let lo = Infinity, hi = -Infinity
+    for (const r of rows) { lo = Math.min(lo, r[xf]); hi = Math.max(hi, r[xf]) }
+    const lm = yf ? Math.min(150, Math.max(46, Math.max(...cats.map((c) => String(c).length)) * 6.4 + 14)) : 20
+    for (const pn of panels) {
+      const bx = frame(lm), nx = xNum(pn, bx, lo, hi), band = (bx.y1 - bx.y0) / cats.length, h = Math.min(band * 0.7, 28)
+      cats.forEach((c, j) => {
+        const cy = bx.y0 + band * (j + 0.5)
+        if (spec.grid) ln(pn, bx.x0, cy, bx.x1, cy, T.grid, 1)
+        if (yf) tx(pn, bx.x0 - 8, cy + 4, String(c).length > 20 ? `${String(c).slice(0, 19)}…` : String(c), 'end')
+      })
+      const stride = Math.max(1, Math.ceil(pn.prows.length / 3000))
+      pn.prows.forEach((r, i) => {
+        if (i % stride) return
+        const s = series.find((q) => q.key === skey(r)) ?? series[0], j = yf ? cats.indexOf(r[yf]) : 0
+        if (j < 0) return
+        const cy = bx.y0 + band * (j + 0.5), x = nx.sx(r[xf])
+        pn.rects.push({ x: r1(x - 1.25), y: r1(cy - h / 2), w: 2.5, h: r1(h), rx: 1.25, fill: s.color, stroke: 'none', op: op(s) * 0.7, tip: tip(yf ? String(r[yf]) : xf, [[xf, fmtExact(r[xf])]]) })
+      })
+    }
+  } else if (mark === 'text') {
+    const xf = enc.x!.f, yf = enc.y!.f, vf = enc.label!.f, agg = enc.label!.agg ?? 'sum'
+    const xc2 = uniqSorted(rows, xf), yc2 = uniqSorted(rows, yf)
+    const lm = Math.min(150, Math.max(46, Math.max(...yc2.map((y) => String(y).length)) * 6.4 + 14))
+    for (const pn of panels) {
+      const cells = new Map<string, number[]>()
+      for (const r of pn.prows) { const k = `${r[xf]}\u0002${r[yf]}`; let a = cells.get(k); if (!a) { a = []; cells.set(k, a) } a.push(r[vf]) }
+      const bx = frame(lm), sx = (bx.x1 - bx.x0) / xc2.length, sy2 = (bx.y1 - bx.y0) / yc2.length
+      yc2.forEach((y, j) => { const s = String(y); tx(pn, bx.x0 - 8, bx.y0 + sy2 * (j + 0.5) + 4, s.length > 20 ? `${s.slice(0, 19)}…` : s, 'end') })
+      xBand(pn, bx, xc2)
+      if (spec.grid) yc2.forEach((_y, j) => ln(pn, bx.x0, bx.y0 + sy2 * (j + 1), bx.x1, bx.y0 + sy2 * (j + 1), T.grid, 1))
+      xc2.forEach((x, i) => yc2.forEach((y, j) => {
+        const a = cells.get(`${x}\u0002${y}`)
+        if (!a) return
+        const v = aggregate(a, agg), cx = bx.x0 + sx * i, cy = bx.y0 + sy2 * j
+        pn.rects.push({ x: r1(cx + 1), y: r1(cy + 1), w: r1(sx - 2), h: r1(sy2 - 2), rx: 4, fill: 'transparent', stroke: 'none', op: 1, tip: tip(`${x} · ${y}`, [[vf, fmtExact(v)]]) })
+        if (sy2 >= 14) { const t = fmtExact(v); tx(pn, cx + sx / 2, cy + sy2 / 2 + 4, t.length * 6.2 > sx - 4 ? fmtCompact(v) : t, 'middle', T.fs, '', T.ink) }
+      }))
     }
   }
 

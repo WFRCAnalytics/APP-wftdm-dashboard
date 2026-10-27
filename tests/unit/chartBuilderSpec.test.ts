@@ -56,6 +56,11 @@ describe('suggest', () => {
     expect(s.byMark.pie.viable).toBe(false)
     expect(s.byMark.pie.reason).toContain('12 or fewer')
   })
+  it('offers a text table for two categories and a number, and a tick strip for one number', () => {
+    expect(fit({ x: { f: 'mode' }, y: { f: 'scenario' }, label: { f: 'trips' } }).byMark.text.viable).toBe(true)
+    expect(fit({ x: { f: 'trips' } }).byMark.tick.viable).toBe(true)
+    expect(fit({ x: { f: 'mode' } }).byMark.tick.viable).toBe(false)
+  })
   it('needs a number for a histogram', () => {
     expect(fit({ x: { f: 'mode' } }).byMark.histogram.viable).toBe(false)
   })

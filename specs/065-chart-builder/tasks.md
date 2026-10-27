@@ -251,6 +251,8 @@ These tasks supersede or extend the ones above where they overlap. Build order: 
 
 Shipped: chart spec and channel rules (`src/charts/builder/spec.ts`), suggestions (`rules.ts`), the compiler for all eight v1 marks with series, dash, hatch, facets and legends (`compile.ts`), portable configuration with validation (`spec.ts` toConfig/fromConfig), chart tabs with fields panel, one-row shelves, drag and keyboard placement, Chart/Style/Axes/Filter rail, tooltip through `services/tooltip.ts`, export (PNG, SVG, CSV, configuration JSON) and import, with unit and Playwright tests. This covers the intent of T009-T010, T038-T042, T043-T049, T052-T063 for the Explore builder.
 
+Added after v1 (2026-10-27): three more marks (tick strip, text table, waffle) and three more channels (opacity and label on scatter, detail on line, area and scatter). Still "Coming soon": density, rule, treemap, sunburst, radar, sankey, chord, map, trail; and the order channel.
+
 Known deviations from the plan, to finish later:
 - Aggregation, binning, box statistics and the chart filter now run in DuckDB (`specToSql.ts`); scatter takes a repeatable 5,000-row sample. Results are capped at 50,000 rows.
 - The chart core draws its own SVG instead of Observable Plot (Plot has no dash channel, no hatch fills and no pie); this matches how the radar and pie panels are built.
