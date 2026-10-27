@@ -133,7 +133,8 @@ function Builder({ m, openPicker }: { m: DataTabModel; openPicker(kind: 'cols' |
   const s = m.state
   const model = s.model
   const plan = m.plan
-  const [openStep, setOpenStep] = useState('table')
+  const openStep = s.openStep
+  const setOpenStep = (next: string | ((o: string) => string)) => setExplore((st) => ({ openStep: typeof next === 'function' ? next(st.openStep) : next }))
   const toggle = (id: string) => () => setOpenStep((o) => (o === id ? '' : id))
   const tableOpts = m.tableOptions.filter((t) => t.missingIn.length === 0)
   const candidates: { label: string; table: string; model: Partial<QueryModel> }[] = [

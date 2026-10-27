@@ -35,6 +35,8 @@ export interface ExploreState {
   /** The hand-edited SQL, used while detached. */
   sql: string
   queryTab: 'builder' | 'sql'
+  /** The open step of the query builder (an accordion): table, joinN, addjoin, filter, summary or cols; empty when all are shut. */
+  openStep: string
   page: number
   pageSize: number
   typeOverride: Record<string, DataType>
@@ -61,7 +63,7 @@ export interface ExploreState {
 }
 
 const initial = (): ExploreState => ({
-  scenarios: [], table: '', model: emptyModel(), detached: false, sql: '', queryTab: 'builder', page: 0, pageSize: 12,
+  scenarios: [], table: '', model: emptyModel(), detached: false, sql: '', queryTab: 'builder', openStep: 'table', page: 0, pageSize: 12,
   typeOverride: {}, profileCol: null, profileQuery: '', profileType: 'all', profileShow: 40, mine: [], nextId: 1, runNonce: 0,
   charts: [], activeTab: 'data', railTab: 'chart', selectedField: null, fieldQuery: '', fieldType: 'all', fieldShow: 60, fieldOpen: {}, notice: '', noticeBad: false,
 })

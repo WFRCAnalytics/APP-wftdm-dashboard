@@ -146,3 +146,31 @@ test('a category filter offers its values and the table picks its columns, both 
   await expect(page.locator('.xb .qt')).toContainText(`${heads - 1} of ${heads} columns`)
   expect(errors).toEqual([])
 })
+
+test('the table sorts and filters through the same query the builder uses', async ({ page }) => {
+  const errors: string[] = []
+  await openExplore(page, errors)
+  await expect(page.locator('.xb .tbl tbody tr').first()).toBeVisible({ timeout: 60_000 })
+  // sort from a header menu: arrow on the column, summary in the builder, ORDER BY in the SQL
+  const head = page.locator('.xb .tbl th').nth(2)
+  const name = (await head.innerText()).trim()
+  await head.hover()
+  await head.getByRole('button', { name: /Sort or filter/ }).click()
+  await page.getByRole('menuitem', { name: 'Sort descending' }).click()
+  await expect(head).toHaveAttribute('aria-sort', 'descending')
+  await expect(page.locator('.xb .qt')).toContainText(`sorted by ${name}`)
+  // filter from a cell: a chip appears, the Filter step shows it and the row count drops
+  const cell = page.locator('.xb .tbl tbody tr').first().locator('td').first()
+  await cell.hover()
+  await cell.getByRole('button').click()
+  await expect(page.locator('.xb .chips2 .fchip')).toHaveCount(1)
+  await expect(page.locator('.xb .chips2')).toContainText('scenario is')
+  await expect(page.locator('.xb .qt')).toContainText('25 rows')
+  // removing the chip removes the filter
+  await page.getByRole('button', { name: 'Remove filter scenario' }).click()
+  await expect(page.locator('.xb .chips2 .fchip')).toHaveCount(0)
+  await page.getByRole('button', { name: 'SQL', exact: true }).click()
+  await expect(page.locator('.xb .edc pre')).toContainText('ORDER BY')
+  await expect(page.locator('.xb .edc pre')).not.toContainText('WHERE')
+  expect(errors).toEqual([])
+})

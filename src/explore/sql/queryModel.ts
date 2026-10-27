@@ -40,6 +40,24 @@ export const parseList = (val: string): string[] => {
 }
 export const listVal = (items: string[]): string => (items.length ? JSON.stringify(items) : '')
 
+// Edits the table makes to the query. Pure patches over the model, so the table, the builder and the SQL stay one thing.
+
+/** Sort by a column, or clear the sort when `dir` is null. */
+export function sortPatch(col: string, dir: 'asc' | 'desc' | null): Pick<QueryModel, 'order' | 'dir'> | { order: '' } {
+  return dir === null ? { order: '' } : { order: col, dir }
+}
+
+/** The filters with one more `col op val`; the same filter twice is added once. */
+export function withFilter(where: Filter[], f: Filter): Filter[] {
+  return where.some((w) => w.col === f.col && w.op === f.op && w.val === f.val) ? where : [...where, f]
+}
+
+/** A short phrase for a filter, e.g. `mode is any of Car, Bus`, for the chips above the table. */
+export function describeFilter(w: Filter, type: DataType): string {
+  const val = isListOp(w.op) ? parseList(w.val).join(', ') : w.val
+  return `${w.col} ${opLabel(w.op, type)} ${val || '…'}`
+}
+
 /** Toggle one column in the chosen output columns. An empty list means every column, so the first uncheck starts from all. */
 export function toggleSelect(select: string[], all: string[], name: string): string[] {
   const on = select.length ? select : all

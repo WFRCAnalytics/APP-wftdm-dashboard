@@ -344,3 +344,22 @@
 .xb .frow.fl>input.mini{flex:1.4 1 0;width:auto;max-width:none;height:28px}
 .xb .mini.vpick{text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;color:var(--ink)}
 .xb .frow.fl>button.mini{flex:1.4 1 0;width:auto;max-width:none;height:28px}
+.xb .hcell{display:inline-flex;align-items:center;gap:2px}
+.xb .hmenu{display:grid;place-items:center;width:20px;height:20px;border:0;border-radius:6px;background:none;color:var(--mute);opacity:0;transition:opacity .12s}
+.xb .tbl th:hover .hmenu,.xb .hmenu:focus-visible,.xb .hmenu[aria-expanded="true"],.xb .hmenu.on{opacity:1}
+.xb .hmenu:hover{background:var(--track);color:var(--ink)}
+.xb .chips2{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:8px 18px 0;flex:none}
+.xb .fchip{display:inline-flex;align-items:center;border:1px solid var(--line);background:var(--tile-hi);border-radius:999px;font-size:12.5px;max-width:100%}
+.xb .fchip .fc{border:0;background:none;padding:3px 4px 3px 10px;border-radius:999px 0 0 999px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:360px}
+.xb .fchip .fc:hover{background:var(--track)}
+.xb .fchip .fx{display:grid;place-items:center;width:22px;height:22px;border:0;background:none;color:var(--mute);border-radius:0 999px 999px 0}
+.xb .fchip .fx:hover{background:var(--track);color:var(--ink)}
+.xb .fchip.more{padding:3px 10px;color:var(--mute)}
+.xb .fnote{color:var(--mute);font-size:12.5px}
+.xb .tbl td.qf{padding-right:30px}
+.xb .tbl td .cf{position:absolute;right:4px;top:50%;transform:translateY(-50%);display:grid;place-items:center;width:20px;height:20px;border:0;border-radius:6px;background:var(--tile-hi);color:var(--mute);opacity:0;box-shadow:0 0 0 1px var(--line)}
+.xb .tbl td:hover .cf,.xb .tbl td .cf:focus-visible{opacity:1}
+.xb .tbl td .cf:hover{color:var(--ink);background:var(--track)}
+.xb .tbl td.qf:not(:first-child){position:relative}
+.xb .tbl td.qf:first-child{padding-right:30px}
+.xb .sacc .sn{white-space:nowrap;flex:none}

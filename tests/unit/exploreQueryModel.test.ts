@@ -113,3 +113,20 @@ describe('filters by column type', () => {
     expect(toggleSelect(['a'], all, 'a')).toEqual(['a'])
   })
 })
+
+describe('edits the table makes to the query', () => {
+  it('sorts by a column and clears the sort', async () => {
+    const { sortPatch } = await import('../../src/explore/sql/queryModel.ts')
+    expect(sortPatch('mode', 'asc')).toEqual({ order: 'mode', dir: 'asc' })
+    expect(sortPatch('mode', null)).toEqual({ order: '' })
+  })
+  it('adds a filter once and describes it for a chip', async () => {
+    const { withFilter, describeFilter, listVal } = await import('../../src/explore/sql/queryModel.ts')
+    const f = { col: 'mode', op: '=' as const, val: 'Car' }
+    expect(withFilter(withFilter([], f), f)).toEqual([f])
+    expect(withFilter([f], { ...f, op: '≠' as const })).toHaveLength(2)
+    expect(describeFilter(f, 'category')).toBe('mode is Car')
+    expect(describeFilter({ col: 'mode', op: 'in', val: listVal(['Car', 'Bus']) }, 'category')).toBe('mode is any of Car, Bus')
+    expect(describeFilter({ col: 'trips', op: '>', val: '' }, 'integer')).toBe('trips greater than …')
+  })
+})
