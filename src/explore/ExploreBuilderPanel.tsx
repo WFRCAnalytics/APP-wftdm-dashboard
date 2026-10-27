@@ -1,6 +1,7 @@
 // 065-chart-builder: the Explore builder (full-page panel). Top bar (scenarios, table, tabs) over the Data tab: Columns
 // (summaries), the paged preview, and the Query box with the pinned My tables list. Chart tabs arrive in the next step.
 import { useState } from 'react'
+import { PillSelect } from '@/components/ui/pill-select'
 import { AssistantButton } from '@/layout/chat/chatLauncher'
 import { ChevronDown, Plus, Table2, Trash2, Upload, X } from 'lucide-react'
 import { defaultSpec } from '@/charts/builder/spec'
@@ -10,7 +11,7 @@ import '@/explore/explore.css'
 import { ColumnsPanel } from '@/explore/ColumnsPanel'
 import { PreviewTable } from '@/explore/PreviewTable'
 import { QueryBox } from '@/explore/QueryBox'
-import { Btn, SearchPopover, XSelect } from '@/explore/parts'
+import { Btn, SearchPopover } from '@/explore/parts'
 import { dropMyTable } from '@/explore/sql/myTables'
 import { useDataTab, type DataTabModel } from '@/explore/useDataTab'
 import { resetQuery, setExplore } from '@/state/exploreState'
@@ -18,6 +19,9 @@ import type { PanelProps } from '@/panels/registry'
 import type { ExploreBuilderPanelConfig } from '@/layout/types'
 
 const dotColor = (i: number) => `var(--chart-${(i % 8) + 1})`
+
+// The same pill the control bar's Scenarios chip uses, so the toolbar's buttons match the other pages.
+const CHIP = 'inline-flex h-[38px] min-w-0 shrink-0 items-center gap-2 rounded-full border border-[var(--glass-line)] bg-[var(--tile-hi)] pl-[12px] pr-[10px] font-body text-sm text-[var(--ink)] shadow-[inset_0_1px_0_var(--hi)] hover:bg-[color-mix(in_srgb,var(--ink)_6%,var(--tile-hi))] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-text)]'
 
 function TopBar({ m }: { m: DataTabModel }) {
   const s = m.state
@@ -28,20 +32,16 @@ function TopBar({ m }: { m: DataTabModel }) {
   const apply = (scenarios: string[]) => setExplore((st) => ({ scenarios, ...resetQuery({ table: st.table.startsWith('m:') ? st.table : '' }) }))
   return (
     <header className="top">
-      <div className="grp">
-        <span className="lab">Scenarios</span>
-        <Btn aria-haspopup="dialog" aria-expanded={!!rect} onClick={(e) => setRect(e.currentTarget.getBoundingClientRect())}>
-          <span className="dots" aria-hidden="true">{s.scenarios.slice(0, 5).map((n) => <i key={n} style={{ background: dotColor(names.indexOf(n)) }} />)}</span>
-          {label || 'Pick scenarios'}<ChevronDown size={12} aria-hidden="true" />
-        </Btn>
-      </div>
-      <label className="grp">
-        <span className="lab">Table</span>
-        <XSelect className="sel" aria-label="Table to browse" value={s.table} onChange={(e) => setExplore(resetQuery({ table: e.target.value }))}>
-          {m.tableOptions.map((t) => <option key={t.name} value={`t:${t.name}`} disabled={t.missingIn.length > 0}>{t.name}{t.missingIn.length ? ` (missing in ${t.missingIn.join(', ')})` : ''}</option>)}
-          {s.mine.map((t) => <option key={t.id} value={`m:${t.id}`}>My table · {t.name}</option>)}
-        </XSelect>
-      </label>
+      <button type="button" className={CHIP} aria-label="Scenarios" aria-haspopup="dialog" aria-expanded={!!rect} onClick={(e) => setRect(e.currentTarget.getBoundingClientRect())}>
+        <span className="dots" aria-hidden="true">{s.scenarios.slice(0, 5).map((n) => <i key={n} style={{ background: dotColor(names.indexOf(n)) }} />)}</span>
+        <span className="min-w-0 max-w-[170px] truncate font-medium">{label || 'Pick scenarios'}</span>
+        <ChevronDown size={14} className="text-[var(--mute)]" aria-hidden="true" />
+      </button>
+      <PillSelect label="Table" value={s.table} onChange={(v) => setExplore(resetQuery({ table: v }))} wide
+        options={[
+          ...m.tableOptions.filter((x) => x.missingIn.length === 0).map((x) => ({ value: `t:${x.name}`, label: x.name })),
+          ...s.mine.map((x) => ({ value: `m:${x.id}`, label: `My table · ${x.name}` })),
+        ]} />
       <div className="tabs" role="tablist" aria-label="Explore tabs">
         <button type="button" role="tab" className={`pill ${s.activeTab === 'data' ? 'on' : ''}`} aria-selected={s.activeTab === 'data'} onClick={() => setExplore({ activeTab: 'data' })}><Table2 size={15} aria-hidden="true" />Data</button>
         {s.charts.map((c) => (
@@ -56,7 +56,7 @@ function TopBar({ m }: { m: DataTabModel }) {
           return { charts: [...st.charts, { id, name: `Chart ${st.charts.length + 1}`, source, spec: defaultSpec() }], activeTab: id, nextId: st.nextId + 1, notice: '', selectedField: null }
         })}><Plus size={15} aria-hidden="true" /></button>
       </div>
-      <div className="grp end"><Btn onClick={() => setImporting(true)}><Upload size={15} aria-hidden="true" />Import</Btn></div>
+      <button type="button" className={CHIP} onClick={() => setImporting(true)}><Upload size={15} aria-hidden="true" /><span className="font-medium">Import</span></button>
       {importing && <ImportDialog onClose={() => setImporting(false)} />}
       {rect && (
         <SearchPopover

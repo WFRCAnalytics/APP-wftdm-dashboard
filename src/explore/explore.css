@@ -313,3 +313,4 @@
 .xb .top .grp button,.xb .top .grp [role=combobox]{height:38px;border-radius:999px}
 .xb .top .tabs{height:38px;max-width:30vw}
 @media (max-width:899px){.xb .xbar{max-width:100%;flex-basis:100%}}
+.xb .top .tabs .pill{padding:5px 13px;font-size:14px}
