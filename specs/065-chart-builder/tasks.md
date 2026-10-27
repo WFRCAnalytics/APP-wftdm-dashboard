@@ -252,7 +252,7 @@ These tasks supersede or extend the ones above where they overlap. Build order: 
 Shipped: chart spec and channel rules (`src/charts/builder/spec.ts`), suggestions (`rules.ts`), the compiler for all eight v1 marks with series, dash, hatch, facets and legends (`compile.ts`), portable configuration with validation (`spec.ts` toConfig/fromConfig), chart tabs with fields panel, one-row shelves, drag and keyboard placement, Chart/Style/Axes/Filter rail, tooltip through `services/tooltip.ts`, export (PNG, SVG, CSV, configuration JSON) and import, with unit and Playwright tests. This covers the intent of T009-T010, T038-T042, T043-T049, T052-T063 for the Explore builder.
 
 Known deviations from the plan, to finish later:
-- Aggregation, binning and filtering run in the browser over at most 50,000 fetched rows (`useChartData.ts`), not yet in DuckDB (`specToSql`, T035). A visible notice appears when the cap is hit.
+- Aggregation, binning, box statistics and the chart filter now run in DuckDB (`specToSql.ts`); scatter takes a repeatable 5,000-row sample. Results are capped at 50,000 rows.
 - The chart core draws its own SVG instead of Observable Plot (Plot has no dash channel, no hatch fills and no pie); this matches how the radar and pie panels are built.
-- `kind: custom` for dashboard YAML (T050, T062) is not built yet.
+- `kind: custom` for dashboard YAML is built (T050, T062); legend shows colour and dash groups only.
 - Phase 9 (removing Graphic Walker, constitution amendment) waits for acceptance.

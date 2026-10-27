@@ -626,6 +626,20 @@ name can be typed.
 
 ---
 
+## Explore builder (`065-chart-builder`)
+
+The Explore tab opens the `explore-builder` panel (`src/explore/`): a Data tab (column summaries, paged preview, query
+builder with joins, SQL tab, "My tables" saved as `xb_` temp views) and chart tabs (fields, one-row shelves, eight chart
+types, suggestions, Style/Axes/Filter rail, export and import). Graphic Walker is still registered but no longer in the demo
+navigation; its removal and the constitution amendment wait for acceptance. Pure core in `src/charts/builder/` (column types,
+spec and channel rules, suggestions, `specToSql` which makes DuckDB do the grouping, binning and box statistics, and the
+compiler `compile.ts`, which draws its own SVG because Plot has no dash/hatch/pie) and `src/explore/sql/` (query model and
+joins, highlighter, guarded runner). User SQL always goes through `sqlGuard.authorize` and the one shared connection.
+Session-only state in `state/exploreState.ts`. Specs and tasks: `specs/065-chart-builder/`.
+
+`type: chart, kind: custom, spec: {...}` (`charts/kinds/custom.ts`) draws a chart in a dashboard tile from the same spec the
+builder exports; `spec.data.table` names a metric table and the scenarios are the tile's compared runs.
+
 ## Implementation status
 
 All 12 panel types (plus `chart` and the `multi-view` wrapper) are built; the two earlier chart engines were removed in the 063 redesign. Sidebar navigation, lazy

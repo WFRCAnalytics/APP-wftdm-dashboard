@@ -1813,3 +1813,29 @@ Reads per-run Parquet tables chosen by the kind, for every compared run, the ref
 `years` (`[{year,label}]`), `baseYear`, `defaultYear`, `compare: { default: auto|on|off, scenarios: [alternative ids],
 focus, reference }`. Run manifests may carry `kind`, `alternative`, `year`, `tag`, `family`, `family_index`, `hidden`,
 and (for an observed run) `observed: { source, sample, metrics: { <table>: { source, sample } } }`.
+
+
+## `type: chart, kind: custom` (065-chart-builder)
+
+Draws a chart from a specification, the same shape the Explore builder exports. DuckDB does the grouping, so only the result
+reaches the browser. The scenarios are the tile's compared runs.
+
+```yaml
+- type: chart
+  kind: custom
+  title: Trips by mode
+  height: 360
+  spec:
+    data: { table: trip_mode_share }        # a metric table
+    mark: bar                               # bar | line | area | scatter | heatmap | histogram | box | pie
+    stack: group                            # group | stack | normalize (bar, area)
+    encoding:                               # channels: x y color pattern dash shape size row column
+      x:     { field: mode }
+      y:     { field: trips, aggregate: sum }   # sum mean median min max count
+      color: { field: scenario }            # `scenario` exists when several runs are compared
+    filter: [{ field: purpose, op: "=", value: Work }]
+    axes: { zeroBaseline: true, gridlines: true, referenceLine: null }
+    text: { title: { text: Trips by mode, size: lg, weight: bold, italic: false } }
+```
+
+A field must exist in the table and suit its channel (a category on x, a number on y); a mistake is explained inside the tile.
