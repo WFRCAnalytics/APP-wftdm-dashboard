@@ -1,6 +1,7 @@
 // 065-chart-builder: the Explore builder (full-page panel). Top bar (scenarios, table, tabs) over the Data tab: Columns
 // (summaries), the paged preview, and the Query box with the pinned My tables list. Chart tabs arrive in the next step.
 import { useState } from 'react'
+import { AssistantButton } from '@/layout/chat/chatLauncher'
 import { ChevronDown, Plus, Table2, Trash2, Upload, X } from 'lucide-react'
 import { defaultSpec } from '@/charts/builder/spec'
 import { ChartTabView } from '@/explore/ChartTabView'
@@ -98,12 +99,19 @@ function MyTables({ m }: { m: DataTabModel }) {
   )
 }
 
-export function ExploreBuilderPanel(_props: PanelProps<ExploreBuilderPanelConfig>) {
+export function ExploreBuilderPanel({ config }: PanelProps<ExploreBuilderPanelConfig>) {
   const m = useDataTab()
   const chart = m.state.charts.find((c) => c.id === m.state.activeTab)
   return (
     <div className="xb" data-testid="explore-builder">
-      <TopBar m={m} />
+      {/* the same header every other page has: the title and subtitle, then the toolbar and the Assistant button */}
+      <div className="xhead">
+        <div className="xtitle">
+          <h1>{config.title}</h1>
+          {config.description && <p>{config.description}</p>}
+        </div>
+        <div className="xbar"><TopBar m={m} /><AssistantButton /></div>
+      </div>
       {chart ? <ChartTabView key={chart.id} tab={chart} s={m.state} /> : (
       <div className="dgrid">
         <ColumnsPanel m={m} />

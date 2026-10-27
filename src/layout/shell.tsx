@@ -91,7 +91,7 @@ export function Shell({
         )}
         <DashboardRenderer tab={active} />
       </main>
-      {chromeless && <AssistantButton floating />}
+      {chromeless && findFullPagePanel(active)?.type !== 'explore-builder' && <AssistantButton floating />}
       <ChatHost />
     </div>
   )

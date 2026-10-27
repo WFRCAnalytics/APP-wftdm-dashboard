@@ -24,4 +24,5 @@ layout:
   row_explore:
     - type:  explore-builder
       title: Explore the Demo Data
+      description: Browse any table, build a query and chart it.
       width: 1.0
