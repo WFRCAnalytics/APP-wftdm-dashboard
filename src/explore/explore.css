@@ -27,7 +27,7 @@
 .xb .tabw .x{border:0;background:none;color:inherit;opacity:.7;width:24px;height:24px;border-radius:999px;display:grid;place-items:center;margin-right:3px}
 .xb .tabw .x:hover{opacity:1;background:var(--track)}
 .xb .tabs .pill{flex:none}
-.xb .tabs .renm{flex:none;border:1px solid var(--brand);border-radius:999px;background:var(--tile-hi);color:var(--ink);font:inherit;font-size:14px;padding:3px 12px;outline:none;min-width:0}
+.xb .tabs .renm{flex:none;align-self:stretch;box-sizing:border-box;margin:3px 0 3px 3px;border:0;border-radius:999px;background:var(--tile-hi);color:var(--ink);font:inherit;font-size:14px;line-height:1.2;padding:0 11px;outline:none;min-width:0}
 .xb .sel{appearance:none;border:1px solid var(--line);background:var(--tile-hi) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238f99a9' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 9px center;border-radius:10px;padding:6px 28px 6px 10px;min-width:150px;font-weight:500}
 .xb .btn{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);background:var(--tile-hi);border-radius:10px;padding:7px 12px;font-weight:500;white-space:nowrap}
 .xb .btn:hover{border-color:var(--mute)}
