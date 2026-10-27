@@ -6,6 +6,8 @@ import { useInRail } from '@/components/ui/railContext'
 export interface SegmentedOption {
   id: string
   label: string
+  /** A count shown after the label in a smaller, muted figure, so it reads as a number of items, not part of the name. */
+  count?: number
   disabled?: boolean
 }
 
@@ -28,7 +30,7 @@ export function Segmented({ label, options, value, onChange, size = 'md', classN
     <div
       role="group"
       aria-label={label}
-      className={cn('pill-track inline-flex items-center rounded-full p-[3px]', rail && 'flex w-full flex-col items-stretch rounded-[18px]', className)}
+      className={cn('pill-track inline-flex items-stretch rounded-full', size === 'lg' ? 'p-1' : 'p-[3px]', rail && 'flex w-full flex-col items-stretch rounded-[18px]', className)}
     >
       {options.map((o) => {
         const pressed = o.id === value
@@ -49,6 +51,7 @@ export function Segmented({ label, options, value, onChange, size = 'md', classN
             )}
           >
             {o.label}
+            {o.count !== undefined && <span className="ml-1.5 font-mono text-[11px] tabular-nums opacity-60">{o.count}</span>}
           </button>
         )
       })}

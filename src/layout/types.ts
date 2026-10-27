@@ -367,6 +367,12 @@ export interface GraphicWalkerFieldOverride {
   analyticType: 'dimension' | 'measure'
 }
 
+/** 065-chart-builder: the Explore builder (Data tab, query builder, SQL editor). Full-page panel; needs no data keys, it
+ * reads whatever scenarios and tables the dashboard has loaded. */
+export interface ExploreBuilderPanelConfig extends PanelConfigBase {
+  type: 'explore-builder'
+}
+
 export interface GraphicWalkerPanelConfig extends PanelConfigBase {
   type: 'graphic-walker'
   dataset: string
@@ -577,6 +583,7 @@ export type PanelConfig =
   | FlowMapPanelConfig
   | ZoneMapPanelConfig
   | GraphicWalkerPanelConfig
+  | ExploreBuilderPanelConfig
   | TreemapPanelConfig
   | SunburstPanelConfig
   | PieChartPanelConfig

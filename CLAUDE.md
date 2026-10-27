@@ -51,7 +51,7 @@ reverts to a normal source tree and the built demo output is removed.
 | Charts — Sankey | D3 (`d3-sankey`) — no Observable Plot support exists |
 | Charts — Hierarchical (treemap/sunburst) | D3 (`d3-hierarchy`/`d3-shape`) |
 | Charts — Pie/Radar | D3 (`d3-shape` for pie); radar is hand-rolled polar trig, no D3 layout pkg |
-| Explore tab | Graphic Walker (`<GraphicWalker>` rendered directly as JSX, not `embedGraphicWalker`) |
+| Explore tab | In-house chart builder (`src/explore/`, core in `src/charts/builder/`, draws its own SVG); Graphic Walker is kept in the code but no longer in the demo |
 | Maps | MapLibre GL (NOT Mapbox) |
 | O-D flows | `@flowmap.gl/layers` + `@deck.gl/mapbox` (`MapboxOverlay`, `interleaved: true`) |
 | Config parsing | js-yaml (runtime, not build-time) |
@@ -130,7 +130,7 @@ first filename is always the landing page.
 The default set WFRC ships (`public/demo-dashboard-config/`, the real tabs only):
 ```
 Summary ★ → Person/Household Models → Tour Models → Mode Choice
-→ Network → Explore (Graphic Walker, full-page)
+→ Network → Explore (chart builder, full-page)
 ```
 
 There is **no Test tab in the shipped app**. `dashboard-8-test.yaml` (deliberately-
@@ -453,6 +453,10 @@ configured (the real demo's own state today), the flavors fall back to
 
 ## Graphic Walker panel
 
+> **Retired from the demo (`065-chart-builder`, constitution 2.7.0).** The `graphic-walker` panel type is still registered and
+> everything below still works, but no shipped navigation opens it; the Explore tab is the chart builder. The code stays until
+> the maintainers decide to delete it; restore it from git history (tag `v0.0.3` contains it).
+
 Renders `<GraphicWalker>` as ordinary JSX in this app's own React tree —
 **not** `embedGraphicWalker` (that creates an undisposable second React
 root, confirmed via direct source read — a real leak on every tab-switch
@@ -625,6 +629,20 @@ searchable combobox (`components/ui/combobox-input.tsx`) over per-provider prese
 name can be typed.
 
 ---
+
+## Explore builder (`065-chart-builder`)
+
+The Explore tab opens the `explore-builder` panel (`src/explore/`): a Data tab (column summaries, paged preview, query
+builder with joins, SQL tab, "My tables" saved as `xb_` temp views) and chart tabs (fields, one-row shelves, nineteen chart
+types, suggestions, Style/Axes/Filter rail, export and import). Graphic Walker is still registered but no longer in the demo
+navigation (constitution 2.7.0 records this); deleting its code is a later, separate decision. Pure core in `src/charts/builder/` (column types,
+spec and channel rules, suggestions, `specToSql` which makes DuckDB do the grouping, binning and box statistics, and the
+compiler `compile.ts`, which draws its own SVG because Plot has no dash/hatch/pie) and `src/explore/sql/` (query model and
+joins, highlighter, guarded runner). User SQL always goes through `sqlGuard.authorize` and the one shared connection.
+Session-only state in `state/exploreState.ts`. Specs and tasks: `specs/065-chart-builder/`.
+
+`type: chart, kind: custom, spec: {...}` (`charts/kinds/custom.ts`) draws a chart in a dashboard tile from the same spec the
+builder exports; `spec.data.table` names a metric table and the scenarios are the tile's compared runs.
 
 ## Implementation status
 

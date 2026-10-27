@@ -1,5 +1,47 @@
 <!--
 Sync Impact Report
+- Version change: 2.6.0 → 2.7.0
+- Modified principles: none
+- Modified sections:
+  - Technology Stack Reference, "Explore tab" row: was "Graphic Walker
+    (`<GraphicWalker>` ...)"; now names the in-house chart builder
+    (`065-chart-builder`): a grammar-of-graphics specification that the
+    app's own compiler (`src/charts/builder/compile.ts`) draws as plain
+    SVG, with DuckDB computing the groups, bins and statistics through the
+    one shared connection (`services/duckdb.ts`, every statement
+    authorized by `sqlGuard`). It replaces Graphic Walker as the Explore
+    tab because Graphic Walker could not be styled to match the app's
+    charts and its fixed UI did not fit the app's query-first workflow.
+  - Technology Stack Reference: new row, "Charts — Explore builder".
+    Observable Plot stays the default chart engine (Principle VI is
+    untouched), but Plot has no dash channel, no hatch or pattern fills
+    and no pie or polar marks, all of which the builder's channels
+    require; the builder therefore draws its own SVG, the same class of
+    gap the existing Sankey, Hierarchical and Pie/Radar rows document.
+    **No new npm dependency**: no chart library was added, the compiler is
+    plain TypeScript, icons are `lucide-react`, colours come only from the
+    app's chart tokens.
+  - Technology Stack Reference: new row, "Graphic Walker (retired from
+    navigation)". The `graphic-walker` panel type stays registered and its
+    code, tests and exact pin (`@kanaries/graphic-walker` 0.4.82, React
+    peer range) stay in the repository, but the shipped demo and every
+    deployer-facing navigation no longer open it. Whether to delete it is
+    a separate, later decision; if it is deleted, dropping this row is a
+    PATCH. It can be restored from git history (the commit that removes it,
+    or the `v0.0.3` tag, which still contains it).
+- MINOR, not PATCH: a Technology Stack Reference row is replaced and a new
+  engine row is added, so existing binding guidance is materially changed,
+  matching this file's precedent for the same class of change (2.4.2 →
+  2.5.0, 2.5.0 → 2.6.0).
+- Added principles: none
+- Added sections: none
+- Removed sections: none
+- Deferred TODOs: removal of the Graphic Walker code and dependency, when
+  the maintainers decide to.
+-->
+
+<!--
+Sync Impact Report (2.6.0, superseded above)
 - Version change: 2.5.0 → 2.6.0
 - Modified principles: none
 - Modified sections:
@@ -564,7 +606,9 @@ requires amending this constitution first:
 | Charts — Sankey | D3 (`d3-sankey`) — no genuine Observable Plot Sankey support exists (no mark/transform, no documented composition pattern, an unresolved upstream request since 2022) |
 | Charts — Hierarchical | D3 (`d3-hierarchy`/`d3-shape`) — no genuine Observable Plot treemap/sunburst support exists either (confirmed by direct source search, not assumed); SVG is built via plain `document.createElementNS()`, never `d3-selection`/`d3-transition`, matching the Sankey panel's own established convention |
 | Charts — Pie/Radar | D3 (`d3-shape`) — no genuine Observable Plot pie/polar support exists either (confirmed by direct source search: no `arc`/`pie` mark, no polar coordinate system); the pie chart reuses the already-pinned `d3-shape` (`d3.pie()`/`d3.arc()`), the radar chart uses hand-rolled polar trigonometry with no D3 layout package at all — SVG built via plain `document.createElementNS()`, matching the Sankey/Hierarchical panels' own established convention |
-| Explore tab | Graphic Walker (`<GraphicWalker>` component, rendered directly in this app's own React tree — not `embedGraphicWalker`) |
+| Explore tab | The in-house chart builder (`065-chart-builder`: `src/explore/`, with its pure core in `src/charts/builder/`) — a grammar-of-graphics spec the app's own compiler draws as SVG, with DuckDB computing the data through the one shared connection; no chart library is added |
+| Charts — Explore builder | Plain TypeScript drawing SVG (`src/charts/builder/compile.ts`) — Observable Plot has no dash channel, no hatch/pattern fills and no pie or polar marks, which the builder's channels need; icons are `lucide-react`, colours are the app's chart tokens only, and `kind: custom` draws the same spec in a dashboard tile |
+| Graphic Walker (retired from navigation) | `@kanaries/graphic-walker` pinned to `0.4.82`; the `graphic-walker` panel type stays registered and its code stays in the repository, but the shipped demo and navigation no longer open it. Removal is a later decision (restorable from git history, e.g. the `v0.0.3` tag) |
 | Maps | MapLibre GL (never Mapbox) |
 | O-D flows | `@flowmap.gl/layers` + `@deck.gl/mapbox` (`MapboxOverlay`) |
 | Config parsing | js-yaml, at runtime |
@@ -620,4 +664,4 @@ forbidden config files, no Mapbox/Webpack/Web Storage usage. Any exception
 requires a
 prior amendment to this document, not a one-off waiver in review.
 
-**Version**: 2.6.0 | **Ratified**: 2026-08-19 | **Last Amended**: 2026-09-16
+**Version**: 2.7.0 | **Ratified**: 2026-08-19 | **Last Amended**: 2026-10-27
