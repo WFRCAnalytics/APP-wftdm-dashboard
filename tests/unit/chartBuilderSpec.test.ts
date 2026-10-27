@@ -61,6 +61,11 @@ describe('suggest', () => {
     expect(fit({ x: { f: 'trips' } }).byMark.tick.viable).toBe(true)
     expect(fit({ x: { f: 'mode' } }).byMark.tick.viable).toBe(false)
   })
+  it('offers density for one number and a treemap for a category and a number', () => {
+    expect(fit({ x: { f: 'trips' } }).byMark.density.viable).toBe(true)
+    expect(fit({ color: { f: 'mode' }, size: { f: 'trips' } }).byMark.treemap.viable).toBe(true)
+    expect(fit({ x: { f: 'mode' } }).byMark.radar.viable).toBe(false)
+  })
   it('needs a number for a histogram', () => {
     expect(fit({ x: { f: 'mode' } }).byMark.histogram.viable).toBe(false)
   })

@@ -155,6 +155,31 @@ test.describe('DuckDB computes the chart data for every mark', () => {
     await drawn(page)
     expect(errors).toEqual([])
   })
+  test('density draws from the sampled values', async ({ page }) => {
+    const errors: string[] = []
+    await setup(page, errors, 'Density')
+    await place(page, 'auPkTotal', 'Values')
+    await place(page, 'scenario', 'Colour')
+    await drawn(page)
+    expect(errors).toEqual([])
+  })
+  test('rule takes its range and mean from DuckDB', async ({ page }) => {
+    const errors: string[] = []
+    await setup(page, errors, 'Rule')
+    await place(page, 'auPkTotal', 'X axis')
+    await place(page, 'scenario', 'Y axis')
+    await drawn(page)
+    expect(errors).toEqual([])
+  })
+  test('treemap tiles the groups', async ({ page }) => {
+    const errors: string[] = []
+    await setup(page, errors, 'Treemap')
+    await place(page, 'scenario', 'Colour')
+    await place(page, 'auPkTotal', 'Tile size')
+    await drawn(page)
+    await expect(page.locator('.xb svg.plot rect[data-t]')).toHaveCount(2)
+    expect(errors).toEqual([])
+  })
   test('pie groups in DuckDB', async ({ page }) => {
     const errors: string[] = []
     await setup(page, errors, 'Pie')

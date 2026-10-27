@@ -8,7 +8,7 @@ export const ROW_CAP = 50_000
 export const SCATTER_SAMPLE = 5_000
 export const HIST_BINS = 12
 
-export type ChartQueryMode = 'aggregated' | 'histogram' | 'box' | 'raw'
+export type ChartQueryMode = 'aggregated' | 'histogram' | 'box' | 'range' | 'raw'
 export interface ChartQuery {
   sql: string
   mode: ChartQueryMode
@@ -62,7 +62,7 @@ export function chartQuery(spec: ChartSpec, relSql: string): ChartQuery {
     return `SELECT ${[...d.map(q), `${measure} AS ${q(name)}`].join(', ')}\nFROM ${rel}\n${where}\nGROUP BY ${d.map(q).join(', ')}\n${cap}`
   }
 
-  if (mark === 'bar' || mark === 'line' || mark === 'area') {
+  if (mark === 'bar' || mark === 'line' || mark === 'area' || mark === 'radar') {
     const y = spec.enc.y!
     return { mode: 'aggregated', sql: grouped([spec.enc.x!.f, ...ser, ...fac], aggExpr(y), y.f), spec: resetAgg(spec, 'y') }
   }
@@ -70,9 +70,14 @@ export function chartQuery(spec: ChartSpec, relSql: string): ChartQuery {
     const v = spec.enc.color!
     return { mode: 'aggregated', sql: grouped([spec.enc.x!.f, spec.enc.y!.f, ...fac], aggExpr(v), v.f), spec: resetAgg(spec, 'color') }
   }
-  if (mark === 'pie' || mark === 'waffle') {
+  if (mark === 'pie' || mark === 'waffle' || mark === 'treemap') {
     const v = spec.enc.size!
     return { mode: 'aggregated', sql: grouped([...ser, ...fac], aggExpr(v), v.f), spec: resetAgg(spec, 'size') }
+  }
+  if (mark === 'rule') {
+    // one row per category and series: the range of the number and its mean
+    const x = `CAST(${q(spec.enc.x!.f)} AS DOUBLE)`, d = uniq([spec.enc.y!.f, ...ser, ...fac]).map(q)
+    return { mode: 'range', spec, sql: `SELECT ${d.join(', ')}, MIN(${x}) AS __lo, MAX(${x}) AS __hi, AVG(${x}) AS __mean, COUNT(*) AS __n\nFROM ${rel}\n${where}\nGROUP BY ${d.join(', ')}\n${cap}` }
   }
   if (mark === 'text') {
     const v = spec.enc.label!

@@ -44,6 +44,16 @@ describe('chartQuery: aggregated marks', () => {
     const l = chartQuery(defaultSpec({ mark: 'line', enc: { x: { f: 'a' }, y: { f: 'v', agg: 'sum' }, detail: { f: 'g' } } }), rel)
     expect(norm(l.sql)).toContain('GROUP BY "a", "g"')
   })
+  it('gives a rule its range and mean, a radar its totals and a treemap its tiles', () => {
+    const r = chartQuery(defaultSpec({ mark: 'rule', enc: { x: { f: 'v' }, y: { f: 'g' } } }), rel)
+    expect(r.mode).toBe('range')
+    expect(norm(r.sql)).toContain('MIN(CAST("v" AS DOUBLE)) AS __lo')
+    expect(norm(r.sql)).toContain('GROUP BY "g"')
+    const a = chartQuery(defaultSpec({ mark: 'radar', enc: { x: { f: 'g' }, y: { f: 'v', agg: 'mean' } } }), rel)
+    expect(norm(a.sql)).toContain('AVG(CAST("v" AS DOUBLE)) AS "v"')
+    const t = chartQuery(defaultSpec({ mark: 'treemap', enc: { color: { f: 'mode' }, size: { f: 'trips', agg: 'sum' } } }), rel)
+    expect(norm(t.sql)).toContain('GROUP BY "mode"')
+  })
   it('caps the result', () => {
     expect(chartQuery(defaultSpec({ enc: { x: { f: 'mode' }, y: { f: 'trips' } } }), rel).sql).toContain('LIMIT 50001')
   })

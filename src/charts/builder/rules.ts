@@ -21,6 +21,10 @@ const RULES: Record<Mark, { test(c: Counts, ordered: boolean, pieOk: boolean): b
   tick: { test: (c) => c.q >= 1 && c.cat <= 1, score: (c) => (c.total === 1 ? 40 : 30), reason: 'Needs a number, and at most one category' },
   text: { test: (c) => c.cat >= 2 && c.q >= 1, score: () => 45, reason: 'Needs two categories and a number' },
   waffle: { test: (c, _o, pieOk) => c.cat === 1 && c.q === 1 && pieOk, score: () => 30, reason: 'Needs one category (12 or fewer) and a number' },
+  density: { test: (c) => c.q >= 1 && c.cat <= 1, score: (c) => (c.total === 1 ? 45 : 30), reason: 'Needs a number, and at most one category' },
+  rule: { test: (c) => c.q >= 1 && c.cat >= 1, score: () => 32, reason: 'Needs a number and a category' },
+  treemap: { test: (c) => c.cat === 1 && c.q === 1, score: () => 34, reason: 'Needs one category and a number' },
+  radar: { test: (c) => c.q >= 1 && c.cat >= 1, score: () => 28, reason: 'Needs a number and a category with 3 to 16 values' },
 }
 
 /** `roleOf` gives a field's chart role; `distinct` the number of distinct values of a field (for the pie limit). */

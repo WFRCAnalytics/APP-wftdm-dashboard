@@ -145,6 +145,32 @@ describe('more marks and channels', () => {
   })
 })
 
+describe('density, rule, treemap and radar', () => {
+  it('draws one density curve per series, each an area and a line', () => {
+    const m = ok(build({ mark: 'density', enc: { x: { f: 'trips' }, color: { f: 'scenario' } } }))
+    expect(m.panels[0].paths.filter((p) => p.fill !== 'none')).toHaveLength(2)
+    expect(m.legend[0].items).toHaveLength(2)
+  })
+  it('draws a rule and a mean dot per category, from raw rows or DuckDB ranges', () => {
+    const m = ok(build({ mark: 'rule', enc: { x: { f: 'trips' }, y: { f: 'mode' } } }))
+    expect(m.panels[0].paths).toHaveLength(3)
+    const pre = ['Car', 'Bus', 'Walk'].map((mode) => ({ mode, __lo: 1, __hi: 9, __mean: 5, __n: 4 }))
+    const p = ok(build({ mark: 'rule', enc: { x: { f: 'trips' }, y: { f: 'mode' } } }, pre))
+    expect(p.panels[0].paths).toHaveLength(3)
+  })
+  it('tiles a treemap by share, one tile per group', () => {
+    const m = ok(build({ mark: 'treemap', enc: { color: { f: 'mode' }, size: { f: 'trips', agg: 'sum' } } }))
+    expect(m.panels[0].rects).toHaveLength(3)
+    const area = m.panels[0].rects.reduce((a, r) => a + (r.w + 2) * (r.h + 2), 0)
+    expect(area).toBeGreaterThan(0.9 * (700 - 4) * (400 - 8 - 4))
+  })
+  it('draws a radar polygon per series and refuses fewer than 3 spokes', () => {
+    const m = ok(build({ mark: 'radar', enc: { x: { f: 'mode' }, y: { f: 'trips', agg: 'sum' }, color: { f: 'scenario' } } }))
+    expect(m.panels[0].paths.filter((p) => p.fill !== 'none' && p.sw === 0)).toHaveLength(2)
+    expect(build({ mark: 'radar', enc: { x: { f: 'scenario' }, y: { f: 'trips' } } }).problem).toContain('3 to 16 spokes')
+  })
+})
+
 describe('data handling', () => {
   it('makes a panel per facet value', () => {
     const m = ok(build({ enc: { x: { f: 'mode' }, y: { f: 'trips', agg: 'sum' }, column: { f: 'scenario' } } }))

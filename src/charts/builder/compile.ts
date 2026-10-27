@@ -125,11 +125,16 @@ export function buildChart(input: BuildInput): ChartModel {
   if (spec.filter.f && spec.filter.v !== '') rows = rows.filter((r) => String(r[spec.filter.f]) === spec.filter.v)
   // box statistics from DuckDB carry no raw y value
   const preBox = rows[0]?.__q1 !== undefined
-  const used = Object.values(enc).map((e) => e!.f).filter((f) => !(preBox && f === enc.y?.f))
+  const used = Object.values(enc).map((e) => e!.f).filter((f) => !(preBox && f === enc.y?.f) && !(mark === 'rule' && rows[0]?.__lo !== undefined && f === enc.x?.f))
   rows = rows.filter((r) => used.every((f) => r[f] !== null && r[f] !== undefined))
   if (!rows.length) return { problem: 'No rows match this data and filter.' }
   if (mark === 'pie' && uniqSorted(rows, enc.color!.f).length > 12) return { problem: `Pie and donut charts need 12 slices or fewer. ${enc.color!.f} has ${uniqSorted(rows, enc.color!.f).length}.` }
   if (mark === 'waffle' && uniqSorted(rows, enc.color!.f).length > 12) return { problem: `Waffle charts need 12 groups or fewer. ${enc.color!.f} has ${uniqSorted(rows, enc.color!.f).length}.` }
+
+  if (mark === 'radar') {
+    const n = uniqSorted(rows, enc.x!.f).length
+    if (n < 3 || n > 16) return { problem: `Radar charts need 3 to 16 spokes. ${enc.x!.f} has ${n}.` }
+  }
 
   const rf = enc.row?.f, cf = enc.column?.f
   const rv: any[] = rf ? uniqSorted(rows, rf).slice(0, 6) : [null], cv: any[] = cf ? uniqSorted(rows, cf).slice(0, 6) : [null]
@@ -548,6 +553,140 @@ export function buildChart(input: BuildInput): ChartModel {
         pn.rects.push({ x: r1(cx + 1), y: r1(cy + 1), w: r1(sx - 2), h: r1(sy2 - 2), rx: 4, fill: 'transparent', stroke: 'none', op: 1, tip: tip(`${x} · ${y}`, [[vf, fmtExact(v)]]) })
         if (sy2 >= 14) { const t = fmtExact(v); tx(pn, cx + sx / 2, cy + sy2 / 2 + 4, t.length * 6.2 > sx - 4 ? fmtCompact(v) : t, 'middle', T.fs, '', T.ink) }
       }))
+    }
+  } else if (mark === 'density') {
+    // a smoothed curve of where the values fall, one per series, scaled so every curve has the same area
+    const xf = enc.x!.f, NP = 96
+    let lo = Infinity, hi = -Infinity
+    for (const r of rows) { lo = Math.min(lo, r[xf]); hi = Math.max(hi, r[xf]) }
+    const span = hi - lo || 1, a = lo >= 0 ? Math.max(0, lo - span * 0.08) : lo - span * 0.08, b = hi + span * 0.08
+    const curves = new Map<Panel, { s: Series; n: number; d: number[] }[]>()
+    let ymax = 0
+    for (const pn of panels) {
+      const list: { s: Series; n: number; d: number[] }[] = []
+      for (const s of series) {
+        const v = pn.prows.filter((r) => skey(r) === s.key).map((r) => Number(r[xf]))
+        if (v.length < 2) continue
+        const mean = v.reduce((p, c) => p + c, 0) / v.length, sd = Math.sqrt(v.reduce((p, c) => p + (c - mean) ** 2, 0) / (v.length - 1))
+        const bw = 1.06 * (sd || span / 20) * Math.pow(v.length, -0.2)
+        const d = Array.from({ length: NP }, (_, i) => {
+          const x = a + ((b - a) * i) / (NP - 1)
+          let t = 0
+          for (const y of v) { const z = (x - y) / bw; t += Math.exp(-0.5 * z * z) }
+          return t / (v.length * bw * Math.sqrt(2 * Math.PI))
+        })
+        ymax = Math.max(ymax, ...d)
+        list.push({ s, n: v.length, d })
+      }
+      curves.set(pn, list)
+    }
+    for (const pn of panels) {
+      const bx = frame(14), ax = yAx(pn, bx, 0, (ymax || 1) * 1.08, () => ''), nx = xNum(pn, bx, a, b)
+      for (const c of curves.get(pn)!) {
+        const pts = c.d.map((v, i) => [r1(nx.sx(a + ((b - a) * i) / (NP - 1))), r1(ax.sy(v))] as [number, number])
+        const line = `M${pts.map((p) => p.join(' ')).join('L')}`
+        pa(pn, `${line}L${pts[NP - 1][0]} ${r1(bx.y1)}L${pts[0][0]} ${r1(bx.y1)}Z`, c.s.fill, 'none', 0, '', Math.min(op(c.s), 0.5), tip(c.s.label || xf, [['rows', fmtExact(c.n)]]))
+        pa(pn, line, 'none', c.s.color, 2.2, '', op(c.s), '')
+      }
+    }
+  } else if (mark === 'rule') {
+    // the range of a number per category, with a dot at the mean
+    const xf = enc.x!.f, yf = enc.y!.f, cats = uniqSorted(rows, yf), pre = rows[0]?.__lo !== undefined
+    type St = { lo: number; hi: number; mean: number; n: number }
+    const stats = new Map<Panel, Map<string, St>>()
+    let lo = Infinity, hi = -Infinity
+    for (const pn of panels) {
+      const m = new Map<string, St>()
+      if (pre) for (const r of pn.prows) m.set(`${r[yf]}\u0002${skey(r)}`, { lo: Number(r.__lo), hi: Number(r.__hi), mean: Number(r.__mean), n: Number(r.__n) })
+      else {
+        const g = new Map<string, number[]>()
+        for (const r of pn.prows) { const k = `${r[yf]}\u0002${skey(r)}`; let q = g.get(k); if (!q) { q = []; g.set(k, q) } q.push(Number(r[xf])) }
+        g.forEach((v, k) => m.set(k, { lo: Math.min(...v), hi: Math.max(...v), mean: v.reduce((p, c) => p + c, 0) / v.length, n: v.length }))
+      }
+      m.forEach((v) => { lo = Math.min(lo, v.lo); hi = Math.max(hi, v.hi) })
+      stats.set(pn, m)
+    }
+    const lm = Math.min(150, Math.max(46, Math.max(...cats.map((c) => String(c).length)) * 6.4 + 14))
+    for (const pn of panels) {
+      const bx = frame(lm), nx = xNum(pn, bx, lo, hi), band = (bx.y1 - bx.y0) / cats.length, sub = band / series.length
+      cats.forEach((c, i) => {
+        const mid = bx.y0 + band * (i + 0.5), t = String(c)
+        if (spec.grid) ln(pn, bx.x0, mid, bx.x1, mid, T.grid, 1)
+        tx(pn, bx.x0 - 8, mid + 4, t.length > 20 ? `${t.slice(0, 19)}…` : t, 'end')
+        series.forEach((s, j) => {
+          const v = stats.get(pn)!.get(`${c}\u0002${s.key}`)
+          if (!v) return
+          const cy = bx.y0 + band * i + sub * (j + 0.5), x1 = nx.sx(v.lo), x2 = nx.sx(v.hi)
+          ln(pn, x1, cy, x2, cy, s.color, 3)
+          ln(pn, x1, cy - 5, x1, cy + 5, s.color, 2)
+          ln(pn, x2, cy - 5, x2, cy + 5, s.color, 2)
+          pn.rects.push({ x: r1(Math.min(x1, x2) - 4), y: r1(cy - 9), w: r1(Math.abs(x2 - x1) + 8), h: 18, rx: 4, fill: 'transparent', stroke: 'none', op: 1, tip: tip(t + (s.label ? ` · ${s.label}` : ''), [['min to max', `${fmtCompact(v.lo)} to ${fmtCompact(v.hi)}`], ['mean', fmtExact(v.mean)], ['rows', fmtExact(v.n)]]) })
+          pa(pn, glyph(0, nx.sx(v.mean), cy, 4.6).d, s.color, T.surface, 1.6, '', op(s), tip(t, [['mean', fmtExact(v.mean)]]))
+        })
+      })
+    }
+  } else if (mark === 'treemap') {
+    // tile area is the share of the total; tiles are laid out so they stay close to square
+    const sz = enc.size!.f, agg = enc.size!.agg ?? 'sum', head = small ? 22 : 8
+    for (const pn of panels) {
+      const vals = series.map((s) => Math.max(0, aggregate(pn.prows.filter((r) => skey(r) === s.key).map((r) => r[sz] as number), agg)))
+      const tot = vals.reduce((p, c) => p + c, 0) || 1
+      const items = vals.map((v, i) => ({ v, i })).filter((q) => q.v > 0).sort((p, c) => c.v - p.v)
+      const scale = ((pw - 4) * (ph - head - 4)) / tot
+      let X = 2, Y = head, W = pw - 4, H = ph - head - 4, rest = items.slice()
+      while (rest.length) {
+        const short = Math.min(W, H)
+        const worst = (row: typeof items, sum: number) => { const mx = row[0].v * scale, mn = row[row.length - 1].v * scale; return Math.max((short * short * mx) / (sum * sum), (sum * sum) / (short * short * mn)) }
+        let row = [rest[0]], sum = rest[0].v * scale, k = 1
+        while (k < rest.length) {
+          const next = [...row, rest[k]], ns = sum + rest[k].v * scale
+          if (worst(next, ns) <= worst(row, sum)) { row = next; sum = ns; k++ } else break
+        }
+        const thick = sum / short
+        let off = 0
+        for (const it of row) {
+          const len = (it.v * scale) / thick, s = series[it.i]
+          const [rx0, ry0, rw, rh] = W >= H ? [X, Y + off, thick, len] : [X + off, Y, len, thick]
+          rect(pn, rx0 + 1, ry0 + 1, rw - 2, rh - 2, s, tip(s.label || 'Group', [[sz, fmtExact(it.v)], ['share', `${Math.round((it.v / tot) * 1000) / 10}%`]]), 4)
+          if (rw > 54 && rh > 30) {
+            const name = s.label.length * 6.4 > rw - 12 ? `${s.label.slice(0, Math.max(2, Math.floor((rw - 12) / 6.4) - 1))}…` : s.label
+            const fg = s.pat ? T.ink : T.onColor(s.color)
+            tx(pn, rx0 + 8, ry0 + 18, name, 'start', T.fs, '', fg)
+            tx(pn, rx0 + 8, ry0 + 33, `${Math.round((it.v / tot) * 100)}%`, 'start', T.fs, '', fg)
+          }
+          off += len
+        }
+        if (W >= H) { X += thick; W -= thick } else { Y += thick; H -= thick }
+        rest = rest.slice(row.length)
+      }
+    }
+  } else if (mark === 'radar') {
+    // one spoke per category, one polygon per series
+    const xf = enc.x!.f, yf = enc.y!.f, agg = enc.y!.agg ?? 'sum', axes = uniqSorted(rows, xf), n = axes.length, head = small ? 20 : 0
+    let mx = 0
+    for (const pn of panels) { pn.V = gm(pn.prows, xf, yf, agg); pn.V.forEach((v) => { mx = Math.max(mx, v) }) }
+    mx = mx || 1
+    for (const pn of panels) {
+      const cx = pw / 2, cy = head + (ph - head) / 2, Rr = Math.max(30, Math.min(pw - 120, ph - head - 50) / 2)
+      const ang = (i: number) => -Math.PI / 2 + (2 * Math.PI * i) / n
+      const P0 = (rad: number, i: number): [number, number] => [r1(cx + rad * Math.cos(ang(i))), r1(cy + rad * Math.sin(ang(i)))]
+      for (let k = 1; k <= 4; k++) {
+        const ring = axes.map((_, i) => P0((Rr * k) / 4, i).join(' ')).join('L')
+        pa(pn, `M${ring}Z`, 'none', T.grid, 1, '', 1, '')
+        tx(pn, cx + 4, cy - (Rr * k) / 4 + 11, fmtCompact((mx * k) / 4), 'start', T.fs - 1)
+      }
+      axes.forEach((c, i) => {
+        const e = P0(Rr, i), l = P0(Rr + 14, i), cs = Math.cos(ang(i)), t = String(c)
+        ln(pn, cx, cy, e[0], e[1], T.grid, 1)
+        tx(pn, l[0], l[1] + 4, t.length > 14 ? `${t.slice(0, 13)}…` : t, cs > 0.25 ? 'start' : cs < -0.25 ? 'end' : 'middle', T.fs, '', T.ink)
+      })
+      for (const s of series) {
+        const pts = axes.map((c, i) => { const v = pn.V!.get(`${c}\u0002${s.key}`) ?? 0; return { v, p: P0((Rr * v) / mx, i), c } })
+        const d = `M${pts.map((q) => q.p.join(' ')).join('L')}Z`
+        pa(pn, d, s.color, 'none', 0, '', op(s) * 0.14, '')
+        pa(pn, d, 'none', s.color, 2.2, '', op(s), '')
+        for (const q of pts) pa(pn, glyph(0, q.p[0], q.p[1], 4).d, s.color, T.surface, 1.4, '', op(s), tip(String(q.c), [[s.label || yf, fmtExact(q.v)]]))
+      }
     }
   }
 

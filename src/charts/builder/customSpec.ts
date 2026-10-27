@@ -12,7 +12,7 @@ export function normalizeCustomSpec(raw: unknown, runs: readonly string[]): Cust
   const rel = raw.data?.relation
   const table = String(raw.data?.table ?? raw.table ?? (typeof rel === 'string' && rel.startsWith('t:') ? rel.slice(2) : '') ?? '')
   if (!table) return { ok: false, error: 'spec.data.table: name the table to chart, for example `data: { table: trip_mode_share }`.' }
-  if (!raw.mark) return { ok: false, error: 'spec.mark: choose bar, line, area, scatter, heatmap, histogram, box, pie, tick, text or waffle.' }
+  if (!raw.mark) return { ok: false, error: 'spec.mark: choose bar, line, area, scatter, heatmap, histogram, box, pie, tick, text, waffle, density, rule, treemap or radar.' }
   if (!isObj(raw.encoding)) return { ok: false, error: 'spec.encoding: place at least one field, for example `x: { field: mode }`.' }
   const config: ChartConfig = {
     version: 1,
