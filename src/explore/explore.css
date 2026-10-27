@@ -363,3 +363,11 @@
 .xb .tbl td.qf:not(:first-child){position:relative}
 .xb .tbl td.qf:first-child{padding-right:30px}
 .xb .sacc .sn{white-space:nowrap;flex:none}
+/* a faint wash of the column's type colour on its header, and the whole selected column tinted with it */
+.xb .tbl th{background:color-mix(in srgb,var(--tc,var(--mute)) 8%,var(--tile))}
+.xb .tbl th:first-child{background:color-mix(in srgb,var(--tc,var(--mute)) 8%,var(--tile))}
+.xb .tbl th.hsel{background:color-mix(in srgb,var(--tc,var(--mute)) 18%,var(--tile))}
+.xb .tbl td.hsel{background:color-mix(in srgb,var(--tc,var(--mute)) 10%,var(--tile))}
+.xb .dlg .tbl th{background:color-mix(in srgb,var(--tc,var(--mute)) 8%,var(--surface))}
+.xb .dlg .tbl th.hsel{background:color-mix(in srgb,var(--tc,var(--mute)) 18%,var(--surface))}
+.xb .dlg .tbl td.hsel{background:color-mix(in srgb,var(--tc,var(--mute)) 10%,var(--surface))}

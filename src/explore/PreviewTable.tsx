@@ -10,11 +10,15 @@ import { update } from '@/explore/QueryBox'
 import { toggleSelect } from '@/explore/sql/queryModel'
 import { Btn, SearchPopover, TypeChip, type PopItem } from '@/explore/parts'
 import { addFilter, canQuickFilter, currentSort, removeFilter, setSort, tableCaps } from '@/explore/tableActions'
+import { typeColorKey } from '@/explore/profile/profile'
 import { describeFilter, opsFor } from '@/explore/sql/queryModel'
 import type { DataTabModel } from '@/explore/useDataTab'
 import { setExplore } from '@/state/exploreState'
 
 const ROW_PX = 33
+
+// The column's type colour, as a CSS variable the header tint and the selected-column tint both read.
+const tint = (type: Parameters<typeof typeColorKey>[0]) => ({ '--tc': `var(--${{ c1: 'c-1', c2: 'c-2', c3: 'c-3', mute: 'mute' }[typeColorKey(type)]})` }) as React.CSSProperties
 
 function cell(type: string, v: unknown): { text: string; cls: string } {
   if (v === null || v === undefined) return { text: 'null', cls: 'nl' }
@@ -51,7 +55,7 @@ function DataGrid({ m, boxRef }: { m: DataTabModel; boxRef?: React.RefObject<HTM
               <thead>
                 <tr>
                   {columns.map((c) => (
-                    <th key={c.name} className={c.name === (s.profileCol ?? columns[0]?.name) ? 'hsel' : ''} aria-sort={sort?.col === c.name ? (sort.dir === 'asc' ? 'ascending' : 'descending') : undefined}>
+                    <th key={c.name} style={tint(c.type)} className={c.name === (s.profileCol ?? columns[0]?.name) ? 'hsel' : ''} aria-sort={sort?.col === c.name ? (sort.dir === 'asc' ? 'ascending' : 'descending') : undefined}>
                       <div className="hcell">
                       <button type="button" className="hb" onClick={() => setExplore({ profileCol: c.name })}>
                         <TypeChip type={c.type} />{c.name}
@@ -87,7 +91,7 @@ function DataGrid({ m, boxRef }: { m: DataTabModel; boxRef?: React.RefObject<HTM
                       const x = cell(c.type, r[j])
                       const quick = caps.filter && canQuickFilter(c) && r[j] !== null && r[j] !== undefined
                       return (
-                        <td key={c.name} className={`${x.cls} ${quick ? 'qf' : ''} ${c.name === (s.profileCol ?? columns[0]?.name) ? 'hsel' : ''}`}>
+                        <td key={c.name} style={tint(c.type)} className={`${x.cls} ${quick ? 'qf' : ''} ${c.name === (s.profileCol ?? columns[0]?.name) ? 'hsel' : ''}`}>
                           {x.text}
                           {quick && (
                             <button type="button" className="cf" aria-label={`Keep only ${c.name} ${x.text}. Shift-click excludes it.`}
