@@ -58,19 +58,8 @@ export const SLOTS: Record<Mark, Slot[]> = {
 export const MARK_LABEL: Record<Mark, string> = {
   bar: 'Bar', line: 'Line', area: 'Area', scatter: 'Scatter', heatmap: 'Heatmap', histogram: 'Histogram', box: 'Box', pie: 'Pie', tick: 'Tick strip', text: 'Text table', waffle: 'Waffle', density: 'Density', rule: 'Rule', treemap: 'Treemap', radar: 'Radar', sunburst: 'Sunburst', sankey: 'Sankey', chord: 'Chord', trail: 'Trail',
 }
-export const MARK_ICON: Record<Mark, string> = {
-  bar: 'M5 20V11M12 20V5M19 20v-6', line: 'M3 17l5-6 4 3 8-9', area: 'M3 19v-6l5-5 4 3 9-6v14z',
-  scatter: 'M7 16h.01M11 9h.01M15 14h.01M18 6h.01M8 7h.01M19 17h.01', heatmap: 'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z',
-  histogram: 'M4 20v-7h4v7M8 20V6h4v14M12 20V9h4v11M16 20v-5h4v5', box: 'M12 3v4M12 17v4M7 7h10v10H7zM7 12h10',
-  pie: 'M12 3a9 9 0 1 0 9 9h-9zM14.5 3.5A9 9 0 0 1 20.5 9.5H14.5z',
-  tick: 'M5 6v6M9 8v4M12 5v7M16 7v5M19 6v6M4 18h16', text: 'M4 6h16M4 12h16M4 18h16M9 4v16M15 4v16', waffle: 'M4 4h5v5H4zM11 4h5v5h-5zM4 11h5v5H4zM11 11h5v5h-5zM18 11h2v5h-2zM4 18h16',
-  density: 'M3 19c3 0 3-12 6-12s3 12 6 12 3-6 6-6M3 19h18', rule: 'M4 7h12M4 12h16M4 17h8M16 5v4M20 10v4M12 15v4', treemap: 'M3 3h11v10H3zM14 3h7v6h-7zM14 9h7v4h-7zM3 13h7v8H3zM10 13h11v8H10z', radar: 'M12 3l8 6-3 10H7L4 9zM12 3v18M4 9l16 0M7 19L17 19',
-  sunburst: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM12 3v5M12 16v5', sankey: 'M3 5h3v6H3zM3 14h3v5H3zM18 5h3v4h-3zM18 12h3v7h-3zM6 7c6 0 6 2 12 2M6 16c6 0 6-2 12-2', chord: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM6 7c4 3 8 3 12 0M5 14c5-1 9 1 13 4', trail: 'M4 18l5-8 4 5 7-10M4 18h.01M20 5h.01',
-}
-/** Charts that are planned and shown disabled in the chart grid. */
-export const COMING_SOON: { label: string; icon: string }[] = [
-  { label: 'Map', icon: 'M9 4L3 6v14l6-2 6 2 6-2V4l-6 2zM9 4v14M15 6v14' },
-]
+/** Charts that are planned and shown dimmed at the end of the chart grid. */
+export const COMING_SOON: string[] = ['Map']
 
 export const ROLE_WORD: Record<Exclude<Role, ''>, string> = { n: 'a category', o: 'an ordered category', q: 'a number', t: 'a date' }
 export const ROLE_SHORT: Record<Exclude<Role, ''>, string> = { n: 'category', o: 'ordered', q: 'number', t: 'date' }

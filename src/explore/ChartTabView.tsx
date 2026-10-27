@@ -7,12 +7,13 @@ import { buildChart, type ChartModel, type Col, type DrawnChart } from '@/charts
 import { chartRole, DATA_TYPES, TYPE_LABEL, typesPresent, type DataType } from '@/charts/builder/columnTypes'
 import { suggest } from '@/charts/builder/rules'
 import {
-  assignField, acceptsShort, AGGS, channelAggregates, channelLabel, COMING_SOON, MARK_ICON, MARK_LABEL, MARKS, SLOTS, switchMark, TEXT_SIZES,
+  assignField, acceptsShort, AGGS, channelAggregates, channelLabel, COMING_SOON, MARK_LABEL, MARKS, SLOTS, switchMark, TEXT_SIZES,
   type Agg, type Channel, type ChartSpec, type Mark, type Stack, type TextKey,
 } from '@/charts/builder/spec'
 import { readChartTheme } from '@/charts/theme'
 import type { ChartTheme } from '@/charts/types'
 import { Segmented } from '@/components/ui/segmented'
+import { MARK_ICONS, SOON_ICONS } from '@/explore/markIcons'
 import { Btn, Sparkline, TypeChip, TypeFilter, XSelect } from '@/explore/parts'
 import { loadProfile } from '@/explore/profile/profileRun'
 import { typeColorKey, type ColumnProfile } from '@/explore/profile/profile'
@@ -268,13 +269,13 @@ function Rail({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: ChartDat
                     setExplore({ noticeBad: false, notice: res.dropped.length ? `Switched to ${MARK_LABEL[m]}. Removed ${res.dropped.map((c) => channelLabel(spec.mark, c)).join(', ')}, which ${MARK_LABEL[m]} does not use.` : `Switched to ${MARK_LABEL[m]}. Your fields stayed in place.` })
                   }}>
                   {sug.best === m && <span className="sug">Suggested</span>}
-                  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={MARK_ICON[m]} /></svg>{MARK_LABEL[m]}
+                  {(() => { const I = MARK_ICONS[m]; return <I size={24} strokeWidth={1.6} aria-hidden="true" /> })()}{MARK_LABEL[m]}
                 </button>
               )
             })}
             {COMING_SOON.map((c) => (
-              <button key={c.label} type="button" className="mk off soon" disabled>
-                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={c.icon} /></svg>{c.label}<span className="soonl">Coming soon</span>
+              <button key={c} type="button" className="mk off" aria-disabled="true" aria-label={`${c}, coming soon`} onClick={() => setExplore({ notice: `${c} is coming soon.`, noticeBad: true })}>
+                {(() => { const I = SOON_ICONS[c]; return <I size={24} strokeWidth={1.6} aria-hidden="true" /> })()}{c}
               </button>
             ))}
           </div>
