@@ -25,6 +25,10 @@ const RULES: Record<Mark, { test(c: Counts, ordered: boolean, pieOk: boolean): b
   rule: { test: (c) => c.q >= 1 && c.cat >= 1, score: () => 32, reason: 'Needs a number and a category' },
   treemap: { test: (c) => c.cat === 1 && c.q === 1, score: () => 34, reason: 'Needs one category and a number' },
   radar: { test: (c) => c.q >= 1 && c.cat >= 1, score: () => 28, reason: 'Needs a number and a category with 3 to 16 values' },
+  sunburst: { test: (c) => c.cat >= 1 && c.q === 1, score: () => 26, reason: 'Needs one or two categories and a number' },
+  sankey: { test: (c) => c.cat >= 2 && c.q >= 1, score: () => 38, reason: 'Needs two categories (from and to) and a number' },
+  chord: { test: (c) => c.cat >= 2 && c.q >= 1, score: () => 30, reason: 'Needs two categories (from and to) and a number' },
+  trail: { test: (c) => c.q >= 3 || (c.q >= 2 && c.t >= 1), score: () => 40, reason: 'Needs two numbers and a number or date to order by' },
 }
 
 /** `roleOf` gives a field's chart role; `distinct` the number of distinct values of a field (for the pie limit). */

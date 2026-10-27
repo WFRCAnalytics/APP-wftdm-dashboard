@@ -171,6 +171,38 @@ describe('density, rule, treemap and radar', () => {
   })
 })
 
+describe('sunburst, sankey, chord and trail', () => {
+  it('draws a sunburst ring slice per colour value and a second ring per detail value', () => {
+    const one = ok(build({ mark: 'sunburst', enc: { color: { f: 'mode' }, size: { f: 'trips', agg: 'sum' } } }))
+    expect(one.panels[0].paths).toHaveLength(3)
+    const two = ok(build({ mark: 'sunburst', enc: { color: { f: 'mode' }, detail: { f: 'scenario' }, size: { f: 'trips', agg: 'sum' } } }))
+    expect(two.panels[0].paths).toHaveLength(3 + 6)
+    expect(two.legend).toHaveLength(1)
+  })
+  it('draws a sankey band per from and to pair, with a node on each side', () => {
+    const m = ok(build({ mark: 'sankey', enc: { x: { f: 'scenario' }, y: { f: 'mode' }, size: { f: 'trips', agg: 'sum' } } }))
+    expect(m.panels[0].paths).toHaveLength(6)
+    expect(m.panels[0].rects).toHaveLength(2 + 3)
+  })
+  it('draws a chord ribbon per pair and an arc per category', () => {
+    const m = ok(build({ mark: 'chord', enc: { x: { f: 'scenario' }, y: { f: 'mode' }, size: { f: 'trips', agg: 'sum' } } }))
+    expect(m.panels[0].paths).toHaveLength(6 + 5)
+  })
+  it('refuses a sankey or chord with too many categories', () => {
+    const many = Array.from({ length: 30 }, (_, i) => ({ mode: `m${i}`, scenario: `s${i}`, trips: 1, hour: 0, notes: '' }))
+    expect(build({ mark: 'chord', enc: { x: { f: 'scenario' }, y: { f: 'mode' }, size: { f: 'trips' } } }, many).problem).toContain('24 categories or fewer')
+    expect(build({ mark: 'sankey', enc: { x: { f: 'scenario' }, y: { f: 'mode' }, size: { f: 'trips' } } }, many).problem).toBeUndefined()
+  })
+  it('joins trail points in the order of the order field', () => {
+    const pts = [3, 1, 2].map((h) => ({ hour: h, trips: h * 10, scenario: 'a', mode: 'Car', notes: '' }))
+    const m = ok(build({ mark: 'trail', enc: { x: { f: 'hour' }, y: { f: 'trips' }, order: { f: 'hour' } } }, pts))
+    const line = m.panels[0].paths.find((p) => p.fill === 'none' && p.sw === 2)!
+    const xs = Array.from(line.d.matchAll(/(?:M|L)([\d.-]+) /g)).map((x) => Number(x[1]))
+    expect(xs).toEqual(xs.slice().sort((a, b) => a - b))
+    expect(m.panels[0].paths.filter((p) => p.tip)).toHaveLength(3)
+  })
+})
+
 describe('data handling', () => {
   it('makes a panel per facet value', () => {
     const m = ok(build({ enc: { x: { f: 'mode' }, y: { f: 'trips', agg: 'sum' }, column: { f: 'scenario' } } }))

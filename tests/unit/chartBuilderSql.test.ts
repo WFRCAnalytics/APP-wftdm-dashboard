@@ -54,6 +54,18 @@ describe('chartQuery: aggregated marks', () => {
     const t = chartQuery(defaultSpec({ mark: 'treemap', enc: { color: { f: 'mode' }, size: { f: 'trips', agg: 'sum' } } }), rel)
     expect(norm(t.sql)).toContain('GROUP BY "mode"')
   })
+  it('groups sankey and chord by from and to, a sunburst by both rings, and orders a trail', () => {
+    const s = chartQuery(defaultSpec({ mark: 'sankey', enc: { x: { f: 'a' }, y: { f: 'b' }, size: { f: 'v', agg: 'sum' } } }), rel)
+    expect(norm(s.sql)).toContain('SELECT "a", "b", SUM(CAST("v" AS DOUBLE)) AS "v"')
+    const c = chartQuery(defaultSpec({ mark: 'chord', enc: { x: { f: 'a' }, y: { f: 'b' }, size: { f: 'v', agg: 'sum' } } }), rel)
+    expect(norm(c.sql)).toContain('GROUP BY "a", "b"')
+    const b = chartQuery(defaultSpec({ mark: 'sunburst', enc: { color: { f: 'g' }, detail: { f: 'h' }, size: { f: 'v', agg: 'sum' } } }), rel)
+    expect(norm(b.sql)).toContain('GROUP BY "g", "h"')
+    const t = chartQuery(defaultSpec({ mark: 'trail', enc: { x: { f: 'a' }, y: { f: 'b' }, order: { f: 'o' } } }), rel)
+    expect(t.mode).toBe('raw')
+    expect(norm(t.sql)).toContain('ORDER BY "o"')
+    expect(norm(t.sql)).not.toContain('SAMPLE')
+  })
   it('caps the result', () => {
     expect(chartQuery(defaultSpec({ enc: { x: { f: 'mode' }, y: { f: 'trips' } } }), rel).sql).toContain('LIMIT 50001')
   })

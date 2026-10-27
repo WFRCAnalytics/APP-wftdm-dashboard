@@ -66,6 +66,12 @@ describe('suggest', () => {
     expect(fit({ color: { f: 'mode' }, size: { f: 'trips' } }).byMark.treemap.viable).toBe(true)
     expect(fit({ x: { f: 'mode' } }).byMark.radar.viable).toBe(false)
   })
+  it('offers sankey and chord for from, to and a number, and a trail for three numbers', () => {
+    const f = fit({ x: { f: 'mode' }, y: { f: 'scenario' }, size: { f: 'trips' } })
+    expect(f.byMark.sankey.viable && f.byMark.chord.viable).toBe(true)
+    expect(f.byMark.trail.viable).toBe(false)
+    expect(fit({ x: { f: 'hour' }, y: { f: 'trips' }, order: { f: 'day' } }).byMark.trail.viable).toBe(true)
+  })
   it('needs a number for a histogram', () => {
     expect(fit({ x: { f: 'mode' } }).byMark.histogram.viable).toBe(false)
   })
@@ -82,9 +88,9 @@ describe('configuration', () => {
     expect(r.ok && r.scenarios).toEqual(['a'])
   })
   it('lists each problem with its path', () => {
-    const bad = { ...cfg, mark: 'sankey', data: { relation: 't:trips', source: { scenarios: ['zzz'], sql: '' } } }
+    const bad = { ...cfg, mark: 'map', data: { relation: 't:trips', source: { scenarios: ['zzz'], sql: '' } } }
     const r = fromConfig(JSON.stringify(bad), ctx)
-    expect(!r.ok && r.errors.join(' ')).toContain('mark: "sankey" is not available yet')
+    expect(!r.ok && r.errors.join(' ')).toContain('mark: "map" is not available yet')
     expect(!r.ok && r.errors.join(' ')).toContain('data.source.scenarios: not loaded here: zzz')
   })
   it('rejects unknown columns and non-JSON', () => {

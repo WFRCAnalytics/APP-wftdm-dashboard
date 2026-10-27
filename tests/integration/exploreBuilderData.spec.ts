@@ -180,6 +180,37 @@ test.describe('DuckDB computes the chart data for every mark', () => {
     await expect(page.locator('.xb svg.plot rect[data-t]')).toHaveCount(2)
     expect(errors).toEqual([])
   })
+  test('trail joins points in order', async ({ page }) => {
+    const errors: string[] = []
+    await setup(page, errors, 'Trail')
+    await place(page, 'auPkTotal', 'X axis')
+    await place(page, 'trPkTotal', 'Y axis')
+    await place(page, 'auOpTotal', 'Order')
+    await drawn(page)
+    expect(errors).toEqual([])
+  })
+  test('sankey, chord and sunburst draw flows between two categories', async ({ page }) => {
+    const errors: string[] = []
+    await openExplore(page, errors)
+    await expect(page.locator('.xb .tbl tbody tr').first()).toBeVisible({ timeout: 60_000 })
+    await page.locator('.xb .tpick').click()
+    await page.getByRole('dialog', { name: 'Choose a table' }).getByLabel('Search').fill('purpose_mode_flow')
+    await page.getByRole('option', { name: 'purpose_mode_flow', exact: true }).click()
+    await expect(page.locator('.xb .prow2', { hasText: 'major_trip_mode' })).toBeVisible({ timeout: 30_000 })
+    await page.getByRole('button', { name: 'Add chart tab' }).click()
+    await page.locator('.xb .mk', { hasText: 'Sankey' }).click()
+    await place(page, 'primary_purpose', 'From')
+    await place(page, 'major_trip_mode', 'To')
+    await place(page, 'trips', 'Flow')
+    await drawn(page)
+    await page.locator('.xb .mk', { hasText: 'Chord' }).click()
+    await drawn(page)
+    await page.locator('.xb .mk', { hasText: 'Sunburst' }).click()
+    await place(page, 'primary_purpose', 'Inner ring')
+    await place(page, 'major_trip_mode', 'Outer ring')
+    await drawn(page)
+    expect(errors).toEqual([])
+  })
   test('pie groups in DuckDB', async ({ page }) => {
     const errors: string[] = []
     await setup(page, errors, 'Pie')

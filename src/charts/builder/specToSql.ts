@@ -70,9 +70,18 @@ export function chartQuery(spec: ChartSpec, relSql: string): ChartQuery {
     const v = spec.enc.color!
     return { mode: 'aggregated', sql: grouped([spec.enc.x!.f, spec.enc.y!.f, ...fac], aggExpr(v), v.f), spec: resetAgg(spec, 'color') }
   }
-  if (mark === 'pie' || mark === 'waffle' || mark === 'treemap') {
+  if (mark === 'pie' || mark === 'waffle' || mark === 'treemap' || mark === 'sunburst') {
     const v = spec.enc.size!
     return { mode: 'aggregated', sql: grouped([...ser, ...fac], aggExpr(v), v.f), spec: resetAgg(spec, 'size') }
+  }
+  if (mark === 'sankey' || mark === 'chord') {
+    const v = spec.enc.size!
+    return { mode: 'aggregated', sql: grouped([spec.enc.x!.f, spec.enc.y!.f, ...fac], aggExpr(v), v.f), spec: resetAgg(spec, 'size') }
+  }
+  if (mark === 'trail') {
+    // a path needs its points in order, so take the first rows by the order field instead of a random sample
+    const cols = uniq(Object.values(spec.enc).map((e) => e!.f)).map(q)
+    return { mode: 'raw', spec, sql: `SELECT ${cols.join(', ')}\nFROM ${rel}\n${where}\nORDER BY ${q(spec.enc.order!.f)}\nLIMIT ${SCATTER_SAMPLE}` }
   }
   if (mark === 'rule') {
     // one row per category and series: the range of the number and its mean

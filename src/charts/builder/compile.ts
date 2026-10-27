@@ -98,6 +98,14 @@ export function glyph(shape: number, cx: number, cy: number, r: number): { d: st
   return { d: `M${R(cx - r)} ${R(cy)}a${R(r)} ${R(r)} 0 1 0 ${R(2 * r)} 0a${R(r)} ${R(r)} 0 1 0 ${R(-2 * r)} 0`, line: false }
 }
 
+/** An annular sector (a ring slice) between two radii and two angles; ri 0 gives a wedge. */
+export function sector(cx: number, cy: number, ri: number, ro: number, a0: number, a1: number): string {
+  const e = a1 - a0 >= 2 * Math.PI - 1e-6 ? a0 + 2 * Math.PI - 1e-4 : a1
+  const p = (rad: number, ang: number) => `${r1(cx + rad * Math.cos(ang))} ${r1(cy + rad * Math.sin(ang))}`
+  const lg = e - a0 > Math.PI ? 1 : 0
+  return `M${p(ro, a0)}A${r1(ro)} ${r1(ro)} 0 ${lg} 1 ${p(ro, e)}L${p(ri, e)}A${r1(ri)} ${r1(ri)} 0 ${lg} 0 ${p(ri, a0)}Z`
+}
+
 interface Series { key: string; label: string; color: string; fill: string; pat: boolean; di: number; si: number; has: Record<string, 1>; r: Row; heat?: { lo: number; hi: number; f: string } }
 
 const roleOf = (cols: Col[], f: string): Role => chartRole(cols.find((c) => c.name === f)?.type ?? 'text')
@@ -134,6 +142,12 @@ export function buildChart(input: BuildInput): ChartModel {
   if (mark === 'radar') {
     const n = uniqSorted(rows, enc.x!.f).length
     if (n < 3 || n > 16) return { problem: `Radar charts need 3 to 16 spokes. ${enc.x!.f} has ${n}.` }
+  }
+
+  if (mark === 'sankey' || mark === 'chord') {
+    const n = new Set([...uniqSorted(rows, enc.x!.f), ...uniqSorted(rows, enc.y!.f)].map(String)).size
+    const most = mark === 'chord' ? 24 : 60
+    if (n > most) return { problem: `${mark === 'chord' ? 'Chord' : 'Sankey'} charts need ${most} categories or fewer. ${enc.x!.f} and ${enc.y!.f} have ${n} together.` }
   }
 
   const rf = enc.row?.f, cf = enc.column?.f
@@ -687,6 +701,128 @@ export function buildChart(input: BuildInput): ChartModel {
         pa(pn, d, 'none', s.color, 2.2, '', op(s), '')
         for (const q of pts) pa(pn, glyph(0, q.p[0], q.p[1], 4).d, s.color, T.surface, 1.4, '', op(s), tip(String(q.c), [[s.label || yf, fmtExact(q.v)]]))
       }
+    }
+  } else if (mark === 'sunburst') {
+    // two rings: the inner ring is the colour field, the outer ring splits each of its slices by the detail field
+    const sz = enc.size!.f, agg = enc.size!.agg ?? 'sum', cf = enc.color!.f, df = enc.detail?.f, head = small ? 20 : 0
+    for (const pn of panels) {
+      const vals = series.map((s) => Math.max(0, aggregate(pn.prows.filter((r) => skey(r) === s.key).map((r) => r[sz] as number), agg)))
+      const tot = vals.reduce((p, c) => p + c, 0) || 1
+      const cx = pw / 2, cy = head + (ph - head) / 2, R = Math.max(40, Math.min(pw, ph - head) / 2 - 24)
+      const r0 = R * 0.24, rm = df ? R * 0.62 : R
+      let a = -Math.PI / 2
+      dom[cf].forEach((pv) => {
+        const kids = series.map((s, i) => ({ s, i })).filter((k) => k.s.r[cf] === pv && vals[k.i] > 0)
+        const pt = kids.reduce((p, k) => p + vals[k.i], 0)
+        if (pt <= 0) return
+        const a1 = a + (pt / tot) * 2 * Math.PI, first = kids[0].s
+        pa(pn, sector(cx, cy, r0, rm - (df ? 1 : 0), a, a1), first.color, T.surface, 2, '', op(first), tip(String(pv), [[sz, fmtExact(pt)], ['share', `${Math.round((pt / tot) * 1000) / 10}%`]]))
+        if (a1 - a > 0.3 && rm - r0 > 30) {
+          const am = (a + a1) / 2, rr = (r0 + rm) / 2, t = String(pv)
+          tx(pn, cx + rr * Math.cos(am), cy + rr * Math.sin(am) + 4, t.length > 10 ? `${t.slice(0, 9)}…` : t, 'middle', T.fs, '', T.onColor(first.color))
+        }
+        if (df) {
+          let b = a
+          kids.forEach((k, ki) => {
+            const b1 = b + (vals[k.i] / tot) * 2 * Math.PI, shade = T.mix(first.color, T.surface, 0.12 + (0.5 * ki) / Math.max(1, kids.length - 1))
+            pa(pn, sector(cx, cy, rm + 1, R, b, b1), shade, T.surface, 1.5, '', op(k.s), tip(`${pv} · ${k.s.r[df]}`, [[sz, fmtExact(vals[k.i])], ['share', `${Math.round((vals[k.i] / tot) * 1000) / 10}%`]]))
+            b = b1
+          })
+        }
+        a = a1
+      })
+      tx(pn, cx, cy + 2, fmtCompact(tot), 'middle', 16, '', T.ink)
+      tx(pn, cx, cy + 18, sz, 'middle')
+    }
+  } else if (mark === 'sankey') {
+    // from on the left, to on the right: band thickness is the flow
+    const ff = enc.x!.f, tf = enc.y!.f, sz = enc.size!.f, agg = enc.size!.agg ?? 'sum'
+    for (const pn of panels) {
+      const g = new Map<string, number[]>()
+      for (const r of pn.prows) { const k = `${r[ff]}\u0002${r[tf]}`; let q = g.get(k); if (!q) { q = []; g.set(k, q) } q.push(Number(r[sz])) }
+      const flow = new Map<string, number>(), out = new Map<string, number>(), inn = new Map<string, number>()
+      g.forEach((a, k) => {
+        const v = Math.max(0, aggregate(a, agg)), [f, t] = k.split('\u0002')
+        if (v <= 0) return
+        flow.set(k, v); out.set(f, (out.get(f) ?? 0) + v); inn.set(t, (inn.get(t) ?? 0) + v)
+      })
+      const L = Array.from(out.keys()).sort((p, c) => out.get(c)! - out.get(p)!), Rt = Array.from(inn.keys()).sort((p, c) => inn.get(c)! - inn.get(p)!)
+      const tot = Array.from(out.values()).reduce((p, c) => p + c, 0) || 1
+      const lw = Math.min(140, Math.max(...L.map((n) => n.length), 1) * 6.4 + 10), rw = Math.min(140, Math.max(...Rt.map((n) => n.length), 1) * 6.4 + 10)
+      const xL = lw, xR = pw - rw - 12, y0 = small ? 26 : 12, y1 = ph - 12, gap = 6
+      const scale = (y1 - y0 - gap * (Math.max(L.length, Rt.length) - 1)) / tot
+      const place = (names: string[], tots: Map<string, number>) => { const m = new Map<string, number>(); let y = y0; for (const n of names) { m.set(n, y); y += tots.get(n)! * scale + gap } return m }
+      const ly = place(L, out), ry = place(Rt, inn), lc = new Map<string, number>(), rc = new Map<string, number>()
+      const label = (t: string) => (t.length > 20 ? `${t.slice(0, 19)}…` : t)
+      Array.from(flow.entries()).sort((p, c) => L.indexOf(p[0].split('\u0002')[0]) - L.indexOf(c[0].split('\u0002')[0]) || Rt.indexOf(p[0].split('\u0002')[1]) - Rt.indexOf(c[0].split('\u0002')[1])).forEach(([k, v]) => {
+        const [f, t] = k.split('\u0002'), h = v * scale, a0 = ly.get(f)! + (lc.get(f) ?? 0), b0 = ry.get(t)! + (rc.get(t) ?? 0), sx = xL + 12, mid = (sx + xR) / 2
+        lc.set(f, (lc.get(f) ?? 0) + h); rc.set(t, (rc.get(t) ?? 0) + h)
+        const d = `M${r1(sx)} ${r1(a0)}C${r1(mid)} ${r1(a0)} ${r1(mid)} ${r1(b0)} ${r1(xR)} ${r1(b0)}L${r1(xR)} ${r1(b0 + h)}C${r1(mid)} ${r1(b0 + h)} ${r1(mid)} ${r1(a0 + h)} ${r1(sx)} ${r1(a0 + h)}Z`
+        pa(pn, d, colorFor(ff, f, L.indexOf(f)), 'none', 0, '', 0.42, tip(`${f} to ${t}`, [[sz, fmtExact(v)], ['share', `${Math.round((v / tot) * 1000) / 10}%`]]))
+      })
+      L.forEach((n, i) => {
+        pn.rects.push({ x: r1(xL), y: r1(ly.get(n)!), w: 12, h: r1(Math.max(1, out.get(n)! * scale)), rx: 2, fill: colorFor(ff, n, i), stroke: 'none', op: 1, tip: tip(n, [[sz, fmtExact(out.get(n)!)]]) })
+        tx(pn, xL - 6, ly.get(n)! + (out.get(n)! * scale) / 2 + 4, label(n), 'end', T.fs, '', T.ink)
+      })
+      Rt.forEach((n) => {
+        pn.rects.push({ x: r1(xR), y: r1(ry.get(n)!), w: 12, h: r1(Math.max(1, inn.get(n)! * scale)), rx: 2, fill: T.mix(T.surface, T.ink, 0.55), stroke: 'none', op: 1, tip: tip(n, [[sz, fmtExact(inn.get(n)!)]]) })
+        tx(pn, xR + 18, ry.get(n)! + (inn.get(n)! * scale) / 2 + 4, label(n), 'start', T.fs, '', T.ink)
+      })
+    }
+  } else if (mark === 'chord') {
+    // every category is an arc around the circle; a ribbon joins two arcs and is as wide as the flow between them
+    const ff = enc.x!.f, tf = enc.y!.f, sz = enc.size!.f, agg = enc.size!.agg ?? 'sum', head = small ? 20 : 0
+    const names = Array.from(new Set([...uniqSorted(rows, ff), ...uniqSorted(rows, tf)].map(String))).sort((p, c) => p.localeCompare(c)), n = names.length
+    for (const pn of panels) {
+      const g = new Map<string, number[]>()
+      for (const r of pn.prows) { const k = `${r[ff]}\u0002${r[tf]}`; let q = g.get(k); if (!q) { q = []; g.set(k, q) } q.push(Number(r[sz])) }
+      const flows: { f: number; t: number; v: number }[] = [], tot = new Array(n).fill(0) as number[]
+      g.forEach((a, k) => {
+        const v = Math.max(0, aggregate(a, agg)), [f, t] = k.split('\u0002').map((x) => names.indexOf(x))
+        if (v <= 0) return
+        flows.push({ f, t, v }); tot[f] += v; tot[t] += v
+      })
+      const grand = tot.reduce((p, c) => p + c, 0) || 1, gapA = Math.min(0.06, 1.2 / n), k = (2 * Math.PI - gapA * n) / grand
+      const cx = pw / 2, cy = head + (ph - head) / 2, R = Math.max(40, Math.min(pw - 160, ph - head - 40) / 2), ri = R - 14
+      const start: number[] = [], cur: number[] = []
+      let a = -Math.PI / 2
+      names.forEach((_, i) => { start.push(a); cur.push(a); a += tot[i] * k + gapA })
+      const pt = (rad: number, ang: number) => `${r1(cx + rad * Math.cos(ang))} ${r1(cy + rad * Math.sin(ang))}`
+      flows.sort((p, c) => c.v - p.v).forEach((fl) => {
+        const w = fl.v * k, s0 = cur[fl.f], s1 = s0 + w; cur[fl.f] = s1
+        const t0 = cur[fl.t], t1 = t0 + w; cur[fl.t] = t1
+        const d = `M${pt(ri, s0)}A${r1(ri)} ${r1(ri)} 0 ${w > Math.PI ? 1 : 0} 1 ${pt(ri, s1)}Q${r1(cx)} ${r1(cy)} ${pt(ri, t0)}A${r1(ri)} ${r1(ri)} 0 ${w > Math.PI ? 1 : 0} 1 ${pt(ri, t1)}Q${r1(cx)} ${r1(cy)} ${pt(ri, s0)}Z`
+        pa(pn, d, colorFor(ff, names[fl.f], fl.f), T.surface, 0.8, '', 0.5, tip(`${names[fl.f]} to ${names[fl.t]}`, [[sz, fmtExact(fl.v)], ['share', `${Math.round((fl.v / (grand / 2)) * 1000) / 10}%`]]))
+      })
+      names.forEach((nm, i) => {
+        if (tot[i] <= 0) return
+        const a0 = start[i], a1 = a0 + tot[i] * k, am = (a0 + a1) / 2, cs = Math.cos(am), lp = pt(R + 12, am).split(' ').map(Number)
+        pa(pn, sector(cx, cy, ri, R, a0, a1), colorFor(ff, nm, i), 'none', 0, '', 1, tip(nm, [[sz, fmtExact(tot[i])]]))
+        tx(pn, lp[0], lp[1] + 4, nm.length > 16 ? `${nm.slice(0, 15)}…` : nm, cs > 0.25 ? 'start' : cs < -0.25 ? 'end' : 'middle', T.fs, '', T.ink)
+      })
+    }
+  } else if (mark === 'trail') {
+    // points joined in the order of a third field, with a ring at the start and a solid dot at the end
+    const xf = enc.x!.f, yf = enc.y!.f, of = enc.order!.f
+    let xl = Infinity, xh = -Infinity, yl = Infinity, yh = -Infinity
+    for (const r of rows) { xl = Math.min(xl, r[xf]); xh = Math.max(xh, r[xf]); yl = Math.min(yl, r[yf]); yh = Math.max(yh, r[yf]) }
+    if (spec.zero) { xl = Math.min(0, xl); yl = Math.min(0, yl) }
+    yh = refMax(yh)
+    const num = (v: any) => (typeof v === 'number' ? v : v instanceof Date ? v.getTime() : Number(v))
+    for (const pn of panels) {
+      const bx = frame(), ax = yAx(pn, bx, yl, yh), nx = xNum(pn, bx, xl, xh)
+      for (const s of series) {
+        let pts = pn.prows.filter((r) => skey(r) === s.key)
+        if (pts.every((r) => Number.isFinite(num(r[of])))) pts = pts.slice().sort((p, c) => num(p[of]) - num(c[of]))
+        if (pts.length < 2) continue
+        pa(pn, `M${pts.map((r) => `${r1(nx.sx(r[xf]))} ${r1(ax.sy(r[yf]))}`).join('L')}`, 'none', s.color, 2, '', op(s), '')
+        pts.forEach((r, i) => {
+          const last = i === pts.length - 1, first = i === 0
+          const t = tip(s.label || of, [[of, String(r[of] instanceof Date ? r[of].toISOString().slice(0, 10) : r[of])], [xf, fmtExact(r[xf])], [yf, fmtExact(r[yf])]])
+          pa(pn, glyph(0, nx.sx(r[xf]), ax.sy(r[yf]), last ? 5.5 : first ? 5 : 3).d, first ? T.surface : s.color, s.color, first ? 2 : 1, '', op(s), t)
+        })
+      }
+      refLine(pn, bx, ax.sy)
     }
   }
 

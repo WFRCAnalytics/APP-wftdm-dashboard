@@ -2,9 +2,9 @@
 // configuration (export/import). Pure. Contract: specs/065-chart-builder/contracts/chart-spec.md.
 import { roleAccepts, type DataType, type Role } from '@/charts/builder/columnTypes'
 
-export const MARKS = ['bar', 'line', 'area', 'scatter', 'heatmap', 'histogram', 'box', 'pie', 'tick', 'text', 'waffle', 'density', 'rule', 'treemap', 'radar'] as const
+export const MARKS = ['bar', 'line', 'area', 'scatter', 'heatmap', 'histogram', 'box', 'pie', 'tick', 'text', 'waffle', 'density', 'rule', 'treemap', 'radar', 'sunburst', 'sankey', 'chord', 'trail'] as const
 export type Mark = (typeof MARKS)[number]
-export type Channel = 'x' | 'y' | 'color' | 'pattern' | 'dash' | 'shape' | 'size' | 'opacity' | 'detail' | 'label' | 'column' | 'row'
+export type Channel = 'x' | 'y' | 'color' | 'pattern' | 'dash' | 'shape' | 'size' | 'opacity' | 'detail' | 'label' | 'order' | 'column' | 'row'
 export type Agg = 'sum' | 'mean' | 'median' | 'min' | 'max' | 'count'
 export const AGGS: Agg[] = ['sum', 'mean', 'median', 'min', 'max', 'count']
 export type Stack = 'group' | 'stack' | 'normalize'
@@ -49,10 +49,14 @@ export const SLOTS: Record<Mark, Slot[]> = {
   rule: S([['x', 1, 'q'], ['y', 1, 'no'], ['color', 0, 'no'], ['column', 0, 'no'], ['row', 0, 'no']]),
   treemap: S([['color', 1, 'no'], ['size', 1, 'q'], ['pattern', 0, 'no'], ['column', 0, 'no'], ['row', 0, 'no']]),
   radar: S([['x', 1, 'no'], ['y', 1, 'q'], ['color', 0, 'no'], ['column', 0, 'no'], ['row', 0, 'no']]),
+  sunburst: S([['color', 1, 'no'], ['detail', 0, 'no'], ['size', 1, 'q'], ['column', 0, 'no'], ['row', 0, 'no']]),
+  sankey: S([['x', 1, 'no'], ['y', 1, 'no'], ['size', 1, 'q'], ['column', 0, 'no'], ['row', 0, 'no']]),
+  chord: S([['x', 1, 'no'], ['y', 1, 'no'], ['size', 1, 'q'], ['column', 0, 'no'], ['row', 0, 'no']]),
+  trail: S([['x', 1, 'q'], ['y', 1, 'q'], ['order', 1, 'qot'], ['color', 0, 'no'], ['column', 0, 'no'], ['row', 0, 'no']]),
 }
 
 export const MARK_LABEL: Record<Mark, string> = {
-  bar: 'Bar', line: 'Line', area: 'Area', scatter: 'Scatter', heatmap: 'Heatmap', histogram: 'Histogram', box: 'Box', pie: 'Pie', tick: 'Tick strip', text: 'Text table', waffle: 'Waffle', density: 'Density', rule: 'Rule', treemap: 'Treemap', radar: 'Radar',
+  bar: 'Bar', line: 'Line', area: 'Area', scatter: 'Scatter', heatmap: 'Heatmap', histogram: 'Histogram', box: 'Box', pie: 'Pie', tick: 'Tick strip', text: 'Text table', waffle: 'Waffle', density: 'Density', rule: 'Rule', treemap: 'Treemap', radar: 'Radar', sunburst: 'Sunburst', sankey: 'Sankey', chord: 'Chord', trail: 'Trail',
 }
 export const MARK_ICON: Record<Mark, string> = {
   bar: 'M5 20V11M12 20V5M19 20v-6', line: 'M3 17l5-6 4 3 8-9', area: 'M3 19v-6l5-5 4 3 9-6v14z',
@@ -61,8 +65,9 @@ export const MARK_ICON: Record<Mark, string> = {
   pie: 'M12 3a9 9 0 1 0 9 9h-9zM14.5 3.5A9 9 0 0 1 20.5 9.5H14.5z',
   tick: 'M5 6v6M9 8v4M12 5v7M16 7v5M19 6v6M4 18h16', text: 'M4 6h16M4 12h16M4 18h16M9 4v16M15 4v16', waffle: 'M4 4h5v5H4zM11 4h5v5h-5zM4 11h5v5H4zM11 11h5v5h-5zM18 11h2v5h-2zM4 18h16',
   density: 'M3 19c3 0 3-12 6-12s3 12 6 12 3-6 6-6M3 19h18', rule: 'M4 7h12M4 12h16M4 17h8M16 5v4M20 10v4M12 15v4', treemap: 'M3 3h11v10H3zM14 3h7v6h-7zM14 9h7v4h-7zM3 13h7v8H3zM10 13h11v8H10z', radar: 'M12 3l8 6-3 10H7L4 9zM12 3v18M4 9l16 0M7 19L17 19',
+  sunburst: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM12 3v5M12 16v5', sankey: 'M3 5h3v6H3zM3 14h3v5H3zM18 5h3v4h-3zM18 12h3v7h-3zM6 7c6 0 6 2 12 2M6 16c6 0 6-2 12-2', chord: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM6 7c4 3 8 3 12 0M5 14c5-1 9 1 13 4', trail: 'M4 18l5-8 4 5 7-10M4 18h.01M20 5h.01',
 }
-export const COMING_SOON = ['Sunburst', 'Sankey', 'Chord', 'Map', 'Trail']
+export const COMING_SOON = ['Map']
 
 export const ROLE_WORD: Record<Exclude<Role, ''>, string> = { n: 'a category', o: 'an ordered category', q: 'a number', t: 'a date' }
 export const ROLE_SHORT: Record<Exclude<Role, ''>, string> = { n: 'category', o: 'ordered', q: 'number', t: 'date' }
@@ -73,12 +78,16 @@ export function channelLabel(mark: Mark, ch: Channel): string {
   if (mark === 'pie' && ch === 'size') return 'Slice size'
   if (mark === 'waffle' && ch === 'size') return 'Share of squares'
   if (mark === 'treemap' && ch === 'size') return 'Tile size'
+  if (mark === 'sunburst') { if (ch === 'color') return 'Inner ring'; if (ch === 'detail') return 'Outer ring'; if (ch === 'size') return 'Slice size' }
+  if ((mark === 'sankey' || mark === 'chord') && ch === 'x') return 'From'
+  if ((mark === 'sankey' || mark === 'chord') && ch === 'y') return 'To'
+  if ((mark === 'sankey' || mark === 'chord') && ch === 'size') return 'Flow'
   if (mark === 'radar' && ch === 'x') return 'Spokes'
   if (mark === 'density' && ch === 'x') return 'Values'
   if (mark === 'text' && ch === 'label') return 'Cell text'
   if (mark === 'heatmap' && ch === 'color') return 'Cell value'
   if (mark === 'histogram' && ch === 'x') return 'Values to bin'
-  return { x: 'X axis', y: 'Y axis', color: 'Colour', pattern: 'Hatch', dash: 'Dash', shape: 'Shape', size: 'Size', opacity: 'Opacity', detail: 'Detail', label: 'Label', column: 'Columns', row: 'Rows' }[ch]
+  return { x: 'X axis', y: 'Y axis', color: 'Colour', pattern: 'Hatch', dash: 'Dash', shape: 'Shape', size: 'Size', opacity: 'Opacity', detail: 'Detail', label: 'Label', order: 'Order', column: 'Columns', row: 'Rows' }[ch]
 }
 
 /** The aggregate a number gets by default on a channel that totals (bar, line and area y; heatmap cell; pie slice). */
@@ -86,7 +95,7 @@ export function defaultAgg(mark: Mark, ch: Channel, role: Role): Agg | null {
   if (role !== 'q') return null
   if (ch === 'y' && (mark === 'bar' || mark === 'line' || mark === 'area' || mark === 'radar')) return 'sum'
   if (ch === 'color' && mark === 'heatmap') return 'sum'
-  if (ch === 'size' && (mark === 'pie' || mark === 'waffle' || mark === 'treemap')) return 'sum'
+  if (ch === 'size' && (mark === 'pie' || mark === 'waffle' || mark === 'treemap' || mark === 'sunburst' || mark === 'sankey' || mark === 'chord')) return 'sum'
   if (ch === 'label' && mark === 'text') return 'sum'
   return null
 }
