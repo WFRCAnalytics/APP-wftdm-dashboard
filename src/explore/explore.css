@@ -314,3 +314,6 @@
 .xb .top .tabs{height:38px;max-width:30vw}
 @media (max-width:899px){.xb .xbar{max-width:100%;flex-basis:100%}}
 .xb .top .tabs .pill{padding:5px 13px;font-size:14px}
+/* the page's right and bottom gutter, the same as the header's, so panels never touch the screen edge */
+.xb .dgrid,.xb .vgrid{padding:0 28px 14px 14px}
+.xb .scroll{padding:10px 14px 10px 6px}
