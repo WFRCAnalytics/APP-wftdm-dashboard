@@ -260,7 +260,7 @@ function Rail({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: ChartDat
             {MARKS.map((m: Mark) => {
               const r = sug.byMark[m], off = !r.viable, on = spec.mark === m
               return (
-                <button key={m} type="button" className={`mk tp ${on ? 'on' : ''} ${off ? 'off' : ''}`} data-tip={off ? r.reason : sug.best === m ? 'Best fit for these columns' : MARK_LABEL[m]} aria-pressed={on} aria-disabled={off}
+                <button key={m} type="button" className={`mk ${on ? 'on' : ''} ${off ? 'off' : ''}`} aria-pressed={on} aria-disabled={off}
                   onClick={() => {
                     if (off) { setExplore({ notice: `${r.reason}.`, noticeBad: true }); return }
                     const res = switchMark(spec, m, roleOf)
@@ -272,9 +272,13 @@ function Rail({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: ChartDat
                 </button>
               )
             })}
+            {COMING_SOON.map((c) => (
+              <button key={c.label} type="button" className="mk off soon" disabled>
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={c.icon} /></svg>{c.label}<span className="soonl">Coming soon</span>
+              </button>
+            ))}
           </div>
           <p className="hint">{sug.total === 0 ? 'Pick a chart, or place columns on the shelves to get suggestions.' : sug.best ? `${MARK_LABEL[sug.best]} fits these ${sug.total} column${sug.total > 1 ? 's' : ''} best. Dimmed charts need other columns.` : 'No chart fits these columns yet. Add a number or a category.'}</p>
-          <div className="rrow">{COMING_SOON.map((c) => <span key={c} className="pillx tp" data-tip="Coming soon">{c}</span>)}</div>
           {(spec.mark === 'bar' || spec.mark === 'area') && pills<Stack>([['group', spec.mark === 'area' ? 'Overlap' : 'Grouped'], ['stack', 'Stacked'], ['normalize', '100%']], spec.stack, (v) => setSpec((x) => ({ ...x, stack: v })), 'Stacking')}
           {spec.mark === 'pie' && pills<boolean>([[false, 'Pie'], [true, 'Donut']], spec.donut, (v) => setSpec((x) => ({ ...x, donut: v })), 'Pie style')}
         </div>
