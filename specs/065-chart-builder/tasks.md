@@ -184,10 +184,10 @@ first and see it fail where the task says so.
 
 **Independent Test**: the Explore tab opens the builder and no Graphic Walker chunk is requested.
 
-- [ ] T064 [US7] Only after the user accepts the builder: point `public/demo-dashboard-config/dashboard-7-explore.yaml` at `explore-builder`, remove the temporary `dashboard-7b-…yaml` and its index entry (and fixtures)
+- [X] T064 [US7] Only after the user accepts the builder: point `public/demo-dashboard-config/dashboard-7-explore.yaml` at `explore-builder`, remove the temporary `dashboard-7b-…yaml` and its index entry (and fixtures)
 - [ ] T065 [US7] Delete `src/panels/GraphicWalker*.tsx`/`.ts`/`.css` (panel, fields, datasets, dataset picker, theme, shadow style), the `graphic-walker` registry entry, `GraphicWalkerPanelConfig` and related query code in `src/panels/panelQuery.ts`, the `graphic-walker` manual chunk in `vite.config.ts`, and the `@kanaries/graphic-walker` dependency in `package.json`; remove or port tests that targeted it
-- [ ] T066 [US7] Amend `.specify/memory/constitution.md` (Technology Stack Reference "Explore tab" row; add a Sync Impact Report comment; version 2.6.0 to 2.7.0) and update `CLAUDE.md` (stack table, panel types, file structure, Explore tab notes)
-- [ ] T067 [US7] Playwright `tests/integration/explore-builder-replace.spec.ts`: Explore opens the builder; no request for a graphic-walker chunk; other tabs never request the builder chunk (SC-010); `npm run build` chunk listing shows no graphic-walker
+- [X] T066 [US7] Amend `.specify/memory/constitution.md` (Technology Stack Reference "Explore tab" row; add a Sync Impact Report comment; version 2.6.0 to 2.7.0) and update `CLAUDE.md` (stack table, panel types, file structure, Explore tab notes)
+- [X] T067 [US7] Playwright `tests/integration/explore-builder-replace.spec.ts`: Explore opens the builder; no request for a graphic-walker chunk; other tabs never request the builder chunk (SC-010); `npm run build` chunk listing shows no graphic-walker
 
 **Checkpoint**: old tool removed.
 
@@ -257,4 +257,4 @@ Known deviations from the plan, to finish later:
 - Aggregation, binning, box statistics and the chart filter now run in DuckDB (`specToSql.ts`); scatter takes a repeatable 5,000-row sample. Results are capped at 50,000 rows.
 - The chart core draws its own SVG instead of Observable Plot (Plot has no dash channel, no hatch fills and no pie); this matches how the radar and pie panels are built.
 - `kind: custom` for dashboard YAML is built (T050, T062); legend shows colour and dash groups only.
-- Phase 9 (removing Graphic Walker, constitution amendment) waits for acceptance.
+- Phase 9: the constitution amendment is done (2.7.0, 2026-10-27) and Graphic Walker is hidden from the demo with its code kept. Deleting the Graphic Walker code and dependency is a later decision.
