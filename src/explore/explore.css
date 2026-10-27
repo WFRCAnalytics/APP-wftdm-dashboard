@@ -153,7 +153,7 @@
 .xb .sqlt .th{align-items:center}
 .xb .ed{margin:12px 18px 16px;border:1px solid var(--line);border-radius:16px;background:var(--bg2);overflow:hidden}
 .xb .edscroll{display:flex;overflow:auto;max-height:280px;min-height:132px}
-.xb .gut{position:sticky;left:0;z-index:1;flex:none;padding:10px 10px 10px 12px;text-align:right;color:var(--mute);background:inherit;font-family:var(--font-mono);font-size:12.5px;line-height:20px;user-select:none;border-right:1px solid var(--grid);opacity:.9}
+.xb .gut{position:sticky;left:0;z-index:1;flex:none;padding:10px 10px 10px 12px;text-align:right;color:var(--mute);background:var(--bg2);font-family:var(--font-mono);font-size:12.5px;line-height:20px;user-select:none;border-right:1px solid var(--grid)}
 .xb .edc{position:relative;flex:1;min-width:0}
 .xb .edc pre{margin:0;padding:10px 14px;font-family:var(--font-mono);font-size:12.5px;line-height:20px;white-space:pre;tab-size:2;width:max-content;min-width:100%;color:var(--ink)}
 .xb .edc pre .k{color:var(--sql-kw);font-weight:500}
