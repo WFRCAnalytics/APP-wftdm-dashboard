@@ -22,7 +22,7 @@ export function normalizeCustomSpec(raw: unknown, runs: readonly string[]): Cust
     stack: raw.stack ?? 'group',
     filter: Array.isArray(raw.filter) ? raw.filter : [],
     axes: {
-      zeroBaseline: raw.axes?.zeroBaseline !== false,
+      zeroBaseline: raw.axes?.zeroBaseline === true,
       gridlines: raw.axes?.gridlines !== false,
       referenceLine: typeof raw.axes?.referenceLine === 'number' ? raw.axes.referenceLine : null,
     },

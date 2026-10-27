@@ -79,7 +79,7 @@ export const channelAggregates = (mark: Mark, ch: Channel): boolean => defaultAg
 
 export function defaultSpec(over: Partial<ChartSpec> = {}): ChartSpec {
   return {
-    mark: 'bar', donut: false, stack: 'group', enc: {}, filter: { f: '', v: '' }, zero: true, grid: true, ref: '',
+    mark: 'bar', donut: false, stack: 'group', enc: {}, filter: { f: '', v: '' }, zero: false, grid: true, ref: '',
     text: {
       title: { t: '', size: 'lg', b: true, i: false }, sub: { t: '', size: 'md', b: false, i: false },
       src: { t: '', size: 'xs', b: false, i: true }, note: { t: '', size: 'xs', b: false, i: false },
@@ -185,7 +185,7 @@ export function fromConfig(text: string, ctx: ImportContext): ImportResult {
   const spec = defaultSpec({
     mark, donut, enc, stack: c.stack ?? 'group',
     filter: c.filter?.[0] ? { f: c.filter[0].field, v: String(c.filter[0].value) } : { f: '', v: '' },
-    zero: c.axes?.zeroBaseline !== false, grid: c.axes?.gridlines !== false,
+    zero: c.axes?.zeroBaseline === true, grid: c.axes?.gridlines !== false,
     ref: c.axes?.referenceLine === null || c.axes?.referenceLine === undefined ? '' : String(c.axes.referenceLine),
   })
   for (const [k, name] of TEXT_KEYS) {
