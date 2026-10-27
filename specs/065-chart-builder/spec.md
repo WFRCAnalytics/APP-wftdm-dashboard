@@ -210,3 +210,16 @@ When the builder is accepted, it replaces or sits beside the existing Explore ta
 - A plain multi-line text box is acceptable for the first version of the SQL editor; richer editing is a later enhancement.
 - Two-way sync is delivered for the supported subset and falls back to one-way if the engine cannot read queries back; this is confirmed by an early spike (`project-docs/CHART-BUILDER-PROPOSAL.md` section 12).
 - Existing app rules still apply: one shared query connection, session-only state, no new chart library, palette tokens only.
+
+## Updates agreed while prototyping (2026-10-27)
+
+The interactive prototype changed or added the following. Where this section and the sections above disagree, this section wins.
+
+- **FR-027 Data types.** Each column has a data type: Category, Integer, Decimal, Boolean, Text, ID, Date, Date and time, Ordinal, Geometry (nested types are listed as unsupported). The type is inferred and can be overridden. Each type maps to a chart role (category, ordered category, number, date, or none). Text, ID and Geometry have no chart role yet and cannot be placed on a shelf.
+- **FR-028 Type filters** list only the types present in the current table, with counts.
+- **FR-029 Column summaries.** For every column the Data tab shows a small distribution and a one-line summary, and for the selected column a larger distribution (histogram, rows over time, text length, or rows by category) and summary statistics suited to its type (rows, missing, distinct, min, quartiles, max, mean, standard deviation, earliest and latest, true and false share, uniqueness, and so on). Summaries are computed only for the columns on screen or selected.
+- **FR-030 Scale.** The builder must stay usable with 10 to 15 scenarios (searchable picker with select all) and tables of several hundred columns (search, type filter, grouped field list, searchable column pickers).
+- **FR-031 Joins.** A query can join up to four tables with inner, left, right and full joins on one or more key pairs. Matching column names are suggested as keys, clashing output names are made unique, and each step shows its row count.
+- **FR-032 Query panel.** The right panel has a Builder tab (steps: table, joins, filter, summarize, columns, sort and limit, plus starter queries) and a SQL tab (highlighted editor with line numbers, copy), a Run and Save footer shared by both, and a pinned "My tables" list. All scrolling happens inside the query box.
+- **FR-033 Chart screen fit.** In the chart tab the encoding shelves are a single compact row above the chart, and the chart fills the remaining height and redraws at its real size.
+- **FR-034 Graphic Walker hidden.** Graphic Walker is removed from navigation and the Explore tab opens the builder. Its code stays in the repository until the builder is accepted (User Story 7 completes the removal).
