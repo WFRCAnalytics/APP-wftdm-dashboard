@@ -87,3 +87,29 @@ describe('joins', () => {
     expect(norm(buildSql(p, m, { joins: 1 }))).toContain('LEFT JOIN')
   })
 })
+
+describe('filters by column type', () => {
+  it('offers no greater-than on a category and no ranges on text', async () => {
+    const { opsFor, opLabel } = await import('../../src/explore/sql/queryModel.ts')
+    expect(opsFor('category')).toEqual(['=', '≠', 'in', 'not in'])
+    expect(opsFor('integer')).toContain('>')
+    expect(opsFor('text')).toEqual(['=', '≠', 'contains'])
+    expect(opLabel('in', 'category')).toBe('is any of')
+    expect(opLabel('>', 'date')).toBe('after')
+  })
+  it('writes a multiple-value filter as IN and NOT IN, and skips an empty list', async () => {
+    const { listVal } = await import('../../src/explore/sql/queryModel.ts')
+    const i = input(['base'], 'trips')
+    const m = { ...emptyModel(), where: [{ col: 'mode', op: 'in' as const, val: listVal(['Car', "O'Hare"]) }, { col: 'mode', op: 'not in' as const, val: '' }] }
+    const sql = buildSql(planQuery(i, m), m)
+    expect(sql).toContain(`CAST(mode AS VARCHAR) IN ('Car', 'O''Hare')`)
+    expect(sql).not.toContain('NOT IN')
+  })
+  it('unchecking a column starts from all of them, and checking them all again means all', async () => {
+    const { toggleSelect } = await import('../../src/explore/sql/queryModel.ts')
+    const all = ['a', 'b', 'c']
+    expect(toggleSelect([], all, 'b')).toEqual(['a', 'c'])
+    expect(toggleSelect(['a', 'c'], all, 'b')).toEqual([])
+    expect(toggleSelect(['a'], all, 'a')).toEqual(['a'])
+  })
+})

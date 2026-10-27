@@ -120,3 +120,29 @@ test.describe('DuckDB computes the chart data for every mark', () => {
     expect(errors).toEqual([])
   })
 })
+
+test('a category filter offers its values and the table picks its columns, both synced with the builder', async ({ page }) => {
+  const errors: string[] = []
+  await openExplore(page, errors)
+  await expect(page.locator('.xb .tbl tbody tr').first()).toBeVisible({ timeout: 60_000 })
+  // filter: a category offers is / is not / is any of / is none of, never greater-than, and lists its own values
+  await page.getByRole('button', { name: /^Filter/ }).click()
+  await page.getByRole('button', { name: 'Add a filter' }).click()
+  await page.getByLabel('Filter column').click()
+  await page.getByRole('option', { name: 'scenario' }).click()
+  await page.getByLabel('Filter operator').click()
+  await expect(page.getByRole('option')).toHaveText(['is', 'is not', 'is any of', 'is none of'])
+  await page.getByRole('option', { name: 'is any of' }).click()
+  await page.getByLabel('Filter value').click()
+  await page.getByRole('option').first().click()
+  await page.keyboard.press('Escape')
+  await expect(page.locator('.xb .qt')).toContainText('25 rows')
+  // columns: unchecking one in the table's picker shows in the builder step and the table
+  const heads = await page.locator('.xb .tbl thead th').count()
+  await page.getByRole('button', { name: /of \d+ columns$/ }).click()
+  await page.getByRole('option').nth(2).click()
+  await page.keyboard.press('Escape')
+  await expect(page.locator('.xb .tbl thead th')).toHaveCount(heads - 1)
+  await expect(page.locator('.xb .qt')).toContainText(`${heads - 1} of ${heads} columns`)
+  expect(errors).toEqual([])
+})

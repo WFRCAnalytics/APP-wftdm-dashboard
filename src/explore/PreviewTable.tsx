@@ -1,10 +1,13 @@
 // 065-chart-builder: the Data tab's paged preview. The page size follows the height of the tile; the first column stays
 // pinned while the rest scrolls sideways (tables can have hundreds of columns); cells render by data type.
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ChevronLeft, ChevronRight, Maximize2, Minimize2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Columns2, Maximize2, Minimize2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/explore/ExportDialog'
-import { Btn, TypeChip } from '@/explore/parts'
+import { TYPE_LABEL } from '@/charts/builder/columnTypes'
+import { update } from '@/explore/QueryBox'
+import { toggleSelect } from '@/explore/sql/queryModel'
+import { Btn, SearchPopover, TypeChip, type PopItem } from '@/explore/parts'
 import type { DataTabModel } from '@/explore/useDataTab'
 import { setExplore } from '@/state/exploreState'
 
@@ -89,16 +92,40 @@ function Head({ m, name, big, onToggle }: { m: DataTabModel; name: string; big: 
     s.scenarios.length > 1 ? `${s.scenarios.length} scenarios combined.` : '',
     m.plan?.joins.some((j) => j.ok) ? 'Joined tables.' : '',
   ].filter(Boolean).join(' ')
+  // which columns the table shows: the builder's own column choice, so the two stay in step (not while summarising or hand-editing)
+  const plan = m.plan
+  const canPick = !!plan && !m.isMine && !s.detached && plan.group.length === 0
+  const [rect, setRect] = useState<DOMRect | null>(null)
+  const all = plan?.cols.map((c) => c.name) ?? []
+  const shown = s.model.select.length ? s.model.select.length : all.length
   return (
     <div className="th">
       <div><h2 className="tt">{name || 'Table'}</h2><p className="ts">{sub}</p></div>
       <div className="pager">
+        {canPick && (
+          <Btn small aria-haspopup="dialog" aria-expanded={!!rect} onClick={(e) => setRect(e.currentTarget.getBoundingClientRect())}>
+            <Columns2 size={14} aria-hidden="true" />{shown} of {all.length} columns
+          </Btn>
+        )}
         <span className="mono">{from}–{to}{m.total !== null ? ` of ${m.total.toLocaleString('en-US')}` : ''}</span>
         <Btn icon aria-label="Previous page" disabled={s.page <= 0} onClick={() => setExplore({ page: s.page - 1 })}><ChevronLeft size={14} /></Btn>
         <Btn icon aria-label="Next page" disabled={!m.hasMore} onClick={() => setExplore({ page: s.page + 1 })}><ChevronRight size={14} /></Btn>
         {/* the same ghost icon button every other expandable tile uses */}
         <Button variant="ghost" size="icon" aria-label={`${big ? 'Contract' : 'Expand'} ${name || 'table'}`} onClick={onToggle}>{big ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}</Button>
       </div>
+      {rect && plan && (
+        <SearchPopover
+          anchor={rect}
+          title="Columns to show"
+          placeholder={`Search ${all.length} columns`}
+          actions={[{ label: 'Show all', run: () => update({ select: [] }) }]}
+          items={plan.cols.map<PopItem>((c) => ({
+            key: c.name, label: c.name, meta: TYPE_LABEL[c.type], on: s.model.select.length === 0 || s.model.select.includes(c.name),
+            onPick: () => update({ select: toggleSelect(s.model.select, all, c.name) }),
+          }))}
+          onClose={() => setRect(null)}
+        />
+      )}
     </div>
   )
 }

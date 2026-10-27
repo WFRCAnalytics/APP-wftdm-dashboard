@@ -16,8 +16,7 @@ import { Segmented } from '@/components/ui/segmented'
 import { Btn, Sparkline, TypeChip, XSelect } from '@/explore/parts'
 import { loadProfile } from '@/explore/profile/profileRun'
 import { typeColorKey, type ColumnProfile } from '@/explore/profile/profile'
-import { quoteIdent } from '@/explore/relations'
-import { runUserSql } from '@/explore/sql/runUserSql'
+import { useDistinct } from '@/explore/useDistinct'
 import { ExportDialog } from '@/explore/ExportDialog'
 import { ROW_CAP, useChartData, type ChartData } from '@/explore/useChartData'
 import { useColorScheme } from '@/hooks/useColorScheme'
@@ -36,20 +35,6 @@ function useProfileOf(sql: string, col: Col | undefined): ColumnProfile | undefi
     return () => { dead = true }
   }, [sql, col?.name, col?.type])
   return p
-}
-
-function useDistinct(relSql: string, field: string): string[] {
-  const [v, setV] = useState<string[]>([])
-  useEffect(() => {
-    setV([])
-    if (!relSql || !field) return
-    let dead = false
-    void runUserSql(`SELECT DISTINCT CAST(${quoteIdent(field)} AS VARCHAR) AS v FROM (\n${relSql}\n) AS r WHERE ${quoteIdent(field)} IS NOT NULL ORDER BY 1 LIMIT 200`, { page: 0, pageSize: 200 }).then((r) => {
-      if (!dead && r.outcome === 'ok') setV(r.rows.map((x) => String(x[0])))
-    })
-    return () => { dead = true }
-  }, [relSql, field])
-  return v
 }
 
 // ---------------------------------------------------------------------------------------------------------------- fields

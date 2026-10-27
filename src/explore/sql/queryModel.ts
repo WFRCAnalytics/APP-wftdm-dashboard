@@ -4,12 +4,49 @@
 import { chartRole, type DataType } from '@/charts/builder/columnTypes'
 
 export type JoinType = 'inner' | 'left' | 'right' | 'full'
-export type FilterOp = '=' | '≠' | '>' | '<' | 'contains'
+export type FilterOp = '=' | '≠' | '>' | '<' | 'contains' | 'in' | 'not in'
 export type AggFn = 'sum' | 'mean' | 'median' | 'min' | 'max' | 'count'
 
 export interface JoinKey { l: string; r: string }
 export interface JoinSpec { table: string; type: JoinType; keys: JoinKey[] }
+/** `val` is the text typed or picked; for `in` and `not in` it is a JSON list of the picked values. */
 export interface Filter { col: string; op: FilterOp; val: string }
+
+/** Columns whose values are picked from a list (a few distinct values) rather than typed. */
+export const isPickType = (t: DataType): boolean => t === 'category' || t === 'ordinal' || t === 'boolean'
+
+/** The comparisons that make sense for a column of this type: no greater-than on a category, no ranges on text. */
+export function opsFor(t: DataType): FilterOp[] {
+  if (isPickType(t)) return ['=', '≠', 'in', 'not in']
+  const role = chartRole(t)
+  if (role === 'q' || role === 't') return ['=', '≠', '>', '<']
+  return ['=', '≠', 'contains']
+}
+
+export function opLabel(op: FilterOp, t: DataType): string {
+  const role = chartRole(t)
+  if (op === '=') return 'is'
+  if (op === '≠') return 'is not'
+  if (op === 'in') return 'is any of'
+  if (op === 'not in') return 'is none of'
+  if (op === 'contains') return 'contains'
+  if (role === 't') return op === '>' ? 'after' : 'before'
+  return op === '>' ? 'greater than' : 'less than'
+}
+
+export const isListOp = (op: FilterOp): boolean => op === 'in' || op === 'not in'
+export const parseList = (val: string): string[] => {
+  try { const v: unknown = JSON.parse(val); return Array.isArray(v) ? v.map(String) : [] } catch { return [] }
+}
+export const listVal = (items: string[]): string => (items.length ? JSON.stringify(items) : '')
+
+/** Toggle one column in the chosen output columns. An empty list means every column, so the first uncheck starts from all. */
+export function toggleSelect(select: string[], all: string[], name: string): string[] {
+  const on = select.length ? select : all
+  const next = on.includes(name) ? on.filter((n) => n !== name) : all.filter((n) => on.includes(n) || n === name)
+  if (next.length === 0) return on
+  return next.length === all.length ? [] : next
+}
 
 export interface QueryModel {
   /** Chosen output columns; empty means every column. Ignored while grouping. */
@@ -186,12 +223,13 @@ export function buildSql(plan: Plan, model: QueryModel, stage: SqlStage = 'full'
   const colX = (name: string) => ex(plan.cols.find((c) => c.name === name)!)
 
   const wheres = model.where
-    .filter((w) => plan.names.includes(w.col) && w.val !== '')
+    .filter((w) => plan.names.includes(w.col) && w.val !== '' && (!isListOp(w.op) || parseList(w.val).length > 0))
     .map((w) => {
       const c = plan.cols.find((x) => x.name === w.col)!
       const numeric = chartRole(c.type) === 'q' && w.val.trim() !== '' && !Number.isNaN(Number(w.val))
       const x = ex(c)
       if (w.op === 'contains') return `${x} ILIKE ${lit(`%${w.val}%`)}`
+      if (w.op === 'in' || w.op === 'not in') return `CAST(${x} AS VARCHAR) ${w.op === 'in' ? 'IN' : 'NOT IN'} (${parseList(w.val).map(lit).join(', ')})`
       return `${x} ${w.op === '≠' ? '<>' : w.op} ${numeric ? String(Number(w.val)) : lit(w.val)}`
     })
 

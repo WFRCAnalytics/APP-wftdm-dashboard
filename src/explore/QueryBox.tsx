@@ -4,21 +4,21 @@
 import { useRef, useState } from 'react'
 import { ArrowUpDown, ChevronRight, Filter, Link2, Play, Plus, Sigma, Sparkles, Table2, X } from 'lucide-react'
 import { Segmented } from '@/components/ui/segmented'
-import { TYPE_LABEL } from '@/charts/builder/columnTypes'
+import { chartRole, TYPE_LABEL } from '@/charts/builder/columnTypes'
 import { Btn, SearchPopover, XSelect, type PopAction, type PopItem } from '@/explore/parts'
 import { highlightSql } from '@/explore/sql/highlight'
 import { checkName, saveMyTable } from '@/explore/sql/myTables'
 import {
-  autoKeys, buildSql, emptyModel, planQuery, suggestJoins, MAX_JOINS,
+  autoKeys, buildSql, emptyModel, isListOp, isPickType, listVal, opLabel, opsFor, parseList, planQuery, suggestJoins, toggleSelect, MAX_JOINS,
   type AggFn, type FilterOp, type JoinSpec, type JoinType, type QueryModel,
 } from '@/explore/sql/queryModel'
 import type { DataTabModel } from '@/explore/useDataTab'
 import { cancelRunning } from '@/services/duckdb'
 import { resetQuery, setExplore } from '@/state/exploreState'
 import { roleOfType } from '@/explore/typeRole'
+import { useDistinct } from '@/explore/useDistinct'
 
 const AGGS: AggFn[] = ['sum', 'mean', 'median', 'min', 'max', 'count']
-const OPS: FilterOp[] = ['=', '≠', '>', '<', 'contains']
 const JOIN_TYPES: { k: JoinType; label: string; tip: string; fill: string }[] = [
   { k: 'inner', label: 'Inner join', tip: 'Inner: only rows that match', fill: 'M12 7.76A6 6 0 0 1 12 16.24A6 6 0 0 1 12 7.76z' },
   { k: 'left', label: 'Left join', tip: 'Left: every left row', fill: 'M3 12a6 6 0 1 0 12 0a6 6 0 1 0-12 0' },
@@ -33,12 +33,12 @@ const JOIN_EXPLAIN: Record<JoinType, string> = {
 }
 const rows = (n?: number) => (n === undefined ? '' : `${n.toLocaleString('en-US')} rows`)
 
-const update = (patch: Partial<QueryModel>) =>
+export const update = (patch: Partial<QueryModel>) =>
   setExplore((s) => ({ model: { ...s.model, ...patch }, detached: false, sql: '', page: 0 }))
 
 export function QueryBox({ m }: { m: DataTabModel }) {
   const s = m.state
-  const [pop, setPop] = useState<{ kind: 'cols' | 'group'; rect: DOMRect } | null>(null)
+  const [pop, setPop] = useState<{ kind: 'cols' | 'group' | 'val'; rect: DOMRect; i?: number } | null>(null)
   const plan = m.plan
   const tab = s.queryTab
 
@@ -49,10 +49,11 @@ export function QueryBox({ m }: { m: DataTabModel }) {
         <div className="xseg qtabs"><Segmented label="Query view" value={tab} onChange={(id) => setExplore({ queryTab: id as 'builder' | 'sql' })} options={[{ id: 'builder', label: 'Builder' }, { id: 'sql', label: 'SQL' }]} /></div>
       </div>
       <div className={`qscroll ${tab === 'sql' ? 'sqlfull' : ''}`}>
-        {tab === 'builder' ? <Builder m={m} openPicker={(kind, rect) => setPop({ kind, rect })} /> : <SqlTab m={m} />}
+        {tab === 'builder' ? <Builder m={m} openPicker={(kind, rect, i) => setPop({ kind, rect, i })} /> : <SqlTab m={m} />}
       </div>
       <Footer m={m} />
-      {pop && plan && (
+      {pop && plan && pop.kind === 'val' && <ValuePicker m={m} i={pop.i ?? 0} rect={pop.rect} onClose={() => setPop(null)} />}
+      {pop && plan && pop.kind !== 'val' && (
         <SearchPopover
           anchor={pop.rect}
           title={pop.kind === 'cols' ? 'Choose columns' : 'Group by column'}
@@ -60,9 +61,9 @@ export function QueryBox({ m }: { m: DataTabModel }) {
           single={pop.kind === 'group'}
           actions={pop.kind === 'cols' ? ([{ label: 'Use all columns', run: () => update({ select: [] }) }] as PopAction[]) : undefined}
           items={(pop.kind === 'cols' ? plan.cols : plan.cols.filter((c) => !plan.group.includes(c.name))).map<PopItem>((c) => ({
-            key: c.name, label: c.name, meta: TYPE_LABEL[c.type], on: pop.kind === 'cols' && s.model.select.includes(c.name),
+            key: c.name, label: c.name, meta: TYPE_LABEL[c.type], on: pop.kind === 'cols' && (s.model.select.length === 0 || s.model.select.includes(c.name)),
             onPick: () => {
-              if (pop.kind === 'cols') update({ select: s.model.select.includes(c.name) ? s.model.select.filter((x) => x !== c.name) : [...s.model.select, c.name] })
+              if (pop.kind === 'cols') update({ select: toggleSelect(s.model.select, plan.cols.map((x) => x.name), c.name) })
               else { update({ group: [...s.model.group, c.name] }); setPop(null) }
             },
           }))}
@@ -75,6 +76,36 @@ export function QueryBox({ m }: { m: DataTabModel }) {
 
 // One step of the pipeline. Steps with an `onToggle` are accordion items: collapsed they show a one-line summary and the row count,
 // so the whole query takes a few lines; opening one closes the others.
+// Pick the value (one for is and is not) or values (several for is any of and is none of) of a filter from the column's own values.
+function ValuePicker({ m, i, rect, onClose }: { m: DataTabModel; i: number; rect: DOMRect; onClose(): void }) {
+  const model = m.state.model
+  const w = model.where[i]
+  const bare: QueryModel = { ...model, where: [], group: [], select: [], order: '', limit: '' }
+  const rel = m.plan ? buildSql(planQuery(m.plan.input, bare), bare) : ''
+  const values = useDistinct(rel, w?.col ?? '')
+  if (!w) return null
+  const multi = isListOp(w.op)
+  const chosen = multi ? parseList(w.val) : w.val ? [w.val] : []
+  const setVal = (val: string) => update({ where: model.where.map((x, k) => (k === i ? { ...x, val } : x)) })
+  return (
+    <SearchPopover
+      anchor={rect}
+      title={multi ? 'Choose values' : 'Choose a value'}
+      placeholder={`Search ${w.col}`}
+      single={!multi}
+      actions={multi ? ([{ label: 'Clear', run: () => setVal('') }] as PopAction[]) : undefined}
+      items={values.map<PopItem>((v) => ({
+        key: v, label: v, on: chosen.includes(v),
+        onPick: () => {
+          if (multi) setVal(listVal(chosen.includes(v) ? chosen.filter((x) => x !== v) : [...chosen, v]))
+          else { setVal(v); onClose() }
+        },
+      }))}
+      onClose={onClose}
+    />
+  )
+}
+
 function Step(props: { tone?: string; icon: React.ReactNode; title: string; count?: string; ghost?: boolean; right?: React.ReactNode; summary?: string; open?: boolean; onToggle?(): void; children?: React.ReactNode }) {
   const acc = !!props.onToggle
   const open = !acc || !!props.open
@@ -98,7 +129,7 @@ function Step(props: { tone?: string; icon: React.ReactNode; title: string; coun
   )
 }
 
-function Builder({ m, openPicker }: { m: DataTabModel; openPicker(kind: 'cols' | 'group', rect: DOMRect): void }) {
+function Builder({ m, openPicker }: { m: DataTabModel; openPicker(kind: 'cols' | 'group' | 'val', rect: DOMRect, i?: number): void }) {
   const s = m.state
   const model = s.model
   const plan = m.plan
@@ -203,14 +234,35 @@ function Builder({ m, openPicker }: { m: DataTabModel; openPicker(kind: 'cols' |
         )}
 
         <Step tone="s-flt" icon={<Filter size={16} aria-hidden="true" />} title="Filter" count={model.where.length ? rows(m.counts.filter) : ''} summary={model.where.length ? model.where.map((w) => `${w.col} ${w.op} ${w.val || '…'}`).join(', ') : 'none'} open={openStep === 'filter'} onToggle={toggle('filter')}>
-          {model.where.map((w, i) => (
-            <div className="frow fl" key={i}>
-              <XSelect className="mini sel2" aria-label="Filter column" value={w.col} onChange={(e) => update({ where: model.where.map((x, k) => (k === i ? { ...x, col: e.target.value } : x)) })}>{plan.names.map((n) => <option key={n} value={n}>{n}</option>)}</XSelect>
-              <XSelect className="mini sel2" aria-label="Filter operator" value={w.op} onChange={(e) => update({ where: model.where.map((x, k) => (k === i ? { ...x, op: e.target.value as FilterOp } : x)) })}>{OPS.map((o) => <option key={o} value={o}>{o}</option>)}</XSelect>
-              <input className="mini w" aria-label="Filter value" value={w.val} placeholder="value" onChange={(e) => update({ where: model.where.map((x, k) => (k === i ? { ...x, val: e.target.value } : x)) })} />
-              <button type="button" className="x2" aria-label="Remove filter" onClick={() => update({ where: model.where.filter((_, k) => k !== i) })}><X size={12} /></button>
-            </div>
-          ))}
+          {model.where.map((w, i) => {
+            const ct = plan.cols.find((c) => c.name === w.col)?.type ?? 'text'
+            const ops = opsFor(ct)
+            const pick = isPickType(ct)
+            const list = isListOp(w.op) ? parseList(w.val) : []
+            const setW = (patch: Partial<typeof w>) => update({ where: model.where.map((x, k) => (k === i ? { ...x, ...patch } : x)) })
+            return (
+              <div className="frow fl" key={i}>
+                <XSelect className="mini sel2" aria-label="Filter column" value={w.col} onChange={(e) => {
+                  const nt = plan.cols.find((c) => c.name === e.target.value)?.type ?? 'text'
+                  const nops = opsFor(nt)
+                  setW({ col: e.target.value, op: nops.includes(w.op) ? w.op : nops[0], val: '' })
+                }}>{plan.names.map((n) => <option key={n} value={n}>{n}</option>)}</XSelect>
+                <XSelect className="mini sel2" aria-label="Filter operator" value={w.op} onChange={(e) => {
+                  const op = e.target.value as FilterOp
+                  const val = isListOp(op) === isListOp(w.op) ? w.val : isListOp(op) ? listVal(w.val ? [w.val] : []) : (parseList(w.val)[0] ?? '')
+                  setW({ op, val })
+                }}>{ops.map((o) => <option key={o} value={o}>{opLabel(o, ct)}</option>)}</XSelect>
+                {pick ? (
+                  <button type="button" className="mini w vpick" aria-label="Filter value" aria-haspopup="dialog" onClick={(e) => openPicker('val', e.currentTarget.getBoundingClientRect(), i)}>
+                    {isListOp(w.op) ? (list.length ? list.join(', ') : 'pick values') : (w.val || 'pick a value')}
+                  </button>
+                ) : (
+                  <input className="mini w" aria-label="Filter value" value={w.val} placeholder={chartRole(ct) === 't' ? 'YYYY-MM-DD' : 'value'} onChange={(e) => setW({ val: e.target.value })} />
+                )}
+                <button type="button" className="x2" aria-label="Remove filter" onClick={() => update({ where: model.where.filter((_, k) => k !== i) })}><X size={12} /></button>
+              </div>
+            )
+          })}
           <div className="rrow">
             <button type="button" className="lnk" onClick={() => { if (plan.names.length) update({ where: [...model.where, { col: plan.names[Math.min(plan.names.length - 1, 2)], op: '=', val: '' }] }) }}>Add a filter</button>
             {model.where.length === 0 && <span className="hint">Keep only the rows you care about.</span>}
