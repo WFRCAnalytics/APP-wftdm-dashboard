@@ -19,7 +19,7 @@ test('Explore opens the builder, previews a table and summarises a column', asyn
   await openExplore(page, errors)
   await expect(page.locator('.xb .tbl tbody tr').first()).toBeVisible({ timeout: 60_000 })
   // the type filter lists only the types present, with counts
-  await expect(page.locator('.xb .psearch .xseg button').first()).toContainText('All')
+  await expect(page.locator('.xb .psearch .tfilter .tf').first()).toContainText('All')
   // a column row gets a summary line
   await expect(page.locator('.xb .prow2 .pm').first()).not.toHaveText(/^\s*$/, { timeout: 30_000 })
   // the selected column shows summary statistics

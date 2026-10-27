@@ -13,7 +13,7 @@ import {
 import { readChartTheme } from '@/charts/theme'
 import type { ChartTheme } from '@/charts/types'
 import { Segmented } from '@/components/ui/segmented'
-import { Btn, Sparkline, TypeChip, XSelect } from '@/explore/parts'
+import { Btn, Sparkline, TypeChip, TypeFilter, XSelect } from '@/explore/parts'
 import { loadProfile } from '@/explore/profile/profileRun'
 import { typeColorKey, type ColumnProfile } from '@/explore/profile/profile'
 import { useDistinct } from '@/explore/useDistinct'
@@ -89,7 +89,7 @@ function FieldsPanel({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: C
           {s.table.startsWith('t:') && s.table !== tab.source && <option value={s.table}>{s.table.slice(2)}</option>}
         </XSelect>
         <input className="inp" type="search" aria-label="Search fields" placeholder="Search fields" value={s.fieldQuery} onChange={(e) => setExplore({ fieldQuery: e.target.value, fieldShow: 60 })} />
-        <div className="xseg"><Segmented label="Field type" value={active} onChange={(id) => setExplore({ fieldType: id as typeof active })} options={[{ id: 'all', label: 'All', count: cols.length }, ...present.map((p) => ({ id: p.type, label: TYPE_LABEL[p.type], count: p.count }))]} /></div>
+        <TypeFilter label="Field type" value={active} total={cols.length} present={present} onChange={(id) => setExplore({ fieldType: id as typeof active })} />
       </div>
       <div className="flist grow">
         {nodes}

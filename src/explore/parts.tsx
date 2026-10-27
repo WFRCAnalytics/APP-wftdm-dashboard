@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { Check } from 'lucide-react'
-import { TYPE_ICON, type DataType } from '@/charts/builder/columnTypes'
+import { TYPE_ICON, TYPE_LABEL, type DataType } from '@/charts/builder/columnTypes'
 
 export function TypeChip({ type }: { type: DataType }) {
   return (
@@ -11,6 +11,23 @@ export function TypeChip({ type }: { type: DataType }) {
         <path d={TYPE_ICON[type]} />
       </svg>
     </span>
+  )
+}
+
+/**
+ * The type filter of a column list. Each type is its icon (the same one every row shows) and a muted count, so a dozen types
+ * still fit the narrow list panel; the type's name is in a tooltip and in the accessible name. The row wraps instead of clipping.
+ */
+export function TypeFilter({ label, value, total, present, onChange }: { label: string; value: string; total: number; present: { type: DataType; count: number }[]; onChange(id: string): void }) {
+  return (
+    <div className="tfilter" role="group" aria-label={label}>
+      <button type="button" className={`tf ${value === 'all' ? 'on' : ''}`} aria-pressed={value === 'all'} onClick={() => onChange('all')}>All<span className="tfc">{total}</span></button>
+      {present.map((p) => (
+        <button key={p.type} type="button" className={`tf tp ${value === p.type ? 'on' : ''}`} data-tip={TYPE_LABEL[p.type]} aria-label={`${TYPE_LABEL[p.type]}, ${p.count}`} aria-pressed={value === p.type} onClick={() => onChange(p.type)}>
+          <TypeChip type={p.type} /><span className="tfc">{p.count}</span>
+        </button>
+      ))}
+    </div>
   )
 }
 

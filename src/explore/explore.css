@@ -44,7 +44,7 @@
 .xb .th{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:16px 18px 0;flex:none}
 .xb .tt{margin:0;font-size:15.5px;font-weight:600;letter-spacing:-.01em}
 .xb .ts{margin:2px 0 0;color:var(--mute);font-size:12.5px;max-width:72ch}
-.xb .dgrid{flex:1;min-height:0;display:grid;grid-template-columns:340px minmax(0,1fr) 440px;gap:14px}
+.xb .dgrid{flex:1;min-height:0;display:grid;grid-template-columns:270px minmax(0,1fr) 440px;gap:14px}
 .xb .stack{display:flex;flex-direction:column;gap:14px;min-width:0;min-height:0;overflow:hidden}
 .xb .stack>.tile{flex:none}
 .xb .stack>.qt{flex:1;min-height:0;display:flex;flex-direction:column}
@@ -272,8 +272,8 @@
 .xb .dlg .dh{display:flex;align-items:center;justify-content:space-between}
 .xb .dlg textarea{width:100%;min-height:300px;border:1px solid var(--line);background:var(--bg2);border-radius:14px;padding:12px;font-family:var(--font-mono);font-size:12px;line-height:1.5}
 .xb .errs{margin:0;padding-left:18px;color:var(--ink);font-size:12.5px}
-@media (max-width:1480px){.xb .dgrid{grid-template-columns:320px minmax(0,1fr) 400px}}
-@media (max-width:1380px){.xb .dgrid{grid-template-columns:320px minmax(0,1fr)}
+@media (max-width:1480px){.xb .dgrid{grid-template-columns:270px minmax(0,1fr) 400px}}
+@media (max-width:1380px){.xb .dgrid{grid-template-columns:250px minmax(0,1fr)}
 .xb .dgrid .stack{grid-column:1/-1;overflow:visible}
 .xb .stack>.qt{flex:none}
 .xb .qscroll{max-height:520px}
@@ -378,3 +378,13 @@
 .xb .dlg.wide .gridwrap{padding-left:6px}
 /* no fade over the pinned first column: it already shows that the table is scrolled */
 .xb .gridwrap::before{display:none}
+
+/* the column type filter: an icon and a muted count per type, wrapping inside the narrow list panel instead of clipping */
+.xb .tfilter{display:flex;flex-wrap:wrap;gap:2px;padding:3px;border-radius:18px;background:var(--track)}
+.xb .tf{display:inline-flex;align-items:center;gap:6px;border:0;background:none;color:var(--mute);padding:2px 9px 2px 2px;border-radius:999px;font-size:12.5px;font-weight:500;line-height:1.45;white-space:nowrap}
+.xb .tf:first-child{padding:2px 10px}
+.xb .tf:hover{color:var(--ink)}
+.xb .tf.on{background:var(--brand);color:var(--brand-fg)}
+.xb .tfc{font-family:var(--font-mono);font-size:11px;font-variant-numeric:tabular-nums;opacity:.6}
+.xb .tf.on .tyi{background:color-mix(in srgb,var(--brand-fg) 22%,transparent);color:var(--brand-fg)}
+.xb .tf .tyi{border-radius:50%}

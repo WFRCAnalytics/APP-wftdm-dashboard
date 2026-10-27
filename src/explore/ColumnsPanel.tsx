@@ -1,11 +1,10 @@
 // 065-chart-builder: the Data tab's Columns panel. Every column gets a small distribution and a one-line summary; the
 // selected column gets a larger distribution and summary statistics. Only the columns on screen are summarised.
 import { useEffect, useState } from 'react'
-import { Segmented } from '@/components/ui/segmented'
 import { DATA_TYPES, TYPE_LABEL, typesPresent, type DataType } from '@/charts/builder/columnTypes'
 import { loadProfile } from '@/explore/profile/profileRun'
 import { typeColorKey, type ColumnProfile } from '@/explore/profile/profile'
-import { Sparkline, TypeChip, useInView, XSelect } from '@/explore/parts'
+import { Sparkline, TypeChip, TypeFilter, useInView, XSelect } from '@/explore/parts'
 import type { DataTabModel } from '@/explore/useDataTab'
 import type { ColumnInfo } from '@/explore/sql/queryModel'
 import { setExplore } from '@/state/exploreState'
@@ -98,7 +97,7 @@ export function ColumnsPanel({ m }: { m: DataTabModel }) {
       <div className="th"><div><h2 className="tt">Columns</h2><p className="ts">{columns.length} column{columns.length === 1 ? '' : 's'}. Pick one to see its distribution and summary.</p></div></div>
       <div className="psearch">
         <input className="inp" type="search" aria-label="Search columns" placeholder="Search columns" value={s.profileQuery} onChange={(e) => setExplore({ profileQuery: e.target.value, profileShow: 40 })} />
-        <div className="xseg"><Segmented label="Column type" value={active} onChange={(id) => setExplore({ profileType: id as typeof active, profileShow: 40 })} options={[{ id: 'all', label: 'All', count: columns.length }, ...present.map((p) => ({ id: p.type, label: TYPE_LABEL[p.type], count: p.count }))]} /></div>
+        <TypeFilter label="Column type" value={active} total={columns.length} present={present} onChange={(id) => setExplore({ profileType: id as typeof active, profileShow: 40 })} />
       </div>
       <div className="plist grow">
         {shown.map((c) => <ProfileRow key={`${c.name}|${c.type}`} sql={sql} col={c} selected={c.name === selected?.name} />)}
