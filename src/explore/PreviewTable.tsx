@@ -1,7 +1,8 @@
 // 065-chart-builder: the Data tab's paged preview. The page size follows the height of the tile; the first column stays
 // pinned while the rest scrolls sideways (tables can have hundreds of columns); cells render by data type.
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ChevronLeft, ChevronRight, Maximize2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Maximize2, Minimize2 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { Modal } from '@/explore/ExportDialog'
 import { Btn, TypeChip } from '@/explore/parts'
 import type { DataTabModel } from '@/explore/useDataTab'
@@ -64,21 +65,23 @@ function DataGrid({ m, boxRef }: { m: DataTabModel; boxRef?: React.RefObject<HTM
   )
 }
 
-export function PreviewTable({ m }: { m: DataTabModel }) {
-  const { state: s, columns, rows } = m
-  const [big, setBig] = useState(false)
-  const box = useRef<HTMLDivElement>(null)
+// Rows per page follow the height of whichever table is on screen (the tile, or the expanded dialog while it is open).
+function useRowsFit(ref: React.RefObject<HTMLDivElement>, active: boolean, pageSize: number, hasRows: boolean) {
   useEffect(() => {
-    const el = box.current
-    if (!el || typeof ResizeObserver === 'undefined') return
+    const el = ref.current
+    if (!active || !el || typeof ResizeObserver === 'undefined') return
     const ro = new ResizeObserver(() => {
       const n = Math.max(8, Math.floor((el.clientHeight - 44) / ROW_PX))
-      if (n !== s.pageSize) setExplore({ pageSize: n, page: 0 })
+      if (n !== pageSize) setExplore({ pageSize: n, page: 0 })
     })
     ro.observe(el)
     return () => ro.disconnect()
-  }, [s.pageSize, rows.length > 0])
+  }, [ref, active, pageSize, hasRows])
+}
 
+// Title, row range, page buttons and the expand (or contract) button, shared by the tile and the expanded dialog.
+function Head({ m, name, big, onToggle }: { m: DataTabModel; name: string; big: boolean; onToggle(): void }) {
+  const { state: s, columns, rows } = m
   const from = rows.length ? s.page * s.pageSize + 1 : 0
   const to = s.page * s.pageSize + rows.length
   const sub = [
@@ -86,26 +89,48 @@ export function PreviewTable({ m }: { m: DataTabModel }) {
     s.scenarios.length > 1 ? `${s.scenarios.length} scenarios combined.` : '',
     m.plan?.joins.some((j) => j.ok) ? 'Joined tables.' : '',
   ].filter(Boolean).join(' ')
+  return (
+    <div className="th">
+      <div><h2 className="tt">{name || 'Table'}</h2><p className="ts">{sub}</p></div>
+      <div className="pager">
+        <span className="mono">{from}–{to}{m.total !== null ? ` of ${m.total.toLocaleString('en-US')}` : ''}</span>
+        <Btn icon aria-label="Previous page" disabled={s.page <= 0} onClick={() => setExplore({ page: s.page - 1 })}><ChevronLeft size={14} /></Btn>
+        <Btn icon aria-label="Next page" disabled={!m.hasMore} onClick={() => setExplore({ page: s.page + 1 })}><ChevronRight size={14} /></Btn>
+        {/* the same ghost icon button every other expandable tile uses */}
+        <Button variant="ghost" size="icon" aria-label={`${big ? 'Contract' : 'Expand'} ${name || 'table'}`} onClick={onToggle}>{big ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}</Button>
+      </div>
+    </div>
+  )
+}
+
+function Body({ m, boxRef }: { m: DataTabModel; boxRef: React.RefObject<HTMLDivElement> }) {
+  if (m.status === 'error' || m.status === 'refused') {
+    return <div className="empty"><b>{m.status === 'refused' ? 'This statement is not allowed' : 'The query could not run'}</b><span>{m.message}</span></div>
+  }
+  if (m.status === 'ok' && m.rows.length === 0) {
+    return <div className="empty"><b>No rows</b><span>This query returns nothing. Loosen a filter, switch the join type, or pick other scenarios.</span></div>
+  }
+  return <DataGrid m={m} boxRef={boxRef} />
+}
+
+export function PreviewTable({ m }: { m: DataTabModel }) {
+  const { state: s, rows } = m
+  const [big, setBig] = useState(false)
+  const box = useRef<HTMLDivElement>(null)
+  const bigBox = useRef<HTMLDivElement>(null)
+  useRowsFit(box, !big, s.pageSize, rows.length > 0)
+  useRowsFit(bigBox, big, s.pageSize, rows.length > 0)
   const name = m.isMine ? s.mine.find((x) => `m:${x.id}` === s.table)?.name ?? '' : s.table.slice(2)
   return (
     <section className="tile col">
-      <div className="th">
-        <div><h2 className="tt">{name || 'Table'}</h2><p className="ts">{sub}</p></div>
-        <div className="pager">
-          <span className="mono">{from}–{to}{m.total !== null ? ` of ${m.total.toLocaleString('en-US')}` : ''}</span>
-          <Btn icon aria-label="Expand the table" onClick={() => setBig(true)}><Maximize2 size={14} /></Btn>
-          <Btn icon aria-label="Previous page" disabled={s.page <= 0} onClick={() => setExplore({ page: s.page - 1 })}><ChevronLeft size={14} /></Btn>
-          <Btn icon aria-label="Next page" disabled={!m.hasMore} onClick={() => setExplore({ page: s.page + 1 })}><ChevronRight size={14} /></Btn>
-        </div>
-      </div>
-      {m.status === 'error' || m.status === 'refused' ? (
-        <div className="empty"><b>{m.status === 'refused' ? 'This statement is not allowed' : 'The query could not run'}</b><span>{m.message}</span></div>
-      ) : m.status === 'ok' && rows.length === 0 ? (
-        <div className="empty"><b>No rows</b><span>This query returns nothing. Loosen a filter, switch the join type, or pick other scenarios.</span></div>
-      ) : (
-        <DataGrid m={m} boxRef={box} />
+      <Head m={m} name={name} big={false} onToggle={() => setBig(true)} />
+      <Body m={m} boxRef={box} />
+      {big && (
+        <Modal wide bare title={name || 'Table'} onClose={() => setBig(false)}>
+          <Head m={m} name={name} big onToggle={() => setBig(false)} />
+          <Body m={m} boxRef={bigBox} />
+        </Modal>
       )}
-      {big && <Modal wide title={name || 'Table'} onClose={() => setBig(false)}><DataGrid m={m} /></Modal>}
     </section>
   )
 }

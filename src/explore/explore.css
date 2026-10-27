@@ -330,3 +330,4 @@
 .xb .dlg.wide .gridwrap::before,.xb .dlg.wide .gridwrap::after{display:none}
 .xb .dlg.wide .gridwrap.fr::after{display:block;background:linear-gradient(to left,var(--surface),transparent)}
 .xb .pager{display:flex;align-items:center;gap:6px}
+.xb .dlg.wide .th{padding:0 4px;align-items:center}
