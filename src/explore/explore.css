@@ -331,3 +331,8 @@
 .xb .dlg.wide .gridwrap.fr::after{display:block;background:linear-gradient(to left,var(--surface),transparent)}
 .xb .pager{display:flex;align-items:center;gap:6px}
 .xb .dlg.wide .th{padding:0 4px;align-items:center}
+/* a 6px margin inside the table panel's right edge, the same as the one before the first column, even when not scrolled */
+.xb .gridwrap{padding-right:6px}
+.xb .scroll{padding-right:0}
+.xb .gridwrap::after{right:6px;border-radius:0}
+.xb .dlg.wide .gridwrap{padding-right:0}
