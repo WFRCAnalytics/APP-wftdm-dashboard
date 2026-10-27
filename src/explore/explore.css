@@ -393,3 +393,11 @@
 .xb .sel.tpick{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;min-width:0;height:36px;text-align:left;padding-right:10px;background-image:none}
 .xb .sel.tpick .mono{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}
 .xb .sel.tpick svg{flex:none;color:var(--mute)}
+
+
+/* a segmented control that stands alone in the chart rail fills its width, in equal parts, like the chart grid and fields under it */
+.xb .rtabs>.xseg,.xb .rsec>.xseg{display:flex;width:100%}
+.xb .rtabs>.xseg [role=group],.xb .rsec>.xseg [role=group]{width:100%}
+.xb .rtabs>.xseg [role=group] button,.xb .rsec>.xseg [role=group] button{flex:1 1 0;min-width:0;text-align:center}
+/* labelled rows in the chart rail share one label column, so their controls line up */
+.xb .rsec .rrow>.lab{flex:0 0 120px}
