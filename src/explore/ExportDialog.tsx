@@ -12,11 +12,11 @@ import type { ChartData } from '@/explore/useChartData'
 import { cardToSvg, downloadBlob, downloadCsv, fileName, svgToPng } from '@/services/exportTile'
 import { getExplore, setExplore, type ChartTab } from '@/state/exploreState'
 
-function Modal({ title, onClose, children }: { title: string; onClose(): void; children: React.ReactNode }) {
+export function Modal({ title, onClose, children, wide }: { title: string; onClose(): void; children: React.ReactNode; wide?: boolean }) {
   return createPortal(
     <div className="xb xb-portal">
       <div className="scrim" onClick={onClose}>
-        <div className="dlg" role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.key === 'Escape' && onClose()}>
+        <div className={`dlg ${wide ? 'wide' : ''}`} role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.key === 'Escape' && onClose()}>
           <div className="dh"><h2 className="tt">{title}</h2><button type="button" className="x2" aria-label="Close" onClick={onClose}><X size={14} /></button></div>
           {children}
         </div>

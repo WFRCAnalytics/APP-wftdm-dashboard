@@ -1,7 +1,8 @@
 // 065-chart-builder: the Data tab's paged preview. The page size follows the height of the tile; the first column stays
 // pinned while the rest scrolls sideways (tables can have hundreds of columns); cells render by data type.
-import { useEffect, useRef } from 'react'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { ChevronLeft, ChevronRight, Maximize2 } from 'lucide-react'
+import { Modal } from '@/explore/ExportDialog'
 import { Btn, TypeChip } from '@/explore/parts'
 import type { DataTabModel } from '@/explore/useDataTab'
 import { setExplore } from '@/state/exploreState'
@@ -16,8 +17,56 @@ function cell(type: string, v: unknown): { text: string; cls: string } {
   return { text, cls: type === 'text' || type === 'geometry' ? 'tx' : '' }
 }
 
+// The table with a soft fade at whichever side has more columns to scroll to.
+function DataGrid({ m, boxRef }: { m: DataTabModel; boxRef?: React.RefObject<HTMLDivElement> }) {
+  const { state: s, columns, rows } = m
+  const own = useRef<HTMLDivElement>(null)
+  const box = boxRef ?? own
+  const [edge, setEdge] = useState({ l: false, r: false })
+  const measure = useCallback(() => {
+    const el = box.current
+    if (el) setEdge({ l: el.scrollLeft > 2, r: el.scrollLeft + el.clientWidth < el.scrollWidth - 2 })
+  }, [box])
+  useEffect(() => {
+    measure()
+    const el = box.current
+    if (!el || typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [measure, box, columns.length, rows.length])
+  return (
+    <div className={`gridwrap grow ${edge.l ? 'fl' : ''} ${edge.r ? 'fr' : ''}`}>
+              <div className="scroll" ref={box} onScroll={measure} aria-busy={m.status === 'running'}>
+            <table className="tbl">
+              <thead>
+                <tr>
+                  {columns.map((c) => (
+                    <th key={c.name} className={c.name === (s.profileCol ?? columns[0]?.name) ? 'hsel' : ''}>
+                      <button type="button" className="hb" onClick={() => setExplore({ profileCol: c.name })}><TypeChip type={c.type} />{c.name}</button>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r, i) => (
+                  <tr key={i}>
+                    {columns.map((c, j) => {
+                      const x = cell(c.type, r[j])
+                      return <td key={c.name} className={`${x.cls} ${c.name === (s.profileCol ?? columns[0]?.name) ? 'hsel' : ''}`}>{x.text}</td>
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+    </div>
+  )
+}
+
 export function PreviewTable({ m }: { m: DataTabModel }) {
   const { state: s, columns, rows } = m
+  const [big, setBig] = useState(false)
   const box = useRef<HTMLDivElement>(null)
   useEffect(() => {
     const el = box.current
@@ -44,6 +93,7 @@ export function PreviewTable({ m }: { m: DataTabModel }) {
         <div><h2 className="tt">{name || 'Table'}</h2><p className="ts">{sub}</p></div>
         <div className="pager">
           <span className="mono">{from}–{to}{m.total !== null ? ` of ${m.total.toLocaleString('en-US')}` : ''}</span>
+          <Btn icon aria-label="Expand the table" onClick={() => setBig(true)}><Maximize2 size={14} /></Btn>
           <Btn icon aria-label="Previous page" disabled={s.page <= 0} onClick={() => setExplore({ page: s.page - 1 })}><ChevronLeft size={14} /></Btn>
           <Btn icon aria-label="Next page" disabled={!m.hasMore} onClick={() => setExplore({ page: s.page + 1 })}><ChevronRight size={14} /></Btn>
         </div>
@@ -53,30 +103,9 @@ export function PreviewTable({ m }: { m: DataTabModel }) {
       ) : m.status === 'ok' && rows.length === 0 ? (
         <div className="empty"><b>No rows</b><span>This query returns nothing. Loosen a filter, switch the join type, or pick other scenarios.</span></div>
       ) : (
-        <div className="scroll grow" ref={box} aria-busy={m.status === 'running'}>
-          <table className="tbl">
-            <thead>
-              <tr>
-                {columns.map((c) => (
-                  <th key={c.name} className={c.name === (s.profileCol ?? columns[0]?.name) ? 'hsel' : ''}>
-                    <button type="button" className="hb" onClick={() => setExplore({ profileCol: c.name })}><TypeChip type={c.type} />{c.name}</button>
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r, i) => (
-                <tr key={i}>
-                  {columns.map((c, j) => {
-                    const x = cell(c.type, r[j])
-                    return <td key={c.name} className={`${x.cls} ${c.name === (s.profileCol ?? columns[0]?.name) ? 'hsel' : ''}`}>{x.text}</td>
-                  })}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <DataGrid m={m} boxRef={box} />
       )}
+      {big && <Modal wide title={name || 'Table'} onClose={() => setBig(false)}><DataGrid m={m} /></Modal>}
     </section>
   )
 }

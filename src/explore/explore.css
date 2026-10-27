@@ -317,3 +317,16 @@
 /* the page's right and bottom gutter, the same as the header's, so panels never touch the screen edge */
 .xb .dgrid,.xb .vgrid{padding:0 28px 14px 14px}
 .xb .scroll{padding:10px 14px 10px 6px}
+
+/* the table: a soft fade where more columns lie beyond the edge, and an expanded view */
+.xb .gridwrap{position:relative;display:flex;flex-direction:column;min-height:0;flex:1}
+.xb .gridwrap>.scroll{flex:1;min-height:0}
+.xb .gridwrap::before,.xb .gridwrap::after{content:"";position:absolute;top:0;bottom:0;width:36px;pointer-events:none;z-index:3;opacity:0;transition:opacity .15s}
+.xb .gridwrap::before{left:0;background:linear-gradient(to right,var(--tile),transparent)}
+.xb .gridwrap::after{right:0;background:linear-gradient(to left,var(--tile),transparent);border-radius:0 0 20px 0}
+.xb .gridwrap.fl::before,.xb .gridwrap.fr::after{opacity:1}
+.xb .dlg.wide{width:min(96vw,100%);height:92vh;max-height:92vh}
+.xb .dlg.wide .gridwrap{flex:1;min-height:0}
+.xb .dlg.wide .gridwrap::before,.xb .dlg.wide .gridwrap::after{display:none}
+.xb .dlg.wide .gridwrap.fr::after{display:block;background:linear-gradient(to left,var(--surface),transparent)}
+.xb .pager{display:flex;align-items:center;gap:6px}
