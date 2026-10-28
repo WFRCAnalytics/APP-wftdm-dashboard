@@ -90,7 +90,7 @@ export function CompareHost({ panel, strategy, tileKey, title }: CompareHostProp
   const bodyHeight = (panel.height ?? 400) - (plan.pages > 1 ? PAGER_HEIGHT : 0)
   // each cell: 1px borders, 8px padding, the caption row and its 4px margin
   const cellChrome = 2 + 16 + CAPTION_HEIGHT
-  const cols = pickColumns({ total, width: gridWidth, minCell: minCellWidth(panel), tabbed: fill.active && !expandedHeight, layout: tile.layout, height: bodyHeight, chrome: cellChrome })
+  const cols = pickColumns({ total, width: gridWidth, minCell: minCellWidth(panel), tabbed: fill.active && !expandedHeight, layout: tile.layout, height: bodyHeight })
   const rows = Math.ceil(total / cols)
   // an odd last cell takes the whole row instead of leaving a gap
   const odd = cols === 2 && total % 2 === 1

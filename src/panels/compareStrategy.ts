@@ -35,7 +35,7 @@ const MIN_AUTO_CELL = 160
 /** Narrowest a cell may get before it wraps to the next row: maps need more room than small charts. */
 export function minCellWidth(panel: PanelConfig): number {
   const p = panel as { type: string; kind?: string }
-  return p.type === 'zonemap' || p.type === 'flowmap' || /map/i.test(p.kind ?? '') ? 280 : 220
+  return p.type === 'zonemap' || p.type === 'flowmap' || /^zone-/.test(p.kind ?? '') ? 280 : 220
 }
 
 /**
@@ -44,26 +44,26 @@ export function minCellWidth(panel: PanelConfig): number {
  * already gives the tile the whole screen height, so there 2 columns is the most (2x2 reads fine); a phone gets 1.
  * A viewer's Layout choice (`row`/`grid`) overrides this. Width 0 (not yet measured) falls back to the old two-column rule.
  */
-export function pickColumns({ total, width, minCell, tabbed, layout = 'auto', height, chrome = 0 }: { total: number; width: number; minCell: number; tabbed: boolean; layout?: 'auto' | 'row' | 'grid'; height?: number; chrome?: number }): number {
+export function pickColumns({ total, width, minCell, tabbed, layout = 'auto', height }: { total: number; width: number; minCell: number; tabbed: boolean; layout?: 'auto' | 'row' | 'grid'; height?: number }): number {
   if (total <= 1) return 1
   // a manual choice wins, unless a row would squeeze cells below a readable width
   if (layout === 'grid') return 2
   if (layout === 'row' && (width === 0 || width >= total * MIN_FORCED_ROW_CELL + (total - 1) * GRID_GAP)) return total
-  // With the body's height known, take the column count that gives the largest cell by its smaller side (a circle or a square
-  // is as big as that), so three charts in a short, narrow tile sit in a row, not in a 2 + 1 grid. Ties go to fewer columns.
+  // With the body's height known, take the column count that gives the largest cells by area (a treemap or sunburst uses all of
+  // it), so three charts in a short tile sit in a row, not in a 2 + 1 grid. The scenario caption above each cell is the same
+  // in every layout, so it is left out. Within 2% the one with more columns wins: side by side reads best for comparing.
   if (width > 0 && height && height > 0 && layout === 'auto') {
     const floor = minCell >= 280 ? minCell : Math.min(minCell, MIN_AUTO_CELL)
-    const most = Math.min(total, tabbed ? 2 : total)
     let best = 1
-    let bestSize = -1
-    for (let c = 1; c <= most; c++) {
+    let bestArea = -1
+    for (let c = 1; c <= total; c++) {
       if (c > 1 && (width - (c - 1) * GRID_GAP) / c < floor) break
       if (c === 3 && total === 4) continue
       const rows = Math.ceil(total / c)
-      const size = Math.min((width - (c - 1) * GRID_GAP) / c, (height - (rows - 1) * GRID_GAP) / rows - chrome)
-      if (size > bestSize + 0.5) {
+      const area = ((width - (c - 1) * GRID_GAP) / c) * ((height - (rows - 1) * GRID_GAP) / rows)
+      if (area >= bestArea * 0.98) {
         best = c
-        bestSize = size
+        bestArea = Math.max(area, bestArea)
       }
     }
     return best
