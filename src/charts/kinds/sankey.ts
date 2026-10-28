@@ -2,6 +2,7 @@
 // coloured by mode; hovering a link or mode node cross-highlights the mode everywhere. Always the focus scenario alone
 // (never a union), so Change / % change keep showing values.
 import { select } from 'd3-selection'
+import { attachPanZoom } from '@/charts/lib/panZoom'
 import { sankey as d3sankey, sankeyLinkHorizontal, type SankeyLink as DLink, type SankeyNode as DNode } from 'd3-sankey'
 
 import { buildSankey, showNodeLabel, type SankeyLink, type SankeyNode } from '@/charts/lib/flows'
@@ -113,6 +114,7 @@ const kind: ChartKind = {
       .text((d) => (showNodeLabel((d.y1 ?? 0) - (d.y0 ?? 0)) ? d.name : ''))
 
     wireModeHover(svg.node() as Element)
+    attachPanZoom(svg.node() as SVGSVGElement, w, h, { wheel: 'modifier' })
     return {
       legend: { items: MODES.map((m) => ({ label: m, color: t.mode(m), mode: m })) },
       label: `Daily trips from purpose to mode to distance, ${env.focus?.label ?? env.scenarios[0]?.label ?? ''}, ${env.year}`,

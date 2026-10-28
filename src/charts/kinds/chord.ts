@@ -4,6 +4,7 @@
 import { chord as d3chord, ribbon as d3ribbon, type Chord, type ChordGroup } from 'd3-chord'
 import { descending } from 'd3-array'
 import { select } from 'd3-selection'
+import { attachPanZoom } from '@/charts/lib/panZoom'
 import { arc as d3arc } from 'd3-shape'
 
 import { districtMatrix, districtTotals, withoutIntra } from '@/charts/lib/flows'
@@ -111,6 +112,7 @@ const kind: ChartKind = {
       })
       .on('mouseleave', () => tooltip.hide())
 
+    attachPanZoom(svg.node() as SVGSVGElement, w, h, { wheel: 'modifier' })
     return { label: `Daily trips between districts, ${env.focus?.label ?? env.scenarios[0]?.label ?? ''}, ${env.year}. Trips inside one district are left out.` }
   },
 }

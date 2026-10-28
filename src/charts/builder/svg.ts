@@ -1,6 +1,7 @@
 // 065-chart-builder: draws a compiled chart model into the DOM as one SVG, for the chart kinds that fill an element
 // (the `custom` kind in dashboard tiles). The Explore builder draws the same model with React instead.
 import type { DrawnChart } from '@/charts/builder/compile'
+import { attachPanZoom } from '@/charts/lib/panZoom'
 import { tooltip } from '@/services/tooltip'
 
 const NS = 'http://www.w3.org/2000/svg'
@@ -11,7 +12,7 @@ function el(name: string, attrs: Record<string, string | number | undefined>, pa
   return e
 }
 
-export function renderChartSvg(model: DrawnChart, width: number, height: number, ink: string): SVGSVGElement {
+export function renderChartSvg(model: DrawnChart, width: number, height: number, ink: string, zoomable = false): SVGSVGElement {
   const svg = el('svg', { width, height, viewBox: `0 0 ${model.W} ${model.H}`, role: 'img' }) as SVGSVGElement
   svg.style.overflow = 'visible'
   const defs = el('defs', {}, svg)
@@ -37,5 +38,7 @@ export function renderChartSvg(model: DrawnChart, width: number, height: number,
   svg.addEventListener('mouseover', show)
   svg.addEventListener('mousemove', show)
   svg.addEventListener('mouseleave', () => tooltip.hide())
+  // a dashboard page scrolls, so the wheel only zooms with Ctrl or Cmd held
+  if (zoomable) attachPanZoom(svg, model.W, model.H, { wheel: 'modifier' })
   return svg
 }

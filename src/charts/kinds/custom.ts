@@ -4,7 +4,7 @@
 import { buildChart, shelfProblem, type Col, type Row } from '@/charts/builder/compile'
 import { normalizeCustomSpec } from '@/charts/builder/customSpec'
 import { chartQuery } from '@/charts/builder/specToSql'
-import { fromConfig, type ChartSpec } from '@/charts/builder/spec'
+import { fromConfig, ZOOMABLE_MARKS, type ChartSpec } from '@/charts/builder/spec'
 import { renderChartSvg } from '@/charts/builder/svg'
 import { describeTable, viewName } from '@/explore/relations'
 import { buildSql, emptyModel, planQuery, relationColumns } from '@/explore/sql/queryModel'
@@ -47,7 +47,7 @@ const kind: ChartKind = {
       emptyNote(el, model.problem)
       return
     }
-    el.replaceChildren(renderChartSvg(model, env.width, env.height, env.theme.ink))
+    el.replaceChildren(renderChartSvg(model, env.width, env.height, env.theme.ink, ZOOMABLE_MARKS.includes(x.spec.mark)))
     const items = model.legend.flatMap((g) =>
       g.items.filter((i) => i.label).map((i) => ({ label: i.label, color: /^(#|rgb|var)/.test(i.fill) ? i.fill : i.stroke !== 'none' ? i.stroke : undefined, dash: i.dash ? true : undefined })),
     )

@@ -7,9 +7,10 @@ import { buildChart, relabel, type ChartModel, type Col, type DrawnChart } from 
 import { chartRole, DATA_TYPES, TYPE_LABEL, typesPresent, type DataType } from '@/charts/builder/columnTypes'
 import { suggest } from '@/charts/builder/rules'
 import {
-  assignField, acceptsShort, AGGS, channelAggregates, channelLabel, COMING_SOON, MARK_LABEL, MARKS, SLOTS, SORTS, switchMark, TEXT_SIZES,
+  assignField, acceptsShort, ZOOMABLE_MARKS, AGGS, channelAggregates, channelLabel, COMING_SOON, MARK_LABEL, MARKS, SLOTS, SORTS, switchMark, TEXT_SIZES,
   type Agg, type Channel, type ChartSpec, type Mark, type Sort, type Stack, type TextKey,
 } from '@/charts/builder/spec'
+import { attachPanZoom } from '@/charts/lib/panZoom'
 import { readChartTheme } from '@/charts/theme'
 import type { ChartTheme } from '@/charts/types'
 import { Segmented } from '@/components/ui/segmented'
@@ -112,7 +113,17 @@ function FieldsPanel({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: C
 // ---------------------------------------------------------------------------------------------------------------- the chart
 
 function Plot({ model, spec, hot, size }: { model: DrawnChart; spec: ChartSpec; hot: string | null; size: { w: number; h: number } }) {
-  void spec; void hot
+  void hot
+  const ref = useRef<SVGSVGElement>(null)
+  const layer = useRef<SVGGElement>(null)
+  const zoomable = ZOOMABLE_MARKS.includes(spec.mark)
+  // Axis-free marks pan and zoom. The drawing is React's, so the wrapper group is made once per new model and the old one dropped.
+  useEffect(() => {
+    const svg = ref.current
+    if (!svg || !zoomable) return
+    const detach = attachPanZoom(svg, size.w, size.h, {}, layer.current)
+    return () => { detach.dispose() }
+  }, [model, zoomable, size.w, size.h])
   const onOver = (e: React.MouseEvent) => {
     const t = (e.target as SVGElement).getAttribute?.('data-t')
     if (!t) { tooltip.hide(); return }
@@ -120,10 +131,11 @@ function Plot({ model, spec, hot, size }: { model: DrawnChart; spec: ChartSpec; 
     tooltip.show({ title, rows: rest.map((p) => { const i = p.indexOf('='); return { k: p.slice(0, i), v: p.slice(i + 1) } }) }, e)
   }
   return (
-    <svg className="plot" viewBox={`0 0 ${size.w} ${size.h}`} role="img" aria-label="Chart" onMouseOver={onOver} onMouseMove={onOver} onMouseLeave={() => tooltip.hide()}>
+    <svg ref={ref} className="plot" viewBox={`0 0 ${size.w} ${size.h}`} role="img" aria-label="Chart" onMouseOver={onOver} onMouseMove={onOver} onMouseLeave={() => tooltip.hide()}>
       <defs>
         {model.defs.map((d) => <pattern key={d.id} id={d.id} patternUnits="userSpaceOnUse" width="8" height="8"><rect width="8" height="8" fill={d.color} fillOpacity=".16" /><path d={d.d} stroke={d.color} strokeWidth={d.sw} fill={d.fill} /></pattern>)}
       </defs>
+      <g ref={layer}>
       {model.panels.map((p, i) => (
         <g key={i} transform={p.tf}>
           {p.title && <text x="0" y="11" fontSize="12.5" fontWeight="600" fill="currentColor">{p.title}</text>}
@@ -133,6 +145,7 @@ function Plot({ model, spec, hot, size }: { model: DrawnChart; spec: ChartSpec; 
           {p.texts.map((t, k) => <text key={k} x={t.x} y={t.y} textAnchor={t.anchor} fill={t.fill} fontSize={t.size} transform={t.tf || undefined}>{t.t}</text>)}
         </g>
       ))}
+      </g>
     </svg>
   )
 }

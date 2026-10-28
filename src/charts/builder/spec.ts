@@ -3,6 +3,8 @@
 import { roleAccepts, type DataType, type Role } from '@/charts/builder/columnTypes'
 
 export const MARKS = ['bar', 'line', 'area', 'scatter', 'heatmap', 'histogram', 'box', 'pie', 'tick', 'text', 'waffle', 'density', 'rule', 'treemap', 'radar', 'sunburst', 'sankey', 'chord', 'trail'] as const
+/** Marks with no axes, so panning and zooming the drawing cannot distort a scale: they get drag to pan, wheel to zoom, double click to reset. */
+export const ZOOMABLE_MARKS: readonly string[] = ['pie', 'waffle', 'treemap', 'radar', 'sunburst', 'sankey', 'chord']
 export type Mark = (typeof MARKS)[number]
 export type Channel = 'x' | 'y' | 'color' | 'pattern' | 'dash' | 'shape' | 'size' | 'opacity' | 'detail' | 'label' | 'order' | 'column' | 'row'
 export type Agg = 'sum' | 'mean' | 'median' | 'min' | 'max' | 'count'
