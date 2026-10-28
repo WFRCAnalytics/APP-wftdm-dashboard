@@ -82,6 +82,50 @@ dashboard-config.yaml      site: applies everywhere
 The most specific wins. Not every key cascades: identity (title, logos), colours, vocab and the Settings tabs are site-only. Keys that
 cascade: layout mode, default basemap, export, and the Explore options. The list is part of the schema.
 
+**PROPOSED rules (for discussion, not decided).** Today the cascade already half exists: a panel's basemap beats its tab's, which beats the
+app default, and a page's `layout_mode` beats the site's `layout.mode`. These rules make that general.
+
+1. **Three levels only: site, page, panel.** `sections:` group rows on a page; they are not a level.
+2. **Only keys marked as cascading in the schema inherit.** Identity, pages, brand, vocab, metrics, units, years, compare, the assistant,
+   `network`, viewer `defaults` and the docs link are site-only. A site-only key set on a page or panel is reported ("not allowed here"),
+   never silently ignored.
+3. **Merge rules (decided: per key).** Scalars replace and maps merge key by key, so a panel can set `limits.csv_rows` without
+   restating `limits.page_size`. Lists follow a rule the schema states for each key. Quarto concatenates lists (its docs: "objects and
+   arrays are merged rather than simply overwriting each other"), with `format` as its one documented exception; we make that choice
+   explicit per key. **Selection lists** such as `charts.allow` and `tables.include` replace, because concatenating can only widen
+   them, never narrow. **Accumulating lists** such as `tables.exclude` and `presets` concatenate. The docs and `check --explain` show
+   which rule a key uses.
+4. **No `null` reset (decided).** Quarto's project docs say nothing about `null`, so we do not invent it. To switch off something an
+   inherited level turned on, set the explicit empty value: `false` for a switch, `[]` for a list. (A replacing list set to `[]` empties
+   it; a concatenating list cannot be emptied from below, so a key that needs that is made a replacing one in the schema.)
+5. **Defaults per panel type (decided; built when a second repeated use appears).** Instead of an `explore:` block and a `limits:`
+   block, the site and each page may carry `panel_defaults`, keyed by panel type. Only keys the schema marks as inheritable (settings
+   such as `pagination`, `limits`, `features`; not content keys such as `scenario`, `metric`, `dataset`) can be defaulted. Until a
+   setting repeats across panels, it is set on the panel itself. Explore is one instance of the general mechanism:
+
+   ```yaml
+   # dashboard-config.yaml (site)
+   panel_defaults:
+     explore-builder: { limits: { csv_rows: 50000 }, features: { sql_tab: false } }
+     table:           { pagination: 50 }
+
+   # dashboard-4-mode.yaml (page): only this page's tables differ
+   panel_defaults:
+     table: { pagination: 10 }
+
+   # a panel
+   - type: table
+     pagination: 25          # wins over both
+   ```
+
+   A site usually has one Explore panel, so for Explore alone this saves little; it pays off for panel types that appear many times
+   (tables, charts, value boxes).
+6. **A page's own identity stays in `header:`** (tab name, title, icon, `full_page`, `hidden`, `draft`). It does not cascade.
+7. **Viewers sit above the cascade** for the preferences they may change (theme, font, text size, layout). A locked preference ignores
+   the viewer.
+8. **One pure function resolves it** (site, page, panel, schema in; resolved settings and where each came from out), used by the app
+   and by the `check` command. `check --explain` can print, for example, `limits.csv_rows = 500 (page: dashboard-4-mode.yaml)`.
+
 ## 4. Draft shape of `dashboard-config.yaml`
 
 Every key optional. Keys are `snake_case`, like the keys in `dashboard-*.yaml`. Existing `index.json` keys keep their meaning.
@@ -93,6 +137,10 @@ version: 1                          # new: lets a later change migrate old files
 pages:                              # replaces `dashboards` in index.json; the first is the landing page
   - dashboard-1-summary.yaml
   - dashboard-2-person-household.yaml
+
+scenarios:                          # new: listed by the deployer, replaces the generated scenarios/index.json
+  - activitysim-baseline            # (folder under the scenarios root; the exact shape is still to be drafted)
+  - activitysim-density-variant
 
 # identity and colour (today in index.json)
 title: Calibration Dashboard
@@ -119,9 +167,10 @@ defaults:
 
 # new: the Settings modal
 settings:
-  tabs: [appearance, scenarios, basemap, assistant, documentation]   # order and visibility
-  documentation:
-    pages: [{ title: Our method, url: docs/method.md }]
+  tabs: [appearance, scenarios, basemap, assistant]   # order and visibility (Documentation moves out, see section 7)
+
+# new: link to the deployer's separate documentation site (a Quarto site); shown as an icon at the foot of the left sidebar
+docs: { url: "https://example.org/dashboard-docs/", label: Documentation }
 
 # new: the AI assistant (today only `assistant.enabled`)
 assistant:
@@ -138,9 +187,10 @@ network:
   basemaps: { allow: ["protomaps-*"], default: protomaps-light }
   duckdb_extensions: "https://mirror.example.org/duckdb"
 
-# new: app-wide defaults inherited by every Explore panel (the panel's own keys win)
-explore: { limits: {}, features: {}, charts: {}, tables: {}, columns: {}, presets: [] }
-limits:  { chart_rows: 50000, scatter_sample: 5000, histogram_bins: 12, legend_series: 15 }
+# new: defaults inherited by every panel of a type (the page's, then the panel's own keys win), see the cascade proposal
+panel_defaults:
+  explore-builder: { limits: {}, features: {}, charts: {}, tables: {}, columns: {}, presets: [] }
+  # chart row cap, scatter sample, histogram bins and legend series also become panel keys, not a separate `limits:` block
 ```
 
 Not drafted here, on purpose: how the charts find the deployer's tables and columns (section 8).
@@ -163,7 +213,7 @@ Not drafted here, on purpose: how the charts find the deployer's tables and colu
 7. Document it in `GRAMMAR.md` and publish a JSON Schema file for editors (Python and R can validate with it before writing).
 
 **Phase C: viewer-facing settings**
-8. `defaults` and `locked` (disabled, with a reason). `settings.tabs` and extra documentation pages.
+8. `defaults` and `locked` (disabled, with a reason). `settings.tabs`, the documentation link and sidebar icon, hidden and draft pages, and a CSS file.
 
 **Phase D: assistant and network**
 9. The `assistant` block. 10. The `network` block, so an offline or locked-down site works.
@@ -184,27 +234,79 @@ Not drafted here, on purpose: how the charts find the deployer's tables and colu
 - Per-user settings stored on a server (the app keeps everything in memory by design).
 - Access control. Config hides controls, it is not a security boundary; the SQL guard stays the one gate for queries.
 
-## 7. Decisions and open questions
+## 7. Decisions and agenda
+
+Reference model: Quarto (project file, cascade, brand file, profiles, schema and `check`), and for the project folder, SimWrapper.
+Nothing below changes code. Each topic is settled before anything is built.
 
 **Decided**
-- Demo split: opt-in build flag.
+- Demo split: opt-in build flag (but see profiles, topic 5, which may replace it).
 - Locked preferences: shown disabled, with a reason.
 - Site settings move to YAML, in a new `dashboard-config.yaml` (constitution 2.8.0, Principle VII); a cascade site → page → panel.
-- The target is a Python library and an R package (Principle X).
+- The target is a Python library and an R package (Principle X). **One core and two thin wrappers**, as quarto-r and quarto-py wrap Quarto.
+  The wrappers hold no logic of their own.
+- **Brand: thin brand.yml support.** Logos, colours and fonts follow the open brand.yml spec (the one Quarto reads), so an agency's
+  existing brand file works. Only a small part of the spec is read; how much is detailed later.
+- **Validation: all three.** A published JSON Schema for editors, errors that name the file and the key path (and the line where the
+  YAML parser gives one), and a `check` command in the core, run before deploying.
+- **Navigation stays as it is.** One fixed left sidebar. Deployers set page names and icons, and we add hidden and draft pages. No
+  groups. External links are not wanted now, and may be considered later.
+- **Documentation moves out of the app.** When the app is ready for first use, this repository's GitHub Pages hosts a separate
+  Quarto-based documentation site. Dashboards link to it instead of showing documentation on screen, and the documentation icon sits at
+  the foot of the left sidebar, not in Settings. (The in-app Documentation tab stays until then.)
+- **Customisation:** deployers may add CSS. "Theme" means light and dark only, for now; named themes may come later. **No extensions.**
+  The detailed design is deferred.
+- **Hosting during and after development.** While the app is in development the demo is hosted on GitHub Pages. When the app is ready,
+  the demo moves to `wfrc.utah.gov/<path>` and `wfrcanalytics.github.io/APP-wftdm-dashboard` hosts the documentation. The demo
+  therefore ends up at a sub-path of another site, so the build must not depend on its URL (Principle X; Phase A, relative base).
+- **File discovery is by listing.** The deployer lists the file paths in `dashboard-config.yaml` (`pages:`). There is no fallback to a
+  generated `index.json` for pages. (Scenarios: to confirm, see below.)
+- **Scenarios are listed too.** The deployer lists the scenarios in `dashboard-config.yaml`, like the pages, instead of the generated
+  `scenarios/index.json`. (Each scenario's own metric listing is a separate question, below.)
+- **The core is TypeScript for now.** Whether to move the core to Rust is revisited later (section 7, "Rust: revisit later"), after the
+  data-path test.
+- **Cascade rules 3, 4 and 5:** lists merge per key (selection lists replace, accumulating lists concatenate); no `null`, use `false` or
+  `[]`; `panel_defaults` per panel type is the design, built when a second repeated use appears.
 - The data path and observed data are open and recorded as such (section 8; constitution "Open Decisions").
 
-**Open**
-1. **Schema home.** With YAML, is the single source a TS key table that generates the JSON Schema file and the `GRAMMAR.md` section, a
-   hand-written JSON Schema, or `GRAMMAR.md` alone? (My lean: the TS key table, no new runtime dependency.)
-2. **Names.** `snake_case` keys to match `dashboard-*.yaml`, as drafted? Nested `logo: { light, dark }` instead of `logoUrl`/`logoUrlDark`?
-3. **The page list.** Must `pages:` be in `dashboard-config.yaml`, or may a deployment with no site file fall back to the generated
-   `index.json` listing? (A static host cannot list a folder, so one of the two has to exist.)
-4. **What cascades.** The list in section 3 is a first guess. Which keys should a page be able to override?
-5. **Assistant keys.** May a deployer ship a key in config (it would be public), or only a gateway URL that handles auth?
-6. **Fonts.** Self-hosting fonts means shipping them in the bundle. Is the size acceptable?
-7. **Compatibility.** Do any existing deployments rely on the demo fallback, so Phase A needs a notice or a version bump?
-8. **Authoring.** `dashboard-config.yaml` is authored beside the pages in the TDM repo and copied to `public/dashboard-config/`, like
-   `dashboard-*.yaml`? Or generated by the Python and R packages from a smaller input?
+**Direction set, details to research or decide**
+1. **Deployer project folder.** Take SimWrapper's model as the starting point, keep what works there, and correct what does not.
+   Needs a look at how SimWrapper lays out and discovers a project before we copy anything.
+3. **Cascade rules.** Rules 3, 4 and 5 are decided (see above). Rules 1, 2, 6, 7 and 8 in section 3 have not been objected to; treat them
+   as accepted unless that changes. Remaining: the first list of which keys are marked inheritable, per panel type, when it is built.
+5. **Profiles.** Wanted in principle. Needs research on how they would work here and whether they would replace the demo build flag
+   completely. Until then the demo flag decision stands.
+6. **Variables** (Quarto's `_variables.yml`). Not enough known yet; research, then decide.
+
+**Not yet discussed**
+- **Versioning:** a `version:` key and how long old keys keep working.
+- **Secrets:** what must never go in config (assistant and map keys end up public in a static site). Open questions 5 and 6 of the
+  earlier list (assistant keys, self-hosted fonts) belong here and with the `network` block.
+- **Names:** `snake_case` keys as drafted? Nested `logo: { light, dark }`? (Brand.yml's own names may settle this.)
+- **Per-scenario file listing.** Pages and scenarios are listed in `dashboard-config.yaml` (decided). Each scenario also has its own
+  `summary/index.json`, written by the post-processor, naming its Parquet files so the app can load them lazily. **Direction decided:
+  if the post-processor is kept, it writes YAML, not JSON.** Where that listing lives (most likely the scenario's own `manifest.yaml`)
+  and its shape are still to be drafted. What a scenario's files are depends on the data-path test, so the shape waits for it. Once
+  built, no generated `index.json` is left, and the sentence in constitution Principle VII that describes `index.json` files as
+  generated listings is updated then.
+- **Compatibility:** do existing deployments rely on the demo fallback, so Phase A needs a notice or a version bump?
+
+**Questions raised by the decisions above**
+- **What is the core?** (Language decided for now: TypeScript.) The `check` command, schema validation and the cascade resolver need one
+  implementation. A TypeScript core, shipped as a standalone program, lets the app and `check` share one schema and one resolver, and
+  R users need no Python, which is how Quarto is built. The data steps (`summarize`) stay in Python either way. Still to settle: how
+  the TypeScript core is packaged inside the Python library and the R package.
+- **Rust: revisit later.** Not now: the core does not exist yet, the app's interface stays TypeScript regardless, and the work is
+  config validation and file placement, not heavy computation. The case for Rust is packaging: one native core that both Python
+  (maturin) and R (extendr) can load, with no separate program or runtime. It would need a second toolchain, and the browser could only
+  share it through WebAssembly. To keep the door open, write the schema as data and the resolver as a small pure function with no
+  browser dependencies. Reassess after the data-path test and once the core's scope is clear.
+- **Docs links.** A site-level `docs:` URL, and a per-page `header.docs` path appended to it, so each page can link to its own
+  section of the documentation. Wanted?
+- **Hidden versus draft.** Proposed: `hidden: true` leaves the page out of the sidebar but reachable by its link; `draft: true` leaves
+  it out entirely in a production profile and shows it in a development profile (this ties to topic 5).
+- **CSS.** Proposed: the supported surface is the app's CSS variables (the tokens), documented and kept stable; class names are not
+  promised. A site key names a CSS file loaded after the app's styles.
 
 ## 8. Not decided: the data path, and observed data
 
