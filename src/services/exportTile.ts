@@ -155,6 +155,9 @@ function inlineSvgStyles(source: Element, copy: Element): void {
 }
 
 interface Walk {
+  /** The element being exported, and whether the image has no background (then its own box is left out too). */
+  root: Element
+  transparent: boolean
   gradients: number
   out: string[]
   origin: DOMRect
@@ -282,7 +285,7 @@ function walk(el: Element, w: Walk): void {
   const gradient = linearGradient(cs.backgroundImage, w)
   const borderW = parseFloat(cs.borderTopWidth) || 0
   const hasBorder = borderW > 0 && cs.borderTopStyle !== 'none' && !isTransparent(cs.borderTopColor)
-  if (rect.width > 0 && rect.height > 0 && (!isTransparent(bg) || hasBorder || gradient)) {
+  if (!(el === w.root && w.transparent) && rect.width > 0 && rect.height > 0 && (!isTransparent(bg) || hasBorder || gradient)) {
     const r = Math.min(parseFloat(cs.borderTopLeftRadius) || 0, rect.height / 2, rect.width / 2)
     w.out.push(
       `<rect x="${num(x + borderW / 2)}" y="${num(y + borderW / 2)}" width="${num(Math.max(0, rect.width - borderW))}" height="${num(Math.max(0, rect.height - borderW))}" rx="${num(r)}" ` +
@@ -326,8 +329,8 @@ function wrapText(text: string, max: number): string[] {
 export interface ImageOptions {
   /** Drawn under the card when set. */
   footer?: string
-  /** Page background behind the card. */
-  background: string
+  /** Page background behind the card; null for none (a transparent image). */
+  background: string | null
   /** Resolves a MapLibre container to a PNG data URL (see services/mapCapture.ts). */
   captureMap?: (container: HTMLElement) => Promise<string | null>
 }
@@ -339,7 +342,7 @@ export async function cardToSvg(card: HTMLElement, options: ImageOptions): Promi
   const maxChars = Math.max(30, Math.floor((origin.width - 12) / 6.4))
   const footerLines = options.footer ? wrapText(options.footer, maxChars) : []
   const footerH = footerLines.length > 0 ? 12 + footerLines.length * 16 : 0
-  const w: Walk = { gradients: 0, out: [], origin, pending: [], captureMap: options.captureMap ?? (async () => null) }
+  const w: Walk = { root: card, transparent: options.background === null, gradients: 0, out: [], origin, pending: [], captureMap: options.captureMap ?? (async () => null) }
   walk(card, w)
   await Promise.all(w.pending)
   const width = Math.ceil(origin.width) + pad * 2
@@ -352,7 +355,7 @@ export async function cardToSvg(card: HTMLElement, options: ImageOptions): Promi
     .join('')
   const svg =
     `<svg xmlns="${XMLNS}" xmlns:xlink="http://www.w3.org/1999/xlink" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">` +
-    `<rect width="${width}" height="${height}" fill="${esc(options.background)}"/>` +
+    (options.background === null ? '' : `<rect width="${width}" height="${height}" fill="${esc(options.background)}"/>`) +
     `<g transform="translate(${pad} ${pad})">${w.out.join('')}</g>${footer}</svg>`
   return { svg, width, height }
 }

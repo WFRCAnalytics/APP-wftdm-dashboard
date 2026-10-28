@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState, type RefObject } from 'react'
 import { Download } from 'lucide-react'
 
+import { ExportBackgroundChoice } from '@/layout/exportBackgroundMenu'
 import { collectTables, renderTileImage, useExportContext } from '@/layout/tileExport'
+import { getExportBackground, withExportBackground } from '@/services/exportBackground'
 import { downloadBlob, fileName, svgToPng, toCsv, type ExportTable } from '@/services/exportTile'
 import { uniqueNames, zip, type ZipEntry } from '@/services/zip'
 
@@ -42,8 +44,8 @@ export function pageTiles(): PageTile[] {
 const ITEM =
   'flex w-full items-center rounded-lg px-3 py-[7px] text-left font-body text-sm text-[var(--ink)] hover:bg-[color-mix(in_srgb,var(--ink)_8%,transparent)] disabled:cursor-not-allowed disabled:opacity-45 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--brand-text)]'
 
-async function pngBytes(card: HTMLElement, ctx: { scenarios: string; year: number | undefined }): Promise<Uint8Array> {
-  const { svg, width, height } = await renderTileImage(card, ctx)
+async function pngBytes(card: HTMLElement, ctx: { scenarios: string; year: number | undefined }, fill: string | null): Promise<Uint8Array> {
+  const { svg, width, height } = await renderTileImage(card, ctx, fill)
   return new Uint8Array(await (await svgToPng(svg, width, height, 2)).arrayBuffer())
 }
 
@@ -114,7 +116,11 @@ export function PageExportButton({ pageTitle }: { pageTitle: string }) {
     if (found.length === 0) return flash('There are no tiles to export')
     const names = uniqueNames(found.map((t) => fileName([t.title], 'png')))
     const entries: ZipEntry[] = []
-    for (const [i, t] of found.entries()) entries.push({ name: names[i], data: await pngBytes(t.cardRef.current!, ctx) })
+    // one theme switch for the whole page; a page with a map keeps the theme, since a map has its own background
+    const mode = found.some((t) => t.cardRef.current?.querySelector('.maplibregl-map')) ? 'theme' : getExportBackground()
+    await withExportBackground(mode, getComputedStyle(document.body).backgroundColor, async (fill) => {
+      for (const [i, t] of found.entries()) entries.push({ name: names[i], data: await pngBytes(t.cardRef.current!, ctx, fill) })
+    })
     downloadBlob(zip(entries), fileName([...base, 'images'], 'zip'))
   }
 
@@ -144,6 +150,7 @@ export function PageExportButton({ pageTitle }: { pageTitle: string }) {
           <button role="menuitem" type="button" className={ITEM} onClick={() => run(images)}>
             All images (ZIP of PNG files)
           </button>
+          <ExportBackgroundChoice />
         </div>
       )}
     </div>

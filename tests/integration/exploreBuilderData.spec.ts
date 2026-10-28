@@ -242,6 +242,55 @@ test.describe('DuckDB computes the chart data for every mark', () => {
     await expect(page.locator('.xb .plot.pivot table')).toBeVisible()
     expect(errors).toEqual([])
   })
+  test('a transparent export has no background, and dark mode still gets dark text', async ({ page }) => {
+    const errors: string[] = []
+    await textTable(page, errors)
+    await place(page, 'scenario', 'Columns')
+    await place(page, 'major_trip_mode', 'Rows')
+    await place(page, 'trips', 'Values')
+    await drawn(page)
+    await page.evaluate(() => document.documentElement.classList.add('dark'))
+    await page.waitForTimeout(500)
+    await page.getByRole('button', { name: 'Export' }).click()
+    const dialog = page.getByRole('dialog', { name: 'Export this chart' })
+    await dialog.getByRole('button', { name: 'Transparent', exact: true }).click()
+    const [download] = await Promise.all([page.waitForEvent('download'), dialog.getByRole('button', { name: 'SVG' }).click()])
+    const svg = readFileSync((await download.path())!, 'utf8')
+    // nothing is painted behind the image (the first thing inside the svg is the content group, not a full-size rect)
+    expect(/^<svg[^>]*><g /.test(svg)).toBe(true)
+    // drawn in the light theme: the table's text is dark, not the dark theme's near-white
+    const fills = [...svg.matchAll(/<text[^>]* fill="rgb\((\d+), (\d+), (\d+)\)"/g)].map((m) => Number(m[1]))
+    expect(fills.length).toBeGreaterThan(5)
+    expect(Math.max(...fills)).toBeLessThan(200)
+    // and the page is back in the dark theme with the cover gone
+    await expect(page.locator('html')).toHaveClass(/dark/)
+    await expect(page.getByRole('status').filter({ hasText: 'Preparing image' })).toHaveCount(0)
+    // the choice is shared: White is a white rect, Match theme the dark fill
+    await dialog.getByRole('button', { name: 'White', exact: true }).click()
+    const [white] = await Promise.all([page.waitForEvent('download'), dialog.getByRole('button', { name: 'SVG' }).click()])
+    expect(readFileSync((await white.path())!, 'utf8')).toMatch(/^<svg[^>]*><rect width="\d+" height="\d+" fill="#ffffff"\/>/)
+    expect(errors).toEqual([])
+  })
+  test('a small table is exported at its own size, not padded out to the card', async ({ page }) => {
+    const errors: string[] = []
+    await textTable(page, errors)
+    await place(page, 'scenario', 'Columns')
+    await place(page, 'major_trip_mode', 'Rows')
+    await place(page, 'trips', 'Values')
+    await drawn(page)
+    const card = (await page.getByTestId('chart-export-card').boundingBox())!
+    const table = (await page.locator('.xb .pvt table').boundingBox())!
+    await page.getByRole('button', { name: 'Export' }).click()
+    const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('dialog', { name: 'Export this chart' }).getByRole('button', { name: 'SVG' }).click()])
+    const svg = readFileSync((await download.path())!, 'utf8')
+    const width = Number(/<svg[^>]* width="(\d+)"/.exec(svg)![1])
+    const height = Number(/<svg[^>]* height="(\d+)"/.exec(svg)![1])
+    // the table's own size plus the card's padding and the image margin, never the size of the card it sat in
+    expect(width).toBeLessThan(card.width)
+    expect(width).toBeLessThan(table.width + 90)
+    expect(height).toBeLessThan(card.height)
+    expect(errors).toEqual([])
+  })
   test('a table too big for its card is exported whole as SVG', async ({ page }) => {
     const errors: string[] = []
     await textTable(page, errors)

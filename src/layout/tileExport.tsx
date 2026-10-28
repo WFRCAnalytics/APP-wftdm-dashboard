@@ -5,6 +5,8 @@ import { useScenarioDisplay } from '@/hooks/useScenarioDisplay'
 import { useResolvedView } from '@/hooks/useViewContext'
 import { resolveScenarioLabel } from '@/panels/scenarioDisplay'
 import { captureMap } from '@/services/mapCapture'
+import { ExportBackgroundChoice } from '@/layout/exportBackgroundMenu'
+import { getExportBackground, withExportBackground } from '@/services/exportBackground'
 import { cardToSvg, downloadBlob, downloadCsv, fileName, svgToPng, tablesFromDom, toTsv, type ExportTable } from '@/services/exportTile'
 import { getDeployment } from '@/state/compareState'
 import { exportFooter } from '@/state/exportState'
@@ -86,10 +88,12 @@ export function collectTables(own: ExportTable[], card: HTMLElement | null): Exp
 }
 
 /** The tile as it looks on screen, as an SVG document and the size it was drawn at. */
-export async function renderTileImage(card: HTMLElement, ctx: { scenarios: string; year: number | undefined }) {
-  const background = getComputedStyle(document.body).backgroundColor
+export async function renderTileImage(card: HTMLElement, ctx: { scenarios: string; year: number | undefined }, background: string | null = getComputedStyle(document.body).backgroundColor) {
   return cardToSvg(card, { footer: exportFooter(ctx), background, captureMap })
 }
+
+/** A tile with a map keeps the map's own background, so the image background choice does not apply to it. */
+export const imageBackgroundFor = (card: HTMLElement | null) => (card?.querySelector('.maplibregl-map') ? 'theme' : getExportBackground())
 
 export function ExportMenu({ title, cardRef, tables }: ExportMenuProps) {
   const [open, setOpen] = useState(false)
@@ -143,7 +147,7 @@ export function ExportMenu({ title, cardRef, tables }: ExportMenuProps) {
   const image = async (kind: 'png' | 'svg') => {
     const card = cardRef.current
     if (!card) return
-    const { svg, width, height } = await renderTileImage(card, { scenarios, year })
+    const { svg, width, height } = await withExportBackground(imageBackgroundFor(card), getComputedStyle(document.body).backgroundColor, (fill) => renderTileImage(card, { scenarios, year }, fill))
     if (kind === 'svg') downloadBlob(new Blob([svg], { type: 'image/svg+xml;charset=utf-8' }), fileName(base, 'svg'))
     else downloadBlob(await svgToPng(svg, width, height, 2), fileName(base, 'png'))
   }
@@ -196,6 +200,7 @@ export function ExportMenu({ title, cardRef, tables }: ExportMenuProps) {
           <button role="menuitem" type="button" className={ITEM} disabled={!available} onClick={() => run(copy)}>
             Copy data
           </button>
+          <ExportBackgroundChoice disabledReason={hasMap() ? 'Maps keep their own background' : undefined} />
         </div>
       )}
     </div>

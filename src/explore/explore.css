@@ -420,9 +420,8 @@
 
 /* image export of a table: an off-screen copy of the card that grows to the table's full size (ExportDialog.tsx) */
 .xb-export-holder{position:fixed;top:0;left:-200000px;pointer-events:none}
-.xb .card.xb-export{width:max-content;max-width:none;height:auto;max-height:none;overflow:visible;flex:none;position:static}
-.xb-export .cardbody{flex:none;overflow:visible;height:auto}
-.xb-export .plotw{position:static;flex:none;height:auto;min-height:0;overflow:visible}
+.xb .cardbody.xb-export{width:max-content;max-width:none;height:auto;min-height:0;max-height:none;overflow:visible;flex:none;position:static}
+.xb-export .plotw{position:static;flex:none;height:auto;min-height:0 !important;overflow:visible}
 .xb-export .plot.pivot{position:static;inset:auto;width:auto;height:auto;overflow:visible;display:block;padding:0}
 .xb-export .pvt-host,.xb-export .pvt,.xb-export .pvt-scroll{width:max-content;height:auto;max-height:none;overflow:visible;flex:none}
 .xb-export .pvt-bar{display:none}

@@ -2,6 +2,7 @@
 // source), the chart as PNG or SVG (through the same renderer the dashboard tiles use) and its data as CSV. Import takes a
 // configuration, lists every problem by path, and opens the chart as a new tab: nothing existing is changed.
 import { useState } from 'react'
+import { Segmented } from '@/components/ui/segmented'
 import { Btn } from '@/explore/parts'
 import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
@@ -9,6 +10,7 @@ import { fromConfig, defaultSpec, toConfig } from '@/charts/builder/spec'
 import { describeTable } from '@/explore/relations'
 import { relationColumns } from '@/explore/sql/queryModel'
 import type { ChartData } from '@/explore/useChartData'
+import { EXPORT_BACKGROUNDS, useExportBackground, withExportBackground } from '@/services/exportBackground'
 import { cardToSvg, downloadBlob, downloadCsv, fileName, svgToPng } from '@/services/exportTile'
 import { getExplore, setExplore, type ChartTab } from '@/state/exploreState'
 
@@ -38,7 +40,6 @@ function exportTarget(card: HTMLElement): { el: HTMLElement; done(): void } {
   const copy = card.cloneNode(true) as HTMLElement
   copy.removeAttribute('data-testid')
   copy.classList.add('xb-export')
-  copy.style.minWidth = `${card.offsetWidth}px`
   holder.appendChild(copy)
   // inside the same parent, so the builder's styles and theme variables still apply
   card.parentElement!.appendChild(holder)
@@ -48,6 +49,7 @@ function exportTarget(card: HTMLElement): { el: HTMLElement; done(): void } {
 export function ExportDialog({ tab, data, cardEl, onClose }: { tab: ChartTab; data: ChartData; cardEl(): HTMLElement | null; onClose(): void }) {
   const [msg, setMsg] = useState('')
   const [busy, setBusy] = useState(false)
+  const [background, setBackground] = useExportBackground()
   const s = getExplore()
   const config = toConfig(tab.spec, { relation: tab.source, scenarios: s.scenarios, sql: data.relSql, typeOf: (f) => data.cols.find((c) => c.name === f)?.type })
   const json = JSON.stringify(config, null, 2)
@@ -58,11 +60,11 @@ export function ExportDialog({ tab, data, cardEl, onClose }: { tab: ChartTab; da
     if (!el) return
     setBusy(true)
     try {
-      const background = getComputedStyle(el).getPropertyValue('--tile').trim() || '#ffffff'
-      const target = exportTarget(el)
-      let out: Awaited<ReturnType<typeof cardToSvg>>
-      try { out = await cardToSvg(target.el, { background }) } finally { target.done() }
-      const { svg, width, height } = out
+      const themeFill = getComputedStyle(el).getPropertyValue('--tile').trim() || '#ffffff'
+      const { svg, width, height } = await withExportBackground(background, themeFill, async (fill) => {
+        const target = exportTarget(el)
+        try { return await cardToSvg(target.el, { background: fill }) } finally { target.done() }
+      })
       if (kind === 'svg') downloadBlob(new Blob([svg], { type: 'image/svg+xml' }), fileName(base, 'svg'))
       else downloadBlob(await svgToPng(svg, width, height), fileName(base, 'png'))
       setMsg(kind === 'svg' ? 'SVG saved.' : 'PNG saved.')
@@ -72,6 +74,10 @@ export function ExportDialog({ tab, data, cardEl, onClose }: { tab: ChartTab; da
 
   return (
     <Modal title="Export this chart" onClose={onClose}>
+      <div className="rrow">
+        <span className="lab">Image background</span>
+        <div className="xseg"><Segmented label="Image background" value={background} onChange={(id) => setBackground(id as typeof background)} options={EXPORT_BACKGROUNDS.map((o) => ({ id: o.v, label: o.label }))} /></div>
+      </div>
       <div className="rrow">
         <Btn disabled={busy} onClick={() => void image('png')}>PNG</Btn>
         <Btn disabled={busy} onClick={() => void image('svg')}>SVG</Btn>

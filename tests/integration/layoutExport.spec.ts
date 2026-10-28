@@ -41,6 +41,20 @@ test.describe('tile export', () => {
     expect(svg).toContain('Walk and bike')
   })
 
+  test('the image background is a choice in the tile menu: transparent leaves out every background', async ({ page }) => {
+    await boot(page)
+    await expect(page.locator('[data-chart-kind="mode-bars"] svg').first()).toBeVisible({ timeout: 30_000 })
+    await page.getByRole('button', { name: 'Export Mode share' }).click()
+    await page.getByRole('menuitemradio', { name: 'Transparent' }).click()
+    await expect(page.getByRole('menuitemradio', { name: 'Transparent' })).toHaveAttribute('aria-checked', 'true')
+    const [dl] = await Promise.all([page.waitForEvent('download'), page.getByRole('menuitem', { name: /image \(SVG\)/ }).click()])
+    const svg = readFileSync((await dl.path())!, 'utf8')
+    expect(/^<svg[^>]*><g /.test(svg)).toBe(true)
+    // the same choice is offered, already set, on the page-level Export all
+    await page.getByTestId('page-export').getByRole('button').click()
+    await expect(page.getByRole('menuitemradio', { name: 'Transparent' })).toHaveAttribute('aria-checked', 'true')
+  })
+
   test('PNG is a real image at twice the size', async ({ page }) => {
     await boot(page)
     await expect(page.locator('[data-chart-kind="mode-bars"] svg').first()).toBeVisible({ timeout: 30_000 })
