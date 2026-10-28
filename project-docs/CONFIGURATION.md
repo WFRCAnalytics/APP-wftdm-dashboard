@@ -59,17 +59,23 @@ generated file. The site settings move to `dashboard-config.yaml`.
    `depart_hour`), sex codes 1 and 2, and 5-year age bands to 80+. `vocab` maps values only. **This depends on the data-path decision
    in section 8, so it is not planned yet.**
 
-## 3. The four config files
+## 3. The config files
 
-| File | Job | Read by |
-|---|---|---|
-| `dashboard-config.yaml` **(new)** | Site-wide deployer settings and the ordered page list | the browser, at startup |
-| `dashboard-*.yaml` | One page: layout, panels, optional overrides of site settings | the browser |
-| `summarize.yaml` | Post-processor: sources, mappings, bins, SQL fragments, metrics | Python only, never published |
-| `manifest.yaml` | Per-scenario metadata | the browser, per scenario |
+| File | Job | Authored or generated | Read by |
+|---|---|---|---|
+| `dashboard-config.yaml` **(new)** | Site-wide deployer settings, the ordered page list, and the scenario list with each scenario's label and colour | authored | the browser, at startup |
+| `dashboard-*.yaml` | One page: layout, panels, optional overrides of site settings | authored | the browser |
+| `summarize.yaml` | Post-processor: sources, mappings, bins, SQL fragments, metrics | authored | Python only, never published |
+| `dashboard-manifest.yaml` | One scenario's facts: its provenance, the file tree of its raw output, and (if there is a pre-processing step) the file tree of its summary files. Sits at the root of the scenario folder | **generated, never hand-edited** | the browser, per scenario |
+
+That is four files, as the constitution says. `dashboard-manifest.yaml` takes the place of today's `manifest.yaml`, which is **retired**:
+there is no separate `manifest.yaml`, and the display settings it carried (name, colour, and so on) move into `dashboard-config.yaml`.
+The constitution names `manifest.yaml`, so Principle VII is updated to the new name when this is built. The generated `index.json`
+files go away. The rule: **facts about a run go in the manifest (generated); everything about how the dashboard presents and groups runs
+goes in `dashboard-config.yaml` (authored).**
 
 `dashboard-config.yaml` lives beside the pages (`public/dashboard-config/dashboard-config.yaml`) and is authored with them, in the
-same place as `dashboard-*.yaml`. The generated `index.json` files stay as folder listings only.
+same place as `dashboard-*.yaml`. The generated `index.json` files go away once the manifests exist.
 
 ### The cascade
 
@@ -121,8 +127,8 @@ app default, and a page's `layout_mode` beats the site's `layout.mode`. These ru
    A site usually has one Explore panel, so for Explore alone this saves little; it pays off for panel types that appear many times
    (tables, charts, value boxes).
 6. **A page's own identity stays in `header:`** (tab name, title, icon, `full_page`, `hidden`, `draft`). It does not cascade.
-7. **Viewers sit above the cascade** for the preferences they may change (theme, font, text size, layout). A locked preference ignores
-   the viewer.
+7. **Viewers sit above the cascade** for the preferences they may change (theme, font, text size, layout). Theme, font and text size
+   are never set by a deployer; the page layout mode is.
 8. **One pure function resolves it** (site, page, panel, schema in; resolved settings and where each came from out), used by the app
    and by the `check` command. `check --explain` can print, for example, `limits.csv_rows = 500 (page: dashboard-4-mode.yaml)`.
 
@@ -139,8 +145,22 @@ pages:                              # replaces `dashboards` in index.json; the f
   - dashboard-2-person-household.yaml
 
 scenarios:                          # new: listed by the deployer, replaces the generated scenarios/index.json
-  - activitysim-baseline            # (folder under the scenarios root; the exact shape is still to be drafted)
-  - activitysim-density-variant
+  - path: scenarios/baseline-2023   # a folder; the app reads its dashboard-manifest.yaml for provenance, year, scenario group and files
+    id: baseline-2023               # optional; defaults to the folder name. Panels pin a run by this id (`scenario: baseline-2023`)
+    label: Baseline                 # presentation and grouping live here, not in the scenario folder
+    color: "#2457D6"
+    description: Calibrated base year.
+  - path: scenarios/density-variant-2023
+    label: Higher density
+    scenario_group: density         # optional: overrides the manifest's scenario_group (regrouping)
+  - path: scenarios/round-01
+    label: Round 1
+    kind: round                     # scenario (default) | round | observed
+    family: calibration             # rounds: the group they belong to, and their order
+    family_index: 1
+    hidden: false                   # true: loadable and pinnable by a panel, but not in the picker or the compare set
+    # `year`, `model_version` and `run_date` are NOT here: they are facts, so they come from the manifest.
+    # Observed data (kind: observed) waits for the observed-data decision (section 8).
 
 # identity and colour (today in index.json)
 title: Calibration Dashboard
@@ -158,12 +178,8 @@ compare: { default: auto }
 layout:  { mode: tabs }                # cascades to pages
 export:  { footer: true }              # cascades to pages
 
-# new: what each viewer starts with, and whether they may change it
-defaults:
-  theme: system                        # system | light | dark
-  font: Schibsted Grotesk
-  text_size: 100                       # 85 to 125
-  locked: [theme]                      # shown disabled with a reason: "Set by your administrator"
+# Viewer preferences (theme: light, dark or system; font; text size) are NOT deployer settings. Every viewer gets them.
+# The default font comes from the brand file's typography. A `defaults:` / `locked:` block, drafted earlier, is dropped for now.
 
 # new: the Settings modal
 settings:
@@ -213,7 +229,8 @@ Not drafted here, on purpose: how the charts find the deployer's tables and colu
 7. Document it in `GRAMMAR.md` and publish a JSON Schema file for editors (Python and R can validate with it before writing).
 
 **Phase C: viewer-facing settings**
-8. `defaults` and `locked` (disabled, with a reason). `settings.tabs`, the documentation link and sidebar icon, hidden and draft pages, and a CSS file.
+8. `settings.tabs`, the documentation link and sidebar icon, and hidden and draft pages. (No deployer theme or font defaults, and no custom
+   CSS for now; see section 7.)
 
 **Phase D: assistant and network**
 9. The `assistant` block. 10. The `network` block, so an offline or locked-down site works.
@@ -241,7 +258,10 @@ Nothing below changes code. Each topic is settled before anything is built.
 
 **Decided**
 - Demo split: opt-in build flag (but see profiles, topic 5, which may replace it).
-- Locked preferences: shown disabled, with a reason.
+- **Theme is the viewer's.** Light, dark and system are available to every user, and the deployer does not set or lock the theme. By the
+  same reasoning I have dropped deployer defaults for font and text size, and with them the `locked` setting decided earlier (shown
+  disabled, with a reason). It can come back if something really needs locking. (Confirmed for font and text size too.)
+- **A one-command local server** (`serve` / `here`, part of the core), in the manner of `simwrapper serve`.
 - Site settings move to YAML, in a new `dashboard-config.yaml` (constitution 2.8.0, Principle VII); a cascade site → page → panel.
 - The target is a Python library and an R package (Principle X). **One core and two thin wrappers**, as quarto-r and quarto-py wrap Quarto.
   The wrappers hold no logic of their own.
@@ -254,8 +274,8 @@ Nothing below changes code. Each topic is settled before anything is built.
 - **Documentation moves out of the app.** When the app is ready for first use, this repository's GitHub Pages hosts a separate
   Quarto-based documentation site. Dashboards link to it instead of showing documentation on screen, and the documentation icon sits at
   the foot of the left sidebar, not in Settings. (The in-app Documentation tab stays until then.)
-- **Customisation:** deployers may add CSS. "Theme" means light and dark only, for now; named themes may come later. **No extensions.**
-  The detailed design is deferred.
+- **Customisation:** **no custom CSS for now.** Colours, logos and fonts come through the brand file, which covers most visual needs;
+  custom CSS is revisited once the app itself is stable. "Theme" means light, dark and system, chosen by the viewer. **No extensions.**
 - **Hosting during and after development.** While the app is in development the demo is hosted on GitHub Pages. When the app is ready,
   the demo moves to `wfrc.utah.gov/<path>` and `wfrcanalytics.github.io/APP-wftdm-dashboard` hosts the documentation. The demo
   therefore ends up at a sub-path of another site, so the build must not depend on its URL (Principle X; Phase A, relative base).
@@ -270,8 +290,44 @@ Nothing below changes code. Each topic is settled before anything is built.
 - The data path and observed data are open and recorded as such (section 8; constitution "Open Decisions").
 
 **Direction set, details to research or decide**
-1. **Deployer project folder.** Take SimWrapper's model as the starting point, keep what works there, and correct what does not.
-   Needs a look at how SimWrapper lays out and discovers a project before we copy anything.
+1. **Deployer project folder.** SimWrapper researched (it keeps dashboard YAML beside the data, which we are **not** adopting) and so
+   was the vizTool. **Decided:** every scenario has a `dashboard-manifest.yaml` at the root of its folder. It holds the scenario's
+   **provenance**, the **list of its raw files**, and, if we keep a pre-processing step after the model run, the **list of the summary
+   files** too. File paths are written as a **file tree nested by folder**, relative to the manifest. It is generated and never
+   hand-edited. There is no separate `manifest.yaml`. All dashboard setup, including each scenario's label, colour and description, is
+   in `dashboard-config.yaml`, which lists the scenario folders; each folder's manifest guides the app to the rest. Paths in the config
+   are relative to `dashboard-config.yaml`, so a folder can be moved or served from any URL.
+
+   Sketch of the tree (illustrative, not final):
+
+   ```yaml
+   provenance:                    # facts the model run knows; first list, to refine
+     model_version: "9.1"         # free text, shown to users as written: "9.1" or "WF-TDM 9.1" (vizTool's `modVersion`)
+     scenario_group: baseline     # the dashboard's grouping of runs (today's `alternative`) unless the config overrides it
+     year: 2023                   # the model year
+     run_date: 2026-09-08
+   raw:
+     output:
+       - trips.csv
+       - households.csv
+   summary:                       # only if the data path keeps a pre-processing step
+     - trip_mode_share.parquet
+   ```
+
+   Entries are bare file names for now, and may become small mappings later without breaking the shape. **What the manifest says about
+   each file (kind, table name, columns) is deferred until the full WFRC activity-based model run is available.** **Decided: the model
+   run itself writes the manifest** (manifest generation is built into the model output), so it exists with or without a post-processor.
+   **Decided placement of today's manifest fields:** `year` and `scenario_group` come from the manifest (facts the model run knows), and
+   the config may override `scenario_group`; `kind`, `family`, `family_index`, `tag` and `hidden` live in the config (workflow and
+   presentation); observed data waits for the observed-data decision. Each run also gets an `id` in the config (default: the folder
+   name) that panels, the data views and a future shareable link use. `model_version` and `run_date` are manifest facts. The
+   model and version also feed a future "which data am I looking at" display, and `check` can warn when a comparison mixes model
+   versions. **Decided: the key is `scenario_group`** (WFRC's own term, vizTool's `scnGroup`), in both the manifest and the config. It is
+   today's `alternative`; the old key is still read during migration. **No git commit or checksum in the provenance:** model outputs are not committed, so there is nothing for a hash to point at; the
+   `model_version` is the traceable identity of the model that produced the run. **Decided: the provenance is minimal.** `model_version` (one
+   free-text field, so a deployment writes "9.1" or "WF-TDM 9.1", whichever it wants users to read), `scenario_group`, `year` and
+   `run_date`. There is no separate `model` (a deployment shows one model, and its title names it) and no `engine` (nothing uses it, and
+   the statewide model will not use ActivitySim anyway); either can be added later if a real need appears. Still open: whether the app's own wording (the code, and the words in the interface) also changes from "alternative" to "scenario group".
 3. **Cascade rules.** Rules 3, 4 and 5 are decided (see above). Rules 1, 2, 6, 7 and 8 in section 3 have not been objected to; treat them
    as accepted unless that changes. Remaining: the first list of which keys are marked inheritable, per panel type, when it is built.
 5. **Profiles.** Wanted in principle. Needs research on how they would work here and whether they would replace the demo build flag
@@ -283,12 +339,13 @@ Nothing below changes code. Each topic is settled before anything is built.
 - **Secrets:** what must never go in config (assistant and map keys end up public in a static site). Open questions 5 and 6 of the
   earlier list (assistant keys, self-hosted fonts) belong here and with the `network` block.
 - **Names:** `snake_case` keys as drafted? Nested `logo: { light, dark }`? (Brand.yml's own names may settle this.)
-- **Per-scenario file listing.** Pages and scenarios are listed in `dashboard-config.yaml` (decided). Each scenario also has its own
-  `summary/index.json`, written by the post-processor, naming its Parquet files so the app can load them lazily. **Direction decided:
-  if the post-processor is kept, it writes YAML, not JSON.** Where that listing lives (most likely the scenario's own `manifest.yaml`)
-  and its shape are still to be drafted. What a scenario's files are depends on the data-path test, so the shape waits for it. Once
-  built, no generated `index.json` is left, and the sentence in constitution Principle VII that describes `index.json` files as
-  generated listings is updated then.
+- **Per-scenario file listing: decided** (see the project-folder topic above). `dashboard-manifest.yaml` at each scenario's root replaces
+  both `scenarios/index.json` and `summary/index.json`, and `manifest.yaml` is retired. Its per-file contents wait for the full WFRC
+  model run. When it is built, the sentences in constitution Principle VII that mention `manifest.yaml` and `index.json` are updated.
+- **A name to watch.** Three kinds of file now start with `dashboard-`: `dashboard-config.yaml`, the pages (`dashboard-*.yaml`) and
+  `dashboard-manifest.yaml`. Nothing discovers files by that pattern any more (everything is listed explicitly), but a docs
+  sentence, a script or a glob that says "all `dashboard-*.yaml`" would catch all three. The `check` command should recognise a file by
+  its role, not by a pattern. If it ever causes confusion, renaming the pages is the cheaper change.
 - **Compatibility:** do existing deployments rely on the demo fallback, so Phase A needs a notice or a version bump?
 
 **Questions raised by the decisions above**
@@ -305,8 +362,10 @@ Nothing below changes code. Each topic is settled before anything is built.
   section of the documentation. Wanted?
 - **Hidden versus draft.** Proposed: `hidden: true` leaves the page out of the sidebar but reachable by its link; `draft: true` leaves
   it out entirely in a production profile and shows it in a development profile (this ties to topic 5).
-- **CSS.** Proposed: the supported surface is the app's CSS variables (the tokens), documented and kept stable; class names are not
-  promised. A site key names a CSS file loaded after the app's styles.
+- **CSS: deferred** until the app is stable. When revisited, the supported surface would be the app's CSS variables (the tokens), not
+  its class names.
+- **Conditional pages** (SimWrapper's `triggerPattern`: a page appears only if a file exists). Not adopted: a deployer already chooses
+  which pages exist, and a panel whose data a run lacks is skipped automatically. Revisit only if a real use case turns up.
 
 ## 8. Not decided: the data path, and observed data
 
