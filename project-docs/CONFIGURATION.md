@@ -26,6 +26,7 @@ Principles:
 |---|---|
 | Title, logos, colours, scenario palette | Configurable, but in `index.json` (JSON, undocumented) |
 | Tabs, sections, layout mode, panel options | Configurable (`dashboard-*.yaml`; the page list and `layout` in `index.json`) |
+| Page addresses | Configurable: `header.slug` sets a page's `#/<slug>` address (default: the tab name, lower-cased and dash-separated; a repeat gets `-2`, `-3`). A section is `#/<slug>/<section id>`. Settings, the assistant and expanded tiles are not in the address |
 | Category names, metric labels and units | Configurable (`vocab`, `metrics`, `units` in `index.json`) |
 | Years, compare defaults, export footer | Configurable (`index.json`) |
 | Basemap and Protomaps | Key or URL configurable; the catalogue is fixed |
@@ -53,7 +54,7 @@ generated file. The site settings move to `dashboard-config.yaml`.
    back per field to the WFRC demo values (title, logos, colours, Protomaps key). An unconfigured deployment looks like WFRC.
 3. **No schema, no validation.** Keys are parsed with `typeof x === 'string' ? x : undefined`. A new key needs edits in four places
    (type, parser, per-field merge in `main.tsx`, consumer), and `scripts/viteBootSkeletonPlugin.ts` has a second parser.
-4. **Docs gap.** `GRAMMAR.md` never mentions `vocab`, `units`, `assistant`, `scenarioPalette`, `brandColor` or `markUrl`.
+4. **Docs gap.** `GRAMMAR.md` never mentions `vocab`, `units`, `assistant`, `scenarioPalette`, `brandColor`, `markUrl` or `header.slug`.
 5. **The adapters assume ActivitySim.** `adapt.ts` hardcodes source tables (`trip_ends_by_zone_mode`, `land_use_summary`,
    `person_household_profile`, `purpose_mode_flow`, ...) and columns (`TOTPOP`, `zone_id`, `major_trip_mode`, `primary_purpose`,
    `depart_hour`), sex codes 1 and 2, and 5-year age bands to 80+. `vocab` maps values only. **This depends on the data-path decision
@@ -126,7 +127,8 @@ app default, and a page's `layout_mode` beats the site's `layout.mode`. These ru
 
    A site usually has one Explore panel, so for Explore alone this saves little; it pays off for panel types that appear many times
    (tables, charts, value boxes).
-6. **A page's own identity stays in `header:`** (tab name, title, icon, `full_page`, `hidden`, `draft`). It does not cascade.
+6. **A page's own identity stays in `header:`** (tab name, title, icon, `slug`, `full_page`, `hidden`, `draft`). It does not cascade. `slug` is the
+   page's address (`#/<slug>`), unique across the site; the app makes a repeat unique with a numeric suffix, and `check` should report it instead.
 7. **Viewers sit above the cascade** for the preferences they may change (theme, font, text size, layout). Theme, font and text size
    are never set by a deployer; the page layout mode is.
 8. **One pure function resolves it** (site, page, panel, schema in; resolved settings and where each came from out), used by the app
