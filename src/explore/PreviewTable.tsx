@@ -193,10 +193,13 @@ function Head({ m, name, big, onToggle }: { m: DataTabModel; name: string; big: 
             <Columns2 size={14} aria-hidden="true" />{shown} of {all.length} columns
           </Btn>
         )}
-        <span className="mono">{from}–{to}{m.total !== null ? ` of ${m.total.toLocaleString('en-US')}` : ''}</span>
         <ExportButtons m={m} name={name} />
-        <Btn icon aria-label="Previous page" disabled={s.page <= 0} onClick={() => setExplore({ page: s.page - 1 })}><ChevronLeft size={14} /></Btn>
-        <Btn icon aria-label="Next page" disabled={!m.hasMore} onClick={() => setExplore({ page: s.page + 1 })}><ChevronRight size={14} /></Btn>
+        <span className="psep" aria-hidden="true" />
+        <span className="pgrp">
+          <span className="mono">{from}–{to}{m.total !== null ? ` of ${m.total.toLocaleString('en-US')}` : ''}</span>
+          <Btn icon aria-label="Previous page" disabled={s.page <= 0} onClick={() => setExplore({ page: s.page - 1 })}><ChevronLeft size={14} /></Btn>
+          <Btn icon aria-label="Next page" disabled={!m.hasMore} onClick={() => setExplore({ page: s.page + 1 })}><ChevronRight size={14} /></Btn>
+        </span>
         {/* the same ghost icon button every other expandable tile uses */}
         <Button variant="ghost" size="icon" aria-label={`${big ? 'Contract' : 'Expand'} ${name || 'table'}`} onClick={onToggle}>{big ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}</Button>
       </div>
