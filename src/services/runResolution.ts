@@ -4,8 +4,8 @@ import * as appState from '../state/appState.ts'
 import * as compareState from '../state/compareState.ts'
 import type { Deployment } from '../state/compareState.ts'
 import {
-  alternativesOf,
-  independentAlternatives,
+  scenarioGroupsOf,
+  independentScenarioGroups,
   resolveRun,
   resolveViewContext,
   type ResolvedView,
@@ -14,9 +14,9 @@ import {
   type ViewManifest,
 } from './viewContext.ts'
 
-/** A run's UI identity: the manifest `alternative`, else its own name. */
-export function alternativeOf(s: appState.Scenario): string {
-  return s.alternative ?? s.name
+/** A run's UI identity: the manifest `scenario_group`, else its own name. */
+export function scenarioGroupOf(s: appState.Scenario): string {
+  return s.scenarioGroup ?? s.name
 }
 
 /** Legacy pinned entries (the `observed` folder) are Observed even without `kind`. */
@@ -25,13 +25,13 @@ export function runKindOf(s: appState.Scenario): appState.ScenarioKind {
 }
 
 export function runInfoOf(s: appState.Scenario): RunInfo {
-  return { name: s.name, alternative: alternativeOf(s), year: s.year, kind: runKindOf(s), ready: s.status === 'ready' }
+  return { name: s.name, scenarioGroup: scenarioGroupOf(s), year: s.year, kind: runKindOf(s), ready: s.status === 'ready' }
 }
 
-function baselineAlternative(): string | undefined {
+function baselineScenarioGroup(): string | undefined {
   const run = appState.getBaseline()
   const scenario = run ? appState.get(run) : undefined
-  return scenario ? alternativeOf(scenario) : undefined
+  return scenario ? scenarioGroupOf(scenario) : undefined
 }
 
 /** Whether a run belongs in a year's lists: Observed and calibration rounds exist only in the base year; a year-less
@@ -49,18 +49,18 @@ export function viewManifest(): ViewManifest {
     runs: appState.listByDisplayOrder().map(runInfoOf),
     years: deployment.years.map((y) => y.year),
     baseYear: deployment.baseYear,
-    baseline: baselineAlternative(),
+    baseline: baselineScenarioGroup(),
   }
 }
 
 export function viewInput(): ViewInput {
   const state = compareState.getState()
   const runs = appState.listByDisplayOrder()
-  // An alternative is in the compare set when its run for the current year is active; with no run for this year, when
+  // A scenario group is in the compare set when its run for the current year is active; with no run for this year, when
   // any of its runs is (so the choice still shows once a year that has one is selected).
-  const hidden = new Set(runs.filter((s) => runKindOf(s) === 'hidden').map(alternativeOf))
-  const compareSet = alternativesOf(runs.map(runInfoOf)).filter((alt) => !hidden.has(alt)).filter((alt) => {
-    const mine = runs.filter((s) => alternativeOf(s) === alt)
+  const hidden = new Set(runs.filter((s) => runKindOf(s) === 'hidden').map(scenarioGroupOf))
+  const compareSet = scenarioGroupsOf(runs.map(runInfoOf)).filter((alt) => !hidden.has(alt)).filter((alt) => {
+    const mine = runs.filter((s) => scenarioGroupOf(s) === alt)
     const forYear = resolveRun(mine.map(runInfoOf), alt, state.year)
     return forYear ? Boolean(appState.get(forYear.name)?.active) : mine.some((s) => s.active)
   })
@@ -71,9 +71,9 @@ export function currentView(): ResolvedView {
   return resolveViewContext(viewInput(), viewManifest())
 }
 
-/** `alternative`'s run name in `year`, or undefined (e.g. its base-year run for the "same scenario in the base year" reference). */
-export function runNameFor(alternative: string, year: number): string | undefined {
-  return resolveRun(viewManifest().runs, alternative, year)?.name
+/** `scenarioGroup`'s run name in `year`, or undefined (e.g. its base-year run for the "same scenario in the base year" reference). */
+export function runNameFor(scenarioGroup: string, year: number): string | undefined {
+  return resolveRun(viewManifest().runs, scenarioGroup, year)?.name
 }
 
 /** The baseline scenario's run for the current year (`$baseline` and baseline-pinned panels read this). */
@@ -109,24 +109,24 @@ export function bootCompareState(config: {
 }): void {
   const runs = appState.listByDisplayOrder().map(runInfoOf)
   const deployment = deriveDeployment(runs, config)
-  const independents = independentAlternatives(runs)
-  const baseline = baselineAlternative() ?? independents[0] ?? alternativesOf(runs)[0] ?? ''
+  const independents = independentScenarioGroups(runs)
+  const baseline = baselineScenarioGroup() ?? independents[0] ?? scenarioGroupsOf(runs)[0] ?? ''
   // A single-year deployment keeps the pre-redesign behavior (every loaded scenario shows, including one a viewer loads
   // later from a local folder), so Compare starts on; with several years, Compare needs two independent scenarios.
   const auto = deployment.years.length < 2 || independents.length >= 2
   const compare = config.compareDefault === 'on' ? true : config.compareDefault === 'off' ? false : auto
-  const known = new Set(alternativesOf(runs))
+  const known = new Set(scenarioGroupsOf(runs))
   // Unless the deployment names them, the first scenario is the reference and the second the focus (one scenario alone: it is both)
   const focus = config.compareFocus && known.has(config.compareFocus) ? config.compareFocus : (independents[1] ?? baseline)
   compareState.initCompareState({ deployment, focus, compare, baseline })
-  // the initial compare set, when the deployment names one: those alternatives on, the other independent ones off
+  // the initial compare set, when the deployment names one: those scenario groups on, the other independent ones off
   const initial = (config.compareScenarios ?? []).filter((a) => known.has(a))
   if (initial.length > 0) {
     const set = new Set([...initial, focus])
-    for (const alt of independentAlternatives(runs)) compareState.setAlternativeActive(alt, set.has(alt))
+    for (const alt of independentScenarioGroups(runs)) compareState.setScenarioGroupActive(alt, set.has(alt))
   }
   // calibration rounds join the comparison only when a viewer picks them
-  for (const alt of alternativesOf(runs)) if (runs.find((r) => r.alternative === alt)?.kind === 'round') compareState.setAlternativeActive(alt, false)
+  for (const alt of scenarioGroupsOf(runs)) if (runs.find((r) => r.scenarioGroup === alt)?.kind === 'round') compareState.setScenarioGroupActive(alt, false)
   const reference = config.compareReference
   if (reference === 'observed') compareState.setReference({ kind: 'observed' })
   else if (reference && known.has(reference)) compareState.setReference({ kind: 'scenario', name: reference })

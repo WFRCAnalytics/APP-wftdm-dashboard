@@ -79,16 +79,23 @@ describe('manifestReader.readManifest', () => {
     expect(missing.status).not.toBe(invalid.status)
   })
 
-  it('reads the optional 063 identity fields (alternative, year, kind, tag, family)', async () => {
+  it('reads the optional 063 identity fields (scenario_group, year, kind, tag, family)', async () => {
     const dirHandle = fakeDirHandle(
       'freq-transit-2036',
-      ['scenario_name: freq-transit-2036', 'alternative: freq-transit', 'year: 2036', 'kind: round', 'tag: Transit', 'family: calibration', 'family_index: 12'].join(String.fromCharCode(10)),
+      ['scenario_name: freq-transit-2036', 'scenario_group: freq-transit', 'year: 2036', 'kind: round', 'tag: Transit', 'family: calibration', 'family_index: 12'].join(String.fromCharCode(10)),
     )
     const result = await readManifest(dirHandle)
     expect(result).toMatchObject({
       status: 'ok',
-      manifest: { alternative: 'freq-transit', year: 2036, kind: 'round', tag: 'Transit', family: 'calibration', familyIndex: 12 },
+      manifest: { scenarioGroup: 'freq-transit', year: 2036, kind: 'round', tag: 'Transit', family: 'calibration', familyIndex: 12 },
     })
+  })
+
+  it('still reads the old `alternative` key as the scenario group, and prefers `scenario_group` when both are present', async () => {
+    const old = await readManifest(fakeDirHandle('a', ['scenario_name: a', 'alternative: base'].join(String.fromCharCode(10))))
+    expect(old).toMatchObject({ status: 'ok', manifest: { scenarioGroup: 'base' } })
+    const both = await readManifest(fakeDirHandle('a', ['scenario_name: a', 'alternative: base', 'scenario_group: rtp'].join(String.fromCharCode(10))))
+    expect(both).toMatchObject({ status: 'ok', manifest: { scenarioGroup: 'rtp' } })
   })
 
   it('ignores a non-integer year and an unknown kind (a single-year run)', async () => {

@@ -3,7 +3,7 @@ display_name: Light rail extension
 engine: activitysim
 run_date: '2026-09-08'
 kind: scenario
-alternative: light-rail-extension
+scenario_group: light-rail-extension
 year: 2023
 tag: Transit
 color: '#EB5757'

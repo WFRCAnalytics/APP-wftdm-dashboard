@@ -3,7 +3,7 @@ display_name: Remote work
 engine: activitysim
 run_date: '2026-09-08'
 kind: scenario
-alternative: remote-work
+scenario_group: remote-work
 year: 2023
 tag: Behavior
 color: '#7BC043'

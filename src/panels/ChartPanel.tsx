@@ -20,7 +20,7 @@ import { PanelEmptyState } from '@/panels/PanelEmptyState'
 import { PanelErrorState } from '@/panels/PanelErrorState'
 import { resolveScenarioColor } from '@/panels/scenarioDisplay'
 import type { PanelProps } from '@/panels/registry'
-import { alternativeOf, runKindOf, runNameFor, viewManifest } from '@/services/runResolution'
+import { scenarioGroupOf, runKindOf, runNameFor, viewManifest } from '@/services/runResolution'
 import { getDeployment } from '@/state/compareState'
 import { get as getScenario, list as listScenarios } from '@/state/appState'
 import { tooltip } from '@/services/tooltip'
@@ -67,15 +67,15 @@ export function ChartPanel({ config }: PanelProps<ChartPanelConfig>) {
       years: getDeployment().years,
       label: (run) => display.get(run)?.label ?? getScenario(run)?.label ?? run,
       color: (run) => resolveScenarioColor(run, display) ?? '#8a94a6',
-      alternativeOf: (run) => {
+      scenarioGroupOf: (run) => {
         const s = getScenario(run)
-        return s ? alternativeOf(s) : run
+        return s ? scenarioGroupOf(s) : run
       },
       runFor: runNameFor,
       rounds: listScenarios()
         .filter((s) => runKindOf(s) === 'round')
         .sort((a, b) => (a.familyIndex ?? 0) - (b.familyIndex ?? 0))
-        .map((s) => ({ round: s.familyIndex ?? 0, run: s.name, alternative: alternativeOf(s), label: display.get(s.name)?.label ?? s.name, color: resolveScenarioColor(s.name, display) ?? '#8a94a6' })),
+        .map((s) => ({ round: s.familyIndex ?? 0, run: s.name, scenarioGroup: scenarioGroupOf(s), label: display.get(s.name)?.label ?? s.name, color: resolveScenarioColor(s.name, display) ?? '#8a94a6' })),
       roundOf: (run) => {
         const s = getScenario(run)
         return s && runKindOf(s) === 'round' ? s.familyIndex : undefined
@@ -162,7 +162,7 @@ export function ChartPanel({ config }: PanelProps<ChartPanelConfig>) {
         state: stateRef.current,
         redraw: () => setTick((t) => t + 1),
         setYear: view.setYear,
-        focusAlternative: (alt) => view.pickScenario(alt, false),
+        focusScenarioGroup: (alt) => view.pickScenario(alt, false),
         toggleCompare: (alt) => view.pickScenario(alt, true),
         extra: data.extra,
       }

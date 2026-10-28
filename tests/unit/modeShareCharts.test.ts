@@ -57,10 +57,10 @@ const TABLES: Record<string, Record<string, Record<string, unknown>[]>> = {
 
 const envOf = (over: Partial<ModeShareEnv> & { group?: string } = {}): ModeShareEnv => ({
   scenarios: [
-    { run: 'base', alternative: 'baseline', label: 'Baseline', color: '#111111', isFocus: false },
-    { run: 'alt', alternative: 'alt', label: 'Alt', color: '#222222', isFocus: true },
+    { run: 'base', scenarioGroup: 'baseline', label: 'Baseline', color: '#111111', isFocus: false },
+    { run: 'alt', scenarioGroup: 'alt', label: 'Alt', color: '#222222', isFocus: true },
   ],
-  focus: { run: 'alt', alternative: 'alt', label: 'Alt', color: '#222222', isFocus: true },
+  focus: { run: 'alt', scenarioGroup: 'alt', label: 'Alt', color: '#222222', isFocus: true },
   reference: { kind: 'observed', run: 'obs', label: 'Observed', isObserved: true },
   refRunFor: () => 'obs',
   data: { rows: (run, table) => TABLES[run]?.[table] ?? [], has: (run, table) => Boolean(TABLES[run]?.[table]) },

@@ -29,8 +29,8 @@ import { useScenarioList } from '@/hooks/useScenarioList'
 import { ScenarioRow } from '@/layout/settings/scenarioRow'
 import * as appState from '@/state/appState'
 import { useResolvedView } from '@/hooks/useViewContext'
-import { alternativeOf, isRunInYear, runKindOf } from '@/services/runResolution'
-import { setAlternativeActive } from '@/state/compareState'
+import { scenarioGroupOf, isRunInYear, runKindOf } from '@/services/runResolution'
+import { setScenarioGroupActive } from '@/state/compareState'
 
 // 020-settings-modal: relocated from layout/scenarioLoader.tsx (deleted by
 // that feature) — list/add/remove/baseline-mark logic and behavior are
@@ -132,7 +132,7 @@ export function ScenariosTab() {
   }
 
   function compareAll() {
-    for (const s of allScenarios) setAlternativeActive(alternativeOf(s), true)
+    for (const s of allScenarios) setScenarioGroupActive(scenarioGroupOf(s), true)
   }
 
   // The up/down buttons move a scenario past its neighbour in the LISTED order; the index passed on is that neighbour's

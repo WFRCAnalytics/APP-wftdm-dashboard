@@ -13,9 +13,9 @@ export interface PlanInput {
   years: { year: number; label?: string }[]
   label(run: string): string
   color(run: string): string
-  alternativeOf(run: string): string
-  /** `alternative`'s run in `year`. */
-  runFor(alternative: string, year: number): string | undefined
+  scenarioGroupOf(run: string): string
+  /** `scenarioGroup`'s run in `year`. */
+  runFor(scenarioGroup: string, year: number): string | undefined
   observedRun?: string
   /** Every calibration round of the deployment, in round order. */
   rounds?: ChartPlan['rounds']
@@ -34,7 +34,7 @@ export function buildChartPlan(i: PlanInput): ChartPlan {
   const focusRun = pinnedRun ?? view.focusRun
   const scenarios: ChartScenario[] = runs.map((run) => ({
     run,
-    alternative: i.alternativeOf(run),
+    scenarioGroup: i.scenarioGroupOf(run),
     label: i.label(run),
     color: i.color(run),
     isFocus: run === focusRun,
@@ -49,7 +49,7 @@ export function buildChartPlan(i: PlanInput): ChartPlan {
     isObserved: view.referenceKind === 'observed',
   }
   const refRunFor = (run: string): string | undefined =>
-    view.referenceKind === 'self-base-year' ? i.runFor(i.alternativeOf(run), view.baseYear) : view.referenceRun
+    view.referenceKind === 'self-base-year' ? i.runFor(i.scenarioGroupOf(run), view.baseYear) : view.referenceRun
 
   return {
     config,

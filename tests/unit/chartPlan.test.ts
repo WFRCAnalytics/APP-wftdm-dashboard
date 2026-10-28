@@ -30,7 +30,7 @@ const input = (config: Partial<ChartPanelConfig> = {}, v: Partial<ResolvedView> 
   years: [{ year: 2023 }, { year: 2036, label: 'End of RTP Phase I' }],
   label: (r) => r.toUpperCase(),
   color: () => '#123456',
-  alternativeOf: (r) => r.replace(/-\d{4}$/, ''),
+  scenarioGroupOf: (r) => r.replace(/-\d{4}$/, ''),
   runFor: (alt, year) => (year === 2023 ? alt : `${alt}-${year}`),
 })
 

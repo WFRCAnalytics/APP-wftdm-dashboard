@@ -96,7 +96,7 @@ test.describe('compare layout', () => {
         const run = (last as HTMLElement).dataset.s!
         const cs = window.__wftdm!.compareState
         const alt = window.__wftdm!.appState.list().find((s) => s.name === run)
-        cs.setAlternativeActive(alt?.alternative ?? run, false)
+        cs.setScenarioGroupActive(alt?.scenarioGroup ?? run, false)
       })
       await expect(cells(tile(page))).toHaveCount(n, { timeout: 30_000 })
     }

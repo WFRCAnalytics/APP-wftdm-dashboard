@@ -327,7 +327,7 @@ Nothing below changes code. Each topic is settled before anything is built.
    `model_version` is the traceable identity of the model that produced the run. **Decided: the provenance is minimal.** `model_version` (one
    free-text field, so a deployment writes "9.1" or "WF-TDM 9.1", whichever it wants users to read), `scenario_group`, `year` and
    `run_date`. There is no separate `model` (a deployment shows one model, and its title names it) and no `engine` (nothing uses it, and
-   the statewide model will not use ActivitySim anyway); either can be added later if a real need appears. Still open: whether the app's own wording (the code, and the words in the interface) also changes from "alternative" to "scenario group".
+   the statewide model will not use ActivitySim anyway); either can be added later if a real need appears. **Done 2026-10-28:** the code, the interface wording, the demo manifests, the tests and the docs all say "scenario group"; the old key is still read.
 3. **Cascade rules.** Rules 3, 4 and 5 are decided (see above). Rules 1, 2, 6, 7 and 8 in section 3 have not been objected to; treat them
    as accepted unless that changes. Remaining: the first list of which keys are marked inheritable, per panel type, when it is built.
 5. **Profiles.** Wanted in principle. Needs research on how they would work here and whether they would replace the demo build flag

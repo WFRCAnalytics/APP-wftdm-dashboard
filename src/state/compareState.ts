@@ -12,7 +12,7 @@ export type ReferenceSpec =
 
 export interface CompareState {
   compare: boolean
-  /** Focus alternative id. */
+  /** Focus scenario group id. */
   focus: string
   reference: ReferenceSpec
   display: DisplayMode
@@ -94,20 +94,20 @@ export function initCompareState(
 }
 
 /** Click on a scenario in a round or year chart: make it the focus. */
-export function focusAlternative(alternative: string): void {
-  setFocus(alternative)
+export function focusScenarioGroup(scenarioGroup: string): void {
+  setFocus(scenarioGroup)
 }
 
-/** Adds or removes an alternative from the compare set. Every run of it (all model years) follows, so the choice
+/** Adds or removes a scenario group from the compare set. Every run of it (all model years) follows, so the choice
  * survives a year change. */
-export function setAlternativeActive(alternative: string, active: boolean): void {
+export function setScenarioGroupActive(scenarioGroup: string, active: boolean): void {
   for (const run of appState.list()) {
-    if ((run.alternative ?? run.name) === alternative) appState.setActive(run.name, active)
+    if ((run.scenarioGroup ?? run.name) === scenarioGroup) appState.setActive(run.name, active)
   }
 }
 
-/** Shift-click: add the alternative to the compare set, or remove it. */
-export function toggleCompareMember(alternative: string): void {
-  const on = appState.list().some((s) => (s.alternative ?? s.name) === alternative && s.active)
-  setAlternativeActive(alternative, !on)
+/** Shift-click: add the scenario group to the compare set, or remove it. */
+export function toggleCompareMember(scenarioGroup: string): void {
+  const on = appState.list().some((s) => (s.scenarioGroup ?? s.name) === scenarioGroup && s.active)
+  setScenarioGroupActive(scenarioGroup, !on)
 }

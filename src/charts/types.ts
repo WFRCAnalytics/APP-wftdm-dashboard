@@ -7,10 +7,10 @@ import type { DisplayMode } from '@/state/compareState'
 
 export type Row = Record<string, unknown>
 
-/** One compared run. `run` is the folder name (the table prefix), `alternative` the UI identity. */
+/** One compared run. `run` is the folder name (the table prefix), `scenarioGroup` the UI identity. */
 export interface ChartScenario {
   run: string
-  alternative: string
+  scenarioGroup: string
   /** Display label (viewer override, else manifest display name). */
   label: string
   /** Resolved colour, a concrete hex. */
@@ -83,10 +83,10 @@ export interface ChartPlan {
   group: string
   /** True when drawn as one cell of a side-by-side grid (pinned to one run; values only). */
   pinned: boolean
-  /** The run name of a compared alternative in a given year, when it exists. */
-  runFor(alternative: string, year: number): string | undefined
+  /** The run name of a compared scenario group in a given year, when it exists. */
+  runFor(scenarioGroup: string, year: number): string | undefined
   /** Every calibration round of the deployment (base year), in round order, selected or not. */
-  rounds: { round: number; run: string; alternative: string; label: string; color: string }[]
+  rounds: { round: number; run: string; scenarioGroup: string; label: string; color: string }[]
   /** The Observed run (base year), when the deployment has one. */
   observedRun?: string
 }
@@ -100,10 +100,10 @@ export interface ChartEnv extends ChartPlan {
   state: Record<string, unknown>
   redraw(): void
   setYear(year: number): void
-  /** Focus an alternative (picker semantics), e.g. a click on a legend or row. */
-  focusAlternative(alternative: string): void
-  /** Shift-click semantics: toggle an alternative in the compare set. */
-  toggleCompare(alternative: string): void
+  /** Focus a scenario group (picker semantics), e.g. a click on a legend or row. */
+  focusScenarioGroup(scenarioGroup: string): void
+  /** Shift-click semantics: toggle a scenario group in the compare set. */
+  toggleCompare(scenarioGroup: string): void
   /** Whatever the kind's `loadExtra` returned (e.g. the calibration roll-up rows). */
   extra: unknown
 }
@@ -135,7 +135,7 @@ export interface ChartResult {
 export interface ChartKind {
   /** Metric tables the kind reads. */
   tables(plan: ChartPlan): string[]
-  /** Runs to load beyond the compared runs, the reference and the focus (e.g. every year of each alternative). */
+  /** Runs to load beyond the compared runs, the reference and the focus (e.g. every year of each scenario group). */
   extraRuns?(plan: ChartPlan): string[]
   /** Draws into `el`, replacing its children. May return a legend, a disposer and an aria label. A kind that owns an
    * expensive object (a MapLibre map) keeps it in `env.state` and reuses it on the next draw. */

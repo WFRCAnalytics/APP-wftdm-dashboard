@@ -54,7 +54,7 @@ export function resolveScenarioColor(name: string, display: ScenarioDisplayMap):
 // picker/research.md §4).
 
 /** 15 stable default scenario colors (project-docs/redesign/01-visual-language.md §5.2). Index 0 (slate) is meant for
- * the baseline so alternatives stand out. Adapted per theme by adaptScenarioColor(). */
+ * the baseline so scenario groups stand out. Adapted per theme by adaptScenarioColor(). */
 export const scenarioPalette15: readonly string[] = [
   '#8a94a6', '#4c8bf5', '#f2994a', '#2fbf8a', '#eb5757', '#a66cff', '#18b4c8', '#e8c547',
   '#e26ba6', '#9c7a5b', '#7bc043', '#5865f2', '#b5179e', '#00897b', '#8e9e2a',

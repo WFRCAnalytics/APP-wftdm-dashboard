@@ -206,9 +206,9 @@ export interface DashboardBranding {
   defaultYear?: number
   /** `compare.default`: 'auto' (on when there are two or more independent scenarios), 'on' or 'off'. */
   compareDefault?: 'auto' | 'on' | 'off'
-  /** `compare.scenarios`: the alternatives compared at first load (default: every loaded one). */
+  /** `compare.scenarios`: the scenario groups compared at first load (default: every loaded one). */
   compareScenarios?: string[]
-  /** `compare.focus` / `compare.reference`: the focus alternative and the reference (an alternative id or `observed`). */
+  /** `compare.focus` / `compare.reference`: the focus scenario group and the reference (a scenario group id or `observed`). */
   compareFocus?: string
   compareReference?: string
   /** `vocab`: this deployment's category labels and the raw data values that map onto them (charts/vocab.ts). */

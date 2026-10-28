@@ -1,7 +1,7 @@
 // Test-only demo content switch for the dev server (WFTDM_DEMO):
 //   (unset)     the real demo: the ActivitySim example runs and the redesigned pages in public/demo-*
 //   legacy      the pre-redesign pages for those runs (tests/fixtures/legacy-demo), for the older Playwright specs
-//   synthetic   the synthetic Corridor Pro dataset (public/demo-synthetic: 15 alternatives x 6 years, observed, rounds)
+//   synthetic   the synthetic Corridor Pro dataset (public/demo-synthetic: 15 scenario groups x 6 years, observed, rounds)
 //               and its pages, for the redesign specs; the real ActivitySim runs stay available but hidden
 // Everything else is served untouched by Vite (so Parquet range requests keep working).
 import { readFileSync, existsSync } from 'node:fs'

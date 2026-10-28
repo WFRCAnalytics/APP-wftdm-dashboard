@@ -1,10 +1,10 @@
-// Data rules of the Across model years chart (04 section 25): which alternatives get a line, the per-year values in
+// Data rules of the Across model years chart (04 section 25): which scenario groups get a line, the per-year values in
 // Values / Change / % change, and the crosshair snap. Pure.
 import { deltaValue } from '@/panels/compareMath'
 import type { DisplayMode } from '@/state/compareState'
 
 export interface TrendRow {
-  /** Series key (the alternative). */
+  /** Series key (the scenario group). */
   n: string
   y: number
   /** Plotted value. */
@@ -20,28 +20,28 @@ export function snapYear(raw: number, years: readonly number[]): number {
   return years.reduce((a, b) => (Math.abs(b - raw) < Math.abs(a - raw) ? b : a))
 }
 
-/** An alternative is an independent scenario (gets a line) when it has runs in more than one model year; calibration
+/** A scenario group is an independent scenario (gets a line) when it has runs in more than one model year; calibration
  * rounds and Observed exist in the base year only. */
-export function hasTrend(alternative: string, years: readonly number[], runFor: (alt: string, year: number) => string | undefined): boolean {
+export function hasTrend(scenarioGroup: string, years: readonly number[], runFor: (alt: string, year: number) => string | undefined): boolean {
   let n = 0
-  for (const y of years) if (runFor(alternative, y)) n += 1
+  for (const y of years) if (runFor(scenarioGroup, y)) n += 1
   return n > 1
 }
 
 export interface TrendInput {
-  alternatives: readonly string[]
+  scenarioGroups: readonly string[]
   years: readonly number[]
   display: DisplayMode
-  /** The alternative's metric value in a year; null when it has no run (or no value) there. */
+  /** The scenario group's metric value in a year; null when it has no run (or no value) there. */
   value(alt: string, year: number): number | null
-  /** The reference's value for this alternative in that year (per alternative: self-base-year differs per line). */
+  /** The reference's value for this scenario group in that year (per scenario group: self-base-year differs per line). */
   refValue(alt: string, year: number): number | null
 }
 
-/** One row per (alternative, year) with a plottable value. Change modes drop points whose difference is not defined. */
+/** One row per (scenario group, year) with a plottable value. Change modes drop points whose difference is not defined. */
 export function buildTrendRows(i: TrendInput): TrendRow[] {
   const out: TrendRow[] = []
-  for (const n of i.alternatives) {
+  for (const n of i.scenarioGroups) {
     for (const y of i.years) {
       const raw = i.value(n, y)
       if (raw === null) continue

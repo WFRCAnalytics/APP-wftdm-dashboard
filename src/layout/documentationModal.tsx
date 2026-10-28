@@ -65,8 +65,8 @@ export function DocumentationContent() {
 
       <GroupHeading>Model years</GroupHeading>
       <P>
-        Every alternative has a run for each model year the deployment publishes. The Year control switches every chart at
-        once. In the base year all alternatives equal the baseline, because nothing has been built yet. Observed data and
+        Every scenario group has a run for each model year the deployment publishes. The Year control switches every chart at
+        once. In the base year all scenario groups equal the baseline, because nothing has been built yet. Observed data and
         calibration rounds belong to the base year, so they appear only there. The Across model years chart shows the whole
         path, and clicking a year switches to it.
       </P>

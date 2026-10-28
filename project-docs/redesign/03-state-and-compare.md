@@ -249,12 +249,12 @@ side-by-side views and as the first row of the scorecard.
 
 ### 5.4 Reference = same scenario in the base year ("growth view")
 New. For each compared scenario `s` at model year `y ≠ base`, the reference value is `value(s, base)` — that
-scenario's own base-year run. It answers "how much did this alternative grow or shrink since the base year?"
+scenario's own base-year run. It answers "how much did this scenario group grow or shrink since the base year?"
 for **any chart's metric** (mode share in points, VMT in percent, a zone's share, an hour's trips).
-- Needs the base-year run of the same alternative. The data layer therefore keys runs by
-  `(alternative, year)` (file 06 §4). If a base-year run is missing for an alternative, that alternative shows
+- Needs the base-year run of the same scenario group. The data layer therefore keys runs by
+  `(scenario_group, year)` (file 06 §4). If a base-year run is missing for a scenario group, that scenario group shows
   values only and a small "no base-year run" caption.
-- Growth and decline both occur; the two-direction diverging scale handles both. Because every alternative is
+- Growth and decline both occur; the two-direction diverging scale handles both. Because every scenario group is
   usually identical in the base year, this reference is mostly informational, but it is the right way to see growth.
 - Not implemented in the prototype. Implement it in P5 (file 07). The control-bar option appears only when
   `year !== baseYear`.
@@ -271,9 +271,9 @@ with `N = round(|x| × 38)`. Neutral, not good/bad.
 ## 6. Model years
 
 ### 6.1 Concept
-Every alternative has one run for each model year. Milestones for WFRC (configure per deployment):
+Every scenario group has one run for each model year. Milestones for WFRC (configure per deployment):
 2023 Base year · 2027 Opening year · 2032 End of STIP · 2036 End of RTP Phase I · 2046 End of RTP Phase II ·
-2055 Horizon year. Most alternatives are identical in the base year; a few may differ. **Never hard-code
+2055 Horizon year. Most scenario groups are identical in the base year; a few may differ. **Never hard-code
 "identical in the base year" — detect it from the data** (file 02 §6).
 
 ### 6.2 UI

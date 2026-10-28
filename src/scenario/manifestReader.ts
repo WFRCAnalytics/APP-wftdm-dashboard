@@ -78,13 +78,16 @@ export function manifestFromObject(obj: Record<string, unknown>): ParsedManifest
         : obj.kind === 'scenario' || obj.kind === 'round' || obj.kind === 'observed'
           ? obj.kind
           : undefined,
-    alternative: typeof obj.alternative === 'string' && obj.alternative ? obj.alternative : undefined,
+    // `scenario_group` is the key; `alternative` is its old name, still read so existing manifests keep working
+    scenarioGroup: nonEmptyString(obj.scenario_group) ?? nonEmptyString(obj.alternative),
     year: typeof obj.year === 'number' && Number.isInteger(obj.year) ? obj.year : undefined,
     tag: typeof obj.tag === 'string' ? obj.tag : undefined,
     family: typeof obj.family === 'string' ? obj.family : undefined,
     familyIndex: typeof obj.family_index === 'number' ? obj.family_index : undefined,
   }
 }
+
+const nonEmptyString = (v: unknown): string | undefined => (typeof v === 'string' && v ? v : undefined)
 
 /**
  * js-yaml's default schema parses an unquoted `run_date: 2026-06-15` value

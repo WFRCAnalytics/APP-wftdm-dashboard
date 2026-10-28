@@ -236,7 +236,7 @@ describe('resolveObservablePlotEncoding — scenario label/color resolution (Par
   ]
 
   it('fill: scenario — a labeled scenario\'s row cell is replaced by the label, original rows untouched', () => {
-    const display: ScenarioDisplayMap = new Map([['good_scenario', { label: 'Preferred Alternative' }]])
+    const display: ScenarioDisplayMap = new Map([['good_scenario', { label: 'Preferred ScenarioGroup' }]])
     const originalCopy = JSON.parse(JSON.stringify(scenarioRows))
     const result = resolveObservablePlotEncoding(
       { ...baseConfig, fill: 'scenario' },
@@ -245,17 +245,17 @@ describe('resolveObservablePlotEncoding — scenario label/color resolution (Par
     )
     expect(result.data).toEqual([
       { purpose: 'HBW', share: 0.62, scenario: 'observed' },
-      { purpose: 'HBW', share: 0.58, scenario: 'Preferred Alternative' },
+      { purpose: 'HBW', share: 0.58, scenario: 'Preferred ScenarioGroup' },
     ])
     // The ORIGINAL rows array is never mutated.
     expect(scenarioRows).toEqual(originalCopy)
   })
 
   it('stroke: scenario resolves the same way as fill: scenario', () => {
-    const display: ScenarioDisplayMap = new Map([['good_scenario', { label: 'Preferred Alternative' }]])
+    const display: ScenarioDisplayMap = new Map([['good_scenario', { label: 'Preferred ScenarioGroup' }]])
     const result = resolveObservablePlotEncoding({ ...baseConfig, stroke: 'scenario' }, scenarioRows, display)
     expect(result.data.find((r) => r.purpose === 'HBW' && r.share === 0.58)?.scenario).toBe(
-      'Preferred Alternative',
+      'Preferred ScenarioGroup',
     )
   })
 
@@ -283,14 +283,14 @@ describe('resolveObservablePlotEncoding — scenario label/color resolution (Par
   it('every distinct scenario resolving to a color produces a matched domain/range pair', () => {
     const display: ScenarioDisplayMap = new Map([
       ['observed', { color: '#666666' }],
-      ['good_scenario', { color: '#4e79a7', label: 'Preferred Alternative' }],
+      ['good_scenario', { color: '#4e79a7', label: 'Preferred ScenarioGroup' }],
     ])
     const result = resolveObservablePlotEncoding({ ...baseConfig, fill: 'scenario' }, scenarioRows, display)
     expect(result.plotOptions.color).toEqual({
       legend: true,
       style: LEGEND_STYLE,
       swatchSize: 10,
-      domain: ['observed', 'Preferred Alternative'],
+      domain: ['observed', 'Preferred ScenarioGroup'],
       range: ['#666666', '#4e79a7'],
     })
   })

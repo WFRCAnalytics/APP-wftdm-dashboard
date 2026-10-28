@@ -5,7 +5,7 @@ to deterministic Python and writes REAL Parquet files, so the real app
 (DuckDB-WASM reading Parquet) can draw every chart in the prototype.
 
 Writes (all under public/):
-  demo-synthetic/scenarios/<slug>[-<year>]/        15 alternatives x 6 model years = 90 scenario runs
+  demo-synthetic/scenarios/<slug>[-<year>]/        15 scenario groups x 6 model years = 90 scenario runs
   demo-synthetic/scenarios/observed-2023/          the Observed reference (kind: observed)
   demo-synthetic/scenarios/round-01 .. round-50/   calibration rounds (kind: round, family: calibration)
   demo-synthetic/scenarios/families/calibration/calibration_by_round.parquet   roll-up (NOT a run)
@@ -604,7 +604,7 @@ def main():
             name = d[0]
             folder = slug(name) if y == 2023 else f"{slug(name)}-{y}"
             man = dict(scenario_name=folder, display_name=name, engine="activitysim", run_date=RUN_DATE,
-                       kind="scenario", alternative=slug(name), year=y, tag=d[1], color=PAL[i], pinned=False,
+                       kind="scenario", scenario_group=slug(name), year=y, tag=d[1], color=PAL[i], pinned=False,
                        description=DEMO_NOTE)
             ntab = write_run(folder, man, state_at(i, y), zones=zones)
             (order_first if y == 2023 else order_years[y]).append(folder)
@@ -613,7 +613,7 @@ def main():
     obs = state_observed()
     write_run("observed-2023", dict(
         scenario_name="observed-2023", display_name="Observed", engine="observed", run_date=RUN_DATE,
-        kind="observed", alternative="observed", year=2023, tag="Observed", pinned=False,
+        kind="observed", scenario_group="observed", year=2023, tag="Observed", pinned=False,
         description=DEMO_NOTE,
         observed=dict(source="2023 household travel survey", sample="n = 14,820 households",
                       metrics=dict(
@@ -629,7 +629,7 @@ def main():
         folder = f"round-{n:02d}"
         write_run(folder, dict(scenario_name=folder, display_name=f"Round {n}", engine="activitysim",
                                run_date=RUN_DATE, kind="round", family="calibration", family_index=n,
-                               alternative=folder, year=2023, tag="Calibration round", pinned=False,
+                               scenario_group=folder, year=2023, tag="Calibration round", pinned=False,
                                description=DEMO_NOTE), st, zones=zones)
 
     # calibration roll-up

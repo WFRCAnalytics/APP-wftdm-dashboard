@@ -37,6 +37,9 @@ Notes on how to read it:
 
 ### Changed
 
+- **"Alternative" is now "scenario group".** The manifest key is `scenario_group` (WFRC's own term), and the code, the interface
+  wording, the demo manifests, the tests and the docs follow. A manifest that still says `alternative` is read as before, and
+  `scenario_group` wins when both are present.
 - **The Data tab loads faster.** The row counts after each query step now run together instead of one after another, and
   the total row count no longer needs a second query when the result fits on one page.
 - The package version is now `0.0.4` in `package.json`, `package-lock.json`, `pyproject.toml` and `uv.lock`; it still

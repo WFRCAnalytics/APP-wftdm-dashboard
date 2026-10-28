@@ -21,8 +21,8 @@ function buildMap(entries: [string, { label?: string; color?: string }][]): Scen
 
 describe('resolveScenarioLabel', () => {
   it('resolves to the custom label when one is set', () => {
-    const map = buildMap([['good_scenario', { label: 'Preferred Alternative' }]])
-    expect(resolveScenarioLabel('good_scenario', map)).toBe('Preferred Alternative')
+    const map = buildMap([['good_scenario', { label: 'Preferred ScenarioGroup' }]])
+    expect(resolveScenarioLabel('good_scenario', map)).toBe('Preferred ScenarioGroup')
   })
 
   it('falls back to the real name when no label is set', () => {
@@ -43,7 +43,7 @@ describe('resolveScenarioColor', () => {
   })
 
   it('returns undefined when no color is resolved — never invents one', () => {
-    const map = buildMap([['good_scenario', { label: 'Preferred Alternative' }]])
+    const map = buildMap([['good_scenario', { label: 'Preferred ScenarioGroup' }]])
     expect(resolveScenarioColor('good_scenario', map)).toBeUndefined()
   })
 

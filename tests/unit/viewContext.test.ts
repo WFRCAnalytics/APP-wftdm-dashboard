@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 
 import {
-  alternativesOf,
-  independentAlternatives,
+  scenarioGroupsOf,
+  independentScenarioGroups,
   resolveRun,
   resolveViewContext,
   type RunInfo,
@@ -12,8 +12,8 @@ import {
 
 // project-docs/redesign/03-state-and-compare.md §2 (the seven rules) and §9 (edge cases).
 
-function run(name: string, alternative: string, year: number | undefined, kind: RunInfo['kind'] = 'scenario', ready = true): RunInfo {
-  return { name, alternative, year, kind, ready }
+function run(name: string, scenarioGroup: string, year: number | undefined, kind: RunInfo['kind'] = 'scenario', ready = true): RunInfo {
+  return { name, scenarioGroup, year, kind, ready }
 }
 
 const YEARS = [2023, 2036]
@@ -42,7 +42,7 @@ function input(over: Partial<ViewInput> = {}): ViewInput {
   }
 }
 
-describe('resolveRun / alternatives', () => {
+describe('resolveRun / scenarioGroups', () => {
   it('prefers the exact year and falls back to a year-less run', () => {
     expect(resolveRun(RUNS, 'base', 2036)?.name).toBe('base-2036')
     expect(resolveRun(RUNS, 'observed', 2036)?.name).toBe('observed')
@@ -53,9 +53,9 @@ describe('resolveRun / alternatives', () => {
     expect(resolveRun([run('x', 'x', 2023, 'scenario', false)], 'x', 2023)).toBeUndefined()
   })
 
-  it('lists alternatives in first-appearance order and splits out independent scenarios', () => {
-    expect(alternativesOf(RUNS)).toEqual(['observed', 'base', 'transit', 'density', 'round-1', 'round-2'])
-    expect(independentAlternatives(RUNS)).toEqual(['base', 'transit', 'density'])
+  it('lists scenarioGroups in first-appearance order and splits out independent scenarios', () => {
+    expect(scenarioGroupsOf(RUNS)).toEqual(['observed', 'base', 'transit', 'density', 'round-1', 'round-2'])
+    expect(independentScenarioGroups(RUNS)).toEqual(['base', 'transit', 'density'])
   })
 })
 
@@ -158,7 +158,7 @@ describe('resolveViewContext, edge cases', () => {
     expect([v.focus, v.reference]).toEqual(['base', 'base'])
   })
 
-  it('9.9: an alternative without a run in the year is reported as missing and the others continue', () => {
+  it('9.9: a scenario group without a run in the year is reported as missing and the others continue', () => {
     const v = resolveViewContext(input({ year: 2036 }), MANIFEST)
     expect(v.active).toEqual(['base-2036', 'transit-2036'])
     expect(v.missing).toEqual(['density'])

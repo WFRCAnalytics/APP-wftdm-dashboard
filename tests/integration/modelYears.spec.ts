@@ -9,7 +9,7 @@ declare global {
 
 // 063 redesign P3: the Year select in the control bar re-resolves every tile's runs to the chosen model year, hides
 // Observed and rounds outside the base year, and is absent for a single-year deployment. Uses the demo content
-// (three ActivitySim alternatives, each with a 2023 run and a clearly marked synthetic 2036 run) and the same
+// (three ActivitySim scenario groups, each with a 2023 run and a clearly marked synthetic 2036 run) and the same
 // per-page page.route() isolation as demoMultiScenario.spec.ts, so nothing on disk is touched.
 
 const BASES = ['activitysim-baseline', 'activitysim-density-variant', 'activitysim-transit-variant']

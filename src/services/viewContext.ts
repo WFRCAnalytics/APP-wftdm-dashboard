@@ -4,11 +4,11 @@
 import type { ScenarioKind } from '../state/appState.ts'
 import type { CompareState, DisplayMode, ReferenceSpec } from '../state/compareState.ts'
 
-/** One loaded run. `alternative` is the UI identity (defaults to the run's own name); `year` is absent for a
+/** One loaded run. `scenarioGroup` is the UI identity (defaults to the run's own name); `year` is absent for a
  * single-year run, which counts for every year. */
 export interface RunInfo {
   name: string
-  alternative: string
+  scenarioGroup: string
   year?: number
   kind: ScenarioKind
   ready: boolean
@@ -20,12 +20,12 @@ export interface ViewManifest {
   years: number[]
   /** 0 when the deployment has no years. */
   baseYear: number
-  /** Alternative id of the baseline scenario, if one is designated or can be inferred. */
+  /** Scenario group id of the baseline scenario, if one is designated or can be inferred. */
   baseline?: string
 }
 
 export interface ViewInput extends CompareState {
-  /** The compare set as alternative ids, in display order. */
+  /** The compare set as scenario group ids, in display order. */
   compareSet: string[]
 }
 
@@ -34,15 +34,15 @@ export const OBSERVED_LABEL = 'Observed'
 /** The data half of the ViewContext; the hook adds `pickScenario` and `setYear`. */
 export interface ResolvedView {
   compare: boolean
-  /** Focus alternative id. */
+  /** Focus scenario group id. */
   focus: string
   /** The focus's run for the current year (undefined when it has none, see `missing`). */
   focusRun?: string
   /** Run names to show, in order, for the current year. */
   active: string[]
-  /** Alternative ids with no ready run in the current year (a tile says "No data for {Scenario} in {year}."). */
+  /** Scenario group ids with no ready run in the current year (a tile says "No data for {Scenario} in {year}."). */
   missing: string[]
-  /** Alternative id of the reference, or 'Observed'. */
+  /** Scenario group id of the reference, or 'Observed'. */
   reference: string
   referenceKind: ReferenceSpec['kind']
   referenceRun?: string
@@ -57,26 +57,26 @@ function observedRun(manifest: ViewManifest): RunInfo | undefined {
   return manifest.runs.find((r) => r.kind === 'observed' && r.ready)
 }
 
-/** The run of `alternative` for `year`: an exact year match wins, a year-less run counts for every year. */
-export function resolveRun(runs: readonly RunInfo[], alternative: string, year: number): RunInfo | undefined {
-  const ofAlt = runs.filter((r) => r.alternative === alternative && r.ready)
+/** The run of `scenarioGroup` for `year`: an exact year match wins, a year-less run counts for every year. */
+export function resolveRun(runs: readonly RunInfo[], scenarioGroup: string, year: number): RunInfo | undefined {
+  const ofAlt = runs.filter((r) => r.scenarioGroup === scenarioGroup && r.ready)
   return ofAlt.find((r) => r.year === year) ?? ofAlt.find((r) => r.year === undefined)
 }
 
-/** Alternative ids in first-appearance order. */
-export function alternativesOf(runs: readonly RunInfo[]): string[] {
+/** Scenario group ids in first-appearance order. */
+export function scenarioGroupsOf(runs: readonly RunInfo[]): string[] {
   const seen = new Set<string>()
-  for (const r of runs) seen.add(r.alternative)
+  for (const r of runs) seen.add(r.scenarioGroup)
   return [...seen]
 }
 
-/** Alternatives that count as independent scenarios (not calibration rounds, not Observed). */
-export function independentAlternatives(runs: readonly RunInfo[]): string[] {
-  return alternativesOf(runs).filter((alt) => runs.find((r) => r.alternative === alt)?.kind === 'scenario')
+/** Scenario groups that count as independent scenarios (not calibration rounds, not Observed). */
+export function independentScenarioGroups(runs: readonly RunInfo[]): string[] {
+  return scenarioGroupsOf(runs).filter((alt) => runs.find((r) => r.scenarioGroup === alt)?.kind === 'scenario')
 }
 
-function kindOfAlternative(runs: readonly RunInfo[], alt: string): ScenarioKind | undefined {
-  return runs.find((r) => r.alternative === alt)?.kind
+function kindOfScenarioGroup(runs: readonly RunInfo[], alt: string): ScenarioKind | undefined {
+  return runs.find((r) => r.scenarioGroup === alt)?.kind
 }
 
 /**
@@ -85,20 +85,20 @@ function kindOfAlternative(runs: readonly RunInfo[], alt: string): ScenarioKind 
  */
 export function resolveViewContext(input: ViewInput, manifest: ViewManifest): ResolvedView {
   const { runs } = manifest
-  const alts = alternativesOf(runs)
+  const alts = scenarioGroupsOf(runs)
   const year = input.year
   const baseYear = manifest.baseYear
   const isBaseYear = year === baseYear
-  const independents = independentAlternatives(runs)
+  const independents = independentScenarioGroups(runs)
   const baseline = manifest.baseline && alts.includes(manifest.baseline) ? manifest.baseline : (independents[0] ?? alts[0] ?? '')
   const seriesOnlyInBaseYear = (alt: string) => {
-    const kind = kindOfAlternative(runs, alt)
+    const kind = kindOfScenarioGroup(runs, alt)
     return kind === 'round' || kind === 'observed'
   }
 
   // Rule 4: rounds exist only in the base year; a round focus resets to the baseline outside it.
   let focus = alts.includes(input.focus) ? input.focus : baseline
-  if (!isBaseYear && kindOfAlternative(runs, focus) === 'round') focus = baseline
+  if (!isBaseYear && kindOfScenarioGroup(runs, focus) === 'round') focus = baseline
 
   const hasObserved = Boolean(observedRun(manifest))
   const compareSet = input.compareSet.filter((alt) => alts.includes(alt) && (isBaseYear || !seriesOnlyInBaseYear(alt)))
@@ -139,7 +139,7 @@ export function resolveViewContext(input: ViewInput, manifest: ViewManifest): Re
       reference = 'self-base-year'
       referenceKind = 'self-base-year'
     }
-  } else if (alts.includes(stored.name) && (isBaseYear || kindOfAlternative(runs, stored.name) !== 'round')) {
+  } else if (alts.includes(stored.name) && (isBaseYear || kindOfScenarioGroup(runs, stored.name) !== 'round')) {
     reference = stored.name
   } else asBaseline()
 

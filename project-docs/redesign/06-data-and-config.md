@@ -17,7 +17,7 @@ Add these **optional** fields:
 scenario_name: freq-transit-2036        # unique id (folder name)
 display_name: Frequent transit
 kind: scenario                          # scenario | round | observed   (default: scenario)
-alternative: freq-transit               # groups the runs of one alternative across years
+scenario_group: freq-transit               # groups the runs of one scenario group across years
 year: 2036                              # model year of this run
 tag: Transit                            # free text; used for picker tag chips
 color: '#4C8BF5'                        # optional deployer default (viewer override still wins)
@@ -27,8 +27,8 @@ family: calibration                     # id of a family declared in dashboard-c
 family_index: 12                        # 1-based position in the family
 ```
 Rules:
-- A scenario's **identity for the UI** is `alternative`. Its **run for a given year** is the folder whose
-  `alternative` matches and whose `year` is that year. If `alternative`/`year` are absent, the scenario is a
+- A scenario's **identity for the UI** is `scenario_group`. Its **run for a given year** is the folder whose
+  `scenario_group` matches and whose `year` is that year. If `scenario_group`/`year` are absent, the scenario is a
   single-year run and the Year control is hidden for that deployment.
 - `kind: round` runs are shown only in the base year and only through the round strip (file 02 §1.3).
 - `kind: observed` is not a scenario: it is the Observed reference (§6). It is never in the compare set.
@@ -93,23 +93,23 @@ snake_case style. Every table is **one file per scenario run** under `{scenario}
 | Vehicle miles | `vmt_county_facility` | `county, facility_type, vmt` | new |
 | Calibration fingerprint | `calibration_errors` | `submodel, worst_segment_error_pct` | new |
 | Calibration progress | `calibration_by_round` (**one roll-up file for the whole family**) | `round, metric_group, series, value, observed_value` where `metric_group ∈ {mode_share, volumes, boardings_by_line, submodel_error}` | new |
-| Across model years | derived at query time from `summary_kpis` of each `(alternative, year)` run | — | no new file |
+| Across model years | derived at query time from `summary_kpis` of each `(scenario_group, year)` run | — | no new file |
 
 Shares are fractions (0–1) in Parquet; the UI multiplies by 100 for display. Every table must include rows
 for **all categories** (a zero-trip mode still appears) so shapes and axes are stable across scenarios.
 
-## 4. How the app discovers runs by alternative and year
+## 4. How the app discovers runs by scenario group and year
 
 Extend `services/scenarioDiscovery.ts` (and the `useScenarioList` hook):
-1. Read each manifest. Build `alternatives: Map<alternative, Map<year, scenarioName>>`.
-2. `resolveRun(alternative, year)` returns the scenario folder name for that year (or `undefined`).
-3. The **compare set holds alternative ids**; `ViewContext.active` is resolved to the run names for the
-   current year before queries are built. Calibration rounds are their own alternatives (`kind: round`).
+1. Read each manifest. Build `scenarioGroups: Map<scenarioGroup, Map<year, scenarioName>>`.
+2. `resolveRun(scenarioGroup, year)` returns the scenario folder name for that year (or `undefined`).
+3. The **compare set holds scenario group ids**; `ViewContext.active` is resolved to the run names for the
+   current year before queries are built. Calibration rounds are their own scenario groups (`kind: round`).
 4. `registerFor(tile)` registers only the `(run, metric)` Parquet files that tile needs for the current
    year (existing `ensureRegistered`).
-5. Reference `self-base-year`: for each compared alternative also resolve `resolveRun(alternative, baseYear)`.
-6. The Across-years tile requests every milestone year of each compared alternative for **one** metric
-   (`summary_kpis` columns). It needs 6 small files per alternative; load them lazily when the tile is visible.
+5. Reference `self-base-year`: for each compared scenario group also resolve `resolveRun(scenarioGroup, baseYear)`.
+6. The Across-years tile requests every milestone year of each compared scenario group for **one** metric
+   (`summary_kpis` columns). It needs 6 small files per scenario group; load them lazily when the tile is visible.
 
 ## 5. Calibration rounds family
 

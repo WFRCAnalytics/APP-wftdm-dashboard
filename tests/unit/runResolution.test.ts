@@ -22,10 +22,10 @@ function reg(name: string, extra: Partial<appState.ScenarioMetadata> = {}) {
 
 beforeEach(() => {
   reg('obs', { pinned: true })
-  reg('base-2023', { alternative: 'base', year: 2023 })
-  reg('alt-2023', { alternative: 'alt', year: 2023 })
-  reg('base-2036', { alternative: 'base', year: 2036 })
-  reg('alt-2036', { alternative: 'alt', year: 2036 })
+  reg('base-2023', { scenarioGroup: 'base', year: 2023 })
+  reg('alt-2023', { scenarioGroup: 'alt', year: 2023 })
+  reg('base-2036', { scenarioGroup: 'base', year: 2036 })
+  reg('alt-2036', { scenarioGroup: 'alt', year: 2036 })
 })
 
 afterEach(() => {
@@ -35,9 +35,9 @@ afterEach(() => {
 
 describe('deriveDeployment', () => {
   const runs = [
-    { name: 'a', alternative: 'a', year: 2036, kind: 'scenario' as const, ready: true },
-    { name: 'b', alternative: 'a', year: 2023, kind: 'scenario' as const, ready: true },
-    { name: 'o', alternative: 'o', year: undefined, kind: 'observed' as const, ready: true },
+    { name: 'a', scenarioGroup: 'a', year: 2036, kind: 'scenario' as const, ready: true },
+    { name: 'b', scenarioGroup: 'a', year: 2023, kind: 'scenario' as const, ready: true },
+    { name: 'o', scenarioGroup: 'o', year: undefined, kind: 'observed' as const, ready: true },
   ]
 
   it('derives sorted years from the manifests, base year first, default year = base year', () => {
@@ -87,7 +87,7 @@ describe('bootCompareState and the resolved view', () => {
   it('a single-year deployment with one scenario still starts with Compare on', () => {
     for (const n of ['alt-2023', 'base-2036', 'alt-2036']) appState.unregister(n)
     appState.unregister('base-2023')
-    reg('only', { alternative: 'only', year: 2023 })
+    reg('only', { scenarioGroup: 'only', year: 2023 })
     try {
       bootCompareState({})
       expect(compareState.getState().compare).toBe(true)

@@ -2,7 +2,7 @@ import { useCallback, useRef, useSyncExternalStore } from 'react'
 
 import { list, subscribe } from '@/state/appState'
 import { mixHex } from '@/panels/chartColor'
-import { alternativeOf, runKindOf } from '@/services/runResolution'
+import { scenarioGroupOf, runKindOf } from '@/services/runResolution'
 import { resolveDefaultScenarioColor, type ScenarioDisplay, type ScenarioDisplayMap } from '@/panels/scenarioDisplay'
 import { useColorScheme } from '@/hooks/useColorScheme'
 import { useColorblindSafePreference } from '@/hooks/useColorblindSafePreference'
@@ -64,7 +64,7 @@ export function useScenarioDisplay(): ScenarioDisplayMap {
       if (runKindOf(s) === 'round') return roundColor(s.familyIndex ?? 1, roundCounts.get(s.family ?? '') ?? 1, colorScheme === 'dark')
       return resolveEffectiveDefault(index, colorblindSafe, colorScheme === 'dark')
     }
-    const colorIndex = alternativeIndexes(scenarios)
+    const colorIndex = scenarioGroupIndexes(scenarios)
     const prev = cache.current
     let changed =
       scenarios.length !== prev.size ||
@@ -113,12 +113,12 @@ function resolveEffectiveDefault(index: number, colorblindSafe: boolean, dark: b
   return resolveDefaultScenarioColor(index, colorblindSafe, dark)
 }
 
-/** Default colors follow the alternative, not the run: Frequent transit keeps its color in every model year. */
-function alternativeIndexes(scenarios: ReturnType<typeof list>): Map<string, number> {
+/** Default colors follow the scenario group, not the run: Frequent transit keeps its color in every model year. */
+function scenarioGroupIndexes(scenarios: ReturnType<typeof list>): Map<string, number> {
   const order = new Map<string, number>()
   const byName = new Map<string, number>()
   for (const s of scenarios) {
-    const alt = alternativeOf(s)
+    const alt = scenarioGroupOf(s)
     // only independent scenarios take a palette slot; rounds, Observed and hidden runs do not shift the others
     // (a legacy pinned `observed` dataset keeps its slot as before unless it failed to load, as in a deployment with no observed folder)
     if (s.kind === 'observed' || s.status === 'failed' || runKindOf(s) === 'round' || runKindOf(s) === 'hidden') {

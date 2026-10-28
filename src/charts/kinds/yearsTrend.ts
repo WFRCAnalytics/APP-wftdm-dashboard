@@ -14,25 +14,25 @@ import { get as getScenario, getBaseline } from '@/state/appState'
 const TABLE = 'summary_kpis'
 const stripYear = (run: string) => run.replace(/-\d{4}$/, '')
 
-/** The alternative the reference stands for: a scenario reference as chosen, Observed as the baseline alternative, null
+/** The scenario group the reference stands for: a scenario reference as chosen, Observed as the baseline scenario group, null
  * for "the same scenario in the base year" (each line then has its own reference). */
-function referenceAlternative(plan: ChartPlan): string | null {
+function referenceScenarioGroup(plan: ChartPlan): string | null {
   if (plan.reference.kind === 'self-base-year') return null
   if (plan.reference.kind === 'scenario' && plan.reference.run) {
     const run = plan.reference.run
-    return plan.scenarios.find((s) => s.run === run)?.alternative ?? getScenario(run)?.alternative ?? stripYear(run)
+    return plan.scenarios.find((s) => s.run === run)?.scenarioGroup ?? getScenario(run)?.scenarioGroup ?? stripYear(run)
   }
   const base = getBaseline()
-  const baseAlt = base ? (getScenario(base)?.alternative ?? stripYear(base)) : undefined
-  return baseAlt ?? plan.scenarios[0]?.alternative ?? null
+  const baseAlt = base ? (getScenario(base)?.scenarioGroup ?? stripYear(base)) : undefined
+  return baseAlt ?? plan.scenarios[0]?.scenarioGroup ?? null
 }
 
 const yearsOf = (plan: ChartPlan) => plan.years.map((y) => y.year)
 
-/** Every alternative whose per-year runs are needed: the compared ones and the reference's. */
+/** Every scenario group whose per-year runs are needed: the compared ones and the reference's. */
 function involved(plan: ChartPlan): string[] {
-  const out = new Set(plan.scenarios.map((s) => s.alternative))
-  const ref = referenceAlternative(plan)
+  const out = new Set(plan.scenarios.map((s) => s.scenarioGroup))
+  const ref = referenceScenarioGroup(plan)
   if (ref) out.add(ref)
   return [...out]
 }
@@ -56,7 +56,7 @@ const kind: ChartKind = {
       return { label: `${env.config.title}: needs several model years` }
     }
     const metric = metricOf(env.group)
-    const refAlt = referenceAlternative(env)
+    const refAlt = referenceScenarioGroup(env)
     const self = env.reference.kind === 'self-base-year'
     const value = (alt: string, y: number): number | null => {
       const run = env.runFor(alt, y)
@@ -65,18 +65,18 @@ const kind: ChartKind = {
 
     // one line per independent scenario; the reference's own line would be zero in Change modes
     const series = env.scenarios.filter(
-      (s) => hasTrend(s.alternative, years, env.runFor) && !(m !== 'val' && !self && s.alternative === refAlt),
+      (s) => hasTrend(s.scenarioGroup, years, env.runFor) && !(m !== 'val' && !self && s.scenarioGroup === refAlt),
     )
     if (series.length === 0) {
       emptyNote(el, m === 'val' ? 'Pick a scenario to see how it develops across model years.' : 'Pick a scenario other than the reference to see differences.')
       return { label: `${env.config.title}: nothing to compare` }
     }
-    const names = series.map((s) => s.alternative)
-    const color = new Map(series.map((s) => [s.alternative, s.color]))
-    const label = new Map(series.map((s) => [s.alternative, s.label]))
+    const names = series.map((s) => s.scenarioGroup)
+    const color = new Map(series.map((s) => [s.scenarioGroup, s.color]))
+    const label = new Map(series.map((s) => [s.scenarioGroup, s.label]))
     const refValue = (alt: string, y: number) => (self ? value(alt, env.baseYear) : refAlt ? value(refAlt, y) : null)
 
-    const rows = buildTrendRows({ alternatives: names, years, display: m, value, refValue })
+    const rows = buildTrendRows({ scenarioGroups: names, years, display: m, value, refValue })
     if (rows.length === 0) {
       emptyNote(el, 'No data for this metric.')
       return { label: `${env.config.title}: no data` }
@@ -85,7 +85,7 @@ const kind: ChartKind = {
     const obs = obsVal !== null ? [{ y: env.baseYear, v: obsVal }] : []
     const refTitle = (() => {
       if (m === 'val' || self || !refAlt) return ''
-      const s = env.scenarios.find((x) => x.alternative === refAlt)
+      const s = env.scenarios.find((x) => x.scenarioGroup === refAlt)
       const sc = env.reference.run ? getScenario(env.reference.run) : undefined
       return s?.label ?? sc?.label ?? sc?.displayName ?? refAlt
     })()

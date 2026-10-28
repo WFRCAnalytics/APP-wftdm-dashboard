@@ -3,7 +3,7 @@ display_name: Combined package
 engine: activitysim
 run_date: '2026-09-08'
 kind: scenario
-alternative: combined-package
+scenario_group: combined-package
 year: 2055
 tag: Package
 color: '#8E9E2A'

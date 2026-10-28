@@ -1,7 +1,7 @@
 // What the control bar offers for Reference, and the encoding of a ReferenceSpec as a <select> value. Pure.
 // project-docs/redesign/02-layout-and-components.md section 1.2 (item 5).
 import type { ReferenceSpec } from '../state/compareState.ts'
-import { alternativesOf, type RunInfo } from './viewContext.ts'
+import { scenarioGroupsOf, type RunInfo } from './viewContext.ts'
 
 export interface ReferenceOption {
   value: string
@@ -28,14 +28,14 @@ export function referenceOptions(opts: {
   runs: readonly RunInfo[]
   isBaseYear: boolean
   baseline?: string
-  label: (alternative: string) => string
+  label: (scenarioGroup: string) => string
 }): ReferenceOption[] {
   const { runs, isBaseYear, baseline, label } = opts
   const out: ReferenceOption[] = []
   if (isBaseYear && runs.some((r) => r.kind === 'observed' && r.ready)) out.push({ value: 'observed', label: 'Observed' })
 
-  const kindOf = (alt: string) => runs.find((r) => r.alternative === alt)?.kind
-  const alts = alternativesOf(runs)
+  const kindOf = (alt: string) => runs.find((r) => r.scenarioGroup === alt)?.kind
+  const alts = scenarioGroupsOf(runs)
   for (const alt of alts.filter((a) => kindOf(a) === 'scenario')) {
     out.push({ value: `scenario:${alt}`, label: alt === baseline ? `${label(alt)} (baseline)` : label(alt) })
   }

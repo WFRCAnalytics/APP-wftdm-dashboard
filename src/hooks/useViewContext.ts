@@ -8,7 +8,7 @@ import type { ResolvedView } from '@/services/viewContext'
 /** The resolved, immutable context every tile reads (project-docs/redesign/03-state-and-compare.md §2). */
 export interface ViewContext extends ResolvedView {
   /** Click (or shift-click, `additive`) on a scenario or round in a chart: focus it, or toggle it in the compare set. */
-  pickScenario(alternative: string, additive: boolean): void
+  pickScenario(scenarioGroup: string, additive: boolean): void
   setYear(year: number): void
 }
 
@@ -41,8 +41,8 @@ export function useViewContext(): ViewContext {
   return useMemo(
     () => ({
       ...view,
-      pickScenario: (alternative, additive) =>
-        additive ? compareState.toggleCompareMember(alternative) : compareState.focusAlternative(alternative),
+      pickScenario: (scenarioGroup, additive) =>
+        additive ? compareState.toggleCompareMember(scenarioGroup) : compareState.focusScenarioGroup(scenarioGroup),
       setYear: compareState.setYear,
     }),
     [view],

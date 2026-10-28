@@ -3,7 +3,7 @@ display_name: Job-center density
 engine: activitysim
 run_date: '2026-09-08'
 kind: scenario
-alternative: job-center-density
+scenario_group: job-center-density
 year: 2027
 tag: Land use
 color: '#9C7A5B'

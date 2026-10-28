@@ -15,7 +15,7 @@ function subscribe(fn: () => void): () => void {
 
 /**
  * Subscribes to the resolved baseline run: appState's baseline designation (018-baseline-scenario-designation),
- * mapped to that alternative's run for the current model year. getBaselineForYear() returns a primitive
+ * mapped to that scenario group's run for the current model year. getBaselineForYear() returns a primitive
  * (string | undefined), which useSyncExternalStore's default Object.is comparison handles by value, so no
  * memoized cache is needed here.
  */

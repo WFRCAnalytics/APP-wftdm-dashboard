@@ -3,7 +3,7 @@ display_name: Bike network
 engine: activitysim
 run_date: '2026-09-08'
 kind: scenario
-alternative: bike-network
+scenario_group: bike-network
 year: 2055
 tag: Roads
 color: '#B5179E'

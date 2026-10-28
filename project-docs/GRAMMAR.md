@@ -1659,8 +1659,8 @@ pinned:         false               # observed/reference entry marker — exclud
                                     # first. Does NOT control activation: every
                                     # `status: ready` scenario is active by default
                                     # (038-all-loaded-scenarios).
-# Optional identity fields (063 redesign). A manifest without alternative/year is a single-year run:
-alternative:    freq-transit        # groups the runs of one alternative across model years (UI identity)
+# Optional identity fields (063 redesign). A manifest without scenario_group/year is a single-year run:
+scenario_group: freq-transit        # groups the runs of one scenario group across model years (UI identity); was `alternative`, still read
 year:           2036                # model year of this run; the Year control appears when two or more exist
 kind:           scenario            # scenario | round | observed (default scenario; pinned implies observed)
 tag:            Transit             # free text, for picker chips
@@ -1826,8 +1826,8 @@ Reads per-run Parquet tables chosen by the kind, for every compared run, the ref
 | `sections[].tile: <id>` | tab | Sub-navigation entry scrolls to that tile instead of the row. |
 
 ### `dashboard-config/index.json` additions
-`years` (`[{year,label}]`), `baseYear`, `defaultYear`, `compare: { default: auto|on|off, scenarios: [alternative ids],
-focus, reference }`. Run manifests may carry `kind`, `alternative`, `year`, `tag`, `family`, `family_index`, `hidden`,
+`years` (`[{year,label}]`), `baseYear`, `defaultYear`, `compare: { default: auto|on|off, scenarios: [scenario group ids],
+focus, reference }`. Run manifests may carry `kind`, `scenario_group`, `year`, `tag`, `family`, `family_index`, `hidden`,
 and (for an observed run) `observed: { source, sample, metrics: { <table>: { source, sample } } }`.
 
 

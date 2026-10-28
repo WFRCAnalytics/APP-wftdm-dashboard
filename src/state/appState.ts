@@ -20,13 +20,13 @@ export type ScenarioStatus = 'registering' | 'ready' | 'failed'
  * picker, the Scenarios tab or the compare set (the legacy ActivitySim example runs the Test tab pins). */
 export type ScenarioKind = 'scenario' | 'round' | 'observed' | 'hidden'
 
-/** 063 redesign: optional manifest identity (alternative, model year, tag, calibration family). A run without
- * `alternative`/`year` is a single-year run and counts for every year. */
+/** 063 redesign: optional manifest identity (scenario group, model year, tag, calibration family). A run without
+ * `scenario_group`/`year` is a single-year run and counts for every year. */
 export interface ScenarioIdentity {
   /** Manifest `display_name`: the label used until a viewer sets their own. */
   displayName?: string
   kind?: ScenarioKind
-  alternative?: string
+  scenarioGroup?: string
   year?: number
   tag?: string
   family?: string
@@ -188,7 +188,7 @@ export function register(name: string, metadata: ScenarioMetadata): void {
     availableMetrics: undefined,
     displayName: metadata.displayName,
     kind: metadata.kind,
-    alternative: metadata.alternative,
+    scenarioGroup: metadata.scenarioGroup,
     year: metadata.year,
     tag: metadata.tag,
     family: metadata.family,

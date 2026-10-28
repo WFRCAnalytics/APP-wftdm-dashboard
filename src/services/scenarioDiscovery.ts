@@ -170,7 +170,7 @@ async function registerScenarioGroup(
       notes: manifest.notes,
       displayName: manifest.displayName,
       kind: manifest.kind,
-      alternative: manifest.alternative,
+      scenarioGroup: manifest.scenarioGroup,
       year: manifest.year,
       tag: manifest.tag,
       family: manifest.family,

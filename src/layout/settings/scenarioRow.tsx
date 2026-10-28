@@ -10,8 +10,8 @@ import { removeLocalScenario } from '@/scenario/scenarioManager'
 import { scenarioStatusTreatment } from '@/layout/settings/scenarioStatusColor'
 import { ScenarioColorControl } from '@/layout/settings/scenarioColorControl'
 import * as appState from '@/state/appState'
-import { getState, setReference, setAlternativeActive } from '@/state/compareState'
-import { alternativeOf } from '@/services/runResolution'
+import { getState, setReference, setScenarioGroupActive } from '@/state/compareState'
+import { scenarioGroupOf } from '@/services/runResolution'
 import type { Scenario } from '@/state/appState'
 
 // One Scenarios-tab card (project-docs/redesign/02-layout-and-components.md section 4.2):
@@ -110,7 +110,7 @@ export function ScenarioRow({ scenario: s, index, total, baselineName, onMove }:
               <Switch
                 size="lg"
                 checked={s.active}
-                onCheckedChange={(checked) => setAlternativeActive(alternativeOf(s), checked)}
+                onCheckedChange={(checked) => setScenarioGroupActive(scenarioGroupOf(s), checked)}
                 aria-label={s.active ? `Exclude ${s.name} from queries` : `Include ${s.name} in queries`}
               />
             </span>

@@ -25,10 +25,10 @@ function setup(el: HTMLElement, env: ChartEnv) {
     .filter((s) => s.round !== undefined)
     .map((s) => ({ r: s.round as number, color: s.isFocus ? env.theme.ink : s.color }))
   const pick = (round: number, e?: MouseEvent) => {
-    const alt = rounds.get(round)?.alternative
+    const alt = rounds.get(round)?.scenarioGroup
     if (!alt) return
     if (e?.shiftKey) env.toggleCompare(alt)
-    else env.focusAlternative(alt)
+    else env.focusScenarioGroup(alt)
   }
   return {
     meta,

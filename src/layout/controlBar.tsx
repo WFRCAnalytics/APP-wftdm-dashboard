@@ -6,8 +6,8 @@ import { PillSelect } from '@/components/ui/pill-select'
 import { Segmented } from '@/components/ui/segmented'
 import { ScenarioPicker } from '@/layout/scenarioPicker'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
-import { alternativeOf, runKindOf, viewManifest } from '@/services/runResolution'
-import { independentAlternatives } from '@/services/viewContext'
+import { scenarioGroupOf, runKindOf, viewManifest } from '@/services/runResolution'
+import { independentScenarioGroups } from '@/services/viewContext'
 import {
   getDeployment,
   getState,
@@ -62,18 +62,18 @@ export function ControlBar() {
   const runs = useScenarioList()
   const deployment = useSyncExternalStore(subscribe, getDeployment)
 
-  // One entry per alternative; its label is the current year's run label (or the alternative's id).
+  // One entry per scenario group; its label is the current year's run label (or the scenario group's id).
   const { scenarios, rounds } = useMemo(() => {
     const seen = new Set<string>()
     const scenarios: { id: string; label: string }[] = []
     const rounds: { id: string; label: string }[] = []
     for (const run of runs) {
-      const id = alternativeOf(run)
+      const id = scenarioGroupOf(run)
       if (seen.has(id)) continue
       const kind = runKindOf(run)
       if (kind === 'observed') continue
       seen.add(id)
-      const forYear = runs.find((r) => alternativeOf(r) === id && r.year === view.year) ?? run
+      const forYear = runs.find((r) => scenarioGroupOf(r) === id && r.year === view.year) ?? run
       const entry = { id, label: forYear.label ?? id }
       if (kind === 'round') {
         if (view.isBaseYear) rounds.push(entry)
@@ -84,7 +84,7 @@ export function ControlBar() {
 
   const compareState = useSyncExternalStore(subscribe, getState)
   const manifest = useMemo(() => viewManifest(), [runs, view.year])
-  const independent = independentAlternatives(manifest.runs)
+  const independent = independentScenarioGroups(manifest.runs)
   const showYear = deployment.years.length > 1
   const showFocus = scenarios.length + rounds.length > 1
   const showCompare = independent.length >= 2

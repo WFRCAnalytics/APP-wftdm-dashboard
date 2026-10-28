@@ -165,8 +165,8 @@ describe('planCompare', () => {
 })
 
 describe('reference options', () => {
-  const run = (alternative: string, kind: RunInfo['kind'], ready = true): RunInfo =>
-    ({ name: alternative, alternative, kind, ready, year: undefined }) as unknown as RunInfo
+  const run = (scenarioGroup: string, kind: RunInfo['kind'], ready = true): RunInfo =>
+    ({ name: scenarioGroup, scenarioGroup, kind, ready, year: undefined }) as unknown as RunInfo
   const runs = [run('obs', 'observed'), run('a', 'scenario'), run('b', 'scenario'), run('r1', 'round')]
   const label = (a: string) => a.toUpperCase()
 

@@ -96,7 +96,7 @@ describe('years trend', () => {
     alt: { 2023: 3, 2027: 3.6, 2036: 4.2 },
   }
   const base = {
-    alternatives: ['base', 'alt'],
+    scenarioGroups: ['base', 'alt'],
     years,
     value: (a: string, y: number) => val[a]?.[y] ?? null,
     refValue: (_a: string, y: number) => val.base[y],
@@ -107,17 +107,17 @@ describe('years trend', () => {
     expect(rows.find((r) => r.n === 'alt' && r.y === 2036)).toMatchObject({ v: 4.2, raw: 4.2, ref: null })
   })
   it('Change plots scenario minus the reference of the same year', () => {
-    const rows = buildTrendRows({ ...base, alternatives: ['alt'], display: 'abs' })
+    const rows = buildTrendRows({ ...base, scenarioGroups: ['alt'], display: 'abs' })
     expect(rows.map((r) => +r.v.toFixed(6))).toEqual([0, 0.4, 0.7])
     expect(rows[2].ref).toBe(3.5)
   })
   it('% change plots (a / ref - 1) * 100 and drops a zero reference', () => {
-    const rows = buildTrendRows({ ...base, alternatives: ['alt'], display: 'pct' })
+    const rows = buildTrendRows({ ...base, scenarioGroups: ['alt'], display: 'pct' })
     expect(rows[1].v).toBeCloseTo((3.6 / 3.2 - 1) * 100, 9)
-    expect(buildTrendRows({ ...base, alternatives: ['alt'], display: 'pct', refValue: () => 0 })).toEqual([])
+    expect(buildTrendRows({ ...base, scenarioGroups: ['alt'], display: 'pct', refValue: () => 0 })).toEqual([])
   })
   it('skips years without a value', () => {
-    expect(buildTrendRows({ ...base, alternatives: ['ghost'], display: 'val' })).toEqual([])
+    expect(buildTrendRows({ ...base, scenarioGroups: ['ghost'], display: 'val' })).toEqual([])
   })
   it('snaps the pointer to the nearest milestone', () => {
     expect(snapYear(2024.4, years)).toBe(2023)
@@ -125,7 +125,7 @@ describe('years trend', () => {
     expect(snapYear(2050, years)).toBe(2036)
     expect(snapYear(2031.5, years)).toBe(2027)
   })
-  it('only alternatives with several years of runs get a line (not rounds, not Observed)', () => {
+  it('only scenarioGroups with several years of runs get a line (not rounds, not Observed)', () => {
     const runFor = (a: string, y: number) => (a === 'round-01' ? (y === 2023 ? 'round-01' : undefined) : `${a}-${y}`)
     expect(hasTrend('baseline', years, runFor)).toBe(true)
     expect(hasTrend('round-01', years, runFor)).toBe(false)

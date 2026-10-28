@@ -3,7 +3,7 @@ display_name: Congestion pricing
 engine: activitysim
 run_date: '2026-09-08'
 kind: scenario
-alternative: congestion-pricing
+scenario_group: congestion-pricing
 year: 2032
 tag: Pricing
 color: '#E8C547'

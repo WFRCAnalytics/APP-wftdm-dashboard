@@ -13,8 +13,8 @@ import { viewManifest } from '@/services/runResolution'
 import { useScenarioList } from '@/hooks/useScenarioList'
 import { useResolvedView } from '@/hooks/useViewContext'
 import { resolveScenarioColor, resolveScenarioLabel } from '@/panels/scenarioDisplay'
-import { alternativeOf, runKindOf } from '@/services/runResolution'
-import { getState, setAlternativeActive, setFocus, setReference, subscribe as subscribeCompare } from '@/state/compareState'
+import { scenarioGroupOf, runKindOf } from '@/services/runResolution'
+import { getState, setScenarioGroupActive, setFocus, setReference, subscribe as subscribeCompare } from '@/state/compareState'
 import { openSettings } from '@/state/settingsState'
 import { cn } from '@/lib/utils'
 
@@ -88,10 +88,10 @@ export function ScenarioPicker() {
     const seen = new Set<string>()
     const out: { alt: string; run: string; label: string; color?: string; active: boolean; tag?: string }[] = []
     for (const s of runs) {
-      const alt = alternativeOf(s)
+      const alt = scenarioGroupOf(s)
       if (seen.has(alt) || runKindOf(s) !== 'scenario') continue
       seen.add(alt)
-      const forYear = runs.find((r) => alternativeOf(r) === alt && (r.year === view.year || r.year === undefined)) ?? s
+      const forYear = runs.find((r) => scenarioGroupOf(r) === alt && (r.year === view.year || r.year === undefined)) ?? s
       out.push({
         alt,
         run: forYear.name,
@@ -111,7 +111,7 @@ export function ScenarioPicker() {
         ? runs
             .filter((s) => runKindOf(s) === 'round')
             .sort((a, b) => (a.familyIndex ?? 0) - (b.familyIndex ?? 0))
-            .map((s) => ({ alt: alternativeOf(s), n: s.familyIndex ?? 0, active: s.active }))
+            .map((s) => ({ alt: scenarioGroupOf(s), n: s.familyIndex ?? 0, active: s.active }))
         : [],
     [runs, view.isBaseYear],
   )
@@ -175,10 +175,10 @@ export function ScenarioPicker() {
   const dots = selected.slice(0, 4)
 
   const labelOf = (alt: string) => {
-    const run = manifest.runs.find((r) => r.alternative === alt && (r.year === view.year || r.year === undefined)) ?? manifest.runs.find((r) => r.alternative === alt)
+    const run = manifest.runs.find((r) => r.scenarioGroup === alt && (r.year === view.year || r.year === undefined)) ?? manifest.runs.find((r) => r.scenarioGroup === alt)
     return run ? resolveScenarioLabel(run.name, display) : alt
   }
-  const focusRun = manifest.runs.find((r) => r.alternative === view.focus && (r.year === view.year || r.year === undefined)) ?? manifest.runs.find((r) => r.alternative === view.focus)
+  const focusRun = manifest.runs.find((r) => r.scenarioGroup === view.focus && (r.year === view.year || r.year === undefined)) ?? manifest.runs.find((r) => r.scenarioGroup === view.focus)
   const focusLabel = labelOf(view.focus)
   const focusColor = focusRun ? resolveScenarioColor(focusRun.name, display) : undefined
   const others = selected.filter((r) => r.alt !== view.focus).length + selectedRounds.filter((r) => r.alt !== view.focus).length
@@ -259,7 +259,7 @@ export function ScenarioPicker() {
                   type="button"
                   onClick={() => {
                     const focus = getState().focus
-                    rows.forEach((r) => setAlternativeActive(r.alt, l === 'All' ? true : r.alt === focus))
+                    rows.forEach((r) => setScenarioGroupActive(r.alt, l === 'All' ? true : r.alt === focus))
                   }}
                   className="h-8 rounded-full border border-[var(--glass-line)] px-3 font-body text-sm text-[var(--mute)] hover:text-[var(--ink)]"
                 >
@@ -282,7 +282,7 @@ export function ScenarioPicker() {
 
           {rounds.length > 0 && (
             <div className="flex flex-wrap items-center gap-2 px-4 pb-2">
-              <PillSelect compact label="Focus" value={view.focus} options={focusOptions} onChange={(v) => { setFocus(v); setAlternativeActive(v, true) }} data-testid="control-focus" />
+              <PillSelect compact label="Focus" value={view.focus} options={focusOptions} onChange={(v) => { setFocus(v); setScenarioGroupActive(v, true) }} data-testid="control-focus" />
             </div>
           )}
 
@@ -324,7 +324,7 @@ export function ScenarioPicker() {
                       role="checkbox"
                       aria-checked={r.active}
                       aria-label={`Compare ${r.label}`}
-                      onClick={() => setAlternativeActive(r.alt, !r.active)}
+                      onClick={() => setScenarioGroupActive(r.alt, !r.active)}
                       className="grid size-5 place-items-center rounded-[6px] border-[1.5px] p-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-text)]"
                       style={r.active ? { background: r.color, borderColor: r.color } : { borderColor: r.color ?? 'var(--mute)' }}
                     >
@@ -340,7 +340,7 @@ export function ScenarioPicker() {
                       aria-label={`Focus ${r.label}`}
                       onClick={() => {
                         setFocus(r.alt)
-                        setAlternativeActive(r.alt, true)
+                        setScenarioGroupActive(r.alt, true)
                       }}
                       className="grid size-5 place-items-center rounded-full border-[1.5px] p-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-text)]"
                       style={{ borderColor: r.color ?? 'var(--mute)' }}
@@ -351,10 +351,10 @@ export function ScenarioPicker() {
                   <span
                     className="min-w-0 cursor-pointer"
                     onClick={() => {
-                      if (compareOn) setAlternativeActive(r.alt, !r.active)
+                      if (compareOn) setScenarioGroupActive(r.alt, !r.active)
                       else {
                         setFocus(r.alt)
-                        setAlternativeActive(r.alt, true)
+                        setScenarioGroupActive(r.alt, true)
                       }
                     }}
                   >
@@ -375,7 +375,7 @@ export function ScenarioPicker() {
                       label={`Focus ${r.label}`}
                       onClick={() => {
                         setFocus(r.alt)
-                        setAlternativeActive(r.alt, true)
+                        setScenarioGroupActive(r.alt, true)
                       }}
                     >
                       Focus
@@ -432,7 +432,7 @@ export function ScenarioPicker() {
                       type="button"
                       onClick={() => {
                         const chosen = new Set(pick().filter((n): n is number => typeof n === 'number'))
-                        for (const r of rounds) setAlternativeActive(r.alt, chosen.has(r.n))
+                        for (const r of rounds) setScenarioGroupActive(r.alt, chosen.has(r.n))
                       }}
                       className="h-7 rounded-full border border-[var(--glass-line)] px-[11px] font-body text-[12.5px] text-[var(--mute)] hover:text-[var(--ink)]"
                     >
@@ -452,7 +452,7 @@ export function ScenarioPicker() {
                       aria-pressed={r.active}
                       aria-label={`Round ${r.n}`}
                       title={w === undefined ? `Round ${r.n}` : `Round ${r.n}: worst error ${w.toFixed(1)}%`}
-                      onClick={() => setAlternativeActive(r.alt, !r.active)}
+                      onClick={() => setScenarioGroupActive(r.alt, !r.active)}
                       className={cn(
                         'h-[30px] min-w-0 flex-1 rounded-[3px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-text)]',
                         r.active ? 'opacity-100 outline outline-2 outline-[var(--ink)]' : 'opacity-40',

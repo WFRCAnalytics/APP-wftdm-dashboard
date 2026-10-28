@@ -1034,7 +1034,7 @@ test.describe('User Story 2 (036-scenario-color-picker) - Redesigned color picke
     await page.getByRole('button', { name: 'Settings' }).click()
     await page.getByRole('tab', { name: 'Scenarios' }).click()
 
-    // The shipped default is resolved by hooks/useScenarioDisplay.ts (a theme-adapted pool colour per alternative), the
+    // The shipped default is resolved by hooks/useScenarioDisplay.ts (a theme-adapted pool colour per scenario group), the
     // same value every chart series uses: here, each swatch is a real colour and the two scenarios get different ones.
     // (A scenario that failed to load takes no palette slot, so two READY scenarios are compared here.)
     const first = await colorSwatch(page, 'activitysim-density-variant').evaluate((e) => getComputedStyle(e).backgroundColor)
