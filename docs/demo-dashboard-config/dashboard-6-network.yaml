@@ -2,6 +2,7 @@
 
 header:
   tab: Network
+  slug: network
   title: Network
   description: "Zones, trip flows and the places they serve"
   icon: network

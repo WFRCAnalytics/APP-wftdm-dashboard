@@ -2,6 +2,7 @@
 
 header:
   tab: "Tour models"
+  slug: tours
   title: "Tour models"
   description: "When and where people travel"
   icon: route

@@ -14,6 +14,7 @@
 
 header:
   tab: Explore
+  slug: explore
   title: Explore the Demo Data
   icon: compass
   full_page: true
