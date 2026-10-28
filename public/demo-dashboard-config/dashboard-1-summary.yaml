@@ -4,6 +4,7 @@
 
 header:
   tab: Summary
+  slug: summary
   title: Summary
   description: "Regional totals for the example scenarios"
   icon: layout-dashboard

@@ -2,6 +2,7 @@
 
 header:
   tab: "Mode choice"
+  slug: mode-choice
   title: "Mode choice"
   description: "How people choose between driving, transit, walking and biking"
   icon: shuffle

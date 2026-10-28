@@ -4,6 +4,8 @@
 //   - the active tab (section) of each page and the tile picked in a "pick" tab.
 import { useSyncExternalStore } from 'react'
 
+import { buildHash, getCurrentSlug, replaceAddress } from '@/state/routeState'
+
 export type LayoutMode = 'scroll' | 'tabs'
 /** What the viewer chose: follow the page and the deployment, or force one mode. */
 export type ViewerLayout = 'default' | LayoutMode
@@ -62,11 +64,8 @@ export function setActiveSection(page: string, id: string): void {
   if (active.get(page) === id) return
   active.set(page, id)
   // the tab in use is part of the address, so a link opens it
-  try {
-    window.history.replaceState(null, '', `#${id}`)
-  } catch {
-    // no window (unit tests)
-  }
+  const slug = getCurrentSlug()
+  replaceAddress(slug ? buildHash(slug, id) : `#${id}`)
   emit()
 }
 

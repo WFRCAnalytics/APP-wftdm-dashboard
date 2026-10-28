@@ -25,7 +25,7 @@ test.describe('tabbed pages', () => {
     await expect(page.locator('[data-chart-kind="mode-bars"] svg').first()).toBeVisible({ timeout: 30_000 })
     await expect(page.locator('[data-chart-kind="scorecard"]')).toHaveCount(0)
     await expect(page.getByTestId('row_kpis')).toBeVisible()
-    expect(page.url()).toContain('#mode')
+    expect(page.url()).toContain('#/summary/mode')
   })
 
   test('the tile fills the tab and a wide tile keeps its controls in a rail beside the chart', async ({ page }) => {
@@ -73,6 +73,15 @@ test.describe('tabbed pages', () => {
     await expect(page.getByTestId('tabbed-page')).toHaveAttribute('data-section', 'mode')
     await boot(page, '/#time')
     await expect(page.getByTestId('tabbed-page')).toHaveAttribute('data-section', 'time')
+    await boot(page, '/#/summary/time')
+    await expect(page.getByTestId('tabbed-page')).toHaveAttribute('data-section', 'time')
+  })
+
+  test('a page has its own address, and a link opens it', async ({ page }) => {
+    await boot(page, '/#/network')
+    await expect(page.getByRole('tab', { name: 'Network' })).toHaveAttribute('aria-selected', 'true')
+    await page.getByRole('tab', { name: 'Summary' }).click()
+    expect(page.url()).toMatch(/#\/summary/)
   })
 
   test('?layout=scroll shows every row on the page, as before', async ({ page }) => {

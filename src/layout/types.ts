@@ -641,6 +641,8 @@ export interface DashboardTabConfig {
      * Cases). Default false/absent — every existing dashboard-*.yaml is
      * unaffected. */
     full_page?: boolean
+    /** The page's address: `#/<slug>`. Default: the tab name, lower-cased and dash-separated. */
+    slug?: string
     /** `tabs`: each section is a tab and the page does not scroll; `scroll`: all rows in order. Default: the deployment's. */
     layout_mode?: 'scroll' | 'tabs'
     /** Rows that stay above the tabs in tabbed mode (default: the hero KPI rows). */
@@ -713,6 +715,7 @@ export function parseDashboardConfig(raw: unknown, sourcePath = '(unknown source
       description: typeof header.description === 'string' ? header.description : undefined,
       icon: typeof header.icon === 'string' ? header.icon : undefined,
       full_page: typeof header.full_page === 'boolean' ? header.full_page : undefined,
+      slug: typeof header.slug === 'string' && header.slug.trim().length > 0 ? header.slug.trim() : undefined,
       aria_label:
         typeof header.aria_label === 'string' && header.aria_label.length > 0
           ? header.aria_label

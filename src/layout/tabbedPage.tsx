@@ -12,6 +12,7 @@ import type { TabsPlan, TabSection } from '@/layout/dashboardLayout'
 import type { PanelConfig, SharedControlKind } from '@/layout/types'
 import { cn } from '@/lib/utils'
 import { getActiveSection, getPickedTile, setActiveSection, setPickedTile, useLayoutVersion } from '@/state/layoutState'
+import { getCurrentSlug, parseHash } from '@/state/routeState'
 import { getTileVersion, tileKey } from '@/state/tileState'
 
 // A page shown as tabs (project-docs/redesign/10-toolbar-layout-export-proposal.md section C): the pinned rows (the KPI
@@ -27,11 +28,12 @@ export function TabbedPage({ page, plan, rows }: { page: string; plan: TabsPlan;
   const stored = getActiveSection(page)
   const section = plan.sections.find((s) => s.id === stored) ?? plan.sections[0]
 
-  // a link to #<section id> opens that tab; the tab in use is mirrored into the address
+  // a link to #/<page>/<section id> (or the older #<section id>) opens that tab; the tab in use is mirrored into the address
   useEffect(() => {
     const open = () => {
-      const wanted = window.location.hash.slice(1)
-      if (wanted && plan.sections.some((s) => s.id === wanted)) setActiveSection(page, wanted)
+      const route = parseHash(window.location.hash)
+      if (route.page && route.page !== getCurrentSlug()) return
+      if (route.section && plan.sections.some((s) => s.id === route.section)) setActiveSection(page, route.section)
     }
     open()
     window.addEventListener('hashchange', open)

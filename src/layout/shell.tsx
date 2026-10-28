@@ -1,5 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { LayoutDashboard } from 'lucide-react'
+
+import { getActiveSection } from '@/state/layoutState'
+import { assignSlugs, buildHash, parseHash, replaceAddress, setCurrentSlug } from '@/state/routeState'
 
 import { cn } from '@/lib/utils'
 
@@ -29,7 +32,29 @@ export function Shell({
   dashboards: DashboardTabConfig[]
   branding?: DashboardBranding
 }) {
-  const [activeIndex, setActiveIndex] = useState(0)
+  const slugs = useMemo(() => assignSlugs(dashboards.map((d) => d.header)), [dashboards])
+  const indexOfHash = () => {
+    const i = slugs.indexOf(parseHash(window.location.hash).page ?? '')
+    return i >= 0 ? i : 0
+  }
+  const [activeIndex, setActiveIndex] = useState(indexOfHash)
+  // The slug is read by the section state when it writes the address; set during render so children see it first.
+  setCurrentSlug(slugs[activeIndex])
+  const changePage = (index: number) => {
+    setActiveIndex(index)
+    const section = getActiveSection(dashboards[index]?.header.tab ?? '')
+    replaceAddress(buildHash(slugs[index], section))
+  }
+  // a link, or Back/Forward, to another page address
+  useEffect(() => {
+    const onHash = () => {
+      const page = parseHash(window.location.hash).page
+      const i = page ? slugs.indexOf(page) : -1
+      if (i >= 0) setActiveIndex(i)
+    }
+    window.addEventListener('hashchange', onHash)
+    return () => window.removeEventListener('hashchange', onHash)
+  }, [slugs])
   const [menuOpen, setMenuOpen] = useState(false)
   // The nav's labels are pinned open with its toggle. Pinned, the nav is DOCKED: the page's left padding grows by the same
   // amount, so the canvas shrinks to the space that is left instead of sitting under the menu. (A transient keyboard-focus
@@ -61,7 +86,7 @@ export function Shell({
       <FloatingNav
         tabs={dashboards}
         activeIndex={activeIndex}
-        onTabChange={setActiveIndex}
+        onTabChange={changePage}
         branding={branding}
         mobile={mobile}
         open={menuOpen}
