@@ -226,6 +226,10 @@
 .xb .sz-lg{font-size:20px;letter-spacing:-.02em;line-height:1.2}
 .xb .sz-xl{font-size:28px;letter-spacing:-.025em;line-height:1.12}
 .xb .tb.tsub{color:var(--mute)}
+.xb .tb.ttag{text-transform:uppercase;letter-spacing:.06em;color:var(--mute);margin-bottom:4px}
+.xb .tb.tfoot{margin-top:8px;max-width:none}
+.xb .tb.tleft{text-align:left}
+.xb .tb.tright{text-align:right}
 .xb .tb.tfoot{color:var(--mute)}
 .xb .legend{display:flex;flex-wrap:wrap;gap:4px 18px;padding:8px 0 2px;flex:none;max-height:76px;overflow:auto}
 .xb .lgg{display:flex;flex-wrap:wrap;align-items:center;gap:2px 10px}
@@ -254,6 +258,11 @@
 .xb .rrow{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .xb .trow{display:flex;flex-direction:column;gap:6px;padding-bottom:10px;border-bottom:1px solid var(--grid)}
 .xb .trow:last-child{border-bottom:0}
+.xb .tgrp{display:flex;flex-direction:column;gap:10px}
+.xb .tgrp+.tgrp{margin-top:6px;padding-top:12px;border-top:1px solid var(--line)}
+.xb .rghrow{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.xb .rgh{margin:0;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--mute)}
+.xb .inp.alt{resize:vertical;min-height:60px;font:inherit}
 .xb .tgl{border:1px solid var(--line);background:transparent;border-radius:8px;width:30px;height:28px;font-weight:600}
 .xb .tgl[aria-pressed="true"]{background:var(--brand);color:var(--brand-fg);border-color:transparent}
 .xb .tp{position:relative}

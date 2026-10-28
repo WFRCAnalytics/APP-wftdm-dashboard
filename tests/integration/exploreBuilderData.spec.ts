@@ -718,3 +718,47 @@ test('a chart change can be undone and redone, and bars can be sorted', async ({
   await expect(page.getByRole('dialog', { name: 'Export this chart' }).locator('textarea')).toHaveValue(/"sort": "low"/)
   expect(errors).toEqual([])
 })
+
+test('the Axes tab follows the chart: axis titles, zero baseline only where it applies, pie options, one footer, left or right', async ({ page }) => {
+  const errors: string[] = []
+  await openExplore(page, errors)
+  await expect(page.locator('.xb .tbl tbody tr').first()).toBeVisible({ timeout: 60_000 })
+  await page.getByRole('button', { name: 'Add chart tab' }).click()
+  const place = async (field: string, shelf: string) => {
+    await page.locator('.xb .fchip', { hasText: field }).first().click()
+    await page.locator('.xb .sp', { hasText: shelf }).getByRole('button', { name: new RegExp(`Place ${field}`) }).click()
+  }
+  const drawn = async () => expect(page.locator('.xb svg.plot rect[data-t]').first()).toBeVisible({ timeout: 30_000 })
+  const rail = page.getByRole('group', { name: 'Chart settings' })
+  await page.locator('.xb .mk', { hasText: 'Bar' }).click()
+  await place('scenario', 'X axis')
+  await place('auPkTotal', 'Y axis')
+  await drawn()
+  await rail.getByRole('button', { name: 'Axes' }).click()
+  // a bar chart always starts at zero, so there is no switch for it; it does have axis titles
+  await expect(page.getByText('Y axis starts at zero')).toHaveCount(0)
+  await page.getByRole('button', { name: 'Show', exact: true }).first().click()
+  await expect(page.locator('.xb svg.plot text', { hasText: 'scenario' })).toBeVisible()
+  await page.getByLabel('X title').fill('Trip purpose')
+  await expect(page.locator('.xb svg.plot text', { hasText: 'Trip purpose' })).toBeVisible()
+  // footer: source on the left, note on the right of one row
+  await rail.getByRole('button', { name: 'Style' }).click()
+  await page.getByLabel('Footer', { exact: true }).fill('Source: WFRC model')
+  await page.getByLabel('Tag', { exact: true }).fill('Draft')
+  // one italic footer, bottom left until moved to the right
+  const foot = page.locator('.xb .tfoot'), card = (await page.locator('.xb .cardbody').boundingBox())!
+  await expect(foot).toHaveCSS('font-style', 'italic')
+  expect((await foot.boundingBox())!.x).toBeLessThan(card.x + 40)
+  await page.getByRole('button', { name: 'Right', exact: true }).click()
+  const fb = (await foot.boundingBox())!
+  await expect(foot).toHaveCSS('text-align', 'right')
+  expect(fb.x + fb.width).toBeGreaterThan(card.x + card.width - 40)
+  // a pie has its own tab
+  await rail.getByRole('button', { name: 'Chart', exact: true }).click()
+  await page.locator('.xb .mk', { hasText: 'Pie' }).click()
+  await expect(rail.getByRole('button', { name: 'Pie', exact: true })).toBeVisible()
+  await rail.getByRole('button', { name: 'Pie', exact: true }).click()
+  await expect(page.getByText('Y axis starts at zero')).toHaveCount(0)
+  await expect(page.getByRole('combobox', { name: 'Slice order' })).toBeVisible()
+  expect(errors).toEqual([])
+})

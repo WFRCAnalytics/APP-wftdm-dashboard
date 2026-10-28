@@ -7,7 +7,7 @@ import { buildChart, relabel, type ChartModel, type Col, type DrawnChart } from 
 import { chartRole, DATA_TYPES, TYPE_LABEL, typesPresent, type DataType } from '@/charts/builder/columnTypes'
 import { suggest } from '@/charts/builder/rules'
 import {
-  assignField, swapAxes, acceptsShort, chainOf, CHAINS, effectiveLabels, LABEL_MARKS, labelModesFor, SHOW_AS, TABLE_VALUES, ZOOMABLE_MARKS, AGGS, channelAggregates, channelLabel, COMING_SOON, MARK_LABEL, MARKS, SLOTS, SORTS, switchMark, TEXT_SIZES,
+  assignField, swapAxes, AXIS_MARKS, GRID_MARKS, REF_MARKS, ZERO_MARKS, acceptsShort, chainOf, CHAINS, effectiveLabels, LABEL_MARKS, labelModesFor, SHOW_AS, TABLE_VALUES, ZOOMABLE_MARKS, AGGS, channelAggregates, channelLabel, COMING_SOON, MARK_LABEL, MARKS, SLOTS, SORTS, switchMark, TEXT_SIZES,
   type Agg, type CellStyle, type LabelMode, type Channel, type ChartSpec, type Density, type MeasureFormat, type ShowAs, type TableOpts, type Mark, type Sort, type Stack, type TextKey,
 } from '@/charts/builder/spec'
 import { drawHierarchy, type HierState } from '@/charts/builder/hierarchyDraw'
@@ -303,6 +303,7 @@ function ChartCard({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: Cha
 
   const body = (
       <div className="cardbody" data-testid="chart-export-card" ref={bodyRef}>
+        {txt('tag').t && <p className={`tb ttag ${cls('tag')}`}>{txt('tag').t}</p>}
         {txt('title').t && <h3 className={`tb ${cls('title')}`}>{txt('title').t}</h3>}
         {txt('sub').t && <p className={`tb tsub ${cls('sub')}`}>{txt('sub').t}</p>}
         {drawn && drawn.legend.length > 0 && (
@@ -319,14 +320,13 @@ function ChartCard({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: Cha
             ))}
           </div>
         )}
-        <div className={`plotw ${data.loading && drawn ? 'stale' : ''}`} ref={plotRef} aria-label={aria ? `Chart of ${aria}` : 'Chart'} aria-busy={data.loading}>
+        <div className={`plotw ${data.loading && drawn ? 'stale' : ''}`} ref={plotRef} aria-label={spec.alt.trim() || (aria ? `Chart of ${aria}` : 'Chart')} aria-busy={data.loading}>
           {data.loading && !drawn && !model?.problem && <div className="skel" role="status" aria-label="Loading the chart" />}
           {model?.problem && <div className="empty"><b>This chart needs a little more</b><span>{model.problem}</span></div>}
           {!model?.problem && data.error && <div className="empty"><b>The data could not be read</b><span>{data.error}</span></div>}
           {drawn && !data.error && <Plot model={drawn} spec={spec} hot={hot} size={{ w: drawn.W, h: drawn.H }} theme={theme!} />}
         </div>
-        {txt('src').t && <p className={`tb tfoot ${cls('src')}`} style={{ marginTop: 8 }}>{txt('src').t}</p>}
-        {txt('note').t && <p className={`tb tfoot ${cls('note')}`} style={{ marginTop: 4 }}>{txt('note').t}</p>}
+        {txt('foot').t && <p className={`tb tfoot ${spec.footAlign === 'right' ? 'tright' : 'tleft'} ${cls('foot')}`}>{txt('foot').t}</p>}
         {(data.truncated || drawn?.limitedSeries || drawn?.labelsHidden) && <p className="hint" style={{ marginTop: 4 }}>{data.truncated ? (data.mode === 'raw' ? 'Showing a sample of the points. ' : `Showing the first ${ROW_CAP.toLocaleString('en-US')} groups. `) : ''}{drawn?.limitedSeries ? 'Showing the first 15 values of a legend field.' : ''}{drawn?.labelsHidden ? ' Data labels are hidden: the bars are too thin to carry them. Use fewer groups, or expand the chart.' : ''}</p>}
       </div>
   )
@@ -415,10 +415,10 @@ function Rail({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: ChartDat
   // the chart types a deployer allows (`charts.allow`); the open chart's own type always stays so it never disappears
   const offered = getExploreOptions().charts.allow
   const values = useDistinct(data.relSql, spec.filter.f)
-  const tabs: [typeof s.railTab, string][] = [['chart', 'Chart'], ['style', 'Style'], ['axes', spec.mark === 'text' ? 'Table' : 'Axes'], ['filter', 'Filter']]
+  const tabs: [typeof s.railTab, string][] = [['chart', 'Chart'], ['style', 'Style'], ['axes', spec.mark === 'text' ? 'Table' : spec.mark === 'pie' ? 'Pie' : AXIS_MARKS.includes(spec.mark) ? 'Axes' : 'Options'], ['filter', 'Filter']]
   const setTable = (patch: Partial<TableOpts>) => setSpec((x) => ({ ...x, table: { ...x.table, ...patch } }))
   const setMeasure = (ch: Channel, patch: MeasureFormat) => setSpec((x) => (x.enc[ch] ? { ...x, enc: { ...x.enc, [ch]: { ...x.enc[ch]!, ...patch } } } : x))
-  const pills = <T extends string | boolean>(opts: [T, string][], cur: T, set: (v: T) => void, label: string) => (
+  const pills = <T extends string | boolean | number>(opts: [T, string][], cur: T, set: (v: T) => void, label: string) => (
     <div className="xseg"><Segmented label={label} value={String(cur)} onChange={(id) => set(opts.find(([v]) => String(v) === id)![0])} options={opts.map(([v, l]) => ({ id: String(v), label: l }))} /></div>
   )
   return (
@@ -459,7 +459,10 @@ function Rail({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: ChartDat
             <div className="rrow"><span className="lab" style={{ minWidth: 96 }}>Data labels</span>{pills<LabelMode>(labelModesFor(spec.mark).map((o) => [o.v, o.label] as [LabelMode, string]), effectiveLabels(spec), (v) => setSpec((x) => ({ ...x, labels: v })), 'Data labels')}</div>
           )}
           <p className="hint">Size, weight and italic only. Typeface and colours follow the app theme.</p>
-          {([['title', 'Title', 'Add a title'], ['sub', 'Subtitle', 'Add a subtitle'], ['src', 'Source', 'Where the data comes from'], ['note', 'Note', 'Add a note']] as [TextKey, string, string][]).map(([k, label, ph]) => {
+          {([['Headline', [['tag', 'Tag', 'A short label above the title'], ['title', 'Title', 'Add a title'], ['sub', 'Subtitle', 'Add a subtitle']]], ['Footer', [['foot', 'Footer', 'A source, a caveat or a credit']]]] as [string, [TextKey, string, string][]][]).map(([group, keys]) => (
+            <div className="tgrp" key={group}>
+              <div className="rghrow"><p className="rgh">{group}</p>{group === 'Footer' && pills<'left' | 'right'>([['left', 'Left'], ['right', 'Right']], spec.footAlign, (v) => setSpec((x) => ({ ...x, footAlign: v })), 'Footer position')}</div>
+              {keys.map(([k, label, ph]) => {
             const t = spec.text[k]
             const patch = (p: Partial<typeof t>) => setSpec((x) => ({ ...x, text: { ...x.text, [k]: { ...x.text[k], ...p } } }))
             return (
@@ -474,18 +477,47 @@ function Rail({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: ChartDat
               </div>
             )
           })}
+            </div>
+          ))}
+          <div className="tgrp">
+            <p className="rgh">Accessibility</p>
+            <label className="lab" htmlFor="tx-alt">Alt text</label>
+            <textarea id="tx-alt" className="inp alt" rows={3} value={spec.alt} placeholder="Describe the chart for someone who cannot see it" onChange={(e) => setSpec((x) => ({ ...x, alt: e.target.value }))} />
+            <p className="hint">Read out by screen readers in place of the automatic description.</p>
+          </div>
         </div>
       )}
       {s.railTab === 'axes' && (
         <div className="rsec">
-          {spec.mark !== 'text' && (
+          {AXIS_MARKS.includes(spec.mark) && (
             <>
-          <div className="rrow"><span className="lab" style={{ minWidth: 96 }}>Y axis starts at zero</span>{pills<boolean>([[true, 'Yes'], [false, 'No']], spec.zero, (v) => setSpec((x) => ({ ...x, zero: v })), 'Zero baseline')}</div>
-          <p className="hint">{['bar', 'area', 'histogram'].includes(spec.mark) ? 'Bars, areas and histograms always start at zero.' : 'Applies to lines, scatter and box plots.'}</p>
-          <div className="rrow"><span className="lab" style={{ minWidth: 96 }}>Gridlines</span>{pills<boolean>([[true, 'Show'], [false, 'Hide']], spec.grid, (v) => setSpec((x) => ({ ...x, grid: v })), 'Gridlines')}</div>
-          <div className="rrow"><label className="lab" htmlFor="refin" style={{ minWidth: 96 }}>Reference line</label><input id="refin" className="inp" value={spec.ref} placeholder="y value" onChange={(e) => setSpec((x) => ({ ...x, ref: e.target.value.replace(/[^0-9.-]/g, '') }))} /></div>
+              <div className="rrow"><span className="lab" style={{ minWidth: 96 }}>Axis titles</span>{pills<boolean>([[true, 'Show'], [false, 'Hide']], spec.axisTitles, (v) => setSpec((x) => ({ ...x, axisTitles: v })), 'Axis titles')}</div>
+              {spec.axisTitles && (
+                <>
+                  <div className="rrow"><label className="lab" htmlFor="xtitle" style={{ minWidth: 96 }}>X title</label><input id="xtitle" className="inp" value={spec.xTitle} placeholder={spec.enc.x?.f ?? 'X axis'} onChange={(e) => setSpec((x) => ({ ...x, xTitle: e.target.value }))} /></div>
+                  <div className="rrow"><label className="lab" htmlFor="ytitle" style={{ minWidth: 96 }}>Y title</label><input id="ytitle" className="inp" value={spec.yTitle} placeholder={spec.enc.y?.f ?? (spec.mark === 'histogram' ? 'Count' : spec.mark === 'density' ? 'Density' : 'Y axis')} onChange={(e) => setSpec((x) => ({ ...x, yTitle: e.target.value }))} /></div>
+                  <p className="hint">Leave a title empty to use the field name.</p>
+                </>
+              )}
+              {ZERO_MARKS.includes(spec.mark) && <div className="rrow"><span className="lab" style={{ minWidth: 96 }}>{spec.mark === 'scatter' || spec.mark === 'trail' ? 'Axes start at zero' : 'Y axis starts at zero'}</span>{pills<boolean>([[true, 'Yes'], [false, 'No']], spec.zero, (v) => setSpec((x) => ({ ...x, zero: v })), 'Zero baseline')}</div>}
+              {GRID_MARKS.includes(spec.mark) && <div className="rrow"><span className="lab" style={{ minWidth: 96 }}>Gridlines</span>{pills<boolean>([[true, 'Show'], [false, 'Hide']], spec.grid, (v) => setSpec((x) => ({ ...x, grid: v })), 'Gridlines')}</div>}
+              {REF_MARKS.includes(spec.mark) && <div className="rrow"><label className="lab" htmlFor="refin" style={{ minWidth: 96 }}>Reference line</label><input id="refin" className="inp" value={spec.ref} placeholder={spec.mark === 'bar' && spec.enc.x && roleOf(spec.enc.x.f) === 'q' ? 'x value' : 'y value'} onChange={(e) => setSpec((x) => ({ ...x, ref: e.target.value.replace(/[^0-9.-]/g, '') }))} /></div>}
             </>
           )}
+          {spec.mark === 'pie' && (
+            <>
+              <div className="rrow">
+                <span className="lab" style={{ minWidth: 96 }}>Slice order</span>
+                <XSelect className="mini sel2" aria-label="Slice order" value={spec.sort} onChange={(e) => setSpec((x) => ({ ...x, sort: e.target.value as Sort }))}>{SORTS.map((o) => <option key={o.v} value={o.v}>{o.label}</option>)}</XSelect>
+              </div>
+              <div className="rrow"><span className="lab" style={{ minWidth: 96 }}>Group small slices</span>{pills<number>([[0, 'Off'], [2, '< 2%'], [5, '< 5%'], [10, '< 10%']], spec.pie.other, (v) => setSpec((x) => ({ ...x, pie: { ...x.pie, other: v } })), 'Group small slices')}</div>
+              <p className="hint">Slices under that share are folded into one grey Other slice, so a long tail does not crowd the labels.</p>
+              {spec.donut ? (
+                <div className="rrow"><span className="lab" style={{ minWidth: 96 }}>Ring</span>{pills<number>([[72, 'Thin'], [58, 'Medium'], [42, 'Thick']], spec.pie.hole, (v) => setSpec((x) => ({ ...x, pie: { ...x.pie, hole: v } })), 'Ring thickness')}</div>
+              ) : <p className="hint">Switch to Donut on the Chart tab to set the ring thickness.</p>}
+            </>
+          )}
+          {!AXIS_MARKS.includes(spec.mark) && spec.mark !== 'pie' && spec.mark !== 'text' && <p className="hint">This chart has no axes, so there is nothing to set here. Labels and text are on the Style tab.</p>}
           {spec.mark === 'text' && (
             <>
               <div className="rrow"><span className="lab" style={{ minWidth: 96 }}>Cells</span>{pills<CellStyle>([['plain', 'Plain'], ['shade', 'Shade'], ['bars', 'Bars']], spec.table.cells, (v) => setTable({ cells: v }), 'Cell style')}</div>

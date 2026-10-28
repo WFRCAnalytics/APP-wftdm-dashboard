@@ -154,3 +154,17 @@ describe('swapAxes', () => {
     expect(r.ok && [r.spec.enc.x?.f, r.spec.enc.y?.f, r.spec.enc.y?.agg]).toEqual(['mode', 'trips', 'sum'])
   })
 })
+
+describe('text, axis titles and pie options in the configuration', () => {
+  const ctx = { relation: 't:trips', scenarios: ['a'], sql: 'SELECT 1', typeOf: () => 'category' }
+  it('round-trips the tag, alt text, axis titles and pie options, and saves nothing for the defaults', () => {
+    const plain = toConfig(defaultSpec({ mark: 'pie', enc: { color: { f: 'mode' }, size: { f: 'trips', agg: 'sum' } } }), ctx)
+    expect(plain.pie).toBeUndefined()
+    expect(plain.alt).toBeUndefined()
+    expect(plain.axes.titles).toBeUndefined()
+    const spec = defaultSpec({ mark: 'pie', donut: true, axisTitles: true, xTitle: 'Mode', alt: 'Shares', pie: { other: 5, hole: 72 }, enc: { color: { f: 'mode' }, size: { f: 'trips', agg: 'sum' } } })
+    spec.text.tag = { t: 'DRAFT', size: 'xs', b: true, i: false }
+    const r = fromConfig(JSON.stringify(toConfig(spec, ctx)), { scenarios: ['a'], columnsOf: () => [{ name: 'mode' }, { name: 'trips' }] })
+    expect(r.ok && [r.spec.pie, r.spec.alt, r.spec.axisTitles, r.spec.xTitle, r.spec.text.tag.t]).toEqual([{ other: 5, hole: 72 }, 'Shares', true, 'Mode', 'DRAFT'])
+  })
+})

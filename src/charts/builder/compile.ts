@@ -5,7 +5,7 @@
 import type { ChartTheme } from '@/charts/types'
 import { buildPivot, type PivotTable } from '@/charts/builder/pivot'
 import { chartRole, type DataType, type Role } from '@/charts/builder/columnTypes'
-import { acceptsText, channelLabel, effectiveLabels, isHorizontalBar, RING_CHANNELS, SLOTS, TABLE_COLS, TABLE_ROWS, TABLE_VALUES, ROLE_WORD, type ChartSpec, type Channel, type Sort } from '@/charts/builder/spec'
+import { acceptsText, AXIS_MARKS, channelLabel, effectiveLabels, isHorizontalBar, RING_CHANNELS, SLOTS, TABLE_COLS, TABLE_ROWS, TABLE_VALUES, ROLE_WORD, type ChartSpec, type Channel, type Sort } from '@/charts/builder/spec'
 
 export type Row = Record<string, any>
 export interface Col { name: string; type: DataType }
@@ -276,7 +276,14 @@ export function buildChart(input: BuildInput): ChartModel {
   const horizontal = isHorizontalBar(spec, (f) => roleOf(input.cols, f))
   // labels above bars and points need a little headroom
   const top = (small ? 22 : 10) + (labelMode !== 'off' && ((mark === 'bar' && !horizontal) || mark === 'line') ? (mark === 'bar' && spec.stack === 'group' && series.length > 1 ? 30 : 12) : 0)
-  const frame = (lm?: number) => ({ x0: lm ?? 46, x1: pw - 10, y0: top, y1: ph - 42 })
+  // axis titles need a strip along the bottom and the left edge, which every cartesian mark takes from the same frame
+  const titled = spec.axisTitles && AXIS_MARKS.includes(mark)
+  const frames: { x0: number; x1: number; y0: number; y1: number }[] = []
+  const frame = (lm?: number) => {
+    const f = { x0: (lm ?? 46) + (titled ? 16 : 0), x1: pw - 10, y0: top, y1: ph - 42 - (titled ? 16 : 0) }
+    frames.push(f)
+    return f
+  }
   type P = Panel
   const tx = (o: P, x: number, y: number, t: string | number, anchor: TextP['anchor'] = 'start', size = T.fs, tf = '', fill = T.mute, halo?: string) => o.texts.push({ x: r1(x), y: r1(y), t: String(t), anchor, fill, size, tf, ...(halo ? { halo } : {}) })
   const ln = (o: P, x1: number, y1: number, x2: number, y2: number, stroke: string, sw: number, dash = '') => o.lines.push({ x1: r1(x1), y1: r1(y1), x2: r1(x2), y2: r1(y2), stroke, sw, dash })
@@ -673,13 +680,23 @@ export function buildChart(input: BuildInput): ChartModel {
   } else if (mark === 'pie') {
     const sz = enc.size!.f, agg = enc.size!.agg ?? 'sum'
     for (const pn of panels) {
-      const vals = series.map((s) => Math.max(0, aggregate(pn.prows.filter((r) => skey(r) === s.key).map((r) => r[sz] as number), agg)))
-      const tot = vals.reduce((a, b) => a + b, 0) || 1
-      const cx = pw / 2, cy = (small ? 20 : 0) + (ph - (small ? 20 : 0)) / 2, Rr = Math.max(30, Math.min(pw, ph - (small ? 20 : 0)) / 2 - 30), r0 = spec.donut ? Rr * 0.58 : 0
+      let items = series.map((s) => ({ s, v: Math.max(0, aggregate(pn.prows.filter((r) => skey(r) === s.key).map((r) => r[sz] as number), agg)) }))
+      const tot = items.reduce((a, b) => a + b.v, 0) || 1
+      // slice order: largest or smallest first, or reversed (natural keeps the data's own order)
+      if (spec.sort === 'high') items = items.slice().sort((p, q) => q.v - p.v)
+      else if (spec.sort === 'low') items = items.slice().sort((p, q) => p.v - q.v)
+      else if (spec.sort === 'reverse') items = items.slice().reverse()
+      // slices under the chosen share fold into one grey "Other" slice at the end (a single small slice stays as it is)
+      const tiny = spec.pie.other > 0 ? items.filter((it) => it.v > 0 && (it.v / tot) * 100 < spec.pie.other) : []
+      if (tiny.length > 1) {
+        const grey = T.mix(T.surface, T.ink, 0.55)
+        items = [...items.filter((it) => !tiny.includes(it)), { s: { ...tiny[0].s, key: '\u0000other', label: 'Other', color: grey, fill: grey, pat: false, has: {} }, v: tiny.reduce((a, b) => a + b.v, 0) }]
+      }
+      const cx = pw / 2, cy = (small ? 20 : 0) + (ph - (small ? 20 : 0)) / 2, Rr = Math.max(30, Math.min(pw, ph - (small ? 20 : 0)) / 2 - 30), r0 = spec.donut ? Rr * (spec.pie.hole / 100) : 0
       let a = -Math.PI / 2
-      vals.forEach((v, i) => {
+      items.forEach(({ s, v }) => {
         if (v <= 0) return
-        const s = series[i], f = v / tot, a1 = a + f * 2 * Math.PI, am = (a + a1) / 2
+        const f = v / tot, a1 = a + f * 2 * Math.PI, am = (a + a1) / 2
         const P0 = (rad: number, ang: number): [number, number] => [r1(cx + rad * Math.cos(ang)), r1(cy + rad * Math.sin(ang))]
         let d: string
         if (f > 0.9999) d = `M${r1(cx - Rr)} ${r1(cy)}a${r1(Rr)} ${r1(Rr)} 0 1 0 ${r1(2 * Rr)} 0a${r1(Rr)} ${r1(Rr)} 0 1 0 ${r1(-2 * Rr)} 0`
@@ -1032,6 +1049,15 @@ export function buildChart(input: BuildInput): ChartModel {
     }
     if (enc.dash) { const df = enc.dash.f; legend.push({ title: df, items: dom[df].map((v, i) => item(df, v, { d: 'M1 7h16', stroke: T.mute, sw: 2.2, dash: DASH[i % 5] })) }) }
     if (enc.shape) { const sf = enc.shape.f; legend.push({ title: sf, items: dom[sf].map((v, i) => { const g = glyph(i % 5, 9, 7, 4.2); return item(sf, v, { d: g.d, fill: g.line ? 'none' : T.mute, stroke: g.line ? T.mute : 'none', sw: 2 }) }) }) }
+  }
+  // axis titles: the chosen text, else the field on that axis (a histogram counts rows, a density estimates density)
+  if (titled && frames.length === panels.length) {
+    const xn = spec.xTitle.trim() || enc.x?.f || '', yn = spec.yTitle.trim() || enc.y?.f || (mark === 'histogram' ? 'Count' : mark === 'density' ? 'Density' : '')
+    panels.forEach((pn, i) => {
+      const f = frames[i], my = (f.y0 + f.y1) / 2
+      if (xn) tx(pn, (f.x0 + f.x1) / 2, ph - 6, xn, 'middle', T.fs, '', T.ink)
+      if (yn) tx(pn, 12, my, yn, 'middle', T.fs, `rotate(-90 12 ${r1(my)})`, T.ink)
+    })
   }
   return { panels: panels.map(({ tf, title, rects, paths, lines, texts }) => ({ tf, title, rects, paths, lines, texts })), legend, defs, W, H, rows: rows.length, limitedSeries, ...(labelsHidden ? { labelsHidden } : {}), ...(trees.length ? { trees } : {}), ...(sankeys.length ? { sankeys } : {}), ...(tables.length ? { tables } : {}) }
 }

@@ -298,3 +298,44 @@ describe('bar charts lying down', () => {
     expect(grouped.panels[0].texts.some((t) => t.t.startsWith('Reference'))).toBe(true)
   })
 })
+
+describe('axis titles and pie options', () => {
+  const texts = (m: Drawn) => m.panels.flatMap((p) => p.texts)
+  const bar = { mark: 'bar' as const, enc: { x: { f: 'mode' }, y: { f: 'trips', agg: 'sum' as const } } }
+  it('draw axis titles only when asked, under the axis and along the left edge', () => {
+    expect(texts(ok(build(bar))).some((t) => t.t === 'trips')).toBe(false)
+    const m = ok(build({ ...bar, axisTitles: true }))
+    const x = texts(m).find((t) => t.t === 'mode')!, y = texts(m).find((t) => t.t === 'trips')!
+    expect(x.anchor).toBe('middle')
+    expect(y.tf).toContain('rotate(-90')
+    // the titles sit outside the plot area, so the bars are still drawn clear of them
+    expect(Math.max(...m.panels[0].rects.map((r) => r.y + r.h))).toBeLessThan(x.y - 10)
+    expect(Math.min(...m.panels[0].rects.map((r) => r.x))).toBeGreaterThan(y.x + 6)
+  })
+  it('use the typed title in place of the field name, and Count for a histogram', () => {
+    expect(texts(ok(build({ ...bar, axisTitles: true, xTitle: 'Travel mode' }))).some((t) => t.t === 'Travel mode')).toBe(true)
+    expect(texts(ok(build({ mark: 'histogram', axisTitles: true, enc: { x: { f: 'hour' } } }))).some((t) => t.t === 'Count')).toBe(true)
+  })
+  it('never put axis titles on a chart without axes', () => {
+    const pie = { mark: 'pie' as const, axisTitles: true, enc: { color: { f: 'mode' }, size: { f: 'trips', agg: 'sum' as const } } }
+    expect(texts(ok(build(pie))).some((t) => t.t === 'trips')).toBe(false)
+  })
+  const uneven: Row[] = [['A', 100], ['B', 60], ['C', 3], ['D', 2]].map(([mode, trips]) => ({ scenario: 'a', mode, hour: 0, trips, notes: 'x' }))
+  const pie = { mark: 'pie' as const, enc: { color: { f: 'mode' }, size: { f: 'trips', agg: 'sum' as const } } }
+  it('fold small pie slices into one Other slice', () => {
+    expect(ok(build(pie, uneven)).panels[0].paths).toHaveLength(4)
+    const m = ok(build({ ...pie, pie: { other: 5, hole: 58 } }, uneven))
+    expect(m.panels[0].paths).toHaveLength(3)
+    expect(m.panels[0].paths.some((p) => p.tip.startsWith('Other~'))).toBe(true)
+    // a single small slice is not renamed
+    const one = ok(build({ ...pie, pie: { other: 2.5, hole: 58 } }, uneven.slice(0, 3)))
+    expect(one.panels[0].paths.some((p) => p.tip.startsWith('Other~'))).toBe(false)
+  })
+  it('order slices by size and size the donut hole', () => {
+    const first = (m: Drawn) => m.panels[0].paths[0].tip.split('~')[0]
+    expect(first(ok(build({ ...pie, sort: 'low' }, uneven)))).toBe('D')
+    expect(first(ok(build({ ...pie, sort: 'high' }, uneven)))).toBe('A')
+    const area = (hole: number) => ok(build({ ...pie, donut: true, pie: { other: 0, hole } }, uneven)).panels[0].paths[0].d
+    expect(area(72)).not.toBe(area(42))
+  })
+})

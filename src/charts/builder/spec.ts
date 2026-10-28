@@ -45,7 +45,16 @@ export type Density = 'comfortable' | 'compact'
 export interface TableOpts { cells: CellStyle; density: Density; subtotals: boolean; transpose: boolean }
 export const TABLE_DEFAULTS: TableOpts = { cells: 'plain', density: 'comfortable', subtotals: true, transpose: false }
 export interface TextBlock { t: string; size: TextSize; b: boolean; i: boolean }
-export type TextKey = 'title' | 'sub' | 'src' | 'note'
+export type TextKey = 'tag' | 'title' | 'sub' | 'foot'
+/** Options of the pie and donut: `other` folds slices below that share (percent) into one "Other" slice, `hole` is the donut hole as a percent of the radius. */
+export interface PieOpts { other: number; hole: number }
+export const PIE_DEFAULTS: PieOpts = { other: 0, hole: 58 }
+/** Marks drawn on x and y axes, so axis titles, gridlines and the rest of the Axes tab mean something for them. */
+export const AXIS_MARKS: readonly Mark[] = ['bar', 'line', 'area', 'scatter', 'heatmap', 'histogram', 'box', 'tick', 'density', 'rule', 'trail']
+/** Of those, the ones that can start their value axis at zero, draw gridlines, and take a reference line. */
+export const ZERO_MARKS: readonly Mark[] = ['line', 'scatter', 'box', 'trail']
+export const GRID_MARKS: readonly Mark[] = AXIS_MARKS.filter((m) => m !== 'heatmap')
+export const REF_MARKS: readonly Mark[] = ['bar', 'line', 'area', 'scatter', 'histogram', 'box', 'density']
 
 export interface ChartSpec {
   mark: Mark
@@ -59,6 +68,15 @@ export interface ChartSpec {
   table: TableOpts
   labels?: LabelMode
   ref: string
+  /** Axis titles on the drawing; blank titles use the field name. */
+  axisTitles: boolean
+  xTitle: string
+  yTitle: string
+  pie: PieOpts
+  /** A plain-language description of the chart, for people who cannot see it. */
+  alt: string
+  /** Which bottom corner the footer sits in. */
+  footAlign: 'left' | 'right'
   text: Record<TextKey, TextBlock>
 }
 
@@ -151,10 +169,10 @@ export const channelAggregates = (mark: Mark, ch: Channel): boolean => defaultAg
 
 export function defaultSpec(over: Partial<ChartSpec> = {}): ChartSpec {
   return {
-    mark: 'bar', donut: false, stack: 'group', sort: 'natural', enc: {}, filter: { f: '', v: '' }, zero: false, grid: true, table: { ...TABLE_DEFAULTS }, ref: '',
+    mark: 'bar', donut: false, stack: 'group', sort: 'natural', enc: {}, filter: { f: '', v: '' }, zero: false, grid: true, table: { ...TABLE_DEFAULTS }, ref: '', axisTitles: false, xTitle: '', yTitle: '', pie: { ...PIE_DEFAULTS }, alt: '', footAlign: 'left',
     text: {
-      title: { t: '', size: 'lg', b: true, i: false }, sub: { t: '', size: 'md', b: false, i: false },
-      src: { t: '', size: 'xs', b: false, i: true }, note: { t: '', size: 'xs', b: false, i: false },
+      tag: { t: '', size: 'xs', b: true, i: false }, title: { t: '', size: 'lg', b: true, i: false }, sub: { t: '', size: 'md', b: false, i: false },
+      foot: { t: '', size: 'xs', b: false, i: true },
     },
     ...over,
   }
@@ -223,16 +241,23 @@ export interface ChartConfig {
   encoding: Partial<Record<Channel, { field: string; type?: string; aggregate?: Agg; show?: ShowAs; decimals?: number; prefix?: string; suffix?: string }>>
   stack: Stack
   filter: { field: string; op: '='; value: string }[]
-  axes: { zeroBaseline: boolean; gridlines: boolean; referenceLine: number | null; sort?: Sort }
+  axes: { zeroBaseline: boolean; gridlines: boolean; referenceLine: number | null; sort?: Sort; titles?: { x: string; y: string } }
+  /** Only the options that differ from the defaults. */
+  pie?: Partial<PieOpts>
+  alt?: string
+  /** Only when the footer sits bottom right. */
+  footerAlign?: 'right'
   /** Only the options that differ from the defaults. */
   table?: Partial<TableOpts>
   labels?: LabelMode
-  text: Partial<Record<'title' | 'subtitle' | 'source' | 'note', { text: string; size: TextSize; weight: 'normal' | 'bold'; italic: boolean }>>
+  text: Partial<Record<'tag' | 'title' | 'subtitle' | 'footer' | 'source' | 'note', { text: string; size: TextSize; weight: 'normal' | 'bold'; italic: boolean }>>
 }
 
-const TEXT_KEYS: [TextKey, 'title' | 'subtitle' | 'source' | 'note'][] = [['title', 'title'], ['sub', 'subtitle'], ['src', 'source'], ['note', 'note']]
+const TEXT_KEYS: [TextKey, 'tag' | 'title' | 'subtitle' | 'footer'][] = [['tag', 'tag'], ['title', 'title'], ['sub', 'subtitle'], ['foot', 'footer']]
 
 const tableDiff = (t: TableOpts): Partial<TableOpts> => Object.fromEntries(Object.entries(t).filter(([k, v]) => v !== TABLE_DEFAULTS[k as keyof TableOpts])) as Partial<TableOpts>
+
+const pieDiff = (p: PieOpts): Partial<PieOpts> => Object.fromEntries(Object.entries(p).filter(([k, v]) => v !== PIE_DEFAULTS[k as keyof PieOpts])) as Partial<PieOpts>
 
 export function toConfig(spec: ChartSpec, ctx: { relation: string; scenarios: string[]; sql: string; typeOf(field: string): string | undefined }): ChartConfig {
   const encoding: ChartConfig['encoding'] = {}
@@ -251,7 +276,10 @@ export function toConfig(spec: ChartSpec, ctx: { relation: string; scenarios: st
     mark: spec.mark + (spec.mark === 'pie' && spec.donut ? ':donut' : ''),
     encoding, stack: spec.stack,
     filter: spec.filter.f ? [{ field: spec.filter.f, op: '=', value: spec.filter.v }] : [],
-    axes: { zeroBaseline: spec.zero, gridlines: spec.grid, referenceLine: spec.ref === '' ? null : Number(spec.ref), ...(spec.sort !== 'natural' ? { sort: spec.sort } : {}) },
+    axes: { zeroBaseline: spec.zero, gridlines: spec.grid, referenceLine: spec.ref === '' ? null : Number(spec.ref), ...(spec.sort !== 'natural' ? { sort: spec.sort } : {}), ...(spec.axisTitles ? { titles: { x: spec.xTitle, y: spec.yTitle } } : {}) },
+    ...(Object.keys(pieDiff(spec.pie)).length ? { pie: pieDiff(spec.pie) } : {}),
+    ...(spec.alt ? { alt: spec.alt } : {}),
+    ...(spec.footAlign === 'right' ? { footerAlign: 'right' as const } : {}),
     ...(Object.keys(tableDiff(spec.table)).length ? { table: tableDiff(spec.table) } : {}),
     ...(spec.labels ? { labels: spec.labels } : {}),
     text,
@@ -307,11 +335,19 @@ export function fromConfig(text: string, ctx: ImportContext): ImportResult {
     mark, donut, enc, stack: c.stack ?? 'group', sort: sort ?? 'natural',
     filter: c.filter?.[0] ? { f: c.filter[0].field, v: String(c.filter[0].value) } : { f: '', v: '' },
     zero: c.axes?.zeroBaseline === true, grid: c.axes?.gridlines !== false,
+    axisTitles: !!c.axes?.titles, xTitle: String(c.axes?.titles?.x ?? ''), yTitle: String(c.axes?.titles?.y ?? ''),
+    pie: { ...PIE_DEFAULTS, ...(typeof c.pie?.other === 'number' ? { other: c.pie.other } : {}), ...(typeof c.pie?.hole === 'number' ? { hole: c.pie.hole } : {}) },
+    alt: typeof c.alt === 'string' ? c.alt : '', footAlign: c.footerAlign === 'right' ? 'right' : 'left',
     ref: c.axes?.referenceLine === null || c.axes?.referenceLine === undefined ? '' : String(c.axes.referenceLine),
   })
   for (const [k, name] of TEXT_KEYS) {
     const t = c.text?.[name]
     if (t) spec.text[k] = { t: t.text ?? '', size: t.size ?? spec.text[k].size, b: t.weight === 'bold', i: !!t.italic }
+  }
+  // charts saved before the footer was one line had a source and a note: they become one footer
+  if (!c.text?.footer) {
+    const old = [c.text?.source, c.text?.note].filter((t): t is NonNullable<typeof t> => !!t?.text)
+    if (old.length) spec.text.foot = { t: old.map((t) => t.text).join(' \u00b7 '), size: old[0].size ?? 'xs', b: old[0].weight === 'bold', i: !!old[0].italic }
   }
   return { ok: true, spec, relation, scenarios }
 }
