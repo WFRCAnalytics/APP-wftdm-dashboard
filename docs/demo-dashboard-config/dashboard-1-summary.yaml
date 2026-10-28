@@ -63,7 +63,7 @@ layout:
     - id: mix
       type: multi-view
       title: "Trips by purpose and mode"
-      description: "Daily trips for the focus scenario. Hover a mode to trace it across every chart."
+      description: "Daily trips by purpose and mode. Hover a mode to trace it across every chart."
       height: 430
       width: 0.5833
       group_by:
