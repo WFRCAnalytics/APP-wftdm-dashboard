@@ -227,7 +227,8 @@ Not drafted here, on purpose: how the charts find the deployer's tables and colu
    boot-skeleton plugin and the docs read it, so adding a key is one edit.
 5. Load the file at runtime, then the cascade. Report unknown keys and wrong values the way the Explore options do (a visible note for the
    deployer, console detail).
-6. Migration: still read the old `index.json` keys for one version and warn that they moved; then drop them.
+6. ~~Migration~~ Dropped: no backward compatibility for now (section 7, Versioning). The old `index.json` settings keys are removed when
+   the YAML loader lands.
 7. Document it in `GRAMMAR.md` and publish a JSON Schema file for editors (Python and R can validate with it before writing).
 
 **Phase C: viewer-facing settings**
@@ -337,10 +338,16 @@ Nothing below changes code. Each topic is settled before anything is built.
 6. **Variables** (Quarto's `_variables.yml`). Not enough known yet; research, then decide.
 
 **Not yet discussed**
-- **Versioning:** a `version:` key and how long old keys keep working.
-- **Secrets:** what must never go in config (assistant and map keys end up public in a static site). Open questions 5 and 6 of the
-  earlier list (assistant keys, self-hosted fonts) belong here and with the `network` block.
-- **Names:** `snake_case` keys as drafted? Nested `logo: { light, dark }`? (Brand.yml's own names may settle this.)
+- **Versioning: decided.** `version: 1` stays in the file. There is **no backward compatibility** for now: the app has one user, so keys
+  move without a migration and old `index.json` settings are simply dropped (this removes Phase B step 6). Revisit when a second
+  deployment exists.
+- **Secrets: decided.** The deployer's config never holds a secret. The assistant token and any API key are entered by the viewer for the
+  session and kept in memory only, so nothing secret is deployed. The one exception to consider is a **referrer- or CORS-restricted map
+  key** (for example a hosted Protomaps/PMTiles key limited to the site's domain): it is public by nature but useless elsewhere, so it
+  may stay a config key. `check` should warn about anything that looks like an unrestricted key. The `network` block (self-hosted
+  fonts and the like) is still to be designed.
+- **Names: decided.** `snake_case` keys and nested `logo: { light, dark }` / `colors: {...}`, as drafted. Brand.yml's own names win where
+  the brand file is read.
 - **Per-scenario file listing: decided** (see the project-folder topic above). `dashboard-manifest.yaml` at each scenario's root replaces
   both `scenarios/index.json` and `summary/index.json`, and `manifest.yaml` is retired. Its per-file contents wait for the full WFRC
   model run. When it is built, the sentences in constitution Principle VII that mention `manifest.yaml` and `index.json` are updated.
@@ -348,7 +355,7 @@ Nothing below changes code. Each topic is settled before anything is built.
   `dashboard-manifest.yaml`. Nothing discovers files by that pattern any more (everything is listed explicitly), but a docs
   sentence, a script or a glob that says "all `dashboard-*.yaml`" would catch all three. The `check` command should recognise a file by
   its role, not by a pattern. If it ever causes confusion, renaming the pages is the cheaper change.
-- **Compatibility:** do existing deployments rely on the demo fallback, so Phase A needs a notice or a version bump?
+- **Compatibility: decided.** No notice or version bump is needed for Phase A; see Versioning above.
 
 **Questions raised by the decisions above**
 - **What is the core?** (Language decided for now: TypeScript.) The `check` command, schema validation and the cascade resolver need one
