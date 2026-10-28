@@ -460,3 +460,6 @@
 .xb .fchip.lifted{opacity:.45}
 .xb .dz{position:relative}
 .xb .dz::after{content:attr(data-drop);position:absolute;inset:8px;z-index:20;display:grid;place-items:center;padding:0 24px;text-align:center;border:2px dashed color-mix(in srgb,var(--brand) 55%,transparent);border-radius:18px;background:color-mix(in srgb,var(--surface) 84%,transparent);color:var(--ink);font-size:13px;font-weight:600;pointer-events:none}
+
+.xb .swapw{display:inline-flex}
+.xb .swapw[data-tip]:hover::after{white-space:normal;width:max-content;max-width:300px;text-align:left}

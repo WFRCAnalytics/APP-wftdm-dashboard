@@ -2,7 +2,8 @@
 // totals, bins and box statistics are computed over the full data and only a small result reaches the browser. Pure.
 // The result rows keep the source field names, so `compile.ts` reads them unchanged: an aggregated measure comes back in a
 // column named like the field it summarises, with its aggregate already applied (the compiler is told to total a single value).
-import { TABLE_COLS, TABLE_ROWS, TABLE_VALUES, type Channel, type ChartSpec, type FieldDef } from '@/charts/builder/spec'
+import { isHorizontalBar, TABLE_COLS, TABLE_ROWS, TABLE_VALUES, type Channel, type ChartSpec, type FieldDef } from '@/charts/builder/spec'
+import type { Role } from '@/charts/builder/columnTypes'
 
 export const ROW_CAP = 50_000
 export const SCATTER_SAMPLE = 5_000
@@ -51,7 +52,7 @@ function resetAgg(spec: ChartSpec, ch: Channel): ChartSpec {
   return e ? { ...spec, enc: { ...spec.enc, [ch]: { ...e, agg: 'sum' } } } : spec
 }
 
-export function chartQuery(spec: ChartSpec, relSql: string): ChartQuery {
+export function chartQuery(spec: ChartSpec, relSql: string, roleOf: (field: string) => Role = () => ''): ChartQuery {
   const rel = `(\n${relSql.replace(/[;\s]+$/, '')}\n) AS r`
   const where = whereClause(spec)
   const ser = seriesFields(spec), fac = facetFields(spec)
@@ -62,6 +63,11 @@ export function chartQuery(spec: ChartSpec, relSql: string): ChartQuery {
     return `SELECT ${[...d.map(q), `${measure} AS ${q(name)}`].join(', ')}\nFROM ${rel}\n${where}\nGROUP BY ${d.map(q).join(', ')}\n${cap}`
   }
 
+  if (mark === 'bar' && isHorizontalBar(spec, roleOf)) {
+    // horizontal bars: the number is on X, the category on Y
+    const v = spec.enc.x!
+    return { mode: 'aggregated', sql: grouped([spec.enc.y!.f, ...ser, ...fac], aggExpr(v), v.f), spec: resetAgg(spec, 'x') }
+  }
   if (mark === 'bar' || mark === 'line' || mark === 'area' || mark === 'radar') {
     const y = spec.enc.y!
     return { mode: 'aggregated', sql: grouped([spec.enc.x!.f, ...ser, ...fac], aggExpr(y), y.f), spec: resetAgg(spec, 'y') }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { assignField, defaultSpec, fromConfig, switchMark, toConfig } from '../../src/charts/builder/spec.ts'
+import { assignField, defaultSpec, fromConfig, swapAxes, switchMark, toConfig } from '../../src/charts/builder/spec.ts'
 import { suggest } from '../../src/charts/builder/rules.ts'
 import type { Role } from '../../src/charts/builder/columnTypes.ts'
 
@@ -12,7 +12,7 @@ describe('assignField', () => {
     expect(r.ok && r.spec.enc.y).toEqual({ f: 'trips', agg: 'sum' })
   })
   it('refuses a role the channel does not take, with the reason', () => {
-    const r = assignField(defaultSpec(), 'y', 'mode', 'category', 'n')
+    const r = assignField(defaultSpec({ mark: 'box' }), 'y', 'mode', 'category', 'n')
     expect(r).toEqual({ ok: false, reason: 'mode is a category. Y axis takes a number.' })
   })
   it('refuses text columns because they have no chart role yet', () => {
@@ -101,5 +101,56 @@ describe('configuration', () => {
   it('reports a relation that does not exist', () => {
     const r = fromConfig(JSON.stringify({ ...cfg, data: { relation: 't:gone', source: { scenarios: ['a'], sql: '' } } }), ctx)
     expect(!r.ok && r.errors[0]).toContain('t:gone is not a table here')
+  })
+})
+
+describe('data labels in a saved chart', () => {
+  const ctx = { relation: 't:trips', scenarios: ['a'], sql: 'SELECT 1', typeOf: () => 'category' }
+  const ictx = { scenarios: ['a'], columnsOf: () => [{ name: 'mode' }, { name: 'trips' }] }
+  it('are saved only when chosen, and come back', () => {
+    const plain = toConfig(defaultSpec({ mark: 'bar', enc: { x: { f: 'mode' }, y: { f: 'trips', agg: 'sum' } } }), ctx)
+    expect('labels' in plain).toBe(false)
+    const spec = defaultSpec({ mark: 'bar', labels: 'value', enc: { x: { f: 'mode' }, y: { f: 'trips', agg: 'sum' } } })
+    const r = fromConfig(JSON.stringify(toConfig(spec, ctx)), ictx)
+    expect(r.ok && r.spec.labels).toBe('value')
+  })
+  it('reject a mode that does not exist', () => {
+    const cfg = { ...toConfig(defaultSpec({ mark: 'bar', enc: { x: { f: 'mode' }, y: { f: 'trips', agg: 'sum' } } }), ctx), labels: 'sideways' }
+    const r = fromConfig(JSON.stringify(cfg), ictx)
+    expect(!r.ok && r.errors.join(' ')).toContain('labels: "sideways"')
+  })
+})
+
+describe('swapAxes', () => {
+  const info = (f: string) => (f === 'trips' || f === 'hour' ? { type: 'integer' as const, role: 'q' as const } : { type: 'category' as const, role: 'n' as const })
+  it('turns columns into bars lying down, and back', () => {
+    const r = swapAxes(defaultSpec({ mark: 'bar', enc: { x: { f: 'mode' }, y: { f: 'trips', agg: 'sum' } } }), info)
+    expect(r.ok && [r.spec.enc.x?.f, r.spec.enc.y?.f, r.spec.enc.x?.agg]).toEqual(['trips', 'mode', 'sum'])
+    const back = r.ok ? swapAxes(r.spec, info) : r
+    expect(back.ok && [back.spec.enc.x?.f, back.spec.enc.y?.f]).toEqual(['mode', 'trips'])
+  })
+  it('refuses to put a number on a category-only axis, and says why', () => {
+    const r = swapAxes(defaultSpec({ mark: 'box', enc: { x: { f: 'mode' }, y: { f: 'trips' } } }), info)
+    expect(r.ok).toBe(false)
+    expect(!r.ok && r.reason).toContain("Can't swap")
+    expect(!r.ok && r.reason).toContain('takes')
+  })
+  it('swaps two numbers on a scatter plot', () => {
+    const r = swapAxes(defaultSpec({ mark: 'scatter', enc: { x: { f: 'hour' }, y: { f: 'trips' } } }), info)
+    expect(r.ok && [r.spec.enc.x?.f, r.spec.enc.y?.f]).toEqual(['trips', 'hour'])
+  })
+  it('swaps two categories on a heatmap or a table', () => {
+    const r = swapAxes(defaultSpec({ mark: 'heatmap', enc: { x: { f: 'mode' }, y: { f: 'scenario' }, color: { f: 'trips', agg: 'sum' } } }), info)
+    expect(r.ok && [r.spec.enc.x?.f, r.spec.enc.y?.f]).toEqual(['scenario', 'mode'])
+  })
+  it('moves a lone field only where its role fits, and refuses a mark that has no such shelf', () => {
+    expect(swapAxes(defaultSpec({ mark: 'box', enc: { y: { f: 'trips' } } }), info).ok).toBe(false)
+    const h = swapAxes(defaultSpec({ mark: 'histogram', enc: { x: { f: 'trips' } } }), info)
+    expect(!h.ok && h.reason).toContain('not used by this chart')
+    expect(swapAxes(defaultSpec({ mark: 'bar' }), info).ok).toBe(false)
+  })
+  it('keeps a number aggregate where the new shelf still uses one', () => {
+    const r = swapAxes(defaultSpec({ mark: 'bar', enc: { x: { f: 'trips', agg: 'sum' }, y: { f: 'mode' } } }), info)
+    expect(r.ok && [r.spec.enc.x?.f, r.spec.enc.y?.f, r.spec.enc.y?.agg]).toEqual(['mode', 'trips', 'sum'])
   })
 })

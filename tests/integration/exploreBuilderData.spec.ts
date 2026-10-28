@@ -242,6 +242,70 @@ test.describe('DuckDB computes the chart data for every mark', () => {
     await expect(page.locator('.xb .plot.pivot table')).toBeVisible()
     expect(errors).toEqual([])
   })
+  test('a bar chart lies down when its number is on X, and Swap x and y flips it, within the placement rules', async ({ page }) => {
+    const errors: string[] = []
+    await textTable(page, errors)
+    await page.locator('.xb .mk', { hasText: 'Bar' }).click()
+    await place(page, 'primary_purpose', 'X axis')
+    await place(page, 'trips', 'Y axis')
+    await drawn(page)
+    const bars = page.locator('.xb svg.plot rect[data-t]')
+    const first = async () => (await bars.first().boundingBox())!
+    // columns: taller than wide
+    const col = await first()
+    expect(col.height).toBeGreaterThan(col.width)
+    // swap: the number goes to X and the same bars lie down
+    await page.getByRole('button', { name: 'Swap x and y' }).click()
+    await expect(page.locator('.xb .strip .sp', { hasText: 'X axis' })).toContainText('trips')
+    await expect(page.locator('.xb .strip .sp', { hasText: 'Y axis' })).toContainText('primary_purpose')
+    await expect.poll(async () => { const b = await first(); return b.width > b.height }).toBe(true)
+    await page.getByRole('button', { name: 'Swap x and y' }).click()
+    await expect.poll(async () => { const b = await first(); return b.height > b.width }).toBe(true)
+    // two numbers (or two categories) are not a bar chart, and the chart says so
+    await page.getByRole('button', { name: /Remove primary_purpose from X axis/ }).click()
+    await place(page, 'trips', 'X axis')
+    await expect(page.getByText(/both numbers/)).toBeVisible()
+    // a chart type with a category-only axis refuses the swap and says why
+    await page.getByRole('button', { name: /Remove trips from X axis/ }).click()
+    await place(page, 'primary_purpose', 'X axis')
+    await page.locator('.xb .mk', { hasText: 'Box' }).click()
+    await expect(page.getByRole('button', { name: 'Swap x and y' })).toBeDisabled()
+    await expect(page.locator('.xb .swapw')).toHaveAttribute('data-tip', /Can't swap/)
+    expect(errors).toEqual([])
+  })
+  test('data labels on a bar chart and a pie come from the Style tab and survive the SVG export', async ({ page }) => {
+    const errors: string[] = []
+    await textTable(page, errors)
+    await page.locator('.xb .mk', { hasText: 'Bar' }).click()
+    await place(page, 'primary_purpose', 'X axis')
+    await place(page, 'trips', 'Y axis')
+    await drawn(page)
+    const labels = page.locator('.xb svg.plot text[stroke]')
+    await expect(labels).toHaveCount(0)
+    await page.locator('.xseg').getByText('Style', { exact: true }).click()
+    await page.getByRole('button', { name: 'Value', exact: true }).click()
+    await expect(labels.first()).toBeVisible()
+    expect(await labels.count()).toBeGreaterThan(5)
+    await page.getByRole('button', { name: 'Export' }).click()
+    const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('dialog', { name: 'Export this chart' }).getByRole('button', { name: 'SVG' }).click()])
+    expect(readFileSync((await download.path())!, 'utf8')).toMatch(/>\d+(\.\d)?k</)
+    await page.getByRole('dialog', { name: 'Export this chart' }).getByRole('button', { name: 'Close' }).click()
+    // the choice carries over to a pie, which also offers a share and both
+    await page.locator('.xseg').getByText('Chart', { exact: true }).click()
+    await page.getByRole('button', { name: 'Clear' }).click()
+    await page.locator('.xb .mk', { hasText: 'Pie' }).click()
+    await place(page, 'major_trip_mode', 'Colour')
+    await place(page, 'trips', 'Slice size')
+    await page.locator('.xseg').getByText('Style', { exact: true }).click()
+    await expect(page.locator('.xb svg.plot text', { hasText: /^\d+(\.\d)?k$/ }).first()).toBeVisible()
+    await page.getByRole('button', { name: 'Share', exact: true }).click()
+    await expect(page.locator('.xb svg.plot text', { hasText: /^\d+%$/ }).first()).toBeVisible()
+    await page.getByRole('button', { name: 'Both', exact: true }).click()
+    await expect(page.locator('.xb svg.plot text', { hasText: /· \d+%/ }).first()).toBeVisible()
+    await page.getByRole('button', { name: 'Off', exact: true }).click()
+    await expect(page.locator('.xb svg.plot text', { hasText: /%/ })).toHaveCount(0)
+    expect(errors).toEqual([])
+  })
   test('a placed field moves between shelves, swaps with an occupied one, goes back to the list, and the list tags it', async ({ page }) => {
     const errors: string[] = []
     await textTable(page, errors)
@@ -263,7 +327,7 @@ test.describe('DuckDB computes the chart data for every mark', () => {
     await page.waitForTimeout(200)
     expect(await boxes()).toEqual(still)
     // the shelf under the pointer says what a drop would do; shelves elsewhere stay quiet
-    const x = page.locator('.xb .strip .sp', { hasText: 'X axis' })
+    const x = page.locator('.xb .strip .sp', { hasText: 'Colour' }) // takes categories only, so a number is refused there
     const y = page.locator('.xb .strip .sp', { hasText: 'Y axis' })
     await x.dispatchEvent('dragenter', { dataTransfer: dt })
     await expect(x).toHaveAttribute('data-hint', /^Takes .* only$/)

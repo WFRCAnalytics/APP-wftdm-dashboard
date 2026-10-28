@@ -5,7 +5,7 @@
 import type { ChartTheme } from '@/charts/types'
 import { buildPivot, type PivotTable } from '@/charts/builder/pivot'
 import { chartRole, type DataType, type Role } from '@/charts/builder/columnTypes'
-import { acceptsText, channelLabel, RING_CHANNELS, SLOTS, TABLE_COLS, TABLE_ROWS, TABLE_VALUES, ROLE_WORD, type ChartSpec, type Channel, type Sort } from '@/charts/builder/spec'
+import { acceptsText, channelLabel, effectiveLabels, isHorizontalBar, RING_CHANNELS, SLOTS, TABLE_COLS, TABLE_ROWS, TABLE_VALUES, ROLE_WORD, type ChartSpec, type Channel, type Sort } from '@/charts/builder/spec'
 
 export type Row = Record<string, any>
 export interface Col { name: string; type: DataType }
@@ -13,7 +13,7 @@ export interface Col { name: string; type: DataType }
 export interface RectP { x: number; y: number; w: number; h: number; rx: number; fill: string; stroke: string; op: number; tip: string }
 export interface PathP { d: string; fill: string; stroke: string; sw: number; dash: string; op: number; tip: string }
 export interface LineP { x1: number; y1: number; x2: number; y2: number; stroke: string; sw: number; dash: string }
-export interface TextP { x: number; y: number; t: string; anchor: 'start' | 'middle' | 'end'; fill: string; size: number; tf: string }
+export interface TextP { x: number; y: number; t: string; anchor: 'start' | 'middle' | 'end'; fill: string; size: number; tf: string; /** A ring of this colour round the letters, for text drawn over a chart. */ halo?: string }
 export interface Panel { tf: string; title: string; rects: RectP[]; paths: PathP[]; lines: LineP[]; texts: TextP[] }
 export interface LegendItem { label: string; key: string; d: string; fill: string; stroke: string; sw: number; dash: string }
 export interface LegendGroup { title: string; items: LegendItem[] }
@@ -28,7 +28,7 @@ export interface SNode { name: string; v: number; color: string; tip: string }
 export interface HSankey { tf: string; title: string; w: number; h: number; small: boolean; from: SNode[]; to: SNode[]; flows: { f: string; t: string; v: number; tip: string }[] }
 export type ChartModel =
   | { problem: string }
-  | { problem?: undefined; panels: Panel[]; legend: LegendGroup[]; defs: PatternDef[]; W: number; H: number; rows: number; limitedSeries: boolean; trees?: HTree[]; sankeys?: HSankey[]; tables?: PivotTable[] }
+  | { problem?: undefined; panels: Panel[]; legend: LegendGroup[]; defs: PatternDef[]; W: number; H: number; rows: number; limitedSeries: boolean; /** Data labels were asked for but the bars are too narrow to carry them. */ labelsHidden?: boolean; trees?: HTree[]; sankeys?: HSankey[]; tables?: PivotTable[] }
 
 export type DrawnChart = Exclude<ChartModel, { problem: string }>
 
@@ -174,6 +174,11 @@ export function shelfProblem(spec: ChartSpec, cols: Col[]): string | null {
       if (!role || !s.accepts.includes(role)) return `${label} takes ${acceptsText(s.accepts)}, but ${e.f} is ${role ? ROLE_WORD[role as Exclude<Role, ''>] : 'not chartable yet'}. Try Swap x and y, or pick another field.`
     }
   }
+  // a bar chart is one category and one number, in either order (columns, or bars lying down)
+  if (spec.mark === 'bar' && spec.enc.x && spec.enc.y) {
+    const xq = roleOf(cols, spec.enc.x.f) === 'q', yq = roleOf(cols, spec.enc.y.f) === 'q'
+    if (xq === yq) return `A bar chart needs one category and one number. X axis (${spec.enc.x.f}) and Y axis (${spec.enc.y.f}) are both ${xq ? 'numbers' : 'categories'}.`
+  }
   return null
 }
 
@@ -267,10 +272,13 @@ export function buildChart(input: BuildInput): ChartModel {
       title: [rvv, cvv].filter((x) => x !== null).join(' · '), rects: [], paths: [], lines: [], texts: [],
     })
   }))
-  const top = small ? 22 : 10
+  const labelMode = effectiveLabels(spec)
+  const horizontal = isHorizontalBar(spec, (f) => roleOf(input.cols, f))
+  // labels above bars and points need a little headroom
+  const top = (small ? 22 : 10) + (labelMode !== 'off' && ((mark === 'bar' && !horizontal) || mark === 'line') ? (mark === 'bar' && spec.stack === 'group' && series.length > 1 ? 30 : 12) : 0)
   const frame = (lm?: number) => ({ x0: lm ?? 46, x1: pw - 10, y0: top, y1: ph - 42 })
   type P = Panel
-  const tx = (o: P, x: number, y: number, t: string | number, anchor: TextP['anchor'] = 'start', size = T.fs, tf = '', fill = T.mute) => o.texts.push({ x: r1(x), y: r1(y), t: String(t), anchor, fill, size, tf })
+  const tx = (o: P, x: number, y: number, t: string | number, anchor: TextP['anchor'] = 'start', size = T.fs, tf = '', fill = T.mute, halo?: string) => o.texts.push({ x: r1(x), y: r1(y), t: String(t), anchor, fill, size, tf, ...(halo ? { halo } : {}) })
   const ln = (o: P, x1: number, y1: number, x2: number, y2: number, stroke: string, sw: number, dash = '') => o.lines.push({ x1: r1(x1), y1: r1(y1), x2: r1(x2), y2: r1(y2), stroke, sw, dash })
   const pa = (o: P, d: string, fill: string, stroke: string, sw: number, dash: string, opac: number, tip: string) => o.paths.push({ d, fill, stroke, sw, dash, op: opac, tip })
   const rect = (o: P, x: number, y: number, w: number, h: number, s: Series, tip: string, rx = T.r) =>
@@ -280,6 +288,7 @@ export function buildChart(input: BuildInput): ChartModel {
   const trees: HTree[] = []
   const sankeys: HSankey[] = []
   const tables: PivotTable[] = []
+  let labelsHidden = false
   const makeTree = (kind: HTree['kind'], pn: Panel, vals: number[], head: number) => {
     const sz = enc.size!.f, tot = vals.reduce((p, c) => p + c, 0) || 1
     const levels = [enc.color, enc.detail, ...RING_CHANNELS.map((c) => enc[c])].filter((e) => !!e).map((e) => e!.f)
@@ -360,7 +369,7 @@ export function buildChart(input: BuildInput): ChartModel {
   const stackMode = spec.stack
   const pct = (v: number) => `${Math.round(v * 100)}%`
 
-  if (mark === 'bar') {
+  if (mark === 'bar' && !horizontal) {
     const xf = enc.x!.f, yf = enc.y!.f, agg = enc.y!.agg ?? 'sum'
     const cats = sortCategories(uniqSorted(rows, xf), spec.sort, gm(rows, xf, yf, agg), series.map((s) => s.key), stackMode === 'group')
     for (const pn of panels) pn.V = gm(pn.prows, xf, yf, agg)
@@ -374,6 +383,14 @@ export function buildChart(input: BuildInput): ChartModel {
     for (const pn of panels) {
       const bx = frame(), ax = yAx(pn, bx, 0, ymax, stackMode === 'normalize' ? pct : undefined)
       const step = xBand(pn, bx, cats), bw = step * 0.72
+      // grouped bars: labels sit flat above the bars when they all fit their width, turn vertical when the bars are narrow, and are left off when even that does not fit
+      let orient: 'flat' | 'upright' | 'none' = 'none'
+      if (labelMode !== 'off' && stackMode === 'group') {
+        const own = bw / series.length - (series.length > 1 ? 1.5 : 0)
+        const widest = Math.max(0, ...cats.flatMap((c) => series.map((s) => { const v = pn.V!.get(`${c}${s.key}`); return v === undefined ? 0 : fmtCompact(v).length * 6.1 + 2 })))
+        orient = widest <= own ? 'flat' : own >= 9 ? 'upright' : 'none'
+        if (orient === 'none') labelsHidden = true
+      }
       cats.forEach((c, i) => {
         const left = bx.x0 + step * (i + 0.5) - bw / 2
         let tot = 0
@@ -384,6 +401,12 @@ export function buildChart(input: BuildInput): ChartModel {
             const v = pn.V!.get(`${c}\u0002${s.key}`)
             if (v === undefined) return
             rect(pn, left + j * sw + (series.length > 1 ? 0.75 : 0), ax.sy(v), sw - (series.length > 1 ? 1.5 : 0), bx.y1 - ax.sy(v), s, tip(String(c), [[s.label || yf, fmtExact(v)]]))
+            // a data label above the bar
+            if (orient !== 'none') {
+              const cx = left + j * sw + sw / 2, cy = ax.sy(v) - 5, t = fmtCompact(v)
+              if (orient === 'flat') tx(pn, cx, cy, t, 'middle', T.fs - 0.5, '', T.ink, T.surface)
+              else tx(pn, cx + 3.5, cy, t, 'start', T.fs - 1.5, `rotate(-90 ${r1(cx + 3.5)} ${r1(cy)})`, T.ink, T.surface)
+            }
           })
         } else {
           let acc = 0
@@ -391,11 +414,71 @@ export function buildChart(input: BuildInput): ChartModel {
             const v = pn.V!.get(`${c}\u0002${s.key}`) ?? 0, v1 = stackMode === 'normalize' ? (tot ? v / tot : 0) : v
             if (v <= 0) continue
             rect(pn, left, ax.sy(acc + v1), bw, ax.sy(acc) - ax.sy(acc + v1) - (acc > 0 ? 1 : 0), s, tip(String(c), [[s.label || yf, fmtExact(v)], ['share', `${Math.round(tot ? (v / tot) * 100 : 0)}%`]]), 3)
+            // a data label inside the segment, when it is tall and wide enough
+            if (labelMode !== 'off') { const h = ax.sy(acc) - ax.sy(acc + v1), t = fmtCompact(v); if (h >= 16 && t.length * 6.1 <= bw) tx(pn, left + bw / 2, ax.sy(acc + v1) + h / 2 + 4, t, 'middle', T.fs - 0.5, '', s.pat ? T.ink : T.onColor(s.color), s.pat ? T.surface : undefined) }
             acc += v1
           }
         }
       })
       refLine(pn, bx, ax.sy)
+    }
+  } else if (mark === 'bar') {
+    // horizontal bars: the number on X sets each bar's length, the category on Y gives the rows
+    const vf = enc.x!.f, cf = enc.y!.f, agg = enc.x!.agg ?? 'sum'
+    const cats = sortCategories(uniqSorted(rows, cf), spec.sort, gm(rows, cf, vf, agg), series.map((s) => s.key), stackMode === 'group')
+    for (const pn of panels) pn.V = gm(pn.prows, cf, vf, agg)
+    let vmax = 0
+    for (const pn of panels) for (const c of cats) {
+      let sum = 0, mx = 0
+      for (const s of series) { const v = pn.V!.get(`${c}\u0002${s.key}`) ?? 0; sum += v; mx = Math.max(mx, v) }
+      vmax = Math.max(vmax, stackMode === 'group' ? mx : stackMode === 'normalize' ? 1 : sum)
+    }
+    vmax = refMax(vmax) || 1
+    const lm = Math.min(150, Math.max(46, Math.max(...cats.map((c) => String(c).length)) * 6.4 + 14))
+    // room at the right for the labels that follow the bars
+    const rm = labelMode !== 'off' && stackMode === 'group' ? 40 : 0
+    for (const pn of panels) {
+      const bx = { ...frame(lm), x1: pw - 10 - rm }
+      const nt = niceScale(0, vmax, Math.max(3, Math.min(8, Math.round((bx.x1 - bx.x0) / 90))))
+      const sx = (v: number) => bx.x0 + ((v - nt.min) / (nt.max - nt.min || 1)) * (bx.x1 - bx.x0)
+      for (const v of nt.ticks) {
+        if (spec.grid) ln(pn, sx(v), bx.y0, sx(v), bx.y1, T.grid, 1)
+        tx(pn, sx(v), bx.y1 + 18, stackMode === 'normalize' ? pct(v) : fmtTick(v, nt.ticks[1] - nt.ticks[0]), 'middle')
+      }
+      ln(pn, bx.x0, bx.y0, bx.x0, bx.y1, T.line, 1)
+      const band = (bx.y1 - bx.y0) / cats.length, bh = band * 0.72, stride = Math.max(1, Math.ceil(13 / band))
+      cats.forEach((c, i) => {
+        const mid = bx.y0 + band * (i + 0.5), top0 = mid - bh / 2
+        if (i % stride === 0) { const t = String(c); tx(pn, bx.x0 - 8, mid + 4, t.length > 20 ? `${t.slice(0, 19)}\u2026` : t, 'end') }
+        let tot = 0
+        for (const s of series) tot += pn.V!.get(`${c}\u0002${s.key}`) ?? 0
+        if (stackMode === 'group') {
+          const sh = bh / series.length
+          if (labelMode !== 'off' && sh - (series.length > 1 ? 1.5 : 0) < 11) labelsHidden = true
+          series.forEach((s, j) => {
+            const v = pn.V!.get(`${c}\u0002${s.key}`)
+            if (v === undefined) return
+            const y0 = top0 + j * sh + (series.length > 1 ? 0.75 : 0), h = sh - (series.length > 1 ? 1.5 : 0)
+            rect(pn, bx.x0, y0, sx(v) - bx.x0, h, s, tip(String(c), [[s.label || vf, fmtExact(v)]]))
+            if (labelMode !== 'off' && h >= 11) tx(pn, sx(v) + 5, y0 + h / 2 + 4, fmtCompact(v), 'start', T.fs - 0.5, '', T.ink, T.surface)
+          })
+        } else {
+          let acc = 0
+          for (const s of series) {
+            const v = pn.V!.get(`${c}\u0002${s.key}`) ?? 0, v1 = stackMode === 'normalize' ? (tot ? v / tot : 0) : v
+            if (v <= 0) continue
+            const x0 = sx(acc) + (acc > 0 ? 1 : 0), w = sx(acc + v1) - x0
+            rect(pn, x0, top0, w, bh, s, tip(String(c), [[s.label || vf, fmtExact(v)], ['share', `${Math.round(tot ? (v / tot) * 100 : 0)}%`]]), 3)
+            if (labelMode !== 'off') { const t = fmtCompact(v); if (w >= t.length * 6.1 + 8 && bh >= 14) tx(pn, x0 + w / 2, mid + 4, t, 'middle', T.fs - 0.5, '', s.pat ? T.ink : T.onColor(s.color), s.pat ? T.surface : undefined) }
+            acc += v1
+          }
+        }
+      })
+      const rv = Number(spec.ref)
+      if (spec.ref !== '' && !Number.isNaN(rv) && rv >= nt.min && rv <= nt.max) {
+        ln(pn, sx(rv), bx.y0, sx(rv), bx.y1, T.ink, 1.5, '5 4')
+        tx(pn, sx(rv) + 4, bx.y0 + 11, `Reference ${fmtCompact(rv)}`, 'start', T.fs, '', T.ink)
+      }
     }
   } else if (mark === 'line' || mark === 'area') {
     const xf = enc.x!.f, yf = enc.y!.f, agg = enc.y!.agg ?? 'sum', xc = roleOf(cols, xf) === 'q'
@@ -425,6 +508,11 @@ export function buildChart(input: BuildInput): ChartModel {
             d += `${pen ? 'L' : 'M'}${r1(sx(x))} ${r1(ax.sy(v))}`; pen = true
           }
           pa(pn, d, 'none', s.color, 2.4, DASH[s.di % 5], op(s), '')
+          // data labels above the points, thinned out when there are many
+          if (labelMode !== 'off') {
+            const every = Math.max(1, Math.ceil(xs.length / 20))
+            xs.forEach((x, k) => { const v = pn.V!.get(`${x}\u0002${s.key}`); if (v !== undefined && k % every === 0) tx(pn, sx(x), ax.sy(v) - 9, fmtCompact(v), 'middle', T.fs - 0.5, '', T.ink, T.surface) })
+          }
           if (xs.length > 120 && !enc.shape) continue
           for (const x of xs) {
             const v = pn.V!.get(`${x}\u0002${s.key}`)
@@ -601,7 +689,11 @@ export function buildChart(input: BuildInput): ChartModel {
           else d = `M${r1(cx)} ${r1(cy)}L${p0.join(' ')}A${r1(Rr)} ${r1(Rr)} 0 ${lg} 1 ${p1.join(' ')}Z`
         }
         pa(pn, d, s.fill, s.pat ? s.color : T.surface, s.pat ? 1.2 : 2, '', op(s), tip(s.label || 'Slice', [[sz, fmtExact(v)], ['share', `${Math.round(f * 1000) / 10}%`]]))
-        if (f > 0.04) { const lp = P0(Rr + 14, am); tx(pn, lp[0], lp[1] + 4, `${Math.round(f * 100)}%`, Math.cos(am) > 0.2 ? 'start' : Math.cos(am) < -0.2 ? 'end' : 'middle', T.fs, '', T.ink) }
+        if (labelMode !== 'off' && f > 0.04) {
+          const share = `${Math.round(f * 100)}%`, text = labelMode === 'value' ? fmtCompact(v) : labelMode === 'both' ? `${fmtCompact(v)} \u00b7 ${share}` : share
+          const lp = P0(Rr + 14, am)
+          tx(pn, lp[0], lp[1] + 4, text, Math.cos(am) > 0.2 ? 'start' : Math.cos(am) < -0.2 ? 'end' : 'middle', T.fs, '', T.ink)
+        }
         a = a1
       })
       if (spec.donut) { tx(pn, cx, cy + 2, fmtCompact(tot), 'middle', 20, '', T.ink); tx(pn, cx, cy + 20, sz, 'middle') }
@@ -941,5 +1033,5 @@ export function buildChart(input: BuildInput): ChartModel {
     if (enc.dash) { const df = enc.dash.f; legend.push({ title: df, items: dom[df].map((v, i) => item(df, v, { d: 'M1 7h16', stroke: T.mute, sw: 2.2, dash: DASH[i % 5] })) }) }
     if (enc.shape) { const sf = enc.shape.f; legend.push({ title: sf, items: dom[sf].map((v, i) => { const g = glyph(i % 5, 9, 7, 4.2); return item(sf, v, { d: g.d, fill: g.line ? 'none' : T.mute, stroke: g.line ? T.mute : 'none', sw: 2 }) }) }) }
   }
-  return { panels: panels.map(({ tf, title, rects, paths, lines, texts }) => ({ tf, title, rects, paths, lines, texts })), legend, defs, W, H, rows: rows.length, limitedSeries, ...(trees.length ? { trees } : {}), ...(sankeys.length ? { sankeys } : {}), ...(tables.length ? { tables } : {}) }
+  return { panels: panels.map(({ tf, title, rects, paths, lines, texts }) => ({ tf, title, rects, paths, lines, texts })), legend, defs, W, H, rows: rows.length, limitedSeries, ...(labelsHidden ? { labelsHidden } : {}), ...(trees.length ? { trees } : {}), ...(sankeys.length ? { sankeys } : {}), ...(tables.length ? { tables } : {}) }
 }

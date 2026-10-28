@@ -7,8 +7,8 @@ import { buildChart, relabel, type ChartModel, type Col, type DrawnChart } from 
 import { chartRole, DATA_TYPES, TYPE_LABEL, typesPresent, type DataType } from '@/charts/builder/columnTypes'
 import { suggest } from '@/charts/builder/rules'
 import {
-  assignField, acceptsShort, chainOf, CHAINS, SHOW_AS, TABLE_VALUES, ZOOMABLE_MARKS, AGGS, channelAggregates, channelLabel, COMING_SOON, MARK_LABEL, MARKS, SLOTS, SORTS, switchMark, TEXT_SIZES,
-  type Agg, type CellStyle, type Channel, type ChartSpec, type Density, type MeasureFormat, type ShowAs, type TableOpts, type Mark, type Sort, type Stack, type TextKey,
+  assignField, swapAxes, acceptsShort, chainOf, CHAINS, effectiveLabels, LABEL_MARKS, labelModesFor, SHOW_AS, TABLE_VALUES, ZOOMABLE_MARKS, AGGS, channelAggregates, channelLabel, COMING_SOON, MARK_LABEL, MARKS, SLOTS, SORTS, switchMark, TEXT_SIZES,
+  type Agg, type CellStyle, type LabelMode, type Channel, type ChartSpec, type Density, type MeasureFormat, type ShowAs, type TableOpts, type Mark, type Sort, type Stack, type TextKey,
 } from '@/charts/builder/spec'
 import { drawHierarchy, type HierState } from '@/charts/builder/hierarchyDraw'
 import { renderPivots, type PivotState } from '@/charts/builder/pivotDraw'
@@ -199,7 +199,7 @@ function Plot({ model, spec, hot, size, theme }: { model: DrawnChart; spec: Char
           {p.lines.map((l, k) => <line key={k} x1={l.x1} y1={l.y1} x2={l.x2} y2={l.y2} stroke={l.stroke} strokeWidth={l.sw} strokeDasharray={l.dash || undefined} />)}
           {p.rects.map((r, k) => <rect key={k} x={r.x} y={r.y} width={r.w} height={r.h} rx={r.rx} fill={r.fill} stroke={r.stroke} strokeWidth="1" opacity={r.op} data-t={r.tip || undefined} />)}
           {p.paths.map((r, k) => <path key={k} d={r.d} fill={r.fill} stroke={r.stroke} strokeWidth={r.sw} strokeDasharray={r.dash || undefined} strokeLinejoin="round" strokeLinecap="round" opacity={r.op} data-t={r.tip || undefined} />)}
-          {p.texts.map((t, k) => <text key={k} x={t.x} y={t.y} textAnchor={t.anchor} fill={t.fill} fontSize={t.size} transform={t.tf || undefined}>{t.t}</text>)}
+          {p.texts.map((t, k) => <text key={k} x={t.x} y={t.y} textAnchor={t.anchor} fill={t.fill} fontSize={t.size} transform={t.tf || undefined} stroke={t.halo} strokeWidth={t.halo ? 3 : undefined} paintOrder={t.halo ? 'stroke' : undefined} strokeLinejoin={t.halo ? 'round' : undefined}>{t.t}</text>)}
         </g>
       ))}
       </g>
@@ -293,7 +293,9 @@ function ChartCard({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: Cha
     setLanded(to)
     setExplore({ selectedField: null, dragField: null, dragFrom: null, notice: note, noticeBad: false })
   }
-  const swap = () => setSpec((x) => { const e = { ...x.enc }; const a = e.x, b = e.y; delete e.x; delete e.y; if (a) e.y = a; if (b) e.x = b; return { ...x, enc: e } })
+  // Swap follows the same rules as placing a field, so it is offered only when both fields fit their new shelves (and says why when not)
+  const swapped = swapAxes(spec, (f) => { const c = data.cols.find((x) => x.name === f); return c ? { type: c.type, role: chartRole(c.type) } : undefined })
+  const swap = () => { if (swapped.ok) setSpec(() => swapped.spec) }
   const txt = (k: TextKey) => spec.text[k]
   const cls = (k: TextKey) => `sz-${txt(k).size} ${txt(k).b ? 'b' : txt(k).i ? 'i' : 'n'}${txt(k).b && txt(k).i ? ' i' : ''}`
   const drawn = model && model.problem === undefined ? (model as DrawnChart) : null
@@ -325,7 +327,7 @@ function ChartCard({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: Cha
         </div>
         {txt('src').t && <p className={`tb tfoot ${cls('src')}`} style={{ marginTop: 8 }}>{txt('src').t}</p>}
         {txt('note').t && <p className={`tb tfoot ${cls('note')}`} style={{ marginTop: 4 }}>{txt('note').t}</p>}
-        {(data.truncated || drawn?.limitedSeries) && <p className="hint" style={{ marginTop: 4 }}>{data.truncated ? (data.mode === 'raw' ? 'Showing a sample of the points. ' : `Showing the first ${ROW_CAP.toLocaleString('en-US')} groups. `) : ''}{drawn?.limitedSeries ? 'Showing the first 15 values of a legend field.' : ''}</p>}
+        {(data.truncated || drawn?.limitedSeries || drawn?.labelsHidden) && <p className="hint" style={{ marginTop: 4 }}>{data.truncated ? (data.mode === 'raw' ? 'Showing a sample of the points. ' : `Showing the first ${ROW_CAP.toLocaleString('en-US')} groups. `) : ''}{drawn?.limitedSeries ? 'Showing the first 15 values of a legend field.' : ''}{drawn?.labelsHidden ? ' Data labels are hidden: the bars are too thin to carry them. Use fewer groups, or expand the chart.' : ''}</p>}
       </div>
   )
 
@@ -334,7 +336,7 @@ function ChartCard({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: Cha
       <div className="cardhead">
         <span className="ci">{tab.name} · {data.relationName} · {(data.total ?? data.rows.length).toLocaleString('en-US')} rows</span>
         <span className={`cn ${s.noticeBad ? 'bad' : ''}`} role="status">{s.notice}</span>
-        <Btn small onClick={swap}><ArrowLeftRight size={14} aria-hidden="true" />Swap x and y</Btn>
+        <span className="tp swapw" data-tip={swapped.ok ? undefined : swapped.reason}><Btn small disabled={!swapped.ok} onClick={swap}><ArrowLeftRight size={14} aria-hidden="true" />Swap x and y</Btn></span>
         <Btn small onClick={() => { setSpec((x) => ({ ...x, enc: {} })); setExplore({ notice: 'Shelves cleared.', noticeBad: false }) }}>Clear</Btn>
         {getExploreOptions().features.importExport && <Btn small onClick={() => setExportOpen(true)}><Download size={14} aria-hidden="true" />Export</Btn>}
         <Button variant="ghost" size="icon" aria-label={`Expand ${tab.name}`} onClick={() => setBig(true)}><Maximize2 className="h-4 w-4" /></Button>
@@ -453,6 +455,9 @@ function Rail({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: ChartDat
       )}
       {s.railTab === 'style' && (
         <div className="rsec">
+          {LABEL_MARKS.includes(spec.mark) && (
+            <div className="rrow"><span className="lab" style={{ minWidth: 96 }}>Data labels</span>{pills<LabelMode>(labelModesFor(spec.mark).map((o) => [o.v, o.label] as [LabelMode, string]), effectiveLabels(spec), (v) => setSpec((x) => ({ ...x, labels: v })), 'Data labels')}</div>
+          )}
           <p className="hint">Size, weight and italic only. Typeface and colours follow the app theme.</p>
           {([['title', 'Title', 'Add a title'], ['sub', 'Subtitle', 'Add a subtitle'], ['src', 'Source', 'Where the data comes from'], ['note', 'Note', 'Add a note']] as [TextKey, string, string][]).map(([k, label, ph]) => {
             const t = spec.text[k]
@@ -522,7 +527,7 @@ function Rail({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: ChartDat
                 <span className="lab" style={{ minWidth: 96 }}>Sort categories</span>
                 <XSelect className="mini sel2" aria-label="Sort categories" value={spec.sort} onChange={(e) => setSpec((x) => ({ ...x, sort: e.target.value as Sort }))}>{SORTS.map((o) => <option key={o.v} value={o.v}>{o.label}</option>)}</XSelect>
               </div>
-              <p className="hint">{spec.mark === 'bar' ? 'Largest and smallest order the bars by their height.' : 'Works when the X axis is an ordered category or a date, not a number.'}</p>
+              <p className="hint">{spec.mark === 'bar' ? 'Largest and smallest order the bars by their size. Put the number on X to lay the bars down.' : 'Works when the X axis is an ordered category or a date, not a number.'}</p>
             </>
           )}
         </div>

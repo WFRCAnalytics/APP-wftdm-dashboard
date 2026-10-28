@@ -30,11 +30,15 @@ const ok = (m: ChartModel): Drawn => {
 
 describe('shelves', () => {
   it('says what a mark still needs', () => {
-    expect(shelfProblem(defaultSpec({ enc: { x: { f: 'mode' } } }), cols)).toContain('Y axis needs a number')
+    expect(shelfProblem(defaultSpec({ mark: 'box', enc: { x: { f: 'mode' } } }), cols)).toContain('Y axis needs a number')
   })
   it('explains a wrong role and a non-chartable column', () => {
-    expect(shelfProblem(defaultSpec({ enc: { x: { f: 'mode' }, y: { f: 'mode' } } }), cols)).toContain('Y axis takes a number, but mode is a category')
+    expect(shelfProblem(defaultSpec({ mark: 'box', enc: { x: { f: 'mode' }, y: { f: 'mode' } } }), cols)).toContain('Y axis takes a number, but mode is a category')
     expect(shelfProblem(defaultSpec({ enc: { x: { f: 'notes' }, y: { f: 'trips' } } }), cols)).toContain('not chartable yet')
+    // a bar chart is one category and one number, in either order
+    expect(shelfProblem(defaultSpec({ enc: { x: { f: 'mode' }, y: { f: 'scenario' } } }), cols)).toContain('both categories')
+    expect(shelfProblem(defaultSpec({ enc: { x: { f: 'hour' }, y: { f: 'trips' } } }), cols)).toContain('both numbers')
+    expect(shelfProblem(defaultSpec({ enc: { x: { f: 'trips' }, y: { f: 'mode' } } }), cols)).toBeNull()
   })
 })
 
@@ -218,5 +222,79 @@ describe('data handling', () => {
   it('flags more than 15 series', () => {
     const many = Array.from({ length: 20 }, (_, i) => ({ mode: 'Car', trips: 1, scenario: `s${i}`, hour: 0, notes: '' }))
     expect(ok(build({ enc: { x: { f: 'mode' }, y: { f: 'trips' }, color: { f: 'scenario' } } }, many)).limitedSeries).toBe(true)
+  })
+})
+
+describe('data labels', () => {
+  const texts = (m: Drawn) => m.panels[0].texts.map((t) => t.t)
+  const bars = { mark: 'bar' as const, enc: { x: { f: 'mode' }, y: { f: 'trips', agg: 'sum' as const } } }
+  it('are off on bars and lines until asked for', () => {
+    expect(ok(build(bars)).panels[0].texts.some((t) => t.halo)).toBe(false)
+    expect(ok(build({ mark: 'line', enc: { x: { f: 'hour' }, y: { f: 'trips', agg: 'sum' } } })).panels[0].texts.some((t) => t.halo)).toBe(false)
+  })
+  it('put the value above each bar, with a halo so it reads over gridlines', () => {
+    const m = ok(build({ ...bars, labels: 'value' }))
+    const labels = m.panels[0].texts.filter((t) => t.halo)
+    // sum of trips per mode: 4 hours x (10..13) per scenario, both scenarios
+    expect(labels.map((t) => t.t).sort()).toEqual(['112', '112', '112'])
+    expect(labels.every((t) => t.anchor === 'middle')).toBe(true)
+  })
+  it('go inside the segments of a stacked bar when they are tall enough', () => {
+    const m = ok(build({ mark: 'bar', stack: 'stack', labels: 'value', enc: { x: { f: 'scenario' }, y: { f: 'trips', agg: 'sum' }, color: { f: 'mode' } } }))
+    // each mode's trips per scenario: 46 for a, 66 for b
+    expect(m.panels[0].texts.filter((t) => t.t === '46' || t.t === '66')).toHaveLength(6)
+  })
+  it('turn upright over narrow grouped bars, and are left off when even that does not fit', () => {
+    const many = Array.from({ length: 90 }, (_, i) => ({ mode: `m${i}`, trips: 1234567, scenario: 'a', hour: 0, notes: '' }))
+    const m = ok(build({ ...bars, labels: 'value' }, many))
+    expect(m.panels[0].texts.filter((t) => t.halo)).toHaveLength(0)
+    // and the chart says so, so the setting does not look broken
+    expect(m.labelsHidden).toBe(true)
+    expect(ok(build({ ...bars, labels: 'value' })).labelsHidden).toBeUndefined()
+  })
+  it('go above the points of a line, thinned out when there are many', () => {
+    const m = ok(build({ mark: 'line', labels: 'value', enc: { x: { f: 'hour' }, y: { f: 'trips', agg: 'sum' } } }))
+    expect(m.panels[0].texts.filter((t) => t.halo)).toHaveLength(4)
+    const long = Array.from({ length: 100 }, (_, i) => ({ mode: 'Car', trips: i, scenario: 'a', hour: i, notes: '' }))
+    const thin = ok(build({ mark: 'line', labels: 'value', enc: { x: { f: 'hour' }, y: { f: 'trips', agg: 'sum' } } }, long))
+    const shown = thin.panels[0].texts.filter((t) => t.halo).length
+    expect(shown).toBeGreaterThan(0)
+    expect(shown).toBeLessThanOrEqual(20)
+  })
+  it('show a pie slice as a share by default, and as a value, both, or not at all', () => {
+    const pie = { mark: 'pie' as const, enc: { color: { f: 'mode' }, size: { f: 'trips', agg: 'sum' as const } } }
+    expect(texts(ok(build(pie)))).toContain('33%')
+    expect(texts(ok(build({ ...pie, labels: 'value' })))).toContain('112')
+    expect(texts(ok(build({ ...pie, labels: 'both' })))).toContain('112 \u00b7 33%')
+    expect(texts(ok(build({ ...pie, labels: 'off' }))).some((t) => t.endsWith('%'))).toBe(false)
+  })
+})
+
+describe('bar charts lying down', () => {
+  const vertical = { mark: 'bar' as const, enc: { x: { f: 'mode' }, y: { f: 'trips', agg: 'sum' as const } } }
+  const lying = { mark: 'bar' as const, enc: { x: { f: 'trips', agg: 'sum' as const }, y: { f: 'mode' } } }
+  it('draw the same bars wide instead of tall when the number is on X', () => {
+    const v = ok(build(vertical)).panels[0].rects, h = ok(build(lying)).panels[0].rects
+    expect(h).toHaveLength(v.length)
+    expect(h.every((r) => r.h < r.w)).toBe(true)
+    expect(v.every((r) => r.h > r.w)).toBe(true)
+    // a vertical bar's height and a lying bar's length carry the same number
+    expect(Math.max(...h.map((r) => r.w))).toBeGreaterThan(300)
+  })
+  it('keep the category names on the left and the number scale along the bottom', () => {
+    const m = ok(build(lying)).panels[0]
+    expect(m.texts.filter((t) => t.anchor === 'end').map((t) => t.t).sort()).toEqual(['Bus', 'Car', 'Walk'])
+    expect(m.lines.some((l) => l.x1 === l.x2)).toBe(true)
+  })
+  it('say so when a coloured group of bars is too thin to carry labels', () => {
+    const many = ok(build({ mark: 'bar', labels: 'value', enc: { x: { f: 'trips', agg: 'sum' }, y: { f: 'mode' }, color: { f: 'scenario' } } }, Array.from({ length: 200 }, (_, i) => ({ mode: `m${i}`, trips: 5, scenario: i % 2 ? 'a' : 'b', hour: 0, notes: '' }))))
+    expect(many.labelsHidden).toBe(true)
+  })
+  it('stack, label and draw a reference line like standing bars', () => {
+    const stacked = ok(build({ mark: 'bar', stack: 'stack', labels: 'value', enc: { x: { f: 'trips', agg: 'sum' }, y: { f: 'scenario' }, color: { f: 'mode' } } }))
+    expect(stacked.panels[0].texts.filter((t) => t.t === '46' || t.t === '66')).toHaveLength(6)
+    const grouped = ok(build({ ...lying, labels: 'value', ref: '100' }))
+    expect(grouped.panels[0].texts.filter((t) => t.halo).map((t) => t.t)).toEqual(['112', '112', '112'])
+    expect(grouped.panels[0].texts.some((t) => t.t.startsWith('Reference'))).toBe(true)
   })
 })

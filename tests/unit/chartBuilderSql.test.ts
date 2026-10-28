@@ -120,3 +120,16 @@ describe('the compiler reads DuckDB results', () => {
     expect(m.panels[0].rects[0].tip).toContain('median=8')
   })
 })
+
+describe('horizontal bars', () => {
+  const rel = 'SELECT * FROM t'
+  const role = (f: string) => (f === 'v' ? ('q' as const) : ('n' as const))
+  it('group by the category on Y and total the number on X', () => {
+    const h = chartQuery(defaultSpec({ mark: 'bar', enc: { x: { f: 'v', agg: 'mean' }, y: { f: 'g' } } }), rel, role)
+    expect(h.sql.replace(/\s+/g, ' ')).toContain('SELECT "g", AVG(CAST("v" AS DOUBLE)) AS "v"')
+    expect(h.spec.enc.x?.agg).toBe('sum')
+    const v = chartQuery(defaultSpec({ mark: 'bar', enc: { x: { f: 'g' }, y: { f: 'v', agg: 'mean' } } }), rel, role)
+    expect(v.sql.replace(/\s+/g, ' ')).toContain('SELECT "g", AVG(CAST("v" AS DOUBLE)) AS "v"')
+    expect(v.spec.enc.y?.agg).toBe('sum')
+  })
+})

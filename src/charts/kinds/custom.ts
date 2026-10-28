@@ -3,6 +3,7 @@
 // compared runs; DuckDB does the grouping, so only the small result reaches the browser. See contracts/chart-spec.md.
 import { buildChart, shelfProblem, type Col, type Row } from '@/charts/builder/compile'
 import { normalizeCustomSpec } from '@/charts/builder/customSpec'
+import { chartRole } from '@/charts/builder/columnTypes'
 import { chartQuery } from '@/charts/builder/specToSql'
 import { fromConfig, ZOOMABLE_MARKS, type ChartSpec } from '@/charts/builder/spec'
 import type { HierState } from '@/charts/builder/hierarchyDraw'
@@ -32,7 +33,7 @@ const kind: ChartKind = {
     const problem = shelfProblem(parsed.spec, cols)
     if (problem) return { error: problem }
     const relSql = buildSql(planQuery({ table: n.table, scenarios: runs, tables: { [n.table]: info }, viewName }, emptyModel()), emptyModel())
-    const q = chartQuery(parsed.spec, relSql)
+    const q = chartQuery(parsed.spec, relSql, (f) => chartRole(cols.find((c) => c.name === f)?.type ?? 'text'))
     const res: UserQueryResult = await runUserSql(q.sql, { page: 0, pageSize: 50_000 })
     if (res.outcome !== 'ok') return { error: 'reason' in res ? res.reason : 'The data could not be read.' }
     const names = res.columns.map((c) => c.name)

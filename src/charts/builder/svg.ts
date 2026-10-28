@@ -36,7 +36,7 @@ export function renderChartSvg(model: DrawnChart, width: number, height: number,
     for (const l of pn.lines) el('line', { x1: l.x1, y1: l.y1, x2: l.x2, y2: l.y2, stroke: l.stroke, 'stroke-width': l.sw, 'stroke-dasharray': l.dash }, g)
     for (const r of pn.rects) el('rect', { x: r.x, y: r.y, width: r.w, height: r.h, rx: r.rx, fill: r.fill, stroke: r.stroke, 'stroke-width': 1, opacity: r.op, 'data-t': r.tip }, g)
     for (const p of pn.paths) el('path', { d: p.d, fill: p.fill, stroke: p.stroke, 'stroke-width': p.sw, 'stroke-dasharray': p.dash, 'stroke-linejoin': 'round', 'stroke-linecap': 'round', opacity: p.op, 'data-t': p.tip }, g)
-    for (const x of pn.texts) { const t = el('text', { x: x.x, y: x.y, 'text-anchor': x.anchor, fill: x.fill, 'font-size': x.size, transform: x.tf }, g); t.textContent = x.t }
+    for (const x of pn.texts) { const t = el('text', { x: x.x, y: x.y, 'text-anchor': x.anchor, fill: x.fill, 'font-size': x.size, transform: x.tf, stroke: x.halo, 'stroke-width': x.halo ? 3 : undefined, 'paint-order': x.halo ? 'stroke' : undefined, 'stroke-linejoin': x.halo ? 'round' : undefined }, g); t.textContent = x.t }
   }
   const show = (e: MouseEvent) => {
     const t = (e.target as Element).getAttribute?.('data-t')

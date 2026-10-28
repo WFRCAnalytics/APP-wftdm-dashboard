@@ -31,6 +31,14 @@ export const SHOW_AS: { v: ShowAs; label: string }[] = [
 export interface MeasureFormat { show?: ShowAs; dec?: number | null; pre?: string; suf?: string }
 export interface FieldDef extends MeasureFormat { f: string; agg?: Agg | null }
 
+/** Data labels on bars, lines and pies: the value, or (pies) the share, or both. Unset means the mark's own default: off, except a pie's share. */
+export type LabelMode = 'off' | 'value' | 'percent' | 'both'
+export const LABEL_MARKS: readonly string[] = ['bar', 'line', 'pie']
+/** The choices a mark offers (a share only means something on a pie). */
+export const labelModesFor = (mark: string): { v: LabelMode; label: string }[] =>
+  mark === 'pie' ? [{ v: 'off', label: 'Off' }, { v: 'percent', label: 'Share' }, { v: 'value', label: 'Value' }, { v: 'both', label: 'Both' }] : [{ v: 'off', label: 'Off' }, { v: 'value', label: 'Value' }]
+export const effectiveLabels = (spec: { mark: string; labels?: LabelMode }): LabelMode => spec.labels ?? (spec.mark === 'pie' ? 'percent' : 'off')
+
 export type CellStyle = 'plain' | 'shade' | 'bars'
 export type Density = 'comfortable' | 'compact'
 /** Options of the table (text table) mark. */
@@ -49,6 +57,7 @@ export interface ChartSpec {
   zero: boolean
   grid: boolean
   table: TableOpts
+  labels?: LabelMode
   ref: string
   text: Record<TextKey, TextBlock>
 }
@@ -58,7 +67,7 @@ const S = (a: [Channel, number, string][]): Slot[] => a.map(([ch, r, accepts]) =
 
 /** Channels per mark: which are required and which roles (n, o, q, t) each takes. A mark never shows other channels. */
 export const SLOTS: Record<Mark, Slot[]> = {
-  bar: S([['x', 1, 'not'], ['y', 1, 'q'], ['color', 0, 'no'], ['pattern', 0, 'no'], ['column', 0, 'no'], ['row', 0, 'no']]),
+  bar: S([['x', 1, 'notq'], ['y', 1, 'notq'], ['color', 0, 'no'], ['pattern', 0, 'no'], ['column', 0, 'no'], ['row', 0, 'no']]),
   line: S([['x', 1, 'otq'], ['y', 1, 'q'], ['color', 0, 'no'], ['dash', 0, 'no'], ['shape', 0, 'no'], ['detail', 0, 'no'], ['column', 0, 'no'], ['row', 0, 'no']]),
   area: S([['x', 1, 'otq'], ['y', 1, 'q'], ['color', 0, 'no'], ['pattern', 0, 'no'], ['detail', 0, 'no'], ['column', 0, 'no'], ['row', 0, 'no']]),
   scatter: S([['x', 1, 'q'], ['y', 1, 'q'], ['color', 0, 'no'], ['shape', 0, 'no'], ['size', 0, 'q'], ['opacity', 0, 'q'], ['detail', 0, 'no'], ['label', 0, 'notq'], ['column', 0, 'no'], ['row', 0, 'no']]),
@@ -131,6 +140,8 @@ export function channelLabel(mark: Mark, ch: Channel): string {
 export function defaultAgg(mark: Mark, ch: Channel, role: Role): Agg | null {
   if (role !== 'q') return null
   if (ch === 'y' && (mark === 'bar' || mark === 'line' || mark === 'area' || mark === 'radar')) return 'sum'
+  // a bar chart's number can sit on either axis: on X the bars lie down
+  if (ch === 'x' && mark === 'bar') return 'sum'
   if (ch === 'color' && mark === 'heatmap') return 'sum'
   if (ch === 'size' && (mark === 'pie' || mark === 'waffle' || mark === 'treemap' || mark === 'sunburst' || mark === 'sankey' || mark === 'chord')) return 'sum'
   if ((ch === 'label' || ch === 'val2' || ch === 'val3' || ch === 'val4') && mark === 'text') return 'sum'
@@ -161,6 +172,36 @@ export function assignField(spec: ChartSpec, ch: Channel, field: string, _type: 
   return { ok: true, spec: { ...spec, enc: { ...spec.enc, [ch]: { f: field, agg: defaultAgg(spec.mark, ch, role) } } } }
 }
 
+/** A bar chart is drawn lying down (horizontal bars) when its number is on X and its category on Y; otherwise it is columns. */
+export const isHorizontalBar = (spec: { mark: string; enc: ChartSpec['enc'] }, roleOf: (field: string) => Role): boolean =>
+  spec.mark === 'bar' && !!spec.enc.x && roleOf(spec.enc.x.f) === 'q'
+
+export type Swap = { ok: true; spec: ChartSpec } | { ok: false; reason: string }
+
+/**
+ * Swaps the X and Y shelves, by the same rules as placing a field: each field must fit the shelf it moves to. A bar chart takes a category
+ * on X and a number on Y, so swapping them is refused (with the reason) instead of leaving a number on the category axis.
+ */
+export function swapAxes(spec: ChartSpec, info: (field: string) => { type: DataType; role: Role } | undefined): Swap {
+  const x = spec.enc.x, y = spec.enc.y
+  if (!x && !y) return { ok: false, reason: 'Place a field on X or Y first.' }
+  const enc = { ...spec.enc }
+  delete enc.x
+  delete enc.y
+  const move = (e: FieldDef | undefined, to: 'x' | 'y'): string | null => {
+    if (!e) return null
+    const i = info(e.f)
+    if (!i) return `${e.f} is not in this table.`
+    const r = assignField(spec, to, e.f, i.type, i.role)
+    if (!r.ok) return r.reason
+    // a number keeps its aggregate where the new shelf can use one
+    enc[to] = { ...r.spec.enc[to]!, ...(channelAggregates(spec.mark, to) && e.agg ? { agg: e.agg } : {}) }
+    return null
+  }
+  const bad = move(x, 'y') ?? move(y, 'x')
+  return bad ? { ok: false, reason: `Can't swap: ${bad}` } : { ok: true, spec: { ...spec, enc } }
+}
+
 /** Switches the mark and keeps every encoding the new mark can still use; returns what was dropped. */
 export function switchMark(spec: ChartSpec, mark: Mark, roleOf: (field: string) => Role): { spec: ChartSpec; dropped: Channel[] } {
   const enc: ChartSpec['enc'] = {}
@@ -185,6 +226,7 @@ export interface ChartConfig {
   axes: { zeroBaseline: boolean; gridlines: boolean; referenceLine: number | null; sort?: Sort }
   /** Only the options that differ from the defaults. */
   table?: Partial<TableOpts>
+  labels?: LabelMode
   text: Partial<Record<'title' | 'subtitle' | 'source' | 'note', { text: string; size: TextSize; weight: 'normal' | 'bold'; italic: boolean }>>
 }
 
@@ -211,6 +253,7 @@ export function toConfig(spec: ChartSpec, ctx: { relation: string; scenarios: st
     filter: spec.filter.f ? [{ field: spec.filter.f, op: '=', value: spec.filter.v }] : [],
     axes: { zeroBaseline: spec.zero, gridlines: spec.grid, referenceLine: spec.ref === '' ? null : Number(spec.ref), ...(spec.sort !== 'natural' ? { sort: spec.sort } : {}) },
     ...(Object.keys(tableDiff(spec.table)).length ? { table: tableDiff(spec.table) } : {}),
+    ...(spec.labels ? { labels: spec.labels } : {}),
     text,
   }
 }
@@ -253,11 +296,13 @@ export function fromConfig(text: string, ctx: ImportContext): ImportResult {
   }
   const sort = c.axes?.sort
   if (sort !== undefined && !SORTS.some((o) => o.v === sort)) errors.push(`axes.sort: "${String(sort)}" is not one of ${SORTS.map((o) => o.v).join(', ')}.`)
+  if (c.labels !== undefined && !['off', 'value', 'percent', 'both'].includes(c.labels)) errors.push(`labels: "${String(c.labels)}" is not one of off, value, percent, both.`)
   const tb = c.table ?? {}
   if (tb.cells !== undefined && !['plain', 'shade', 'bars'].includes(tb.cells)) errors.push(`table.cells: "${String(tb.cells)}" is not one of plain, shade, bars.`)
   if (tb.density !== undefined && !['comfortable', 'compact'].includes(tb.density)) errors.push(`table.density: "${String(tb.density)}" is not one of comfortable, compact.`)
   if (errors.length) return { ok: false, errors }
   const spec = defaultSpec({
+    ...(c.labels ? { labels: c.labels } : {}),
     table: { ...TABLE_DEFAULTS, ...(tb.cells ? { cells: tb.cells } : {}), ...(tb.density ? { density: tb.density } : {}), ...(tb.subtotals === false ? { subtotals: false } : {}), ...(tb.transpose === true ? { transpose: true } : {}) },
     mark, donut, enc, stack: c.stack ?? 'group', sort: sort ?? 'natural',
     filter: c.filter?.[0] ? { f: c.filter[0].field, v: String(c.filter[0].value) } : { f: '', v: '' },

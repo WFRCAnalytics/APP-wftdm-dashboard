@@ -2,6 +2,7 @@
 // selected scenarios, or a saved table). Only the columns the chart uses are fetched, through the guarded runner, capped.
 import { useEffect, useMemo, useState } from 'react'
 import { shelfProblem, type Col, type Row } from '@/charts/builder/compile'
+import { chartRole } from '@/charts/builder/columnTypes'
 import { chartQuery, ROW_CAP, SCATTER_SAMPLE, type ChartQueryMode } from '@/charts/builder/specToSql'
 import type { ChartSpec } from '@/charts/builder/spec'
 import { describeTable, quoteIdent, viewName } from '@/explore/relations'
@@ -60,7 +61,7 @@ export function useChartData(tab: ChartTab, s: ExploreState): ChartData {
   // (only the mark, shelves and filter change the data; text, axes and style edits never re-run it)
   const dataKey = JSON.stringify([tab.spec.mark, tab.spec.enc, tab.spec.filter])
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const query = useMemo(() => (relSql && cols.length && !shelfProblem(tab.spec, cols) ? chartQuery(tab.spec, relSql) : null), [relSql, cols, dataKey])
+  const query = useMemo(() => (relSql && cols.length && !shelfProblem(tab.spec, cols) ? chartQuery(tab.spec, relSql, (f) => chartRole(cols.find((c) => c.name === f)?.type ?? 'text')) : null), [relSql, cols, dataKey])
   const [state, setState] = useState<{ rows: Row[]; loading: boolean; truncated: boolean; error: string }>({ rows: [], loading: false, truncated: false, error: '' })
   useEffect(() => {
     if (!query) { setState({ rows: [], loading: false, truncated: false, error: '' }); return }
