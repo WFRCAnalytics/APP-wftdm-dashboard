@@ -8,6 +8,7 @@ import { runUserSql, type UserQueryResult } from '@/explore/sql/runUserSql'
 import { query } from '@/services/duckdb'
 import { authorize } from '@/services/ai/sqlGuard'
 import { protectedNames } from '@/services/ai/catalog'
+import { getExploreOptions } from '@/explore/options'
 import { setExplore, useExplore, resetQuery, type ExploreState } from '@/state/exploreState'
 
 export interface StepCounts { source?: number; joins: (number | undefined)[]; filter?: number; summary?: number }
@@ -37,7 +38,10 @@ export interface DataTabModel {
 const applyOverrides = (cols: ColumnInfo[], o: Record<string, DataType>): ColumnInfo[] => cols.map((c) => ({ ...c, type: o[c.name] ?? c.type }))
 
 export function useDataTab(): DataTabModel {
-  const s = useExplore()
+  const live = useExplore()
+  // a deployer's fixed page size replaces the one fitted to the tile's height
+  const fixed = getExploreOptions().limits.pageSize
+  const s = useMemo(() => (fixed === null ? live : { ...live, pageSize: fixed }), [live, fixed])
   const scenarioOptions = useMemo(() => listScenarios(), [])
   const tableOptions = useMemo(() => tablesFor(s.scenarios), [s.scenarios])
   const [infos, setInfos] = useState<Record<string, TableInfo>>({})

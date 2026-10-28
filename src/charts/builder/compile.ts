@@ -23,6 +23,30 @@ export type ChartModel =
 
 export type DrawnChart = Exclude<ChartModel, { problem: string }>
 
+/**
+ * Shows a deployer's column labels (`columns:` on the explore-builder panel) on a drawn chart: legend titles and the field
+ * names in tooltips. The drawing itself keeps the real column names, so a chart's configuration never carries a label.
+ */
+export function relabel(m: ChartModel, labels: Record<string, string>): ChartModel {
+  if (m.problem !== undefined || Object.keys(labels).length === 0) return m
+  const L = (s: string) => (Object.prototype.hasOwnProperty.call(labels, s) ? labels[s] : s)
+  // a tooltip is `title~key=value~key=value`
+  const tip = (t: string) => {
+    if (!t) return t
+    const [title, ...rest] = t.split('~')
+    return [L(title), ...rest.map((p) => { const i = p.indexOf('='); return i < 0 ? p : `${L(p.slice(0, i))}${p.slice(i)}` })].join('~')
+  }
+  return {
+    ...m,
+    legend: m.legend.map((g) => ({ ...g, title: L(g.title) })),
+    panels: m.panels.map((p) => ({
+      ...p,
+      rects: p.rects.map((r) => (r.tip ? { ...r, tip: tip(r.tip) } : r)),
+      paths: p.paths.map((r) => (r.tip ? { ...r, tip: tip(r.tip) } : r)),
+    })),
+  }
+}
+
 export interface BuildInput {
   spec: ChartSpec
   cols: Col[]

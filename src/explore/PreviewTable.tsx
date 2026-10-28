@@ -15,6 +15,7 @@ import { addFilter, canQuickFilter, currentSort, removeFilter, setSort, tableCap
 import { typeColorKey } from '@/explore/profile/profile'
 import { describeFilter, opsFor } from '@/explore/sql/queryModel'
 import type { DataTabModel } from '@/explore/useDataTab'
+import { columnLabel, formatValue, getExploreOptions } from '@/explore/options'
 import { setExplore } from '@/state/exploreState'
 
 const ROW_PX = 33
@@ -22,9 +23,10 @@ const ROW_PX = 33
 // The column's type colour, as a CSS variable the header tint and the selected-column tint both read.
 const tint = (type: Parameters<typeof typeColorKey>[0]) => ({ '--tc': `var(--${{ c1: 'c-1', c2: 'c-2', c3: 'c-3', mute: 'mute' }[typeColorKey(type)]})` }) as React.CSSProperties
 
-function cell(type: string, v: unknown): { text: string; cls: string } {
+function cell(type: string, v: unknown, format?: string): { text: string; cls: string } {
   if (v === null || v === undefined) return { text: 'null', cls: 'nl' }
   if (typeof v === 'boolean') return { text: String(v), cls: v ? 'bt' : 'bf' }
+  if (typeof v === 'number' && format) return { text: formatValue(v, format), cls: 'num' }
   if (typeof v === 'number') return { text: Number.isInteger(v) ? v.toLocaleString('en-US') : String(Math.round(v * 100) / 100), cls: 'num' }
   const text = String(v)
   return { text, cls: type === 'text' || type === 'geometry' ? 'tx' : '' }
@@ -35,6 +37,7 @@ function DataGrid({ m, boxRef }: { m: DataTabModel; boxRef?: React.RefObject<HTM
   const { state: s, columns, rows } = m
   const caps = tableCaps(m)
   const sort = currentSort(m)
+  const opts = getExploreOptions()
   const own = useRef<HTMLDivElement>(null)
   const box = boxRef ?? own
   const [edge, setEdge] = useState({ l: false, r: false })
@@ -60,7 +63,7 @@ function DataGrid({ m, boxRef }: { m: DataTabModel; boxRef?: React.RefObject<HTM
                     <th key={c.name} style={tint(c.type)} className={c.name === (s.profileCol ?? columns[0]?.name) ? 'hsel' : ''} aria-sort={sort?.col === c.name ? (sort.dir === 'asc' ? 'ascending' : 'descending') : undefined}>
                       <div className="hcell">
                       <button type="button" className="hb" onClick={() => setExplore({ profileCol: c.name })}>
-                        <TypeChip type={c.type} />{c.name}
+                        <TypeChip type={c.type} />{columnLabel(opts, c.name)}{opts.columns[c.name]?.unit && <span className="hunit">{opts.columns[c.name].unit}</span>}
                         {sort?.col === c.name && (sort.dir === 'asc' ? <ArrowUp size={12} aria-hidden="true" /> : <ArrowDown size={12} aria-hidden="true" />)}
                       </button>
                       {caps.sort && (
@@ -90,7 +93,7 @@ function DataGrid({ m, boxRef }: { m: DataTabModel; boxRef?: React.RefObject<HTM
                 {rows.map((r, i) => (
                   <tr key={i}>
                     {columns.map((c, j) => {
-                      const x = cell(c.type, r[j])
+                      const x = cell(c.type, r[j], opts.columns[c.name]?.format)
                       const quick = caps.filter && canQuickFilter(c) && r[j] !== null && r[j] !== undefined
                       return (
                         <td key={c.name} style={tint(c.type)} className={`${x.cls} ${quick ? 'qf' : ''} ${c.name === (s.profileCol ?? columns[0]?.name) ? 'hsel' : ''}`}>
@@ -115,7 +118,8 @@ function DataGrid({ m, boxRef }: { m: DataTabModel; boxRef?: React.RefObject<HTM
 function useRowsFit(ref: React.RefObject<HTMLDivElement>, active: boolean, pageSize: number, hasRows: boolean) {
   useEffect(() => {
     const el = ref.current
-    if (!active || !el || typeof ResizeObserver === 'undefined') return
+    // a fixed page size from the deployer's `limits.page_size` is not fitted to the height
+    if (!active || !el || typeof ResizeObserver === 'undefined' || getExploreOptions().limits.pageSize !== null) return
     const ro = new ResizeObserver(() => {
       const n = Math.max(8, Math.floor((el.clientHeight - 44) / ROW_PX))
       if (n !== pageSize) setExplore({ pageSize: n, page: 0 })
@@ -125,10 +129,11 @@ function useRowsFit(ref: React.RefObject<HTMLDivElement>, active: boolean, pageS
   }, [ref, active, pageSize, hasRows])
 }
 
-const CSV_CAP = 100_000
-
-// Copy the statement behind the table, or download its rows (every page, up to CSV_CAP) as a CSV file.
+// Copy the statement behind the table, or download its rows (every page, up to the deployer's `limits.csv_rows`, 100,000
+// unless set) as a CSV file. Each button shows only when `features.copy_sql` and `features.csv` allow it.
 function ExportButtons({ m, name }: { m: DataTabModel; name: string }) {
+  const { features, limits } = getExploreOptions()
+  const CSV_CAP = limits.csvRows
   const [note, setNote] = useState<'' | 'copied' | 'busy' | 'cut' | 'failed'>('')
   const flash = (n: typeof note) => { setNote(n); if (n !== 'busy') setTimeout(() => setNote(''), 2500) }
   const ready = !!m.sql && m.settled
@@ -145,12 +150,16 @@ function ExportButtons({ m, name }: { m: DataTabModel; name: string }) {
   }
   return (
     <>
-      <Btn icon aria-label={note === 'copied' ? 'SQL copied' : 'Copy SQL'} disabled={!ready} onClick={() => void copy()}>
-        {note === 'copied' ? <Check size={14} aria-hidden="true" /> : <Copy size={14} aria-hidden="true" />}
-      </Btn>
-      <Btn icon aria-label={note === 'busy' ? 'Preparing CSV' : 'Download CSV'} disabled={!ready || note === 'busy'} onClick={() => void download()}>
-        <Download size={14} aria-hidden="true" />
-      </Btn>
+      {features.copySql && (
+        <Btn icon aria-label={note === 'copied' ? 'SQL copied' : 'Copy SQL'} disabled={!ready} onClick={() => void copy()}>
+          {note === 'copied' ? <Check size={14} aria-hidden="true" /> : <Copy size={14} aria-hidden="true" />}
+        </Btn>
+      )}
+      {features.csv && (
+        <Btn icon aria-label={note === 'busy' ? 'Preparing CSV' : 'Download CSV'} disabled={!ready || note === 'busy'} onClick={() => void download()}>
+          <Download size={14} aria-hidden="true" />
+        </Btn>
+      )}
       <span className="sr-only" role="status">
         {note === 'cut' ? `Downloaded the first ${CSV_CAP.toLocaleString('en-US')} rows.` : note === 'failed' ? 'That did not work.' : ''}
       </span>

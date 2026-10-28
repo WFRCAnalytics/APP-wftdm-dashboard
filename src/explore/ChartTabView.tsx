@@ -3,7 +3,7 @@
 // rail on the right (Chart, Style, Axes, Filter). Drag a field onto a shelf, or select it and press the shelf (keyboard path).
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowLeftRight, ChevronRight, Download, X } from 'lucide-react'
-import { buildChart, type ChartModel, type Col, type DrawnChart } from '@/charts/builder/compile'
+import { buildChart, relabel, type ChartModel, type Col, type DrawnChart } from '@/charts/builder/compile'
 import { chartRole, DATA_TYPES, TYPE_LABEL, typesPresent, type DataType } from '@/charts/builder/columnTypes'
 import { suggest } from '@/charts/builder/rules'
 import {
@@ -19,6 +19,7 @@ import { loadProfile } from '@/explore/profile/profileRun'
 import { typeColorKey, type ColumnProfile } from '@/explore/profile/profile'
 import { useDistinct } from '@/explore/useDistinct'
 import { ExportDialog } from '@/explore/ExportDialog'
+import { columnLabel, getExploreOptions } from '@/explore/options'
 import { ROW_CAP, useChartData, type ChartData } from '@/explore/useChartData'
 import { useColorScheme } from '@/hooks/useColorScheme'
 import { tooltip } from '@/services/tooltip'
@@ -57,7 +58,7 @@ function FieldsPanel({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: C
         onDragStart={(e) => { e.dataTransfer.setData('text/plain', c.name); e.dataTransfer.effectAllowed = 'copy'; setExplore({ selectedField: c.name }) }}>
         <button type="button" className={`fchip ${s.selectedField === c.name ? 'sel' : ''} ${chartable ? '' : 'dim'}`} aria-pressed={s.selectedField === c.name}
           onClick={() => setExplore({ selectedField: s.selectedField === c.name ? null : c.name, notice: '' })}>
-          <TypeChip type={c.type} /><span className="fname">{c.name}</span><span className="fty">{TYPE_LABEL[c.type]}</span>
+          <TypeChip type={c.type} /><span className="fname">{columnLabel(getExploreOptions(), c.name)}</span><span className="fty">{getExploreOptions().columns[c.name]?.unit ?? TYPE_LABEL[c.type]}</span>
         </button>
       </div>
     )
@@ -155,7 +156,13 @@ function ChartCard({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: Cha
   useEffect(() => { if (plotRef.current) setTheme(readChartTheme(plotRef.current)) }, [scheme, size.w])
   const setSpec = (fn: (x: ChartSpec) => ChartSpec) => updateChart(tab.id, (t) => ({ ...t, spec: fn(t.spec) }))
   const roleOf = (f: string) => chartRole(data.cols.find((c) => c.name === f)?.type ?? 'text')
-  const model = useMemo<ChartModel | null>(() => (theme ? buildChart({ spec: data.spec, cols: data.cols, rows: data.rows, theme, width: size.w, height: size.h, hot }) : null), [theme, data.spec, data.cols, data.rows, size, hot])
+  const model = useMemo<ChartModel | null>(() => {
+    if (!theme) return null
+    const built = buildChart({ spec: data.spec, cols: data.cols, rows: data.rows, theme, width: size.w, height: size.h, hot })
+    const labels: Record<string, string> = {}
+    for (const [name, note] of Object.entries(getExploreOptions().columns)) if (note.label) labels[name] = note.label
+    return relabel(built, labels)
+  }, [theme, data.spec, data.cols, data.rows, size, hot])
   const dragging = s.selectedField
   const dragRole = dragging ? roleOf(dragging) : ''
 
@@ -179,7 +186,7 @@ function ChartCard({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: Cha
         <span className={`cn ${s.noticeBad ? 'bad' : ''}`} role="status">{s.notice}</span>
         <Btn small onClick={swap}><ArrowLeftRight size={14} aria-hidden="true" />Swap x and y</Btn>
         <Btn small onClick={() => { setSpec((x) => ({ ...x, enc: {} })); setExplore({ notice: 'Shelves cleared.', noticeBad: false }) }}>Clear</Btn>
-        <Btn small onClick={() => setExportOpen(true)}><Download size={14} aria-hidden="true" />Export</Btn>
+        {getExploreOptions().features.importExport && <Btn small onClick={() => setExportOpen(true)}><Download size={14} aria-hidden="true" />Export</Btn>}
       </div>
       <div className="strip">
         {SLOTS[spec.mark].map((slot) => {
@@ -193,7 +200,7 @@ function ChartCard({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: Cha
               <span className="spl">{label}{slot.req && <><i className="rq" aria-hidden="true" /><span className="sr">required</span></>}</span>
               {e && col && (
                 <>
-                  <TypeChip type={col.type} /><span className="fname">{e.f}</span>
+                  <TypeChip type={col.type} /><span className="fname">{columnLabel(getExploreOptions(), e.f)}</span>
                   {channelAggregates(spec.mark, slot.ch) && chartRole(col.type) === 'q' && (
                     <XSelect className="agg" aria-label={`Aggregate for ${label}`} value={e.agg ?? 'sum'} onChange={(ev) => setSpec((x) => ({ ...x, enc: { ...x.enc, [slot.ch]: { ...e, agg: ev.target.value as Agg } } }))}>{AGGS.map((a) => <option key={a} value={a}>{a}</option>)}</XSelect>
                   )}
@@ -248,6 +255,8 @@ function Rail({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: ChartDat
   const setSpec = (fn: (x: ChartSpec) => ChartSpec) => updateChart(tab.id, (t) => ({ ...t, spec: fn(t.spec) }))
   const roleOf = (f: string) => chartRole(data.cols.find((c) => c.name === f)?.type ?? 'text')
   const sug = suggest(spec, roleOf, (f) => new Set(data.rows.map((r) => r[f])).size)
+  // the chart types a deployer allows (`charts.allow`); the open chart's own type always stays so it never disappears
+  const offered = getExploreOptions().charts.allow
   const values = useDistinct(data.relSql, spec.filter.f)
   const tabs: [typeof s.railTab, string][] = [['chart', 'Chart'], ['style', 'Style'], ['axes', 'Axes'], ['filter', 'Filter']]
   const pills = <T extends string | boolean>(opts: [T, string][], cur: T, set: (v: T) => void, label: string) => (
@@ -259,7 +268,7 @@ function Rail({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: ChartDat
       {s.railTab === 'chart' && (
         <div className="rsec">
           <div className="mkgrid">
-            {MARKS.map((m: Mark) => {
+            {MARKS.filter((m) => offered.includes(m) || m === spec.mark).map((m: Mark) => {
               const r = sug.byMark[m], off = !r.viable, on = spec.mark === m
               return (
                 <button key={m} type="button" className={`mk ${on ? 'on' : ''} ${off ? 'off' : ''}`} aria-pressed={on} aria-disabled={off}
@@ -274,7 +283,7 @@ function Rail({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: ChartDat
                 </button>
               )
             })}
-            {COMING_SOON.map((c) => (
+            {offered.length === MARKS.length && COMING_SOON.map((c) => (
               <button key={c} type="button" className="mk off" aria-disabled="true" aria-label={`${c}, coming soon`} onClick={() => setExplore({ notice: `${c} is coming soon.`, noticeBad: true })}>
                 {(() => { const I = SOON_ICONS[c]; return <I size={24} strokeWidth={1.6} aria-hidden="true" /> })()}{c}
               </button>

@@ -62,26 +62,34 @@ export function ExportDialog({ tab, data, cardEl, onClose }: { tab: ChartTab; da
   )
 }
 
+/** Opens a chart configuration (the Export JSON) as a new tab. Resolves to the problems found, or an empty list when it opened.
+ * Used by the Import dialog and by a deployer's `presets`. */
+export async function importConfig(text: string, name?: string): Promise<string[]> {
+  const s = getExplore()
+  let relation = '', scenarios = s.scenarios
+  try {
+    const c = JSON.parse(text) as { data?: { relation?: string; source?: { scenarios?: string[] } } }
+    relation = c.data?.relation ?? ''
+    if (Array.isArray(c.data?.source?.scenarios)) scenarios = c.data!.source!.scenarios!
+  } catch { /* fromConfig reports it */ }
+  const cache: Record<string, { name: string }[] | undefined> = {}
+  if (relation.startsWith('t:') && s.scenarios[0]) {
+    try { cache[relation] = relationColumns(await describeTable(s.scenarios[0], relation.slice(2)), scenarios) } catch { /* reported as not a table */ }
+  } else if (relation.startsWith('m:')) cache[relation] = s.mine.find((m) => `m:${m.id}` === relation)?.columns
+  const r = fromConfig(text, { scenarios: s.scenarios.length ? Array.from(new Set([...s.scenarios, ...scenarios])) : scenarios, columnsOf: (rel) => cache[rel] })
+  if (!r.ok) return r.errors
+  const id = `c${s.nextId}`
+  setExplore((st) => ({ charts: [...st.charts, { id, name: name || `Imported ${st.nextId}`, source: r.relation, spec: r.spec }], activeTab: id, nextId: st.nextId + 1, scenarios: r.scenarios }))
+  return []
+}
+
 export function ImportDialog({ onClose }: { onClose(): void }) {
   const [text, setText] = useState('')
   const [errors, setErrors] = useState<string[]>([])
   const run = async () => {
-    const s = getExplore()
-    let relation = '', scenarios = s.scenarios
-    try {
-      const c = JSON.parse(text) as { data?: { relation?: string; source?: { scenarios?: string[] } } }
-      relation = c.data?.relation ?? ''
-      if (Array.isArray(c.data?.source?.scenarios)) scenarios = c.data!.source!.scenarios!
-    } catch { /* fromConfig reports it */ }
-    const cache: Record<string, { name: string }[] | undefined> = {}
-    if (relation.startsWith('t:') && s.scenarios[0]) {
-      try { cache[relation] = relationColumns(await describeTable(s.scenarios[0], relation.slice(2)), scenarios) } catch { /* reported as not a table */ }
-    } else if (relation.startsWith('m:')) cache[relation] = s.mine.find((m) => `m:${m.id}` === relation)?.columns
-    const r = fromConfig(text, { scenarios: s.scenarios.length ? Array.from(new Set([...s.scenarios, ...scenarios])) : scenarios, columnsOf: (rel) => cache[rel] })
-    if (!r.ok) { setErrors(r.errors); return }
-    const id = `c${s.nextId}`
-    setExplore((st) => ({ charts: [...st.charts, { id, name: `Imported ${st.nextId}`, source: r.relation, spec: r.spec }], activeTab: id, nextId: st.nextId + 1, scenarios: r.scenarios }))
-    onClose()
+    const found = await importConfig(text)
+    if (found.length) setErrors(found)
+    else onClose()
   }
   return (
     <Modal title="Import a chart" onClose={onClose}>

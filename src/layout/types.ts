@@ -371,6 +371,14 @@ export interface GraphicWalkerFieldOverride {
  * reads whatever scenarios and tables the dashboard has loaded. */
 export interface ExploreBuilderPanelConfig extends PanelConfigBase {
   type: 'explore-builder'
+  /** Every key below is optional and unset means the builder's own behaviour. Read by `explore/options.ts#resolveExploreOptions`,
+   * which also reports a wrong value (the bad key keeps its default). Contract: specs/065-chart-builder/contracts/deployer-options.md. */
+  limits?: { csv_rows?: number; page_size?: number; undo_steps?: number; max_joins?: number }
+  features?: { sql_tab?: boolean; csv?: boolean; copy_sql?: boolean; import_export?: boolean; my_tables?: boolean; undo?: boolean }
+  charts?: { allow?: string[]; default?: string }
+  tables?: { include?: string[]; exclude?: string[] }
+  columns?: Record<string, { label?: string; unit?: string; format?: string }>
+  presets?: unknown[]
 }
 
 export interface GraphicWalkerPanelConfig extends PanelConfigBase {

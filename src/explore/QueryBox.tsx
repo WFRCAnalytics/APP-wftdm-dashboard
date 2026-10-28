@@ -9,10 +9,11 @@ import { Btn, SearchPopover, XSelect, type PopAction, type PopItem } from '@/exp
 import { highlightSql } from '@/explore/sql/highlight'
 import { checkName, saveMyTable } from '@/explore/sql/myTables'
 import {
-  autoKeys, buildSql, emptyModel, isListOp, isPickType, listVal, opLabel, opsFor, parseList, planQuery, suggestJoins, toggleSelect, MAX_JOINS,
+  autoKeys, buildSql, emptyModel, isListOp, isPickType, listVal, opLabel, opsFor, parseList, planQuery, suggestJoins, toggleSelect, maxJoins,
   type AggFn, type FilterOp, type JoinSpec, type JoinType, type QueryModel,
 } from '@/explore/sql/queryModel'
 import type { DataTabModel } from '@/explore/useDataTab'
+import { getExploreOptions } from '@/explore/options'
 import { cancelRunning } from '@/services/duckdb'
 import { resetQuery, setExplore } from '@/state/exploreState'
 import { roleOfType } from '@/explore/typeRole'
@@ -40,13 +41,15 @@ export function QueryBox({ m }: { m: DataTabModel }) {
   const s = m.state
   const [pop, setPop] = useState<{ kind: 'cols' | 'group' | 'val'; rect: DOMRect; i?: number } | null>(null)
   const plan = m.plan
-  const tab = s.queryTab
+  const { features } = getExploreOptions()
+  // with the SQL tab off by the deployer (`features.sql_tab: false`) the box is the builder only, whatever was open before
+  const tab = features.sqlTab ? s.queryTab : 'builder'
 
   return (
     <section className="tile qt">
       <div className="th">
         <div><h2 className="tt">Query</h2><p className="ts">{m.isMine ? 'Preview only. Pick a table to query.' : 'Add steps and the SQL follows.'}</p></div>
-        <div className="xseg qtabs"><Segmented label="Query view" value={tab} onChange={(id) => setExplore({ queryTab: id as 'builder' | 'sql' })} options={[{ id: 'builder', label: 'Builder' }, { id: 'sql', label: 'SQL' }]} /></div>
+        {features.sqlTab && <div className="xseg qtabs"><Segmented label="Query view" value={tab} onChange={(id) => setExplore({ queryTab: id as 'builder' | 'sql' })} options={[{ id: 'builder', label: 'Builder' }, { id: 'sql', label: 'SQL' }]} /></div>}
       </div>
       <div className={`qscroll ${tab === 'sql' ? 'sqlfull' : ''}`}>
         {tab === 'builder' ? <Builder m={m} openPicker={(kind, rect, i) => setPop({ kind, rect, i })} /> : <SqlTab m={m} />}
@@ -217,7 +220,7 @@ function Builder({ m, openPicker }: { m: DataTabModel; openPicker(kind: 'cols' |
           )
         })}
 
-        {model.joins.length < MAX_JOINS && (
+        {model.joins.length < maxJoins() && (
           <Step tone="s-add" icon={<Plus size={14} aria-hidden="true" />} title="Join another table" summary={sugs.length ? `${sugs.length} suggested` : "pick a table"} open={openStep === "addjoin"} onToggle={toggle("addjoin")}>
             <div className="chips">
               {sugs.map((x) => (
@@ -370,10 +373,12 @@ function Footer({ m }: { m: DataTabModel }) {
           : <Btn variant="primary" className="px-4" onClick={() => setExplore({ runNonce: s.runNonce + 1 })}><Play size={14} fill="currentColor" aria-hidden="true" />Run query</Btn>}
         <span className={`runmsg ${m.status === 'ok' ? 'ok' : ''}`} role="status">{note || status}</span>
       </div>
-      <div className="save">
-        <input className="inp" aria-label="Name for the saved table" value={name} placeholder="Name this result to reuse it in charts" onChange={(e) => { setName(e.target.value); setNote('') }} />
-        <Btn disabled={m.status !== 'ok'} onClick={() => void save()}>Save as table</Btn>
-      </div>
+      {getExploreOptions().features.myTables && (
+        <div className="save">
+          <input className="inp" aria-label="Name for the saved table" value={name} placeholder="Name this result to reuse it in charts" onChange={(e) => { setName(e.target.value); setNote('') }} />
+          <Btn disabled={m.status !== 'ok'} onClick={() => void save()}>Save as table</Btn>
+        </div>
+      )}
     </div>
   )
 }

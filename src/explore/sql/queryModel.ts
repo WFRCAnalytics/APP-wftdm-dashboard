@@ -2,6 +2,7 @@
 // QueryModel; `planQuery` resolves it against the tables' columns (joins, name clashes, group); `buildSql` writes the SQL.
 // Contract: specs/065-chart-builder/contracts/query-and-guard.md.
 import { chartRole, type DataType } from '@/charts/builder/columnTypes'
+import { getExploreOptions } from '@/explore/options'
 
 export type JoinType = 'inner' | 'left' | 'right' | 'full'
 export type FilterOp = '=' | '≠' | '>' | '<' | 'contains' | 'in' | 'not in'
@@ -79,7 +80,8 @@ export interface QueryModel {
   limit: string
 }
 
-export const MAX_JOINS = 4
+/** How many tables may be joined to the first: the deployer's `limits.max_joins`, 4 unless set. */
+export const maxJoins = (): number => getExploreOptions().limits.maxJoins
 
 export function emptyModel(): QueryModel {
   return { select: [], joins: [], where: [], group: [], fn: 'sum', aggCol: '', order: '', dir: 'desc', limit: '' }
@@ -121,7 +123,7 @@ export interface Plan {
   selCols: PlanCol[]
 }
 
-const ALIASES = ['a', 'b', 'c', 'd', 'e']
+const ALIASES = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i']
 
 /** The columns a table exposes: a scenario column is added when several scenarios are combined. */
 export function relationColumns(table: TableInfo, scenarios: readonly string[]): ColumnInfo[] {
@@ -159,7 +161,7 @@ export function planQuery(input: PlanInput, model: QueryModel): Plan {
   for (const j of model.joins) {
     const leftNames = cols.map((c) => c.name)
     const info = input.tables[j.table]
-    if (!info || n >= MAX_JOINS) {
+    if (!info || n >= maxJoins()) {
       joins.push({ ok: false, table: j.table, type: j.type, alias: '', keys: [], added: [], leftNames, rightNames: [] })
       continue
     }

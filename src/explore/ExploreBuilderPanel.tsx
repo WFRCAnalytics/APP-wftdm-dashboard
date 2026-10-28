@@ -1,11 +1,12 @@
 // 065-chart-builder: the Explore builder (full-page panel). Top bar (scenarios, tabs) over the Data tab: Columns
 // (summaries), the paged preview, and the Query box with the pinned My tables list. Chart tabs arrive in the next step.
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { AssistantButton } from '@/layout/chat/chatLauncher'
-import { ChevronDown, Plus, Redo2, Table2, Trash2, Undo2, Upload, X } from 'lucide-react'
+import { ChevronDown, Plus, Redo2, Sparkles, Table2, Trash2, Undo2, Upload, X } from 'lucide-react'
 import { defaultSpec } from '@/charts/builder/spec'
 import { ChartTabView } from '@/explore/ChartTabView'
-import { ImportDialog } from '@/explore/ExportDialog'
+import { ImportDialog, importConfig } from '@/explore/ExportDialog'
+import { getExploreOptions, resolveExploreOptions, setExploreOptions } from '@/explore/options'
 import '@/explore/explore.css'
 import { ColumnsPanel } from '@/explore/ColumnsPanel'
 import { PreviewTable } from '@/explore/PreviewTable'
@@ -19,6 +20,20 @@ import type { ExploreBuilderPanelConfig } from '@/layout/types'
 
 const dotColor = (i: number) => `var(--chart-${(i % 8) + 1})`
 
+type Preset = { name?: unknown; mark?: unknown; text?: { title?: { text?: unknown } }; data?: { source?: { scenarios?: unknown } } }
+/** A starter chart's name: its own `name`, else its title, else its chart type. */
+function presetName(p: unknown, i: number): string {
+  const c = (typeof p === 'object' && p ? p : {}) as Preset
+  const t = [c.name, c.text?.title?.text].find((x) => typeof x === 'string' && x.trim())
+  return t ? String(t).trim() : `${String(c.mark ?? 'Chart')} ${i + 1}`
+}
+/** The preset as import text, without the scenarios it was exported with: a starter chart applies to whatever is selected. */
+function presetText(p: unknown): string {
+  const c = JSON.parse(JSON.stringify(p ?? {})) as Preset
+  if (c.data?.source) delete c.data.source.scenarios
+  return JSON.stringify(c)
+}
+
 // The same pill the control bar's Scenarios chip uses, so the toolbar's buttons match the other pages.
 const CHIP = 'inline-flex h-[38px] min-w-0 shrink-0 items-center gap-2 rounded-full border border-[var(--glass-line)] bg-[var(--tile-hi)] pl-[12px] pr-[10px] font-body text-sm text-[var(--ink)] shadow-[inset_0_1px_0_var(--hi)] hover:bg-[color-mix(in_srgb,var(--ink)_6%,var(--tile-hi))] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-text)]'
 
@@ -26,6 +41,9 @@ function TopBar({ m }: { m: DataTabModel }) {
   const s = m.state
   const [rect, setRect] = useState<DOMRect | null>(null)
   const [importing, setImporting] = useState(false)
+  const [starterRect, setStarterRect] = useState<DOMRect | null>(null)
+  const options = getExploreOptions()
+  const { features } = options
   const names = m.scenarioOptions.map((o) => o.name)
   const label = s.scenarios.length === 1 ? s.scenarios[0] : `${s.scenarios.length} of ${names.length} scenarios`
   const apply = (scenarios: string[]) => setExplore((st) => ({ scenarios, ...resetQuery({ table: st.table.startsWith('m:') ? st.table : '' }) }))
@@ -47,16 +65,37 @@ function TopBar({ m }: { m: DataTabModel }) {
         <button type="button" className="pill" aria-label="Add chart tab" onClick={() => setExplore((st) => {
           const id = `c${st.nextId}`
           const source = st.table.startsWith('m:') ? st.table : st.table || `t:${m.tableOptions.find((t) => t.missingIn.length === 0)?.name ?? ''}`
-          return { charts: [...st.charts, { id, name: `Chart ${st.charts.length + 1}`, source, spec: defaultSpec() }], activeTab: id, nextId: st.nextId + 1, notice: '', selectedField: null }
+          return { charts: [...st.charts, { id, name: `Chart ${st.charts.length + 1}`, source, spec: defaultSpec({ mark: options.charts.default }) }], activeTab: id, nextId: st.nextId + 1, notice: '', selectedField: null }
         })}><Plus size={15} aria-hidden="true" /></button>
       </div>
-      {s.activeTab !== 'data' && (
+      {s.activeTab !== 'data' && features.undo && (
         <div className="undo" role="group" aria-label="Undo and redo">
           <Btn icon aria-label="Undo" aria-keyshortcuts="Control+Z Meta+Z" disabled={s.undoDepth === 0} onClick={undoCharts}><Undo2 size={15} aria-hidden="true" /></Btn>
           <Btn icon aria-label="Redo" aria-keyshortcuts="Control+Shift+Z Control+Y Meta+Shift+Z" disabled={s.redoDepth === 0} onClick={redoCharts}><Redo2 size={15} aria-hidden="true" /></Btn>
         </div>
       )}
-      <button type="button" className={CHIP} onClick={() => setImporting(true)}><Upload size={15} aria-hidden="true" /><span className="font-medium">Import</span></button>
+      {options.presets.length > 0 && (
+        <button type="button" className={CHIP} aria-haspopup="dialog" aria-expanded={!!starterRect} onClick={(e) => setStarterRect(e.currentTarget.getBoundingClientRect())}>
+          <Sparkles size={15} aria-hidden="true" /><span className="font-medium">Starter charts</span>
+        </button>
+      )}
+      {starterRect && (
+        <SearchPopover
+          anchor={starterRect}
+          title="Start from a chart"
+          placeholder={`Search ${options.presets.length} starter charts`}
+          single
+          items={options.presets.map((p, i) => ({
+            key: String(i), label: presetName(p, i), on: false,
+            onPick: () => {
+              setStarterRect(null)
+              void importConfig(presetText(p), presetName(p, i)).then((errs) => setExplore({ notice: errs.length ? `${presetName(p, i)}: ${errs[0]}` : '', noticeBad: errs.length > 0 }))
+            },
+          }))}
+          onClose={() => setStarterRect(null)}
+        />
+      )}
+      {features.importExport && <button type="button" className={CHIP} onClick={() => setImporting(true)}><Upload size={15} aria-hidden="true" /><span className="font-medium">Import</span></button>}
       {importing && <ImportDialog onClose={() => setImporting(false)} />}
       {rect && (
         <SearchPopover
@@ -126,9 +165,12 @@ function ChartTabLabel({ id, name, selected }: { id: string; name: string; selec
 }
 
 export function ExploreBuilderPanel({ config }: PanelProps<ExploreBuilderPanelConfig>) {
+  // The deployer's settings are set before anything below reads them (a render-time set is safe: it is the same value for the same config).
+  const options = useMemo(() => { const o = resolveExploreOptions(config); setExploreOptions(o); return o }, [config])
+  useEffect(() => { if (options.warnings.length) console.warn(`explore-builder settings:\n${options.warnings.join('\n')}`) }, [options])
   const m = useDataTab()
   const chart = m.state.charts.find((c) => c.id === m.state.activeTab)
-  const onChartTab = !!chart
+  const onChartTab = !!chart && options.features.undo
   // Ctrl/Cmd+Z undoes and Ctrl+Shift+Z or Ctrl+Y redoes a chart change, except while typing: a text field keeps its own undo
   useEffect(() => {
     if (!onChartTab) return
@@ -150,6 +192,7 @@ export function ExploreBuilderPanel({ config }: PanelProps<ExploreBuilderPanelCo
         <div className="xtitle">
           <h1>{config.title}</h1>
           {config.description && <p>{config.description}</p>}
+          {options.warnings.length > 0 && <p className="xwarn" role="status">Explore settings were not all applied: {options.warnings.join(' ')}</p>}
         </div>
         <div className="xbar"><TopBar m={m} /><AssistantButton /></div>
       </div>
@@ -159,7 +202,7 @@ export function ExploreBuilderPanel({ config }: PanelProps<ExploreBuilderPanelCo
         <PreviewTable m={m} />
         <aside className="stack">
           <QueryBox m={m} />
-          <MyTables m={m} />
+          {options.features.myTables && <MyTables m={m} />}
         </aside>
       </div>
       )}

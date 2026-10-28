@@ -1505,6 +1505,22 @@ One tile holding several views of the same data. The tile shows a view switcher 
   panel error state with a precise message and the rest of the tab is unaffected.
 - A treemap, sunburst, sankey or pie has no series channel: pin the tile (`scenario:`) until CompareHost (P5) takes over.
 
+### `type: explore-builder` (065-chart-builder)
+
+The Explore chart builder, a full-page panel. It needs no data keys. Every setting below is optional and an unset one keeps
+the builder's own behaviour. Full contract: `specs/065-chart-builder/contracts/deployer-options.md`.
+
+```yaml
+- type: explore-builder
+  title: Explore
+  limits:   { csv_rows: 100000, page_size: 12, undo_steps: 60, max_joins: 4 }
+  features: { sql_tab: true, csv: true, copy_sql: true, import_export: true, my_tables: true, undo: true }
+  charts:   { allow: [bar, line, pie], default: bar }
+  tables:   { include: [trips_*], exclude: ["*_raw"] }
+  columns:  { trips: { label: Trips made, unit: trips, format: "#,##0" } }
+  presets:  [ ... chart configurations exported from the builder ... ]
+```
+
 ### `type: graphic-walker`
 
 Graphic Walker — full-tab free-form Tableau-style sandbox. Explore tab only.

@@ -28,6 +28,12 @@ Notes on how to read it:
   edits to one setting, such as typing a title, undo as one step. Session only, nothing is stored in the browser.
 - **Copy SQL and Download CSV** on the Data tab's table. The CSV holds every page of the result, up to 100,000 rows.
 - **Loading state for charts.** A placeholder on the first load and a dimmed chart while new data arrives.
+- **Deployer options for the Explore builder.** The `explore-builder` panel takes optional YAML keys, so none of this is fixed
+  in code any more: `limits` (CSV row cap, fixed page size, undo depth, joins), `features` (turn off the SQL tab, CSV, Copy
+  SQL, import and export, saving tables, undo), `charts` (which chart types, and the one a new tab starts with), `tables`
+  (include and exclude patterns), `columns` (label, unit and number format) and `presets` (starter charts, from the Export
+  JSON). Unset keys behave as before; a wrong value is reported under the title and the default stays. See
+  `specs/065-chart-builder/contracts/deployer-options.md`.
 
 ### Changed
 

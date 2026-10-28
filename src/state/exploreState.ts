@@ -3,6 +3,7 @@
 import { useSyncExternalStore } from 'react'
 import type { DataType } from '@/charts/builder/columnTypes'
 import type { ChartSpec } from '@/charts/builder/spec'
+import { getExploreOptions } from '@/explore/options'
 import { emptyModel, type ColumnInfo, type QueryModel } from '@/explore/sql/queryModel'
 
 export interface MyTable {
@@ -83,7 +84,7 @@ export function subscribeExplore(fn: () => void): () => void {
 // Undo and redo cover the chart tabs (their fields, settings, names, and being added or closed), not the Data tab. Every
 // change to `charts` is recorded. Edits to the same setting of the same chart that follow each other within COALESCE_MS
 // (typing a title) undo as one step; adding, closing or any other kind of edit always starts a new one.
-const HISTORY_MAX = 60
+const historyMax = (): number => getExploreOptions().limits.undoSteps
 const COALESCE_MS = 800
 const past: ChartTab[][] = []
 const future: ChartTab[][] = []
@@ -119,7 +120,7 @@ export function setExplore(patch: Partial<ExploreState> | ((s: ExploreState) => 
     const key = changeKey(state.charts, p.charts)
     if (!past.length || key === null || key !== lastKey || now - lastChange > COALESCE_MS) {
       past.push(state.charts)
-      if (past.length > HISTORY_MAX) past.shift()
+      while (past.length > historyMax()) past.shift()
     }
     lastChange = now
     lastKey = key

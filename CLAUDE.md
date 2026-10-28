@@ -641,6 +641,12 @@ compiler `compile.ts`, which draws its own SVG because Plot has no dash/hatch/pi
 joins, highlighter, guarded runner). User SQL always goes through `sqlGuard.authorize` and the one shared connection.
 Session-only state in `state/exploreState.ts`. Specs and tasks: `specs/065-chart-builder/`.
 
+A deployer shapes the builder from the panel's YAML, every key optional (`explore/options.ts`, contract
+`specs/065-chart-builder/contracts/deployer-options.md`): `limits` (csv_rows, page_size, undo_steps, max_joins), `features` (sql_tab, csv,
+copy_sql, import_export, my_tables, undo), `charts` (allow, default), `tables` (include/exclude globs), `columns` (label, unit, format)
+and `presets` (starter charts). A new Explore control that has a sensible deployer choice gets a key there, not a constant; a wrong
+value is reported under the panel title and the default stays.
+
 `type: chart, kind: custom, spec: {...}` (`charts/kinds/custom.ts`) draws a chart in a dashboard tile from the same spec the
 builder exports; `spec.data.table` names a metric table and the scenarios are the tile's compared runs.
 

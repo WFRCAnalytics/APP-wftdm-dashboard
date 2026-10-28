@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { ChevronDown } from 'lucide-react'
 import { DATA_TYPES, TYPE_LABEL, typesPresent, type DataType } from '@/charts/builder/columnTypes'
+import { columnLabel, getExploreOptions } from '@/explore/options'
 import { loadProfile } from '@/explore/profile/profileRun'
 import { typeColorKey, type ColumnProfile } from '@/explore/profile/profile'
 import { SearchPopover, Sparkline, TypeChip, TypeFilter, useInView, XSelect, type PopItem } from '@/explore/parts'
@@ -30,7 +31,7 @@ function ProfileRow({ sql, col, selected }: { sql: string; col: ColumnInfo; sele
   return (
     <button ref={ref} type="button" className={`prow2 ${selected ? 'sel' : ''}`} aria-pressed={selected} onClick={() => setExplore({ profileCol: col.name })}>
       <TypeChip type={col.type} />
-      <span className="pn">{col.name}</span>
+      <span className="pn">{columnLabel(getExploreOptions(), col.name)}</span>
       <Sparkline bars={p?.bars ?? []} width={64} height={20} fill={colorOf(col.type)} />
       <span className="pm">{p ? p.meta + (p.missPct > 0 ? ` · ${p.missPct}% missing` : '') : ' '}</span>
     </button>
@@ -43,7 +44,7 @@ function Detail({ sql, col }: { sql: string; col: ColumnInfo }) {
   return (
     <div className="det">
       <div className="dth">
-        <span className="dn">{col.name}</span>
+        <span className="dn">{columnLabel(getExploreOptions(), col.name)}</span>
         <label className="ty">
           <TypeChip type={col.type} />
           <XSelect className="tsel" aria-label={`Type of ${col.name}`} value={col.type} onChange={(e) => setExplore((s) => ({ typeOverride: { ...s.typeOverride, [col.name]: e.target.value as DataType } }))}>

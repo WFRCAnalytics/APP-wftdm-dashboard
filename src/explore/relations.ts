@@ -6,6 +6,7 @@ import { buildCatalog, viewNameOf } from '@/services/ai/catalog'
 import { query } from '@/services/duckdb'
 import { ensureRegistered } from '@/services/tabDataLoader'
 import type { ColumnInfo, TableInfo } from '@/explore/sql/queryModel'
+import { getExploreOptions, tableAllowed } from '@/explore/options'
 
 export interface ScenarioOption { name: string; label: string; kind: string }
 
@@ -15,12 +16,15 @@ export function listScenarios(): ScenarioOption[] {
 
 export interface TableOption { name: string; missingIn: string[] }
 
-/** Tables present in every selected scenario come first and are selectable; the rest list where they are missing. */
+/** Tables present in every selected scenario come first and are selectable; the rest list where they are missing.
+ * The deployer's `tables.include` and `tables.exclude` decide which names are offered at all. */
 export function tablesFor(scenarios: readonly string[]): TableOption[] {
   const cat = buildCatalog().filter((s) => scenarios.includes(s.name))
   const all = new Set<string>()
   for (const s of cat) for (const m of s.metrics) all.add(m.metric)
+  const { tables } = getExploreOptions()
   return Array.from(all)
+    .filter((name) => tableAllowed(name, tables))
     .sort()
     .map((name) => ({ name, missingIn: cat.filter((s) => !s.metrics.some((m) => m.metric === name)).map((s) => s.name) }))
 }
