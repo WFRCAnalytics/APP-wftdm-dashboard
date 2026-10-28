@@ -205,12 +205,17 @@ test.describe('zone maps', () => {
     await tileTitle(page).locator('xpath=following::*[text()="Difference"][1]').click()
     const el = page.locator('[data-chart-kind="zone-diff-map"]')
     await expect(el.locator('canvas').first()).toBeVisible({ timeout: 60_000 })
-    await expect(el.locator('.wfz-chip')).toContainText(' minus ')
-    await expect(el.locator('.wfz-legend')).toContainText('pts')
-    await expect(el.locator('.wfz-legend')).toContainText('0')
+    // one map per compared scenario besides the reference, each captioned against it
+    await expect(el.locator('.wfz-chip')).toHaveCount(2)
+    for (const chip of await el.locator('.wfz-chip').all()) await expect(chip).toContainText(' minus ')
+    await expect(el.locator('.wfz-legend').first()).toContainText('pts')
+    await expect(el.locator('.wfz-legend').first()).toContainText('0')
+    // one shared scale: both legends carry the same limits
+    await expect.poll(async () => new Set(await el.locator('.wfz-legend').allTextContents()).size).toBe(1)
+    await el.locator('canvas').first().scrollIntoViewIfNeeded()
     await hoverZone(page)
     await expect(page.locator('.wf-tip')).toContainText('Change vs')
-    expect(await liveMaps(page)).toBe(1)
+    expect(await liveMaps(page)).toBe(2)
   })
 
   test('swipe map: slider role, arrow keys move it 24px, clamped 24px from the edges', async ({ page }) => {

@@ -73,10 +73,10 @@ export function CompareHost({ panel, strategy, tileKey, title }: CompareHostProp
   const cellKey = plan.kind === 'cells' ? plan.cells.map((c) => c.run).join('|') : ''
   useEffect(() => {
     const grid = gridRef.current
-    if (!grid) return
+    if (!grid || (plan.kind === 'cells' && plan.diff)) return
     return syncGrid(grid, (run) => inputs.label(run))
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cellKey])
+  }, [cellKey, plan.kind === 'cells' && plan.diff])
 
   if (plan.kind === 'empty') {
     return <PanelEmptyState icon={Layers} message={plan.message} />
@@ -101,6 +101,7 @@ export function CompareHost({ panel, strategy, tileKey, title }: CompareHostProp
       <div
         ref={gridRef}
         className="wf-multi grid"
+        data-own-tips={plan.diff ? '' : undefined}
         style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`, gap: GRID_GAP }}
       >
         {plan.cells.map((cell: Cell) => (

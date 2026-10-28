@@ -5,6 +5,7 @@ import * as Plot from '@observablehq/plot'
 import { MODES } from '@/charts/vocab'
 import { emptyNote, f1, sgn } from '@/charts/util'
 import { buildSeries, groupOf, moeByMode, refRowLabel, seriesTables, visibleNames } from '@/charts/lib/modeShare'
+import { sharedExtent } from '@/charts/lib/facetSync'
 import { observedFooter } from '@/charts/lib/observedSource'
 import type { ChartEnv, ChartKind, LegendSpec } from '@/charts/types'
 import { deltaValue, formatDelta } from '@/panels/compareMath'
@@ -35,6 +36,9 @@ export function drawModeBars(el: HTMLElement, env: ChartEnv) {
   const yFormat = (d: number) => (m === 'val' ? `${d}%` : `${sgn(d)}${Math.abs(d)}${m === 'pct' ? '%' : ''}`)
   const foot = observedRef ? observedFooter(env, 'trip_mode_share') : ''
 
+  // facets of a per-scenario difference share one axis so the bars can be compared across them
+  const shared = m !== 'val' && env.facetDiff ? sharedExtent(env, Math.max(1, ...rows.map((d) => Math.abs(d.v)))) : null
+
   const plot = Plot.plot({
     width: env.width,
     height: env.height,
@@ -45,7 +49,7 @@ export function drawModeBars(el: HTMLElement, env: ChartEnv) {
     marginRight: 4,
     fx: { label: null, padding: 0.14, domain: [...MODES] },
     x: { axis: null, domain: names, paddingInner: 0.1, paddingOuter: 0.08 },
-    y: { label: null, grid: true, tickFormat: yFormat, ticks: 5 },
+    y: { label: null, grid: true, tickFormat: yFormat, ticks: 5, ...(shared ? { domain: [-shared.extent, shared.extent] } : {}) },
     color: { domain: names, range: names.map(s.color) },
     marks: [
       Plot.gridY({ stroke: t.grid, strokeOpacity: 1 }),
@@ -95,7 +99,7 @@ export function drawModeBars(el: HTMLElement, env: ChartEnv) {
       ...(m === 'val' ? [{ label: env.reference.isObserved ? 'Observed' : `Reference: ${env.reference.label}`, dash: true }] : []),
     ],
   }
-  return { legend, label: `Mode share by ${g === 'scn' ? 'scenario' : g}, ${env.year}` }
+  return { legend, dispose: shared?.dispose, label: `Mode share by ${g === 'scn' ? 'scenario' : g}, ${env.year}` }
 }
 
 export default kind

@@ -14,7 +14,7 @@ import { useFill, withFillHeight } from '@/layout/fill'
 import type { CompareStrategy, MultiViewPanelConfig } from '@/layout/types'
 import { PanelLoadingState } from '@/panels/PanelLoadingState'
 import { registry } from '@/panels/registry'
-import { drawsAllScenarios, effectiveStrategy, offersScenarioPick } from '@/panels/compareStrategy'
+import { diffFacets, drawsAllScenarios, effectiveStrategy, offersScenarioPick } from '@/panels/compareStrategy'
 import { STRATEGY_LABEL, isBaseYearOnly, isCalibrationFamily, resolveMultiView, validateMultiView, withRowHeight } from '@/panels/multiView'
 
 // The tile for `type: multi-view`: the chrome (badges, group-by, compare-as, view switcher) around MultiViewPanel,
@@ -112,10 +112,12 @@ export function MultiViewTile({ config: rawConfig, tileKey }: { config: MultiVie
   } else if (ctx.compare && offered.length === 1 && (strategy === 'multi' || strategy === 'grid')) {
     badges.push(<Badge key="sbs" variant="neutral">Side by side</Badge>)
   }
-  if (ctx.compare && (strategy === 'multi' || strategy === 'grid') && inputs.active.length >= 3) {
+  // a difference with two or more compared scenarios is drawn one facet each, so there is no single scenario to pick
+  const facets = strategy === 'diff' ? diffFacets(resolved.panel, inputs) : null
+  if (ctx.compare && ((strategy === 'multi' || strategy === 'grid') ? inputs.active.length >= 3 : (facets?.length ?? 0) >= 3)) {
     actions.push(<LayoutMenu key="layout" value={tile.layout ?? 'auto'} onChange={(layout) => setTile({ layout })} />)
   }
-  if (ctx.compare && offersScenarioPick(resolved.panel, strategy, ctx.display)) {
+  if (ctx.compare && !facets && offersScenarioPick(resolved.panel, strategy, ctx.display)) {
     // a difference is drawn against the reference, so the reference is not offered as the scenario shown
     const runs = strategy === 'diff' ? inputs.active.filter((r) => r !== inputs.referenceRun) : inputs.active
     const value = tile.scenario && runs.includes(tile.scenario) ? tile.scenario : runs.includes(inputs.focusRun ?? '') ? (inputs.focusRun ?? '') : (runs[0] ?? '')

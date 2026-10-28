@@ -575,6 +575,8 @@ export interface ChartPanelConfig extends PanelConfigBase {
   group?: string
   /** Which headline metric (rank, years): set from a multi-view `$group.metric`. */
   metric_id?: string
+  /** Set by the compare host on each facet of a per-scenario difference (see `planCompare`). */
+  diff_facet?: boolean
   /** Kind-specific options. */
   options?: Record<string, unknown>
   [key: string]: unknown

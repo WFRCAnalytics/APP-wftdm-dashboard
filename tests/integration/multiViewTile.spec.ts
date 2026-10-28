@@ -82,7 +82,7 @@ test.describe('063 P4 — multi-view tile', () => {
 
     await views.getByRole('button', { name: 'Flow' }).click()
     await expect(views.getByRole('button', { name: 'Flow' })).toHaveAttribute('aria-pressed', 'true')
-    await expect(card.locator('svg path[d]').first()).toBeVisible({ timeout: 20_000 })
+    await expect(card.locator('svg:not(.lucide) path[d]').first()).toBeVisible({ timeout: 20_000 })
     await expect(card.locator('g[data-node-name]')).toHaveCount(0)
 
     await views.getByRole('button', { name: 'Heatmap' }).click()

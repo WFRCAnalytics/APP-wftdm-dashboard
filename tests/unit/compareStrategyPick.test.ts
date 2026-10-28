@@ -27,10 +27,12 @@ describe('scenario pick', () => {
   it('pins the chosen scenario, and never the reference as the one a difference shows', () => {
     const plan = planCompare(heat, 'overlay', inputs, { scenario: 'c' })
     expect(plan.kind === 'single' && (plan.config as { scenario?: string }).scenario).toBe('c')
+    // two compared scenarios besides the reference are both drawn (one facet each), so nothing is picked
     const diff = planCompare(donut, 'diff', { ...inputs, display: 'abs' }, { scenario: 'c' })
-    expect(diff.kind === 'single' && JSON.stringify(diff.config)).toContain('"b":"c"')
-    const same = planCompare(donut, 'diff', { ...inputs, display: 'abs' }, { scenario: 'a' })
-    expect(same.kind === 'single' && JSON.stringify(same.config)).toContain('"b":"b"')
+    expect(diff.kind === 'cells' && diff.cells.map((c) => c.run)).toEqual(['b', 'c'])
+    // with one left there is nothing to choose and the reference is never the one shown
+    const one = planCompare(donut, 'diff', { ...inputs, display: 'abs', active: ['a', 'b'] }, { scenario: 'a' })
+    expect(one.kind === 'single' && JSON.stringify(one.config)).toContain('"b":"b"')
   })
 
   it('does not pin a heatmap grouped by Scenario: it draws every scenario, and the dropdown is shown but off', () => {

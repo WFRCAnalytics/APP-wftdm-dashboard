@@ -84,6 +84,8 @@ export interface ChartPlan {
   group: string
   /** True when drawn as one cell of a side-by-side grid (pinned to one run; values only). */
   pinned: boolean
+  /** True for one facet of a difference drawn per scenario: it shows its own change against the reference, and its scale is shared. */
+  facetDiff: boolean
   /** The run name of a compared scenario group in a given year, when it exists. */
   runFor(scenarioGroup: string, year: number): string | undefined
   /** Every calibration round of the deployment (base year), in round order, selected or not. */

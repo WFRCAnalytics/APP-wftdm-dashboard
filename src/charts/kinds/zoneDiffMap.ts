@@ -2,6 +2,7 @@
 // scenario and the reference, diverging (secondary <- mid -> primary, never green/red), the domain at the 96th
 // percentile of the absolute differences. Compare-only. Observed has no zone table, so with Observed as the reference
 // the baseline stands in and the caption chip says so.
+import { sharedExtent } from '@/charts/lib/facetSync'
 import { chip, controlGroup, legend } from '@/charts/lib/mapChrome'
 import { diffDomain, divergeT, f1 } from '@/charts/lib/mapMath'
 import {
@@ -102,7 +103,8 @@ const kind: ChartKind = {
     const mode: 'abs' | 'pct' = env.display === 'pct' ? 'pct' : 'abs'
     const diff = new Map<number, number | null>()
     for (const [id, a] of focus) diff.set(id, deltaValue(a.share * 100, base.get(id) ? (base.get(id) as ZoneRow).share * 100 : null, mode))
-    const half = diffDomain([...diff.values()])
+    const shared = sharedExtent(env, diffDomain([...diff.values()]))
+    const half = shared.extent
     const noData = t.mix(t.surface, t.ink, 0.1)
     const fills = new Map<number, string>()
     for (const [id, v] of diff) fills.set(id, v === null ? noData : t.diverge(divergeT(v, half)))
@@ -128,7 +130,7 @@ const kind: ChartKind = {
       legend(gradient([t.diverge(-1), t.diverge(0), t.diverge(1)]), [`−${f1(half)}${unit}`, '0', `+${f1(half)}${unit}`], 170),
     )
     if (host.chrome.parentElement !== host.wrap) host.wrap.appendChild(host.chrome)
-    return out
+    return { ...out, dispose: shared.dispose }
   },
   destroy: destroyHost,
 }

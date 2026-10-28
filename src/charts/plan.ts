@@ -28,9 +28,11 @@ export interface PlanInput {
 export function buildChartPlan(i: PlanInput): ChartPlan {
   const { config, view } = i
   const pinnedRun = typeof config.scenario === 'string' && config.scenario ? config.scenario : undefined
-  const pinned = pinnedRun !== undefined
+  // a cell of a faceted difference is pinned to one run but still draws its change against the reference
+  const facetDiff = pinnedRun !== undefined && config.diff_facet === true
+  const pinned = pinnedRun !== undefined && !facetDiff
 
-  const runs = pinnedRun ? [pinnedRun] : view.compare ? i.active : view.focusRun ? [view.focusRun] : []
+  const runs = pinnedRun !== undefined ? [pinnedRun] : view.compare ? i.active : view.focusRun ? [view.focusRun] : []
   const focusRun = pinnedRun ?? view.focusRun
   const scenarios: ChartScenario[] = runs.map((run) => ({
     run,
@@ -66,6 +68,7 @@ export function buildChartPlan(i: PlanInput): ChartPlan {
     compare: view.compare,
     group: config.group ?? i.defaultGroup ?? 'scn',
     pinned,
+    facetDiff,
     runFor: i.runFor,
     rounds: i.rounds ?? [],
     observedRun: i.observedRun,

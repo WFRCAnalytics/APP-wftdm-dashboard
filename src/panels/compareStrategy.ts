@@ -136,7 +136,7 @@ export interface Cell {
 
 export type ComparePlan =
   | { kind: 'single'; config: PanelConfig; note?: string }
-  | { kind: 'cells'; cells: Cell[]; page: number; pages: number; total: number; firstShown: number; lastShown: number }
+  | { kind: 'cells'; /** Facets of a difference: each draws its own change, so the grid's synced tooltip (which lists values against the first cell) is off. */ diff?: boolean; cells: Cell[]; page: number; pages: number; total: number; firstShown: number; lastShown: number }
   | { kind: 'empty'; message: string }
 
 function pin(panel: PanelConfig, run: string | undefined): PanelConfig {
@@ -218,6 +218,32 @@ export function buildDiffConfig(
   }
 }
 
+type CellsPlan = Extract<ComparePlan, { kind: 'cells' }>
+
+/** One page of `runs` as cells; the plan's counts describe `runs` only (a pinned reference is added by the caller). */
+function pageOfCells(runs: string[], perPage: number, page: number | undefined, make: (run: string) => Cell): { plan: CellsPlan } | null {
+  const pages = Math.max(1, Math.ceil(runs.length / perPage))
+  const at = Math.min(Math.max(page ?? 0, 0), pages - 1)
+  const shown = runs.slice(at * perPage, (at + 1) * perPage)
+  const cells = shown.map(make)
+  if (cells.length === 0) return null
+  return { plan: { kind: 'cells', cells, page: at, pages, total: runs.length, firstShown: at * perPage + 1, lastShown: at * perPage + shown.length } }
+}
+
+/**
+ * The runs a difference gets one facet each: every compared scenario but the reference. Null (the single difference chart) when
+ * there are fewer than two, or the panel cannot be split per run (a non-chart panel against each run's own base year).
+ */
+export function diffFacets(panel: PanelConfig, inputs: CompareInputs): string[] | null {
+  if (isAuthorPinned(panel)) return null
+  const selfBase = inputs.referenceKind === 'self-base-year'
+  if (selfBase && panel.type !== 'chart') return null
+  const runs = inputs.active.filter((r) => selfBase || r !== inputs.referenceRun)
+  if (runs.length < 2) return null
+  if (panel.type !== 'chart' && buildDiffConfig(panel, inputs.referenceRun ?? '', runs[0], 'abs') === null) return null
+  return runs
+}
+
 /** The ordinary values-mode plan for a pinned/unpinned single panel. */
 function single(panel: PanelConfig, run: string | undefined, hazard: boolean, forcePin: boolean): ComparePlan {
   return { kind: 'single', config: hazard || forcePin ? pin(panel, run) : panel }
@@ -266,19 +292,26 @@ export function planCompare(
       const runs = inputs.active
       const ref = inputs.referenceKind !== 'self-base-year' ? inputs.referenceRun : undefined
       const others = runs.filter((r) => r !== ref)
-      const perPage = ref ? CELLS_PER_PAGE - 1 : CELLS_PER_PAGE
-      const pages = Math.max(1, Math.ceil(others.length / perPage))
-      const page = Math.min(Math.max(tile.page ?? 0, 0), pages - 1)
-      const shown = others.slice(page * perPage, (page + 1) * perPage)
-      const cells: Cell[] = [
-        ...(ref ? [{ run: ref, label: inputs.label(ref), isReference: true, config: pin(panel, ref) }] : []),
-        ...shown.map((run) => ({ run, label: inputs.label(run), isReference: false, config: pin(panel, run) })),
-      ]
-      if (cells.length === 0) return { kind: 'empty', message: 'Choose a scenario to compare.' }
-      return { kind: 'cells', cells, page, pages, total: others.length, firstShown: page * perPage + 1, lastShown: page * perPage + shown.length }
+      // the reference stays on every page, so a page holds it plus the rest
+      const cells = pageOfCells(others, ref ? CELLS_PER_PAGE - 1 : CELLS_PER_PAGE, tile.page, (run) => ({ run, label: inputs.label(run), isReference: false, config: pin(panel, run) }))
+      if (!cells) return { kind: 'empty', message: 'Choose a scenario to compare.' }
+      return {
+        ...cells.plan,
+        cells: [...(ref ? [{ run: ref, label: inputs.label(ref), isReference: true, config: pin(panel, ref) }] : []), ...cells.plan.cells],
+      }
     }
     case 'diff': {
-      // a catalogue chart draws its own differences from the focus, the reference and the Show mode
+      // One facet per compared scenario other than the reference, each showing its own change against it. A chart draws its
+      // own difference from the run it is pinned to (`diff_facet`); another panel type gets a diff config built per run.
+      const facets = diffFacets(panel, inputs)
+      if (facets) {
+        const diffMode = mode === 'val' ? 'abs' : mode
+        const made = pageOfCells(facets, CELLS_PER_PAGE, tile.page, (run) => {
+          const config = panel.type === 'chart' ? ({ ...(panel as object), scenario: run, scenarios: undefined, diff_facet: true } as PanelConfig) : buildDiffConfig(panel, inputs.referenceRun as string, run, diffMode)
+          return { run, label: inputs.label(run), isReference: false, config: config as PanelConfig }
+        })
+        if (made) return { ...made.plan, diff: true }
+      }
       if (panel.type === 'chart') return { kind: 'single', config: panel }
       const shown = tile.scenario && inputs.active.includes(tile.scenario) && tile.scenario !== inputs.referenceRun ? tile.scenario : focus
       const ref = inputs.referenceKind === 'self-base-year' ? inputs.selfBaseRun : inputs.referenceRun

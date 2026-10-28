@@ -38,6 +38,29 @@ interface Box {
 
 const TWEEN_MS = 380
 
+/** Rendered width of a text element's own line, the first one when a tspan follows it. */
+function textWidth(el: SVGTextContentElement): number {
+  try {
+    const own = el.firstChild?.nodeType === 3 ? (el.firstChild.nodeValue?.length ?? 0) : 0
+    return el.tagName === 'text' && el.querySelector('tspan') && own > 0 ? el.getSubStringLength(0, own) : el.getComputedTextLength()
+  } catch {
+    return 0 // not rendered (no layout): leave the text as it is
+  }
+}
+
+/** Shortens a text element's own text until it fits `room` px, ending in an ellipsis; empty when even a few letters do not fit. */
+function fitText(el: SVGTextContentElement, room: number): void {
+  const node = el.firstChild
+  if (!node || node.nodeType !== 3) return
+  const full = node.nodeValue ?? ''
+  if (full === '' || textWidth(el) <= room) return
+  for (let n = full.length - 1; n >= 2; n--) {
+    node.nodeValue = `${full.slice(0, n).trimEnd()}…`
+    if (textWidth(el) <= room) return
+  }
+  node.nodeValue = ''
+}
+
 const kind: ChartKind = {
   tables: (plan) => {
     const variant = variantOf(plan.config.variant)
@@ -114,6 +137,14 @@ const kind: ChartKind = {
           .attr('fill', t.mute)
           .attr('font-weight', 400)
           .text((d) => (showGroupTotal(gw(d)) ? `  ${spec.fmt(d.value ?? 0)}` : ''))
+        // a group name too long for its box loses its total first, then ends in an ellipsis
+        header.selectAll<SVGTextElement, HierarchyRectangularNode<Node>>('text').each(function (d) {
+          const room = d.x1 - d.x0 - 2
+          if (textWidth(this) <= room) return
+          const total = this.querySelector('tspan')
+          if (total) total.textContent = ''
+          fitText(this, room)
+        })
       } else {
         header
           .append('text')
@@ -168,6 +199,13 @@ const kind: ChartKind = {
         .attr('font-weight', 400)
         .attr('opacity', 0.85)
         .text((d) => `${spec.fmt(d.value ?? 0)}${ref ? `  ${delta(groupName(d), d.data.name, d.value ?? 0)}` : ''}`)
+      // a label never spills out of its box: it ends in an ellipsis, or is left out when not even a few letters fit
+      labels.each(function (d) {
+        const room = Math.max(0, gw(d) - 9 - 6)
+        fitText(this as SVGTextElement, room)
+        const line = this.querySelector('tspan')
+        if (line) fitText(line, room)
+      })
 
       if (animate && prev) {
         // tiles slide from their old box to the new one; labels fade in once they have landed

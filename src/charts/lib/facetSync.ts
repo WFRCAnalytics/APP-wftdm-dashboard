@@ -32,3 +32,26 @@ export function facetChannel<T>(key: string): FacetChannel<T> {
     },
   }
 }
+
+/**
+ * The scale of a faceted difference is shared: every facet sizes its colours or axis to the largest change in any facet, so equal
+ * colours or bar lengths mean equal changes. A facet publishes its own extent (keyed by run) and re-reads the maximum; when another
+ * facet publishes something larger it is redrawn through `redraw`. Outside a faceted difference the extent is simply the facet's own.
+ * `dispose` is the unsubscribe: return it from `draw`.
+ */
+export function sharedExtent(
+  env: { facetDiff: boolean; scenarios: { run: string }[]; sync: <T>(name: string) => FacetChannel<T>; redraw: () => void },
+  own: number,
+): { extent: number; dispose?: () => void } {
+  const run = env.scenarios[0]?.run
+  if (!env.facetDiff || !run) return { extent: own }
+  const channel = env.sync<Record<string, number>>('extent')
+  const max = (rec: Record<string, number> | undefined) => Math.max(own, ...Object.values(rec ?? {}))
+  const current = channel.get() ?? {}
+  if (current[run] !== own) channel.set({ ...current, [run]: own })
+  const extent = max(channel.get())
+  const dispose = channel.subscribe((rec) => {
+    if (max(rec) !== extent) env.redraw()
+  })
+  return { extent, dispose }
+}

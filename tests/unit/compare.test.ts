@@ -149,12 +149,29 @@ describe('planCompare', () => {
     if (p.kind !== 'cells') throw new Error('expected cells')
     expect(p.page).toBe(p.pages - 1)
   })
-  it('diff compares the reference with the focus', () => {
-    const p = planCompare(bar, 'diff', inputs({ focusRun: 'dens' }))
+  it('diff compares the reference with the one scenario left to show', () => {
+    const p = planCompare(bar, 'diff', inputs({ focusRun: 'dens', active: ['base', 'dens'] }))
     expect(p).toMatchObject({ kind: 'single', config: { y: 'diff_value' } })
   })
   it('diff asks for another reference when it equals the focus', () => {
-    expect(planCompare(bar, 'diff', inputs())).toMatchObject({ kind: 'empty' })
+    expect(planCompare(bar, 'diff', inputs({ active: ['base'] }))).toMatchObject({ kind: 'empty' })
+  })
+  it('diff draws one facet per compared scenario but the reference, which is not shown', () => {
+    const p = planCompare(bar, 'diff', inputs({ display: 'abs' }))
+    if (p.kind !== 'cells') throw new Error('expected cells')
+    expect(p.cells.map((c) => c.run)).toEqual(['dens', 'transit', 'x4', 'x5'])
+    expect(p.cells.some((c) => c.isReference)).toBe(false)
+    expect(p.diff).toBe(true)
+    expect(p.cells[1].config).toMatchObject({ y: 'diff_value', comparison: { a: 'base', b: 'transit' } })
+    expect(p.pages).toBe(1)
+  })
+  it('a chart facet is pinned to its run and told to keep drawing its change', () => {
+    const chart = { type: 'chart', kind: 'donut' } as unknown as PanelConfig
+    const p = planCompare(chart, 'diff', inputs({ display: 'pct', active: ['base', 'a', 'b', 'c', 'd', 'e'] }), { page: 1 })
+    if (p.kind !== 'cells') throw new Error('expected cells')
+    expect(p.cells.map((c) => c.run)).toEqual(['e'])
+    expect(p.cells[0].config).toMatchObject({ scenario: 'e', diff_facet: true })
+    expect(p.pages).toBe(2)
   })
   it('diff against the same scenario in the base year uses the base run', () => {
     const p = planCompare(bar, 'diff', inputs({ focusRun: 'dens-2036', referenceKind: 'self-base-year', referenceRun: undefined, selfBaseRun: 'dens' }))

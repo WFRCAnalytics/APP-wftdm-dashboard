@@ -86,9 +86,9 @@ export function placeTip(
 }
 
 export const tooltip = {
-  /** Shows the tooltip at the pointer. Suppressed inside a side-by-side grid, which shows one synced tooltip itself. */
+  /** Shows the tooltip at the pointer. Suppressed inside a side-by-side grid, which shows one synced tooltip itself (a grid of difference facets, `data-own-tips`, does not: each facet shows its own). */
   show(spec: TipSpec | string, e: TipPointer): void {
-    if (e.target instanceof Element && e.target.closest('.wf-multi')) return
+    if (e.target instanceof Element && e.target.closest('.wf-multi:not([data-own-tips])')) return
     const t = node()
     t.innerHTML = typeof spec === 'string' ? spec : tipHtml(spec)
     t.style.opacity = '1'
