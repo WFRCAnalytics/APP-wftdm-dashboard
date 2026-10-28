@@ -6,6 +6,7 @@ import { normalizeCustomSpec } from '@/charts/builder/customSpec'
 import { chartQuery } from '@/charts/builder/specToSql'
 import { fromConfig, ZOOMABLE_MARKS, type ChartSpec } from '@/charts/builder/spec'
 import type { HierState } from '@/charts/builder/hierarchyDraw'
+import { renderPivots, type PivotState } from '@/charts/builder/pivotDraw'
 import { renderChartSvg } from '@/charts/builder/svg'
 import { describeTable, viewName } from '@/explore/relations'
 import { buildSql, emptyModel, planQuery, relationColumns } from '@/explore/sql/queryModel'
@@ -47,6 +48,11 @@ const kind: ChartKind = {
     if (model.problem !== undefined) {
       emptyNote(el, model.problem)
       return
+    }
+    if (model.tables) {
+      const st = env.state as { pivot?: PivotState }
+      el.replaceChildren(renderPivots(model.tables, (st.pivot ??= {})))
+      return { label: x.spec.text.title.t || 'Custom table' }
     }
     el.replaceChildren(renderChartSvg(model, env.width, env.height, env.theme.ink, ZOOMABLE_MARKS.includes(x.spec.mark), { theme: env.theme, state: env.state as HierState }))
     const items = model.legend.flatMap((g) =>

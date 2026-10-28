@@ -3,8 +3,9 @@
 // Pure: no DOM, no DuckDB. It draws its own SVG, like the radar and pie panels, because Observable Plot has no dash channel,
 // no fill patterns and no pie. Colours come from the app's ChartTheme (tokens), never hard-coded. tests/unit/chartBuilderCompile.test.ts.
 import type { ChartTheme } from '@/charts/types'
+import { buildPivot, type PivotTable } from '@/charts/builder/pivot'
 import { chartRole, type DataType, type Role } from '@/charts/builder/columnTypes'
-import { acceptsText, channelLabel, RING_CHANNELS, SLOTS, ROLE_WORD, type ChartSpec, type Channel, type Sort } from '@/charts/builder/spec'
+import { acceptsText, channelLabel, RING_CHANNELS, SLOTS, TABLE_COLS, TABLE_ROWS, TABLE_VALUES, ROLE_WORD, type ChartSpec, type Channel, type Sort } from '@/charts/builder/spec'
 
 export type Row = Record<string, any>
 export interface Col { name: string; type: DataType }
@@ -27,7 +28,7 @@ export interface SNode { name: string; v: number; color: string; tip: string }
 export interface HSankey { tf: string; title: string; w: number; h: number; small: boolean; from: SNode[]; to: SNode[]; flows: { f: string; t: string; v: number; tip: string }[] }
 export type ChartModel =
   | { problem: string }
-  | { problem?: undefined; panels: Panel[]; legend: LegendGroup[]; defs: PatternDef[]; W: number; H: number; rows: number; limitedSeries: boolean; trees?: HTree[]; sankeys?: HSankey[] }
+  | { problem?: undefined; panels: Panel[]; legend: LegendGroup[]; defs: PatternDef[]; W: number; H: number; rows: number; limitedSeries: boolean; trees?: HTree[]; sankeys?: HSankey[]; tables?: PivotTable[] }
 
 export type DrawnChart = Exclude<ChartModel, { problem: string }>
 
@@ -47,6 +48,7 @@ export function relabel(m: ChartModel, labels: Record<string, string>): ChartMod
   return {
     ...m,
     legend: m.legend.map((g) => ({ ...g, title: L(g.title) })),
+    ...(m.tables ? { tables: m.tables.map((t) => ({ ...t, rowLabels: t.rowLabels.map(L), colLabels: t.colLabels.map(L), measures: t.measures.map((me) => ({ ...me, label: me.label.replace(/ of (.+)$/, (_x: string, f: string) => ` of ${L(f)}`) })) })) } : {}),
     panels: m.panels.map((p) => ({
       ...p,
       rects: p.rects.map((r) => (r.tip ? { ...r, tip: tip(r.tip) } : r)),
@@ -185,7 +187,9 @@ export function buildChart(input: BuildInput): ChartModel {
   // box statistics from DuckDB carry no raw y value
   const preBox = rows[0]?.__q1 !== undefined
   const used = Object.values(enc).map((e) => e!.f).filter((f) => !(preBox && f === enc.y?.f) && !(mark === 'rule' && rows[0]?.__lo !== undefined && f === enc.x?.f))
-  rows = rows.filter((r) => used.every((f) => r[f] !== null && r[f] !== undefined))
+  // a table's grouping-set rows leave the fields they roll up NULL on purpose
+  const prePivot = mark === 'text' && rows[0]?.__m0 !== undefined
+  if (!prePivot) rows = rows.filter((r) => used.every((f) => r[f] !== null && r[f] !== undefined))
   if (!rows.length) return { problem: 'No rows match this data and filter.' }
   if (mark === 'pie' && uniqSorted(rows, enc.color!.f).length > 12) return { problem: `Pie and donut charts need 12 slices or fewer. ${enc.color!.f} has ${uniqSorted(rows, enc.color!.f).length}.` }
   if (mark === 'waffle' && uniqSorted(rows, enc.color!.f).length > 12) return { problem: `Waffle charts need 12 groups or fewer. ${enc.color!.f} has ${uniqSorted(rows, enc.color!.f).length}.` }
@@ -275,6 +279,7 @@ export function buildChart(input: BuildInput): ChartModel {
   // treemap and sunburst: the groups (colour field) and the pieces inside each (detail field), as a tree the drawing can zoom into
   const trees: HTree[] = []
   const sankeys: HSankey[] = []
+  const tables: PivotTable[] = []
   const makeTree = (kind: HTree['kind'], pn: Panel, vals: number[], head: number) => {
     const sz = enc.size!.f, tot = vals.reduce((p, c) => p + c, 0) || 1
     const levels = [enc.color, enc.detail, ...RING_CHANNELS.map((c) => enc[c])].filter((e) => !!e).map((e) => e!.f)
@@ -642,22 +647,16 @@ export function buildChart(input: BuildInput): ChartModel {
       })
     }
   } else if (mark === 'text') {
-    const xf = enc.x!.f, yf = enc.y!.f, vf = enc.label!.f, agg = enc.label!.agg ?? 'sum'
-    const xc2 = uniqSorted(rows, xf), yc2 = uniqSorted(rows, yf)
-    const lm = Math.min(150, Math.max(46, Math.max(...yc2.map((y) => String(y).length)) * 6.4 + 14))
+    // a pivot table: the DOM drawing is pivotDraw.ts; this decides its rows, columns, measures and formats
+    const rowFields = TABLE_ROWS.map((c) => enc[c]?.f).filter((f): f is string => !!f)
+    const colFields = TABLE_COLS.map((c) => enc[c]?.f).filter((f): f is string => !!f)
+    const measures = TABLE_VALUES.map((c) => enc[c]).filter((e) => !!e).map((e) => {
+      const fn = e!.agg ?? 'sum'
+      return { label: `${fn === 'count' ? 'Count' : fn[0].toUpperCase() + fn.slice(1)} of ${e!.f}`, field: e!.f, agg: fn, show: e!.show ?? 'value', dec: e!.dec, pre: e!.pre ?? '', suf: e!.suf ?? '' }
+    })
     for (const pn of panels) {
-      const cells = new Map<string, number[]>()
-      for (const r of pn.prows) { const k = `${r[xf]}\u0002${r[yf]}`; let a = cells.get(k); if (!a) { a = []; cells.set(k, a) } a.push(r[vf]) }
-      const bx = frame(lm), sx = (bx.x1 - bx.x0) / xc2.length, sy2 = (bx.y1 - bx.y0) / yc2.length
-      yc2.forEach((y, j) => { const s = String(y); tx(pn, bx.x0 - 8, bx.y0 + sy2 * (j + 0.5) + 4, s.length > 20 ? `${s.slice(0, 19)}…` : s, 'end') })
-      xBand(pn, bx, xc2)
-      if (spec.grid) yc2.forEach((_y, j) => ln(pn, bx.x0, bx.y0 + sy2 * (j + 1), bx.x1, bx.y0 + sy2 * (j + 1), T.grid, 1))
-      xc2.forEach((x, i) => yc2.forEach((y, j) => {
-        const a = cells.get(`${x}\u0002${y}`)
-        if (!a) return
-        const v = aggregate(a, agg), cx = bx.x0 + sx * i, cy = bx.y0 + sy2 * j
-        pn.rects.push({ x: r1(cx + 1), y: r1(cy + 1), w: r1(sx - 2), h: r1(sy2 - 2), rx: 4, fill: 'transparent', stroke: 'none', op: 1, tip: tip(`${x} · ${y}`, [[vf, fmtExact(v)]]) })
-        if (sy2 >= 14) { const t = fmtExact(v); tx(pn, cx + sx / 2, cy + sy2 / 2 + 4, t.length * 6.2 > sx - 4 ? fmtCompact(v) : t, 'middle', T.fs, '', T.ink) }
+      tables.push(buildPivot({
+        title: pn.title, rowFields, colFields, rowLabels: rowFields, colLabels: colFields, measures, rows: pn.prows, aggregate, sort: spec.sort, opts: spec.table, exact: fmtExact,
       }))
     }
   } else if (mark === 'density') {
@@ -942,5 +941,5 @@ export function buildChart(input: BuildInput): ChartModel {
     if (enc.dash) { const df = enc.dash.f; legend.push({ title: df, items: dom[df].map((v, i) => item(df, v, { d: 'M1 7h16', stroke: T.mute, sw: 2.2, dash: DASH[i % 5] })) }) }
     if (enc.shape) { const sf = enc.shape.f; legend.push({ title: sf, items: dom[sf].map((v, i) => { const g = glyph(i % 5, 9, 7, 4.2); return item(sf, v, { d: g.d, fill: g.line ? 'none' : T.mute, stroke: g.line ? T.mute : 'none', sw: 2 }) }) }) }
   }
-  return { panels: panels.map(({ tf, title, rects, paths, lines, texts }) => ({ tf, title, rects, paths, lines, texts })), legend, defs, W, H, rows: rows.length, limitedSeries, ...(trees.length ? { trees } : {}), ...(sankeys.length ? { sankeys } : {}) }
+  return { panels: panels.map(({ tf, title, rects, paths, lines, texts }) => ({ tf, title, rects, paths, lines, texts })), legend, defs, W, H, rows: rows.length, limitedSeries, ...(trees.length ? { trees } : {}), ...(sankeys.length ? { sankeys } : {}), ...(tables.length ? { tables } : {}) }
 }

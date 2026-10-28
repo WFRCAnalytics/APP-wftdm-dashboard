@@ -37,8 +37,10 @@ describe('chartQuery: aggregated marks', () => {
   })
   it('groups a text table by both axes and a waffle like a pie; a detail field splits a line', () => {
     const x = chartQuery(defaultSpec({ mark: 'text', enc: { x: { f: 'a' }, y: { f: 'b' }, label: { f: 'v', agg: 'mean' } } }), rel)
-    expect(norm(x.sql)).toContain('SELECT "a", "b", AVG(CAST("v" AS DOUBLE)) AS "v"')
-    expect(x.spec.enc.label?.agg).toBe('sum')
+    // every subtotal and total is a grouping set, so a mean is computed over the underlying rows
+    expect(norm(x.sql)).toContain('SELECT "b", "a", AVG(CAST("v" AS DOUBLE)) AS __m0')
+    expect(norm(x.sql)).toContain('GROUPING SETS (() , ("a") , ("b") , ("b", "a"))'.replace(/ ,/g, ','))
+    expect(x.spec.enc.label?.agg).toBe('mean')
     const w = chartQuery(defaultSpec({ mark: 'waffle', enc: { color: { f: 'mode' }, size: { f: 'trips', agg: 'sum' } } }), rel)
     expect(norm(w.sql)).toContain('GROUP BY "mode"')
     const l = chartQuery(defaultSpec({ mark: 'line', enc: { x: { f: 'a' }, y: { f: 'v', agg: 'sum' }, detail: { f: 'g' } } }), rel)

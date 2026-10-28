@@ -239,6 +239,7 @@
 @keyframes xbskel{from{background-position:200% 0}to{background-position:-200% 0}}
 @media (prefers-reduced-motion:reduce){.xb .skel{animation:none}}
 .xb .plot{position:absolute;inset:0;width:100%;height:100%;display:block;overflow:visible}
+.xb .plot.pivot{overflow:hidden;display:flex;padding:2px}
 .xb .plot.hier>svg{width:100%;height:100%;display:block;overflow:visible}
 .xb .plot.hier [data-t]{cursor:inherit}
 .xb .plot text{font-family:var(--font-body);font-variant-numeric:tabular-nums}
@@ -414,3 +415,20 @@
 .xb .rtabs>.xseg [role=group] button,.xb .rsec>.xseg [role=group] button{flex:1 1 0;min-width:0;text-align:center}
 /* labelled rows in the chart rail share one label column, so their controls line up */
 .xb .rsec .rrow>.lab{flex:0 0 120px}
+.xb .rsec.measure{border-top:1px solid var(--line);margin-top:12px;padding-top:10px}
+.xb .mname{font-weight:600;font-size:12.5px;margin:0 0 6px}
+
+/* image export of a table: an off-screen copy of the card that grows to the table's full size (ExportDialog.tsx) */
+.xb-export-holder{position:fixed;top:0;left:-200000px;pointer-events:none}
+.xb .card.xb-export{width:max-content;max-width:none;height:auto;max-height:none;overflow:visible;flex:none;position:static}
+.xb-export .cardbody{flex:none;overflow:visible;height:auto}
+.xb-export .plotw{position:static;flex:none;height:auto;min-height:0;overflow:visible}
+.xb-export .plot.pivot{position:static;inset:auto;width:auto;height:auto;overflow:visible;display:block;padding:0}
+.xb-export .pvt-host,.xb-export .pvt,.xb-export .pvt-scroll{width:max-content;height:auto;max-height:none;overflow:visible;flex:none}
+.xb-export .pvt-bar{display:none}
+.xb-export .pvt th,.xb-export .pvt td{position:static !important}
+
+/* the plot panel opened in the wide dialog: the chart fills it */
+.xb .dlg.wide .cardbody{flex:1;min-height:0;padding:8px 6px 0}
+.xb .dlg.wide .plotw{flex:1;min-height:0}
+.xb .dlg.wide>.th{padding:0 4px;align-items:center}

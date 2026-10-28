@@ -2,7 +2,7 @@
 // totals, bins and box statistics are computed over the full data and only a small result reaches the browser. Pure.
 // The result rows keep the source field names, so `compile.ts` reads them unchanged: an aggregated measure comes back in a
 // column named like the field it summarises, with its aggregate already applied (the compiler is told to total a single value).
-import type { Channel, ChartSpec, FieldDef } from '@/charts/builder/spec'
+import { TABLE_COLS, TABLE_ROWS, TABLE_VALUES, type Channel, type ChartSpec, type FieldDef } from '@/charts/builder/spec'
 
 export const ROW_CAP = 50_000
 export const SCATTER_SAMPLE = 5_000
@@ -89,8 +89,18 @@ export function chartQuery(spec: ChartSpec, relSql: string): ChartQuery {
     return { mode: 'range', spec, sql: `SELECT ${d.join(', ')}, MIN(${x}) AS __lo, MAX(${x}) AS __hi, AVG(${x}) AS __mean, COUNT(*) AS __n\nFROM ${rel}\n${where}\nGROUP BY ${d.join(', ')}\n${cap}` }
   }
   if (mark === 'text') {
-    const v = spec.enc.label!
-    return { mode: 'aggregated', sql: grouped([spec.enc.x!.f, spec.enc.y!.f, ...fac], aggExpr(v), v.f), spec: resetAgg(spec, 'label') }
+    // A table: every subtotal and total is its own grouping set, so a mean or a median is computed over the underlying rows (never
+    // as an average of averages). The fields a set leaves out come back NULL; the compiler reads that as "all of them".
+    const rows = TABLE_ROWS.map((c) => spec.enc[c]?.f).filter((f): f is string => !!f)
+    const cols = TABLE_COLS.map((c) => spec.enc[c]?.f).filter((f): f is string => !!f)
+    const measures = TABLE_VALUES.map((c) => spec.enc[c]).filter((e): e is FieldDef => !!e)
+    const sets: string[] = []
+    for (let r = 0; r <= rows.length; r++) {
+      for (let c = 0; c <= cols.length; c++) sets.push(`(${uniq([...fac, ...rows.slice(0, r), ...cols.slice(0, c)]).map(q).join(', ')})`)
+    }
+    const dims = uniq([...fac, ...rows, ...cols]).map(q)
+    const sql = `SELECT ${[...dims, ...measures.map((m, i) => `${aggExpr(m)} AS __m${i}`)].join(', ')}\nFROM ${rel}\n${where}\nGROUP BY GROUPING SETS (${sets.join(', ')})\n${cap}`
+    return { mode: 'aggregated', sql, spec }
   }
   if (mark === 'histogram') {
     const x = q(spec.enc.x!.f)

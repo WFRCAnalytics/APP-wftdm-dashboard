@@ -2,25 +2,27 @@
 // the chart card in the middle (a single row of encoding shelves over a chart that fills the remaining height), and the settings
 // rail on the right (Chart, Style, Axes, Filter). Drag a field onto a shelf, or select it and press the shelf (keyboard path).
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowLeftRight, ChevronRight, Download, Plus, X } from 'lucide-react'
+import { ArrowLeftRight, ChevronRight, Download, Maximize2, Minimize2, Plus, X } from 'lucide-react'
 import { buildChart, relabel, type ChartModel, type Col, type DrawnChart } from '@/charts/builder/compile'
 import { chartRole, DATA_TYPES, TYPE_LABEL, typesPresent, type DataType } from '@/charts/builder/columnTypes'
 import { suggest } from '@/charts/builder/rules'
 import {
-  assignField, acceptsShort, RING_CHANNELS, ZOOMABLE_MARKS, AGGS, channelAggregates, channelLabel, COMING_SOON, MARK_LABEL, MARKS, SLOTS, SORTS, switchMark, TEXT_SIZES,
-  type Agg, type Channel, type ChartSpec, type Mark, type Sort, type Stack, type TextKey,
+  assignField, acceptsShort, chainOf, CHAINS, SHOW_AS, TABLE_VALUES, ZOOMABLE_MARKS, AGGS, channelAggregates, channelLabel, COMING_SOON, MARK_LABEL, MARKS, SLOTS, SORTS, switchMark, TEXT_SIZES,
+  type Agg, type CellStyle, type Channel, type ChartSpec, type Density, type MeasureFormat, type ShowAs, type TableOpts, type Mark, type Sort, type Stack, type TextKey,
 } from '@/charts/builder/spec'
 import { drawHierarchy, type HierState } from '@/charts/builder/hierarchyDraw'
+import { renderPivots, type PivotState } from '@/charts/builder/pivotDraw'
 import { attachPanZoom } from '@/charts/lib/panZoom'
 import { readChartTheme } from '@/charts/theme'
 import type { ChartTheme } from '@/charts/types'
+import { Button } from '@/components/ui/button'
 import { Segmented } from '@/components/ui/segmented'
 import { MARK_ICONS, SOON_ICONS } from '@/explore/markIcons'
 import { Btn, Sparkline, TypeChip, TypeFilter, XSelect } from '@/explore/parts'
 import { loadProfile } from '@/explore/profile/profileRun'
 import { typeColorKey, type ColumnProfile } from '@/explore/profile/profile'
 import { useDistinct } from '@/explore/useDistinct'
-import { ExportDialog } from '@/explore/ExportDialog'
+import { ExportDialog, Modal } from '@/explore/ExportDialog'
 import { columnLabel, getExploreOptions } from '@/explore/options'
 import { ROW_CAP, useChartData, type ChartData } from '@/explore/useChartData'
 import { useColorScheme } from '@/hooks/useColorScheme'
@@ -119,11 +121,13 @@ function Plot({ model, spec, hot, size, theme }: { model: DrawnChart; spec: Char
   const host = useRef<HTMLDivElement>(null)
   const open = useRef<HierState>({})
   const hierarchical = !!(model.trees || model.sankeys)
+  const pivot = useRef<PivotState>({})
+  const pivoted = !!model.tables
   useEffect(() => {
-    if (!hierarchical || !host.current) return
-    host.current.replaceChildren(drawHierarchy(model, theme, open.current))
+    if (!host.current || !(hierarchical || pivoted)) return
+    host.current.replaceChildren(model.tables ? renderPivots(model.tables, pivot.current) : drawHierarchy(model, theme, open.current))
     return () => tooltip.hide()
-  }, [model, theme, hierarchical])
+  }, [model, theme, hierarchical, pivoted])
   const ref = useRef<SVGSVGElement>(null)
   const layer = useRef<SVGGElement>(null)
   const zoomable = ZOOMABLE_MARKS.includes(spec.mark)
@@ -140,6 +144,7 @@ function Plot({ model, spec, hot, size, theme }: { model: DrawnChart; spec: Char
     const [title, ...rest] = t.split('~')
     tooltip.show({ title, rows: rest.map((p) => { const i = p.indexOf('='); return { k: p.slice(0, i), v: p.slice(i + 1) } }) }, e)
   }
+  if (pivoted) return <div ref={host} className="plot pivot" />
   if (hierarchical) return <div ref={host} className="plot hier" role="img" aria-label="Chart" />
   return (
     <svg ref={ref} className="plot" viewBox={`0 0 ${size.w} ${size.h}`} role="img" aria-label="Chart" onMouseOver={onOver} onMouseMove={onOver} onMouseLeave={() => tooltip.hide()}>
@@ -161,11 +166,10 @@ function Plot({ model, spec, hot, size, theme }: { model: DrawnChart; spec: Char
   )
 }
 
-/** Treemap and sunburst levels after the first: the deeper ones are not all shown, only the ones in use and one "Add" shelf for the next. */
-const isRing = (mark: string, ch: Channel) => (mark === 'treemap' || mark === 'sunburst') && (ch === 'detail' || RING_CHANNELS.includes(ch))
+/** Channels added one at a time (treemap and sunburst levels, a table's groups and values): the ones in use, plus one "Add" pill for the next. */
 function slotsShown(spec: ChartSpec) {
-  const next = (['detail', ...RING_CHANNELS] as Channel[]).find((ch) => !spec.enc[ch])
-  return SLOTS[spec.mark].filter((slot) => !isRing(spec.mark, slot.ch) || !!spec.enc[slot.ch] || slot.ch === next)
+  const next = new Set((CHAINS[spec.mark] ?? []).map((c) => c.chs.find((ch) => !spec.enc[ch])).filter((ch): ch is Channel => !!ch))
+  return SLOTS[spec.mark].filter((slot) => !chainOf(spec.mark, slot.ch) || !!spec.enc[slot.ch] || next.has(slot.ch))
 }
 
 function ChartCard({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: ChartData }) {
@@ -177,13 +181,16 @@ function ChartCard({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: Cha
   const [theme, setTheme] = useState<ChartTheme>()
   const [hot, setHot] = useState<string | null>(null)
   const [exportOpen, setExportOpen] = useState(false)
+  // the plot panel can open in a wide dialog, like the data table; the chart is drawn in one place at a time
+  const [big, setBig] = useState(false)
+  const bodyRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     const el = plotRef.current
     if (!el || typeof ResizeObserver === 'undefined') return
     const ro = new ResizeObserver(() => { const w = Math.round(el.clientWidth), h = Math.round(el.clientHeight); if (w > 40 && h > 40) setSize((p) => (Math.abs(p.w - w) > 2 || Math.abs(p.h - h) > 2 ? { w, h } : p)) })
     ro.observe(el)
     return () => ro.disconnect()
-  }, [])
+  }, [big])
   useEffect(() => { if (plotRef.current) setTheme(readChartTheme(plotRef.current)) }, [scheme, size.w])
   const setSpec = (fn: (x: ChartSpec) => ChartSpec) => updateChart(tab.id, (t) => ({ ...t, spec: fn(t.spec) }))
   const roleOf = (f: string) => chartRole(data.cols.find((c) => c.name === f)?.type ?? 'text')
@@ -210,45 +217,8 @@ function ChartCard({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: Cha
   const drawn = model && model.problem === undefined ? (model as DrawnChart) : null
   const aria = Object.values(spec.enc).map((e) => e!.f).join(', ')
 
-  return (
-    <section className="tile col card" ref={cardRef}>
-      <div className="cardhead">
-        <span className="ci">{tab.name} · {data.relationName} · {(data.total ?? data.rows.length).toLocaleString('en-US')} rows</span>
-        <span className={`cn ${s.noticeBad ? 'bad' : ''}`} role="status">{s.notice}</span>
-        <Btn small onClick={swap}><ArrowLeftRight size={14} aria-hidden="true" />Swap x and y</Btn>
-        <Btn small onClick={() => { setSpec((x) => ({ ...x, enc: {} })); setExplore({ notice: 'Shelves cleared.', noticeBad: false }) }}>Clear</Btn>
-        {getExploreOptions().features.importExport && <Btn small onClick={() => setExportOpen(true)}><Download size={14} aria-hidden="true" />Export</Btn>}
-      </div>
-      <div className="strip">
-        {slotsShown(spec).map((slot) => {
-          const e = spec.enc[slot.ch]
-          const adding = isRing(spec.mark, slot.ch) && !e
-          const ok = dragging ? !!dragRole && slot.accepts.includes(dragRole) : false
-          const col = e ? data.cols.find((c) => c.name === e.f) : undefined
-          const label = adding ? (spec.mark === 'sunburst' ? 'Add ring' : 'Add level') : channelLabel(spec.mark, slot.ch)
-          return (
-            <div key={slot.ch} className={`sp ${e ? 'filled' : ''} ${adding ? 'add' : ''} ${dragging ? (ok ? 'ok' : 'no') : ''}`}
-              onDragOver={(ev) => ev.preventDefault()} onDrop={(ev) => { ev.preventDefault(); const f = ev.dataTransfer.getData('text/plain') || dragging; if (f) assign(slot.ch, f) }}>
-              <span className="spl">{adding && <Plus size={12} aria-hidden="true" />}{label}{slot.req && <><i className="rq" aria-hidden="true" /><span className="sr">required</span></>}</span>
-              {e && col && (
-                <>
-                  <TypeChip type={col.type} /><span className="fname">{columnLabel(getExploreOptions(), e.f)}</span>
-                  {channelAggregates(spec.mark, slot.ch) && chartRole(col.type) === 'q' && (
-                    <XSelect className="agg" aria-label={`Aggregate for ${label}`} value={e.agg ?? 'sum'} onChange={(ev) => setSpec((x) => ({ ...x, enc: { ...x.enc, [slot.ch]: { ...e, agg: ev.target.value as Agg } } }))}>{AGGS.map((a) => <option key={a} value={a}>{a}</option>)}</XSelect>
-                  )}
-                  <button type="button" className="x" aria-label={`Remove ${e.f} from ${label}`} onClick={() => setSpec((x) => { const n = { ...x.enc }; delete n[slot.ch]; return { ...x, enc: n } })}><X size={12} aria-hidden="true" /></button>
-                </>
-              )}
-              {!e && (
-                <button type="button" className="place tp" data-tip={`Takes ${acceptsShort(slot.accepts)}`} disabled={!dragging || !ok} onClick={() => dragging && assign(slot.ch, dragging)}>
-                  {dragging ? (ok ? `Place ${dragging}` : `Takes ${acceptsShort(slot.accepts)}`) : 'Drop a field'}
-                </button>
-              )}
-            </div>
-          )
-        })}
-      </div>
-      <div className="cardbody" data-testid="chart-export-card">
+  const body = (
+      <div className="cardbody" data-testid="chart-export-card" ref={bodyRef}>
         {txt('title').t && <h3 className={`tb ${cls('title')}`}>{txt('title').t}</h3>}
         {txt('sub').t && <p className={`tb tsub ${cls('sub')}`}>{txt('sub').t}</p>}
         {drawn && drawn.legend.length > 0 && (
@@ -275,7 +245,61 @@ function ChartCard({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: Cha
         {txt('note').t && <p className={`tb tfoot ${cls('note')}`} style={{ marginTop: 4 }}>{txt('note').t}</p>}
         {(data.truncated || drawn?.limitedSeries) && <p className="hint" style={{ marginTop: 4 }}>{data.truncated ? (data.mode === 'raw' ? 'Showing a sample of the points. ' : `Showing the first ${ROW_CAP.toLocaleString('en-US')} groups. `) : ''}{drawn?.limitedSeries ? 'Showing the first 15 values of a legend field.' : ''}</p>}
       </div>
-      {exportOpen && <ExportDialog tab={tab} data={data} cardEl={() => cardRef.current?.querySelector<HTMLElement>('[data-testid="chart-export-card"]') ?? null} onClose={() => setExportOpen(false)} />}
+  )
+
+  return (
+    <section className="tile col card" ref={cardRef}>
+      <div className="cardhead">
+        <span className="ci">{tab.name} · {data.relationName} · {(data.total ?? data.rows.length).toLocaleString('en-US')} rows</span>
+        <span className={`cn ${s.noticeBad ? 'bad' : ''}`} role="status">{s.notice}</span>
+        <Btn small onClick={swap}><ArrowLeftRight size={14} aria-hidden="true" />Swap x and y</Btn>
+        <Btn small onClick={() => { setSpec((x) => ({ ...x, enc: {} })); setExplore({ notice: 'Shelves cleared.', noticeBad: false }) }}>Clear</Btn>
+        {getExploreOptions().features.importExport && <Btn small onClick={() => setExportOpen(true)}><Download size={14} aria-hidden="true" />Export</Btn>}
+        <Button variant="ghost" size="icon" aria-label={`Expand ${tab.name}`} onClick={() => setBig(true)}><Maximize2 className="h-4 w-4" /></Button>
+      </div>
+      <div className="strip">
+        {slotsShown(spec).map((slot) => {
+          const e = spec.enc[slot.ch]
+          const adding = !!chainOf(spec.mark, slot.ch) && !e
+          const ok = dragging ? !!dragRole && slot.accepts.includes(dragRole) : false
+          const col = e ? data.cols.find((c) => c.name === e.f) : undefined
+          const label = adding ? chainOf(spec.mark, slot.ch)!.add : channelLabel(spec.mark, slot.ch)
+          return (
+            <div key={slot.ch} className={`sp ${e ? 'filled' : ''} ${adding ? 'add' : ''} ${dragging ? (ok ? 'ok' : 'no') : ''}`}
+              onDragOver={(ev) => ev.preventDefault()} onDrop={(ev) => { ev.preventDefault(); const f = ev.dataTransfer.getData('text/plain') || dragging; if (f) assign(slot.ch, f) }}>
+              <span className="spl">{adding && <Plus size={12} aria-hidden="true" />}{label}{slot.req && <><i className="rq" aria-hidden="true" /><span className="sr">required</span></>}</span>
+              {e && col && (
+                <>
+                  <TypeChip type={col.type} /><span className="fname">{columnLabel(getExploreOptions(), e.f)}</span>
+                  {channelAggregates(spec.mark, slot.ch) && chartRole(col.type) === 'q' && (
+                    <XSelect className="agg" aria-label={`Aggregate for ${label}`} value={e.agg ?? 'sum'} onChange={(ev) => setSpec((x) => ({ ...x, enc: { ...x.enc, [slot.ch]: { ...e, agg: ev.target.value as Agg } } }))}>{AGGS.map((a) => <option key={a} value={a}>{a}</option>)}</XSelect>
+                  )}
+                  <button type="button" className="x" aria-label={`Remove ${e.f} from ${label}`} onClick={() => setSpec((x) => { const n = { ...x.enc }; delete n[slot.ch]; return { ...x, enc: n } })}><X size={12} aria-hidden="true" /></button>
+                </>
+              )}
+              {!e && (
+                <button type="button" className="place tp" data-tip={`Takes ${acceptsShort(slot.accepts)}`} disabled={!dragging || !ok} onClick={() => dragging && assign(slot.ch, dragging)}>
+                  {dragging ? (ok ? `Place ${dragging}` : `Takes ${acceptsShort(slot.accepts)}`) : 'Drop a field'}
+                </button>
+              )}
+            </div>
+          )
+        })}
+      </div>
+      {big ? <div className="cardbody"><p className="hint" style={{ padding: '24px 0' }}>This chart is open in the expanded view.</p></div> : body}
+      {big && (
+        <Modal wide bare title={tab.name} onClose={() => setBig(false)}>
+          <div className="th">
+            <div><h2 className="tt">{tab.name}</h2><p className="ts">{data.relationName} · {(data.total ?? data.rows.length).toLocaleString('en-US')} rows</p></div>
+            <div className="pager">
+              {getExploreOptions().features.importExport && <Btn small onClick={() => setExportOpen(true)}><Download size={14} aria-hidden="true" />Export</Btn>}
+              <Button variant="ghost" size="icon" aria-label={`Contract ${tab.name}`} onClick={() => setBig(false)}><Minimize2 className="h-4 w-4" /></Button>
+            </div>
+          </div>
+          {body}
+        </Modal>
+      )}
+      {exportOpen && <ExportDialog tab={tab} data={data} cardEl={() => bodyRef.current} onClose={() => setExportOpen(false)} />}
     </section>
   )
 }
@@ -290,7 +314,9 @@ function Rail({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: ChartDat
   // the chart types a deployer allows (`charts.allow`); the open chart's own type always stays so it never disappears
   const offered = getExploreOptions().charts.allow
   const values = useDistinct(data.relSql, spec.filter.f)
-  const tabs: [typeof s.railTab, string][] = [['chart', 'Chart'], ['style', 'Style'], ['axes', 'Axes'], ['filter', 'Filter']]
+  const tabs: [typeof s.railTab, string][] = [['chart', 'Chart'], ['style', 'Style'], ['axes', spec.mark === 'text' ? 'Table' : 'Axes'], ['filter', 'Filter']]
+  const setTable = (patch: Partial<TableOpts>) => setSpec((x) => ({ ...x, table: { ...x.table, ...patch } }))
+  const setMeasure = (ch: Channel, patch: MeasureFormat) => setSpec((x) => (x.enc[ch] ? { ...x, enc: { ...x.enc, [ch]: { ...x.enc[ch]!, ...patch } } } : x))
   const pills = <T extends string | boolean>(opts: [T, string][], cur: T, set: (v: T) => void, label: string) => (
     <div className="xseg"><Segmented label={label} value={String(cur)} onChange={(id) => set(opts.find(([v]) => String(v) === id)![0])} options={opts.map(([v, l]) => ({ id: String(v), label: l }))} /></div>
   )
@@ -348,10 +374,49 @@ function Rail({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: ChartDat
       )}
       {s.railTab === 'axes' && (
         <div className="rsec">
+          {spec.mark !== 'text' && (
+            <>
           <div className="rrow"><span className="lab" style={{ minWidth: 96 }}>Y axis starts at zero</span>{pills<boolean>([[true, 'Yes'], [false, 'No']], spec.zero, (v) => setSpec((x) => ({ ...x, zero: v })), 'Zero baseline')}</div>
           <p className="hint">{['bar', 'area', 'histogram'].includes(spec.mark) ? 'Bars, areas and histograms always start at zero.' : 'Applies to lines, scatter and box plots.'}</p>
           <div className="rrow"><span className="lab" style={{ minWidth: 96 }}>Gridlines</span>{pills<boolean>([[true, 'Show'], [false, 'Hide']], spec.grid, (v) => setSpec((x) => ({ ...x, grid: v })), 'Gridlines')}</div>
           <div className="rrow"><label className="lab" htmlFor="refin" style={{ minWidth: 96 }}>Reference line</label><input id="refin" className="inp" value={spec.ref} placeholder="y value" onChange={(e) => setSpec((x) => ({ ...x, ref: e.target.value.replace(/[^0-9.-]/g, '') }))} /></div>
+            </>
+          )}
+          {spec.mark === 'text' && (
+            <>
+              <div className="rrow"><span className="lab" style={{ minWidth: 96 }}>Cells</span>{pills<CellStyle>([['plain', 'Plain'], ['shade', 'Shade'], ['bars', 'Bars']], spec.table.cells, (v) => setTable({ cells: v }), 'Cell style')}</div>
+              <div className="rrow"><span className="lab" style={{ minWidth: 96 }}>Density</span>{pills<Density>([['comfortable', 'Roomy'], ['compact', 'Compact']], spec.table.density, (v) => setTable({ density: v }), 'Row density')}</div>
+              <div className="rrow"><span className="lab" style={{ minWidth: 96 }}>Subtotals</span>{pills<boolean>([[true, 'Show'], [false, 'Hide']], spec.table.subtotals, (v) => setTable({ subtotals: v }), 'Subtotals')}</div>
+              <div className="rrow"><span className="lab" style={{ minWidth: 96 }}>Swap rows and columns</span>{pills<boolean>([[false, 'Off'], [true, 'On']], spec.table.transpose, (v) => setTable({ transpose: v }), 'Transpose')}</div>
+              <div className="rrow">
+                <span className="lab" style={{ minWidth: 96 }}>Sort rows</span>
+                <XSelect className="mini sel2" aria-label="Sort rows" value={spec.sort} onChange={(e) => setSpec((x) => ({ ...x, sort: e.target.value as Sort }))}>{SORTS.map((o) => <option key={o.v} value={o.v}>{o.label}</option>)}</XSelect>
+              </div>
+              <p className="hint">Largest and smallest order the rows by the first value. Click any heading in the table to sort by it, and the + / - beside a group to open or close it.</p>
+              {TABLE_VALUES.filter((ch) => spec.enc[ch]).map((ch) => {
+                const e = spec.enc[ch]!
+                const adds = (e.agg ?? 'sum') === 'sum' || e.agg === 'count'
+                return (
+                  <div className="rsec measure" key={ch}>
+                    <p className="mname">{channelLabel('text', ch)}: {e.agg ?? 'sum'} of {e.f}</p>
+                    <div className="rrow">
+                      <span className="lab" style={{ minWidth: 96 }}>Show as</span>
+                      <XSelect className="mini sel2" aria-label={`Show ${e.f} as`} value={adds ? (e.show ?? 'value') : 'value'} onChange={(ev) => setMeasure(ch, { show: ev.target.value as ShowAs })}>{SHOW_AS.map((o) => <option key={o.v} value={o.v} disabled={!adds && o.v !== 'value'}>{o.label}</option>)}</XSelect>
+                    </div>
+                    <div className="rrow">
+                      <span className="lab" style={{ minWidth: 96 }}>Decimals</span>
+                      <XSelect className="mini sel2" aria-label={`Decimals of ${e.f}`} value={typeof e.dec === 'number' ? String(e.dec) : 'auto'} onChange={(ev) => setMeasure(ch, { dec: ev.target.value === 'auto' ? null : Number(ev.target.value) })}>{['auto', '0', '1', '2', '3', '4'].map((o) => <option key={o} value={o}>{o === 'auto' ? 'Automatic' : o}</option>)}</XSelect>
+                    </div>
+                    <div className="rrow">
+                      <label className="lab" htmlFor={`pre-${ch}`} style={{ minWidth: 96 }}>Prefix, suffix</label>
+                      <input id={`pre-${ch}`} className="inp" style={{ width: 62 }} value={e.pre ?? ''} placeholder="$" aria-label={`Prefix of ${e.f}`} onChange={(ev) => setMeasure(ch, { pre: ev.target.value })} />
+                      <input className="inp" style={{ width: 62 }} value={e.suf ?? ''} placeholder=" mi" aria-label={`Suffix of ${e.f}`} onChange={(ev) => setMeasure(ch, { suf: ev.target.value })} />
+                    </div>
+                  </div>
+                )
+              })}
+            </>
+          )}
           {(spec.mark === 'bar' || spec.mark === 'line') && (
             <>
               <div className="rrow">

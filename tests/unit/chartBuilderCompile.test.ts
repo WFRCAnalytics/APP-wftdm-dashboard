@@ -127,10 +127,10 @@ describe('more marks and channels', () => {
     const one = ok(build({ mark: 'tick', enc: { x: { f: 'trips' } } }))
     expect(one.panels[0].rects).toHaveLength(rows.length)
   })
-  it('writes the aggregated number in each cell of a text table', () => {
-    const m = ok(build({ mark: 'text', enc: { x: { f: 'mode' }, y: { f: 'scenario' }, label: { f: 'trips', agg: 'sum' } } }))
-    expect(m.panels[0].rects).toHaveLength(6)
-    expect(m.panels[0].texts.some((t) => t.t === '46')).toBe(true)
+  it('builds a pivot table with totals for a text table', () => {
+    const m = ok(build({ mark: 'text', enc: { y: { f: 'scenario' }, x: { f: 'mode' }, label: { f: 'trips', agg: 'sum' } } }))
+    const t = m.tables![0]
+    expect(t.val(0, [], [])).toBe(rows.reduce((p, r) => p + r.trips, 0))
   })
   it('splits a line by a detail field without adding a legend', () => {
     const m = ok(build({ mark: 'line', enc: { x: { f: 'hour' }, y: { f: 'trips', agg: 'sum' }, detail: { f: 'mode' } } }))

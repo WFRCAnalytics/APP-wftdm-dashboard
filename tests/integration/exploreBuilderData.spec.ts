@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { test, expect, type Page } from '@playwright/test'
 
 // 065-chart-builder: the Explore builder's Data tab on the real demo data (project `real`, three ActivitySim runs).
@@ -183,8 +184,7 @@ test.describe('DuckDB computes the chart data for every mark', () => {
     await drawn(page)
     expect(errors).toEqual([])
   })
-  test('text table writes the aggregate in each cell', async ({ page }) => {
-    const errors: string[] = []
+  const textTable = async (page: Page, errors: string[]) => {
     await openExplore(page, errors)
     await expect(page.locator('.xb .tbl tbody tr').first()).toBeVisible({ timeout: 60_000 })
     await page.locator('.xb .tpick').click()
@@ -193,10 +193,109 @@ test.describe('DuckDB computes the chart data for every mark', () => {
     await expect(page.locator('.xb .prow2', { hasText: 'major_trip_mode' })).toBeVisible({ timeout: 30_000 })
     await page.getByRole('button', { name: 'Add chart tab' }).click()
     await page.locator('.xb .mk', { hasText: 'Text table' }).click()
-    await place(page, 'primary_purpose', 'X axis')
-    await place(page, 'major_trip_mode', 'Y axis')
-    await place(page, 'trips', 'Cell text')
+  }
+  test('text table is a pivot table with totals and sortable headings', async ({ page }) => {
+    const errors: string[] = []
+    await textTable(page, errors)
+    await place(page, 'primary_purpose', 'Columns')
+    await place(page, 'major_trip_mode', 'Rows')
+    await place(page, 'trips', 'Values')
     await drawn(page)
+    const table = page.locator('.xb .plot.pivot table')
+    await expect(table.locator('thead th', { hasText: 'Total' })).toBeVisible()
+    await expect(table.locator('tfoot th', { hasText: 'Total' })).toBeVisible()
+    const firstRow = table.locator('tbody tr').first().locator('th')
+    const before = await firstRow.textContent()
+    const head = table.locator('thead th.pvt-col').first()
+    await head.click()
+    await expect(head).toHaveAttribute('aria-sort', 'descending')
+    await head.click()
+    await expect(head).toHaveAttribute('aria-sort', 'ascending')
+    await head.click()
+    await expect(head).toHaveAttribute('aria-sort', 'none')
+    expect(await firstRow.textContent()).toBe(before)
+    expect(errors).toEqual([])
+  })
+  test('the plot panel expands into a wide dialog, exports from there, and contracts again', async ({ page }) => {
+    const errors: string[] = []
+    await textTable(page, errors)
+    await place(page, 'scenario', 'Columns')
+    await place(page, 'primary_purpose', 'Rows')
+    await place(page, 'trips', 'Values')
+    await drawn(page)
+    const inCard = (await page.locator('.xb .plot.pivot').boundingBox())!
+    await page.getByRole('button', { name: 'Expand Chart 1' }).click()
+    const dialog = page.getByRole('dialog', { name: 'Chart 1' })
+    await expect(dialog.locator('.pvt table')).toBeVisible()
+    // drawn once, in the dialog, and larger than it was in the card
+    await expect(page.locator('.xb .pvt table')).toHaveCount(1)
+    const wide = (await dialog.locator('.plot.pivot').boundingBox())!
+    expect(wide.width).toBeGreaterThan(inCard.width)
+    const [download] = await Promise.all([page.waitForEvent('download'), (async () => {
+      await dialog.getByRole('button', { name: 'Export' }).click()
+      await page.getByRole('dialog', { name: 'Export this chart' }).getByRole('button', { name: 'SVG' }).click()
+    })()])
+    expect(readFileSync((await download.path())!, 'utf8')).toContain('>Total<')
+    await page.getByRole('dialog', { name: 'Export this chart' }).getByRole('button', { name: 'Close' }).click()
+    await dialog.getByRole('button', { name: 'Contract Chart 1' }).click()
+    await expect(dialog).toHaveCount(0)
+    await expect(page.locator('.xb .plot.pivot table')).toBeVisible()
+    expect(errors).toEqual([])
+  })
+  test('a table too big for its card is exported whole as SVG', async ({ page }) => {
+    const errors: string[] = []
+    await textTable(page, errors)
+    await place(page, 'scenario', 'Columns')
+    await place(page, 'primary_purpose', 'Rows')
+    await place(page, 'major_trip_mode', 'Add row group')
+    await place(page, 'trips', 'Values')
+    await drawn(page)
+    const card = page.getByTestId('chart-export-card')
+    const shown = (await card.boundingBox())!
+    // the table scrolls inside its card: the last rows are not on screen
+    const scrollH = await page.locator('.xb .pvt-scroll').evaluate((e) => e.scrollHeight - e.clientHeight)
+    expect(scrollH).toBeGreaterThan(0)
+    await page.getByRole('button', { name: 'Export' }).click()
+    const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('dialog', { name: 'Export this chart' }).getByRole('button', { name: 'SVG' }).click()])
+    const svg = readFileSync((await download.path())!, 'utf8')
+    const height = Number(/<svg[^>]* height="(\d+)"/.exec(svg)![1])
+    expect(height).toBeGreaterThan(shown.height + scrollH / 2)
+    // the last purpose in the table and the Total row are in the file, not only what was in view
+    expect(svg).toContain('>work<')
+    expect(svg).toContain('>Total<')
+    // and the copy used for it is gone again
+    await expect(page.locator('.xb-export-holder')).toHaveCount(0)
+    expect(errors).toEqual([])
+  })
+  test('text table nests row groups, collapses them, shows shares and takes a second value', async ({ page }) => {
+    const errors: string[] = []
+    await textTable(page, errors)
+    await place(page, 'scenario', 'Columns')
+    await place(page, 'primary_purpose', 'Rows')
+    await place(page, 'trips', 'Values')
+    await drawn(page)
+    const table = page.locator('.xb .plot.pivot table')
+    const flat = await table.locator('tbody tr').count()
+    // a second level of rows: each purpose becomes a group with a subtotal row, its modes below
+    await place(page, 'major_trip_mode', 'Add row group')
+    await expect(table.locator('tbody tr.pvt-group').first()).toBeVisible()
+    const nested = await table.locator('tbody tr').count()
+    expect(nested).toBeGreaterThan(flat)
+    await table.locator('tbody tr.pvt-group .pvt-chev').first().click()
+    await expect.poll(() => table.locator('tbody tr').count()).toBeLessThan(nested)
+    await page.getByRole('button', { name: 'Expand all' }).click()
+    await expect(table.locator('tbody tr')).toHaveCount(nested)
+    // shares
+    await page.locator('.xseg').getByText('Table', { exact: true }).click()
+    await page.getByRole('combobox', { name: 'Show trips as' }).click()
+    await page.getByRole('option', { name: '% of total' }).click()
+    await expect(table.locator('tbody td.pvt-cell').first()).toContainText('%')
+    await page.getByRole('combobox', { name: 'Show trips as' }).click()
+    await page.getByRole('option', { name: 'Value', exact: true }).click()
+    await expect(table.locator('tbody td.pvt-cell').first()).not.toContainText('%')
+    // a second value splits every column in two
+    await place(page, 'trips', 'Add value')
+    await expect(table.locator('thead th.pvt-measure').first()).toBeVisible()
     expect(errors).toEqual([])
   })
   test('scatter accepts opacity, detail and label', async ({ page }) => {

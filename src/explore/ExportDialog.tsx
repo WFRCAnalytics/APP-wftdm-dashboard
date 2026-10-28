@@ -26,6 +26,25 @@ export function Modal({ title, onClose, children, wide, bare }: { title: string;
   )
 }
 
+/**
+ * A table scrolls inside its card, so the card on screen shows only part of a big one and the image export, which draws what is laid
+ * out, would cut it off. A card holding a table is exported from an off-screen copy that is allowed to grow to the table's full width
+ * and height (the .xb-export rules in explore.css); everything else is exported as it is. `done()` removes the copy.
+ */
+function exportTarget(card: HTMLElement): { el: HTMLElement; done(): void } {
+  if (!card.querySelector('.pvt-host')) return { el: card, done: () => undefined }
+  const holder = document.createElement('div')
+  holder.className = 'xb-export-holder'
+  const copy = card.cloneNode(true) as HTMLElement
+  copy.removeAttribute('data-testid')
+  copy.classList.add('xb-export')
+  copy.style.minWidth = `${card.offsetWidth}px`
+  holder.appendChild(copy)
+  // inside the same parent, so the builder's styles and theme variables still apply
+  card.parentElement!.appendChild(holder)
+  return { el: copy, done: () => holder.remove() }
+}
+
 export function ExportDialog({ tab, data, cardEl, onClose }: { tab: ChartTab; data: ChartData; cardEl(): HTMLElement | null; onClose(): void }) {
   const [msg, setMsg] = useState('')
   const [busy, setBusy] = useState(false)
@@ -40,7 +59,10 @@ export function ExportDialog({ tab, data, cardEl, onClose }: { tab: ChartTab; da
     setBusy(true)
     try {
       const background = getComputedStyle(el).getPropertyValue('--tile').trim() || '#ffffff'
-      const { svg, width, height } = await cardToSvg(el, { background })
+      const target = exportTarget(el)
+      let out: Awaited<ReturnType<typeof cardToSvg>>
+      try { out = await cardToSvg(target.el, { background }) } finally { target.done() }
+      const { svg, width, height } = out
       if (kind === 'svg') downloadBlob(new Blob([svg], { type: 'image/svg+xml' }), fileName(base, 'svg'))
       else downloadBlob(await svgToPng(svg, width, height), fileName(base, 'png'))
       setMsg(kind === 'svg' ? 'SVG saved.' : 'PNG saved.')
