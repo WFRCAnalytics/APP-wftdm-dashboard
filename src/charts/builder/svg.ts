@@ -15,8 +15,8 @@ function el(name: string, attrs: Record<string, string | number | undefined>, pa
 }
 
 export function renderChartSvg(model: DrawnChart, width: number, height: number, ink: string, zoomable = false, hier?: { theme: ChartTheme; state: HierState }): SVGSVGElement {
-  // a treemap or sunburst is drawn as a zoomable hierarchy: click a group to open it
-  if (model.trees && hier) {
+  // a treemap or sunburst is drawn as a zoomable hierarchy, a Sankey with a node to focus on: click to open or filter
+  if ((model.trees || model.sankeys) && hier) {
     const h = drawHierarchy(model, hier.theme, hier.state)
     h.setAttribute('width', String(width))
     h.setAttribute('height', String(height))

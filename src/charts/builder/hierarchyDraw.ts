@@ -1,7 +1,7 @@
 // 065-chart-builder: draws the treemap and sunburst of a compiled chart as zoomable hierarchies of any depth, in the manner of
 // Observable's zoomable treemap and zoomable sunburst. Click a group to zoom into it (tiles and arcs are tweened from where they
 // were); click the breadcrumb (treemap) or the centre (sunburst) to go up a level. The compiler decides every colour and tooltip
-// (HTree); this only places them. The open group is a path of names in `HierState`, owned by the caller, so a redraw (hover,
+// (HTree); this only places them. The open group is a path of names (for a Sankey, one entry naming the node in focus) in `HierState`, owned by the caller, so a redraw (hover,
 // resize) keeps the zoom.
 import { hierarchy, partition, treemap, type HierarchyRectangularNode } from 'd3-hierarchy'
 import { select, type Selection } from 'd3-selection'
@@ -10,6 +10,7 @@ import 'd3-transition'
 
 import type { DrawnChart, HNode, HTree } from '@/charts/builder/compile'
 import type { ChartTheme } from '@/charts/types'
+import { zoomableSankey } from '@/charts/builder/sankeyDraw'
 import { tooltip } from '@/services/tooltip'
 
 /** The open group of each panel as the names from the top down (empty: the whole chart), by panel index. */
@@ -53,6 +54,12 @@ export function drawHierarchy(model: DrawnChart, theme: ChartTheme, state: HierS
     const body = g.append('g') as G
     if (tree.kind === 'treemap') zoomableTreemap(body, tree, theme, state, i)
     else zoomableSunburst(body, tree, theme, state, i)
+  })
+
+  ;(model.sankeys ?? []).forEach((sk, i) => {
+    const g = select(svg).append('g').attr('transform', sk.tf) as unknown as G
+    if (sk.title) g.append('text').attr('x', 0).attr('y', 11).attr('font-size', 12.5).attr('font-weight', 600).attr('fill', theme.ink).text(sk.title)
+    zoomableSankey(g.append('g') as G, sk, theme, state, i)
   })
 
   const show = (e: MouseEvent) => {

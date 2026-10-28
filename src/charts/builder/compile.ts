@@ -21,9 +21,13 @@ export interface PatternDef { id: string; color: string; d: string; sw: number; 
 export interface HNode { name: string; value: number; fill: string; color: string; op: number; tip: string; children?: HNode[] }
 /** A treemap or sunburst panel as a tree, so it can be drawn zoomable. `w` and `h` are the panel's size, `head` the room kept above it. */
 export interface HTree { kind: 'treemap' | 'sunburst'; tf: string; title: string; w: number; h: number; head: number; unit: string; root: HNode }
+/** A flow diagram's node: its name, total, colour and tooltip. */
+export interface SNode { name: string; v: number; color: string; tip: string }
+/** A Sankey panel as data (nodes and flows with their colours and tooltips decided), so it can be drawn with a node in focus. */
+export interface HSankey { tf: string; title: string; w: number; h: number; small: boolean; from: SNode[]; to: SNode[]; flows: { f: string; t: string; v: number; tip: string }[] }
 export type ChartModel =
   | { problem: string }
-  | { problem?: undefined; panels: Panel[]; legend: LegendGroup[]; defs: PatternDef[]; W: number; H: number; rows: number; limitedSeries: boolean; trees?: HTree[] }
+  | { problem?: undefined; panels: Panel[]; legend: LegendGroup[]; defs: PatternDef[]; W: number; H: number; rows: number; limitedSeries: boolean; trees?: HTree[]; sankeys?: HSankey[] }
 
 export type DrawnChart = Exclude<ChartModel, { problem: string }>
 
@@ -270,6 +274,7 @@ export function buildChart(input: BuildInput): ChartModel {
   const tip = (title: string, pairs: [string, string][]) => [title, ...pairs.map((p) => `${p[0]}=${p[1]}`)].join('~')
   // treemap and sunburst: the groups (colour field) and the pieces inside each (detail field), as a tree the drawing can zoom into
   const trees: HTree[] = []
+  const sankeys: HSankey[] = []
   const makeTree = (kind: HTree['kind'], pn: Panel, vals: number[], head: number) => {
     const sz = enc.size!.f, tot = vals.reduce((p, c) => p + c, 0) || 1
     const levels = [enc.color, enc.detail, ...RING_CHANNELS.map((c) => enc[c])].filter((e) => !!e).map((e) => e!.f)
@@ -841,6 +846,12 @@ export function buildChart(input: BuildInput): ChartModel {
       const xL = lw, xR = pw - rw - 12, y0 = small ? 26 : 12, y1 = ph - 12, gap = 6
       const scale = (y1 - y0 - gap * (Math.max(L.length, Rt.length) - 1)) / tot
       const place = (names: string[], tots: Map<string, number>) => { const m = new Map<string, number>(); let y = y0; for (const n of names) { m.set(n, y); y += tots.get(n)! * scale + gap } return m }
+      sankeys.push({
+        tf: pn.tf, title: pn.title, w: pw, h: ph, small,
+        from: L.map((n, i) => ({ name: n, v: out.get(n)!, color: colorFor(ff, n, i), tip: tip(n, [[sz, fmtExact(out.get(n)!)]]) })),
+        to: Rt.map((n) => ({ name: n, v: inn.get(n)!, color: T.mix(T.surface, T.ink, 0.55), tip: tip(n, [[sz, fmtExact(inn.get(n)!)]]) })),
+        flows: Array.from(flow.entries()).map(([k, v]) => { const [f, t] = k.split(''); return { f, t, v, tip: tip(`${f} to ${t}`, [[sz, fmtExact(v)], ['share', `${Math.round((v / tot) * 1000) / 10}%`]]) } }),
+      })
       const ly = place(L, out), ry = place(Rt, inn), lc = new Map<string, number>(), rc = new Map<string, number>()
       const label = (t: string) => (t.length > 20 ? `${t.slice(0, 19)}…` : t)
       Array.from(flow.entries()).sort((p, c) => L.indexOf(p[0].split('\u0002')[0]) - L.indexOf(c[0].split('\u0002')[0]) || Rt.indexOf(p[0].split('\u0002')[1]) - Rt.indexOf(c[0].split('\u0002')[1])).forEach(([k, v]) => {
@@ -931,5 +942,5 @@ export function buildChart(input: BuildInput): ChartModel {
     if (enc.dash) { const df = enc.dash.f; legend.push({ title: df, items: dom[df].map((v, i) => item(df, v, { d: 'M1 7h16', stroke: T.mute, sw: 2.2, dash: DASH[i % 5] })) }) }
     if (enc.shape) { const sf = enc.shape.f; legend.push({ title: sf, items: dom[sf].map((v, i) => { const g = glyph(i % 5, 9, 7, 4.2); return item(sf, v, { d: g.d, fill: g.line ? 'none' : T.mute, stroke: g.line ? T.mute : 'none', sw: 2 }) }) }) }
   }
-  return { panels: panels.map(({ tf, title, rects, paths, lines, texts }) => ({ tf, title, rects, paths, lines, texts })), legend, defs, W, H, rows: rows.length, limitedSeries, ...(trees.length ? { trees } : {}) }
+  return { panels: panels.map(({ tf, title, rects, paths, lines, texts }) => ({ tf, title, rects, paths, lines, texts })), legend, defs, W, H, rows: rows.length, limitedSeries, ...(trees.length ? { trees } : {}), ...(sankeys.length ? { sankeys } : {}) }
 }

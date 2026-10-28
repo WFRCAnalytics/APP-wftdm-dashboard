@@ -118,7 +118,7 @@ function Plot({ model, spec, hot, size, theme }: { model: DrawnChart; spec: Char
   // Treemap and sunburst are drawn as zoomable hierarchies (click a group to open it). Which group is open outlives a redraw.
   const host = useRef<HTMLDivElement>(null)
   const open = useRef<HierState>({})
-  const hierarchical = !!model.trees
+  const hierarchical = !!(model.trees || model.sankeys)
   useEffect(() => {
     if (!hierarchical || !host.current) return
     host.current.replaceChildren(drawHierarchy(model, theme, open.current))
