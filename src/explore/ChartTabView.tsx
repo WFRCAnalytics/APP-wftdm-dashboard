@@ -29,6 +29,9 @@ import { useColorScheme } from '@/hooks/useColorScheme'
 import { tooltip } from '@/services/tooltip'
 import { setExplore, updateChart, type ChartTab, type ExploreState } from '@/state/exploreState'
 
+/** Marks a drag that started on a placed field (not on the field list): the data is the channel it came from. */
+const FROM_SHELF = 'application/x-explore-channel'
+
 const colorVar = (t: DataType) => `var(--${{ c1: 'c-1', c2: 'c-2', c3: 'c-3', mute: 'mute' }[typeColorKey(t)]})`
 
 function useProfileOf(sql: string, col: Col | undefined): ColumnProfile | undefined {
@@ -55,14 +58,20 @@ function FieldsPanel({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: C
   const selected = cols.find((c) => c.name === s.selectedField)
   const peek = useProfileOf(data.relSql, selected)
 
+  // a field can sit on several shelves (a category on X and on Colour, a number as two measures), so it is tagged, never disabled
+  const usedOn = new Map<string, string[]>()
+  for (const [ch, e] of Object.entries(tab.spec.enc) as [Channel, { f: string }][]) usedOn.set(e.f, [...(usedOn.get(e.f) ?? []), channelLabel(tab.spec.mark, ch)])
+
   const field = (c: Col) => {
     const chartable = !!chartRole(c.type)
+    const used = usedOn.get(c.name)
     return (
       <div className="fwrap" key={c.name} draggable={chartable}
-        onDragStart={(e) => { e.dataTransfer.setData('text/plain', c.name); e.dataTransfer.effectAllowed = 'copy'; setExplore({ selectedField: c.name }) }}>
-        <button type="button" className={`fchip ${s.selectedField === c.name ? 'sel' : ''} ${chartable ? '' : 'dim'}`} aria-pressed={s.selectedField === c.name}
+        onDragStart={(e) => { e.dataTransfer.setData('text/plain', c.name); e.dataTransfer.effectAllowed = 'copy'; setExplore({ dragField: c.name }) }}
+        onDragEnd={() => setExplore({ dragField: null })}>
+        <button type="button" className={`fchip ${s.selectedField === c.name ? 'sel' : ''} ${chartable ? '' : 'dim'} ${used ? 'used' : ''}`} aria-pressed={s.selectedField === c.name}
           onClick={() => setExplore({ selectedField: s.selectedField === c.name ? null : c.name, notice: '' })}>
-          <TypeChip type={c.type} /><span className="fname">{columnLabel(getExploreOptions(), c.name)}</span><span className="fty">{getExploreOptions().columns[c.name]?.unit ?? TYPE_LABEL[c.type]}</span>
+          <TypeChip type={c.type} /><span className="fname">{columnLabel(getExploreOptions(), c.name)}</span>{used ? <span className="fused" aria-label={`Used on ${used.join(', ')}`}>{used[0]}{used.length > 1 ? ` +${used.length - 1}` : ''}</span> : <span className="fty">{getExploreOptions().columns[c.name]?.unit ?? TYPE_LABEL[c.type]}</span>}
         </button>
       </div>
     )
@@ -85,8 +94,17 @@ function FieldsPanel({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: C
     })
   } else matches.slice(0, s.fieldShow).forEach((c) => nodes.push(field(c)))
 
+  // dropping a placed field back on the list takes it off its shelf
+  const takeOff = (ev: React.DragEvent) => {
+    const from = ev.dataTransfer.getData(FROM_SHELF) as Channel
+    if (!from) return
+    ev.preventDefault()
+    const name = tab.spec.enc[from]?.f
+    updateChart(tab.id, (t) => { const enc = { ...t.spec.enc }; delete enc[from]; return { ...t, spec: { ...t.spec, enc } } })
+    setExplore({ selectedField: null, dragField: null, notice: name ? `${name} removed from ${channelLabel(tab.spec.mark, from)}.` : '', noticeBad: false })
+  }
   return (
-    <aside className="tile col">
+    <aside className="tile col" onDragOver={(ev) => { if (ev.dataTransfer.types.includes(FROM_SHELF)) ev.preventDefault() }} onDrop={takeOff}>
       <div className="th"><div><h2 className="tt">Fields</h2><p className="ts">{cols.length} columns in {data.relationName || 'this table'}.</p></div></div>
       <div className="psearch">
         <XSelect className="sel" style={{ width: '100%' }} aria-label="Data source" value={tab.source} onChange={(e) => updateChart(tab.id, (t) => ({ ...t, source: e.target.value, spec: { ...t.spec, enc: {}, filter: { f: '', v: '' } } }))}>
@@ -201,15 +219,47 @@ function ChartCard({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: Cha
     for (const [name, note] of Object.entries(getExploreOptions().columns)) if (note.label) labels[name] = note.label
     return relabel(built, labels)
   }, [theme, data.spec, data.cols, data.rows, size, hot])
-  const dragging = s.selectedField
+  const dragging = s.dragField ?? s.selectedField
   const dragRole = dragging ? roleOf(dragging) : ''
+  // the click-to-place path (a field selected in the list) writes its name on the shelves; a drag only tints them, so nothing moves under the pointer
+  const picked = s.selectedField
+  const pickedRole = picked ? roleOf(picked) : ''
 
   const assign = (ch: Channel, field: string) => {
     const c = data.cols.find((x) => x.name === field)
     if (!c) return
     const r = assignField(spec, ch, field, c.type, chartRole(c.type))
-    if (r.ok) { setSpec(() => r.spec); setExplore({ selectedField: null, notice: `${field} placed on ${channelLabel(spec.mark, ch)}.`, noticeBad: false }) }
+    if (r.ok) { setSpec(() => r.spec); setExplore({ selectedField: null, dragField: null, notice: `${field} placed on ${channelLabel(spec.mark, ch)}.`, noticeBad: false }) }
     else setExplore({ notice: r.reason, noticeBad: true })
+  }
+  // Moves the field on one shelf to another. A shelf that already holds a field swaps with it when the field fits where the first one
+  // came from; otherwise the one that was there is taken off.
+  const move = (from: Channel, to: Channel) => {
+    const src = spec.enc[from]
+    if (!src || from === to) return
+    const srcCol = data.cols.find((c) => c.name === src.f)
+    if (!srcCol) return
+    const fit = assignField(spec, to, src.f, srcCol.type, chartRole(srcCol.type))
+    if (!fit.ok) { setExplore({ notice: fit.reason, noticeBad: true }); return }
+    const values = (ch: Channel) => TABLE_VALUES.includes(ch)
+    // a number keeps its aggregate (and a table value its format) where the new shelf can use them
+    const carried = (e: typeof src, ch: Channel, base: NonNullable<ChartSpec['enc'][Channel]>) => ({
+      ...base, ...(channelAggregates(spec.mark, ch) && e.agg ? { agg: e.agg } : {}),
+      ...(values(from) && values(to) ? { show: e.show, dec: e.dec, pre: e.pre, suf: e.suf } : {}),
+    })
+    const enc = { ...spec.enc }
+    delete enc[from]
+    enc[to] = carried(src, to, fit.spec.enc[to]!)
+    const there = spec.enc[to]
+    let note = `${src.f} moved to ${channelLabel(spec.mark, to)}.`
+    if (there) {
+      const thereCol = data.cols.find((c) => c.name === there.f)
+      const back = thereCol ? assignField(spec, from, there.f, thereCol.type, chartRole(thereCol.type)) : null
+      if (back?.ok) { enc[from] = carried(there, from, back.spec.enc[from]!); note = `${src.f} and ${there.f} swapped places.` }
+      else note = `${src.f} moved to ${channelLabel(spec.mark, to)}. ${there.f} was taken off it.`
+    }
+    setSpec((x) => ({ ...x, enc }))
+    setExplore({ selectedField: null, dragField: null, notice: note, noticeBad: false })
   }
   const swap = () => setSpec((x) => { const e = { ...x.enc }; const a = e.x, b = e.y; delete e.x; delete e.y; if (a) e.y = a; if (b) e.x = b; return { ...x, enc: e } })
   const txt = (k: TextKey) => spec.text[k]
@@ -265,8 +315,11 @@ function ChartCard({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: Cha
           const col = e ? data.cols.find((c) => c.name === e.f) : undefined
           const label = adding ? chainOf(spec.mark, slot.ch)!.add : channelLabel(spec.mark, slot.ch)
           return (
-            <div key={slot.ch} className={`sp ${e ? 'filled' : ''} ${adding ? 'add' : ''} ${dragging ? (ok ? 'ok' : 'no') : ''}`}
-              onDragOver={(ev) => ev.preventDefault()} onDrop={(ev) => { ev.preventDefault(); const f = ev.dataTransfer.getData('text/plain') || dragging; if (f) assign(slot.ch, f) }}>
+            <div key={slot.ch} className={`sp ${e ? 'filled' : ''} ${adding ? 'add' : ''} ${dragging ? (ok ? 'ok' : 'no') : ''}`} draggable={!!e}
+              onDragStart={e ? (ev) => { ev.dataTransfer.setData(FROM_SHELF, slot.ch); ev.dataTransfer.setData('text/plain', e.f); ev.dataTransfer.effectAllowed = 'move'; setExplore({ dragField: e.f }) } : undefined}
+              onDragEnd={() => setExplore({ dragField: null })}
+              onDragOver={(ev) => ev.preventDefault()}
+              onDrop={(ev) => { ev.preventDefault(); const from = ev.dataTransfer.getData(FROM_SHELF) as Channel; if (from) { move(from, slot.ch); return } const f = ev.dataTransfer.getData('text/plain') || dragging; if (f) assign(slot.ch, f) }}>
               <span className="spl">{adding && <Plus size={12} aria-hidden="true" />}{label}{slot.req && <><i className="rq" aria-hidden="true" /><span className="sr">required</span></>}</span>
               {e && col && (
                 <>
@@ -278,8 +331,8 @@ function ChartCard({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: Cha
                 </>
               )}
               {!e && (
-                <button type="button" className="place tp" data-tip={`Takes ${acceptsShort(slot.accepts)}`} disabled={!dragging || !ok} onClick={() => dragging && assign(slot.ch, dragging)}>
-                  {dragging ? (ok ? `Place ${dragging}` : `Takes ${acceptsShort(slot.accepts)}`) : 'Drop a field'}
+                <button type="button" className="place tp" data-tip={`Takes ${acceptsShort(slot.accepts)}`} disabled={!picked || !(pickedRole && slot.accepts.includes(pickedRole))} onClick={() => picked && assign(slot.ch, picked)}>
+                  {picked ? (pickedRole && slot.accepts.includes(pickedRole) ? `Place ${picked}` : `Takes ${acceptsShort(slot.accepts)}`) : 'Drop a field'}
                 </button>
               )}
             </div>

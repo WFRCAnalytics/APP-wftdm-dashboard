@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs'
-import { test, expect, type Page } from '@playwright/test'
+import { test, expect, type Locator, type Page } from '@playwright/test'
 
 // 065-chart-builder: the Explore builder's Data tab on the real demo data (project `real`, three ActivitySim runs).
 async function openExplore(page: Page, errors: string[]) {
@@ -240,6 +240,47 @@ test.describe('DuckDB computes the chart data for every mark', () => {
     await dialog.getByRole('button', { name: 'Contract Chart 1' }).click()
     await expect(dialog).toHaveCount(0)
     await expect(page.locator('.xb .plot.pivot table')).toBeVisible()
+    expect(errors).toEqual([])
+  })
+  test('a placed field moves between shelves, swaps with an occupied one, goes back to the list, and the list tags it', async ({ page }) => {
+    const errors: string[] = []
+    await textTable(page, errors)
+    await page.locator('.xb .mk', { hasText: 'Bar' }).click()
+    await place(page, 'primary_purpose', 'X axis')
+    await place(page, 'trips', 'Y axis')
+    await place(page, 'major_trip_mode', 'Colour')
+    await drawn(page)
+    const shelf = (name: string) => page.locator('.xb .strip .sp', { hasText: name })
+    const tag = (field: string) => page.locator('.xb .fchip', { hasText: field }).first().locator('.fused')
+    // dragging by a shelf's label, with the real mouse
+    const drag = (from: Locator, to: Locator) => from.locator('.spl').dragTo(to)
+    // starting a drag must not reflow the shelves (they used to rewrite their button text, so the target moved from under the pointer)
+    const boxes = async () => (await Promise.all((await page.locator('.xb .strip .sp').all()).map((e) => e.boundingBox()))).map((b) => `${b!.x},${b!.y},${b!.width},${b!.height}`)
+    const still = await boxes()
+    const dt = await page.evaluateHandle(() => new DataTransfer())
+    await page.locator('.xb .fchip', { hasText: 'trips' }).first().dispatchEvent('dragstart', { dataTransfer: dt })
+    await page.waitForTimeout(200)
+    expect(await boxes()).toEqual(still)
+    await page.locator('.xb .fchip', { hasText: 'trips' }).first().dispatchEvent('dragend', { dataTransfer: dt })
+    // the field list says where a field is used, and the field stays free to use again
+    await expect(tag('primary_purpose')).toHaveText('X axis')
+    // move: a category from X to Hatch
+    await drag(shelf('X axis'), shelf('Hatch'))
+    await expect(shelf('Hatch')).toContainText('primary_purpose')
+    await expect(shelf('X axis')).not.toContainText('primary_purpose')
+    await expect(tag('primary_purpose')).toHaveText('Hatch')
+    // a number cannot go on a category shelf, and stays where it was
+    await drag(shelf('Y axis'), shelf('Colour'))
+    await expect(shelf('Y axis')).toContainText('trips')
+    await expect(shelf('Colour')).toContainText('major_trip_mode')
+    // swap: two categories trade places
+    await drag(shelf('Colour'), shelf('Hatch'))
+    await expect(shelf('Hatch')).toContainText('major_trip_mode')
+    await expect(shelf('Colour')).toContainText('primary_purpose')
+    // take off: drag a placed field back onto the field list
+    await drag(shelf('Hatch'), page.locator('.xb .flist'))
+    await expect(shelf('Hatch')).not.toContainText('major_trip_mode')
+    await expect(tag('major_trip_mode')).toHaveCount(0)
     expect(errors).toEqual([])
   })
   test('a transparent export has no background, and dark mode still gets dark text', async ({ page }) => {
