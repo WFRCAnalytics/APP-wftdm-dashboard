@@ -15,6 +15,27 @@ Notes on how to read it:
 - The full per-feature design history, with root causes and verification numbers, is in
   `project-docs/IMPLEMENTATION-HISTORY.md`.
 
+## [Unreleased]
+
+### Added
+
+- **Sort for bar and line charts.** A "Sort categories" setting in the Axes tab: Natural, Largest first, Smallest first
+  or Reversed. Bars sort by height (the stack total, or the tallest bar when they sit side by side); a line sorts when
+  its X axis is an ordered category or a date. The choice is saved in the exported configuration as `axes.sort`, and
+  files without it still import.
+- **Undo and redo for chart tabs.** Buttons beside Import, plus Ctrl or Cmd+Z and Ctrl+Shift+Z or Ctrl+Y (not while a
+  text field has focus). Covers fields, settings, renames, and adding or closing a tab, for up to 60 steps; repeated
+  edits to one setting, such as typing a title, undo as one step. Session only, nothing is stored in the browser.
+- **Copy SQL and Download CSV** on the Data tab's table. The CSV holds every page of the result, up to 100,000 rows.
+- **Loading state for charts.** A placeholder on the first load and a dimmed chart while new data arrives.
+
+### Changed
+
+- **The Data tab loads faster.** The row counts after each query step now run together instead of one after another, and
+  the total row count no longer needs a second query when the result fits on one page.
+- The package version is now `0.0.4` in `package.json`, `package-lock.json`, `pyproject.toml` and `uv.lock`; it still
+  said `0.1.0`.
+
 ## [0.0.4] - 2026-10-27
 
 The Explore chart builder, merged to `main` on 2026-10-27 as `38c9f1e`.
@@ -322,6 +343,7 @@ the history is grouped into stages by date.
   editor configs, and a reworked scenario publishing model with the JS, TS and React migration phases (`d1f9bd9`,
   `34032b4`, `c0de8a2`, `c7ae67d`).
 
+[Unreleased]: https://github.com/WFRCAnalytics/APP-wftdm-dashboard/compare/v0.0.4...HEAD
 [0.0.4]: https://github.com/WFRCAnalytics/APP-wftdm-dashboard/compare/v0.0.3...v0.0.4
 [0.0.3]: https://github.com/WFRCAnalytics/APP-wftdm-dashboard/compare/v0.0.2...v0.0.3
 [0.0.2]: https://github.com/WFRCAnalytics/APP-wftdm-dashboard/compare/v0.0.1...v0.0.2

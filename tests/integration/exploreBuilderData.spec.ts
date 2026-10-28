@@ -329,3 +329,62 @@ test('the table sorts and filters through the same query the builder uses', asyn
   await expect(page.locator('.xb .edc pre')).not.toContainText('WHERE')
   expect(errors).toEqual([])
 })
+
+test('the table can be copied as SQL and downloaded as CSV', async ({ page, context }) => {
+  const errors: string[] = []
+  await context.grantPermissions(['clipboard-read', 'clipboard-write'])
+  await openExplore(page, errors)
+  await expect(page.locator('.xb .tbl tbody tr').first()).toBeVisible({ timeout: 60_000 })
+  await expect(page.getByRole('button', { name: 'Copy SQL' })).toBeEnabled({ timeout: 30_000 })
+  await page.getByRole('button', { name: 'Copy SQL' }).click()
+  await expect(page.getByRole('button', { name: 'SQL copied' })).toBeVisible()
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toMatch(/^\s*SELECT/i)
+  const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Download CSV' }).click()])
+  expect(download.suggestedFilename()).toMatch(/\.csv$/)
+  const text = await (await import('node:fs/promises')).readFile((await download.path())!, 'utf8')
+  expect(text.split('\r\n').length).toBeGreaterThan(2)
+  expect(errors).toEqual([])
+})
+
+test('a chart change can be undone and redone, and bars can be sorted', async ({ page }) => {
+  const errors: string[] = []
+  await openExplore(page, errors)
+  await expect(page.locator('.xb .tbl tbody tr').first()).toBeVisible({ timeout: 60_000 })
+  // undo and redo belong to chart tabs
+  await expect(page.getByRole('button', { name: 'Undo' })).toHaveCount(0)
+  await page.getByRole('button', { name: 'Add chart tab' }).click()
+  await expect(page.getByRole('button', { name: 'Undo' })).toBeEnabled()
+  const place = async (field: string, shelf: string) => {
+    await page.locator('.xb .fchip', { hasText: field }).first().click()
+    await page.locator('.xb .sp', { hasText: shelf }).getByRole('button', { name: new RegExp(`Place ${field}`) }).click()
+  }
+  await place('scenario', 'X axis')
+  await place('auPkTotal', 'Y axis')
+  const bars = page.locator('.xb svg.plot rect[data-t]')
+  await expect(bars.first()).toBeVisible({ timeout: 30_000 })
+  // the button takes the Y field off again; redo puts it back
+  await page.waitForTimeout(900)
+  await page.getByRole('button', { name: 'Undo' }).click()
+  await expect(page.getByText('This chart needs a little more')).toBeVisible()
+  await page.getByRole('button', { name: 'Redo' }).click()
+  await expect(bars.first()).toBeVisible({ timeout: 30_000 })
+  // the keyboard works too, while no text field has focus
+  await page.locator('.xb .plotw').click()
+  await page.keyboard.press('Control+z')
+  await expect(page.getByText('This chart needs a little more')).toBeVisible()
+  await page.keyboard.press('Control+Shift+z')
+  await expect(bars.first()).toBeVisible({ timeout: 30_000 })
+  // sort the bars by height
+  const heights = async () => (await bars.evaluateAll((els) => els.map((e) => Number(e.getAttribute('height')))))
+  await page.getByRole('group', { name: 'Chart settings' }).getByRole('button', { name: 'Axes' }).click()
+  await page.getByRole('combobox', { name: 'Sort categories' }).click()
+  await page.getByRole('option', { name: 'Largest first' }).click()
+  await expect.poll(async () => { const h = await heights(); return h.every((v, i) => i === 0 || v <= h[i - 1] + 0.01) }).toBe(true)
+  await page.getByRole('combobox', { name: 'Sort categories' }).click()
+  await page.getByRole('option', { name: 'Smallest first' }).click()
+  await expect.poll(async () => { const h = await heights(); return h.every((v, i) => i === 0 || v >= h[i - 1] - 0.01) }).toBe(true)
+  // the choice is exported
+  await page.getByRole('button', { name: 'Export' }).click()
+  await expect(page.getByRole('dialog', { name: 'Export this chart' }).locator('textarea')).toHaveValue(/"sort": "low"/)
+  expect(errors).toEqual([])
+})

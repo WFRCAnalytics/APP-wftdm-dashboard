@@ -7,8 +7,8 @@ import { buildChart, type ChartModel, type Col, type DrawnChart } from '@/charts
 import { chartRole, DATA_TYPES, TYPE_LABEL, typesPresent, type DataType } from '@/charts/builder/columnTypes'
 import { suggest } from '@/charts/builder/rules'
 import {
-  assignField, acceptsShort, AGGS, channelAggregates, channelLabel, COMING_SOON, MARK_LABEL, MARKS, SLOTS, switchMark, TEXT_SIZES,
-  type Agg, type Channel, type ChartSpec, type Mark, type Stack, type TextKey,
+  assignField, acceptsShort, AGGS, channelAggregates, channelLabel, COMING_SOON, MARK_LABEL, MARKS, SLOTS, SORTS, switchMark, TEXT_SIZES,
+  type Agg, type Channel, type ChartSpec, type Mark, type Sort, type Stack, type TextKey,
 } from '@/charts/builder/spec'
 import { readChartTheme } from '@/charts/theme'
 import type { ChartTheme } from '@/charts/types'
@@ -226,7 +226,8 @@ function ChartCard({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: Cha
             ))}
           </div>
         )}
-        <div className="plotw" ref={plotRef} aria-label={aria ? `Chart of ${aria}` : 'Chart'}>
+        <div className={`plotw ${data.loading && drawn ? 'stale' : ''}`} ref={plotRef} aria-label={aria ? `Chart of ${aria}` : 'Chart'} aria-busy={data.loading}>
+          {data.loading && !drawn && !model?.problem && <div className="skel" role="status" aria-label="Loading the chart" />}
           {model?.problem && <div className="empty"><b>This chart needs a little more</b><span>{model.problem}</span></div>}
           {!model?.problem && data.error && <div className="empty"><b>The data could not be read</b><span>{data.error}</span></div>}
           {drawn && !data.error && <Plot model={drawn} spec={spec} hot={hot} size={{ w: drawn.W, h: drawn.H }} />}
@@ -310,6 +311,15 @@ function Rail({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: ChartDat
           <p className="hint">{['bar', 'area', 'histogram'].includes(spec.mark) ? 'Bars, areas and histograms always start at zero.' : 'Applies to lines, scatter and box plots.'}</p>
           <div className="rrow"><span className="lab" style={{ minWidth: 96 }}>Gridlines</span>{pills<boolean>([[true, 'Show'], [false, 'Hide']], spec.grid, (v) => setSpec((x) => ({ ...x, grid: v })), 'Gridlines')}</div>
           <div className="rrow"><label className="lab" htmlFor="refin" style={{ minWidth: 96 }}>Reference line</label><input id="refin" className="inp" value={spec.ref} placeholder="y value" onChange={(e) => setSpec((x) => ({ ...x, ref: e.target.value.replace(/[^0-9.-]/g, '') }))} /></div>
+          {(spec.mark === 'bar' || spec.mark === 'line') && (
+            <>
+              <div className="rrow">
+                <span className="lab" style={{ minWidth: 96 }}>Sort categories</span>
+                <XSelect className="mini sel2" aria-label="Sort categories" value={spec.sort} onChange={(e) => setSpec((x) => ({ ...x, sort: e.target.value as Sort }))}>{SORTS.map((o) => <option key={o.v} value={o.v}>{o.label}</option>)}</XSelect>
+              </div>
+              <p className="hint">{spec.mark === 'bar' ? 'Largest and smallest order the bars by their height.' : 'Works when the X axis is an ordered category or a date, not a number.'}</p>
+            </>
+          )}
         </div>
       )}
       {s.railTab === 'filter' && (

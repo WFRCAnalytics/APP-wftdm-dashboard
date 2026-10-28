@@ -2,7 +2,7 @@
 // (summaries), the paged preview, and the Query box with the pinned My tables list. Chart tabs arrive in the next step.
 import { useEffect, useRef, useState } from 'react'
 import { AssistantButton } from '@/layout/chat/chatLauncher'
-import { ChevronDown, Plus, Table2, Trash2, Upload, X } from 'lucide-react'
+import { ChevronDown, Plus, Redo2, Table2, Trash2, Undo2, Upload, X } from 'lucide-react'
 import { defaultSpec } from '@/charts/builder/spec'
 import { ChartTabView } from '@/explore/ChartTabView'
 import { ImportDialog } from '@/explore/ExportDialog'
@@ -13,7 +13,7 @@ import { QueryBox } from '@/explore/QueryBox'
 import { Btn, SearchPopover } from '@/explore/parts'
 import { dropMyTable } from '@/explore/sql/myTables'
 import { useDataTab, type DataTabModel } from '@/explore/useDataTab'
-import { resetQuery, setExplore, updateChart } from '@/state/exploreState'
+import { redoCharts, resetQuery, setExplore, undoCharts, updateChart } from '@/state/exploreState'
 import type { PanelProps } from '@/panels/registry'
 import type { ExploreBuilderPanelConfig } from '@/layout/types'
 
@@ -50,6 +50,12 @@ function TopBar({ m }: { m: DataTabModel }) {
           return { charts: [...st.charts, { id, name: `Chart ${st.charts.length + 1}`, source, spec: defaultSpec() }], activeTab: id, nextId: st.nextId + 1, notice: '', selectedField: null }
         })}><Plus size={15} aria-hidden="true" /></button>
       </div>
+      {s.activeTab !== 'data' && (
+        <div className="undo" role="group" aria-label="Undo and redo">
+          <Btn icon aria-label="Undo" aria-keyshortcuts="Control+Z Meta+Z" disabled={s.undoDepth === 0} onClick={undoCharts}><Undo2 size={15} aria-hidden="true" /></Btn>
+          <Btn icon aria-label="Redo" aria-keyshortcuts="Control+Shift+Z Control+Y Meta+Shift+Z" disabled={s.redoDepth === 0} onClick={redoCharts}><Redo2 size={15} aria-hidden="true" /></Btn>
+        </div>
+      )}
       <button type="button" className={CHIP} onClick={() => setImporting(true)}><Upload size={15} aria-hidden="true" /><span className="font-medium">Import</span></button>
       {importing && <ImportDialog onClose={() => setImporting(false)} />}
       {rect && (
@@ -122,6 +128,21 @@ function ChartTabLabel({ id, name, selected }: { id: string; name: string; selec
 export function ExploreBuilderPanel({ config }: PanelProps<ExploreBuilderPanelConfig>) {
   const m = useDataTab()
   const chart = m.state.charts.find((c) => c.id === m.state.activeTab)
+  const onChartTab = !!chart
+  // Ctrl/Cmd+Z undoes and Ctrl+Shift+Z or Ctrl+Y redoes a chart change, except while typing: a text field keeps its own undo
+  useEffect(() => {
+    if (!onChartTab) return
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey) || e.altKey) return
+      const t = e.target as HTMLElement | null
+      if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return
+      const k = e.key.toLowerCase()
+      if (k === 'z' && !e.shiftKey) { e.preventDefault(); undoCharts() }
+      else if ((k === 'z' && e.shiftKey) || k === 'y') { e.preventDefault(); redoCharts() }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onChartTab])
   return (
     <div className="xb" data-testid="explore-builder">
       {/* the same header every other page has: the title and subtitle, then the toolbar and the Assistant button */}

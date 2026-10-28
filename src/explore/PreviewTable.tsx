@@ -1,7 +1,9 @@
 // 065-chart-builder: the Data tab's paged preview. The page size follows the height of the tile; the first column stays
 // pinned while the rest scrolls sideways (tables can have hundreds of columns); cells render by data type.
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ArrowDown, ArrowUp, ChevronDown, ChevronLeft, ChevronRight, Columns2, Filter, Maximize2, Minimize2, X } from 'lucide-react'
+import { ArrowDown, ArrowUp, Check, ChevronDown, ChevronLeft, ChevronRight, Columns2, Copy, Download, Filter, Maximize2, Minimize2, X } from 'lucide-react'
+import { runUserSql } from '@/explore/sql/runUserSql'
+import { downloadCsv, fileName } from '@/services/exportTile'
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Modal } from '@/explore/ExportDialog'
@@ -123,6 +125,40 @@ function useRowsFit(ref: React.RefObject<HTMLDivElement>, active: boolean, pageS
   }, [ref, active, pageSize, hasRows])
 }
 
+const CSV_CAP = 100_000
+
+// Copy the statement behind the table, or download its rows (every page, up to CSV_CAP) as a CSV file.
+function ExportButtons({ m, name }: { m: DataTabModel; name: string }) {
+  const [note, setNote] = useState<'' | 'copied' | 'busy' | 'cut' | 'failed'>('')
+  const flash = (n: typeof note) => { setNote(n); if (n !== 'busy') setTimeout(() => setNote(''), 2500) }
+  const ready = !!m.sql && m.settled
+  const copy = async () => {
+    try { await navigator.clipboard.writeText(m.sql); flash('copied') } catch { flash('failed') }
+  }
+  const download = async () => {
+    setNote('busy')
+    const r = await runUserSql(m.sql, { page: 0, pageSize: CSV_CAP })
+    if (r.outcome !== 'ok') { flash('failed'); return }
+    const names = r.columns.map((c) => c.name)
+    downloadCsv(r.rows.map((row) => Object.fromEntries(names.map((n, i) => [n, row[i]]))), fileName([name || 'table'], 'csv'))
+    flash(r.hasMore ? 'cut' : '')
+  }
+  return (
+    <>
+      <Btn icon aria-label={note === 'copied' ? 'SQL copied' : 'Copy SQL'} disabled={!ready} onClick={() => void copy()}>
+        {note === 'copied' ? <Check size={14} aria-hidden="true" /> : <Copy size={14} aria-hidden="true" />}
+      </Btn>
+      <Btn icon aria-label={note === 'busy' ? 'Preparing CSV' : 'Download CSV'} disabled={!ready || note === 'busy'} onClick={() => void download()}>
+        <Download size={14} aria-hidden="true" />
+      </Btn>
+      <span className="sr-only" role="status">
+        {note === 'cut' ? `Downloaded the first ${CSV_CAP.toLocaleString('en-US')} rows.` : note === 'failed' ? 'That did not work.' : ''}
+      </span>
+      {(note === 'cut' || note === 'failed') && <span className="fnote">{note === 'cut' ? `First ${CSV_CAP.toLocaleString('en-US')} rows only.` : 'That did not work.'}</span>}
+    </>
+  )
+}
+
 // Title, row range, page buttons and the expand (or contract) button, shared by the tile and the expanded dialog.
 function Head({ m, name, big, onToggle }: { m: DataTabModel; name: string; big: boolean; onToggle(): void }) {
   const { state: s, columns, rows } = m
@@ -149,6 +185,7 @@ function Head({ m, name, big, onToggle }: { m: DataTabModel; name: string; big: 
           </Btn>
         )}
         <span className="mono">{from}–{to}{m.total !== null ? ` of ${m.total.toLocaleString('en-US')}` : ''}</span>
+        <ExportButtons m={m} name={name} />
         <Btn icon aria-label="Previous page" disabled={s.page <= 0} onClick={() => setExplore({ page: s.page - 1 })}><ChevronLeft size={14} /></Btn>
         <Btn icon aria-label="Next page" disabled={!m.hasMore} onClick={() => setExplore({ page: s.page + 1 })}><ChevronRight size={14} /></Btn>
         {/* the same ghost icon button every other expandable tile uses */}

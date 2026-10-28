@@ -109,11 +109,14 @@ export function useDataTab(): DataTabModel {
   // The statement whose result is on screen. It stays the same while another page loads, and changes only with the statement.
   const okSql = result.res?.outcome === 'ok' && result.forSql === sql ? sql : ''
 
-  // The total row count, only when the SQL is allowed.
+  // The total row count, only when the SQL is allowed. A result that fits on its page already tells the total, so the
+  // counting query runs only when there is another page.
   const [total, setTotal] = useState<number | null>(null)
+  const page = useRef({ known: null as number | null })
+  page.current.known = result.res?.outcome === 'ok' && result.forSql === sql && !result.res.hasMore ? s.page * s.pageSize + result.res.rows.length : null
   useEffect(() => {
     setTotal(null)
-    if (!okSql) return
+    if (!okSql || page.current.known !== null) return
     let dead = false
     void runUserSql(`SELECT count(*) AS n FROM (\n${sql.replace(/[;\s]+$/, '')}\n) AS c`, { page: 0, pageSize: 1 }).then((r) => {
       if (!dead && r.outcome === 'ok') setTotal(Number(r.rows[0]?.[0] ?? 0))
@@ -134,14 +137,16 @@ export function useDataTab(): DataTabModel {
       if (!authorize(text, 'read-only', protectedNames()).allowed) return undefined
       try { return Number((await query(text))[0]?.n ?? 0) } catch { return undefined }
     }
+    // every stage is its own statement, so they run together instead of one after another
     void (async () => {
-      const next: StepCounts = { joins: [] }
-      next.source = await run('source')
       const okJoins = plan.joins.filter((j) => j.ok)
-      for (let i = 0; i < plan.joins.length; i++) next.joins.push(plan.joins[i].ok ? await run({ joins: okJoins.indexOf(plan.joins[i]) + 1 }) : undefined)
-      next.filter = await run('filter')
-      if (plan.group.length) next.summary = await run('summary')
-      if (!dead) setCounts(next)
+      const [source, joins, filter, summary] = await Promise.all([
+        run('source'),
+        Promise.all(plan.joins.map((j) => (j.ok ? run({ joins: okJoins.indexOf(j) + 1 }) : Promise.resolve(undefined)))),
+        run('filter'),
+        plan.group.length ? run('summary') : Promise.resolve(undefined),
+      ])
+      if (!dead) setCounts({ source, joins, filter, summary })
     })()
     return () => { dead = true }
     // keyed on the statement whose result has landed (its views exist by then), not on the plan object or the page: another
@@ -165,7 +170,7 @@ export function useDataTab(): DataTabModel {
         : failed && result.res && 'reason' in result.res ? result.res.reason : ''
   return {
     state: s, scenarioOptions, tableOptions, isMine, tables, plan, sql, columns, rows: res?.rows ?? [], hasMore: res?.hasMore ?? false,
-    total, status: result.status, settled: !!okSql, message, ms: result.ms, counts, ready,
+    total: total ?? page.current.known, status: result.status, settled: !!okSql, message, ms: result.ms, counts, ready,
   }
 }
 

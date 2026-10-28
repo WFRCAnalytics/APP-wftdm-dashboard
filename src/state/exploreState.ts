@@ -60,12 +60,15 @@ export interface ExploreState {
   /** A short message under the chart controls (a refused drop, a switched mark). */
   notice: string
   noticeBad: boolean
+  /** How many chart changes can be undone and redone (see setExplore). */
+  undoDepth: number
+  redoDepth: number
 }
 
 const initial = (): ExploreState => ({
   scenarios: [], table: '', model: emptyModel(), detached: false, sql: '', queryTab: 'builder', openStep: 'table', page: 0, pageSize: 12,
   typeOverride: {}, profileCol: null, profileQuery: '', profileType: 'all', profileShow: 40, mine: [], nextId: 1, runNonce: 0,
-  charts: [], activeTab: 'data', railTab: 'chart', selectedField: null, fieldQuery: '', fieldType: 'all', fieldShow: 60, fieldOpen: {}, notice: '', noticeBad: false,
+  charts: [], activeTab: 'data', railTab: 'chart', selectedField: null, fieldQuery: '', fieldType: 'all', fieldShow: 60, fieldOpen: {}, notice: '', noticeBad: false, undoDepth: 0, redoDepth: 0,
 })
 
 let state: ExploreState = initial()
@@ -77,10 +80,68 @@ export function subscribeExplore(fn: () => void): () => void {
   return () => subscribers.delete(fn)
 }
 
+// Undo and redo cover the chart tabs (their fields, settings, names, and being added or closed), not the Data tab. Every
+// change to `charts` is recorded. Edits to the same setting of the same chart that follow each other within COALESCE_MS
+// (typing a title) undo as one step; adding, closing or any other kind of edit always starts a new one.
+const HISTORY_MAX = 60
+const COALESCE_MS = 800
+const past: ChartTab[][] = []
+const future: ChartTab[][] = []
+let lastChange = 0
+let lastKey: string | null = null
+
+/** Names the one setting of one chart that differs between two lists of tabs, or null when it is anything else. */
+function changeKey(a: ChartTab[], b: ChartTab[]): string | null {
+  if (a.length !== b.length) return null
+  let key: string | null = null
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] === b[i]) continue
+    const x = a[i], y = b[i]
+    if (x.id !== y.id || key !== null) return null
+    const diffs: string[] = []
+    for (const k of Object.keys(y) as (keyof ChartTab)[]) if (k !== 'spec' && x[k] !== y[k]) diffs.push(k)
+    for (const k of Object.keys(y.spec) as (keyof ChartSpec)[]) {
+      if (k === 'text') { for (const t of Object.keys(y.spec.text) as (keyof ChartSpec['text'])[]) if (x.spec.text[t] !== y.spec.text[t]) diffs.push(`text.${t}`) }
+      else if (x.spec[k] !== y.spec[k]) diffs.push(k)
+    }
+    if (diffs.length !== 1) return null
+    key = `${x.id}:${diffs[0]}`
+  }
+  return key
+}
+
+const depths = () => ({ undoDepth: past.length, redoDepth: future.length })
+
 export function setExplore(patch: Partial<ExploreState> | ((s: ExploreState) => Partial<ExploreState>)): void {
-  state = { ...state, ...(typeof patch === 'function' ? patch(state) : patch) }
+  const p = typeof patch === 'function' ? patch(state) : patch
+  if (p.charts && p.charts !== state.charts) {
+    const now = Date.now()
+    const key = changeKey(state.charts, p.charts)
+    if (!past.length || key === null || key !== lastKey || now - lastChange > COALESCE_MS) {
+      past.push(state.charts)
+      if (past.length > HISTORY_MAX) past.shift()
+    }
+    lastChange = now
+    lastKey = key
+    future.length = 0
+    state = { ...state, ...p, ...depths() }
+  } else state = { ...state, ...p }
   for (const fn of subscribers) fn()
 }
+
+function travel(from: ChartTab[][], to: ChartTab[][]): void {
+  const target = from.pop()
+  if (!target) return
+  to.push(state.charts)
+  lastChange = 0
+  lastKey = null
+  // a restored set may no longer hold the tab that was open
+  const activeTab = state.activeTab === 'data' || target.some((c) => c.id === state.activeTab) ? state.activeTab : 'data'
+  state = { ...state, charts: target, activeTab, notice: '', ...depths() }
+  for (const fn of subscribers) fn()
+}
+export const undoCharts = (): void => travel(past, future)
+export const redoCharts = (): void => travel(future, past)
 
 /** Changing the table or scenarios starts the query over. */
 export function resetQuery(patch: Partial<ExploreState> = {}): Partial<ExploreState> {
@@ -89,6 +150,10 @@ export function resetQuery(patch: Partial<ExploreState> = {}): Partial<ExploreSt
 
 export function resetExploreForTests(): void {
   state = initial()
+  past.length = 0
+  future.length = 0
+  lastChange = 0
+  lastKey = null
 }
 
 export function useExplore(): ExploreState {

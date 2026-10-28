@@ -4,7 +4,7 @@
 // no fill patterns and no pie. Colours come from the app's ChartTheme (tokens), never hard-coded. tests/unit/chartBuilderCompile.test.ts.
 import type { ChartTheme } from '@/charts/types'
 import { chartRole, type DataType, type Role } from '@/charts/builder/columnTypes'
-import { acceptsText, channelLabel, SLOTS, ROLE_WORD, type ChartSpec, type Channel } from '@/charts/builder/spec'
+import { acceptsText, channelLabel, SLOTS, ROLE_WORD, type ChartSpec, type Channel, type Sort } from '@/charts/builder/spec'
 
 export type Row = Record<string, any>
 export interface Col { name: string; type: DataType }
@@ -87,6 +87,25 @@ export function uniqSorted(rows: Row[], f: string): any[] {
   const a = Array.from(s)
   if (a.every((v) => typeof v === 'number')) return a.sort((x, y) => x - y)
   return a.sort((x, y) => String(x).localeCompare(String(y)))
+}
+
+/**
+ * Orders categories. `V` holds each category's value per series (key `category\u0002series`); a category's height is the sum
+ * over its series when they stack and the tallest one when they sit side by side. Ties keep the natural order.
+ */
+export function sortCategories<T>(cats: T[], sort: Sort | undefined, V: Map<string, number>, series: string[], tallest: boolean): T[] {
+  if (!sort || sort === 'natural') return cats
+  if (sort === 'reverse') return cats.slice().reverse()
+  const height = (c: T): number => {
+    let h: number | undefined
+    for (const k of series) {
+      const v = V.get(`${c}\u0002${k}`)
+      if (v !== undefined) h = h === undefined ? v : tallest ? Math.max(h, v) : h + v
+    }
+    return h ?? 0
+  }
+  const h = new Map(cats.map((c) => [c, height(c)] as const))
+  return cats.slice().sort((a, b) => (sort === 'high' ? h.get(b)! - h.get(a)! : h.get(a)! - h.get(b)!))
 }
 
 export function glyph(shape: number, cx: number, cy: number, r: number): { d: string; line: boolean } {
@@ -267,7 +286,8 @@ export function buildChart(input: BuildInput): ChartModel {
   const pct = (v: number) => `${Math.round(v * 100)}%`
 
   if (mark === 'bar') {
-    const xf = enc.x!.f, yf = enc.y!.f, agg = enc.y!.agg ?? 'sum', cats = uniqSorted(rows, xf)
+    const xf = enc.x!.f, yf = enc.y!.f, agg = enc.y!.agg ?? 'sum'
+    const cats = sortCategories(uniqSorted(rows, xf), spec.sort, gm(rows, xf, yf, agg), series.map((s) => s.key), stackMode === 'group')
     for (const pn of panels) pn.V = gm(pn.prows, xf, yf, agg)
     let ymax = 0
     for (const pn of panels) for (const c of cats) {
@@ -303,7 +323,9 @@ export function buildChart(input: BuildInput): ChartModel {
       refLine(pn, bx, ax.sy)
     }
   } else if (mark === 'line' || mark === 'area') {
-    const xf = enc.x!.f, yf = enc.y!.f, agg = enc.y!.agg ?? 'sum', xc = roleOf(cols, xf) === 'q', xs = uniqSorted(rows, xf)
+    const xf = enc.x!.f, yf = enc.y!.f, agg = enc.y!.agg ?? 'sum', xc = roleOf(cols, xf) === 'q'
+    // only a line over categories or dates sorts; a numeric axis keeps its scale
+    const xs = mark === 'line' && !xc ? sortCategories(uniqSorted(rows, xf), spec.sort, gm(rows, xf, yf, agg), series.map((s) => s.key), true) : uniqSorted(rows, xf)
     for (const pn of panels) pn.V = gm(pn.prows, xf, yf, agg)
     let lo = Infinity, hi = 0
     for (const pn of panels) for (const x of xs) {

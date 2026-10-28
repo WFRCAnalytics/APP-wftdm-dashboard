@@ -8,6 +8,11 @@ export type Channel = 'x' | 'y' | 'color' | 'pattern' | 'dash' | 'shape' | 'size
 export type Agg = 'sum' | 'mean' | 'median' | 'min' | 'max' | 'count'
 export const AGGS: Agg[] = ['sum', 'mean', 'median', 'min', 'max', 'count']
 export type Stack = 'group' | 'stack' | 'normalize'
+/** How the categories of a bar or line chart are ordered: the data's own order, tallest or shortest first, or reversed. */
+export type Sort = 'natural' | 'high' | 'low' | 'reverse'
+export const SORTS: { v: Sort; label: string }[] = [
+  { v: 'natural', label: 'Natural' }, { v: 'high', label: 'Largest first' }, { v: 'low', label: 'Smallest first' }, { v: 'reverse', label: 'Reversed' },
+]
 export type TextSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl'
 export const TEXT_SIZES: { v: TextSize; label: string }[] = [
   { v: 'xs', label: 'Extra small' }, { v: 'sm', label: 'Small' }, { v: 'md', label: 'Medium' }, { v: 'lg', label: 'Large' }, { v: 'xl', label: 'Extra large' },
@@ -21,6 +26,7 @@ export interface ChartSpec {
   mark: Mark
   donut: boolean
   stack: Stack
+  sort: Sort
   enc: Partial<Record<Channel, FieldDef>>
   filter: { f: string; v: string }
   zero: boolean
@@ -95,7 +101,7 @@ export const channelAggregates = (mark: Mark, ch: Channel): boolean => defaultAg
 
 export function defaultSpec(over: Partial<ChartSpec> = {}): ChartSpec {
   return {
-    mark: 'bar', donut: false, stack: 'group', enc: {}, filter: { f: '', v: '' }, zero: false, grid: true, ref: '',
+    mark: 'bar', donut: false, stack: 'group', sort: 'natural', enc: {}, filter: { f: '', v: '' }, zero: false, grid: true, ref: '',
     text: {
       title: { t: '', size: 'lg', b: true, i: false }, sub: { t: '', size: 'md', b: false, i: false },
       src: { t: '', size: 'xs', b: false, i: true }, note: { t: '', size: 'xs', b: false, i: false },
@@ -137,7 +143,7 @@ export interface ChartConfig {
   encoding: Partial<Record<Channel, { field: string; type?: string; aggregate?: Agg }>>
   stack: Stack
   filter: { field: string; op: '='; value: string }[]
-  axes: { zeroBaseline: boolean; gridlines: boolean; referenceLine: number | null }
+  axes: { zeroBaseline: boolean; gridlines: boolean; referenceLine: number | null; sort?: Sort }
   text: Partial<Record<'title' | 'subtitle' | 'source' | 'note', { text: string; size: TextSize; weight: 'normal' | 'bold'; italic: boolean }>>
 }
 
@@ -157,7 +163,7 @@ export function toConfig(spec: ChartSpec, ctx: { relation: string; scenarios: st
     mark: spec.mark + (spec.mark === 'pie' && spec.donut ? ':donut' : ''),
     encoding, stack: spec.stack,
     filter: spec.filter.f ? [{ field: spec.filter.f, op: '=', value: spec.filter.v }] : [],
-    axes: { zeroBaseline: spec.zero, gridlines: spec.grid, referenceLine: spec.ref === '' ? null : Number(spec.ref) },
+    axes: { zeroBaseline: spec.zero, gridlines: spec.grid, referenceLine: spec.ref === '' ? null : Number(spec.ref), ...(spec.sort !== 'natural' ? { sort: spec.sort } : {}) },
     text,
   }
 }
@@ -197,9 +203,11 @@ export function fromConfig(text: string, ctx: ImportContext): ImportResult {
     if (!cols.some((x) => x.name === e.field)) { errors.push(`encoding.${ch}.field: "${e.field}" is not a column of ${relation}.`); continue }
     enc[ch] = { f: e.field, agg: e.aggregate ?? null }
   }
+  const sort = c.axes?.sort
+  if (sort !== undefined && !SORTS.some((o) => o.v === sort)) errors.push(`axes.sort: "${String(sort)}" is not one of ${SORTS.map((o) => o.v).join(', ')}.`)
   if (errors.length) return { ok: false, errors }
   const spec = defaultSpec({
-    mark, donut, enc, stack: c.stack ?? 'group',
+    mark, donut, enc, stack: c.stack ?? 'group', sort: sort ?? 'natural',
     filter: c.filter?.[0] ? { f: c.filter[0].field, v: String(c.filter[0].value) } : { f: '', v: '' },
     zero: c.axes?.zeroBaseline === true, grid: c.axes?.gridlines !== false,
     ref: c.axes?.referenceLine === null || c.axes?.referenceLine === undefined ? '' : String(c.axes.referenceLine),
