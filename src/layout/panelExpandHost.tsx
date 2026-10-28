@@ -1,9 +1,9 @@
 import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
-import { Maximize2 } from 'lucide-react'
+import { Minimize2, Maximize2 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
-import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogClose, DialogContent, DialogTitle } from '@/components/ui/dialog'
 
 // The generic expand-to-dialog mechanism (004-panel-expand-dialog),
 // implemented once here so no panel component (current or future) needs
@@ -149,6 +149,7 @@ export function usePanelExpandHost(
             without needing <DialogTrigger>. */}
         <DialogContent
           ref={dialogRef}
+          hideClose
           // gap-4 — not a regression, a genuine pre-existing gap in 004's
           // original design (confirmed via `git show` on the 004 commit:
           // DialogContent's className never had a gap-* class, in either
@@ -174,10 +175,19 @@ export function usePanelExpandHost(
             triggerRef.current?.focus()
           }}
         >
-          <div className="flex items-center gap-2 pr-8">
+          <div className="flex items-center gap-2">
             <DialogTitle>{title}</DialogTitle>
             <span className="flex-1" />
             {options?.exportMenu?.(dialogRef)}
+            {/* The same round 30px button as Export beside it, and the mirror of the card's Expand icon: it puts the tile back.
+                Named "Close" for assistive tech (Escape does the same). */}
+            <DialogClose
+              aria-label="Close"
+              data-export-skip=""
+              className="grid size-[30px] place-items-center rounded-full text-[var(--mute)] hover:bg-[color-mix(in_srgb,var(--ink)_8%,transparent)] hover:text-[var(--ink)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-text)]"
+            >
+              <Minimize2 className="size-4" aria-hidden="true" />
+            </DialogClose>
           </div>
           {options?.chrome}
           <div ref={setDialogAnchor} className="min-h-0 flex-1" />

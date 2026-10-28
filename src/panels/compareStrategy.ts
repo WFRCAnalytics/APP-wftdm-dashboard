@@ -30,6 +30,7 @@ export const CELLS_PER_PAGE = 4
 
 export const GRID_GAP = 10
 const MIN_FORCED_ROW_CELL = 160
+const MIN_AUTO_CELL = 160
 
 /** Narrowest a cell may get before it wraps to the next row: maps need more room than small charts. */
 export function minCellWidth(panel: PanelConfig): number {
@@ -43,11 +44,30 @@ export function minCellWidth(panel: PanelConfig): number {
  * already gives the tile the whole screen height, so there 2 columns is the most (2x2 reads fine); a phone gets 1.
  * A viewer's Layout choice (`row`/`grid`) overrides this. Width 0 (not yet measured) falls back to the old two-column rule.
  */
-export function pickColumns({ total, width, minCell, tabbed, layout = 'auto' }: { total: number; width: number; minCell: number; tabbed: boolean; layout?: 'auto' | 'row' | 'grid' }): number {
+export function pickColumns({ total, width, minCell, tabbed, layout = 'auto', height, chrome = 0 }: { total: number; width: number; minCell: number; tabbed: boolean; layout?: 'auto' | 'row' | 'grid'; height?: number; chrome?: number }): number {
   if (total <= 1) return 1
   // a manual choice wins, unless a row would squeeze cells below a readable width
   if (layout === 'grid') return 2
   if (layout === 'row' && (width === 0 || width >= total * MIN_FORCED_ROW_CELL + (total - 1) * GRID_GAP)) return total
+  // With the body's height known, take the column count that gives the largest cell by its smaller side (a circle or a square
+  // is as big as that), so three charts in a short, narrow tile sit in a row, not in a 2 + 1 grid. Ties go to fewer columns.
+  if (width > 0 && height && height > 0 && layout === 'auto') {
+    const floor = minCell >= 280 ? minCell : Math.min(minCell, MIN_AUTO_CELL)
+    const most = Math.min(total, tabbed ? 2 : total)
+    let best = 1
+    let bestSize = -1
+    for (let c = 1; c <= most; c++) {
+      if (c > 1 && (width - (c - 1) * GRID_GAP) / c < floor) break
+      if (c === 3 && total === 4) continue
+      const rows = Math.ceil(total / c)
+      const size = Math.min((width - (c - 1) * GRID_GAP) / c, (height - (rows - 1) * GRID_GAP) / rows - chrome)
+      if (size > bestSize + 0.5) {
+        best = c
+        bestSize = size
+      }
+    }
+    return best
+  }
   let cols = width > 0 ? Math.floor((width + GRID_GAP) / (minCell + GRID_GAP)) : 2
   if (tabbed) cols = Math.min(cols, 2)
   cols = Math.max(1, Math.min(cols, total))
