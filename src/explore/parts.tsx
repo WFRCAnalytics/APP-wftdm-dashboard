@@ -138,6 +138,8 @@ export function XSelect({ value, onChange, children, className = '', style, disa
   const options = collectOptions(children)
   const size = /\b(mini|agg)\b/.test(className) ? 'xs' : /\btsel\b/.test(className) ? 'bare' : 'md'
   const trigger = cn(
+    // A long value ellipsizes inside the trigger so the chevron always stays visible.
+    'max-w-full min-w-0 [&>span]:min-w-0 [&>span]:truncate',
     size === 'md' && 'h-9 min-w-[150px] font-medium',
     size === 'xs' && 'h-7 max-w-[190px] min-w-0 gap-1.5 px-2 text-[12.5px]',
     size === 'bare' && 'h-6 w-auto gap-1 border-0 bg-transparent px-1 text-xs shadow-none',
