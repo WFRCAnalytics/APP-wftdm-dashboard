@@ -5,8 +5,8 @@ import { computeGeometryBounds, type BoundsTuple } from '@/panels/mapBounds'
 import { ensureSpatialExtensionLoaded, loadZoneGeometry, resolveDemoGeometryUrl } from '@/panels/zoneGeometry'
 import { query, registerFileURL } from '@/services/duckdb'
 
-export const DEFAULT_ZONES_FILE = 'wasatch-zones.geoparquet'
-export const DEFAULT_RAIL_FILE = 'wasatch-rail.geoparquet'
+export const DEFAULT_ZONES_FILE = 'zones.geoparquet'
+export const DEFAULT_RAIL_FILE = 'rail.geoparquet'
 export const ZONE_ID_COLUMN = 'taz_id'
 
 export interface RailFeatures {

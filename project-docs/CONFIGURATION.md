@@ -218,9 +218,14 @@ Not drafted here, on purpose: how the charts find the deployer's tables and colu
 **Phase A: neutral and clean (small; unblocks the rest)**
 1. Demo split, **decided: an opt-in build flag.** A normal build ships no demo roots and no WFRC fallbacks. `build:pages` sets the demo
    flag and copies `public/demo-*` in, with its own `dashboard-config.yaml`, so GitHub Pages keeps working.
-2. Replace WFRC and Utah leftovers with neutral defaults: the `index.html` title, the export footer fallback, `vocab` default districts,
-   the `wasatch-*` default geometry names, the "WFRC blue" and "Wasatch" colour presets. Remove the unused `COUNTIES`.
-3. Try a relative Vite `base` and check the DuckDB worker, the service worker scope and the boot skeleton (constitution Principle X).
+2. **Done (branch `config/phase-a-neutral`).** Neutral defaults: the `index.html` title ("Calibration Dashboard"), the export footer
+   fallback, no default `vocab.districts` (the demo configs now list theirs; `COUNTIES` was not unused, it is now the districts plus
+   External), default geometry `zones.geoparquet` / `rail.geoparquet` (the demo files were renamed), and the colour presets "Blue" and
+   "Teal".
+3. **Done as a spike.** `WFTDM_BASE=./ npx vite build` produces a bundle that works from a nested folder (checked: charts draw, the
+   service worker scopes to that folder, no failed data requests). The one fix needed: `services/duckdb.ts#registerFileURL` resolves its
+   URL against the page, because the DuckDB worker resolved relative URLs against `assets/`. The default `base` is unchanged. Still to
+   check: the boot skeleton and a Python-served copy.
 
 **Phase B: `dashboard-config.yaml`**
 4. One table-driven definition of every key (name, type, default, whether it cascades, description). The loader, the cascade, the

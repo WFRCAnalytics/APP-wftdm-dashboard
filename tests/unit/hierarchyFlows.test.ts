@@ -1,6 +1,7 @@
-import { describe, expect, it } from 'vitest'
+import { beforeAll, describe, expect, it } from 'vitest'
 
 import { buildChartTheme } from '../../src/charts/theme'
+import { configureVocab } from '../../src/charts/vocab'
 import { buildSankey, districtMatrix, districtTotals, fmtFlowCell, showNodeLabel, withoutIntra } from '../../src/charts/lib/flows'
 import {
   buildGroups,
@@ -31,6 +32,9 @@ const flow = [
   { primary_purpose: 'School', major_trip_mode: 'School bus', trips: 400_000 },
   { primary_purpose: 'School', major_trip_mode: 'Walk', trips: 100_000 },
 ]
+
+// no district is assumed: a deployment names them (`vocab.districts`)
+beforeAll(() => configureVocab({ districts: ['Weber', 'Davis', 'Salt Lake', 'Utah', 'Tooele'].map((label) => ({ label })) }))
 
 describe('hierarchy nesting', () => {
   it('nests purpose > mode in vocabulary order and scales to thousands', () => {

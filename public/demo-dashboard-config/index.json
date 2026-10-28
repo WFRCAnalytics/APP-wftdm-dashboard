@@ -25,6 +25,7 @@
     "boards": { "hidden": true }
   },
   "vocab": {
+    "districts": [{ "label": "Weber" }, { "label": "Davis" }, { "label": "Salt Lake" }, { "label": "Utah" }, { "label": "Tooele" }],
     "modes": [
       { "label": "Drive alone", "ids": ["SOV"], "color": "car-1" },
       { "label": "Shared ride", "ids": ["HOV"], "color": "car-2" },

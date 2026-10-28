@@ -342,7 +342,10 @@ function releaseRegistrationSlot(): void {
 }
 
 /** Registers a single Parquet/GeoParquet file reachable by URL as a view. */
-export async function registerFileURL(viewName: string, url: string): Promise<void> {
+export async function registerFileURL(viewName: string, relativeOrAbsoluteUrl: string): Promise<void> {
+  // The DuckDB worker resolves a relative URL against its own script (assets/), not the page, so a build with a relative
+  // base (`./`, served from any path) would look for the data under assets/. Resolve against the page here.
+  const url = new URL(relativeOrAbsoluteUrl, document.baseURI).href
   const db = await getDB()
   await acquireRegistrationSlot()
   try {

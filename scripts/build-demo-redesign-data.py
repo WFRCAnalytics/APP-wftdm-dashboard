@@ -10,8 +10,8 @@ Writes (all under public/):
   demo-synthetic/scenarios/round-01 .. round-50/   calibration rounds (kind: round, family: calibration)
   demo-synthetic/scenarios/families/calibration/calibration_by_round.parquet   roll-up (NOT a run)
   demo-synthetic/scenarios/index.json              new runs first, then the six real activitysim-* runs
-  demo-geometry/wasatch-zones.geoparquet 150-ish jittered-grid TAZ polygons (WKB, WGS84)
-  demo-geometry/wasatch-rail.geoparquet  rail polyline + station points
+  demo-geometry/zones.geoparquet 150-ish jittered-grid TAZ polygons (WKB, WGS84)
+  demo-geometry/rail.geoparquet  rail polyline + station points
 
 Every run folder holds manifest.yaml + summary/*.parquet + summary/index.json.
 All numbers are SYNTHETIC. Existing activitysim-* folders are never touched.
@@ -592,10 +592,10 @@ def main():
 
     # geometry
     write_pq("wasatch_zones", [(z["id"], z["district"], wkb_polygon(z["ring"])) for z in zones],
-             GEO_DIR / "wasatch-zones.geoparquet")
+             GEO_DIR / "zones.geoparquet")
     rail_rows = [("line", "Wasatch rail", wkb_line(rail_dense))] + [
         ("station", n, wkb_point(*p)) for n, p in zip(STATIONS, rail_pts)]
-    write_pq("wasatch_rail", rail_rows, GEO_DIR / "wasatch-rail.geoparquet")
+    write_pq("wasatch_rail", rail_rows, GEO_DIR / "rail.geoparquet")
 
     order_first, order_years, folders = [], {y: [] for y in YEARS[1:]}, set()
     ntab = 0
