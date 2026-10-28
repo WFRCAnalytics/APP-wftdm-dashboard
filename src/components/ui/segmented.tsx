@@ -24,8 +24,8 @@ export interface SegmentedProps {
 export function Segmented({ label, options, value, onChange, size = 'md', className }: SegmentedProps) {
   // In a tile's control rail the options stack, each full width, under a small label.
   const rail = useInRail()
-  // A rail is 232px: a couple of short options still fit as one row of pills; longer lists stack, one per line.
-  const stacked = rail && options.reduce((n, o) => n + o.label.length, 0) > 28
+  // A rail is 232px (about 196px of pill): short options fit as one row, each sized to its text; anything wider stacks, one per line.
+  const stacked = rail && options.reduce((n, o) => n + o.label.length * 7 + 18, 6) > 190
   return (
     <div className={rail ? 'flex flex-col gap-1' : 'contents'}>
       {rail && <span className="font-body text-xs text-[var(--mute)]">{label}</span>}
@@ -44,7 +44,7 @@ export function Segmented({ label, options, value, onChange, size = 'md', classN
             disabled={o.disabled}
             onClick={() => onChange(o.id)}
             className={cn(
-              rail && (stacked ? 'w-full text-left' : 'min-w-0 flex-1 px-2 text-center'),
+              rail && (stacked ? 'w-full text-left' : 'flex-auto px-2 text-center'),
               size === 'lg' ? 'px-[13px] py-[5px] text-sm' : 'px-[11px] py-1 text-[12.5px]',
               'whitespace-nowrap rounded-full font-body leading-[1.45] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-text)] disabled:opacity-40',
               pressed

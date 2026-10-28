@@ -1,6 +1,9 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 
+import { Info } from 'lucide-react'
+
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { PanelErrorState } from '@/panels/PanelErrorState'
 import { usePanelExpandHost } from '@/layout/panelExpandHost'
 import { RailContext } from '@/components/ui/railContext'
@@ -11,7 +14,7 @@ import { registerPageTile } from '@/layout/pageExport'
 import { createExportRegistry, ExportMenu, TileExportContext } from '@/layout/tileExport'
 
 // The tile chrome (project-docs/redesign/02-layout-and-components.md section 2), top to bottom: header row (title,
-// badges, expand), optional subtitle, control row, legend row, body. The error boundary, Suspense and expand
+// badges, info button, expand), control row, legend row, body. The error boundary, Suspense and expand
 // mechanism stay with the callers; this component only lays out what they hand it.
 
 /** The legend row's DOM node. A chart can portal its legend into it; the row hides itself while empty. */
@@ -36,6 +39,25 @@ export interface TileProps {
   panel: ReactNode | null
   /** Shown in the body instead of a panel (unknown type, invalid config). */
   errorMessage?: string
+}
+
+/** The tile's description behind a small info button beside the title, so the line it used to take goes to the chart. */
+function InfoButton({ title, text }: { title: string; text: string }) {
+  return (
+    <Popover>
+      <PopoverTrigger
+        data-export-skip=""
+        aria-label={`About ${title}`}
+        className="group grid size-6 shrink-0 place-items-center rounded-full text-[var(--mute)] data-[state=open]:bg-transparent data-[state=open]:text-[var(--ink)] hover:bg-[color-mix(in_srgb,var(--ink)_8%,transparent)] hover:text-[var(--ink)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-text)]"
+      >
+        {/* open: a solid circle with the "i" cut out in the surface colour */}
+        <Info className="size-4 group-data-[state=open]:fill-[var(--ink)] group-data-[state=open]:stroke-[var(--surface)]" aria-hidden="true" />
+      </PopoverTrigger>
+      <PopoverContent align="start" className="glass w-72 rounded-[16px] border-[var(--glass-line)] p-3 text-[12.5px] leading-relaxed text-[var(--ink)]">
+        {text}
+      </PopoverContent>
+    </Popover>
+  )
 }
 
 export function Tile({ title, subtitle, badges, controls, actions, height, expandable, panel, errorMessage }: TileProps) {
@@ -86,13 +108,13 @@ export function Tile({ title, subtitle, badges, controls, actions, height, expan
     <Card ref={cardRef} className="flex h-full flex-col">
       <CardHeader className="flex-row items-center gap-2 space-y-0 px-[18px] pb-0 pt-4">
         <CardTitle className="text-[15.5px]">{title}</CardTitle>
+        {subtitle && <InfoButton title={title} text={subtitle} />}
         {badges}
         <span className="flex-1" />
         {hasPanel && actions}
         {hasPanel && <ExportMenu title={title} cardRef={cardRef} tables={exports.all} />}
         {hasPanel && expandable && <span data-export-skip="">{trigger}</span>}
       </CardHeader>
-      {subtitle && <p className="max-w-[72ch] px-[18px] pt-0.5 font-body text-[12.5px] text-[var(--mute)]">{subtitle}</p>}
       {controls && !rail && <div data-export-skip="" className="flex flex-wrap items-center gap-[10px] px-[18px] pt-[10px]">{controls}</div>}
       <div
         ref={setLegendEl}
