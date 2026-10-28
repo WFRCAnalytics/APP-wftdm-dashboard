@@ -1,4 +1,5 @@
 import { test, expect, type Page, type Route } from '@playwright/test'
+import { patchDemoConfig } from './_siteConfig'
 import { DEMO_SCRIPT } from '../../src/services/ai/demoScript'
 
 // 064-ai-chat-assistant: Settings -> Assistant, the chat panel, query permissions and privacy, against the real demo data. The
@@ -318,10 +319,8 @@ test.describe('AI assistant', () => {
   })
 
   test('a deployment can switch the assistant off: no button, no panel, no Settings tab', async ({ page }) => {
-    await page.route('**/demo-dashboard-config/index.json', async (route) => {
-      const res = await route.fetch()
-      const json = await res.json()
-      await route.fulfill({ response: res, json: { ...json, assistant: { enabled: false } } })
+    await patchDemoConfig(page, (config) => {
+      config.assistant = { enabled: false }
     })
     await boot(page)
     await expect(page.getByTestId('assistant-button')).toHaveCount(0)

@@ -3,6 +3,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { test, expect, type Page, type Route } from '@playwright/test'
+import { patchDemoConfig } from './_siteConfig'
 
 import type { WftdmDebugHook } from '../../src/main.tsx'
 
@@ -146,11 +147,8 @@ async function serveParquet(route: Route) {
 async function boot(page: Page) {
   // Context level, so requests DuckDB-WASM makes from its Web Worker are intercepted too.
   await page.context().route(PARQUET_URL_PATTERN, serveParquet)
-  await page.route('**/demo-dashboard-config/index.json', async (route) => {
-    const res = await route.fetch()
-    const json = await res.json()
-    json.dashboards = ['dashboard-9-scaletest.yaml', ...json.dashboards]
-    await route.fulfill({ response: res, json })
+  await patchDemoConfig(page, (config) => {
+    config.pages = ['dashboard-9-scaletest.yaml', ...((config.pages as string[]) ?? [])]
   })
   await page.route('**/demo-dashboard-config/dashboard-9-scaletest.yaml', async (route) => {
     await route.fulfill({ contentType: 'text/yaml', body: INJECTED_TAB_YAML })

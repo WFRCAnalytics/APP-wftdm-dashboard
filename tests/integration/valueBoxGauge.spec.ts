@@ -1,4 +1,5 @@
 import { test, expect, type Page } from './_testTab'
+import { routeDemoConfig, routeDeploymentConfig } from './_siteConfig'
 import type { WftdmDebugHook } from '../../src/main.tsx'
 
 declare global {
@@ -15,7 +16,7 @@ declare global {
 // the real demo indexes without mutating on-disk fixture files.
 
 const REAL_DEMO_DASHBOARD_INDEX = {
-  dashboards: [
+  pages: [
     'dashboard-1-summary.yaml',
     'dashboard-2-person-household.yaml',
     'dashboard-3-tour-models.yaml',
@@ -34,15 +35,13 @@ const REAL_DEMO_SCENARIOS_INDEX = [
 ]
 
 async function boot(page: Page) {
-  await page.route('**/demo-dashboard-config/index.json', (r) =>
-    r.fulfill({ contentType: 'application/json', body: JSON.stringify(REAL_DEMO_DASHBOARD_INDEX) }),
-  )
+  await routeDemoConfig(page, REAL_DEMO_DASHBOARD_INDEX)
   await page.route('**/demo-scenarios/index.json', (r) =>
     r.fulfill({ contentType: 'application/json', body: JSON.stringify(REAL_DEMO_SCENARIOS_INDEX) }),
   )
   await page.route('**/observed/summary/index.json', (r) => r.fulfill({ status: 404, body: '' }))
   await page.route('**/scenarios/index.json', (r) => r.fulfill({ status: 404, body: '' }))
-  await page.route('**/dashboard-config/index.json', (r) => r.fulfill({ status: 404, body: '' }))
+  await routeDeploymentConfig(page, null)
 
   await page.goto('/')
   await page.waitForFunction(() => window.__wftdm !== undefined, null, { timeout: 30_000 })

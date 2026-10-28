@@ -1,5 +1,6 @@
 import { resolveDefaultScenarioColor } from '../../src/panels/scenarioDisplay'
 import { test, expect, type Page } from '@playwright/test'
+import { routeDeploymentConfig } from './_siteConfig'
 import type { WftdmDebugHook } from '../../src/main.tsx'
 
 declare global {
@@ -17,7 +18,7 @@ declare global {
 //
 // 040-test-suite-migration: migrated off the retired
 // tests/fixtures/dashboard-config/dashboard-1-summary.yaml (deleted in
-// T011) and its own on-disk `tests/fixtures/dashboard-config/index.json`
+// T011) and its own on-disk `tests/fixtures/dashboard-config/dashboard-config.yaml`
 // (also gone — reading it directly, as this file's own original
 // `bootWithScenarioPalette()` did, would throw). Reuses
 // scenarioLabelDisplay.spec.ts's own real, already-validated panels:
@@ -25,7 +26,7 @@ declare global {
 // swatch/legend check, and "Total Trips by Mode"/"Workplace
 // Location Distance Distribution" for the cross-type
 // rendering check. `scenarioPalette` is injected via `page.route()`
-// directly on the REAL `dashboard-config/index.json` endpoint (the
+// directly on the REAL `dashboard-config/dashboard-config.yaml` endpoint (the
 // primary root — empty/gitignored in this dev/test environment, exactly
 // like a real, unconfigured deployment) — main.tsx's own real precedence
 // (`primaryBranding.scenarioPalette ?? demoBranding.scenarioPalette`)
@@ -98,11 +99,7 @@ async function scenarioIndex(page: Page, name: string): Promise<number> {
 }
 
 async function bootWithScenarioPalette(page: Page, palette: string[] | undefined, searchParams = '') {
-  const body: Record<string, unknown> = {}
-  if (palette) body.scenarioPalette = palette
-  await page.route('**/dashboard-config/index.json', async (route) => {
-    await route.fulfill({ contentType: 'application/json', body: JSON.stringify(body) })
-  })
+  await routeDeploymentConfig(page, palette ? { scenario_palette: palette } : {})
   await boot(page, searchParams)
 }
 

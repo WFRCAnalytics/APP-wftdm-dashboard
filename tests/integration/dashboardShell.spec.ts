@@ -1,4 +1,5 @@
 import { test, expect } from './_testTab'
+import { routeDemoConfig } from './_siteConfig'
 import type { WftdmDebugHook } from '../../src/main.tsx'
 
 declare global {
@@ -12,7 +13,7 @@ declare global {
 // calibration tabs + the permanent 8th "Test" tab). 040-test-suite-
 // migration (T014): migrated off the retired synthetic
 // tests/fixtures/dashboard-config/ 3-tab set ("Summary"/"Detail"/
-// "Basemaps") — no _sharedFixtureLock usage, no per-test index.json
+// "Basemaps") — no _sharedFixtureLock usage, no per-test site-config
 // rewrite; this file reads the SAME public/demo-dashboard-config/ every
 // other already-migrated spec reads.
 
@@ -24,7 +25,7 @@ test.describe('User Story 1 - An analyst navigates a real, professionally-styled
     await page.waitForFunction(() => window.__wftdm !== undefined, null, { timeout: 30_000 })
 
     // SC-001: the real 7 calibration tabs, in public/demo-dashboard-config/
-    // index.json's own listed order, plus the permanent 8th "Test" tab
+    // dashboard-config.yaml's own listed order, plus the permanent 8th "Test" tab
     // (its accessible NAME is "Test", via header.aria_label — but its raw
     // TEXT CONTENT is a single space, per header.tab, so allTextContents()
     // sees " " here, not "Test"; sidebarNav.spec.ts/testTabInvisibility.spec.ts
@@ -51,7 +52,8 @@ test.describe('User Story 1 - An analyst navigates a real, professionally-styled
 
     // FR-002: switching tabs changes content, no full page reload.
     let navigated = false
-    page.on('framenavigated', () => {
+    // 'load' fires on a real reload only; framenavigated also fires for the page-address (#/slug) update
+    page.on('load', () => {
       navigated = true
     })
     await page.getByRole('tab', { name: 'Person & Households' }).click()
@@ -243,9 +245,9 @@ test.describe('Panel error isolation (SC-006, FR-010)', () => {
 // retire.
 
 // 028-dashboard-branding: deployer-configurable header title/logo. The
-// retired fixture's own dashboard-config/index.json carried a synthetic
+// retired fixture's own dashboard-config carried a synthetic
 // title + data-URI logo pair specifically to avoid a network dependency;
-// the real public/demo-dashboard-config/index.json carries WFRC's own
+// the real public/demo-dashboard-config/dashboard-config.yaml carries WFRC's own
 // real branding (a real https:// logo URL, light + dark variants) — see
 // that file's own content. Confirmed via CLAUDE.md's own 028/036 history
 // that loadDashboardBranding()'s real/demo-root precedence and the
@@ -260,7 +262,7 @@ test.describe('028-dashboard-branding', () => {
     const logo = page.locator('.dashboard-brand-logo')
     await expect(logo).toBeVisible()
     // The real demo branding's light-mode logo URL (public/
-    // demo-dashboard-config/index.json) — asserting the real, current
+    // demo-dashboard-config/dashboard-config.yaml) — asserting the real, current
     // WFRC brand asset path, not a placeholder fixture data URI.
     expect(await logo.getAttribute('src')).toContain('WFRC_logo_horizontal_color_transparent.png')
     await expect(page.locator('.dashboard-brand-title')).toHaveCount(0) // logo present -> no redundant text
@@ -287,7 +289,7 @@ test.describe('028-dashboard-branding', () => {
     // swapped) rather than route.fetch()-based re-routing of the real
     // response.
     const realBranding = {
-      dashboards: [
+      pages: [
         'dashboard-1-summary.yaml',
         'dashboard-2-person-household.yaml',
         'dashboard-3-tour-models.yaml',
@@ -298,11 +300,9 @@ test.describe('028-dashboard-branding', () => {
         'dashboard-8-test.yaml',
       ],
       title: 'WFRC TDM Calibration Dashboard',
-      logoUrl: '/definitely-does-not-exist-logo.png',
+      logo: { light: '/definitely-does-not-exist-logo.png' },
     }
-    await page.route('**/demo-dashboard-config/index.json', async (route) => {
-      await route.fulfill({ contentType: 'application/json', body: JSON.stringify(realBranding) })
-    })
+    await routeDemoConfig(page, realBranding)
 
     await page.goto('/')
     await page.waitForFunction(() => window.__wftdm !== undefined, null, { timeout: 30_000 })
@@ -409,7 +409,7 @@ test.describe('Phase 2 — shell/nav redesign (wftdm-design-system)', () => {
     // Same broken-logo route-mock technique as the 028-dashboard-branding
     // suite above.
     const realBranding = {
-      dashboards: [
+      pages: [
         'dashboard-1-summary.yaml',
         'dashboard-2-person-household.yaml',
         'dashboard-3-tour-models.yaml',
@@ -420,11 +420,9 @@ test.describe('Phase 2 — shell/nav redesign (wftdm-design-system)', () => {
         'dashboard-8-test.yaml',
       ],
       title: 'WFRC TDM Calibration Dashboard',
-      logoUrl: '/definitely-does-not-exist-logo.png',
+      logo: { light: '/definitely-does-not-exist-logo.png' },
     }
-    await page.route('**/demo-dashboard-config/index.json', async (route) => {
-      await route.fulfill({ contentType: 'application/json', body: JSON.stringify(realBranding) })
-    })
+    await routeDemoConfig(page, realBranding)
 
     await page.goto('/')
     await page.waitForFunction(() => window.__wftdm !== undefined, null, { timeout: 30_000 })

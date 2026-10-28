@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
+import { patchDemoConfig, routeDeploymentConfig } from './_siteConfig'
 import type maplibregl from 'maplibre-gl'
 import { readFileSync } from 'node:fs'
 import { join, dirname } from 'node:path'
@@ -18,7 +19,7 @@ declare global {
 //
 // No on-disk mutation, no _sharedFixtureLock: isolation is done entirely
 // via page.route() (the same technique demoMultiScenario.spec.ts already
-// established) — the real, committed public/dashboard-config/index.json
+// established) — the real, committed public/dashboard-config/dashboard-config.yaml
 // path normally 404s in this repo (that root is gitignored/deployer-
 // populated only), so routing it to a small JSON body carrying
 // protomapsPmtilesUrl is what actually reaches main.tsx's
@@ -59,12 +60,7 @@ async function servePmtilesFixture(page: Page, urlPattern: string) {
 }
 
 async function routeDeployerDefault(page: Page, protomapsPmtilesUrl: string | undefined) {
-  await page.route('**/dashboard-config/index.json', (route) =>
-    route.fulfill({
-      contentType: 'application/json',
-      body: JSON.stringify({ dashboards: [], ...(protomapsPmtilesUrl ? { protomapsPmtilesUrl } : {}) }),
-    }),
-  )
+  await routeDeploymentConfig(page, protomapsPmtilesUrl ? { basemap: { protomaps: { pmtiles_url: protomapsPmtilesUrl } } } : {})
 }
 
 // Revised design — a deployer's hosted-API key, the other real
@@ -72,12 +68,7 @@ async function routeDeployerDefault(page: Page, protomapsPmtilesUrl: string | un
 // ProtomapsSource() resolves (checked ahead of protomapsPmtilesUrl by
 // main.tsx — see that file's own comment).
 async function routeDeployerApiKey(page: Page, protomapsApiKey: string) {
-  await page.route('**/dashboard-config/index.json', (route) =>
-    route.fulfill({
-      contentType: 'application/json',
-      body: JSON.stringify({ dashboards: [], protomapsApiKey }),
-    }),
-  )
+  await routeDeploymentConfig(page, { basemap: { protomaps: { api_key: protomapsApiKey } } })
 }
 
 // A real, live api.protomaps.com tile request is never made in this
@@ -94,7 +85,7 @@ async function serveHostedApiTiles(page: Page) {
   )
 }
 
-// The real public/demo-dashboard-config/index.json now carries a real,
+// The real public/demo-dashboard-config/dashboard-config.yaml now carries a real,
 // deployer-configured protomapsApiKey (the whole point of this feature —
 // WFRC's real demo deployment gets working Protomaps flavors with no
 // viewer configuration at all). tests/global-setup.js no longer blanks
@@ -114,12 +105,8 @@ async function serveHostedApiTiles(page: Page) {
 // nothing (including the Settings button every test needs) ever
 // rendered. The real dashboards/title/logo fields must survive.
 async function neutralizeDemoRoot(page: Page) {
-  await page.route('**/demo-dashboard-config/index.json', async (route) => {
-    const response = await route.fetch()
-    const body = (await response.json()) as Record<string, unknown>
-    delete body.protomapsApiKey
-    delete body.protomapsPmtilesUrl
-    await route.fulfill({ response, json: body })
+  await patchDemoConfig(page, (config) => {
+    delete config.basemap
   })
 }
 
@@ -364,16 +351,14 @@ test.describe('041-protomaps-pmtiles-basemap, revised — deployer-configured ho
   }) => {
     await serveHostedApiTiles(page)
     await servePmtilesFixture(page, RELATIVE_FIXTURE_URL)
-    await page.route('**/dashboard-config/index.json', (route) =>
-      route.fulfill({
-        contentType: 'application/json',
-        body: JSON.stringify({
-          dashboards: [],
-          protomapsApiKey: 'test-key-123',
-          protomapsPmtilesUrl: '/APP-wftdm-dashboard/test-fixtures/protomaps/tiny-test-area.pmtiles',
-        }),
-      }),
-    )
+    await routeDeploymentConfig(page, {
+      basemap: {
+        protomaps: {
+          api_key: 'test-key-123',
+          pmtiles_url: '/APP-wftdm-dashboard/test-fixtures/protomaps/tiny-test-area.pmtiles',
+        },
+      },
+    })
     await boot(page)
     await openBasemapTab(page)
     await waitForInitialStyleSettled(page)

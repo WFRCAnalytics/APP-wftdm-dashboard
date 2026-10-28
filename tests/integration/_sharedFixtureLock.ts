@@ -14,11 +14,11 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 // FILES from running concurrently in different worker processes.
 //
 // sidebarNav.spec.ts and fullPagePanel.spec.ts both temporarily rewrite the
-// SHARED `public/dashboard-config/index.json` (the same live path
+// SHARED `public/dashboard-config/dashboard-config.yaml` (the same live path
 // dashboardShell.spec.ts and many other specs read from) in their own
 // file-scoped beforeAll/afterAll. 031-all-panel-demo-content's
 // demoContentAllPanels.spec.ts does the equivalent for the sibling
-// `public/demo-dashboard-config/index.json` — a different file, but one
+// `public/demo-dashboard-config/dashboard-config.yaml` — a different file, but one
 // whose tabs render into the SAME combined tablist (main.ts concatenates
 // both roots), so it's an equally real collision risk for anything that
 // asserts on the full tab set. A live, reproduced full-suite run confirmed
@@ -37,7 +37,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 // (fails with EEXIST if another worker already holds it), avoiding the
 // check-then-write race a plain `existsSync` + `writeFileSync` pair would
 // have. Every spec file that reads OR mutates
-// public/dashboard-config/index.json or public/demo-dashboard-config/
+// public/dashboard-config/dashboard-config.yaml or public/demo-dashboard-config/
 // index.json in a way that could be observed mid-mutation by another spec
 // must acquire this ONE shared lock (both shared paths render into the
 // same tablist, so one lock covers both) before doing so, and release it
@@ -59,8 +59,8 @@ function sleep(ms: number): Promise<void> {
 /**
  * Acquire the shared-fixture-index lock, waiting for any other spec file
  * (in any worker, any process) currently holding it. Call this BEFORE
- * reading or mutating public/dashboard-config/index.json or
- * public/demo-dashboard-config/index.json in a way another spec could
+ * reading or mutating public/dashboard-config/dashboard-config.yaml or
+ * public/demo-dashboard-config/dashboard-config.yaml in a way another spec could
  * observe mid-mutation.
  */
 export async function acquireSharedFixtureLock(): Promise<void> {

@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { patchDemoConfig } from './_siteConfig'
 
 // 065-chart-builder: `kind: custom` draws a chart from a spec written in dashboard YAML. The tab is injected through the
 // dashboard index (the same technique the Test tab uses), against the real demo runs.
@@ -19,11 +20,9 @@ ${spec}
 `
 
 async function open(page: import('@playwright/test').Page, spec: string) {
-  await page.route('**/demo-dashboard-config/index.json', async (route) => {
-    const res = await route.fetch()
-    const json = await res.json()
-    if (!json.dashboards.includes(FILE)) json.dashboards = [...json.dashboards, FILE]
-    await route.fulfill({ response: res, json })
+  await patchDemoConfig(page, (config) => {
+    const pages = (config.pages as string[]) ?? []
+    if (!pages.includes(FILE)) config.pages = [...pages, FILE]
   })
   await page.route(`**/demo-dashboard-config/${FILE}`, (route) => route.fulfill({ contentType: 'text/yaml', body: YAML(spec) }))
   await page.setViewportSize({ width: 1440, height: 900 })

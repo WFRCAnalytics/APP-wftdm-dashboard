@@ -1,4 +1,5 @@
 import { test, expect, type Page } from './_testTab'
+import { routeDemoConfig, routeDeploymentConfig } from './_siteConfig'
 import type { WftdmDebugHook } from '../../src/main.tsx'
 import type maplibregl from 'maplibre-gl'
 
@@ -21,7 +22,7 @@ declare global {
 // still exists and its content is unaffected.
 //
 // tests/global-setup.js deliberately blanks BOTH public/demo-scenarios/
-// index.json AND public/demo-dashboard-config/index.json to [] for the
+// index.json AND public/demo-dashboard-config/dashboard-config.yaml to [] for the
 // WHOLE suite run (026-activitysim-demo-content's own real, documented
 // finding). 038-all-loaded-scenarios: this spec serves the REAL content
 // back via per-page `page.route()` in boot() (no on-disk write, no
@@ -42,7 +43,7 @@ declare global {
 // six-tab calibration STRUCTURE, not the shipped index — so the test tab
 // is intentionally excluded here.
 const REAL_DEMO_DASHBOARD_INDEX = {
-  dashboards: [
+  pages: [
     'dashboard-1-summary.yaml',
     'dashboard-2-person-household.yaml',
     'dashboard-3-tour-models.yaml',
@@ -52,10 +53,10 @@ const REAL_DEMO_DASHBOARD_INDEX = {
     'dashboard-7-explore.yaml',
   ],
   title: 'WFRC TDM Calibration Dashboard',
-  logoUrl:
-    'https://raw.githubusercontent.com/WFRCAnalytics/wfrc-brand/main/_extensions/wfrc-brand/assets/logo/horizontal/WFRC_logo_horizontal_color_transparent.png',
-  logoUrlDark:
-    'https://raw.githubusercontent.com/WFRCAnalytics/wfrc-brand/main/_extensions/wfrc-brand/assets/logo/horizontal/WFRC_logo_horizontal_white_transparent.png',
+  logo: {
+    light: 'https://raw.githubusercontent.com/WFRCAnalytics/wfrc-brand/main/_extensions/wfrc-brand/assets/logo/horizontal/WFRC_logo_horizontal_color_transparent.png',
+    dark: 'https://raw.githubusercontent.com/WFRCAnalytics/wfrc-brand/main/_extensions/wfrc-brand/assets/logo/horizontal/WFRC_logo_horizontal_white_transparent.png',
+  },
 }
 const REAL_DEMO_SCENARIOS_INDEX = [
   'activitysim-baseline',
@@ -66,9 +67,7 @@ const REAL_DEMO_SCENARIOS_INDEX = [
 async function boot(page: Page) {
   // Serve the real demo indexes to this page only (global-setup blanked
   // the on-disk files to `[]`).
-  await page.route('**/demo-dashboard-config/index.json', (r) =>
-    r.fulfill({ contentType: 'application/json', body: JSON.stringify(REAL_DEMO_DASHBOARD_INDEX) }),
-  )
+  await routeDemoConfig(page, REAL_DEMO_DASHBOARD_INDEX)
   await page.route('**/demo-scenarios/index.json', (r) =>
     r.fulfill({ contentType: 'application/json', body: JSON.stringify(REAL_DEMO_SCENARIOS_INDEX) }),
   )
@@ -83,7 +82,7 @@ async function boot(page: Page) {
   // public/observed + public/scenarios; `observed` registers `failed`).
   await page.route('**/observed/summary/index.json', (r) => r.fulfill({ status: 404, body: '' }))
   await page.route('**/scenarios/index.json', (r) => r.fulfill({ status: 404, body: '' }))
-  await page.route('**/dashboard-config/index.json', (r) => r.fulfill({ status: 404, body: '' }))
+  await routeDeploymentConfig(page, null)
 
   await page.goto('/')
   await page.waitForFunction(() => window.__wftdm !== undefined, null, { timeout: 30_000 })

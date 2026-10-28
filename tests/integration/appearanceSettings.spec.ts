@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
+import { routeDeploymentConfig } from './_siteConfig'
 import type { WftdmDebugHook } from '../../src/main.tsx'
 
 declare global {
@@ -166,16 +167,11 @@ test.describe('User Story 3 - Brand colour (the interface colour, separate from 
   test('a deployer default applies with no override; a viewer override takes precedence live; reset reverts; text stays legible; reload clears only the override', async ({
     page,
   }) => {
-    // Route the real dashboard-config/index.json endpoint (empty/
+    // Route the real dashboard-config/dashboard-config.yaml endpoint (empty/
     // gitignored in this dev/test environment) to supply a deployer
     // default for the brand colour — the same page.route() injection technique
     // scenarioColorOverride.spec.ts already established for scenarioPalette.
-    await page.route('**/dashboard-config/index.json', (route) =>
-      route.fulfill({
-        contentType: 'application/json',
-        body: JSON.stringify({ dashboards: [], brandColor: '#1447e6' }),
-      }),
-    )
+    await routeDeploymentConfig(page, { colors: { brand: '#1447e6' } })
     await boot(page)
 
     const primaryBefore = await page.evaluate(() =>
@@ -209,7 +205,7 @@ test.describe('User Story 3 - Brand colour (the interface colour, separate from 
     expect(primaryAfterReset).toBe(primaryBefore)
 
     // Set the override again, then reload — the override must be gone,
-    // but the deployer default (re-fetched from the routed index.json)
+    // but the deployer default (re-fetched from the routed dashboard-config.yaml)
     // must still apply.
     await hexInput.fill('00ff00')
     await boot(page)

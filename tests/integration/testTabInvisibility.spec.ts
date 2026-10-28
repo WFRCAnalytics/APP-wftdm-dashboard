@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { load } from 'js-yaml'
 import { test, expect, type Page } from './_testTab'
 import type { WftdmDebugHook } from '../../src/main.tsx'
 
@@ -40,13 +41,13 @@ function sidebarTabs(page: Page) {
 }
 
 test.describe('040 US1 — dashboard-8-test.yaml: not shipped, inconspicuous when injected for tests', () => {
-  test('the shipped index.json does not list dashboard-8-test.yaml, and the file is not in the shipped config folder', () => {
+  test('the shipped dashboard-config.yaml does not list dashboard-8-test.yaml, and the file is not in the shipped config folder', () => {
     const raw = readFileSync(
-      path.join(REPO_ROOT, 'public/demo-dashboard-config/index.json'),
+      path.join(REPO_ROOT, 'public/demo-dashboard-config/dashboard-config.yaml'),
       'utf8',
     )
-    const parsed = JSON.parse(raw)
-    expect(parsed.dashboards).toEqual([
+    const parsed = load(raw) as { pages: string[] }
+    expect(parsed.pages).toEqual([
       'dashboard-1-summary.yaml',
       'dashboard-2-person-household.yaml',
       'dashboard-3-tour-models.yaml',
