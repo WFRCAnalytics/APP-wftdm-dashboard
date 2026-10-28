@@ -88,7 +88,7 @@ layout:
       show_when: single
       type: multi-view
       title: "Across model years"
-      description: "How each alternative develops from the base year to the horizon year. Click a year to switch the dashboard to it."
+      description: "How each scenario group develops from the base year to the horizon year. Click a year to switch the dashboard to it."
       height: 360
       width: 1.0
       group_by:

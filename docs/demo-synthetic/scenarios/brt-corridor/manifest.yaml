@@ -3,7 +3,7 @@ display_name: BRT corridor
 engine: activitysim
 run_date: '2026-09-08'
 kind: scenario
-alternative: brt-corridor
+scenario_group: brt-corridor
 year: 2023
 tag: Transit
 color: '#2FBF8A'

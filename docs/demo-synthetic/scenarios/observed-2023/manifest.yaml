@@ -3,7 +3,7 @@ display_name: Observed
 engine: observed
 run_date: '2026-09-08'
 kind: observed
-alternative: observed
+scenario_group: observed
 year: 2023
 tag: Observed
 pinned: false

@@ -3,7 +3,7 @@ display_name: Road diet
 engine: activitysim
 run_date: '2026-09-08'
 kind: scenario
-alternative: road-diet
+scenario_group: road-diet
 year: 2023
 tag: Roads
 color: '#5865F2'

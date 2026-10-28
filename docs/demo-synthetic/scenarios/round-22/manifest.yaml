@@ -5,7 +5,7 @@ run_date: '2026-09-08'
 kind: round
 family: calibration
 family_index: 22
-alternative: round-22
+scenario_group: round-22
 year: 2023
 tag: Calibration round
 pinned: false

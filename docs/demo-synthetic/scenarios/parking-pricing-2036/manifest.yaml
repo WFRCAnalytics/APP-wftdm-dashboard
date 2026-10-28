@@ -3,7 +3,7 @@ display_name: Parking pricing
 engine: activitysim
 run_date: '2026-09-08'
 kind: scenario
-alternative: parking-pricing
+scenario_group: parking-pricing
 year: 2036
 tag: Pricing
 color: '#18B4C8'

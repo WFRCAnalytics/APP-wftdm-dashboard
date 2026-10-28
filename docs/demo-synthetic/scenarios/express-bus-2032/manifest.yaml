@@ -3,7 +3,7 @@ display_name: Express bus
 engine: activitysim
 run_date: '2026-09-08'
 kind: scenario
-alternative: express-bus
+scenario_group: express-bus
 year: 2032
 tag: Transit
 color: '#F2994A'
