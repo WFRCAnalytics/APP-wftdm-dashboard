@@ -1,5 +1,53 @@
 <!--
 Sync Impact Report
+- Version change: 2.7.0 → 2.8.0
+- Modified principles:
+  - IV (YAML Parsed at Runtime): adds `dashboard-config.yaml` to the list
+    of files fetched and parsed at runtime.
+  - V (Parquet-Only Browser Data I/O): wording unchanged; a pointer to the
+    new "Open Decisions" section records that the data path (pre-processed
+    Parquet versus the dashboard reading the model's raw output) is not
+    final, and that this principle stands as written until it is.
+  - VII (Minimal, Fixed Config File Set): was "exactly three" file types and
+    named `dashboard-config.yaml` as forbidden. Now exactly four. The new
+    `dashboard-config.yaml` is the single site-level settings file, in the
+    manner of Quarto's `_quarto.yml`: site-wide deployer settings and the
+    ordered page list, cascading down to each `dashboard-*.yaml` and then
+    to each panel, the most specific setting winning. The old rule "app
+    settings live in code and CLI args" is replaced: deployer settings live
+    in `dashboard-config.yaml`; viewer preferences stay session-only
+    (Principle VI: no Web Storage). `topsheet.yaml` and
+    `summarize-preprocessor.yaml` stay forbidden. New site settings MUST
+    NOT be added to `index.json`; those files remain generated discovery
+    listings only (they never were one of the config types).
+- Added principles:
+  - X (Delivery Targets: Python Library and R Package): the dashboard ships
+    as a static bundle plus YAML configuration, to be wrapped by a Python
+    library and an R package. Neither may contain application logic.
+- Added sections:
+  - "Open Decisions (non-binding records)": the data path, undecided, with
+    the plan to test both approaches on two branches against real WFRC
+    activity-based model output; and the observed-data stream, not yet
+    started and to be considered separately.
+- Removed sections: none
+- MINOR, not MAJOR: no principle is removed and nothing that was valid
+  becomes invalid. A file that was forbidden becomes permitted, a principle
+  is added, and a section records two undecided questions. Checked against
+  this file's own versioning policy, not assumed.
+- Follow-up: `CLAUDE.md`, `project-docs/GRAMMAR.md` and
+  `project-docs/SPEC.md` repeat the old "exactly three" rule and the ban on
+  `dashboard-config.yaml`; they are corrected in the same change. The file
+  itself is specified in `CONFIGURATION.md` and is NOT built yet:
+  `index.json` still carries the site settings until the migration there is
+  done.
+- Deferred TODOs: build `dashboard-config.yaml` and migrate the
+  `index.json` settings (CONFIGURATION.md, phases A to B); decide the data
+  path after the two-branch test; decide how observed data fits; fix the R
+  package's location when it is created.
+-->
+
+<!--
+Sync Impact Report (2.7.0, superseded above)
 - Version change: 2.6.0 → 2.7.0
 - Modified principles: none
 - Modified sections:
@@ -498,8 +546,8 @@ string replacement/templating only.
 risk and defeats static review of how SQL is constructed.
 
 ### IV. YAML Parsed at Runtime
-`dashboard-*.yaml`, `summarize.yaml`, and `manifest.yaml` MUST be fetched and
-parsed at runtime with `js-yaml`. Dashboard structure and panel content MUST NOT
+`dashboard-config.yaml`, `dashboard-*.yaml`, `summarize.yaml`, and `manifest.yaml`
+MUST be fetched and parsed at runtime with `js-yaml`. Dashboard structure and panel content MUST NOT
 be pre-processed, inlined, or baked in at build time.
 **Rationale**: lets model teams add or edit dashboards and scenarios without a
 dashboard rebuild or redeploy.
@@ -512,6 +560,8 @@ to `public/scenarios/` or `public/observed/`.
 **Rationale**: bounds browser-side query performance and memory, and keeps the
 Python pipeline the single authoritative place responsible for format
 correctness.
+**Status**: binding as written until the data-path decision recorded under
+"Open Decisions" is made. That decision may change this principle.
 
 ### VI. Fixed Technology Choices
 Maps MUST use MapLibre GL; Mapbox GL MUST NOT be used. The build tool is Vite;
@@ -531,17 +581,38 @@ separate framework-choice debate once React lands — `lucide-react` also alread
 precedent in a sibling WFRCAnalytics-org repo (`APP-Project-Scoresheet`).
 
 ### VII. Minimal, Fixed Config File Set
-Exactly three config file types exist: `summarize.yaml` (post-processor sources,
-mappings, bins, `sql_fragments`, metrics → Parquet), `dashboard-*.yaml` (tab
-layout and panels, with the first file serving as the landing page), and
-`manifest.yaml` (per-scenario metadata). `topsheet.yaml`, `dashboard-config.yaml`,
-`summarize-preprocessor.yaml`, and `services/observedRegistry.ts` MUST NOT be
-created — the landing page is simply the first `dashboard-*.yaml`, app settings
-live in code and CLI args, join logic lives in `summarize.yaml`'s
-`sql_fragments`, and observed-data plus scenario registration lives in
-`services/scenarioDiscovery.ts`.
+Exactly four config file types exist:
+- `dashboard-config.yaml` — the site-level file, in the manner of Quarto's
+  `_quarto.yml`: deployer settings for the whole site (identity, defaults for
+  viewer preferences, which Settings tabs show, the assistant, outside
+  services, data meaning, app-wide limits) and the ordered list of pages.
+  Settings cascade site → page → panel, the most specific winning: a key set
+  in `dashboard-config.yaml` applies everywhere, a `dashboard-*.yaml` may
+  override it for its page, and a panel may override it for itself.
+- `dashboard-*.yaml` — tab layout and panels, with the first file listed in
+  `dashboard-config.yaml` serving as the landing page.
+- `summarize.yaml` — post-processor sources, mappings, bins, `sql_fragments`,
+  metrics → Parquet.
+- `manifest.yaml` — per-scenario metadata.
+
+`topsheet.yaml`, `summarize-preprocessor.yaml`, and
+`services/observedRegistry.ts` MUST NOT be created — join logic lives in
+`summarize.yaml`'s `sql_fragments`, and observed-data plus scenario
+registration lives in `services/scenarioDiscovery.ts`. New deployer settings
+MUST be added to `dashboard-config.yaml` (or a panel's own keys), never to
+`index.json` and never as a constant in code when a deployer could reasonably
+want to choose the value. The `index.json` files are generated discovery
+listings (a static host cannot list a folder), not config. A viewer's own
+preferences stay session-only (Principle VI).
 **Rationale**: prevents config sprawl and duplicated responsibility across files
-that would otherwise do the same job.
+that would otherwise do the same job. The site settings had grown into
+`index.json`, an undocumented JSON file that was a fourth config file in
+practice; naming it, putting it in YAML with the other three, and giving it a
+cascade is more honest than leaving it hidden, and a single YAML file is easy
+for a Python or R package to write.
+**Status**: this describes the target. `dashboard-config.yaml` is specified in
+`CONFIGURATION.md` and is not built yet; until it is, `index.json` still carries
+the settings it has today.
 
 ### VIII. Reuse Proven Reference Implementations
 When implementing DuckDB-WASM/Arrow wiring, MapLibre + flowmap.gl/deck.gl
@@ -591,6 +662,52 @@ source layouts had already drifted (a stale `uv_build` default `module-root` of
 `src/`, and gitignore/editor-exclude entries pointing at the wrong static-build
 path). Fixing this once and pinning it here prevents the two trees from silently
 re-diverging as new Python or JS files are added.
+
+### X. Delivery Targets: Python Library and R Package
+The dashboard is delivered as a **static bundle plus YAML configuration** (and
+Parquet data), wrapped by two packages: a Python library
+(`python/wftdm_dashboard/`, Principle IX) and an R package. Both are targets,
+equally. Neither package may contain application logic: they place the bundle,
+write or validate the YAML, run the data steps that exist, and serve or open
+the result. The bundle MUST NOT depend on the URL it is served from (no
+build-time base path in the shipped artifact), and configuration MUST be plain
+YAML and JSON that either language can write. The R package does not exist yet;
+its location is fixed when it is created, and it MUST NOT live under `src/`.
+Today's build still sets a base path (`vite.config.ts`), which breaks the URL
+rule; removing it is `CONFIGURATION.md` phase A.
+**Rationale**: the dashboard's users run their models from R as well as Python,
+and one bundle with one configuration format avoids two diverging apps.
+
+## Open Decisions (non-binding records)
+
+These are questions the maintainers have deliberately left open. They record
+the state of the thinking, so nobody builds on a guess. Nothing here changes a
+principle until it is decided and this file is amended.
+
+### Data path: pre-processed, or read directly from the model's output?
+Today the Python post-processor reads the model's output, writes summary
+Parquet, and the dashboard reads only that (Principles V and VII,
+`summarize.yaml`). The alternative is for the dashboard to read the model's raw
+output directly, with no pre-processing step before the dashboard.
+- **Not decided.** The current design stays as it is.
+- **Leaning**: direct reading, as simpler for a model team to use. It may be
+  given up if it costs enough to make the dashboard unusable (load time,
+  memory, formats the browser cannot read well).
+- **How it will be decided**: once real WFRC activity-based model output is
+  available, both approaches are built and tested on two branches, and one is
+  chosen. Principle V, the post-processor, `summarize.yaml`, and the chart data
+  adapters (`src/charts/data/adapt.ts`) are all affected, so none is to be
+  reworked for either approach on `main` before then.
+- A branch built for this test may break Principle V, because that is what it
+  tests. This entry is the record of that. Nothing from such a branch merges
+  to `main` without amending this constitution first.
+
+### Observed data
+Observed data (counts, surveys, the calibration targets) has not been worked
+on. Its format, where it comes from and how it relates to model runs are not
+known. `public/observed/` and the "observed" run kind exist as placeholders
+only. To be considered separately, after or alongside the data-path decision,
+and not designed here.
 
 ## Technology Stack Reference
 
@@ -664,4 +781,4 @@ forbidden config files, no Mapbox/Webpack/Web Storage usage. Any exception
 requires a
 prior amendment to this document, not a one-off waiver in review.
 
-**Version**: 2.7.0 | **Ratified**: 2026-08-19 | **Last Amended**: 2026-10-27
+**Version**: 2.8.0 | **Ratified**: 2026-08-19 | **Last Amended**: 2026-10-28
