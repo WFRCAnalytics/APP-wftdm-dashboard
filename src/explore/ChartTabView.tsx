@@ -3,6 +3,7 @@
 // rail on the right (Chart, Style, Axes, Filter). Drag a field onto a shelf, or select it and press the shelf (keyboard path).
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowLeftRight, ChevronRight, Download, GripVertical, Maximize2, Minimize2, Plus, X } from 'lucide-react'
+import { chainEntries, chainIndex, chainOrder, closeGap, dropZone, insertIntoChain, removeFromChain, reorderInChain, type Box, type Side } from '@/charts/builder/chainOps'
 import { buildChart, relabel, type ChartModel, type Col, type DrawnChart } from '@/charts/builder/compile'
 import { chartRole, DATA_TYPES, TYPE_LABEL, typesPresent, type DataType } from '@/charts/builder/columnTypes'
 import { suggest } from '@/charts/builder/rules'
@@ -122,7 +123,7 @@ function FieldsPanel({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: C
     if (!from) return
     ev.preventDefault()
     const name = tab.spec.enc[from]?.f
-    updateChart(tab.id, (t) => { const enc = { ...t.spec.enc }; delete enc[from]; return { ...t, spec: { ...t.spec, enc } } })
+    updateChart(tab.id, (t) => ({ ...t, spec: removeFromChain(t.spec, from) }))
     setExplore({ selectedField: null, dragField: null, dragFrom: null, notice: name ? `${name} removed from ${channelLabel(tab.spec.mark, from)}.` : '', noticeBad: false })
   }
   return (
@@ -225,6 +226,12 @@ function ChartCard({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: Cha
   // the shelf the drag is over, and the shelf a field has just landed on (for its small settle animation)
   const [over, setOver] = useState<Channel | null>(null)
   const [landed, setLanded] = useState<Channel | null>(null)
+  // The ordered shelves (levels, table groups) are decided for the whole strip from the pointer's position over the shelves' own,
+  // fixed boxes: which shelf and which part of it. Nothing moves while it is decided, and nothing global is written while a field
+  // is in flight (a drag once rewrote shelf text and selected the field, which reflowed the row under the pointer and ran profiling queries).
+  const stripRef = useRef<HTMLDivElement>(null)
+  const [zone, setZone] = useState<{ ch: Channel; side: Side } | null>(null)
+  useEffect(() => { if (!s.dragField) { setOver(null); setZone(null) } }, [s.dragField]) // whatever ended the drag, no shelf stays lit
   useEffect(() => {
     if (!landed) return
     const t = setTimeout(() => setLanded(null), 700)
@@ -257,6 +264,7 @@ function ChartCard({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: Cha
   const pickedRole = picked ? roleOf(picked) : ''
 
   const assign = (ch: Channel, field: string) => {
+    if (chainOrder(spec.mark, ch) && !spec.enc[ch]) { dropOnChain({ ch, side: 'on' }, null, field); return }
     const c = data.cols.find((x) => x.name === field)
     if (!c) return
     const r = assignField(spec, ch, field, c.type, chartRole(c.type))
@@ -289,9 +297,82 @@ function ChartCard({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: Cha
       if (back?.ok) { enc[from] = carried(there, from, back.spec.enc[from]!); note = `${src.f} and ${there.f} swapped places.` }
       else note = `${src.f} moved to ${channelLabel(spec.mark, to)}. ${there.f} was taken off it.`
     }
-    setSpec((x) => ({ ...x, enc }))
+    setSpec((x) => {
+      const order = chainOrder(x.mark, from)
+      return order && !enc[from] ? closeGap({ ...x, enc }, order) : { ...x, enc } // a ring taken from its place: the ones after it move up
+    })
     setLanded(to)
     setExplore({ selectedField: null, dragField: null, dragFrom: null, notice: note, noticeBad: false })
+  }
+  // A field dropped on an ordered shelf: before or after a field it is inserted there (the others move along), on a field it replaces it
+  // (or swaps, when the dragged one comes from the same chain), on an empty shelf it is added last. Nothing is ever left with a gap.
+  const dropOnChain = (z: { ch: Channel; side: Side }, from: Channel | null, field: string | null) => {
+    const order = chainOrder(spec.mark, z.ch)
+    if (!order) return
+    const src = from ? spec.enc[from] : undefined
+    const name = src?.f ?? field
+    const col = name ? data.cols.find((c) => c.name === name) : undefined
+    if (!name || !col) return
+    const fit = assignField(spec, order[0], name, col.type, chartRole(col.type))
+    if (!fit.ok) { setExplore({ notice: fit.reason, noticeBad: true }); return }
+    const entry = src ? { ...src } : fit.spec.enc[order[0]]!
+    const k = chainIndex(spec, order, z.ch)
+    const used = chainEntries(spec, order).length
+    const at = k < 0 ? used : z.side === 'after' ? k + 1 : k
+    const inChain = !!from && order.includes(from)
+    let next: ChartSpec | null
+    let note: string
+    if (inChain && z.side === 'on' && k >= 0) {
+      const enc = { ...spec.enc, [from!]: spec.enc[z.ch]!, [z.ch]: spec.enc[from!]! }
+      next = { ...spec, enc }
+      note = `${name} and ${spec.enc[z.ch]!.f} swapped places.`
+    } else if (inChain) {
+      next = reorderInChain(spec, order, from!, at)
+      note = `${name} moved to ${channelLabel(spec.mark, order[Math.min(at > chainIndex(spec, order, from!) ? at - 1 : at, used - 1)])}.`
+    } else {
+      const base = from ? removeFromChain(spec, from) : spec
+      if (k >= 0 && z.side === 'on') {
+        next = { ...base, enc: { ...base.enc, [z.ch]: entry } }
+        note = `${name} replaced ${spec.enc[z.ch]!.f} on ${channelLabel(spec.mark, z.ch)}.`
+      } else {
+        next = insertIntoChain(base, order, at, entry)
+        note = `${name} added as ${channelLabel(spec.mark, order[at])}.`
+      }
+    }
+    if (!next) { setExplore({ notice: `All ${order.length} levels are used. Drop on one to replace it, or take one off first.`, noticeBad: true }); return }
+    setSpec(() => next!)
+    setLanded(z.ch)
+    setExplore({ selectedField: null, dragField: null, dragFrom: null, notice: note, noticeBad: false })
+  }
+  const zoneAt = (ev: React.DragEvent): { ch: Channel; side: Side } | null => {
+    const strip = stripRef.current
+    if (!strip) return null
+    const own = (ev.target as Element).closest?.('.sp')
+    if (own && !own.hasAttribute('data-chain')) return null // an ordinary shelf answers for itself
+    const boxes: Box[] = [...strip.querySelectorAll<HTMLElement>('.sp[data-chain]')].map((el) => {
+      const r = el.getBoundingClientRect()
+      return { ch: el.dataset.ch as Channel, left: r.left, right: r.right, top: r.top, bottom: r.bottom, empty: el.classList.contains('add') }
+    })
+    return dropZone(boxes, ev.clientX, ev.clientY)
+  }
+  const onStripOver = (ev: React.DragEvent) => {
+    const z = zoneAt(ev)
+    if (!z) { setZone((p) => (p ? null : p)); return }
+    ev.preventDefault()
+    const order = chainOrder(spec.mark, z.ch)
+    const slot = order && SLOTS[spec.mark].find((sl) => sl.ch === order[0])
+    const role = dragRole
+    ev.dataTransfer.dropEffect = !s.dragField || (slot && role && slot.accepts.includes(role)) ? (s.dragFrom ? 'move' : 'copy') : 'none'
+    setZone((p) => (p && p.ch === z.ch && p.side === z.side ? p : z)) // same answer: no render
+  }
+  const onStripDrop = (ev: React.DragEvent) => {
+    const z = zoneAt(ev)
+    setZone(null)
+    if (!z) return
+    ev.preventDefault()
+    const from = ev.dataTransfer.getData(FROM_SHELF) as Channel
+    const f = ev.dataTransfer.getData('text/plain') || dragging
+    dropOnChain(z, from || null, f || null)
   }
   // Swap follows the same rules as placing a field, so it is offered only when both fields fit their new shelves (and says why when not)
   const swapped = swapAxes(spec, (f) => { const c = data.cols.find((x) => x.name === f); return c ? { type: c.type, role: chartRole(c.type) } : undefined })
@@ -341,7 +422,8 @@ function ChartCard({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: Cha
         {getExploreOptions().features.importExport && <Btn small onClick={() => setExportOpen(true)}><Download size={14} aria-hidden="true" />Export</Btn>}
         <Button variant="ghost" size="icon" aria-label={`Expand ${tab.name}`} onClick={() => setBig(true)}><Maximize2 className="h-4 w-4" /></Button>
       </div>
-      <div className="strip">
+      <div className="strip" ref={stripRef} onDragOver={onStripOver} onDrop={onStripDrop}
+        onDragLeave={(ev) => { if (!ev.currentTarget.contains(ev.relatedTarget as Node | null)) setZone(null) }}>
         {slotsShown(spec).map((slot) => {
           const e = spec.enc[slot.ch]
           const adding = !!chainOf(spec.mark, slot.ch) && !e
@@ -351,22 +433,34 @@ function ChartCard({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: Cha
           // while a field is dragged: the shelf it came from, and (for the one under the pointer) what dropping would do
           const fromCh = (s.dragFrom as Channel | null) ?? null
           const isSource = !!s.dragField && fromCh === slot.ch
-          const hovered = !!s.dragField && over === slot.ch && !isSource
+          const order = chainOrder(spec.mark, slot.ch)
+          const zs = order && zone?.ch === slot.ch ? zone.side : null // which part of an ordered shelf the pointer is over
+          const hovered = !!s.dragField && !isSource && (order ? zs === 'on' : over === slot.ch)
           let hint: string | undefined
-          if (hovered) {
+          if (order && s.dragField && (zs === 'before' || zs === 'after')) {
+            const used = chainEntries(spec, order).length, k = chainIndex(spec, order, slot.ch), at = zs === 'after' ? k + 1 : k
+            const mine = !!fromCh && order.includes(fromCh)
+            const pushed = chainEntries(spec, order)[at]
+            hint = !ok ? `Takes ${takesWord(slot.accepts)} only` : !mine && used >= order.length ? `All ${order.length} levels are used` : mine ? `Move to ${channelLabel(spec.mark, order[Math.min(at > chainIndex(spec, order, fromCh!) ? at - 1 : at, used - 1)])}` : `Insert as ${channelLabel(spec.mark, order[at])}${pushed ? ` · ${pushed.f} moves to ${channelLabel(spec.mark, order[at + 1])}` : ''}`
+          } else if (hovered) {
             const fromSlot = fromCh ? SLOTS[spec.mark].find((sl) => sl.ch === fromCh) : undefined
             const swaps = !!(e && fromSlot && roleOf(e.f) && fromSlot.accepts.includes(roleOf(e.f)))
             hint = !ok ? `Takes ${takesWord(slot.accepts)} only` : e ? (e.f === s.dragField ? 'Already here' : swaps ? `Swap with ${e.f}` : `Replace ${e.f}`) : fromCh ? 'Move here' : `Place ${s.dragField}`
           }
           return (
-            <div key={slot.ch} className={`sp ${e ? 'filled' : ''} ${adding ? 'add' : ''} ${dragging && !isSource ? (ok ? 'ok' : 'no') : ''} ${hovered ? 'over' : ''} ${isSource ? 'source' : ''} ${landed === slot.ch ? 'landed' : ''}`} draggable={!!e}
+            <div key={slot.ch} data-chain={order ? '' : undefined} data-ch={slot.ch} data-ins={zs === 'before' || zs === 'after' ? zs : undefined} className={`sp ${e ? 'filled' : ''} ${adding ? 'add' : ''} ${dragging && !isSource ? (ok ? 'ok' : 'no') : ''} ${hovered ? 'over' : ''} ${isSource ? 'source' : ''} ${landed === slot.ch ? 'landed' : ''}`} draggable={!!e}
               data-hint={hint}
               onDragStart={e ? (ev) => { ev.dataTransfer.setData(FROM_SHELF, slot.ch); ev.dataTransfer.setData('text/plain', e.f); ev.dataTransfer.effectAllowed = 'move'; setDragPill(ev, e.f, col ? colorVar(col.type) : 'var(--mute)'); setExplore({ dragField: e.f, dragFrom: slot.ch }) } : undefined}
               onDragEnd={() => { setOver(null); setExplore({ dragField: null, dragFrom: null }) }}
-              onDragEnter={() => setOver(slot.ch)}
-              onDragLeave={(ev) => { if (!ev.currentTarget.contains(ev.relatedTarget as Node | null)) setOver((o) => (o === slot.ch ? null : o)) }}
-              onDragOver={(ev) => { ev.preventDefault(); ev.dataTransfer.dropEffect = !s.dragField || ok ? (fromCh ? 'move' : 'copy') : 'none' }}
-              onDrop={(ev) => { ev.preventDefault(); setOver(null); const from = ev.dataTransfer.getData(FROM_SHELF) as Channel; if (from) { move(from, slot.ch); return } const f = ev.dataTransfer.getData('text/plain') || dragging; if (f) assign(slot.ch, f) }}>
+              {...(order ? {} : {
+                onDragEnter: () => setOver(slot.ch),
+                onDragLeave: (ev: React.DragEvent<HTMLDivElement>) => { if (!ev.currentTarget.contains(ev.relatedTarget as Node | null)) setOver((o) => (o === slot.ch ? null : o)) },
+                onDragOver: (ev: React.DragEvent<HTMLDivElement>) => { ev.preventDefault(); ev.dataTransfer.dropEffect = !s.dragField || ok ? (fromCh ? 'move' : 'copy') : 'none' },
+                onDrop: (ev: React.DragEvent<HTMLDivElement>) => { ev.preventDefault(); setOver(null); const from = ev.dataTransfer.getData(FROM_SHELF) as Channel; if (from) { move(from, slot.ch); return } const f = ev.dataTransfer.getData('text/plain') || dragging; if (f) assign(slot.ch, f) },
+              })}>
+              {order && e && picked && pickedRole && SLOTS[spec.mark].find((sl) => sl.ch === order[0])!.accepts.includes(pickedRole) && chainEntries(spec, order).length < order.length && (
+                <button type="button" className="ins tp" data-tip={`Insert ${picked} before ${e.f}`} aria-label={`Insert ${picked} before ${e.f}`} onClick={() => dropOnChain({ ch: slot.ch, side: 'before' }, null, picked)}><Plus size={12} aria-hidden="true" /></button>
+              )}
               {e && <GripVertical size={14} className="grip" aria-hidden="true" />}
               <span className="spl">{adding && <Plus size={12} aria-hidden="true" />}{label}{slot.req && <><i className="rq" aria-hidden="true" /><span className="sr">required</span></>}</span>
               {e && col && (
@@ -375,7 +469,7 @@ function ChartCard({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: Cha
                   {channelAggregates(spec.mark, slot.ch) && chartRole(col.type) === 'q' && (
                     <XSelect className="agg" aria-label={`Aggregate for ${label}`} value={e.agg ?? 'sum'} onChange={(ev) => setSpec((x) => ({ ...x, enc: { ...x.enc, [slot.ch]: { ...e, agg: ev.target.value as Agg } } }))}>{AGGS.map((a) => <option key={a} value={a}>{a}</option>)}</XSelect>
                   )}
-                  <button type="button" className="x" aria-label={`Remove ${e.f} from ${label}`} onClick={() => setSpec((x) => { const n = { ...x.enc }; delete n[slot.ch]; return { ...x, enc: n } })}><X size={12} aria-hidden="true" /></button>
+                  <button type="button" className="x" aria-label={`Remove ${e.f} from ${label}`} onClick={() => setSpec((x) => removeFromChain(x, slot.ch))}><X size={12} aria-hidden="true" /></button>
                 </>
               )}
               {!e && (

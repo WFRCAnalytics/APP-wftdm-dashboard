@@ -474,3 +474,11 @@
 
 .xb .swapw{display:inline-flex}
 .xb .swapw[data-tip]:hover::after{white-space:normal;width:max-content;max-width:300px;text-align:left}
+
+/* ordered shelves: where a dropped field would be inserted. Drawn over the gap, never in the flow, so nothing moves under the pointer */
+.xb .sp[data-ins]::before{content:'';position:absolute;top:2px;bottom:2px;width:4px;border-radius:2px;background:var(--brand);box-shadow:0 0 0 3px color-mix(in srgb,var(--brand) 20%,transparent);pointer-events:none}
+.xb .sp[data-ins="before"]::before{left:-6px}
+.xb .sp[data-ins="after"]::before{right:-6px}
+.xb .sp[data-chain].ok.over{transform:none} /* a shelf that grew under the pointer would move the edge the answer is read from */
+.xb .sp .ins{position:absolute;left:-13px;top:50%;transform:translateY(-50%);z-index:5;width:20px;height:20px;padding:0;border-radius:999px;border:1px solid var(--brand);background:var(--surface);color:var(--brand-text,var(--brand));display:grid;place-items:center}
+.xb .sp .ins:hover{background:var(--brand);color:var(--surface)}

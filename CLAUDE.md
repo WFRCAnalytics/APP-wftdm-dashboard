@@ -648,6 +648,12 @@ compiler `compile.ts`, which draws its own SVG because Plot has no dash/hatch/pi
 joins, highlighter, guarded runner). User SQL always goes through `sqlGuard.authorize` and the one shared connection.
 Session-only state in `state/exploreState.ts`. Specs and tasks: `specs/065-chart-builder/`.
 
+Ordered shelves (treemap/sunburst levels, a table's groups and measures) are lists packed with no gaps (`charts/builder/chainOps.ts`):
+removing promotes the rest, a drop in a gap or on a shelf's outer quarter inserts, on its middle replaces. **Drag rule (a hard-won
+lesson, with a spec that guards it):** nothing may reflow, rewrite text or write to the global store while a field is in flight, and
+a drop target is read from the shelves' own fixed boxes, never from enter/leave on elements the preview moves. The insertion bar and hint
+are absolutely positioned overlays; `selectedField` is never set by a drag (that runs profiling queries).
+
 A deployer shapes the builder from the panel's YAML, every key optional (`explore/options.ts`, contract
 `specs/065-chart-builder/contracts/deployer-options.md`): `limits` (csv_rows, page_size, undo_steps, max_joins), `features` (sql_tab, csv,
 copy_sql, import_export, my_tables, undo), `charts` (allow, default), `tables` (include/exclude globs), `columns` (label, unit, format)

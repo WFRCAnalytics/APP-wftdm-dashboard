@@ -556,6 +556,67 @@ test.describe('DuckDB computes the chart data for every mark', () => {
     await expect(arcs).toHaveCount(rings)
     expect(errors).toEqual([])
   })
+  test('rings are an ordered list: removing promotes, a drop in a gap inserts, a drop on a ring replaces, and nothing moves during the drag', async ({ page }) => {
+    const errors: string[] = []
+    await openExplore(page, errors)
+    await expect(page.locator('.xb .tbl tbody tr').first()).toBeVisible({ timeout: 60_000 })
+    await page.locator('.xb .tpick').click()
+    await page.getByRole('dialog', { name: 'Choose a table' }).getByLabel('Search').fill('purpose_mode_flow')
+    await page.getByRole('option', { name: 'purpose_mode_flow', exact: true }).click()
+    await expect(page.locator('.xb .prow2', { hasText: 'major_trip_mode' })).toBeVisible({ timeout: 30_000 })
+    await page.getByRole('button', { name: 'Add chart tab' }).click()
+    await page.locator('.xb .mk', { hasText: 'Sunburst' }).click()
+    await place(page, 'primary_purpose', 'Inner ring')
+    await place(page, 'major_trip_mode', 'Add ring')
+    await place(page, 'scenario', 'Add ring')
+    const ring = (label: string) => page.locator('.xb .strip .sp', { hasText: label })
+    await expect(ring('Inner ring')).toContainText('primary_purpose')
+    await expect(ring('Second ring')).toContainText('major_trip_mode')
+    await expect(ring('Third ring')).toContainText('scenario')
+    // taking the middle one off promotes the third to the second
+    await page.getByRole('button', { name: /Remove major_trip_mode from Second ring/ }).click()
+    await expect(ring('Second ring')).toContainText('scenario')
+    await expect(ring('Third ring')).toHaveCount(0)
+    // taking the first off promotes the second to the first
+    await page.getByRole('button', { name: /Remove primary_purpose from Inner ring/ }).click()
+    await expect(ring('Inner ring')).toContainText('scenario')
+    await expect(ring('Second ring')).toHaveCount(0)
+    // a new field dropped in front of the first pushes it to the second
+    await place(page, 'primary_purpose', 'Add ring')
+    await expect(ring('Second ring')).toContainText('primary_purpose')
+    const dt = await page.evaluateHandle(() => new DataTransfer())
+    const field = page.locator('.xb .fchip', { hasText: 'major_trip_mode' }).first()
+    const boxes = async () => (await Promise.all((await page.locator('.xb .strip .sp').all()).map((e) => e.boundingBox()))).map((b) => `${b!.x},${b!.y},${b!.width},${b!.height}`)
+    await page.waitForTimeout(900)
+    const still = await boxes()
+    await field.dispatchEvent('dragstart', { dataTransfer: dt })
+    const first = await ring('Inner ring').boundingBox()
+    // over the left edge of the first ring: an insert, drawn over the gap, and no shelf moves
+    await page.mouse.move(first!.x + 4, first!.y + first!.height / 2)
+    await ring('Inner ring').dispatchEvent('dragover', { dataTransfer: dt, clientX: first!.x + 4, clientY: first!.y + first!.height / 2 })
+    await expect(ring('Inner ring')).toHaveAttribute('data-ins', 'before')
+    await expect(ring('Inner ring')).toHaveAttribute('data-hint', /^Insert as Inner ring · scenario moves to Second ring$/)
+    expect(await boxes()).toEqual(still)
+    // over its middle: a replace
+    await ring('Inner ring').dispatchEvent('dragover', { dataTransfer: dt, clientX: first!.x + first!.width / 2, clientY: first!.y + first!.height / 2 })
+    await expect(ring('Inner ring')).not.toHaveAttribute('data-ins', /.*/)
+    await expect(ring('Inner ring')).toHaveAttribute('data-hint', 'Replace scenario')
+    expect(await boxes()).toEqual(still)
+    // the drag ending, however it ends, leaves nothing lit
+    await field.dispatchEvent('dragend', { dataTransfer: dt })
+    await expect(page.locator('.xb .strip .sp[data-hint]')).toHaveCount(0)
+    await expect(page.locator('.xb .strip .sp[data-ins]')).toHaveCount(0)
+    // a real drag into the left gap inserts
+    await field.dragTo(ring('Inner ring'), { targetPosition: { x: 4, y: first!.height / 2 } })
+    await expect(ring('Inner ring')).toContainText('major_trip_mode')
+    await expect(ring('Second ring')).toContainText('scenario')
+    await expect(ring('Third ring')).toContainText('primary_purpose')
+    // a real drag onto the middle of a ring replaces it
+    await page.locator('.xb .fchip', { hasText: 'primary_purpose' }).first().dragTo(ring('Second ring'))
+    await expect(ring('Second ring')).toContainText('primary_purpose')
+    await expect(ring('Third ring')).toContainText('primary_purpose')
+    expect(errors).toEqual([])
+  })
   test('trail joins points in order', async ({ page }) => {
     const errors: string[] = []
     await setup(page, errors, 'Trail')
