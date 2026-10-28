@@ -52,3 +52,23 @@ test('the sankey keeps its labels inside the chart, and a node click keeps only 
   await chart.locator('svg text', { hasText: 'Only flows through Transit' }).dispatchEvent('click')
   await expect.poll(links).toBe(all)
 })
+
+test('a heatmap grouped by Scenario shows every scenario and its Scenario dropdown is off; other groups bring it back', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto('/#/summary/time')
+  await page.waitForFunction(() => document.querySelector('h1') && !document.body.innerText.includes('Connecting to DuckDB'), null, { timeout: 60_000 })
+  const tile = page.getByTestId('tab-body')
+  await tile.getByRole('button', { name: 'Heatmap' }).first().click()
+  const heat = page.locator('[data-chart-kind="time-heat"]')
+  await expect(heat.locator('svg')).toBeVisible({ timeout: 30_000 })
+  // Group by Scenario: one row per compared scenario, the dropdown reads "All scenarios" and cannot be used
+  const scenario = tile.getByRole('combobox', { name: 'Scenario' })
+  await expect(scenario).toBeDisabled()
+  await expect(scenario).toContainText('All scenarios')
+  await expect.poll(() => heat.locator('[aria-label="y-axis tick label"] text').count()).toBe(3)
+  // Group by Purpose: one scenario at a time again, and the dropdown works
+  await tile.getByRole('combobox', { name: 'Group by' }).first().click()
+  await page.getByRole('option', { name: 'Purpose' }).click()
+  await expect(scenario).toBeEnabled()
+  await expect(scenario).not.toContainText('All scenarios')
+})

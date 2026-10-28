@@ -14,6 +14,18 @@ export const SINGLE_SCENARIO_KINDS: ReadonlySet<string> = new Set(['time-heat', 
 
 const isSingleKind = (panel: PanelConfig): boolean => panel.type === 'chart' && SINGLE_SCENARIO_KINDS.has(String((panel as { kind?: string }).kind))
 
+/** One-scenario kinds that, grouped by Scenario, draw every compared scenario themselves (one row each, see charts/lib/timeOfDay). */
+const ALL_WHEN_GROUPED_BY_SCENARIO: ReadonlySet<string> = new Set(['time-heat'])
+
+/**
+ * True when a one-scenario chart is grouped by Scenario and so already shows all the compared scenarios: it is not pinned to
+ * one, and the tile's Scenario dropdown is shown disabled. An unset or unknown group means Scenario (todGroup's own default).
+ */
+export function drawsAllScenarios(panel: PanelConfig): boolean {
+  const p = panel as { type: string; kind?: string; group?: string }
+  return p.type === 'chart' && ALL_WHEN_GROUPED_BY_SCENARIO.has(String(p.kind)) && !['mode', 'purpose', 'income', 'none'].includes(p.group ?? '')
+}
+
 /**
  * True when the view shows one scenario and the viewer can choose which: a switch or swipe, a difference chart built from a
  * plain panel (the reference against the chosen scenario), or a one-scenario chart in Values mode (Change keeps comparing
@@ -238,7 +250,7 @@ export function planCompare(
         console.warn(`compareStrategy: "${panel.type}" cannot overlay scenarios; showing the focus scenario`)
         return single(panel, focus, true, true)
       }
-      if (isSingleKind(panel) && mode === 'val') {
+      if (isSingleKind(panel) && mode === 'val' && !drawsAllScenarios(panel)) {
         const run = tile.scenario && inputs.active.includes(tile.scenario) ? tile.scenario : focus
         return single(panel, run, false, true)
       }

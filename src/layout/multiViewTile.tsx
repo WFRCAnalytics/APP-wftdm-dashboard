@@ -14,11 +14,13 @@ import { useFill, withFillHeight } from '@/layout/fill'
 import type { CompareStrategy, MultiViewPanelConfig } from '@/layout/types'
 import { PanelLoadingState } from '@/panels/PanelLoadingState'
 import { registry } from '@/panels/registry'
-import { effectiveStrategy, offersScenarioPick } from '@/panels/compareStrategy'
+import { drawsAllScenarios, effectiveStrategy, offersScenarioPick } from '@/panels/compareStrategy'
 import { STRATEGY_LABEL, isBaseYearOnly, isCalibrationFamily, resolveMultiView, validateMultiView, withRowHeight } from '@/panels/multiView'
 
 // The tile for `type: multi-view`: the chrome (badges, group-by, compare-as, view switcher) around MultiViewPanel,
 // which draws the active view. Hidden entirely when the tile only makes sense in another mode.
+
+const ALL_SCENARIOS = '__all__'
 
 export function MultiViewTile({ config: rawConfig, tileKey }: { config: MultiViewPanelConfig; tileKey: string }) {
   const ctx = useResolvedView()
@@ -38,7 +40,7 @@ export function MultiViewTile({ config: rawConfig, tileKey }: { config: MultiVie
   const Body = registry['multi-view']
   const panel = Body ? (
     <PanelErrorBoundary panelTitle={config.title}>
-      <Suspense fallback={<PanelLoadingState height={config.height} />}>
+      <Suspense fallback={<PanelLoadingState height={bodyConfig.height} config={bodyConfig} />}>
         <Body config={bodyConfig} />
       </Suspense>
     </PanelErrorBoundary>
@@ -117,13 +119,16 @@ export function MultiViewTile({ config: rawConfig, tileKey }: { config: MultiVie
     // a difference is drawn against the reference, so the reference is not offered as the scenario shown
     const runs = strategy === 'diff' ? inputs.active.filter((r) => r !== inputs.referenceRun) : inputs.active
     const value = tile.scenario && runs.includes(tile.scenario) ? tile.scenario : runs.includes(inputs.focusRun ?? '') ? (inputs.focusRun ?? '') : (runs[0] ?? '')
+    // grouped by Scenario the chart already draws every scenario, so the choice is shown but off
+    const all = strategy === 'overlay' && drawsAllScenarios(resolved.panel)
     if (runs.length > 1) controls.push(
       <PillSelect
         key="scenario"
         compact
         label="Scenario"
-        value={value}
-        options={runs.map((r) => ({ value: r, label: inputs.label(r) }))}
+        value={all ? ALL_SCENARIOS : value}
+        disabled={all}
+        options={all ? [{ value: ALL_SCENARIOS, label: 'All scenarios' }] : runs.map((r) => ({ value: r, label: inputs.label(r) }))}
         onChange={(scenario) => setTile({ scenario })}
       />,
     )

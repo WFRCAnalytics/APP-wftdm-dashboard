@@ -14,8 +14,11 @@ export function ExportBackgroundChoice({ disabledReason }: { disabledReason?: st
       <p className="px-3 pb-0.5 pt-1 font-body text-xs text-[var(--mute)]">{disabledReason ?? 'Image background'}</p>
       {EXPORT_BACKGROUNDS.map((o) => (
         <button key={o.v} role="menuitemradio" aria-checked={mode === o.v} type="button" disabled={!!disabledReason} className={ITEM} onClick={() => setMode(o.v)}>
-          <Check className={cn('size-3.5', mode === o.v ? 'opacity-100' : 'opacity-0')} aria-hidden="true" />
-          {o.label}
+          {/* the same filled chip as a Select item's check (select.tsx), kept in front of the label; unchosen rows keep its room */}
+          <span className={cn('grid size-4 shrink-0 place-items-center rounded-full', mode === o.v ? 'bg-[var(--pill-on-bg)] text-[var(--pill-on-fg)]' : 'invisible')} aria-hidden="true">
+            <Check className="size-3" strokeWidth={3} />
+          </span>
+          <span className={cn(mode === o.v && 'font-medium')}>{o.label}</span>
         </button>
       ))}
     </div>

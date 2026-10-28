@@ -1,3 +1,5 @@
+import { PanelSkeleton } from '@/panels/PanelSkeleton'
+import { skeletonShape } from '@/panels/skeleton'
 import { useEffect, useRef, useState } from 'react'
 import * as Plot from '@observablehq/plot'
 import { ChartNoAxesColumn } from 'lucide-react'
@@ -536,24 +538,8 @@ export function ObservablePlotPanel({ config }: { config: ObservablePlotPanelCon
       )}
       {status === 'error' && <PanelErrorState message="Couldn't load this chart" />}
       {status === 'loading' && (
-        // wftdm-design-system skill's Skeleton composition recipe (Phase 3
-        // Batch 1) — same shaped bar-silhouette-on-a-baseline skeleton as
-        // the retired chart panel (both panel types cover the same barY/lineY-vs-
-        // bar/scatter territory), sized via flex (not a fixed height) to
-        // match this panel's own real chart-container sizing, which must
-        // absorb whatever space config.inputs' own rows above it consume.
-        <div
-          className="flex flex-col justify-end gap-2"
-          style={{ flex: '1 1 auto', minHeight: 0 }}
-          aria-hidden="true"
-        >
-          <div className="flex flex-1 items-end gap-2">
-            {[40, 70, 55, 90, 65, 80, 50].map((h, i) => (
-              <div key={i} className="flex-1 animate-pulse rounded-t-sm bg-muted" style={{ height: `${h}%` }} />
-            ))}
-          </div>
-          <div className="h-px w-full bg-border" />
-        </div>
+        // sized by flex, not a fixed height: it absorbs whatever space config.inputs' own rows above leave
+        <PanelSkeleton shape={skeletonShape(config)} height="auto" className="min-h-0 flex-auto" />
       )}
       <div
         ref={containerRef}

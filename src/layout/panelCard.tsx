@@ -73,7 +73,7 @@ function PlainTile({ config: authored }: { config: PanelConfig }) {
   // as every other render failure.
   const panelElement = PanelComponent ? (
     <PanelErrorBoundary panelTitle={config.title}>
-      <Suspense fallback={<PanelLoadingState height={config.height} />}>
+      <Suspense fallback={<PanelLoadingState height={config.height} config={config} />}>
         <PanelComponent config={config} />
       </Suspense>
     </PanelErrorBoundary>

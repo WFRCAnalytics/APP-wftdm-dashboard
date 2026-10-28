@@ -1,3 +1,5 @@
+import { PanelSkeleton } from '@/panels/PanelSkeleton'
+import { skeletonShape } from '@/panels/skeleton'
 import { useEffect, useRef, useState } from 'react'
 import { hierarchy as buildD3Hierarchy, type HierarchyRectangularNode } from 'd3-hierarchy'
 import { ChartNoAxesColumn } from 'lucide-react'
@@ -255,16 +257,7 @@ export function HierarchicalChartHost({
   }, [])
 
   if (status === 'loading') {
-    return (
-      <div className="flex flex-col justify-end gap-2" style={{ height: config.height ?? 350 }} aria-hidden="true">
-        <div className="flex flex-1 items-end gap-2">
-          {[40, 70, 55, 90, 65, 80, 50].map((h, i) => (
-            <div key={i} className="flex-1 animate-pulse rounded-t-sm bg-muted" style={{ height: `${h}%` }} />
-          ))}
-        </div>
-        <div className="h-px w-full bg-border" />
-      </div>
-    )
+    return <PanelSkeleton shape={skeletonShape(config)} height={config.height ?? 350} />
   }
   if (status === 'empty') {
     return <PanelEmptyState icon={ChartNoAxesColumn} message="No data for this selection" />

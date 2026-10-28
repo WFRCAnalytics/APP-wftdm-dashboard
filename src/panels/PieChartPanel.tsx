@@ -1,3 +1,5 @@
+import { PanelSkeleton } from '@/panels/PanelSkeleton'
+import { skeletonShape } from '@/panels/skeleton'
 import { useEffect, useRef, useState } from 'react'
 import { PieChart } from 'lucide-react'
 
@@ -235,14 +237,7 @@ export function PieChartPanel({ config }: { config: PieChartPanelConfig }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      {status === 'loading' && (
-        // wftdm-design-system skill's Skeleton composition recipe — a
-        // circular silhouette, matching SankeyPanel.tsx's own shaped
-        // (not generic-rectangle) loading skeleton convention.
-        <div className="flex flex-1 items-center justify-center" aria-hidden="true">
-          <div className="h-32 w-32 animate-pulse rounded-full bg-muted" />
-        </div>
-      )}
+      {status === 'loading' && <PanelSkeleton shape={skeletonShape(config)} height="auto" className="min-h-0 flex-1" />}
       {/* containerRef holds ONLY imperatively-managed children (the
           tooltip div + the <svg>, both appended directly via DOM calls) —
           the legend below is a separate React-rendered SIBLING, never a

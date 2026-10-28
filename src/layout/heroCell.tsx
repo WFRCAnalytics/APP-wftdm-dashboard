@@ -32,7 +32,7 @@ export function HeroCell({ config }: { config: PanelConfig }) {
           </PanelErrorBoundary>
         ) : PanelComponent ? (
           <PanelErrorBoundary panelTitle={config.title}>
-            <Suspense fallback={<PanelLoadingState height={config.height} />}>
+            <Suspense fallback={<PanelLoadingState height={config.height} config={config} />}>
               <PanelComponent config={{ ...(config as object), _hero: true } as unknown as PanelConfig} />
             </Suspense>
           </PanelErrorBoundary>

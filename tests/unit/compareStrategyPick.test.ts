@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import type { PanelConfig } from '@/layout/types'
-import { offersScenarioPick, planCompare, type CompareInputs } from '@/panels/compareStrategy'
+import { drawsAllScenarios, offersScenarioPick, planCompare, type CompareInputs } from '@/panels/compareStrategy'
 
 const inputs: CompareInputs = {
   compare: true,
@@ -12,7 +12,8 @@ const inputs: CompareInputs = {
   active: ['a', 'b', 'c'],
   label: (r) => r,
 }
-const heat = { type: 'chart', kind: 'time-heat' } as unknown as PanelConfig
+const heat = { type: 'chart', kind: 'time-heat', group: 'purpose' } as unknown as PanelConfig
+const heatByScenario = { type: 'chart', kind: 'time-heat', group: 'scn' } as unknown as PanelConfig
 const donut = { type: 'pie', category: 'm', value: 'v', metric: 'x' } as unknown as PanelConfig
 
 describe('scenario pick', () => {
@@ -30,5 +31,15 @@ describe('scenario pick', () => {
     expect(diff.kind === 'single' && JSON.stringify(diff.config)).toContain('"b":"c"')
     const same = planCompare(donut, 'diff', { ...inputs, display: 'abs' }, { scenario: 'a' })
     expect(same.kind === 'single' && JSON.stringify(same.config)).toContain('"b":"b"')
+  })
+
+  it('does not pin a heatmap grouped by Scenario: it draws every scenario, and the dropdown is shown but off', () => {
+    expect(drawsAllScenarios(heatByScenario)).toBe(true)
+    expect(drawsAllScenarios({ type: 'chart', kind: 'time-heat' } as unknown as PanelConfig)).toBe(true) // no group means Scenario
+    expect(drawsAllScenarios(heat)).toBe(false)
+    expect(drawsAllScenarios({ type: 'chart', kind: 'ridgeline' } as unknown as PanelConfig)).toBe(false)
+    expect(offersScenarioPick(heatByScenario, 'overlay', 'val')).toBe(true)
+    const plan = planCompare(heatByScenario, 'overlay', inputs, { scenario: 'c' })
+    expect(plan.kind === 'single' && (plan.config as { scenario?: string }).scenario).toBeUndefined()
   })
 })

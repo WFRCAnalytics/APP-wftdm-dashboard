@@ -1,25 +1,16 @@
-// 042-boot-performance-fix: Suspense fallback for a lazily-loaded panel
-// component (panels/registry.tsx's React.lazy() entries) — shown for the
-// window between a tab first rendering a panel of a given type and that
-// type's own JS chunk finishing its dynamic import(). Deliberately
-// generic/type-agnostic, unlike each panel's own internal data-loading
-// skeleton (e.g. the retired chart panel's own `animate-pulse` block) — this fires
-// BEFORE the panel component itself has even mounted, so there is no
-// panel-specific shape to mirror yet. Reuses the exact `animate-pulse
-// rounded-md bg-muted` treatment main.tsx's own pre-mount skeleton and
-// every panel type's own loading state already establish (wftdm-design-
-// system skill's Skeleton section) — no new visual language introduced.
+import { PanelSkeleton } from '@/panels/PanelSkeleton'
+import { skeletonShape } from '@/panels/skeleton'
+
+// 042-boot-performance-fix: Suspense fallback for a lazily-loaded panel component (panels/registry.tsx's React.lazy() entries),
+// shown between a tab first rendering a panel of a given type and that type's JS chunk arriving. The config is known here, so the
+// placeholder already has the silhouette of the chart (panels/skeleton.ts); the panel's own loading state (data still coming) uses
+// the same PanelSkeleton, so the swap from one to the other does not move anything.
 export interface PanelLoadingStateProps {
   height?: number
+  /** The panel being loaded; picks the silhouette (a generic block without it). */
+  config?: object
 }
 
-export function PanelLoadingState({ height }: PanelLoadingStateProps) {
-  return (
-    <div
-      role="status"
-      aria-label="Loading panel"
-      className="animate-pulse rounded-md bg-muted"
-      style={{ height: height ?? 350, minHeight: 100 }}
-    />
-  )
+export function PanelLoadingState({ height, config }: PanelLoadingStateProps) {
+  return <PanelSkeleton shape={skeletonShape(config)} height={height} />
 }

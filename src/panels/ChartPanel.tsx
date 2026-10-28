@@ -1,3 +1,5 @@
+import { PanelSkeleton } from '@/panels/PanelSkeleton'
+import { skeletonShape } from '@/panels/skeleton'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { ChartNoAxesColumn } from 'lucide-react'
@@ -234,7 +236,7 @@ export function ChartPanel({ config }: PanelProps<ChartPanelConfig>) {
       {legendNode && (legendSlot ? createPortal(legendNode, legendSlot) : <div className="pb-2 text-[12.5px] text-[var(--mute)]">{legendNode}</div>)}
       {status === 'empty' && <PanelEmptyState icon={ChartNoAxesColumn} message={message || 'No data for this selection'} />}
       {status === 'error' && <PanelErrorState message={message || "Couldn't load this chart"} />}
-      {status === 'loading' && <div className="flex-1 animate-pulse rounded-xl bg-[var(--tile-hi)]" aria-hidden="true" />}
+      {status === 'loading' && <PanelSkeleton shape={skeletonShape(config)} height="auto" label={`Loading ${config.title ?? 'chart'}`} className="min-h-0 flex-1" />}
       <div
         ref={containerRef}
         role="img"

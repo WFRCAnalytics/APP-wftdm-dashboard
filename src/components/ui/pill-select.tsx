@@ -20,6 +20,8 @@ export interface PillSelectProps {
   onChange: (value: string) => void
   /** 32px instead of 38px, for tile control rows. */
   compact?: boolean
+  /** Shown but not changeable (the value still reads). */
+  disabled?: boolean
   /** Lift the 160px cap on the trigger (the Year select shows a long label). */
   wide?: boolean
   className?: string
@@ -31,7 +33,7 @@ const EMPTY = '__empty__'
 const encode = (v: string) => (v === '' ? EMPTY : v)
 const decode = (v: string) => (v === EMPTY ? '' : v)
 
-export function PillSelect({ label, value, options, onChange, compact, wide, className, 'data-testid': testId }: PillSelectProps) {
+export function PillSelect({ label, value, options, onChange, compact, wide, disabled, className, 'data-testid': testId }: PillSelectProps) {
   const labelId = useId()
   const rail = useInRail()
   const groups = [...new Set(options.map((o) => o.group).filter((g): g is string => Boolean(g)))]
@@ -42,13 +44,14 @@ export function PillSelect({ label, value, options, onChange, compact, wide, cla
         'inline-flex items-center gap-2 rounded-full border border-[var(--glass-line)] bg-[var(--tile-hi)] pl-[14px] pr-[6px] shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]',
         compact ? 'h-8' : 'h-[38px]',
         rail && 'flex w-full justify-between',
+        disabled && 'opacity-60',
         className,
       )}
     >
       <span id={labelId} className="font-body text-xs text-[var(--mute)]">
         {label}
       </span>
-      <Select value={encode(value)} onValueChange={(v) => onChange(decode(v))}>
+      <Select value={encode(value)} onValueChange={(v) => onChange(decode(v))} disabled={disabled}>
         <SelectTrigger
           aria-labelledby={labelId}
           data-testid={testId}

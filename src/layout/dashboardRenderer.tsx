@@ -135,7 +135,7 @@ function FullPagePanel({ config }: { config: PanelConfig }) {
           {/* 042-boot-performance-fix: same Suspense requirement as
               panelCard.tsx's own — registry[config.type] is a
               React.lazy() component now, see that file's own comment. */}
-          <Suspense fallback={<PanelLoadingState height={config.height} />}>
+          <Suspense fallback={<PanelLoadingState height={config.height} config={config} />}>
             <PanelComponent config={config} />
           </Suspense>
         </PanelErrorBoundary>

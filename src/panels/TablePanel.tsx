@@ -1,3 +1,4 @@
+import { PanelSkeleton } from '@/panels/PanelSkeleton'
 import { useEffect, useRef, useState } from 'react'
 import {
   ArrowDown,
@@ -387,30 +388,7 @@ export function TablePanel({ config }: { config: TablePanelConfig }) {
   }
 
   if (status === 'loading') {
-    // wftdm-design-system skill's Skeleton section, Phase 3 requirement —
-    // a shaped skeleton (header-row + several body-rows), not one plain
-    // rectangle. Column/row counts are arbitrary placeholders (the real
-    // count isn't known until the query resolves) — 4 columns, 5 rows is
-    // a generic, dense-enough shape without overcommitting to a specific
-    // width. flex-1 on every cell makes each column share the row's
-    // width evenly, matching the real table's own natural full-width
-    // layout closely enough for a placeholder.
-    return (
-      <div aria-hidden="true">
-        <div className="flex gap-4 border-b border-border px-3 py-2">
-          {[0, 1, 2, 3].map((i) => (
-            <div key={i} className="h-3 flex-1 animate-pulse rounded bg-muted" />
-          ))}
-        </div>
-        {[0, 1, 2, 3, 4].map((row) => (
-          <div key={row} className="flex gap-4 border-b border-border px-3 py-2 last:border-0">
-            {[0, 1, 2, 3].map((col) => (
-              <div key={col} className="h-4 flex-1 animate-pulse rounded bg-muted" />
-            ))}
-          </div>
-        ))}
-      </div>
-    )
+    return <PanelSkeleton shape="table" height={config.height ?? 260} />
   }
   if (status === 'empty') {
     return <PanelEmptyState icon={TableIcon} message="No data for this selection" />

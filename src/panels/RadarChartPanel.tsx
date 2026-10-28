@@ -1,3 +1,5 @@
+import { PanelSkeleton } from '@/panels/PanelSkeleton'
+import { skeletonShape } from '@/panels/skeleton'
 import { useEffect, useRef, useState } from 'react'
 import { Radar } from 'lucide-react'
 
@@ -322,11 +324,7 @@ export function RadarChartPanel({ config }: { config: RadarChartPanelConfig }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      {status === 'loading' && (
-        <div className="flex flex-1 items-center justify-center" aria-hidden="true">
-          <div className="h-32 w-32 animate-pulse rounded-full bg-muted" />
-        </div>
-      )}
+      {status === 'loading' && <PanelSkeleton shape={skeletonShape(config)} height="auto" className="min-h-0 flex-1" />}
       {/* Same imperative-children-only container convention as
           PieChartPanel.tsx — the legend below is a separate React
           sibling, never a JSX child of this div. */}

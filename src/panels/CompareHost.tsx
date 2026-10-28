@@ -27,7 +27,7 @@ function PanelInstance({ config, title }: { config: PanelConfig; title: string }
   if (!Inner) return <PanelErrorState message={`Unknown panel type: "${config.type}"`} />
   return (
     <PanelErrorBoundary panelTitle={title}>
-      <Suspense fallback={<PanelLoadingState height={config.height} />}>
+      <Suspense fallback={<PanelLoadingState height={config.height} config={config} />}>
         <Inner config={config} />
       </Suspense>
     </PanelErrorBoundary>

@@ -1,3 +1,4 @@
+import { PanelSkeleton } from '@/panels/PanelSkeleton'
 import { useEffect, useRef, useState } from 'react'
 import { Waypoints } from 'lucide-react'
 
@@ -358,30 +359,7 @@ export function SankeyPanel({ config }: { config: SankeyPanelConfig }) {
 
   return (
     <>
-      {status === 'loading' && (
-        // wftdm-design-system skill's Skeleton composition recipe (Phase 3
-        // Batch 1) — a shaped skeleton matching a Sankey's own real
-        // structure: two node-columns (source left, target right), each a
-        // vertical stack of block placeholders. Column/block counts are
-        // arbitrary placeholders (the real node count isn't known until
-        // buildFlowGraph() runs) — this is deliberately NOT an attempt at
-        // faking the flow paths between them (a decorative loading
-        // placeholder doesn't need to be that literal), just the two-
-        // sided node structure a Sankey diagram is instantly recognizable
-        // by, which a plain rectangle never suggested at all.
-        <div className="flex items-stretch justify-between gap-8" style={{ height: config.height ?? 350 }} aria-hidden="true">
-          <div className="flex flex-1 flex-col justify-around gap-2 py-2">
-            {[28, 20, 16, 10, 8].map((h, i) => (
-              <div key={i} className="animate-pulse rounded-sm bg-muted" style={{ height: `${h}%` }} />
-            ))}
-          </div>
-          <div className="flex flex-1 flex-col justify-around gap-2 py-2">
-            {[22, 18, 14, 10].map((h, i) => (
-              <div key={i} className="animate-pulse rounded-sm bg-muted" style={{ height: `${h}%` }} />
-            ))}
-          </div>
-        </div>
-      )}
+      {status === 'loading' && <PanelSkeleton shape="sankey" height={config.height ?? 350} />}
       <div
         ref={containerRef}
         className="sankey-chart"
