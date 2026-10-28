@@ -12,7 +12,7 @@ export function exportFooter(parts: { scenarios: string; year?: number }): strin
   if (footer === false) return undefined
   if (typeof footer === 'string') return footer
   const date = new Date().toISOString().slice(0, 10)
-  return ['Source: ' + (title ?? 'WFRC TDM dashboard'), parts.scenarios, parts.year ? String(parts.year) : undefined, `exported ${date}`]
+  return ['Source: ' + (title ?? 'Calibration dashboard'), parts.scenarios, parts.year ? String(parts.year) : undefined, `exported ${date}`]
     .filter(Boolean)
     .join(' · ')
 }

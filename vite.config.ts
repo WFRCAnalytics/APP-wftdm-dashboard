@@ -10,8 +10,10 @@ export default defineConfig({
   // asset URL must be prefixed with the repo name or it 404s once deployed.
   // Keep this EXACTLY equal to "/<repo-name>/". Used by both `npm run build`
   // and `npm run build:pages`.
-  base: '/APP-wftdm-dashboard/',
-  // base: '/wftdm-dashboard/',  // if/when served from wfrc.utah.gov/wftdm-dashboard/ instead
+  // WFTDM_BASE=./ builds a bundle that works from any URL (the Python/R packages and a sub-path host): every runtime fetch uses
+  // import.meta.env.BASE_URL, and services/duckdb.ts#registerFileURL resolves against the page for the worker. Checked from a
+  // nested folder. The default stays the Pages path, which the dev server and the Playwright specs rely on.
+  base: process.env.WFTDM_BASE ?? '/APP-wftdm-dashboard/',
   // 033-shadcn-default-theme: the real, official Tailwind v4 Vite plugin —
   // replaces the previous PostCSS-plugin-based v3 setup (postcss.config.js,
   // deleted) entirely. tokens.css's own `@config "../../tailwind.config.js"`

@@ -40,7 +40,7 @@ const DEFAULTS = {
   purposes: labels('Work', 'School', 'Shopping', 'Other', 'Non-home'),
   incomes: labels('Under $35k', '$35k to $75k', '$75k to $125k', 'Over $125k'),
   autos: labels('0 cars', '1 car', '2 cars', '3 cars', '4+ cars'),
-  districts: labels('Weber', 'Davis', 'Salt Lake', 'Utah', 'Tooele'),
+  districts: [] as VocabEntry[], // a deployment names its own districts (`vocab.districts`); none is assumed
 }
 
 export const MODES: string[] = DEFAULTS.modes.map((m) => m.label)
@@ -50,7 +50,8 @@ export const AUTOS: string[] = DEFAULTS.autos.map((m) => m.label)
 export const DISTRICTS: string[] = DEFAULTS.districts.map((m) => m.label)
 export const DISTANCE_BANDS = ['Under 2 mi', '2 to 8 mi', 'Over 8 mi'] as const
 export const FACILITIES = ['Freeway', 'Arterial', 'Collector', 'Local'] as const
-export const COUNTIES = ['Salt Lake', 'Utah', 'Davis', 'Weber', 'Tooele', 'External'] as const
+/** The county rows of the VMT hierarchy: the deployment's districts, then the external stations. */
+export const COUNTIES: string[] = [...DISTRICTS, 'External']
 
 type Dimension = 'major_trip_mode' | 'primary_purpose' | 'income_group' | 'auto_ownership' | 'district'
 
@@ -81,6 +82,7 @@ export function configureVocab(cfg: VocabConfig | undefined): void {
   setArray(INCOMES, entries.income_group)
   setArray(AUTOS, entries.auto_ownership)
   setArray(DISTRICTS, entries.district)
+  COUNTIES.splice(0, COUNTIES.length, ...DISTRICTS, 'External')
 }
 
 /** The colour token a mode label is drawn with (a mode the vocabulary does not know falls back to a neutral). */

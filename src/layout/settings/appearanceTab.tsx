@@ -41,8 +41,8 @@ const ROLES: { role: InterfaceColorRole; label: string }[] = [
 
 // Four presets, each a primary / secondary / tertiary triple (the prototype's own set).
 const PRESETS: { name: string; colors: [string, string, string] }[] = [
-  { name: 'WFRC blue', colors: ['#2457D6', '#D98A00', '#7A4FD8'] },
-  { name: 'Wasatch', colors: ['#0E7C7B', '#E4572E', '#5C6BC0'] },
+  { name: 'Blue', colors: ['#2457D6', '#D98A00', '#7A4FD8'] },
+  { name: 'Teal', colors: ['#0E7C7B', '#E4572E', '#5C6BC0'] },
   { name: 'Slate', colors: ['#334E68', '#E0A100', '#2F9E8F'] },
   { name: 'Plum', colors: ['#6D3FC8', '#0C8F6F', '#D9534F'] },
 ]
