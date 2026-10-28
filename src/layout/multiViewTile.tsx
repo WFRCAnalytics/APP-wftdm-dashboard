@@ -1,6 +1,7 @@
 import { Suspense, useMemo, type ReactNode } from 'react'
 
 import { Badge } from '@/components/ui/badge'
+import { LayoutMenu } from '@/components/ui/layout-menu'
 import { PillSelect } from '@/components/ui/pill-select'
 import { Segmented } from '@/components/ui/segmented'
 import { useCompareInputs } from '@/hooks/useCompareInputs'
@@ -79,6 +80,7 @@ export function MultiViewTile({ config: rawConfig, tileKey }: { config: MultiVie
   }
 
   const controls: ReactNode[] = []
+  const actions: ReactNode[] = []
   if (config.group_by && config.group_by.options.length > 0 && !lifted.has('group')) {
     controls.push(
       <PillSelect
@@ -91,29 +93,25 @@ export function MultiViewTile({ config: rawConfig, tileKey }: { config: MultiVie
       />,
     )
   }
-  if (ctx.compare && resolved.strategies.length >= 2 && !resolved.scenarioIndependent && !lifted.has('strategy')) {
+  // A difference is the Show control's job (Change / % change draw it on any view that offers one, see effectiveStrategy), so the
+  // tile only offers arrangements. With Show on Change the choice would do nothing either, so the control waits for Values.
+  const offered = resolved.strategies.filter((s) => s !== 'diff')
+  const showForcesDiff = ctx.display !== 'val' && resolved.strategies.includes('diff')
+  if (ctx.compare && offered.length >= 2 && !resolved.scenarioIndependent && !lifted.has('strategy') && !showForcesDiff) {
     controls.push(
       <Segmented
         key="strategy"
         label="Compare as"
-        value={strategy ?? resolved.strategies[0]}
-        options={resolved.strategies.map((s) => ({ id: s, label: STRATEGY_LABEL[s] }))}
+        value={strategy && strategy !== 'diff' ? strategy : offered[0]}
+        options={offered.map((s) => ({ id: s, label: STRATEGY_LABEL[s] }))}
         onChange={(chosen) => setTile({ strategy: chosen as CompareStrategy })}
       />,
     )
-  } else if (ctx.compare && resolved.strategies.length === 1 && (strategy === 'multi' || strategy === 'grid')) {
+  } else if (ctx.compare && offered.length === 1 && (strategy === 'multi' || strategy === 'grid')) {
     badges.push(<Badge key="sbs" variant="neutral">Side by side</Badge>)
   }
   if (ctx.compare && (strategy === 'multi' || strategy === 'grid') && inputs.active.length >= 3) {
-    controls.push(
-      <Segmented
-        key="layout"
-        label="Layout"
-        value={tile.layout ?? 'auto'}
-        options={[{ id: 'auto', label: 'Auto' }, { id: 'row', label: 'Row' }, { id: 'grid', label: 'Grid' }]}
-        onChange={(layout) => setTile({ layout: layout as 'auto' | 'row' | 'grid' })}
-      />,
-    )
+    actions.push(<LayoutMenu key="layout" value={tile.layout ?? 'auto'} onChange={(layout) => setTile({ layout })} />)
   }
   if (ctx.compare && offersScenarioPick(resolved.panel, strategy, ctx.display)) {
     // a difference is drawn against the reference, so the reference is not offered as the scenario shown
@@ -150,6 +148,7 @@ export function MultiViewTile({ config: rawConfig, tileKey }: { config: MultiVie
         subtitle={config.description}
         badges={badges.length > 0 ? badges : undefined}
         controls={controls.length > 0 ? controls : undefined}
+        actions={actions.length > 0 ? actions : undefined}
         height={config.height}
         expandable={config.expandable ?? true}
         panel={panel}

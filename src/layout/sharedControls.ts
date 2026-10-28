@@ -26,8 +26,10 @@ function tileOptions(tile: MultiViewPanelConfig, kind: SharedControlKind, ctx?: 
     // the strategies of the view the tile shows now, so the control follows the tile View choice
     if (!ctx?.compare || validateMultiView(tile)) return []
     const r = resolveMultiView(tile, ctx.selection(tile), { compare: true })
-    if (r.scenarioIndependent || r.strategies.length < 2) return []
-    return r.strategies.map((s) => ({ id: s, label: STRATEGY_LABEL[s] }))
+    // a difference is the Show control's job, not an arrangement to pick
+    const offered = r.strategies.filter((x) => x !== 'diff')
+    if (r.scenarioIndependent || offered.length < 2) return []
+    return offered.map((s) => ({ id: s, label: STRATEGY_LABEL[s] }))
   }
   if (kind === 'group') return (tile.group_by?.options ?? []).map((o) => ({ id: o.id, label: o.label }))
   return tile.views.map((v) => ({ id: v.id, label: v.label ?? v.id }))

@@ -41,6 +41,11 @@ async function layout(scope: Locator) {
   })
 }
 
+async function pickLayout(t: Locator, name: string) {
+  await t.getByRole('combobox', { name: /^Layout:/ }).click()
+  await t.page().getByRole('option', { name, exact: true }).click()
+}
+
 test.describe('compare layout', () => {
   test.setTimeout(240_000)
 
@@ -76,19 +81,19 @@ test.describe('compare layout', () => {
     const auto = await layout(t)
     expect(auto.columns).toBe(2)
 
-    await t.getByRole('group', { name: 'Layout' }).getByRole('button', { name: 'Row', exact: true }).click()
+    await pickLayout(t, 'Row')
     expect((await layout(t)).columns).toBe(4)
 
-    await t.getByRole('group', { name: 'Layout' }).getByRole('button', { name: 'Grid', exact: true }).click()
+    await pickLayout(t, 'Grid')
     expect((await layout(t)).columns).toBe(2)
 
-    await t.getByRole('group', { name: 'Layout' }).getByRole('button', { name: 'Auto', exact: true }).click()
+    await pickLayout(t, 'Auto')
     expect((await layout(t)).columns).toBe(2)
   })
 
   test('the Layout control is hidden with fewer than three scenarios', async ({ page }) => {
     await boot(page, 1440)
-    await expect(tile(page).getByRole('group', { name: 'Layout' })).toHaveCount(1)
+    await expect(tile(page).getByRole('combobox', { name: /^Layout:/ })).toHaveCount(1)
     // drop scenarios from the compare set (never the reference cell, which is first) until two cells are left
     for (const n of [3, 2]) {
       await page.evaluate(() => {
@@ -100,6 +105,6 @@ test.describe('compare layout', () => {
       })
       await expect(cells(tile(page))).toHaveCount(n, { timeout: 30_000 })
     }
-    await expect(tile(page).getByRole('group', { name: 'Layout' })).toHaveCount(0)
+    await expect(tile(page).getByRole('combobox', { name: /^Layout:/ })).toHaveCount(0)
   })
 })

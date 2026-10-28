@@ -18,10 +18,12 @@ const SelectValue = SelectPrimitive.Value
 
 export interface SelectTriggerProps extends React.ComponentPropsWithoutRef<typeof SelectPrimitive.Trigger> {
   size?: 'sm' | 'default'
+  /** For an icon-only trigger (the tile's Layout button): no chevron after the children. */
+  hideChevron?: boolean
 }
 
 const SelectTrigger = React.forwardRef<React.ElementRef<typeof SelectPrimitive.Trigger>, SelectTriggerProps>(
-  ({ className, size = 'default', children, ...props }, ref) => (
+  ({ className, size = 'default', hideChevron, children, ...props }, ref) => (
     <SelectPrimitive.Trigger
       ref={ref}
       data-slot="select-trigger"
@@ -33,9 +35,11 @@ const SelectTrigger = React.forwardRef<React.ElementRef<typeof SelectPrimitive.T
       {...props}
     >
       {children}
-      <SelectPrimitive.Icon asChild>
-        <ChevronDown className="size-4 opacity-50" />
-      </SelectPrimitive.Icon>
+      {!hideChevron && (
+        <SelectPrimitive.Icon asChild>
+          <ChevronDown className="size-4 opacity-50" />
+        </SelectPrimitive.Icon>
+      )}
     </SelectPrimitive.Trigger>
   ),
 )

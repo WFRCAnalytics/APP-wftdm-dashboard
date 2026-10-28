@@ -27,6 +27,8 @@ export interface TileProps {
   badges?: ReactNode
   /** The control row: group-by, compare-as, scenario and view controls. */
   controls?: ReactNode
+  /** Small icon buttons in the header, left of Export (also shown in the expanded dialog). */
+  actions?: ReactNode
   /** Configured body height; the inline anchor keeps it exactly as before. */
   height?: number
   expandable: boolean
@@ -36,7 +38,7 @@ export interface TileProps {
   errorMessage?: string
 }
 
-export function Tile({ title, subtitle, badges, controls, height, expandable, panel, errorMessage }: TileProps) {
+export function Tile({ title, subtitle, badges, controls, actions, height, expandable, panel, errorMessage }: TileProps) {
   const [legendEl, setLegendEl] = useState<HTMLDivElement | null>(null)
   const cardRef = useRef<HTMLDivElement>(null)
   const exports = useMemo(() => createExportRegistry(), [])
@@ -75,7 +77,7 @@ export function Tile({ title, subtitle, badges, controls, height, expandable, pa
 
   // Called unconditionally (rules of hooks); see panelExpandHost.tsx for why `body` is simply never placed when the
   // tile is not expandable.
-  const { trigger, body } = usePanelExpandHost(title, panel, { height: fill.active ? '100%' : height, chrome: <>{subtitle && <p className="text-[12.5px] text-[var(--mute)]">{subtitle}</p>}{chrome}</>, exportMenu: (ref) => <ExportMenu title={title} cardRef={ref} tables={exports.all} /> })
+  const { trigger, body } = usePanelExpandHost(title, panel, { height: fill.active ? '100%' : height, chrome: <>{subtitle && <p className="text-[12.5px] text-[var(--mute)]">{subtitle}</p>}{chrome}</>, exportMenu: (ref) => <>{actions}<ExportMenu title={title} cardRef={ref} tables={exports.all} /></> })
   const hasPanel = panel !== null && !errorMessage
   useEffect(() => (hasPanel ? registerPageTile({ title, cardRef, tables: exports.all }) : undefined), [hasPanel, title, exports])
 
@@ -86,6 +88,7 @@ export function Tile({ title, subtitle, badges, controls, height, expandable, pa
         <CardTitle className="text-[15.5px]">{title}</CardTitle>
         {badges}
         <span className="flex-1" />
+        {hasPanel && actions}
         {hasPanel && <ExportMenu title={title} cardRef={cardRef} tables={exports.all} />}
         {hasPanel && expandable && <span data-export-skip="">{trigger}</span>}
       </CardHeader>

@@ -36,6 +36,14 @@ describe('shared tab controls', () => {
     expect(tileAccepts(b, 'view', 'lines')).toBe(true)
   })
 
+  it('offers arrangements for Compare as, never a difference (that is the Show control)', () => {
+    const t = (strategies: string[]) =>
+      ({ id: 't', type: 'multi-view', title: 't', views: [{ id: 'v', type: 'treemap', metric: 'm', value: 'trips', compare: strategies }] }) as unknown as PanelConfig
+    const ctx = { compare: true, selection: () => ({}) }
+    expect(sharedControl('strategy', [t(['multi', 'diff'])], ctx)).toBeNull()
+    expect(sharedControl('strategy', [t(['multi', 'switch', 'diff'])], ctx)!.options.map((o) => o.id)).toEqual(['multi', 'switch'])
+  })
+
   it('reads only known kinds from a section', () => {
     expect(sharedKinds(['group', 'nope', 'group', 'view'])).toEqual(['group', 'view'])
     expect(sharedKinds('group')).toBeUndefined()

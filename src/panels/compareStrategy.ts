@@ -110,8 +110,9 @@ export function effectiveStrategy(opts: {
   const { strategies, chosen, scenarioIndependent, compare, display } = opts
   if (!compare || scenarioIndependent || strategies.length === 0) return undefined
   if (display !== 'val' && strategies.includes('diff')) return 'diff'
-  if (chosen && strategies.includes(chosen)) return chosen
-  return strategies[0]
+  // a stored 'diff' is not honoured under Values: the tile no longer offers it
+  if (chosen && chosen !== 'diff' && strategies.includes(chosen)) return chosen
+  return strategies.find((s) => s !== 'diff') ?? strategies[0]
 }
 
 export interface Cell {

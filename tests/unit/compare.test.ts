@@ -78,9 +78,12 @@ describe('effectiveStrategy', () => {
     expect(effectiveStrategy({ ...base, display: 'abs', chosen: 'overlay' })).toBe('diff')
     expect(effectiveStrategy({ ...base, strategies: ['overlay'], display: 'abs' })).toBe('overlay')
   })
-  it('honours the chosen strategy, else the first', () => {
-    expect(effectiveStrategy({ ...base, chosen: 'diff' })).toBe('diff')
+  it('honours the chosen strategy, else the first arrangement', () => {
+    expect(effectiveStrategy({ ...base, strategies: ['multi', 'overlay', 'diff'], chosen: 'overlay' })).toBe('overlay')
     expect(effectiveStrategy({ ...base })).toBe('overlay')
+  })
+  it('never draws a difference under Values from a stored choice (the tile no longer offers it)', () => {
+    expect(effectiveStrategy({ ...base, strategies: ['diff', 'multi'], chosen: 'diff' })).toBe('multi')
   })
 })
 
