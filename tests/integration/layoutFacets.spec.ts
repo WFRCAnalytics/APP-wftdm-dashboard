@@ -34,3 +34,21 @@ test('zooming one sunburst facet zooms them all, and going back resets them all'
   await facets.nth(1).locator('text', { hasText: 'tap to go back' }).dispatchEvent('click')
   await expect(back).toHaveCount(0)
 })
+
+test('the sankey keeps its labels inside the chart, and a node click keeps only its flows', async ({ page }) => {
+  await boot(page)
+  await page.getByTestId('tab-body').getByRole('button', { name: 'Flow' }).first().click()
+  const chart = page.locator('[data-chart-kind="sankey"]')
+  await expect(chart.locator('svg rect').first()).toBeVisible({ timeout: 30_000 })
+  const box = await chart.boundingBox()
+  const over = await chart.locator('svg text').evaluateAll((ts, right) => ts.filter((t) => t.getBoundingClientRect().right > (right as number) + 1).length, box!.x + box!.width)
+  expect(over).toBe(0)
+
+  const links = () => chart.locator('svg path[data-m]').count()
+  const all = await links()
+  await chart.locator('svg rect[data-m="Transit"]').dispatchEvent('click')
+  await expect(chart.locator('svg text', { hasText: 'Only flows through Transit' })).toBeVisible()
+  await expect.poll(links).toBeLessThan(all)
+  await chart.locator('svg text', { hasText: 'Only flows through Transit' }).dispatchEvent('click')
+  await expect.poll(links).toBe(all)
+})
