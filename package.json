@@ -1,6 +1,6 @@
 {
   "name": "wftdm-dashboard",
-  "version": "0.1.0",
+  "version": "0.0.4",
   "private": true,
   "type": "module",
   "description": "WFRC TDM Calibration Dashboard — data/state layer scaffold",

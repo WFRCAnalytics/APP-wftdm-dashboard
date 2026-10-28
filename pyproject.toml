@@ -1,6 +1,6 @@
 [project]
 name = "wftdm-dashboard"
-version = "0.1.0"
+version = "0.0.4"
 description = "WFRC Travel Demand Model Calibration Dashboard"
 readme = "README.md"
 authors = [{ name = "Pukar Bhandari", email = "pukar.bhandari@wfrc.utah.gov" }]
