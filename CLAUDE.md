@@ -86,15 +86,22 @@ story are in `project-docs/IMPLEMENTATION-HISTORY.md` (items 16, 21, 28–31).
 
 ---
 
-## Config file set (three files, no more)
+## Config file set (four files, no more; constitution 2.8.0)
 
 ```
+dashboard-config.yaml site-level deployer settings + the ordered page list (Quarto `_quarto.yml` style); settings cascade site → page → panel
 summarize.yaml        post-processor: sources, mappings, bins, sql_fragments, metrics → Parquet
-dashboard-*.yaml      tab layout and panels — first file is the landing page
+dashboard-*.yaml      tab layout and panels — first page listed is the landing page
 manifest.yaml         per-scenario metadata
 ```
 
-- No `topsheet.yaml`, `dashboard-config.yaml`, or `summarize-preprocessor.yaml`.
+- **`dashboard-config.yaml` is specified (`CONFIGURATION.md`) but NOT built yet.** Until it is, the site settings below still live in
+  `public/dashboard-config/index.json`. New deployer settings go in `dashboard-config.yaml` (or a panel's own keys), never in `index.json`.
+- No `topsheet.yaml` or `summarize-preprocessor.yaml`.
+- **Delivery targets:** a Python library and an R package (constitution Principle X); neither holds app logic.
+- **Undecided (constitution "Open Decisions"):** whether data is pre-processed to Parquet (as now) or read directly from the model's raw
+  output; to be tested on two branches with real WFRC model output. Keep the current design on `main` until then. The observed-data
+  stream is not designed yet.
 - Dashboard YAML configs are authored alongside model scripts in the TDM
   repo, not this one — same authored-vs-published split as `manifest.yaml`.
   A published copy lives in `public/dashboard-config/` here, discovered at
@@ -707,7 +714,7 @@ shipped feature, read `project-docs/IMPLEMENTATION-HISTORY.md`.
 - Use localStorage/sessionStorage
 - Create `topsheet.yaml` — the first dashboard-*.yaml is the landing page
 - Create `summarize-preprocessor.yaml` — join logic lives in sql_fragments
-- Create `dashboard-config.yaml` — does not exist (the `public/dashboard-config/` directory is unrelated)
+- Put new deployer settings in `index.json` — they belong in `dashboard-config.yaml` (the `public/dashboard-config/` directory is a different thing)
 - Create `services/observedRegistry.ts` — replaced by `services/scenarioDiscovery.ts`
 - Recreate the `duckdbLoaderPool.ts` multi-instance pattern — removed, measured slower
 - Add a chart library, a per-chart tooltip element, a native `title`/`tip: true` tooltip, or hard-coded colours in a chart kind

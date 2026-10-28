@@ -21,7 +21,7 @@ where each one's published copy is fetched from.
 **What does not exist:**
 - No `topsheet.yaml` — `dashboard-1-summary.yaml` is the landing page
 - No `summarize-preprocessor.yaml` — join logic lives in `sql_fragments`
-- No `dashboard-config.yaml` — app settings live in code and CLI arguments
+- `dashboard-config.yaml` — the site-level settings file (constitution 2.8.0), specified in `CONFIGURATION.md`, not built yet; until then the site settings live in `index.json`
 
 ---
 
@@ -1791,7 +1791,7 @@ placeholder — write each filter-gated condition on its own line.
 | Expression language | DuckDB SQL | Same in Python + WASM; one query language throughout |
 | Mappings / binning | YAML → SQL CASE expansion | Readable, version-controllable, no pandas |
 | Join logic | `sql_fragments` in summarize.yaml | Replaces separate preprocessor — join + aggregate = one SQL statement |
-| Three config files only | summarize.yaml, dashboard-*.yaml, manifest.yaml | No topsheet.yaml (first dashboard = landing page), no dashboard-config.yaml |
+| Four config files only | dashboard-config.yaml (site), summarize.yaml, dashboard-*.yaml, manifest.yaml | No topsheet.yaml (the first page listed is the landing page); `dashboard-config.yaml` is specified, not built yet |
 | First dashboard = landing page | dashboard-1-summary.yaml | Eliminates redundant topsheet file type |
 | File format | Parquet / GeoParquet throughout | No CSV, GeoJSON, or OMX in browser |
 | Charting | Observable Plot (bars, lines, areas, dots, cells) and D3 (sankey, treemap, sunburst, pie, radar) | the two earlier chart engines were removed in the 063 redesign |
