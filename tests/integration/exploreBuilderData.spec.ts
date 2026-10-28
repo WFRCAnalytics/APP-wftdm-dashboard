@@ -256,12 +256,22 @@ test.describe('DuckDB computes the chart data for every mark', () => {
     const drag = (from: Locator, to: Locator) => from.locator('.spl').dragTo(to)
     // starting a drag must not reflow the shelves (they used to rewrite their button text, so the target moved from under the pointer)
     const boxes = async () => (await Promise.all((await page.locator('.xb .strip .sp').all()).map((e) => e.boundingBox()))).map((b) => `${b!.x},${b!.y},${b!.width},${b!.height}`)
+    await page.waitForTimeout(900) // the landing animation of the last placement
     const still = await boxes()
     const dt = await page.evaluateHandle(() => new DataTransfer())
     await page.locator('.xb .fchip', { hasText: 'trips' }).first().dispatchEvent('dragstart', { dataTransfer: dt })
     await page.waitForTimeout(200)
     expect(await boxes()).toEqual(still)
+    // the shelf under the pointer says what a drop would do; shelves elsewhere stay quiet
+    const x = page.locator('.xb .strip .sp', { hasText: 'X axis' })
+    const y = page.locator('.xb .strip .sp', { hasText: 'Y axis' })
+    await x.dispatchEvent('dragenter', { dataTransfer: dt })
+    await expect(x).toHaveAttribute('data-hint', /^Takes .* only$/)
+    await expect(y).not.toHaveAttribute('data-hint', /.*/)
+    await y.dispatchEvent('dragenter', { dataTransfer: dt })
+    await expect(y).toHaveAttribute('data-hint', 'Already here')
     await page.locator('.xb .fchip', { hasText: 'trips' }).first().dispatchEvent('dragend', { dataTransfer: dt })
+    await expect(page.locator('.xb .strip .sp[data-hint]')).toHaveCount(0)
     // the field list says where a field is used, and the field stays free to use again
     await expect(tag('primary_purpose')).toHaveText('X axis')
     // move: a category from X to Hatch

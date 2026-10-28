@@ -2,7 +2,7 @@
 // the chart card in the middle (a single row of encoding shelves over a chart that fills the remaining height), and the settings
 // rail on the right (Chart, Style, Axes, Filter). Drag a field onto a shelf, or select it and press the shelf (keyboard path).
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowLeftRight, ChevronRight, Download, Maximize2, Minimize2, Plus, X } from 'lucide-react'
+import { ArrowLeftRight, ChevronRight, Download, GripVertical, Maximize2, Minimize2, Plus, X } from 'lucide-react'
 import { buildChart, relabel, type ChartModel, type Col, type DrawnChart } from '@/charts/builder/compile'
 import { chartRole, DATA_TYPES, TYPE_LABEL, typesPresent, type DataType } from '@/charts/builder/columnTypes'
 import { suggest } from '@/charts/builder/rules'
@@ -28,6 +28,28 @@ import { ROW_CAP, useChartData, type ChartData } from '@/explore/useChartData'
 import { useColorScheme } from '@/hooks/useColorScheme'
 import { tooltip } from '@/services/tooltip'
 import { setExplore, updateChart, type ChartTab, type ExploreState } from '@/state/exploreState'
+
+/** What a shelf takes, in the fewest words, for the hint drawn over it while a field is dragged: "numbers", "categories or dates". */
+function takesWord(accepts: string): string {
+  const w = [/[no]/.test(accepts) ? 'categories' : '', accepts.includes('t') ? 'dates' : '', accepts.includes('q') ? 'numbers' : ''].filter(Boolean)
+  return w.join(' or ')
+}
+
+/**
+ * The picture that follows the pointer while a field is dragged: a small pill with the field's type colour and name, instead of the
+ * browser's snapshot of whatever element the drag started on. It sits off screen only long enough for the browser to copy it.
+ */
+function setDragPill(ev: React.DragEvent, name: string, color: string): void {
+  const pill = document.createElement('div')
+  pill.textContent = name
+  pill.style.cssText = `position:fixed;top:-200px;left:-200px;display:flex;align-items:center;gap:8px;padding:6px 14px 6px 10px;border-radius:999px;background:var(--surface,#fff);color:var(--ink,#111);border:1px solid var(--brand,#1b2a47);box-shadow:0 10px 24px -8px rgba(0,0,0,.35);font:500 13px var(--font-body,system-ui,sans-serif);white-space:nowrap`
+  const dot = document.createElement('span')
+  dot.style.cssText = `width:9px;height:9px;border-radius:50%;background:${color};flex:none`
+  pill.prepend(dot)
+  document.body.appendChild(pill)
+  ev.dataTransfer.setDragImage(pill, 14, 16)
+  setTimeout(() => pill.remove(), 0)
+}
 
 /** Marks a drag that started on a placed field (not on the field list): the data is the channel it came from. */
 const FROM_SHELF = 'application/x-explore-channel'
@@ -67,9 +89,9 @@ function FieldsPanel({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: C
     const used = usedOn.get(c.name)
     return (
       <div className="fwrap" key={c.name} draggable={chartable}
-        onDragStart={(e) => { e.dataTransfer.setData('text/plain', c.name); e.dataTransfer.effectAllowed = 'copy'; setExplore({ dragField: c.name }) }}
-        onDragEnd={() => setExplore({ dragField: null })}>
-        <button type="button" className={`fchip ${s.selectedField === c.name ? 'sel' : ''} ${chartable ? '' : 'dim'} ${used ? 'used' : ''}`} aria-pressed={s.selectedField === c.name}
+        onDragStart={(e) => { e.dataTransfer.setData('text/plain', c.name); e.dataTransfer.effectAllowed = 'copy'; setDragPill(e, c.name, colorVar(c.type)); setExplore({ dragField: c.name, dragFrom: null }) }}
+        onDragEnd={() => setExplore({ dragField: null, dragFrom: null })}>
+        <button type="button" className={`fchip ${s.selectedField === c.name ? 'sel' : ''} ${chartable ? '' : 'dim'} ${used ? 'used' : ''} ${s.dragField === c.name && !s.dragFrom ? 'lifted' : ''}`} aria-pressed={s.selectedField === c.name}
           onClick={() => setExplore({ selectedField: s.selectedField === c.name ? null : c.name, notice: '' })}>
           <TypeChip type={c.type} /><span className="fname">{columnLabel(getExploreOptions(), c.name)}</span>{used ? <span className="fused" aria-label={`Used on ${used.join(', ')}`}>{used[0]}{used.length > 1 ? ` +${used.length - 1}` : ''}</span> : <span className="fty">{getExploreOptions().columns[c.name]?.unit ?? TYPE_LABEL[c.type]}</span>}
         </button>
@@ -101,10 +123,11 @@ function FieldsPanel({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: C
     ev.preventDefault()
     const name = tab.spec.enc[from]?.f
     updateChart(tab.id, (t) => { const enc = { ...t.spec.enc }; delete enc[from]; return { ...t, spec: { ...t.spec, enc } } })
-    setExplore({ selectedField: null, dragField: null, notice: name ? `${name} removed from ${channelLabel(tab.spec.mark, from)}.` : '', noticeBad: false })
+    setExplore({ selectedField: null, dragField: null, dragFrom: null, notice: name ? `${name} removed from ${channelLabel(tab.spec.mark, from)}.` : '', noticeBad: false })
   }
   return (
-    <aside className="tile col" onDragOver={(ev) => { if (ev.dataTransfer.types.includes(FROM_SHELF)) ev.preventDefault() }} onDrop={takeOff}>
+    <aside className={`tile col ${s.dragFrom ? 'dz' : ''}`} data-drop={s.dragFrom ? 'Drop here to remove it from the chart' : undefined}
+      onDragOver={(ev) => { if (ev.dataTransfer.types.includes(FROM_SHELF)) { ev.preventDefault(); ev.dataTransfer.dropEffect = 'move' } }} onDrop={takeOff}>
       <div className="th"><div><h2 className="tt">Fields</h2><p className="ts">{cols.length} columns in {data.relationName || 'this table'}.</p></div></div>
       <div className="psearch">
         <XSelect className="sel" style={{ width: '100%' }} aria-label="Data source" value={tab.source} onChange={(e) => updateChart(tab.id, (t) => ({ ...t, source: e.target.value, spec: { ...t.spec, enc: {}, filter: { f: '', v: '' } } }))}>
@@ -199,6 +222,14 @@ function ChartCard({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: Cha
   const [theme, setTheme] = useState<ChartTheme>()
   const [hot, setHot] = useState<string | null>(null)
   const [exportOpen, setExportOpen] = useState(false)
+  // the shelf the drag is over, and the shelf a field has just landed on (for its small settle animation)
+  const [over, setOver] = useState<Channel | null>(null)
+  const [landed, setLanded] = useState<Channel | null>(null)
+  useEffect(() => {
+    if (!landed) return
+    const t = setTimeout(() => setLanded(null), 700)
+    return () => clearTimeout(t)
+  }, [landed])
   // the plot panel can open in a wide dialog, like the data table; the chart is drawn in one place at a time
   const [big, setBig] = useState(false)
   const bodyRef = useRef<HTMLDivElement>(null)
@@ -229,7 +260,7 @@ function ChartCard({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: Cha
     const c = data.cols.find((x) => x.name === field)
     if (!c) return
     const r = assignField(spec, ch, field, c.type, chartRole(c.type))
-    if (r.ok) { setSpec(() => r.spec); setExplore({ selectedField: null, dragField: null, notice: `${field} placed on ${channelLabel(spec.mark, ch)}.`, noticeBad: false }) }
+    if (r.ok) { setSpec(() => r.spec); setLanded(ch); setExplore({ selectedField: null, dragField: null, dragFrom: null, notice: `${field} placed on ${channelLabel(spec.mark, ch)}.`, noticeBad: false }) }
     else setExplore({ notice: r.reason, noticeBad: true })
   }
   // Moves the field on one shelf to another. A shelf that already holds a field swaps with it when the field fits where the first one
@@ -259,7 +290,8 @@ function ChartCard({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: Cha
       else note = `${src.f} moved to ${channelLabel(spec.mark, to)}. ${there.f} was taken off it.`
     }
     setSpec((x) => ({ ...x, enc }))
-    setExplore({ selectedField: null, dragField: null, notice: note, noticeBad: false })
+    setLanded(to)
+    setExplore({ selectedField: null, dragField: null, dragFrom: null, notice: note, noticeBad: false })
   }
   const swap = () => setSpec((x) => { const e = { ...x.enc }; const a = e.x, b = e.y; delete e.x; delete e.y; if (a) e.y = a; if (b) e.x = b; return { ...x, enc: e } })
   const txt = (k: TextKey) => spec.text[k]
@@ -314,12 +346,26 @@ function ChartCard({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: Cha
           const ok = dragging ? !!dragRole && slot.accepts.includes(dragRole) : false
           const col = e ? data.cols.find((c) => c.name === e.f) : undefined
           const label = adding ? chainOf(spec.mark, slot.ch)!.add : channelLabel(spec.mark, slot.ch)
+          // while a field is dragged: the shelf it came from, and (for the one under the pointer) what dropping would do
+          const fromCh = (s.dragFrom as Channel | null) ?? null
+          const isSource = !!s.dragField && fromCh === slot.ch
+          const hovered = !!s.dragField && over === slot.ch && !isSource
+          let hint: string | undefined
+          if (hovered) {
+            const fromSlot = fromCh ? SLOTS[spec.mark].find((sl) => sl.ch === fromCh) : undefined
+            const swaps = !!(e && fromSlot && roleOf(e.f) && fromSlot.accepts.includes(roleOf(e.f)))
+            hint = !ok ? `Takes ${takesWord(slot.accepts)} only` : e ? (e.f === s.dragField ? 'Already here' : swaps ? `Swap with ${e.f}` : `Replace ${e.f}`) : fromCh ? 'Move here' : `Place ${s.dragField}`
+          }
           return (
-            <div key={slot.ch} className={`sp ${e ? 'filled' : ''} ${adding ? 'add' : ''} ${dragging ? (ok ? 'ok' : 'no') : ''}`} draggable={!!e}
-              onDragStart={e ? (ev) => { ev.dataTransfer.setData(FROM_SHELF, slot.ch); ev.dataTransfer.setData('text/plain', e.f); ev.dataTransfer.effectAllowed = 'move'; setExplore({ dragField: e.f }) } : undefined}
-              onDragEnd={() => setExplore({ dragField: null })}
-              onDragOver={(ev) => ev.preventDefault()}
-              onDrop={(ev) => { ev.preventDefault(); const from = ev.dataTransfer.getData(FROM_SHELF) as Channel; if (from) { move(from, slot.ch); return } const f = ev.dataTransfer.getData('text/plain') || dragging; if (f) assign(slot.ch, f) }}>
+            <div key={slot.ch} className={`sp ${e ? 'filled' : ''} ${adding ? 'add' : ''} ${dragging && !isSource ? (ok ? 'ok' : 'no') : ''} ${hovered ? 'over' : ''} ${isSource ? 'source' : ''} ${landed === slot.ch ? 'landed' : ''}`} draggable={!!e}
+              data-hint={hint}
+              onDragStart={e ? (ev) => { ev.dataTransfer.setData(FROM_SHELF, slot.ch); ev.dataTransfer.setData('text/plain', e.f); ev.dataTransfer.effectAllowed = 'move'; setDragPill(ev, e.f, col ? colorVar(col.type) : 'var(--mute)'); setExplore({ dragField: e.f, dragFrom: slot.ch }) } : undefined}
+              onDragEnd={() => { setOver(null); setExplore({ dragField: null, dragFrom: null }) }}
+              onDragEnter={() => setOver(slot.ch)}
+              onDragLeave={(ev) => { if (!ev.currentTarget.contains(ev.relatedTarget as Node | null)) setOver((o) => (o === slot.ch ? null : o)) }}
+              onDragOver={(ev) => { ev.preventDefault(); ev.dataTransfer.dropEffect = !s.dragField || ok ? (fromCh ? 'move' : 'copy') : 'none' }}
+              onDrop={(ev) => { ev.preventDefault(); setOver(null); const from = ev.dataTransfer.getData(FROM_SHELF) as Channel; if (from) { move(from, slot.ch); return } const f = ev.dataTransfer.getData('text/plain') || dragging; if (f) assign(slot.ch, f) }}>
+              {e && <GripVertical size={14} className="grip" aria-hidden="true" />}
               <span className="spl">{adding && <Plus size={12} aria-hidden="true" />}{label}{slot.req && <><i className="rq" aria-hidden="true" /><span className="sr">required</span></>}</span>
               {e && col && (
                 <>

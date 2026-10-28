@@ -56,6 +56,8 @@ export interface ExploreState {
   selectedField: string | null
   /** The field being dragged right now. Kept apart from selectedField, which makes the builder profile the column (database queries). */
   dragField: string | null
+  /** The shelf a placed field is being dragged from (null when it comes from the field list). */
+  dragFrom: string | null
   fieldQuery: string
   fieldType: DataType | 'all'
   fieldShow: number
@@ -71,7 +73,7 @@ export interface ExploreState {
 const initial = (): ExploreState => ({
   scenarios: [], table: '', model: emptyModel(), detached: false, sql: '', queryTab: 'builder', openStep: 'table', page: 0, pageSize: 12,
   typeOverride: {}, profileCol: null, profileQuery: '', profileType: 'all', profileShow: 40, mine: [], nextId: 1, runNonce: 0,
-  charts: [], activeTab: 'data', railTab: 'chart', selectedField: null, dragField: null, fieldQuery: '', fieldType: 'all', fieldShow: 60, fieldOpen: {}, notice: '', noticeBad: false, undoDepth: 0, redoDepth: 0,
+  charts: [], activeTab: 'data', railTab: 'chart', selectedField: null, dragField: null, dragFrom: null, fieldQuery: '', fieldType: 'all', fieldShow: 60, fieldOpen: {}, notice: '', noticeBad: false, undoDepth: 0, redoDepth: 0,
 })
 
 let state: ExploreState = initial()
