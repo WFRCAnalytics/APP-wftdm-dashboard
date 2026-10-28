@@ -92,7 +92,7 @@ const kind: ChartKind = {
           .append('circle')
           .attr('cx', px)
           .attr('cy', py)
-          .attr('r', multi ? 4 : 5)
+          .attr('r', multi ? 3 + (series.length - 1 - si) * 2.5 : 5)
           .attr('fill', multi ? colors[si] : statusColor[status(e)])
           .attr('stroke', t.surface)
           .attr('stroke-width', 2)

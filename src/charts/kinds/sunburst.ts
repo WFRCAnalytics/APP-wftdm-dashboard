@@ -48,7 +48,10 @@ const kind: ChartKind = {
     const r0 = R * 0.34
 
     const st = env.state as { scope?: string | null; prev?: Map<string, Geo> }
-    if (st.scope && !spec.groups.some((g) => g.name === st.scope)) st.scope = null
+    // the zoom is shared by every facet of the tile: zooming one zooms them all
+    const zoomCh = env.sync<string | null>('scope')
+    const known = (name: string | null | undefined) => (name && spec.groups.some((g) => g.name === name) ? name : null)
+    st.scope = known(zoomCh.get())
     // a redraw (resize, theme, data) must not animate: only a click does
     st.prev = undefined
 
@@ -129,9 +132,7 @@ const kind: ChartKind = {
 
       paths
         .on('click', (_e: MouseEvent, d) => {
-          if (!d.node.children) return
-          st.scope = d.node.data.name
-          render(true)
+          if (d.node.children) zoomCh.set(d.node.data.name)
         })
         .on('mousemove', (e: MouseEvent, d) => {
           const v = d.node.value ?? 0
@@ -176,9 +177,7 @@ const kind: ChartKind = {
 
       const centre = gg.append('g').style('cursor', scope ? 'pointer' : 'default')
       centre.on('click', () => {
-        if (!st.scope) return
-        st.scope = null
-        render(true)
+        if (st.scope) zoomCh.set(null)
       })
       centre.append('circle').attr('r', r0 - 6).attr('fill', 'transparent')
       centre
@@ -200,8 +199,15 @@ const kind: ChartKind = {
       if (spec.isMode) wireModeHover(gg.node() as Element)
     }
     render(false)
+    const unsubscribe = zoomCh.subscribe((v) => {
+      const next = known(v)
+      if (next === (st.scope ?? null)) return
+      st.scope = next
+      render(true)
+    })
 
     return {
+      dispose: unsubscribe,
       legend: model.legend,
       label: `Sunburst of ${spec.unit} for ${env.focus?.label ?? env.scenarios[0]?.label ?? ''}`,
     }

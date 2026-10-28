@@ -13,7 +13,7 @@ import { useFill, withFillHeight } from '@/layout/fill'
 import type { CompareStrategy, MultiViewPanelConfig } from '@/layout/types'
 import { PanelLoadingState } from '@/panels/PanelLoadingState'
 import { registry } from '@/panels/registry'
-import { effectiveStrategy } from '@/panels/compareStrategy'
+import { effectiveStrategy, offersScenarioPick } from '@/panels/compareStrategy'
 import { STRATEGY_LABEL, isBaseYearOnly, isCalibrationFamily, resolveMultiView, validateMultiView, withRowHeight } from '@/panels/multiView'
 
 // The tile for `type: multi-view`: the chrome (badges, group-by, compare-as, view switcher) around MultiViewPanel,
@@ -115,10 +115,11 @@ export function MultiViewTile({ config: rawConfig, tileKey }: { config: MultiVie
       />,
     )
   }
-  if (strategy === 'switch' || strategy === 'swipe') {
-    const runs = inputs.active
-    const value = tile.scenario && runs.includes(tile.scenario) ? tile.scenario : (inputs.focusRun ?? runs[0] ?? '')
-    controls.push(
+  if (ctx.compare && offersScenarioPick(resolved.panel, strategy, ctx.display)) {
+    // a difference is drawn against the reference, so the reference is not offered as the scenario shown
+    const runs = strategy === 'diff' ? inputs.active.filter((r) => r !== inputs.referenceRun) : inputs.active
+    const value = tile.scenario && runs.includes(tile.scenario) ? tile.scenario : runs.includes(inputs.focusRun ?? '') ? (inputs.focusRun ?? '') : (runs[0] ?? '')
+    if (runs.length > 1) controls.push(
       <PillSelect
         key="scenario"
         compact

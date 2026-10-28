@@ -9,6 +9,22 @@ import { diffExpression } from './compareMath.ts'
  * the `scenario` column), so they are only ever drawn pinned (file 03 section 4.2). */
 export const UNION_HAZARD_TYPES: ReadonlySet<string> = new Set(['treemap', 'sunburst', 'sankey', 'pie'])
 
+/** Catalogue charts that draw one scenario at a time even under `overlay`: the tile offers a Scenario dropdown for them. */
+export const SINGLE_SCENARIO_KINDS: ReadonlySet<string> = new Set(['time-heat', 'ridgeline', 'speed-heat'])
+
+const isSingleKind = (panel: PanelConfig): boolean => panel.type === 'chart' && SINGLE_SCENARIO_KINDS.has(String((panel as { kind?: string }).kind))
+
+/**
+ * True when the view shows one scenario and the viewer can choose which: a switch or swipe, a difference chart built from a
+ * plain panel (the reference against the chosen scenario), or a one-scenario chart in Values mode (Change keeps comparing
+ * the focus with the reference, so the page's focus picker governs it).
+ */
+export function offersScenarioPick(panel: PanelConfig, strategy: CompareStrategy | undefined, display: DisplayMode): boolean {
+  if (strategy === 'switch' || strategy === 'swipe') return true
+  if (strategy === 'diff') return panel.type !== 'chart'
+  return strategy === 'overlay' && isSingleKind(panel) && display === 'val'
+}
+
 /** Side-by-side cells per page: the reference plus three more. */
 export const CELLS_PER_PAGE = 4
 
@@ -201,6 +217,10 @@ export function planCompare(
         console.warn(`compareStrategy: "${panel.type}" cannot overlay scenarios; showing the focus scenario`)
         return single(panel, focus, true, true)
       }
+      if (isSingleKind(panel) && mode === 'val') {
+        const run = tile.scenario && inputs.active.includes(tile.scenario) ? tile.scenario : focus
+        return single(panel, run, false, true)
+      }
       return mode === 'val' ? { kind: 'single', config: panel } : { kind: 'single', config: panel, note: 'Shows values: this view cannot show differences' }
     }
     case 'switch':
@@ -227,7 +247,7 @@ export function planCompare(
     case 'diff': {
       // a catalogue chart draws its own differences from the focus, the reference and the Show mode
       if (panel.type === 'chart') return { kind: 'single', config: panel }
-      const shown = focus
+      const shown = tile.scenario && inputs.active.includes(tile.scenario) && tile.scenario !== inputs.referenceRun ? tile.scenario : focus
       const ref = inputs.referenceKind === 'self-base-year' ? inputs.selfBaseRun : inputs.referenceRun
       if (!shown) return { kind: 'empty', message: 'The focus scenario has no run for this year.' }
       if (inputs.referenceKind === 'self-base-year' && !ref) return { kind: 'empty', message: 'No base-year run for this scenario.' }

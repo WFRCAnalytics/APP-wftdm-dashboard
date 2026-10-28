@@ -1,6 +1,7 @@
 // The contract between the `chart` panel (panels/ChartPanel.tsx) and the drawing modules in src/charts/kinds/*
 // (project-docs/redesign/04-chart-catalogue.md). A kind never touches stores or DuckDB: the panel resolves which
 // runs to show, loads their tables, builds a ChartEnv and calls `draw`.
+import type { FacetChannel } from '@/charts/lib/facetSync'
 import type { ChartPanelConfig } from '@/layout/types'
 import type { ColorTokens } from '@/panels/chartColor'
 import type { DisplayMode } from '@/state/compareState'
@@ -99,6 +100,8 @@ export interface ChartEnv extends ChartPlan {
   /** Per-panel scratch state that survives redraws (sort order, zoom, selection). Call redraw() after changing it. */
   state: Record<string, unknown>
   redraw(): void
+  /** A channel shared by every facet of this tile's chart, for a zoom or selection that should move them all together. */
+  sync<T>(name: string): FacetChannel<T>
   setYear(year: number): void
   /** Focus a scenario group (picker semantics), e.g. a click on a legend or row. */
   focusScenarioGroup(scenarioGroup: string): void

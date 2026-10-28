@@ -55,7 +55,10 @@ const kind: ChartKind = {
     const h = env.height
 
     const st = env.state as { scope?: string | null; prev?: Map<string, Box> }
-    if (st.scope && !spec.groups.some((g) => g.name === st.scope)) st.scope = null
+    // the zoom is shared by every facet of the tile: zooming one zooms them all
+    const zoomCh = env.sync<string | null>('scope')
+    const known = (name: string | null | undefined) => (name && spec.groups.some((g) => g.name === name) ? name : null)
+    st.scope = known(zoomCh.get())
     // a redraw (resize, theme, data) must not animate: only a click does
     st.prev = undefined
 
@@ -92,10 +95,7 @@ const kind: ChartKind = {
       st.prev = new Map(leaves.map((d) => [keyOf(d), { x0: d.x0, y0: d.y0, x1: d.x1, y1: d.y1 }]))
 
       body.selectAll('*').remove()
-      const zoomTo = (name: string | null) => {
-        st.scope = name
-        render(true)
-      }
+      const zoomTo = (name: string | null) => zoomCh.set(name)
 
       const header = body.append('g')
       if (scope === null) {
@@ -208,9 +208,16 @@ const kind: ChartKind = {
       if (spec.isMode) wireModeHover(el)
     }
     render(false)
+    const unsubscribe = zoomCh.subscribe((v) => {
+      const next = known(v)
+      if (next === (st.scope ?? null)) return
+      st.scope = next
+      render(true)
+    })
 
     const unitNote = ref ? `, coloured by change from ${ref.label}` : ''
     return {
+      dispose: unsubscribe,
       legend: model.legend,
       label: `Treemap of ${spec.unit} for ${env.focus?.label ?? env.scenarios[0]?.label ?? ''}${unitNote}`,
     }

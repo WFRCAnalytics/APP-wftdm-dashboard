@@ -1,14 +1,16 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { ChartNoAxesColumn } from 'lucide-react'
 
 import { ChartLegend } from '@/charts/ChartLegend'
 import { loadChartData } from '@/charts/dataCache'
+import { facetChannel } from '@/charts/lib/facetSync'
 import { loadKind } from '@/charts/kinds'
 import { buildChartPlan, runsToLoad } from '@/charts/plan'
 import { readChartTheme } from '@/charts/theme'
 import type { ChartEnv, ChartKind, ChartPlan, LegendSpec } from '@/charts/types'
 import { useCompareInputs } from '@/hooks/useCompareInputs'
+import { useTileKey } from '@/hooks/useTileState'
 import { useColorScheme } from '@/hooks/useColorScheme'
 import { useScenarioDisplay } from '@/hooks/useScenarioDisplay'
 import { useViewContext } from '@/hooks/useViewContext'
@@ -42,6 +44,7 @@ export function ChartPanel({ config }: PanelProps<ChartPanelConfig>) {
   const display = useScenarioDisplay()
   const colorScheme = useColorScheme()
   const legendSlot = useTileLegendSlot()
+  const tileKey = useTileKey()
 
   const containerRef = useRef<HTMLDivElement>(null)
   const idRef = useRef(Symbol('chart'))
@@ -161,6 +164,7 @@ export function ChartPanel({ config }: PanelProps<ChartPanelConfig>) {
         theme: readChartTheme(el),
         state: stateRef.current,
         redraw: () => setTick((t) => t + 1),
+        sync: (name) => facetChannel(`${tileKey || idRef.current.description}|${config.kind}|${config.group ?? ''}|${config.variant ?? ''}|${name}`),
         setYear: view.setYear,
         focusScenarioGroup: (alt) => view.pickScenario(alt, false),
         toggleCompare: (alt) => view.pickScenario(alt, true),
@@ -204,13 +208,20 @@ export function ChartPanel({ config }: PanelProps<ChartPanelConfig>) {
     return m
   }, [plan])
 
-  if (legendSlot && !legendOwners.has(legendSlot)) legendOwners.set(legendSlot, idRef.current)
-  const ownsLegend = !legendSlot || legendOwners.get(legendSlot) === idRef.current
-  useEffect(() => {
+  // Claimed in an effect, never in render: a render React throws away (Suspense, a remount) would leave a stale owner
+  // behind and the real chart would never get the legend row.
+  const [ownsLegend, setOwnsLegend] = useState(!legendSlot)
+  useLayoutEffect(() => {
     const slot = legendSlot
     const id = idRef.current
+    if (!slot) {
+      setOwnsLegend(true)
+      return
+    }
+    if (!legendOwners.has(slot)) legendOwners.set(slot, id)
+    setOwnsLegend(legendOwners.get(slot) === id)
     return () => {
-      if (slot && legendOwners.get(slot) === id) legendOwners.delete(slot)
+      if (legendOwners.get(slot) === id) legendOwners.delete(slot)
     }
   }, [legendSlot])
 

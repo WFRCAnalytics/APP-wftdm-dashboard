@@ -75,7 +75,7 @@ const kind: ChartKind = {
         .attr('stroke-linejoin', 'round')
       x.v.forEach((v, i) => {
         const [px, py] = pt(i, v)
-        svg.append('circle').attr('cx', px).attr('cy', py).attr('r', 4).attr('fill', colors[si]).attr('stroke', t.surface).attr('stroke-width', 2).style('pointer-events', 'none')
+        svg.append('circle').attr('cx', px).attr('cy', py).attr('r', series.length > 1 ? 3 + (series.length - 1 - si) * 2.5 : 4).attr('fill', colors[si]).attr('stroke', t.surface).attr('stroke-width', 2).style('pointer-events', 'none')
       })
     })
 
