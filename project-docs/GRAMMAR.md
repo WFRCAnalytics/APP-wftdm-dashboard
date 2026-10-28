@@ -21,7 +21,7 @@ where each one's published copy is fetched from.
 **What does not exist:**
 - No `topsheet.yaml` — `dashboard-1-summary.yaml` is the landing page
 - No `summarize-preprocessor.yaml` — join logic lives in `sql_fragments`
-- `dashboard-config.yaml` — the site-level settings file (constitution 2.8.0), specified in `CONFIGURATION.md`, not built yet; until then the site settings live in `index.json`
+- `dashboard-config.yaml` — the site-level settings file (constitution 2.8.0), specified in `project-docs/CONFIGURATION.md`, not built yet; until then the site settings live in `index.json`
 
 ---
 

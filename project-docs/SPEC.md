@@ -14,7 +14,7 @@ manifest.yaml         per-scenario metadata — read by browser at folder load
 
 - No `topsheet.yaml` — `dashboard-1-summary.yaml` serves as the landing page
 - No `summarize-preprocessor.yaml` — join logic lives in `sql_fragments`
-- `dashboard-config.yaml` — the site-level settings file (constitution 2.8.0); specified in `CONFIGURATION.md`, not built yet
+- `dashboard-config.yaml` — the site-level settings file (constitution 2.8.0); specified in `project-docs/CONFIGURATION.md`, not built yet
 - Dashboard YAML configs (`dashboard-*.yaml`, `summarize.yaml`) are authored alongside model scripts in the TDM repo (not in the dashboard repo) — same authored-vs-published split as `manifest.yaml`. A published copy of the `dashboard-*.yaml` files (WFRC's default templates ship seven) is expected in `public/dashboard-config/` in the dashboard repo, discovered at runtime via `public/dashboard-config/index.json` — the same discovery pattern as `public/scenarios/index.json` — and fetched by the browser at startup; `summarize.yaml` is post-processor-only and is never published or read by the browser.
 - `public/dashboard-config/index.json` and `public/scenarios/index.json` are discovery metadata, not one of the config file types above — same category as each other, not a new type
 - Post-processor writes Parquet to `Scenarios/{run-name}/summary/` in the TDM repo

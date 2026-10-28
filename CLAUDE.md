@@ -95,7 +95,7 @@ dashboard-*.yaml      tab layout and panels — first page listed is the landing
 manifest.yaml         per-scenario metadata
 ```
 
-- **`dashboard-config.yaml` is specified (`CONFIGURATION.md`) but NOT built yet.** Until it is, the site settings below still live in
+- **`dashboard-config.yaml` is specified (`project-docs/CONFIGURATION.md`) but NOT built yet.** Until it is, the site settings below still live in
   `public/dashboard-config/index.json`. New deployer settings go in `dashboard-config.yaml` (or a panel's own keys), never in `index.json`.
 - No `topsheet.yaml` or `summarize-preprocessor.yaml`.
 - **Delivery targets:** a Python library and an R package (constitution Principle X); neither holds app logic.

@@ -1,5 +1,15 @@
 <!--
 Sync Impact Report
+- Version change: 2.8.0 → 2.8.1
+- Modified principles: none
+- Modified sections: references to `CONFIGURATION.md` (Principle VII and X
+  status lines, the 2.8.0 report, Open Decisions) now read
+  `project-docs/CONFIGURATION.md`, where the file was moved.
+- PATCH: a path correction, no change in meaning.
+-->
+
+<!--
+Sync Impact Report (2.8.0, superseded above)
 - Version change: 2.7.0 → 2.8.0
 - Modified principles:
   - IV (YAML Parsed at Runtime): adds `dashboard-config.yaml` to the list
@@ -37,11 +47,11 @@ Sync Impact Report
 - Follow-up: `CLAUDE.md`, `project-docs/GRAMMAR.md` and
   `project-docs/SPEC.md` repeat the old "exactly three" rule and the ban on
   `dashboard-config.yaml`; they are corrected in the same change. The file
-  itself is specified in `CONFIGURATION.md` and is NOT built yet:
+  itself is specified in `project-docs/CONFIGURATION.md` and is NOT built yet:
   `index.json` still carries the site settings until the migration there is
   done.
 - Deferred TODOs: build `dashboard-config.yaml` and migrate the
-  `index.json` settings (CONFIGURATION.md, phases A to B); decide the data
+  `index.json` settings (project-docs/CONFIGURATION.md, phases A to B); decide the data
   path after the two-branch test; decide how observed data fits; fix the R
   package's location when it is created.
 -->
@@ -611,7 +621,7 @@ practice; naming it, putting it in YAML with the other three, and giving it a
 cascade is more honest than leaving it hidden, and a single YAML file is easy
 for a Python or R package to write.
 **Status**: this describes the target. `dashboard-config.yaml` is specified in
-`CONFIGURATION.md` and is not built yet; until it is, `index.json` still carries
+`project-docs/CONFIGURATION.md` and is not built yet; until it is, `index.json` still carries
 the settings it has today.
 
 ### VIII. Reuse Proven Reference Implementations
@@ -674,7 +684,7 @@ build-time base path in the shipped artifact), and configuration MUST be plain
 YAML and JSON that either language can write. The R package does not exist yet;
 its location is fixed when it is created, and it MUST NOT live under `src/`.
 Today's build still sets a base path (`vite.config.ts`), which breaks the URL
-rule; removing it is `CONFIGURATION.md` phase A.
+rule; removing it is `project-docs/CONFIGURATION.md` phase A.
 **Rationale**: the dashboard's users run their models from R as well as Python,
 and one bundle with one configuration format avoids two diverging apps.
 
@@ -781,4 +791,4 @@ forbidden config files, no Mapbox/Webpack/Web Storage usage. Any exception
 requires a
 prior amendment to this document, not a one-off waiver in review.
 
-**Version**: 2.8.0 | **Ratified**: 2026-08-19 | **Last Amended**: 2026-10-28
+**Version**: 2.8.1 | **Ratified**: 2026-08-19 | **Last Amended**: 2026-10-28
