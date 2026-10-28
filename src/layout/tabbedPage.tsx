@@ -142,18 +142,18 @@ function SectionBody({ page, section, rows }: { page: string; section: TabSectio
     const chosen = tiles.find((t) => t.id === pickedFor(page, section, tiles))
     if (!chosen) return null
     return (
-      <div className="flex min-h-[480px] flex-1 flex-col" data-testid="tab-body">
+      <div className="flex min-h-[240px] flex-1 flex-col" data-testid="tab-body">
         <Cell key={chosen.id} page={page} panel={chosen.panel} id={chosen.id} />
       </div>
     )
   }
   return (
-    <div className="flex min-h-[480px] flex-1 flex-col gap-[14px]" data-testid="tab-body">
+    <div className="flex min-h-[240px] flex-1 flex-col gap-[14px]" data-testid="tab-body">
       {section.rows.map((name) => (
         <div
           key={name}
           data-testid={name}
-          className="grid min-h-[300px] flex-1 gap-[14px]"
+          className="grid min-h-[200px] flex-1 gap-[14px]"
           style={{ gridTemplateColumns: (rows.get(name) ?? []).map((p) => `${(p.width ?? 1) * 100}fr`).join(' ') }}
         >
           {(rows.get(name) ?? []).map((panel, index) => (
