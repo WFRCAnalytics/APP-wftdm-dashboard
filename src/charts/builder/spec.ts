@@ -4,9 +4,11 @@ import { roleAccepts, type DataType, type Role } from '@/charts/builder/columnTy
 
 export const MARKS = ['bar', 'line', 'area', 'scatter', 'heatmap', 'histogram', 'box', 'pie', 'tick', 'text', 'waffle', 'density', 'rule', 'treemap', 'radar', 'sunburst', 'sankey', 'chord', 'trail'] as const
 /** Marks with no axes, so panning and zooming the drawing cannot distort a scale: they get drag to pan, wheel to zoom, double click to reset. */
-export const ZOOMABLE_MARKS: readonly string[] = ['pie', 'waffle', 'treemap', 'radar', 'sunburst', 'sankey', 'chord']
+export const ZOOMABLE_MARKS: readonly string[] = ['pie', 'waffle', 'radar', 'sankey', 'chord']
 export type Mark = (typeof MARKS)[number]
-export type Channel = 'x' | 'y' | 'color' | 'pattern' | 'dash' | 'shape' | 'size' | 'opacity' | 'detail' | 'label' | 'order' | 'column' | 'row'
+export type Channel = 'x' | 'y' | 'color' | 'pattern' | 'dash' | 'shape' | 'size' | 'opacity' | 'detail' | 'ring3' | 'ring4' | 'ring5' | 'label' | 'order' | 'column' | 'row'
+/** The extra levels of a treemap or sunburst, after colour (level 1) and detail (level 2): each is one more nesting level. */
+export const RING_CHANNELS: Channel[] = ['ring3', 'ring4', 'ring5']
 export type Agg = 'sum' | 'mean' | 'median' | 'min' | 'max' | 'count'
 export const AGGS: Agg[] = ['sum', 'mean', 'median', 'min', 'max', 'count']
 export type Stack = 'group' | 'stack' | 'normalize'
@@ -55,9 +57,9 @@ export const SLOTS: Record<Mark, Slot[]> = {
   waffle: S([['color', 1, 'no'], ['size', 1, 'q'], ['pattern', 0, 'no'], ['column', 0, 'no'], ['row', 0, 'no']]),
   density: S([['x', 1, 'q'], ['color', 0, 'no'], ['pattern', 0, 'no'], ['column', 0, 'no'], ['row', 0, 'no']]),
   rule: S([['x', 1, 'q'], ['y', 1, 'no'], ['color', 0, 'no'], ['column', 0, 'no'], ['row', 0, 'no']]),
-  treemap: S([['color', 1, 'no'], ['size', 1, 'q'], ['pattern', 0, 'no'], ['column', 0, 'no'], ['row', 0, 'no']]),
+  treemap: S([['color', 1, 'no'], ['detail', 0, 'no'], ['ring3', 0, 'no'], ['ring4', 0, 'no'], ['ring5', 0, 'no'], ['size', 1, 'q'], ['pattern', 0, 'no'], ['column', 0, 'no'], ['row', 0, 'no']]),
   radar: S([['x', 1, 'no'], ['y', 1, 'q'], ['color', 0, 'no'], ['column', 0, 'no'], ['row', 0, 'no']]),
-  sunburst: S([['color', 1, 'no'], ['detail', 0, 'no'], ['size', 1, 'q'], ['column', 0, 'no'], ['row', 0, 'no']]),
+  sunburst: S([['color', 1, 'no'], ['detail', 0, 'no'], ['ring3', 0, 'no'], ['ring4', 0, 'no'], ['ring5', 0, 'no'], ['size', 1, 'q'], ['column', 0, 'no'], ['row', 0, 'no']]),
   sankey: S([['x', 1, 'no'], ['y', 1, 'no'], ['size', 1, 'q'], ['column', 0, 'no'], ['row', 0, 'no']]),
   chord: S([['x', 1, 'no'], ['y', 1, 'no'], ['size', 1, 'q'], ['column', 0, 'no'], ['row', 0, 'no']]),
   trail: S([['x', 1, 'q'], ['y', 1, 'q'], ['order', 1, 'qot'], ['color', 0, 'no'], ['column', 0, 'no'], ['row', 0, 'no']]),
@@ -77,8 +79,8 @@ export const acceptsShort = (accepts: string): string => accepts.length >= 4 ? '
 export function channelLabel(mark: Mark, ch: Channel): string {
   if (mark === 'pie' && ch === 'size') return 'Slice size'
   if (mark === 'waffle' && ch === 'size') return 'Share of squares'
-  if (mark === 'treemap' && ch === 'size') return 'Tile size'
-  if (mark === 'sunburst') { if (ch === 'color') return 'Inner ring'; if (ch === 'detail') return 'Outer ring'; if (ch === 'size') return 'Slice size' }
+  if (mark === 'treemap') { if (ch === 'color') return 'Groups'; if (ch === 'detail') return 'Tiles in a group'; if (ch === 'ring3') return 'Third level'; if (ch === 'ring4') return 'Fourth level'; if (ch === 'ring5') return 'Fifth level'; if (ch === 'size') return 'Tile size' }
+  if (mark === 'sunburst') { if (ch === 'color') return 'Inner ring'; if (ch === 'detail') return 'Second ring'; if (ch === 'ring3') return 'Third ring'; if (ch === 'ring4') return 'Fourth ring'; if (ch === 'ring5') return 'Fifth ring'; if (ch === 'size') return 'Slice size' }
   if ((mark === 'sankey' || mark === 'chord') && ch === 'x') return 'From'
   if ((mark === 'sankey' || mark === 'chord') && ch === 'y') return 'To'
   if ((mark === 'sankey' || mark === 'chord') && ch === 'size') return 'Flow'
@@ -87,7 +89,7 @@ export function channelLabel(mark: Mark, ch: Channel): string {
   if (mark === 'text' && ch === 'label') return 'Cell text'
   if (mark === 'heatmap' && ch === 'color') return 'Cell value'
   if (mark === 'histogram' && ch === 'x') return 'Values to bin'
-  return { x: 'X axis', y: 'Y axis', color: 'Colour', pattern: 'Hatch', dash: 'Dash', shape: 'Shape', size: 'Size', opacity: 'Opacity', detail: 'Detail', label: 'Label', order: 'Order', column: 'Columns', row: 'Rows' }[ch]
+  return { x: 'X axis', y: 'Y axis', color: 'Colour', pattern: 'Hatch', dash: 'Dash', shape: 'Shape', size: 'Size', opacity: 'Opacity', detail: 'Detail', ring3: 'Level 3', ring4: 'Level 4', ring5: 'Level 5', label: 'Label', order: 'Order', column: 'Columns', row: 'Rows' }[ch]
 }
 
 /** The aggregate a number gets by default on a channel that totals (bar, line and area y; heatmap cell; pie slice). */

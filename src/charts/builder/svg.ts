@@ -1,6 +1,8 @@
 // 065-chart-builder: draws a compiled chart model into the DOM as one SVG, for the chart kinds that fill an element
 // (the `custom` kind in dashboard tiles). The Explore builder draws the same model with React instead.
 import type { DrawnChart } from '@/charts/builder/compile'
+import { drawHierarchy, type HierState } from '@/charts/builder/hierarchyDraw'
+import type { ChartTheme } from '@/charts/types'
 import { attachPanZoom } from '@/charts/lib/panZoom'
 import { tooltip } from '@/services/tooltip'
 
@@ -12,7 +14,14 @@ function el(name: string, attrs: Record<string, string | number | undefined>, pa
   return e
 }
 
-export function renderChartSvg(model: DrawnChart, width: number, height: number, ink: string, zoomable = false): SVGSVGElement {
+export function renderChartSvg(model: DrawnChart, width: number, height: number, ink: string, zoomable = false, hier?: { theme: ChartTheme; state: HierState }): SVGSVGElement {
+  // a treemap or sunburst is drawn as a zoomable hierarchy: click a group to open it
+  if (model.trees && hier) {
+    const h = drawHierarchy(model, hier.theme, hier.state)
+    h.setAttribute('width', String(width))
+    h.setAttribute('height', String(height))
+    return h
+  }
   const svg = el('svg', { width, height, viewBox: `0 0 ${model.W} ${model.H}`, role: 'img' }) as SVGSVGElement
   svg.style.overflow = 'visible'
   const defs = el('defs', {}, svg)

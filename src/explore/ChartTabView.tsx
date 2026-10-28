@@ -2,14 +2,15 @@
 // the chart card in the middle (a single row of encoding shelves over a chart that fills the remaining height), and the settings
 // rail on the right (Chart, Style, Axes, Filter). Drag a field onto a shelf, or select it and press the shelf (keyboard path).
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowLeftRight, ChevronRight, Download, X } from 'lucide-react'
+import { ArrowLeftRight, ChevronRight, Download, Plus, X } from 'lucide-react'
 import { buildChart, relabel, type ChartModel, type Col, type DrawnChart } from '@/charts/builder/compile'
 import { chartRole, DATA_TYPES, TYPE_LABEL, typesPresent, type DataType } from '@/charts/builder/columnTypes'
 import { suggest } from '@/charts/builder/rules'
 import {
-  assignField, acceptsShort, ZOOMABLE_MARKS, AGGS, channelAggregates, channelLabel, COMING_SOON, MARK_LABEL, MARKS, SLOTS, SORTS, switchMark, TEXT_SIZES,
+  assignField, acceptsShort, RING_CHANNELS, ZOOMABLE_MARKS, AGGS, channelAggregates, channelLabel, COMING_SOON, MARK_LABEL, MARKS, SLOTS, SORTS, switchMark, TEXT_SIZES,
   type Agg, type Channel, type ChartSpec, type Mark, type Sort, type Stack, type TextKey,
 } from '@/charts/builder/spec'
+import { drawHierarchy, type HierState } from '@/charts/builder/hierarchyDraw'
 import { attachPanZoom } from '@/charts/lib/panZoom'
 import { readChartTheme } from '@/charts/theme'
 import type { ChartTheme } from '@/charts/types'
@@ -112,8 +113,17 @@ function FieldsPanel({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: C
 
 // ---------------------------------------------------------------------------------------------------------------- the chart
 
-function Plot({ model, spec, hot, size }: { model: DrawnChart; spec: ChartSpec; hot: string | null; size: { w: number; h: number } }) {
+function Plot({ model, spec, hot, size, theme }: { model: DrawnChart; spec: ChartSpec; hot: string | null; size: { w: number; h: number }; theme: ChartTheme }) {
   void hot
+  // Treemap and sunburst are drawn as zoomable hierarchies (click a group to open it). Which group is open outlives a redraw.
+  const host = useRef<HTMLDivElement>(null)
+  const open = useRef<HierState>({})
+  const hierarchical = !!model.trees
+  useEffect(() => {
+    if (!hierarchical || !host.current) return
+    host.current.replaceChildren(drawHierarchy(model, theme, open.current))
+    return () => tooltip.hide()
+  }, [model, theme, hierarchical])
   const ref = useRef<SVGSVGElement>(null)
   const layer = useRef<SVGGElement>(null)
   const zoomable = ZOOMABLE_MARKS.includes(spec.mark)
@@ -130,6 +140,7 @@ function Plot({ model, spec, hot, size }: { model: DrawnChart; spec: ChartSpec; 
     const [title, ...rest] = t.split('~')
     tooltip.show({ title, rows: rest.map((p) => { const i = p.indexOf('='); return { k: p.slice(0, i), v: p.slice(i + 1) } }) }, e)
   }
+  if (hierarchical) return <div ref={host} className="plot hier" role="img" aria-label="Chart" />
   return (
     <svg ref={ref} className="plot" viewBox={`0 0 ${size.w} ${size.h}`} role="img" aria-label="Chart" onMouseOver={onOver} onMouseMove={onOver} onMouseLeave={() => tooltip.hide()}>
       <defs>
@@ -148,6 +159,13 @@ function Plot({ model, spec, hot, size }: { model: DrawnChart; spec: ChartSpec; 
       </g>
     </svg>
   )
+}
+
+/** Treemap and sunburst levels after the first: the deeper ones are not all shown, only the ones in use and one "Add" shelf for the next. */
+const isRing = (mark: string, ch: Channel) => (mark === 'treemap' || mark === 'sunburst') && (ch === 'detail' || RING_CHANNELS.includes(ch))
+function slotsShown(spec: ChartSpec) {
+  const next = (['detail', ...RING_CHANNELS] as Channel[]).find((ch) => !spec.enc[ch])
+  return SLOTS[spec.mark].filter((slot) => !isRing(spec.mark, slot.ch) || !!spec.enc[slot.ch] || slot.ch === next)
 }
 
 function ChartCard({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: ChartData }) {
@@ -202,15 +220,16 @@ function ChartCard({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: Cha
         {getExploreOptions().features.importExport && <Btn small onClick={() => setExportOpen(true)}><Download size={14} aria-hidden="true" />Export</Btn>}
       </div>
       <div className="strip">
-        {SLOTS[spec.mark].map((slot) => {
+        {slotsShown(spec).map((slot) => {
           const e = spec.enc[slot.ch]
+          const adding = isRing(spec.mark, slot.ch) && !e
           const ok = dragging ? !!dragRole && slot.accepts.includes(dragRole) : false
           const col = e ? data.cols.find((c) => c.name === e.f) : undefined
-          const label = channelLabel(spec.mark, slot.ch)
+          const label = adding ? (spec.mark === 'sunburst' ? 'Add ring' : 'Add level') : channelLabel(spec.mark, slot.ch)
           return (
-            <div key={slot.ch} className={`sp ${e ? 'filled' : ''} ${dragging ? (ok ? 'ok' : 'no') : ''}`}
+            <div key={slot.ch} className={`sp ${e ? 'filled' : ''} ${adding ? 'add' : ''} ${dragging ? (ok ? 'ok' : 'no') : ''}`}
               onDragOver={(ev) => ev.preventDefault()} onDrop={(ev) => { ev.preventDefault(); const f = ev.dataTransfer.getData('text/plain') || dragging; if (f) assign(slot.ch, f) }}>
-              <span className="spl">{label}{slot.req && <><i className="rq" aria-hidden="true" /><span className="sr">required</span></>}</span>
+              <span className="spl">{adding && <Plus size={12} aria-hidden="true" />}{label}{slot.req && <><i className="rq" aria-hidden="true" /><span className="sr">required</span></>}</span>
               {e && col && (
                 <>
                   <TypeChip type={col.type} /><span className="fname">{columnLabel(getExploreOptions(), e.f)}</span>
@@ -250,7 +269,7 @@ function ChartCard({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: Cha
           {data.loading && !drawn && !model?.problem && <div className="skel" role="status" aria-label="Loading the chart" />}
           {model?.problem && <div className="empty"><b>This chart needs a little more</b><span>{model.problem}</span></div>}
           {!model?.problem && data.error && <div className="empty"><b>The data could not be read</b><span>{data.error}</span></div>}
-          {drawn && !data.error && <Plot model={drawn} spec={spec} hot={hot} size={{ w: drawn.W, h: drawn.H }} />}
+          {drawn && !data.error && <Plot model={drawn} spec={spec} hot={hot} size={{ w: drawn.W, h: drawn.H }} theme={theme!} />}
         </div>
         {txt('src').t && <p className={`tb tfoot ${cls('src')}`} style={{ marginTop: 8 }}>{txt('src').t}</p>}
         {txt('note').t && <p className={`tb tfoot ${cls('note')}`} style={{ marginTop: 4 }}>{txt('note').t}</p>}

@@ -4,7 +4,7 @@
 // no fill patterns and no pie. Colours come from the app's ChartTheme (tokens), never hard-coded. tests/unit/chartBuilderCompile.test.ts.
 import type { ChartTheme } from '@/charts/types'
 import { chartRole, type DataType, type Role } from '@/charts/builder/columnTypes'
-import { acceptsText, channelLabel, SLOTS, ROLE_WORD, type ChartSpec, type Channel, type Sort } from '@/charts/builder/spec'
+import { acceptsText, channelLabel, RING_CHANNELS, SLOTS, ROLE_WORD, type ChartSpec, type Channel, type Sort } from '@/charts/builder/spec'
 
 export type Row = Record<string, any>
 export interface Col { name: string; type: DataType }
@@ -17,9 +17,13 @@ export interface Panel { tf: string; title: string; rects: RectP[]; paths: PathP
 export interface LegendItem { label: string; key: string; d: string; fill: string; stroke: string; sw: number; dash: string }
 export interface LegendGroup { title: string; items: LegendItem[] }
 export interface PatternDef { id: string; color: string; d: string; sw: number; fill: string }
+/** One node of a treemap or sunburst: a group (with `children`) or a leaf. Colours and tooltips are decided here, the drawing only places them. */
+export interface HNode { name: string; value: number; fill: string; color: string; op: number; tip: string; children?: HNode[] }
+/** A treemap or sunburst panel as a tree, so it can be drawn zoomable. `w` and `h` are the panel's size, `head` the room kept above it. */
+export interface HTree { kind: 'treemap' | 'sunburst'; tf: string; title: string; w: number; h: number; head: number; unit: string; root: HNode }
 export type ChartModel =
   | { problem: string }
-  | { problem?: undefined; panels: Panel[]; legend: LegendGroup[]; defs: PatternDef[]; W: number; H: number; rows: number; limitedSeries: boolean }
+  | { problem?: undefined; panels: Panel[]; legend: LegendGroup[]; defs: PatternDef[]; W: number; H: number; rows: number; limitedSeries: boolean; trees?: HTree[] }
 
 export type DrawnChart = Exclude<ChartModel, { problem: string }>
 
@@ -210,6 +214,8 @@ export function buildChart(input: BuildInput): ChartModel {
   // a detail field splits the data into more series without giving them a look of their own
   const nStyle = serF.length
   if (enc.detail && !serF.includes(enc.detail.f)) serF.push(enc.detail.f)
+  // the deeper levels of a treemap or sunburst split the data the same way
+  for (const ch of RING_CHANNELS) if (enc[ch] && !serF.includes(enc[ch]!.f)) serF.push(enc[ch]!.f)
   const dom: Record<string, any[]> = {}
   let limitedSeries = false
   for (const f of serF) {
@@ -227,7 +233,7 @@ export function buildChart(input: BuildInput): ChartModel {
   const raw: { r: Row; ci: number; pi: number; di: number; si: number }[] = []
   for (const r of combos) {
     const ci = ix('color', r), pi = ix('pattern', r), di = ix('dash', r), si = ix('shape', r)
-    if ((enc.color && mark !== 'heatmap' && ci < 0) || (enc.pattern && pi < 0) || (enc.dash && di < 0) || (enc.shape && si < 0) || (enc.detail && !dom[enc.detail.f].includes(r[enc.detail.f]))) continue
+    if ((enc.color && mark !== 'heatmap' && ci < 0) || (enc.pattern && pi < 0) || (enc.dash && di < 0) || (enc.shape && si < 0) || (enc.detail && !dom[enc.detail.f].includes(r[enc.detail.f])) || RING_CHANNELS.some((ch) => enc[ch] && !dom[enc[ch]!.f].includes(r[enc[ch]!.f]))) continue
     raw.push({ r, ci, pi, di: Math.max(0, di), si: Math.max(0, si) })
   }
   raw.sort((a, b) => a.ci - b.ci || a.pi - b.pi || a.di - b.di || a.si - b.si)
@@ -262,6 +268,41 @@ export function buildChart(input: BuildInput): ChartModel {
   const rect = (o: P, x: number, y: number, w: number, h: number, s: Series, tip: string, rx = T.r) =>
     o.rects.push({ x: r1(x), y: r1(y), w: r1(Math.max(0, w)), h: r1(Math.max(0, h)), rx: Math.min(rx, Math.max(0, w) / 2, Math.max(0, h) / 2), fill: s.fill, stroke: s.pat ? s.color : 'none', op: op(s), tip })
   const tip = (title: string, pairs: [string, string][]) => [title, ...pairs.map((p) => `${p[0]}=${p[1]}`)].join('~')
+  // treemap and sunburst: the groups (colour field) and the pieces inside each (detail field), as a tree the drawing can zoom into
+  const trees: HTree[] = []
+  const makeTree = (kind: HTree['kind'], pn: Panel, vals: number[], head: number) => {
+    const sz = enc.size!.f, tot = vals.reduce((p, c) => p + c, 0) || 1
+    const levels = [enc.color, enc.detail, ...RING_CHANNELS.map((c) => enc[c])].filter((e) => !!e).map((e) => e!.f)
+    const share = (v: number) => `${Math.round((v / tot) * 1000) / 10}%`
+    type Item = { x: Series; i: number }
+    // one level at a time: the values of this level's field, each holding the next level's values (or, at the last level, the series themselves)
+    const build = (items: Item[], depth: number, base: string, path: string[]): HNode[] => {
+      const f = levels[depth]
+      const present = dom[f].filter((v) => items.some((it) => it.x.r[f] === v))
+      const out: HNode[] = []
+      present.forEach((pv, vi) => {
+        const sub = items.filter((it) => it.x.r[f] === pv)
+        const value = sub.reduce((p, it) => p + vals[it.i], 0)
+        if (value <= 0) return
+        const first = sub[0].x
+        const color = depth === 0 ? first.color : T.mix(base, T.surface, 0.12 + (0.5 * vi) / Math.max(1, present.length - 1))
+        const here = [...path, String(pv)]
+        const node: HNode = { name: String(pv), value, fill: depth === 0 ? first.fill : color, color, op: op(first), tip: tip(here.join(' · '), [[sz, fmtExact(value)], ['share', share(value)]]) }
+        if (depth + 1 < levels.length) node.children = build(sub, depth + 1, color, here)
+        else if (sub.length > 1) {
+          // several series share the last level (a hatch field): one piece each
+          node.children = sub.map((it, ki) => {
+            const c = T.mix(color, T.surface, 0.12 + (0.5 * ki) / Math.max(1, sub.length - 1))
+            return { name: it.x.label, value: vals[it.i], fill: c, color: c, op: op(it.x), tip: tip(`${here.join(' · ')} · ${it.x.label}`, [[sz, fmtExact(vals[it.i])], ['share', share(vals[it.i])]]) }
+          })
+        }
+        out.push(node)
+      })
+      return out
+    }
+    const groups = build(series.map((x, i) => ({ x, i })).filter((it) => vals[it.i] > 0), 0, T.surface, [])
+    trees.push({ kind, tf: pn.tf, title: pn.title, w: pw, h: ph, head, unit: sz, root: { name: '', value: tot, fill: 'none', color: T.surface, op: 1, tip: '', children: groups } })
+  }
   const yAx = (o: P, bx: ReturnType<typeof frame>, lo: number, hi: number, f?: (v: number) => string) => {
     const nt = niceScale(lo, hi, Math.max(3, Math.min(6, Math.round((bx.y1 - bx.y0) / 55))))
     const sy = (v: number) => bx.y1 - ((v - nt.min) / (nt.max - nt.min || 1)) * (bx.y1 - bx.y0)
@@ -691,6 +732,7 @@ export function buildChart(input: BuildInput): ChartModel {
     for (const pn of panels) {
       const vals = series.map((s) => Math.max(0, aggregate(pn.prows.filter((r) => skey(r) === s.key).map((r) => r[sz] as number), agg)))
       const tot = vals.reduce((p, c) => p + c, 0) || 1
+      makeTree('treemap', pn, vals, head)
       const items = vals.map((v, i) => ({ v, i })).filter((q) => q.v > 0).sort((p, c) => c.v - p.v)
       const scale = ((pw - 4) * (ph - head - 4)) / tot
       let X = 2, Y = head, W = pw - 4, H = ph - head - 4, rest = items.slice()
@@ -754,6 +796,7 @@ export function buildChart(input: BuildInput): ChartModel {
     for (const pn of panels) {
       const vals = series.map((s) => Math.max(0, aggregate(pn.prows.filter((r) => skey(r) === s.key).map((r) => r[sz] as number), agg)))
       const tot = vals.reduce((p, c) => p + c, 0) || 1
+      makeTree('sunburst', pn, vals, head)
       const cx = pw / 2, cy = head + (ph - head) / 2, R = Math.max(40, Math.min(pw, ph - head) / 2 - 24)
       const r0 = R * 0.24, rm = df ? R * 0.62 : R
       let a = -Math.PI / 2
@@ -888,5 +931,5 @@ export function buildChart(input: BuildInput): ChartModel {
     if (enc.dash) { const df = enc.dash.f; legend.push({ title: df, items: dom[df].map((v, i) => item(df, v, { d: 'M1 7h16', stroke: T.mute, sw: 2.2, dash: DASH[i % 5] })) }) }
     if (enc.shape) { const sf = enc.shape.f; legend.push({ title: sf, items: dom[sf].map((v, i) => { const g = glyph(i % 5, 9, 7, 4.2); return item(sf, v, { d: g.d, fill: g.line ? 'none' : T.mute, stroke: g.line ? T.mute : 'none', sw: 2 }) }) }) }
   }
-  return { panels: panels.map(({ tf, title, rects, paths, lines, texts }) => ({ tf, title, rects, paths, lines, texts })), legend, defs, W, H, rows: rows.length, limitedSeries }
+  return { panels: panels.map(({ tf, title, rects, paths, lines, texts }) => ({ tf, title, rects, paths, lines, texts })), legend, defs, W, H, rows: rows.length, limitedSeries, ...(trees.length ? { trees } : {}) }
 }

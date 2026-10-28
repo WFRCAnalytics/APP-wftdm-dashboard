@@ -25,7 +25,7 @@ function aggExpr(f: FieldDef, fallback = 'sum'): string {
   return fn === 'count' ? `COUNT(${q(f.f)})` : `${AGG_SQL[fn]}(CAST(${q(f.f)} AS DOUBLE))`
 }
 
-const SERIES: Channel[] = ['color', 'pattern', 'dash', 'shape', 'detail']
+const SERIES: Channel[] = ['color', 'pattern', 'dash', 'shape', 'detail', 'ring3', 'ring4', 'ring5']
 
 /** Fields that split the data into series and panels (the compiler's grouping keys), in a stable order. */
 function seriesFields(spec: ChartSpec): string[] {
