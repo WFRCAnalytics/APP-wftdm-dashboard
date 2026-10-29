@@ -1,4 +1,4 @@
-import { test, expect, type Page } from './_testTab'
+import { test, expect, type Locator, type Page } from './_testTab'
 import { routeDemoConfig, routeDeploymentConfig } from './_siteConfig'
 import type { WftdmDebugHook } from '../../src/main.tsx'
 
@@ -71,6 +71,17 @@ const REAL_DEMO_DASHBOARD_INDEX = {
 // unpinned panel's own union) — every real row/rect count and every
 // hand-verified diff value below was confirmed against exactly this pair
 // via the duckdb CLI.
+/** Scrolls the chart into view and puts the pointer on the line, `fraction` of the way along its length (viewport coordinates). */
+async function hoverAlongLine(page: Page, line: Locator, fraction: number) {
+  await line.scrollIntoViewIfNeeded()
+  const at = await line.evaluate((el: SVGPathElement, f: number) => {
+    const p = el.getPointAtLength(el.getTotalLength() * f)
+    const m = el.getScreenCTM()!
+    return { x: p.x * m.a + p.y * m.c + m.e, y: p.x * m.b + p.y * m.d + m.f }
+  }, fraction)
+  await page.mouse.move(at.x, at.y)
+}
+
 async function boot(page: Page) {
   await routeDemoConfig(page, REAL_DEMO_DASHBOARD_INDEX)
   await page.route('**/demo-scenarios/index.json', (r) =>
@@ -182,11 +193,40 @@ test.describe('User Story 1 - Author renders a metric as a reactive Observable P
     // overlap, not a bug) can sit exactly at the hover point and would
     // otherwise fail Playwright's actionability check; Plot's own pointer
     // interaction listens at the SVG level regardless.
-    await dataLine.hover({ force: true })
-    await expect(tip).not.toBeEmpty()
+    // Not `dataLine.hover({ force: true })`: it scrolls once and moves the pointer, but this page is long and panels above
+    // settle afterwards, which moved the chart out from under the pointer (the box ended up above the viewport) and made
+    // this test fail at random. Scroll the chart into view and put the pointer on the line itself, retrying the move if the
+    // layout shifts again before the tip shows.
+    await expect(async () => {
+      await hoverAlongLine(page, dataLine, 0.5)
+      await expect(tip).not.toBeEmpty({ timeout: 2_000 })
+    }).toPass({ timeout: 20_000 })
     await expect(tip).toContainText('primary_purpose')
     await expect(tip).toContainText('distance_bin')
     await expect(tip).toContainText('trips')
+  })
+
+  test('a lineY tip shows anywhere along the line, between its nodes, not only near a data point', async ({ page }) => {
+    await boot(page)
+    await page.getByRole('tab', { name: 'Test' }).click()
+    const card = panelCard(page, 'Observable Plot Line Trip Distance by Purpose')
+    const dataLine = card.locator('.observable-plot-chart svg[viewBox] path[stroke]').first()
+    await expect(dataLine).toBeVisible({ timeout: 20_000 })
+    const tip = card.locator('.observable-plot-chart svg[viewBox] g[aria-label="tip"]')
+    await expect(tip).toBeEmpty()
+    // Points 11%, 37% and 63% of the way along the line's length: not at a node, and often more than 40px from the nearest
+    // one. Each must show the tip, so this fails if the pointer goes back to Plot's default "xy" mode, which only fires
+    // within ~40px of a data point.
+    for (const fraction of [0.11, 0.37, 0.63]) {
+      await expect(async () => {
+        await hoverAlongLine(page, dataLine, fraction)
+        await expect(tip).not.toBeEmpty({ timeout: 2_000 })
+      }).toPass({ timeout: 20_000 })
+      await expect(tip).toContainText('distance_bin')
+      // leave the plot so the next point starts from an empty tip
+      await page.mouse.move(2, 2)
+      await expect(tip).toBeEmpty()
+    }
   })
 
   test('a fill-encoded barY chart shows a visible legend with the real category labels', async ({

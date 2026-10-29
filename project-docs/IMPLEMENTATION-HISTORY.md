@@ -6644,3 +6644,11 @@ and the contracts are in the spec folder; the non-obvious ones:
 - **Leftover strings**: `demo-` still appears in the service worker's cache pattern and in `resolveDemoGeometryUrl`'s body (a URL builder never called without the demo); no request is made.
 - **Gotchas**: a new Playwright project needs its spec excluded from `chromium` (`testIgnore`); the first-run server builds into `test-results/firstrun-dist` and removes the deployment folders `public/` had (global setup copies fixtures into it); a heredoc with apostrophes fails in this shell, write files with the Write tool.
 - Tests: `tests/unit/{demoContentPlugin,siteConfigDemo,firstRun,resolveGeometry,bootSkeletonDemo}.test.ts`; Playwright `firstRun.spec.ts` (`firstrun`).
+
+## Line-chart tooltip along the whole line (`fix/line-tip-pointer`)
+
+- **Symptom**: on a legacy `observable-plot` `mark: lineY` with `tip: true` the tooltip showed only when the pointer was on a data node. Cause: `tip: true` is Plot's `"xy"` pointer, which stops at `maxRadius` (40px); nodes can be further apart than that.
+- **Fix**: `resolveTipMode('lineY')` returns `{ pointer: 'x', maxRadius: Infinity }` (a tip options object, accepted by Plot's `inferTips`), so the tip follows the nearest node by x over the whole plot. `"x"` alone is not enough: every pointer mode also stops at `maxRadius` (measured along x). `barY` keeps `"x"`, `dot` keeps `true`. With several series (stroke by purpose) it shows the nearest point by x.
+- **The flaky spec** (`observablePlotPanel.spec.ts` "hovering a lineY mark shows a visible tip") was a second, separate cause: `dataLine.hover({ force: true })` scrolls once and moves the pointer, but the Test tab is long and panels above settle afterwards, which moved the chart above the viewport (its bounding box y was negative) so nothing was under the pointer. Both lineY specs now use `hoverAlongLine` (scroll the chart into view, move the pointer onto the path itself) inside `expect(...).toPass()` so a late layout shift is retried. A new spec hovers 11%, 37% and 63% along the line, off the nodes.
+- **Gotchas**: `page.mouse` uses viewport coordinates, so scroll first; a Playwright run can also fail all at once with `ERR_CONNECTION_REFUSED` when the dev server's file watcher hits `EBUSY` on `public/` while global setup copies fixtures (rerun).
+
