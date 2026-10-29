@@ -102,10 +102,10 @@ Single web-app project: `src/`, `tests/`, `scripts/`, `project-docs/` at the rep
 
 ## Phase 6: Polish & cross-cutting
 
-- [ ] T030 [P] Update `project-docs/CONFIGURATION.md`: Phase C items 8 done (tabs, docs link, hidden), draft explicitly deferred, section 4's draft shape matches the built keys (`docs: { url, label }`, `settings.tabs`, `header.docs`, `header.hidden`)
-- [ ] T031 [P] Update `project-docs/GRAMMAR.md` (the `header:` block: `docs`, `hidden`) and `CLAUDE.md` (config keys, the sidebar docs link, the hidden rule, the new `src/config/viewer.ts` and `pages.ts`); add a "067 viewer-facing settings" entry to `project-docs/IMPLEMENTATION-HISTORY.md`
-- [ ] T032 Confirm FR-015 (no new key set, nothing changes): `npx tsc --noEmit`, `npx vitest run`, then the full Playwright run (`npx playwright test --reporter=line`); compare failures with the known ones in `CLAUDE.md` (`realDemo.spec.ts:19` and `:39`, load flakes) and re-run any other with `--workers=1` first
-- [ ] T033 Walk `quickstart.md` by hand (steps 2 to 6 against the dev server and `npm run check`) and note the result at its foot
+- [X] T030 [P] Update `project-docs/CONFIGURATION.md`: Phase C items 8 done (tabs, docs link, hidden), draft explicitly deferred, section 4's draft shape matches the built keys (`docs: { url, label }`, `settings.tabs`, `header.docs`, `header.hidden`)
+- [X] T031 [P] Update `project-docs/GRAMMAR.md` (the `header:` block: `docs`, `hidden`) and `CLAUDE.md` (config keys, the sidebar docs link, the hidden rule, the new `src/config/viewer.ts` and `pages.ts`); add a "067 viewer-facing settings" entry to `project-docs/IMPLEMENTATION-HISTORY.md`
+- [X] T032 Confirm FR-015 (no new key set, nothing changes): `npx tsc --noEmit`, `npx vitest run`, then the full Playwright run (`npx playwright test --reporter=line`); compare failures with the known ones in `CLAUDE.md` (`realDemo.spec.ts:19` and `:39`, load flakes) and re-run any other with `--workers=1` first
+- [X] T033 Walk `quickstart.md` by hand (steps 2 to 6 against the dev server and `npm run check`) and note the result at its foot
 - [ ] T034 Rebuild `docs/` with `npm run build:pages` only after the user asks
 
 ---
