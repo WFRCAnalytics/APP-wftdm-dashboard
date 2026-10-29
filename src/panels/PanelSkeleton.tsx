@@ -321,6 +321,105 @@ function Drawing({ shape }: { shape: SkeletonShape }): ReactNode {
           </div>
         </Plot>
       )
+    case 'stacked':
+      return (
+        <Sized>
+          {(_, h) => {
+            const n = clamp(Math.floor(h / 40), 3, 10)
+            const SEG = [[34, 26, 22, 18], [28, 30, 24, 18], [42, 20, 22, 16], [30, 24, 28, 18]]
+            return (
+              <div className="flex h-full flex-col">
+                {Array.from({ length: n }, (_, i) => (
+                  <div key={i} className="flex min-h-0 flex-1 items-center gap-3">
+                    <div className={cn(STUB, 'h-2 w-16 shrink-0')} />
+                    <div className="flex h-5 flex-1 gap-[2px] overflow-hidden rounded-md">
+                      {SEG[i % 4].map((w, j) => <div key={j} className="h-full bg-[var(--sk)]" style={{ width: `${w}%`, opacity: [1, 0.7, 0.45, 0.25][j] }} />)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )
+          }}
+        </Sized>
+      )
+    case 'dots':
+      return (
+        <Sized>
+          {(_, h) => {
+            const n = clamp(Math.floor(h / 34), 3, 14)
+            return (
+              <div className="flex h-full gap-3">
+                <div className="flex flex-1 flex-col">
+                  {Array.from({ length: n }, (_, i) => {
+                    const a = 18 + ((i * 29) % 40), b = a + 14 + ((i * 17) % 34)
+                    return (
+                      <div key={i} className="flex min-h-0 flex-1 items-center gap-3">
+                        <div className={cn(STUB, 'h-2 w-16 shrink-0')} />
+                        <div className="relative h-full min-h-0 flex-1">
+                          <div className="absolute inset-x-0 top-1/2 border-t border-dashed border-[var(--sk-line)]" />
+                          <div className="absolute top-1/2 h-px bg-[var(--sk)]" style={{ left: `${a}%`, width: `${b - a}%` }} />
+                          <div className="absolute top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-[var(--sk)]" style={{ left: `${a}%` }} />
+                          <div className="absolute top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[var(--sk)]" style={{ left: `${b}%` }} />
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )
+          }}
+        </Sized>
+      )
+    case 'slope':
+      return (
+        <div className="flex h-full items-stretch justify-center gap-4 px-4">
+          <div className="flex w-14 flex-col justify-between py-2">
+            {Array.from({ length: 6 }, (_, i) => <div key={i} className={cn(STUB, 'h-1.5 w-full')} />)}
+          </div>
+          <div className="relative min-w-0 max-w-[420px] flex-1 border-x border-[var(--sk-line)]">
+            <Svg stretch>
+              {[[8, 20], [24, 14], [40, 44], [58, 56], [74, 70], [90, 86]].map(([a, b], i) => (
+                <g key={i}>
+                  <line x1="0" y1={a} x2="200" y2={b} stroke="var(--sk)" strokeWidth="2.5" strokeLinecap="round" strokeOpacity={1 - i * 0.12} vectorEffect="non-scaling-stroke" />
+                </g>
+              ))}
+            </Svg>
+          </div>
+          <div className="flex w-14 flex-col justify-between py-2">
+            {Array.from({ length: 6 }, (_, i) => <div key={i} className={cn(STUB, 'h-1.5 w-full')} />)}
+          </div>
+        </div>
+      )
+    case 'ridge':
+      return (
+        <div className="flex h-full gap-3">
+          <div className="flex w-14 shrink-0 flex-col justify-between py-2">
+            {Array.from({ length: 5 }, (_, i) => <div key={i} className={cn(STUB, 'h-1.5 w-full')} />)}
+          </div>
+          <div className="relative min-w-0 flex-1 border-b border-[var(--sk)]">
+            <Svg stretch>
+              {Array.from({ length: 5 }, (_, i) => {
+                const base = 30 + i * 17, peak = 26 - (i % 2) * 6, cx = 30 + i * 22
+                return (
+                  <path key={i} d={`M0 ${base} C${cx - 30} ${base} ${cx - 22} ${base - peak} ${cx} ${base - peak} S${cx + 40} ${base} 200 ${base} L200 ${base + 3} L0 ${base + 3}Z`} fill="var(--sk)" fillOpacity={0.35 + i * 0.1} stroke="var(--sk)" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
+                )
+              })}
+            </Svg>
+          </div>
+        </div>
+      )
+    case 'stream':
+      return (
+        <Plot>
+          <div className="absolute inset-0">
+            <Svg stretch>
+              <path d="M0 40 C40 28 80 38 120 24 S180 30 200 26 L200 66 C170 70 140 78 110 66 S40 74 0 62Z" fill="var(--sk)" fillOpacity={0.55} />
+              <path d="M0 46 C40 38 80 46 120 36 S180 40 200 36 L200 60 C170 64 140 68 110 58 S40 66 0 56Z" fill="var(--sk)" />
+              <path d="M0 62 C40 74 80 64 110 66 S170 78 200 66 L200 82 C170 90 140 92 110 82 S40 90 0 78Z" fill="var(--sk)" fillOpacity={0.3} />
+            </Svg>
+          </div>
+        </Plot>
+      )
     case 'heat':
       return (
         <Sized>
