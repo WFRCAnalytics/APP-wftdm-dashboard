@@ -108,3 +108,10 @@ describe('note and limits', () => {
     expect(getLimits().roundTrips).toBe(6)
   })
 })
+
+describe('the built-in provider ids', () => {
+  it('are the same in the pure config module and the runtime presets', async () => {
+    const { BUILTIN_PROVIDER_IDS } = await import('../../src/config')
+    expect([...BUILTIN_PROVIDER_IDS]).toEqual(BUILTIN_PRESETS.map((p) => p.id))
+  })
+})

@@ -199,3 +199,34 @@ describe('assistant note and limits', () => {
     expect(validate({ assistant: { limits: { round_trips: 3 } } }, { file: 'p.yaml', level: 'page' }).problems.map((p) => p.kind)).toEqual(['not_allowed_here'])
   })
 })
+
+describe('secret-like keys', () => {
+  const MESSAGE = 'secrets are not configuration; viewers enter their own token'
+
+  it('refuses a secret-like key anywhere, naming it and never its value', () => {
+    for (const key of ['api_key', 'token', 'Password', 'authorization', 'client_secret', 'apiKey', 'secrets']) {
+      const r = validate({ assistant: { [key]: 'SECRET-VALUE-123' } }, { file })
+      expect(r.problems.map((p) => [p.kind, p.path]), key).toEqual([['not_allowed_here', `assistant.${key}`]])
+      expect(r.problems[0].message, key).toContain(MESSAGE)
+      expect(JSON.stringify(r), key).not.toContain('SECRET-VALUE-123')
+    }
+    const top = validate({ api_key: 'SECRET-VALUE-123', title: 'ok' }, { file })
+    expect(top.problems.map((p) => [p.kind, p.path])).toEqual([['not_allowed_here', 'api_key']])
+    expect(getPath(top.settings, 'title')).toBe('ok')
+    expect(JSON.stringify(top)).not.toContain('SECRET-VALUE-123')
+  })
+
+  it('does not read a secret-like group either, so nothing inside it is looked at', () => {
+    const r = validate({ assistant: { credentials: { token: 'SECRET-VALUE-123' }, token: { nested: 'SECRET-VALUE-123' } } }, { file })
+    expect(r.problems.map((p) => p.path).sort()).toEqual(['assistant.credentials', 'assistant.token'])
+    expect(JSON.stringify(r)).not.toContain('SECRET-VALUE-123')
+  })
+
+  it('still calls an ordinary unknown key an unknown key, and keyboard or tokenizer are not secrets', () => {
+    expect(validate({ assistant: { keyboard: 1, tokenizer: 2 } }, { file }).problems.map((p) => p.kind)).toEqual(['unknown_key', 'unknown_key'])
+  })
+
+  it('leaves the declared domain-restricted map key alone', () => {
+    expect(validate({ basemap: { protomaps: { api_key: 'abc123' } } }, { file }).problems).toEqual([])
+  })
+})

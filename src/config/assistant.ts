@@ -44,7 +44,10 @@ export function addendumCheck(value: unknown): string | undefined {
 
 export const SECRETS_MESSAGE = 'secrets are not configuration; viewers enter their own token'
 
-const SECRET_PARTS = new Set(['key', 'token', 'secret', 'password', 'passwd', 'authorization', 'apikey', 'bearer'])
+const SECRET_PARTS = new Set(['key', 'keys', 'token', 'tokens', 'secret', 'secrets', 'password', 'passwords', 'passwd', 'authorization', 'apikey', 'bearer'])
+
+/** The ids of the built-in providers (assistantPolicy.ts has the full presets; a unit test keeps the two in step). */
+export const BUILTIN_PROVIDER_IDS: readonly string[] = ['openai', 'anthropic', 'deepseek', 'demo', 'ollama']
 
 /**
  * Whether a field name looks like it holds a secret: a separate part of the name (split on `_`, `-`, spaces and camelCase) is a
@@ -137,7 +140,7 @@ export function cleanProviders(value: unknown): { value: unknown; messages: stri
  * The default provider must be listed (or, with no list, one of the built-in ids). Returns a message for the problem, none
  * when it is fine or unset. The model needs no check: any model name can be typed.
  */
-export function checkDefault(settings: Tree, builtinIds: readonly string[]): string[] {
+export function checkDefault(settings: Tree, builtinIds: readonly string[] = BUILTIN_PROVIDER_IDS): string[] {
   const provider = getPath(settings, 'assistant.default.provider')
   if (typeof provider !== 'string') return []
   const listed = getPath(settings, 'assistant.providers')

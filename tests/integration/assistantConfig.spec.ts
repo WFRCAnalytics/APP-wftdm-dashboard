@@ -262,3 +262,80 @@ test.describe('the assistant note and limits', () => {
     await expect(panel.getByText('Showing the first 1,000 rows; more exist.')).toHaveCount(0)
   })
 })
+
+// US3: mistakes are reported, never fatal; a secret-like field is refused and its value shown nowhere.
+test.describe('mistakes in the assistant block', () => {
+  const SENTINEL = 'SECRET-SENTINEL-98765'
+  const paths = (page: Page) => page.getByTestId('config-notice').locator('[data-problem-path]').evaluateAll((els) => els.map((e) => e.getAttribute('data-problem-path')))
+
+  test('each mistake is listed with its path, the app loads, the good provider works and the defaults hold', async ({ page }) => {
+    const logs: string[] = []
+    page.on('console', (m) => logs.push(m.text()))
+    await patchDemoConfig(page, (c) => {
+      c.assistant = {
+        api_key: SENTINEL,
+        providers: [
+          { id: 'good', label: 'Good gateway', base_url: GATEWAY, models: ['llama3.1'], token: SENTINEL },
+          { id: 'good', base_url: 'https://other.example.org' },
+          { id: 'odd', base_url: 'https://odd.example.org', protocol: 'soap' },
+        ],
+        default: { provider: 'not-offered' },
+        limits: { round_trips: 99 },
+        prompt_addendum: 'x'.repeat(2001),
+      }
+    })
+    await boot(page)
+    await expect(page.getByTestId('config-notice')).toBeVisible()
+    const listed = await paths(page)
+    for (const expected of ['assistant.api_key', 'assistant.providers', 'assistant.default.provider', 'assistant.limits.round_trips', 'assistant.prompt_addendum']) {
+      expect(listed, expected).toContain(expected)
+    }
+    expect(await page.getByTestId('config-notice').innerText()).toContain('secrets are not configuration')
+    // the value of a secret-like field is in neither the page nor the console
+    expect(await page.locator('body').innerText()).not.toContain(SENTINEL)
+    expect(logs.join('\n')).not.toContain(SENTINEL)
+    // the good provider is the only one offered, and the bad settings fell back to their defaults
+    await openAiSettings(page)
+    await expect(providerButtons(page)).toHaveText(['Good gateway'])
+    await page.getByRole('group', { name: 'Privacy' }).getByRole('button', { name: 'Schema + results', exact: true }).click()
+    await expect(page.getByText('up to 50 result rows per query')).toBeVisible()
+  })
+
+  test('with no usable provider the built-ins stay and the problem is reported', async ({ page }) => {
+    await patchDemoConfig(page, (c) => {
+      c.assistant = { providers: [{ id: 'x' }, { base_url: 'https://x.example.org' }] }
+    })
+    await boot(page)
+    await expect(page.getByTestId('config-notice')).toContainText('built-in providers are used')
+    await openAiSettings(page)
+    await expect(providerButtons(page)).toHaveText(['OpenAI', 'Anthropic', 'Deepseek', 'Demo (offline)', 'Ollama'])
+    await expect(page.locator('#ai-base-url')).toBeEditable()
+  })
+
+  test('an empty provider list is reported, and assistant.enabled false is still the way to turn it off', async ({ page }) => {
+    await patchDemoConfig(page, (c) => {
+      c.assistant = { providers: [] }
+    })
+    await boot(page)
+    await expect(page.getByTestId('config-notice')).toContainText('provider list is empty')
+    await expect(page.getByTestId('assistant-button')).toBeVisible()
+  })
+
+  test('with the assistant off the other keys are still checked but nothing is shown', async ({ page }) => {
+    await patchDemoConfig(page, (c) => {
+      c.assistant = { enabled: false, limits: { model_rows: 9999 } }
+    })
+    await boot(page)
+    await expect(page.getByTestId('config-notice')).toContainText('assistant.limits.model_rows')
+    await expect(page.getByTestId('assistant-button')).toHaveCount(0)
+  })
+
+  test('a clean block shows no note', async ({ page }) => {
+    await patchDemoConfig(page, (c) => {
+      c.assistant = withGateway({ default: { provider: 'agency-gw', model: 'llama3.1' }, limits: { round_trips: 4 }, prompt_addendum: 'Short and plain.' })
+    })
+    await boot(page)
+    await expect(page.getByTestId('assistant-button')).toBeVisible()
+    await expect(page.getByTestId('config-notice')).toHaveCount(0)
+  })
+})
