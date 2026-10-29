@@ -149,7 +149,7 @@ interface LeafletProviderVariant {
   options?: Record<string, unknown>
 }
 
-interface LeafletProviderEntry {
+export interface LeafletProviderEntry {
   url: string
   options: {
     subdomains?: string
@@ -185,7 +185,12 @@ export function __resetProvidersCacheForTests(): void {
 // scenarioDiscovery.ts's/yamlLoader.ts's own established convention.
 const base = import.meta.env.BASE_URL
 
-async function loadProvidersCatalog(signal?: AbortSignal): Promise<Record<string, LeafletProviderEntry>> {
+/** The raster provider catalogue once it has been loaded (undefined before), for code that must not wait for it. */
+export function getLoadedProvidersCatalog(): Record<string, LeafletProviderEntry> | undefined {
+  return providersCache ?? undefined
+}
+
+export async function loadProvidersCatalog(signal?: AbortSignal): Promise<Record<string, LeafletProviderEntry>> {
   if (providersCache) return providersCache
   const res = await fetch(`${base}basemap/leaflet-providers.json`, { signal })
   if (!res.ok) throw new Error(`leaflet-providers.json fetch failed: ${res.status}`)
@@ -418,7 +423,7 @@ function unhandledUrlTokens(url: string): string[] {
  * practical exclusion independent of licensing), and uses no URL-template
  * token this module doesn't already substitute (research.md §2).
  */
-function isCuratedRasterProvider(name: string, entry: LeafletProviderEntry): boolean {
+export function isCuratedRasterProvider(name: string, entry: LeafletProviderEntry): boolean {
   if (CURATED_RASTER_EXCLUDE.has(name)) return false
   for (const url of effectiveUrlsForProvider(entry)) {
     if (API_KEY_TOKEN_PATTERN.test(url)) return false

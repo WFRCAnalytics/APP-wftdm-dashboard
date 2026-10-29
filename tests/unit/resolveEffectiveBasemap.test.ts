@@ -1,4 +1,7 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { BLANK_BASEMAP, resetBasemapPolicy } from '@/panels/basemap/basemapPolicy'
+import { configureNetwork, resetNetworkPolicy } from '@/services/networkPolicy'
+import { getProblems, resetProblems } from '@/state/configProblems'
 import { resolveEffectiveBasemap, basemapKey } from '@/panels/basemap/resolveEffectiveBasemap'
 import { APP_DEFAULT } from '@/panels/basemap/registry'
 
@@ -88,5 +91,44 @@ describe('the site default (basemap.default) sits under every other level', () =
     expect(resolveEffectiveBasemap(undefined, undefined, 'carto-dark' as never, 'carto-light').selection).toBe('carto-dark')
     expect(resolveEffectiveBasemap(undefined, 'tab-one', undefined, 'carto-light')).toEqual({ selection: 'tab-one', source: 'tab' })
     expect(resolveEffectiveBasemap('panel-one', 'tab-one', undefined, 'carto-light')).toEqual({ selection: 'panel-one', source: 'panel' })
+  })
+})
+
+describe('070/071: the allow-list (network.basemaps.allow)', () => {
+  beforeEach(() => {
+    resetProblems()
+    resetBasemapPolicy()
+  })
+  afterEach(() => resetNetworkPolicy())
+
+  it('changes nothing without a list', () => {
+    expect(resolveEffectiveBasemap(undefined, undefined, undefined, undefined)).toEqual({ selection: APP_DEFAULT, source: 'app-default' })
+    expect(getProblems()).toEqual([])
+  })
+
+  it('replaces the app default when it is not allowed, keeping the source', () => {
+    configureNetwork({ basemapsAllow: ['ugrc-vector-lite'] })
+    expect(resolveEffectiveBasemap(undefined, undefined, undefined, undefined)).toEqual({ selection: 'ugrc-vector-lite', source: 'app-default' })
+    expect(getProblems()).toHaveLength(1)
+  })
+
+  it('replaces a site, page and panel default that is not allowed, and a stale viewer pick', () => {
+    configureNetwork({ basemapsAllow: ['ugrc-vector-lite'] })
+    expect(resolveEffectiveBasemap('carto-positron', undefined, undefined, undefined)).toEqual({ selection: 'ugrc-vector-lite', source: 'panel' })
+    expect(resolveEffectiveBasemap(undefined, 'carto-voyager', undefined, undefined)).toEqual({ selection: 'ugrc-vector-lite', source: 'tab' })
+    expect(resolveEffectiveBasemap(undefined, undefined, 'openfreemap-dark', undefined)).toEqual({ selection: 'ugrc-vector-lite', source: 'global' })
+    expect(resolveEffectiveBasemap(undefined, undefined, undefined, 'carto-dark-matter')).toEqual({ selection: 'ugrc-vector-lite', source: 'global' })
+  })
+
+  it('keeps an allowed choice at any level, and the deployer own composition', () => {
+    configureNetwork({ basemapsAllow: ['ugrc-*'] })
+    expect(resolveEffectiveBasemap('ugrc-vector-dark', undefined, undefined, undefined).selection).toBe('ugrc-vector-dark')
+    const composition = { layers: ['https://tiles.example.org/style.json'] }
+    expect(resolveEffectiveBasemap(composition, undefined, undefined, undefined).selection).toBe(composition)
+  })
+
+  it('gives the plain background when the list matches nothing', () => {
+    configureNetwork({ basemapsAllow: ['nope-*'] })
+    expect(resolveEffectiveBasemap(undefined, undefined, undefined, undefined).selection).toBe(BLANK_BASEMAP)
   })
 })

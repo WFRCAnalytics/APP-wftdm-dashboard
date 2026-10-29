@@ -42,6 +42,7 @@ import { configureSettingsTabs } from '@/state/settingsState'
 import { configureAssistant } from '@/services/ai/assistantPolicy'
 import { applyAssistantPolicy } from '@/state/aiState'
 import { loadSite } from './services/siteConfig.ts'
+import { configureNetwork } from './services/networkPolicy.ts'
 import { loadDashboards } from './services/yamlLoader.ts'
 import { setDeployerScenarioPalette } from './panels/scenarioDisplay.ts'
 import { setDeployerProtomapsSource } from './state/protomapsSourceState.ts'
@@ -174,6 +175,8 @@ configureVocab(branding.vocab)
 configureMetrics(branding.metrics)
 configureUnits(branding.units)
 setSiteSettings(site.settings)
+// 071-network-block: the outside calls the site allows (font mode, the basemap allow-list, the extension mirror), before any map or control reads them.
+configureNetwork(branding.network)
 configureLayout(branding.layout)
 configureExport({ footer: branding.exportFooter, title: branding.title })
 // 063 redesign: model years, focus and Compare defaults (project-docs/redesign/03-state-and-compare.md §1.1). Needs the

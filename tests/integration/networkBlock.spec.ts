@@ -1,0 +1,88 @@
+import { test, expect, type Page } from '@playwright/test'
+
+// 071-network-block: the `network` block of dashboard-config.yaml. The site file is rewritten on its way to the browser, the way a deployer
+// would edit it, and the page's own requests are recorded (basemap hosts are answered with an abort so nothing leaves the machine).
+const BASEMAP_HOSTS = /openfreemap\.org|cartocdn\.com|arcgis\.com|openstreetmap\.org/
+
+async function open(page: Page, network?: string) {
+  const requests: string[] = []
+  page.on('request', (r) => requests.push(r.url()))
+  await page.route(BASEMAP_HOSTS, (route) => route.abort())
+  if (network) {
+    await page.route('**/demo-dashboard-config/dashboard-config.yaml', async (route) => {
+      const res = await route.fetch()
+      await route.fulfill({ response: res, body: `${await res.text()}\n${network}\n` })
+    })
+  }
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto('/')
+  await page.waitForFunction(() => document.querySelector('h1') && !document.body.innerText.includes('Connecting to DuckDB'), null, { timeout: 60_000 })
+  return requests
+}
+
+async function openBasemapTab(page: Page) {
+  await page.getByRole('button', { name: 'Settings' }).click()
+  const dialog = page.getByRole('dialog')
+  await dialog.getByRole('tab', { name: 'Basemap' }).click()
+  await expect(dialog.getByText('Choose the map underneath every zone map and flow map')).toBeVisible()
+  return dialog
+}
+
+async function openNetworkPage(page: Page) {
+  await page.hover('[data-sidebar=sidebar]')
+  await page.getByRole('tab', { name: 'Network' }).first().click()
+  await expect(page.locator('.flowmap-chart').first()).toBeVisible({ timeout: 60_000 })
+}
+
+test('with no network keys every basemap is offered and the default is the app default', async ({ page }) => {
+  const requests = await open(page)
+  const dialog = await openBasemapTab(page)
+  expect(await dialog.getByRole('radio').count()).toBeGreaterThan(8)
+  await expect(dialog.getByRole('combobox', { name: 'Raster tile provider' })).toBeVisible({ timeout: 20_000 })
+  await page.keyboard.press('Escape')
+  await openNetworkPage(page)
+  await expect.poll(() => requests.some((u) => u.includes('tiles.openfreemap.org')), { timeout: 20_000 }).toBe(true)
+  await expect(page.getByTestId('config-notice')).toHaveCount(0)
+})
+
+test('an allow-list limits the Basemap tab, replaces a default that is not allowed, and no other basemap host is called', async ({ page }) => {
+  const requests = await open(page, 'network:\n  basemaps:\n    allow: ["ugrc-vector-lite", "protomaps-light"]')
+  // the maps: the app default (openfreemap-positron) is not allowed, so the first allowed entry is used and nothing else is asked
+  await openNetworkPage(page)
+  await expect.poll(() => requests.some((u) => u.includes('tiles.arcgis.com')), { timeout: 20_000 }).toBe(true)
+  expect(requests.filter((u) => /openfreemap\.org|cartocdn\.com/.test(u))).toEqual([])
+  // the note says the default was replaced (on a page that shows it)
+  await page.hover('[data-sidebar=sidebar]')
+  await page.getByRole('tab').first().click()
+  await expect(page.getByTestId('config-notice')).toContainText('is not allowed', { timeout: 20_000 })
+  // the tab offers only the two allowed entries and no raster dropdown
+  const dialog = await openBasemapTab(page)
+  await expect(dialog.getByRole('radio')).toHaveCount(2)
+  await expect(dialog.getByRole('combobox', { name: 'Raster tile provider' })).toHaveCount(0)
+  await expect(dialog.getByText('Raster tiles')).toHaveCount(0)
+  // the allowed style that is the first on the list starts staged
+  await expect(dialog.getByRole('radio', { checked: true })).toHaveCount(1)
+})
+
+test('a raster provider can be allowed by a pattern and the other providers are hidden', async ({ page }) => {
+  await open(page, 'network:\n  basemaps:\n    allow: ["OpenStreetMap.*"]')
+  const dialog = await openBasemapTab(page)
+  const raster = dialog.getByRole('combobox', { name: 'Raster tile provider' })
+  await expect(raster).toBeVisible({ timeout: 20_000 })
+  await expect(dialog.getByRole('radio')).toHaveCount(0)
+  await raster.click()
+  const options = page.getByRole('option')
+  expect(await options.count()).toBeGreaterThan(0)
+  for (const name of await options.allInnerTexts()) expect(name.length).toBeGreaterThan(0)
+  // nothing outside OpenStreetMap is listed: Esri is one of the curated providers and must be absent
+  await expect(page.getByRole('option', { name: 'WorldImagery' })).toHaveCount(0)
+})
+
+test('a list that matches nothing gives the plain background and calls no basemap host', async ({ page }) => {
+  const requests = await open(page, 'network:\n  basemaps:\n    allow: ["nope-*"]')
+  await openNetworkPage(page)
+  await page.waitForTimeout(1500)
+  expect(requests.filter((u) => BASEMAP_HOSTS.test(u))).toEqual([])
+  const dialog = await openBasemapTab(page)
+  await expect(dialog.getByRole('radio')).toHaveCount(0)
+})

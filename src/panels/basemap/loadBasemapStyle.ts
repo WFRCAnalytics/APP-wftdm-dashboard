@@ -3,6 +3,7 @@
 // specs/011-basemap-style-system/research.md §5/§6/§7.
 import type { StyleSpecification } from 'maplibre-gl'
 import { isBasemapComposition, type BasemapSelection } from '@/panels/basemap/types'
+import { BLANK_BASEMAP } from '@/panels/basemap/basemapPolicy'
 import { resolveBuiltInPreset, resolveRasterProvider } from '@/panels/basemap/registry'
 // 041-protomaps-pmtiles-basemap: importing this module IS the pmtiles://
 // MapLibre protocol registration (a module-load side effect, run exactly
@@ -101,6 +102,8 @@ export async function loadBasemapStyle(
 }
 
 async function resolvePresetName(name: string, signal?: AbortSignal): Promise<ResolvedStyle> {
+  // 071-network-block: the reserved plain background (an allow-list that matches nothing): no request of any kind
+  if (name === BLANK_BASEMAP) return { kind: 'style', style: freshBlankStyle() }
   // 021-basemap-catalog-redesign (T007): a built-in preset name may now
   // resolve to either a single style.json URL OR a composition — the
   // latter (the three UGRC aliases) reaches the SAME composeStyles() call

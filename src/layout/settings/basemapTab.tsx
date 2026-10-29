@@ -44,6 +44,7 @@ import { setGlobalBasemap } from '@/state/basemapState'
 import { PanelEmptyState } from '@/panels/PanelEmptyState'
 import { PanelErrorState } from '@/panels/PanelErrorState'
 import type { BasemapPresetName } from '@/panels/basemap/types'
+import { allowedOrFirst, isBasemapAllowed } from '@/panels/basemap/basemapPolicy'
 
 // 021-basemap-catalog-redesign: replaces 020-settings-modal's flat,
 // immediate-apply radio list entirely with a sectioned catalog, a single
@@ -190,7 +191,7 @@ export function BasemapTab() {
   // this is the tab's own staged CANDIDATE, decoupled from the real
   // value the moment the tab opens.
   const [stagedSelection, setStagedSelection] = useState<BasemapPresetName>(
-    () => appliedBasemap ?? APP_DEFAULT,
+    () => allowedOrFirst(appliedBasemap ?? APP_DEFAULT),
   )
 
   const previewContainerRef = useRef<HTMLDivElement>(null)
@@ -373,8 +374,21 @@ export function BasemapTab() {
     return () => controller.abort()
   }, [])
 
+  // 071-network-block: only the entries `network.basemaps.allow` lets through are offered, and a group with none is not shown at all
+  const visibleSections = SECTIONS.map((section) => ({ ...section, entries: section.entries.filter((entry) => isBasemapAllowed(entry.name)) })).filter((section) => section.entries.length > 0)
+  const visibleFlavors = PROTOMAPS_FLAVOR_NAMES.filter((name) => isBasemapAllowed(name))
+  const visibleRaster: CuratedRasterProvider[] =
+    rasterStatus.kind === 'ready'
+      ? rasterStatus.providers.flatMap((provider) => {
+          if (provider.variants.length === 0) return isBasemapAllowed(provider.name) ? [provider] : []
+          const variants = provider.variants.filter((variant) => isBasemapAllowed(`${provider.name}.${variant}`))
+          return variants.length > 0 ? [{ ...provider, variants }] : []
+        })
+      : []
+  const hideRaster = rasterStatus.kind === 'ready' && rasterStatus.providers.length > 0 && visibleRaster.length === 0
+
   const stagedIsRaster = isRasterProviderSelection(stagedSelection)
-  const effectiveApplied: BasemapPresetName = appliedBasemap ?? APP_DEFAULT
+  const effectiveApplied: BasemapPresetName = allowedOrFirst(appliedBasemap ?? APP_DEFAULT)
   const unchanged = stagedSelection === effectiveApplied
 
   return (
@@ -391,7 +405,7 @@ export function BasemapTab() {
             data-testid="basemap-sections-scroll"
             className="scrollbar-thin flex min-h-0 flex-1 flex-col overflow-y-auto pr-1 max-[1100px]:overflow-visible"
           >
-            {SECTIONS.map((section) => (
+            {visibleSections.map((section) => (
               <div key={section.heading}>
                 <GroupHeading>{section.heading}</GroupHeading>
                 <div className="grid grid-cols-[repeat(auto-fill,minmax(104px,1fr))] gap-2.5" role="radiogroup" aria-label={section.heading}>
@@ -412,10 +426,11 @@ export function BasemapTab() {
             ))}
 
             {/* Protomaps needs a configured PMTiles source; without one its styles stay disabled, as before. */}
+            {visibleFlavors.length > 0 && (
             <div>
               <GroupHeading>Protomaps</GroupHeading>
               <div className="grid grid-cols-[repeat(auto-fill,minmax(104px,1fr))] gap-2.5" role="radiogroup" aria-label="Protomaps">
-                {PROTOMAPS_FLAVOR_NAMES.map((name) => {
+                {visibleFlavors.map((name) => {
                   const { label, icon } = PROTOMAPS_FLAVOR_LABEL_AND_ICON[name]
                   return (
                     <StyleCard
@@ -442,9 +457,11 @@ export function BasemapTab() {
                 </p>
               )}
             </div>
+            )}
           </div>
           {/* Raster Tiles: pinned under the scrolling vector styles so the picker is always reachable. Loading / error /
               empty / ready; part of the same stage-then-Apply flow. */}
+          {!hideRaster && (
           <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-[var(--line)] pt-3">
             <span className="text-[12.5px] font-medium text-[var(--ink)]">Raster tiles</span>
             {rasterStatus.kind === 'loading' && (
@@ -454,14 +471,14 @@ export function BasemapTab() {
             {rasterStatus.kind === 'ready' && rasterStatus.providers.length === 0 && (
               <PanelEmptyState icon={MapIcon} message="No raster tile providers available." />
             )}
-            {rasterStatus.kind === 'ready' && rasterStatus.providers.length > 0 && (
+            {rasterStatus.kind === 'ready' && visibleRaster.length > 0 && (
               // The app's own Radix Select, not a native one: a native listbox is drawn by the OS with its own accent.
               <Select value={stagedIsRaster ? stagedSelection : undefined} onValueChange={(value) => setStagedSelection(value)}>
                 <SelectTrigger aria-label="Raster tile provider" className="h-9 flex-1">
                   <SelectValue placeholder="Select a raster provider…" />
                 </SelectTrigger>
                 <SelectContent>
-                  {rasterStatus.providers.map((provider) =>
+                  {visibleRaster.map((provider) =>
                     provider.variants.length === 0 ? (
                       <SelectItem key={provider.name} value={provider.name}>
                         {provider.name}
@@ -489,6 +506,7 @@ export function BasemapTab() {
               Explore options
             </a>
           </div>
+          )}
         </div>
 
         <aside className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--tile-hi)] max-[1100px]:order-first">
