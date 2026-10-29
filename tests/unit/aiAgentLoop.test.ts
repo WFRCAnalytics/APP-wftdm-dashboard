@@ -1,6 +1,7 @@
 // 064-ai-chat-assistant: the agent loop (fake provider and dispatcher) and what the model is told about results.
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { assistantHistoryText, buildSystemPrompt, MAX_ROUND_TRIPS, runAgent, type AgentDeps, type AgentRun } from '@/services/ai/agentLoop'
+import { configureAssistant, resetAssistantPolicy } from '@/services/ai/assistantPolicy'
 import { MODEL_ROW_LIMIT, shapeForModel } from '@/services/ai/toolSchema'
 import type { ChatTurn, Completion, ProviderConfig, QueryAttempt } from '@/services/ai/types'
 
@@ -169,5 +170,73 @@ describe('shapeForModel (privacy)', () => {
   it('says how many rows when the preview was truncated', () => {
     const t = shapeForModel(attempt({ truncated: true, rows: [[1], [2]] }), 'schema-only') as { rowCount: string }
     expect(t.rowCount).toBe('2+')
+  })
+})
+
+describe('the deployment\'s limits and note (assistant settings)', () => {
+  afterEach(() => resetAssistantPolicy())
+
+  it('stops after the configured number of steps and says so', async () => {
+    configureAssistant({ limits: { roundTrips: 3 } })
+    const s = setup(Array.from({ length: 20 }, () => ({ text: '', toolCalls: [call('x', 'run_sql', { sql: 's' })] })))
+    const out = await runAgent(s.run, s.deps)
+    expect(out.capped).toBe(true)
+    expect(out.text).toContain('more steps than the assistant allows')
+    expect(s.complete).toHaveBeenCalledTimes(3)
+  })
+
+  it('a higher step limit lets a longer question finish', async () => {
+    configureAssistant({ limits: { roundTrips: 9 } })
+    const script: Completion[] = [...Array.from({ length: 8 }, () => ({ text: '', toolCalls: [call('x', 'run_sql', { sql: 's' })] })), { text: 'done', toolCalls: [] }]
+    const s = setup(script)
+    expect(await runAgent(s.run, s.deps)).toEqual({ text: 'done', capped: false })
+    expect(s.complete).toHaveBeenCalledTimes(9)
+  })
+
+  it('shares at most the configured number of rows with the model and says how many it was told', () => {
+    configureAssistant({ limits: { modelRows: 20 } })
+    const big = attempt({ rows: Array.from({ length: 500 }, (_, i) => [i]) })
+    const shaped = shapeForModel(big, 'schema-and-results') as { rows: unknown[][]; note?: string }
+    expect(shaped.rows).toHaveLength(20)
+    expect(shaped.note).toContain('first 20 rows')
+    expect(buildSystemPrompt('C', 'read-only', 'schema-and-results')).toContain('up to 20 result rows')
+  })
+
+  it('does not change what schema-only sends: no values, whatever the row limit', () => {
+    configureAssistant({ limits: { modelRows: 200 } })
+    expect(JSON.stringify(shapeForModel(attempt({ rows: [['secret-1']] }), 'schema-only'))).not.toContain('secret')
+  })
+
+  it('adds the note last, after the built-in instructions, without changing them', () => {
+    const plain = buildSystemPrompt('CATALOG', 'read-only', 'schema-only', {})
+    configureAssistant({ promptAddendum: 'Our zones are called TAZs.' })
+    const withNote = buildSystemPrompt('CATALOG', 'read-only', 'schema-only')
+    expect(withNote.startsWith(plain)).toBe(true)
+    expect(withNote.endsWith('LOCAL CONTEXT (from the dashboard\'s deployer):\nOur zones are called TAZs.')).toBe(true)
+    expect(withNote.slice(plain.length)).toBe('\n\nLOCAL CONTEXT (from the dashboard\'s deployer):\nOur zones are called TAZs.')
+  })
+
+  it('adds nothing when no note is set, and the defaults are today\'s values', () => {
+    expect(buildSystemPrompt('CATALOG', 'read-only', 'schema-and-results')).not.toContain('LOCAL CONTEXT')
+    expect(buildSystemPrompt('CATALOG', 'read-only', 'schema-and-results')).toContain('up to 50 result rows')
+    expect(MAX_ROUND_TRIPS).toBe(6)
+  })
+
+  it('sends the note to the model but nowhere the viewer sees', async () => {
+    configureAssistant({ promptAddendum: 'NOTE-FOR-MODEL' })
+    const systems: string[] = []
+    const deps: AgentDeps = {
+      complete: async (_c, system) => {
+        systems.push(system)
+        return { text: 'answer', toolCalls: [] }
+      },
+      dispatch: async () => ({ content: '{}' }),
+      catalog: () => 'CATALOG',
+    }
+    const s = setup([])
+    const out = await runAgent(s.run, deps)
+    expect(systems[0]).toContain('NOTE-FOR-MODEL')
+    expect(out.text).toBe('answer')
+    expect(s.steps.join(' ')).not.toContain('NOTE-FOR-MODEL')
   })
 })

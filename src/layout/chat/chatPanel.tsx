@@ -9,6 +9,7 @@ import { useScrollEdges } from '@/hooks/useScrollEdges'
 import { retryLast, sendQuestion } from '@/services/ai/chatSession'
 import { DEMO_SCRIPT } from '@/services/ai/demoScript'
 import { clearChat, setChatOpen, stopRun } from '@/state/chatState'
+import { getProviderPresets } from '@/state/aiState'
 import { endDemo, startDemo } from '@/state/aiState'
 import { openSettings } from '@/state/settingsState'
 
@@ -104,10 +105,14 @@ export default function ChatPanel() {
           <PillButton primary onClick={() => openSettings('ai')}>
             Set up the AI assistant
           </PillButton>
-          <PillButton onClick={startDemo} data-testid="ai-try-demo">
-            Try the demo
-          </PillButton>
-          <p className="max-w-[30ch] text-[11.5px] text-[var(--mute)]">The demo plays scripted questions on the sample data. No key needed.</p>
+          {getProviderPresets().some((p) => p.id === 'demo') && (
+            <>
+              <PillButton onClick={startDemo} data-testid="ai-try-demo">
+                Try the demo
+              </PillButton>
+              <p className="max-w-[30ch] text-[11.5px] text-[var(--mute)]">The demo plays scripted questions on the sample data. No key needed.</p>
+            </>
+          )}
         </div>
       ) : (
         <>

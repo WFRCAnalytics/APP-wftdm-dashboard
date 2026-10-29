@@ -143,3 +143,90 @@ describe('settings.tabs', () => {
     expect(validate({ settings: { tabs: ['basemap'] } }, { file: 'p.yaml', level: 'page' }).problems.map((p) => p.kind)).toEqual(['not_allowed_here'])
   })
 })
+
+describe('assistant providers', () => {
+  const gw = { id: 'gw', base_url: 'https://llm.example.org/v1' }
+  it('keeps the valid entries, reports each bad one with the assistant.providers path and skips it', () => {
+    const { settings, problems } = validate({ assistant: { providers: [gw, { id: 'gw', base_url: 'https://x.org' }, { id: 'p', base_url: 'ftp://x', protocol: 'soap' }] } }, { file })
+    expect((getPath(settings, 'assistant.providers') as { id: string }[]).map((p) => p.id)).toEqual(['gw'])
+    expect(problems.every((p) => p.kind === 'invalid_value' && p.path === 'assistant.providers')).toBe(true)
+    expect(problems.map((p) => p.message).join(' | ')).toMatch(/provider 2: id "gw" is already used.*provider 3: base_url must be an http or https address.*provider 3: unknown protocol/)
+  })
+
+  it('leaves the key unset for an empty list, a list with no usable entry and a non-list', () => {
+    for (const providers of [[], [{ id: 'x' }], 'gw']) {
+      const r = validate({ assistant: { providers } }, { file })
+      expect(getPath(r.settings, 'assistant.providers'), JSON.stringify(providers)).toBeUndefined()
+      expect(r.problems.length).toBeGreaterThan(0)
+    }
+  })
+
+  it('accepts the default provider and model as text and is site-only', () => {
+    expect(validate({ assistant: { default: { provider: 'gw', model: 'm' } } }, { file }).problems).toEqual([])
+    expect(validate({ assistant: { default: { provider: 3 } } }, { file }).problems.map((p) => p.kind)).toEqual(['wrong_type'])
+    expect(validate({ assistant: { providers: [gw] } }, { file: 'p.yaml', level: 'page' }).problems.map((p) => p.kind)).toEqual(['not_allowed_here'])
+  })
+})
+
+describe('assistant note and limits', () => {
+  it('accepts a note of 2000 characters and refuses one of 2001, leaving it unset with the length in the message', () => {
+    expect(validate({ assistant: { prompt_addendum: 'x'.repeat(2000) } }, { file }).problems).toEqual([])
+    const r = validate({ assistant: { prompt_addendum: 'x'.repeat(2001) } }, { file })
+    expect(getPath(r.settings, 'assistant.prompt_addendum')).toBeUndefined()
+    expect(r.problems.map((p) => [p.kind, p.path])).toEqual([['invalid_value', 'assistant.prompt_addendum']])
+    expect(r.problems[0].message).toContain('2001')
+  })
+
+  it('takes each limit at its bounds and refuses one outside, keeping it unset', () => {
+    const edges: [string, number, number][] = [['round_trips', 1, 12], ['preview_rows', 100, 5000], ['model_rows', 1, 200]]
+    for (const [name, min, max] of edges) {
+      for (const ok of [min, max]) expect(validate({ assistant: { limits: { [name]: ok } } }, { file }).problems, `${name}=${ok}`).toEqual([])
+      for (const bad of [min - 1, max + 1]) {
+        const r = validate({ assistant: { limits: { [name]: bad } } }, { file })
+        expect(getPath(r.settings, `assistant.limits.${name}`), `${name}=${bad}`).toBeUndefined()
+        expect(r.problems.map((p) => [p.kind, p.path]), `${name}=${bad}`).toEqual([['invalid_value', `assistant.limits.${name}`]])
+      }
+    }
+  })
+
+  it('refuses a limit that is not a whole number and a note that is not text', () => {
+    expect(validate({ assistant: { limits: { round_trips: 2.5 } } }, { file }).problems.map((p) => p.kind)).toEqual(['wrong_type'])
+    expect(validate({ assistant: { limits: { model_rows: 'many' } } }, { file }).problems.map((p) => p.kind)).toEqual(['wrong_type'])
+    expect(validate({ assistant: { prompt_addendum: 5 } }, { file }).problems.map((p) => p.kind)).toEqual(['wrong_type'])
+  })
+
+  it('is site-only', () => {
+    expect(validate({ assistant: { limits: { round_trips: 3 } } }, { file: 'p.yaml', level: 'page' }).problems.map((p) => p.kind)).toEqual(['not_allowed_here'])
+  })
+})
+
+describe('secret-like keys', () => {
+  const MESSAGE = 'secrets are not configuration; viewers enter their own token'
+
+  it('refuses a secret-like key anywhere, naming it and never its value', () => {
+    for (const key of ['api_key', 'token', 'Password', 'authorization', 'client_secret', 'apiKey', 'secrets']) {
+      const r = validate({ assistant: { [key]: 'SECRET-VALUE-123' } }, { file })
+      expect(r.problems.map((p) => [p.kind, p.path]), key).toEqual([['not_allowed_here', `assistant.${key}`]])
+      expect(r.problems[0].message, key).toContain(MESSAGE)
+      expect(JSON.stringify(r), key).not.toContain('SECRET-VALUE-123')
+    }
+    const top = validate({ api_key: 'SECRET-VALUE-123', title: 'ok' }, { file })
+    expect(top.problems.map((p) => [p.kind, p.path])).toEqual([['not_allowed_here', 'api_key']])
+    expect(getPath(top.settings, 'title')).toBe('ok')
+    expect(JSON.stringify(top)).not.toContain('SECRET-VALUE-123')
+  })
+
+  it('does not read a secret-like group either, so nothing inside it is looked at', () => {
+    const r = validate({ assistant: { credentials: { token: 'SECRET-VALUE-123' }, token: { nested: 'SECRET-VALUE-123' } } }, { file })
+    expect(r.problems.map((p) => p.path).sort()).toEqual(['assistant.credentials', 'assistant.token'])
+    expect(JSON.stringify(r)).not.toContain('SECRET-VALUE-123')
+  })
+
+  it('still calls an ordinary unknown key an unknown key, and keyboard or tokenizer are not secrets', () => {
+    expect(validate({ assistant: { keyboard: 1, tokenizer: 2 } }, { file }).problems.map((p) => p.kind)).toEqual(['unknown_key', 'unknown_key'])
+  })
+
+  it('leaves the declared domain-restricted map key alone', () => {
+    expect(validate({ basemap: { protomaps: { api_key: 'abc123' } } }, { file }).problems).toEqual([])
+  })
+})

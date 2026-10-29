@@ -6,6 +6,7 @@ import { load } from 'js-yaml'
 import { slugCollisions } from '../state/routeState'
 import { getPath, isTree, type Tree } from './paths'
 import { pageSettings } from './levels'
+import { checkDefault } from './assistant'
 import { allHidden } from './pages'
 import { resolve } from './resolve'
 import { SETTINGS } from './schema'
@@ -62,6 +63,9 @@ export function checkSite(read: (file: string) => string | undefined, options: C
   const checked = validate(parsed.raw, { file: SITE_FILE })
   problems.push(...checked.problems)
   report.site = checked.settings
+  for (const message of checkDefault(checked.settings)) {
+    problems.push({ file: SITE_FILE, path: 'assistant.default.provider', kind: 'invalid_value', message })
+  }
 
   const pages = getPath(checked.settings, 'pages')
   const headers: { tab: string; slug?: string }[] = []

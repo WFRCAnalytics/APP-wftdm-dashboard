@@ -3,9 +3,11 @@
 import { cancelRunning, query, queryArrow } from '@/services/duckdb'
 import { ensureRegistered } from '@/services/tabDataLoader'
 import { buildCatalog, protectedNames, viewsReferencedBy } from './catalog.ts'
+import { getLimits } from './assistantPolicy.ts'
 import { authorize } from './sqlGuard.ts'
 import type { ColumnInfo, Permission, QueryAttempt } from './types.ts'
 
+/** Rows of a result shown to the viewer unless the deployment sets `assistant.limits.preview_rows` (assistantPolicy.ts). */
 export const MAX_PREVIEW_ROWS = 1000
 
 const ROW_VERBS = new Set(['SELECT', 'WITH', 'FROM', 'VALUES', 'TABLE'])
@@ -70,20 +72,21 @@ export async function runSql(sql: string, mode: Permission, signal?: AbortSignal
     const needed = viewsReferencedBy(sql, buildCatalog())
     if (needed.length) await ensureRegistered(needed.map(({ scenario, metric }) => ({ scenario, metric })))
 
+    const previewRows = getLimits().previewRows
     let table: Awaited<ReturnType<typeof queryArrow>> | undefined
     for (const s of verdict.statements) {
-      const text = ROW_VERBS.has(s.verb) ? `SELECT * FROM (\n${s.text}\n) LIMIT ${MAX_PREVIEW_ROWS + 1}` : s.text
+      const text = ROW_VERBS.has(s.verb) ? `SELECT * FROM (\n${s.text}\n) LIMIT ${previewRows + 1}` : s.text
       table = await queryArrow(text)
     }
     if (!table) return attempt(sql, mode, { outcome: 'ok' })
 
     const columns: ColumnInfo[] = table.schema.fields.map((f) => ({ name: f.name, type: String(f.type) }))
-    const shown = Math.min(table.numRows, MAX_PREVIEW_ROWS)
+    const shown = Math.min(table.numRows, previewRows)
     const rows: unknown[][] = []
     for (let i = 0; i < shown; i++) {
       rows.push(columns.map((_c, j) => toCell(table!.getChildAt(j)?.get(i))))
     }
-    return attempt(sql, mode, { columns, rows, truncated: table.numRows > MAX_PREVIEW_ROWS })
+    return attempt(sql, mode, { columns, rows, truncated: table.numRows > previewRows })
   } catch (e) {
     if (signal?.aborted) return attempt(sql, mode, { outcome: 'cancelled' })
     return attempt(sql, mode, { outcome: 'error', reason: (e as Error).message })

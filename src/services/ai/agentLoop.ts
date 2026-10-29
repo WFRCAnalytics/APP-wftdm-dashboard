@@ -1,8 +1,10 @@
 // 064-ai-chat-assistant: the bounded tool-calling loop. Pure orchestration over injected dependencies (provider call,
 // tool dispatcher, catalogue text) so it can be unit tested with fakes. Contract: contracts/assistant-tools.md.
+import { getLimits, getPromptNote } from './assistantPolicy.ts'
 import { TOOL_SPECS, type ToolContext, type ToolOutcome } from './toolSchema.ts'
 import type { ChatTurn, Completion, Permission, PrivacyMode, ProviderConfig, QueryAttempt, ToolCall, ToolSpec } from './types.ts'
 
+/** The steps one question may take unless the deployment sets `assistant.limits.round_trips` (assistantPolicy.ts). */
 export const MAX_ROUND_TRIPS = 6
 
 export interface AgentDeps {
@@ -29,7 +31,13 @@ export interface AgentResult {
   capped: boolean
 }
 
-export function buildSystemPrompt(catalog: string, permission: Permission, privacy: PrivacyMode): string {
+export function buildSystemPrompt(
+  catalog: string,
+  permission: Permission,
+  privacy: PrivacyMode,
+  /** The deployer's note and the rows shared with the model: the deployment's settings unless a test passes its own. */
+  opts: { note?: string; modelRows?: number } = { note: getPromptNote(), modelRows: getLimits().modelRows },
+): string {
   const mode =
     permission === 'read-only'
       ? 'The app is in READ-ONLY mode: only SELECT-style statements (SELECT, WITH, DESCRIBE, SHOW, EXPLAIN) run. Anything else is refused by the app.'
@@ -37,7 +45,7 @@ export function buildSystemPrompt(catalog: string, permission: Permission, priva
   const data =
     privacy === 'schema-only'
       ? 'PRIVACY: you only see column names/types and row counts; result values are hidden from you. The viewer sees the result table under your answer. Never state or guess values. If a filter returns 0 rows, the spelling of a category may be wrong: retry with ILIKE or a broader filter.'
-      : 'PRIVACY: you see up to 50 result rows per query. Base every number you state on those rows.'
+      : `PRIVACY: you see up to ${opts.modelRows ?? getLimits().modelRows} result rows per query. Base every number you state on those rows.`
   return [
     "You are the data assistant inside a travel-demand-model calibration dashboard. Answer the user's questions about the model data by querying it with DuckDB SQL.",
     '',
@@ -49,6 +57,8 @@ export function buildSystemPrompt(catalog: string, permission: Permission, priva
     data,
     '',
     'STYLE: answer briefly in plain language; say which scenarios and views you used; if the data cannot answer the question, say so; never invent numbers. If a query fails, read the error and fix it. Do not claim to have run a query you did not run.',
+    // the deployer's note comes last and only adds context: it never replaces or edits the instructions above
+    ...(opts.note ? ['', "LOCAL CONTEXT (from the dashboard's deployer):", opts.note] : []),
   ].join('\n')
 }
 
@@ -58,7 +68,8 @@ export async function runAgent(run: AgentRun, deps: AgentDeps): Promise<AgentRes
   const turns: ChatTurn[] = [...run.history, { role: 'user', text: run.question }]
   const ctx: ToolContext = { permission: run.permission, privacy: run.privacy, signal: run.signal }
 
-  for (let round = 1; round <= MAX_ROUND_TRIPS; round++) {
+  const maxRounds = getLimits().roundTrips
+  for (let round = 1; round <= maxRounds; round++) {
     run.onStep(round === 1 ? 'Thinking' : 'Reading the result')
     const completion = await deps.complete(run.config, system, turns, TOOL_SPECS, run.signal)
     if (completion.toolCalls.length === 0) return { text: completion.text.trim(), capped: false }

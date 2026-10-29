@@ -221,6 +221,47 @@
         "enabled": {
           "type": "boolean",
           "description": "Turns the AI assistant (button, panel and Settings tab) on or off."
+        },
+        "providers": {
+          "type": "array",
+          "items": {},
+          "description": "The AI providers the assistant tab offers, replacing the built-in ones: id, label, base_url, models, needs_key, protocol (openai or anthropic). The address of a listed provider is fixed."
+        },
+        "default": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "provider": {
+              "type": "string",
+              "description": "The provider the assistant tab starts on (an id from the offered providers)."
+            },
+            "model": {
+              "type": "string",
+              "description": "The model the assistant tab starts with (any model name)."
+            }
+          }
+        },
+        "prompt_addendum": {
+          "type": "string",
+          "description": "A short plain-text note added after the assistant’s instructions (for example: Our zones are called TAZs). At most 2000 characters; the viewer does not see it."
+        },
+        "limits": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "round_trips": {
+              "type": "integer",
+              "description": "Steps the assistant may take to answer one question: 1 to 12 (default 6)."
+            },
+            "preview_rows": {
+              "type": "integer",
+              "description": "Rows of a query result shown to the viewer: 100 to 5000 (default 1000)."
+            },
+            "model_rows": {
+              "type": "integer",
+              "description": "Rows of a result shared with the model when the viewer shares results: 1 to 200 (default 50)."
+            }
+          }
         }
       }
     },

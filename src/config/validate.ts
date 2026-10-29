@@ -1,5 +1,6 @@
 // Checks one level of settings (the site file, a page, a panel) against the schema table. A wrong value is reported and
 // left out, so the key keeps its default and nothing here throws. Pure.
+import { isSecretLikeKey, SECRETS_MESSAGE } from './assistant'
 import { getPath, isTree, setPath, type Tree } from './paths'
 import { indexSchema, SCHEMA_VERSION, SETTINGS, type SettingDef } from './schema'
 
@@ -131,6 +132,9 @@ export function validate(raw: unknown, opts: ValidateOptions): { settings: Tree;
       } else if (groups.has(path)) {
         if (isTree(value)) walk(value, path)
         else report(path, 'wrong_type', 'expected a group of settings')
+      } else if (isSecretLikeKey(key)) {
+        // a published file must never hold a secret: the key is named, its value is neither read nor shown
+        report(path, 'not_allowed_here', `"${path}" is not allowed: ${SECRETS_MESSAGE}`)
       } else {
         report(path, 'unknown_key', `unknown setting "${path}"`)
       }

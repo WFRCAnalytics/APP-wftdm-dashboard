@@ -2,7 +2,7 @@
 // the pure schema in src/config. A wrong value is reported and keeps its default; nothing here throws.
 import { load } from 'js-yaml'
 
-import { getPath, overlay, toBranding, validate, type ConfigProblem, type Tree } from '@/config'
+import { checkDefault, getPath, overlay, toBranding, validate, type ConfigProblem, type Tree } from '@/config'
 import { addProblems } from '@/state/configProblems'
 import type { DashboardBranding } from '@/services/yamlLoader'
 
@@ -85,8 +85,12 @@ export async function loadSite(
     if (legacy) problems.push(legacy)
     else if (!demo.found) problems.push({ file: SITE_CONFIG_FILE, path: '', kind: 'missing_file', message: 'no site configuration was found; showing defaults' })
   }
-  addProblems(problems)
   const settings = overlay(demo.settings, primary.settings)
+  // the default provider must be one that is offered (a check across two settings, so after the roots are merged)
+  for (const message of checkDefault(settings)) {
+    problems.push({ file: SITE_CONFIG_FILE, path: 'assistant.default.provider', kind: 'invalid_value', message })
+  }
+  addProblems(problems)
   return {
     branding: toBranding(settings),
     settings,

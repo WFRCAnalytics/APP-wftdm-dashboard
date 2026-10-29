@@ -39,6 +39,8 @@ import { setAssistantEnabled } from './state/assistantAvailability.ts'
 import { allHidden, resolveSettingsTabs } from '@/config'
 import { addProblems } from '@/state/configProblems'
 import { configureSettingsTabs } from '@/state/settingsState'
+import { configureAssistant } from '@/services/ai/assistantPolicy'
+import { applyAssistantPolicy } from '@/state/aiState'
 import { loadSite } from './services/siteConfig.ts'
 import { loadDashboards } from './services/yamlLoader.ts'
 import { setDeployerScenarioPalette } from './panels/scenarioDisplay.ts'
@@ -158,6 +160,9 @@ toast.success('Scenarios loaded', { id: scenariosToastId })
 // Deployer-configurable settings (title, logos, colours, vocabularies, years, ...), in the shape the app reads.
 const branding = site.branding
 setAssistantEnabled(branding.assistantEnabled !== false)
+// The assistant's providers and defaults from the site file (a deployer's list replaces the built-ins); then the form starts on them.
+configureAssistant(branding.assistant)
+applyAssistantPolicy()
 // The Settings window's tabs and their order (`settings.tabs`); the assistant switch above wins over the list.
 configureSettingsTabs(
   resolveSettingsTabs(branding.settingsTabs, { assistantEnabled: branding.assistantEnabled !== false }).map((n) => (n === 'assistant' ? 'ai' : n)),

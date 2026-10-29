@@ -77,3 +77,31 @@ describe('toBranding: settings tabs', () => {
     expect(toBranding(validate({}, { file: 'x' }).settings).settingsTabs).toBeUndefined()
   })
 })
+
+describe('toBranding: assistant providers', () => {
+  it('maps a cleaned list and the default, and leaves the assistant unset otherwise', () => {
+    const { settings, problems } = validate(
+      { assistant: { providers: [{ id: 'gw', base_url: 'https://llm.example.org/v1', models: ['m'] }, { id: 'bad' }], default: { provider: 'gw', model: 'm' } } },
+      { file: 'x' },
+    )
+    expect(problems.map((p) => p.path)).toEqual(['assistant.providers'])
+    const a = toBranding(settings).assistant
+    expect(a?.providers).toEqual([{ id: 'gw', label: 'gw', base_url: 'https://llm.example.org/v1', models: ['m'], needs_key: true, protocol: 'openai' }])
+    expect(a?.default).toEqual({ provider: 'gw', model: 'm' })
+    expect(toBranding(validate({ assistant: { enabled: true } }, { file: 'x' }).settings).assistant).toBeUndefined()
+  })
+})
+
+describe('toBranding: assistant note and limits', () => {
+  it('maps the note and each limit that is set', () => {
+    const { settings } = validate({ assistant: { prompt_addendum: ' Our zones are called TAZs. ', limits: { round_trips: 3, model_rows: 20 } } }, { file: 'x' })
+    const a = toBranding(settings).assistant
+    expect(a?.promptAddendum).toBe(' Our zones are called TAZs. ')
+    expect(a?.limits).toEqual({ roundTrips: 3, modelRows: 20 })
+  })
+
+  it('leaves out a limit that was refused', () => {
+    const { settings } = validate({ assistant: { limits: { round_trips: 99, preview_rows: 200 } } }, { file: 'x' })
+    expect(toBranding(settings).assistant?.limits).toEqual({ previewRows: 200 })
+  })
+})

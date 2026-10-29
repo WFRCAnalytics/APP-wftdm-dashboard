@@ -111,3 +111,42 @@ describe('check: hidden pages', () => {
     expect(kinds(checkSite(files({ 'dashboard-config.yaml': 'header: { hidden: true }\n' })))).toEqual([['not_allowed_here', 'dashboard-config.yaml', 'header.hidden']])
   })
 })
+
+describe('check: assistant settings', () => {
+  const only = (yaml: string) => checkSite(files({ 'dashboard-config.yaml': yaml }))
+  const GW = 'providers:\n      - { id: gw, base_url: "https://llm.example.org/v1" }\n      - { id: two, base_url: "https://two.example.org" }\n'
+
+  it('passes a good block', () => {
+    expect(only(`assistant:\n  ${GW}  default: { provider: two, model: m }\n  prompt_addendum: Our zones are called TAZs.\n  limits: { round_trips: 3, preview_rows: 200, model_rows: 20 }\n`).problems).toEqual([])
+  })
+
+  it('reports a default that names an unlisted provider, naming the offered ones', () => {
+    const r = only(`assistant:\n  ${GW}  default: { provider: openai }\n`)
+    expect(kinds(r)).toEqual([['invalid_value', 'dashboard-config.yaml', 'assistant.default.provider']])
+    expect(r.problems[0].message).toContain('(gw, two)')
+  })
+
+  it('accepts a built-in default when there is no list, and reports an unknown one', () => {
+    expect(only('assistant:\n  default: { provider: ollama }\n').problems).toEqual([])
+    expect(kinds(only('assistant:\n  default: { provider: nope }\n'))).toEqual([['invalid_value', 'dashboard-config.yaml', 'assistant.default.provider']])
+  })
+
+  it('reports an empty list and a list with no usable entry, once each, and the built-ins stay', () => {
+    expect(kinds(only('assistant:\n  providers: []\n'))).toEqual([['invalid_value', 'dashboard-config.yaml', 'assistant.providers']])
+    const r = only('assistant:\n  providers:\n    - { id: x }\n')
+    expect(r.problems.map((p) => p.path)).toEqual(['assistant.providers', 'assistant.providers'])
+    expect(r.problems.at(-1)?.message).toContain('built-in providers are used')
+  })
+
+  it('reports a secret-like field once and never prints its value', () => {
+    const r = only('assistant:\n  api_key: SECRET-123\n  providers:\n    - { id: gw, base_url: "https://llm.example.org/v1", token: SECRET-456 }\n')
+    expect(JSON.stringify(r.problems)).not.toContain('SECRET-')
+    expect(r.problems.map((p) => [p.kind, p.path])).toEqual([['not_allowed_here', 'assistant.api_key'], ['invalid_value', 'assistant.providers']])
+    expect(r.problems.every((p) => p.message.includes('secrets are not configuration'))).toBe(true)
+  })
+
+  it('reports each limit out of range and an over-long note', () => {
+    const r = only(`assistant:\n  prompt_addendum: "${'x'.repeat(2001)}"\n  limits: { round_trips: 99, preview_rows: 5, model_rows: 500 }\n`)
+    expect(r.problems.map((p) => p.path)).toEqual(['assistant.prompt_addendum', 'assistant.limits.round_trips', 'assistant.limits.preview_rows', 'assistant.limits.model_rows'])
+  })
+})

@@ -38,6 +38,13 @@ A wrong value is reported (in a note on the page and in the browser console) and
 | `layout.mode` | `scroll` | `tabs` | — | page, panel (scalars replace, maps merge per key) | How pages are shown unless a page or the viewer says otherwise. |
 | `export.footer` | boolean|string | — | page, panel (scalars replace, maps merge per key) | Line under exported images: true (source, scenarios, year, date), false (none) or your own text. |
 | `assistant.enabled` | boolean | — | site only | Turns the AI assistant (button, panel and Settings tab) on or off. |
+| `assistant.providers` | list of values | — | site only | The AI providers the assistant tab offers, replacing the built-in ones: id, label, base_url, models, needs_key, protocol (openai or anthropic). The address of a listed provider is fixed. |
+| `assistant.default.provider` | string | — | site only | The provider the assistant tab starts on (an id from the offered providers). |
+| `assistant.default.model` | string | — | site only | The model the assistant tab starts with (any model name). |
+| `assistant.prompt_addendum` | string | — | site only | A short plain-text note added after the assistant’s instructions (for example: Our zones are called TAZs). At most 2000 characters; the viewer does not see it. |
+| `assistant.limits.round_trips` | integer | — | site only | Steps the assistant may take to answer one question: 1 to 12 (default 6). |
+| `assistant.limits.preview_rows` | integer | — | site only | Rows of a query result shown to the viewer: 100 to 5000 (default 1000). |
+| `assistant.limits.model_rows` | integer | — | site only | Rows of a result shared with the model when the viewer shares results: 1 to 200 (default 50). |
 | `docs.url` | url | — | site only | Address of the documentation site; sets a link at the foot of the left sidebar (none when unset). |
 | `docs.label` | string | — | site only | Text of the documentation link (default: Documentation). |
 | `header.docs` | string | — | page `header:` only | A page header key: a path appended to docs.url, so the sidebar link opens the section for that page. |

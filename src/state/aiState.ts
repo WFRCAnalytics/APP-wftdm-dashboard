@@ -1,25 +1,23 @@
 // 064-ai-chat-assistant: the assistant's settings. Session-only module state like every other store here
 // (constitution VI: no Web Storage): the token is lost on reload, deliberately. The token is only ever read through
 // getSavedConfig() by services/ai/providers.ts; nothing here logs or serializes it.
+import { BUILTIN_PRESETS, getDefaultProvider, getProviderCatalogue, isAddressAllowed, isLocked, type ProviderPreset } from '@/services/ai/assistantPolicy'
 import type { Permission, PrivacyMode, ProviderConfig, ProviderId } from '@/services/ai/types'
 
-export interface ProviderPreset {
-  label: string
-  baseUrl: string
-  model: string
-  /** Ollama runs locally and needs no token. */
-  needsKey: boolean
-  /** Suggested models for the searchable picker; any other model name can still be typed. */
-  models: string[]
+// The providers on offer (the deployer's list or the built-ins) are resolved once at boot into services/ai/assistantPolicy.ts.
+export type { ProviderPreset }
+
+/** The built-in providers, by id (what the Settings tab offers when the deployer lists none). */
+export const PROVIDER_PRESETS: Record<string, ProviderPreset> = Object.fromEntries(BUILTIN_PRESETS.map((p) => [p.id, p]))
+
+/** The providers the Settings tab offers now, in order. */
+export function getProviderPresets(): readonly ProviderPreset[] {
+  return getProviderCatalogue()
 }
 
-export const PROVIDER_PRESETS: Record<ProviderId, ProviderPreset> = {
-  openai: { label: 'OpenAI', baseUrl: 'https://api.openai.com/v1', model: 'gpt-4.1', needsKey: true, models: ['gpt-4.1', 'gpt-4.1-mini', 'gpt-4.1-nano', 'gpt-4o', 'gpt-4o-mini', 'o4-mini', 'o3'] },
-  anthropic: { label: 'Anthropic', baseUrl: 'https://api.anthropic.com', model: 'claude-sonnet-5-5', needsKey: true, models: ['claude-sonnet-5-5', 'claude-opus-5-5', 'claude-haiku-5-5', 'claude-fable-5-1'] },
-  deepseek: { label: 'Deepseek', baseUrl: 'https://api.deepseek.com', model: 'deepseek-chat', needsKey: true, models: ['deepseek-chat', 'deepseek-reasoner'] },
-  // Scripted replies for trying the chat out: no network, no key (services/ai/demoScript.ts).
-  demo: { label: 'Demo (offline)', baseUrl: 'demo://local', model: 'scripted', needsKey: false, models: ['scripted'] },
-  ollama: { label: 'Ollama', baseUrl: 'http://localhost:11434/v1', model: 'llama3.1', needsKey: false, models: ['llama3.1', 'llama3.2', 'qwen2.5', 'qwen3', 'mistral-nemo', 'mistral', 'gpt-oss'] },
+/** One offered provider by id; the default provider when the id is not offered. */
+export function getPreset(id: ProviderId): ProviderPreset {
+  return getProviderCatalogue().find((p) => p.id === id) ?? getDefaultProvider()
 }
 
 export type AiStatus = 'unconfigured' | 'checking' | 'ready' | 'error'
@@ -36,20 +34,22 @@ export interface AiSettings {
 }
 
 function presetDraft(provider: ProviderId): ProviderConfig {
-  const p = PROVIDER_PRESETS[provider]
-  return { provider, baseUrl: p.baseUrl, apiKey: '', model: p.model }
+  const p = getPreset(provider)
+  return { provider: p.id, protocol: p.protocol, baseUrl: p.baseUrl, apiKey: '', model: p.model }
 }
 
-const INITIAL: AiSettings = {
-  draft: presetDraft('openai'),
-  saved: undefined,
-  permission: 'read-only',
-  privacy: 'schema-only',
-  status: 'unconfigured',
-  statusMessage: '',
+function initial(): AiSettings {
+  return {
+    draft: presetDraft(getDefaultProvider().id),
+    saved: undefined,
+    permission: 'read-only',
+    privacy: 'schema-only',
+    status: 'unconfigured',
+    statusMessage: '',
+  }
 }
 
-let state: AiSettings = INITIAL
+let state: AiSettings = initial()
 const subscribers = new Set<() => void>()
 
 function commit(next: AiSettings): void {
@@ -78,7 +78,9 @@ export function setDraftProvider(provider: ProviderId): void {
 }
 
 export function patchDraft(patch: Partial<Pick<ProviderConfig, 'baseUrl' | 'apiKey' | 'model'>>): void {
-  commit({ ...state, draft: { ...state.draft, ...patch } })
+  // with a deployer's list the address is the listed provider's and cannot be changed
+  const { baseUrl, ...rest } = patch
+  commit({ ...state, draft: { ...state.draft, ...(isLocked() ? rest : { ...rest, ...(baseUrl !== undefined ? { baseUrl } : {}) }) } })
 }
 
 export function setCheckState(status: AiStatus, statusMessage: string): void {
@@ -87,20 +89,30 @@ export function setCheckState(status: AiStatus, statusMessage: string): void {
 
 /** Called only after a successful check; the previous saved configuration stays in effect on failure. */
 export function saveDraft(): void {
+  if (!isAddressAllowed(state.draft.baseUrl)) {
+    commit({ ...state, status: 'error', statusMessage: 'This address is not allowed by the dashboard configuration.' })
+    return
+  }
   commit({ ...state, saved: { ...state.draft }, status: 'ready', statusMessage: 'Connected.' })
 }
 
-/** "Try the demo": selects the scripted Demo provider and marks it ready, with no token and no check. */
+/** After the deployment's assistant settings are known (boot): the form starts on the default provider and model. */
+export function applyAssistantPolicy(): void {
+  commit(initial())
+}
+
+/** "Try the demo": selects the scripted Demo provider and marks it ready, with no token and no check. Only when Demo is offered. */
 export function startDemo(): void {
-  const p = PROVIDER_PRESETS.demo
-  const config: ProviderConfig = { provider: 'demo', baseUrl: p.baseUrl, apiKey: '', model: p.model }
+  const p = getProviderCatalogue().find((x) => x.id === 'demo')
+  if (!p) return
+  const config: ProviderConfig = { provider: 'demo', protocol: p.protocol, baseUrl: p.baseUrl, apiKey: '', model: p.model }
   commit({ ...state, draft: config, saved: config, status: 'ready', statusMessage: 'Connected.' })
 }
 
 /** Leaves demo mode: back to "not set up" (a real provider's settings were never saved over by the demo). */
 export function endDemo(): void {
   if (state.saved?.provider !== 'demo') return
-  commit({ ...state, draft: presetDraft('openai'), saved: undefined, status: 'unconfigured', statusMessage: '' })
+  commit({ ...state, draft: presetDraft(getDefaultProvider().id), saved: undefined, status: 'unconfigured', statusMessage: '' })
 }
 
 // Permission and privacy carry no credential, so they apply the moment they are chosen.
@@ -114,5 +126,5 @@ export function setPrivacy(privacy: PrivacyMode): void {
 
 /** Test helper: back to a fresh session. */
 export function __resetAiSettings(): void {
-  commit(INITIAL)
+  commit(initial())
 }

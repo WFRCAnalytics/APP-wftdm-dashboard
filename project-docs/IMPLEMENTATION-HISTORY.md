@@ -6591,3 +6591,24 @@ and the contracts are in the spec folder; the non-obvious ones:
   tracks the active page by array index. One page, or every page, hidden: they are listed (the second case is reported), never an empty sidebar.
 - **Gotcha**: `settingsState.rememberOpener` used `instanceof HTMLElement` unguarded and threw in a non-DOM test environment; it is guarded now.
 - Tests: `tests/unit/config{Viewer,Pages,Check,Validate,ToBranding}.test.ts`, `settingsState`, `dashboardConfigTypes`; Playwright `viewerSettings.spec.ts` (`chromium`).
+
+## 068 Assistant settings in dashboard-config.yaml (`specs/068-assistant-config/`)
+
+- **Keys** (rows in `src/config/schema.ts`, site-only): `assistant.providers`, `assistant.default.{provider,model}`, `assistant.prompt_addendum`,
+  `assistant.limits.{round_trips,preview_rows,model_rows}`. The network half of CONFIGURATION.md Phase D is not built (undesigned, its own spec).
+- **Pure rules** in `config/assistant.ts`: `cleanProviders` (each entry validated and normalised, bad ones skipped and reported by entry number, a repeated id keeps the
+  first, an empty or all-invalid list drops to the built-ins), `checkDefault`, `limitCheck`/`addendumCheck`, `isSecretLikeKey`, `BUILTIN_PROVIDER_IDS`.
+- **Runtime**: `services/ai/assistantPolicy.ts` resolves the catalogue, the lock, the note and the limits once at boot (`configureAssistant`, then `applyAssistantPolicy`
+  in `aiState`). Defaults equal the old constants (6, 1000, 50, no note), so a deployment with none of the keys is unchanged.
+- **Protocol, not id**: `ProviderId` is a plain string; `ProviderConfig.protocol` (optional, derived from the id when absent) picks the Anthropic or OpenAI-compatible
+  client, so a deployer's gateway can have any id. Ollama's error text and the Demo provider stay keyed on their ids.
+- **Address lock**: with a deployer's list, `isAddressAllowed` (a request must be under a listed base address; look-alike hosts and `user@host` tricks fail) is checked
+  in `providers.ts#send` before `fetch`; the form shows the address read-only; `patchDraft` ignores address edits and `saveDraft` refuses a non-listed address. A client-side
+  guard only: it does not defend against someone editing the page code in their own browser.
+- **Secrets**: `validate` refuses any unknown key whose name has a secret word (`key`, `token`, `secret`, `password`, `authorization`, plurals, camelCase) with "secrets are
+  not configuration"; the value is never read or printed (tests use a sentinel). Declared rows such as `basemap.protomaps.api_key` are unaffected.
+- **Note and limits**: the note is appended last in `buildSystemPrompt` (never edits the built-in text, never shown in the UI); the limits are read at their use sites (`agentLoop`,
+  `sqlRunner`, `shapeForModel`, `resultTable`, the privacy help text). `MODEL_BYTE_LIMIT` (8 KB) is not configurable.
+- **Gotchas**: heredocs and Python escapes in this shell turn `\n` and `\'` into real newlines or lone quotes, so write TypeScript with escapes through the Write tool;
+  a mock model list must contain the provider's model name or Check and Save fails with "Model was not found".
+- Tests: `tests/unit/config{Assistant,Validate,ToBranding,Check}.test.ts`, `assistantPolicy`, `aiState`, `aiProviders`, `aiAgentLoop`; Playwright `assistantConfig.spec.ts` (`chromium`, gateway mocked).

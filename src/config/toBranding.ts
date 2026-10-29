@@ -1,6 +1,7 @@
 // Maps the resolved settings tree onto the object the app already reads (`DashboardBranding`), so no chart, layout or state
 // module has to know the file layout. Pure (the import below is a type only).
 import type { DashboardBranding, ModelYear } from '../services/yamlLoader'
+import type { ProviderEntry } from './assistant'
 import { getPath, type Tree } from './paths'
 
 const str = (t: Tree, p: string): string | undefined => {
@@ -54,7 +55,28 @@ export function toBranding(settings: Tree): DashboardBranding {
     docsUrl: str(settings, 'docs.url'),
     docsLabel: str(settings, 'docs.label'),
     settingsTabs: strList(settings, 'settings.tabs'),
+    assistant: assistant(settings),
   }
+}
+
+function assistant(t: Tree): DashboardBranding['assistant'] {
+  const providers = getPath(t, 'assistant.providers')
+  const provider = str(t, 'assistant.default.provider')
+  const model = str(t, 'assistant.default.model')
+  const out: NonNullable<DashboardBranding['assistant']> = {}
+  if (Array.isArray(providers) && providers.length > 0) out.providers = providers as ProviderEntry[]
+  if (provider || model) out.default = { provider, model }
+  const note = str(t, 'assistant.prompt_addendum')
+  if (note) out.promptAddendum = note
+  const limits: NonNullable<typeof out.limits> = {}
+  const rounds = num(t, 'assistant.limits.round_trips')
+  const preview = num(t, 'assistant.limits.preview_rows')
+  const shared = num(t, 'assistant.limits.model_rows')
+  if (rounds !== undefined) limits.roundTrips = rounds
+  if (preview !== undefined) limits.previewRows = preview
+  if (shared !== undefined) limits.modelRows = shared
+  if (Object.keys(limits).length > 0) out.limits = limits
+  return Object.keys(out).length > 0 ? out : undefined
 }
 
 function vocab(t: Tree): DashboardBranding['vocab'] {
