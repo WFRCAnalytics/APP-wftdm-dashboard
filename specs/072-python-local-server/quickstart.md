@@ -72,3 +72,11 @@ Expected: the wheel lists `wftdm_dashboard/static/index.html` and `wftdm_dashboa
 - From a page served by a `here` on another port (another origin), a browser `fetch` read `scenarios/index.json` (the three runs) and a ranged Parquet request (`Range: bytes=0-3`) answered 206 with `Content-Range: bytes 0-3/1107` and the bytes `PAR1`.
 - pytest: 201 pass (2 skipped symbolic-link tests on Windows); `ruff` is clean for everything this feature added.
 
+
+## Walked (2026-10-29, polish)
+
+- Python: `uv run pytest python/tests -q` 201 pass (2 symbolic-link tests skip on Windows without the privilege); `uv run ruff check python` reports only the two findings that were in `observed.py` before this feature (an import order and a complexity of 16).
+- TypeScript: `npx tsc --noEmit` clean; `npx vitest run` 116 files, 1529 tests pass (including the base of each Vite mode, the demo flag in mode `package`, and the packaged schema equal to the published one); `npm run docs:config` leaves the packaged schema unchanged.
+- Playwright (the specs that read the base path or the build): `firstRun`, `boot`, `networkBlock` and `exploreBuilderSite`, 24 passed, so the Vite change did not move the default base.
+- Steps 1 to 7 were walked in the story sections above: the bundle build, `init` then `here`, runs and edits, the safety checks, `serve` from another origin, and the wheel in a clean environment.
+- Not covered: macOS and Linux (only Windows was run; the path rule has separate branches for each and the symbolic-link tests run where a link can be created); a real `make build` (the Makefile now calls `npm run build:package`, which was run directly).
