@@ -23,7 +23,6 @@ describe('toBranding', () => {
     expect(b.compareDefault).toBe('auto')
     expect(b.units).toEqual({ trips: { divisor: 1, suffix: '' }, transit_share_max: 60 })
     expect(b.metrics?.boards).toEqual({ hidden: true })
-    expect(b.vocab?.districts?.map((d) => d.label)).toEqual(['Weber', 'Davis', 'Salt Lake', 'Utah', 'Tooele'])
     expect(b.vocab?.modes?.[0]).toEqual({ label: 'Drive alone', ids: ['SOV'], color: 'car-1' })
     expect(b.years).toBeUndefined()
   })

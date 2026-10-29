@@ -19,12 +19,6 @@ mark:
   dark: >-
     https://raw.githubusercontent.com/WFRCAnalytics/wfrc-brand/main/_extensions/wfrc-brand/assets/logo/abbreviated/WFRC_logo_abbreviated_white_transparent.png
 vocab:
-  districts:
-    - {label: Weber}
-    - {label: Davis}
-    - {label: Salt Lake}
-    - {label: Utah}
-    - {label: Tooele}
   modes:
     - {label: Drive alone, ids: [SOV], color: car-1}
     - {label: Shared ride, ids: [HOV], color: car-2}
