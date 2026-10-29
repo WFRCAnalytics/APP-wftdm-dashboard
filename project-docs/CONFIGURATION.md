@@ -235,8 +235,14 @@ Not drafted here, on purpose: how the charts find the deployer's tables and colu
    file wins per setting over the demo's, page lists concatenate (until the demo build flag, step 1, is decided).
 6. ~~Migration~~ Dropped: no backward compatibility (section 7, Versioning). The old `index.json` settings keys are removed and not read; a
    leftover one gets a "moved" note.
-7. **Partly done.** `GRAMMAR.md` points at the generated reference and `header.slug`/`header.layout_mode` are documented. Still to do: publish a
-   JSON Schema file for editors (Python and R can validate with it before writing) and the `check` command.
+7. **Done.** `GRAMMAR.md` points at the generated reference. `npm run docs:config` also writes the JSON Schema
+   `project-docs/dashboard-config.schema.json` (for an editor: first line `# yaml-language-server: $schema=<path or URL of that file>`; Python
+   and R can validate with it before writing). `npm run check -- <site folder> [--explain] [--json]` (`src/config/check.ts`, run by
+   `scripts/check-config.ts`) reports what the app would report, before deploying: unknown keys and wrong values, a missing or unparsable
+   page file, a page missing `header.tab` or `header.title`, a site-only key on a page, two pages with one address, and a wrong Explore
+   option on a panel. `--explain` prints each cascading setting per page and the level it came from. Exit code 1 when anything is
+   reported. Not yet: packaging the TypeScript core inside the Python library and the R package (section 7, "What is the core?"), the
+   unrestricted-map-key warning and the model-mix warning, which wait for those features.
 
 **Phase C: viewer-facing settings**
 8. `settings.tabs`, the documentation link and sidebar icon, and hidden and draft pages. (No deployer theme or font defaults, and no custom

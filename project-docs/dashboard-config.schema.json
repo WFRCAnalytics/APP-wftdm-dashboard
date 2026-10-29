@@ -1,0 +1,309 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "dashboard-config.yaml",
+  "description": "Site settings of the calibration dashboard (file version 1). Generated from src/config/schema.ts.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "type": "integer",
+      "description": "File version; a newer one than the app reads is reported."
+    },
+    "pages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Page files in display order; the first is the landing page."
+    },
+    "title": {
+      "type": "string",
+      "description": "Dashboard title: the header text and the browser tab title."
+    },
+    "logo": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "light": {
+          "type": "string",
+          "pattern": "^\\S*$",
+          "description": "Full logo shown when the navigation is expanded (light theme)."
+        },
+        "dark": {
+          "type": "string",
+          "pattern": "^\\S*$",
+          "description": "Full logo for the dark theme."
+        }
+      }
+    },
+    "mark": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "light": {
+          "type": "string",
+          "pattern": "^\\S*$",
+          "description": "Abbreviated logo shown when the navigation is collapsed (light theme)."
+        },
+        "dark": {
+          "type": "string",
+          "pattern": "^\\S*$",
+          "description": "Abbreviated logo for the dark theme."
+        }
+      }
+    },
+    "colors": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "primary": {
+          "type": "string",
+          "description": "Primary data colour (transit and the chart palette)."
+        },
+        "secondary": {
+          "type": "string",
+          "description": "Secondary data colour (walking)."
+        },
+        "accent": {
+          "type": "string",
+          "description": "Accent data colour (biking)."
+        },
+        "brand": {
+          "type": "string",
+          "description": "Interface colour: selected pills, titles, tags and focus rings."
+        }
+      }
+    },
+    "scenario_palette": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Default scenario colours, in order."
+    },
+    "vocab": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "modes": {
+          "type": "array",
+          "items": {},
+          "description": "Travel modes: label, raw data ids and a mode colour token."
+        },
+        "purposes": {
+          "type": "array",
+          "items": {},
+          "description": "Trip purposes: label and raw data ids."
+        },
+        "incomes": {
+          "type": "array",
+          "items": {},
+          "description": "Income groups: label and raw data ids."
+        },
+        "autos": {
+          "type": "array",
+          "items": {},
+          "description": "Auto-ownership groups: label and raw data ids."
+        },
+        "districts": {
+          "type": "array",
+          "items": {},
+          "description": "District names for flow charts and the VMT hierarchy."
+        }
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "description": "Per-metric label, unit, decimals, scale and hidden overrides."
+    },
+    "units": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "trips": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "divisor": {
+              "type": "number",
+              "description": "Divisor for trip counts in the time-of-day charts."
+            },
+            "suffix": {
+              "type": "string",
+              "description": "Suffix shown after a divided trip count."
+            }
+          }
+        },
+        "transit_share_max": {
+          "type": "number",
+          "description": "Top of the transit-share map ramp."
+        }
+      }
+    },
+    "years": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "list": {
+          "type": "array",
+          "items": {},
+          "description": "Model years in display order: a year, or { year, label }."
+        },
+        "base": {
+          "type": "integer",
+          "description": "The base year."
+        },
+        "default": {
+          "type": "integer",
+          "description": "The year shown first."
+        }
+      }
+    },
+    "compare": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "default": {
+          "enum": [
+            "auto",
+            "on",
+            "off"
+          ],
+          "description": "Whether Compare starts on: auto turns it on with two or more independent scenarios."
+        },
+        "scenarios": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Scenario groups compared at first load (default: every loaded one)."
+        },
+        "focus": {
+          "type": "string",
+          "description": "The focus scenario group."
+        },
+        "reference": {
+          "type": "string",
+          "description": "The reference: a scenario group id or `observed`."
+        }
+      }
+    },
+    "layout": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "enum": [
+            "scroll",
+            "tabs"
+          ],
+          "description": "How pages are shown unless a page or the viewer says otherwise."
+        }
+      }
+    },
+    "export": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "footer": {
+          "type": [
+            "boolean",
+            "string"
+          ],
+          "description": "Line under exported images: true (source, scenarios, year, date), false (none) or your own text."
+        }
+      }
+    },
+    "assistant": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Turns the AI assistant (button, panel and Settings tab) on or off."
+        }
+      }
+    },
+    "basemap": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "default": {
+          "type": "string",
+          "description": "Default basemap id (a tab or panel may choose its own)."
+        },
+        "protomaps": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "pmtiles_url": {
+              "type": "string",
+              "pattern": "^\\S*$",
+              "description": "A self-hosted PMTiles file for the Protomaps basemaps."
+            },
+            "api_key": {
+              "type": "string",
+              "description": "A hosted Protomaps key restricted to the site domain (never a secret token)."
+            }
+          }
+        }
+      }
+    },
+    "explore": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "limits": {
+          "type": "object",
+          "description": "Explore builder limits (csv_rows, page_size, undo_steps, max_joins); maps merge per key."
+        },
+        "features": {
+          "type": "object",
+          "description": "Explore builder features switched on or off; maps merge per key."
+        },
+        "charts": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "allow": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Chart types the builder offers; a lower level replaces the list."
+            }
+          }
+        },
+        "tables": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "include": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Table name globs the builder may use; a lower level replaces the list."
+            },
+            "exclude": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Table name globs the builder hides; lower levels add to the list."
+            }
+          }
+        },
+        "columns": {
+          "type": "object",
+          "description": "Column label, unit and format overrides; maps merge per key."
+        },
+        "presets": {
+          "type": "array",
+          "items": {},
+          "description": "Starter charts; lower levels add to the list."
+        }
+      }
+    }
+  }
+}

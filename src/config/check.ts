@@ -1,0 +1,132 @@
+// The `check` core: reads a site folder (dashboard-config.yaml and the page files it lists) through a reader function and
+// reports every problem the app would report, before deploying. Pure apart from the reader, so the app, the command line and
+// tests share it. Recognises a file by its role (the site file, a listed page), never by a name pattern.
+import { load } from 'js-yaml'
+
+import { slugCollisions } from '../state/routeState'
+import { getPath, isTree, type Tree } from './paths'
+import { pageSettings } from './levels'
+import { resolve } from './resolve'
+import { SETTINGS } from './schema'
+import { validate, type ConfigProblem } from './validate'
+
+export const SITE_FILE = 'dashboard-config.yaml'
+
+export interface CheckOptions {
+  /** Extra check of one panel (the Explore options live outside this folder); returns messages. */
+  panelCheck?: (panel: Tree, site: Tree) => string[]
+}
+
+export interface PageReport {
+  file: string
+  header?: { tab: string; slug?: string }
+  /** The settings the page sets (schema paths). */
+  settings: Tree
+}
+
+export interface CheckReport {
+  problems: ConfigProblem[]
+  site: Tree
+  pages: PageReport[]
+}
+
+function parse(text: string, file: string, problems: ConfigProblem[]): { ok: boolean; raw?: unknown } {
+  try {
+    return { ok: true, raw: load(text) }
+  } catch (err) {
+    const e = err as { reason?: string; mark?: { line?: number } }
+    problems.push({
+      file,
+      path: '',
+      kind: 'syntax',
+      message: `invalid YAML: ${e.reason ?? String(err)}`,
+      line: typeof e.mark?.line === 'number' ? e.mark.line + 1 : undefined,
+    })
+    return { ok: false }
+  }
+}
+
+/** `read` returns a file's text, or undefined when it is not there. Names are relative to the site folder. */
+export function checkSite(read: (file: string) => string | undefined, options: CheckOptions = {}): CheckReport {
+  const problems: ConfigProblem[] = []
+  const report: CheckReport = { problems, site: {}, pages: [] }
+
+  const text = read(SITE_FILE)
+  if (text === undefined) {
+    problems.push({ file: SITE_FILE, path: '', kind: 'missing_file', message: 'the site configuration is missing' })
+    return report
+  }
+  const parsed = parse(text, SITE_FILE, problems)
+  if (!parsed.ok) return report
+  const checked = validate(parsed.raw, { file: SITE_FILE })
+  problems.push(...checked.problems)
+  report.site = checked.settings
+
+  const pages = getPath(checked.settings, 'pages')
+  const headers: { tab: string; slug?: string }[] = []
+  for (const file of Array.isArray(pages) ? (pages as string[]) : []) {
+    const body = read(file)
+    if (body === undefined) {
+      problems.push({ file, path: '', kind: 'missing_file', message: 'listed in pages but not found' })
+      continue
+    }
+    const page = parse(body, file, problems)
+    if (!page.ok) continue
+    const raw = isTree(page.raw) ? page.raw : {}
+    const header = isTree(raw.header) ? raw.header : {}
+    for (const key of ['tab', 'title'] as const) {
+      if (typeof header[key] !== 'string' || header[key] === '') {
+        problems.push({ file, path: `header.${key}`, kind: 'invalid_value', message: `a page needs header.${key}` })
+      }
+    }
+    const settings = pageSettings(raw)
+    problems.push(...validate(settings, { file, level: 'page' }).problems)
+    const entry: PageReport = {
+      file,
+      settings,
+      header: typeof header.tab === 'string' ? { tab: header.tab, slug: typeof header.slug === 'string' ? header.slug : undefined } : undefined,
+    }
+    report.pages.push(entry)
+    if (entry.header) headers.push(entry.header)
+
+    if (options.panelCheck && isTree(raw.layout)) {
+      for (const [row, panels] of Object.entries(raw.layout)) {
+        for (const [i, panel] of (Array.isArray(panels) ? panels : []).entries()) {
+          if (!isTree(panel)) continue
+          for (const message of options.panelCheck(panel, checked.settings)) {
+            problems.push({ file, path: `layout.${row}[${i}]`, kind: 'invalid_value', message })
+          }
+        }
+      }
+    }
+  }
+  for (const c of slugCollisions(headers)) {
+    problems.push({
+      file: SITE_FILE,
+      path: 'pages',
+      kind: 'duplicate',
+      message: `page "${c.tab}" has the same address "${c.slug}" as an earlier page; the app would use "${c.used}"`,
+    })
+  }
+  return report
+}
+
+/** Each cascading setting that is set somewhere, as `path = value (level)`, per page. */
+export function explain(report: CheckReport): string[] {
+  const lines: string[] = []
+  for (const page of report.pages) {
+    const { values, source } = resolve({ site: report.site, page: page.settings })
+    lines.push(page.file)
+    for (const row of SETTINGS.filter((r) => r.cascade)) {
+      const v = getPath(values, row.path)
+      if (v === undefined) continue
+      const from = source[row.path] === 'page' ? `page: ${page.file}` : source[row.path]
+      lines.push(`  ${row.path} = ${JSON.stringify(v)} (${from})`)
+    }
+  }
+  return lines
+}
+
+export function formatProblem(p: ConfigProblem): string {
+  return `${p.file}${p.path ? ` › ${p.path}` : ''}: ${p.message}${p.line ? ` (line ${p.line})` : ''}`
+}
