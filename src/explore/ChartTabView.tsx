@@ -8,6 +8,7 @@ import { buildChart, relabel, type ChartModel, type Col, type DrawnChart } from 
 import { chartRole, DATA_TYPES, TYPE_LABEL, typesPresent, type DataType } from '@/charts/builder/columnTypes'
 import { suggest } from '@/charts/builder/rules'
 import { CategoryOrder } from './CategoryOrder'
+import { Slider } from '@/components/ui/slider'
 import { prettyOperators } from '@/services/typography'
 import {
   HIST_STATS, HIST_BINS_MIN, HIST_BINS_MAX, assignField, swapAxes, AXIS_MARKS, GRID_MARKS, REF_MARKS, ZERO_MARKS, acceptsShort, chainOf, CHAINS, effectiveLabels, LABEL_MARKS, labelModesFor, SHOW_AS, TABLE_VALUES, ZOOMABLE_MARKS, AGGS, channelAggregates, channelLabel, COMING_SOON, MARK_LABEL, MARKS, SLOTS, SORTS, switchMark, TEXT_SIZES,
@@ -603,23 +604,23 @@ function Rail({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: ChartDat
                 const auto = Math.min(HIST_BINS_MAX, Math.max(HIST_BINS_MIN, getExploreOptions().limits.histogramBins))
                 const shown = spec.bins > 0 ? spec.bins : auto
                 return (
-                  <div className="rrow">
-                    <label className="lab" htmlFor="binsin" style={{ minWidth: 96 }}>Bins</label>
-                    <input id="binsin" type="range" min={HIST_BINS_MIN} max={HIST_BINS_MAX} step={1} value={shown} style={{ flex: 1, accentColor: 'var(--brand-text, currentColor)' }} aria-valuetext={`${shown} bins${spec.bins > 0 ? '' : ' (default)'}`} onChange={(e) => setSpec((x) => ({ ...x, bins: Number(e.target.value) }))} />
-                    <span style={{ minWidth: 24, textAlign: 'right' }} aria-hidden="true">{shown}</span>
-                    {spec.bins > 0 && <button type="button" className="mini" onClick={() => setSpec((x) => ({ ...x, bins: 0 }))}>Auto</button>}
+                  <div className="rrow" style={{ flexWrap: 'nowrap' }}>
+                    <label className="lab" id="binslab" style={{ minWidth: 96 }}>Bins</label>
+                    <Slider aria-label="Bins" aria-labelledby="binslab" min={HIST_BINS_MIN} max={HIST_BINS_MAX} step={1} value={[shown]} onValueChange={([n]) => setSpec((x) => ({ ...x, bins: n }))} className="flex-1" />
+                    <span style={{ minWidth: 22, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{shown}</span>
+                    <button type="button" className="mini" style={spec.bins > 0 ? undefined : { visibility: 'hidden' }} tabIndex={spec.bins > 0 ? 0 : -1} aria-hidden={spec.bins > 0 ? undefined : true} onClick={() => setSpec((x) => ({ ...x, bins: 0 }))}>Auto</button>
                   </div>
                 )
               })()}
               {spec.mark === 'histogram' && (
-                <div className="rrow" role="group" aria-label="Vertical lines" style={{ flexWrap: 'wrap', gap: 6 }}>
+                <div className="rrow" role="group" aria-label="Vertical lines">
                   <span className="lab" style={{ minWidth: 96 }}>Vertical lines</span>
-                  {HIST_STATS.map((o) => (
-                    <label key={o.v} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                      <input type="checkbox" checked={spec.stats.includes(o.v)} onChange={(e) => setSpec((x) => ({ ...x, stats: e.target.checked ? [...x.stats, o.v] : x.stats.filter((v) => v !== o.v) }))} />
-                      {o.label}
-                    </label>
-                  ))}
+                  <div className="pills sm">
+                    {HIST_STATS.map((o) => {
+                      const on = spec.stats.includes(o.v)
+                      return <button key={o.v} type="button" className={`pill ${on ? 'on' : ''}`} aria-pressed={on} onClick={() => setSpec((x) => ({ ...x, stats: on ? x.stats.filter((v) => v !== o.v) : [...x.stats, o.v] }))}>{o.short}</button>
+                    })}
+                  </div>
                 </div>
               )}
               {REF_MARKS.includes(spec.mark) && <div className="rrow"><label className="lab" htmlFor="refin" style={{ minWidth: 96 }}>Reference line</label><input id="refin" className="inp" value={spec.ref} placeholder={spec.mark === 'histogram' || (spec.mark === 'bar' && spec.enc.x && roleOf(spec.enc.x.f) === 'q') ? 'x value' : 'y value'} onChange={(e) => setSpec((x) => ({ ...x, ref: e.target.value.replace(/[^0-9.-]/g, '') }))} /></div>}

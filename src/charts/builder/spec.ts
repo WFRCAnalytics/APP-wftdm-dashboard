@@ -61,8 +61,8 @@ export const HIST_BINS_MIN = 2
 export const HIST_BINS_MAX = 20
 
 export type HistStat = 'mean' | 'median' | 'q1' | 'q3'
-export const HIST_STATS: { v: HistStat; label: string }[] = [
-  { v: 'mean', label: 'Mean' }, { v: 'median', label: 'Median' }, { v: 'q1', label: 'First quartile' }, { v: 'q3', label: 'Third quartile' },
+export const HIST_STATS: { v: HistStat; label: string; short: string }[] = [
+  { v: 'mean', label: 'Mean', short: 'Mean' }, { v: 'median', label: 'Median', short: 'Median' }, { v: 'q1', label: 'First quartile', short: 'Q1' }, { v: 'q3', label: 'Third quartile', short: 'Q3' },
 ]
 
 export interface ChartSpec {
