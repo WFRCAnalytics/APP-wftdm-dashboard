@@ -112,7 +112,7 @@ Single web-app project: `src/`, `scripts/`, `tests/`, `project-docs/` at the rep
 - [X] T023 `npm run docs:config`; `npx tsc --noEmit`; `npx vitest run`
 - [X] T024 Full Playwright run (`npx playwright test`); compare failures with the known flakes in CLAUDE.md and re-run each alone with `--workers=1` before treating it as real
 - [X] T025 Walk `quickstart.md` and record the result at its foot
-- [ ] T026 Rebuild `docs/` with `npm run build:pages` (only when the user asks; not part of the implementation)
+- [X] T026 Rebuild `docs/` with `npm run build:pages` (only when the user asks; not part of the implementation)
 
 ---
 
