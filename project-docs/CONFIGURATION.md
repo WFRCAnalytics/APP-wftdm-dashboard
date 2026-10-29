@@ -190,11 +190,11 @@ settings:
 # new: link to the deployer's separate documentation site (a Quarto site); shown as an icon at the foot of the left sidebar
 docs: { url: "https://example.org/dashboard-docs/", label: Documentation }
 
-# new: the AI assistant (today only `assistant.enabled`)
+# the AI assistant (068: built; the viewer enters the token, never the file)
 assistant:
   enabled: true
-  providers:
-    - { id: internal, label: Agency gateway, base_url: "https://...", models: [...], needs_key: true }
+  providers:                            # REPLACES the built-in providers when it has a valid entry; a listed address is fixed in the form
+    - { id: internal, label: Agency gateway, base_url: "https://...", models: [...], needs_key: true, protocol: openai }   # protocol: openai (default) | anthropic
   default: { provider: internal, model: "..." }
   prompt_addendum: Our zones are called TAZs.
   limits: { round_trips: 6, preview_rows: 1000, model_rows: 50 }
@@ -253,7 +253,11 @@ Not drafted here, on purpose: how the charts find the deployer's tables and colu
    CSS for now; see section 7.)
 
 **Phase D: assistant and network**
-9. The `assistant` block. 10. The `network` block, so an offline or locked-down site works.
+9. **Done (068, `specs/068-assistant-config/`):** the `assistant` block: `providers` (replace the built-ins; id, label, `base_url`, `models`, `needs_key`, `protocol`), `default`,
+   `prompt_addendum` (at most 2000 characters, added last, not shown to the viewer) and `limits` (`round_trips` 1 to 12, `preview_rows` 100 to 5000, `model_rows` 1 to 200).
+   No key or token setting exists: a secret-like field anywhere in the site file is refused unread. The address lock is a client-side guard, not a defence against
+   someone who edits the page code in their own browser. 10. **The `network` block is still open and undesigned** (fonts, a basemap allow-list, a mirrored DuckDB
+   extension location), so an offline or locked-down site works: its own later spec.
 
 **Phase E: Explore and limits**
 11. App-level `explore:` and `limits:` blocks inherited by every Explore panel. Add the constants the first pass missed (chart rows,

@@ -647,6 +647,15 @@ fixed top right on chromeless pages). A deployer turns the whole feature off wit
 `state/assistantAvailability.ts`): no button, no panel, no Settings tab. Enabled by default. The Model field is a
 searchable combobox (`components/ui/combobox-input.tsx`) over per-provider presets in `state/aiState.ts`; any other model
 name can be typed.
+**Deployer settings (068, `specs/068-assistant-config/`):** `assistant.providers` (a list that REPLACES the built-in providers; each `id`, `label`,
+`base_url`, `models`, `needs_key`, `protocol` = `openai` or `anthropic`), `assistant.default`, `assistant.prompt_addendum` (plain text, at most 2000
+characters, appended LAST to the instructions and never shown to the viewer) and `assistant.limits` (`round_trips` 1-12, `preview_rows` 100-5000,
+`model_rows` 1-200). The pure rules are `config/assistant.ts` (also used by `check`); what boot resolved is `services/ai/assistantPolicy.ts` (module
+state: catalogue, lock, note, limits), read by `aiState`, `providers`, `agentLoop`, `sqlRunner`, `toolSchema` and the Settings tab. With a list in force
+a listed provider's address is fixed and `providers.ts#send` refuses any other address (a client-side guard only). `ProviderConfig.protocol` (not the
+provider id) picks the message format; the built-ins carry the matching one. **No key, token or secret setting exists**: a secret-like field anywhere in
+the site file is refused unread and never echoed (`validate`), the viewer still enters the token for the session. Never add a second SQL path or
+loosen `sqlGuard`: none of these settings touches the guard, the modes or the privacy choice.
 
 ---
 
