@@ -324,7 +324,49 @@
       "properties": {
         "limits": {
           "type": "object",
-          "description": "Explore builder limits (csv_rows, page_size, undo_steps, max_joins); maps merge per key."
+          "additionalProperties": false,
+          "properties": {
+            "csv_rows": {
+              "type": "integer",
+              "description": "Explore builder limit. Rows a CSV export may hold. 1 to 5,000,000 (default 100,000). A panel or page may set its own; the lower level wins per key."
+            },
+            "page_size": {
+              "type": "integer",
+              "description": "Explore builder limit. Rows per page in the Data tab (unset: as many as the tile is tall). 5 to 200. A panel or page may set its own; the lower level wins per key."
+            },
+            "undo_steps": {
+              "type": "integer",
+              "description": "Explore builder limit. How many changes can be undone. 1 to 500 (default 60). A panel or page may set its own; the lower level wins per key."
+            },
+            "max_joins": {
+              "type": "integer",
+              "description": "Explore builder limit. Joins the query builder allows. 1 to 8 (default 4). A panel or page may set its own; the lower level wins per key."
+            },
+            "chart_rows": {
+              "type": "integer",
+              "description": "Explore builder limit. Groups a chart may draw before it says it is cut. 100 to 1,000,000 (default 50,000). A panel or page may set its own; the lower level wins per key."
+            },
+            "scatter_sample": {
+              "type": "integer",
+              "description": "Explore builder limit. Points a scatter plot samples. 100 to 100,000 (default 5,000). A panel or page may set its own; the lower level wins per key."
+            },
+            "histogram_bins": {
+              "type": "integer",
+              "description": "Explore builder limit. Bins of the histogram chart. 2 to 100 (default 12). A panel or page may set its own; the lower level wins per key."
+            },
+            "legend_series": {
+              "type": "integer",
+              "description": "Explore builder limit. Legend values drawn before the rest are cut. 2 to 50 (default 15). A panel or page may set its own; the lower level wins per key."
+            },
+            "distinct_values": {
+              "type": "integer",
+              "description": "Explore builder limit. Values a filter list offers. 10 to 5,000 (default 200). A panel or page may set its own; the lower level wins per key."
+            },
+            "pivot_rows": {
+              "type": "integer",
+              "description": "Explore builder limit. Rows a pivot table draws. 20 to 5,000 (default 500). A panel or page may set its own; the lower level wins per key."
+            }
+          }
         },
         "features": {
           "type": "object",

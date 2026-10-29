@@ -2,11 +2,15 @@
 // validation, table globs) plus the one module-level slot the panel fills, so non-React code (undo depth, page size) can read it.
 // Every key is optional; an unset key behaves exactly as the builder always did. Contract: specs/065-chart-builder/contracts/deployer-options.md.
 import { MARKS, type Mark } from '@/charts/builder/spec'
-import { exploreSettings, isTree, resolve, type Tree } from '@/config'
+import { exploreSettings, isTree, limitDef, resolve, type Tree } from '@/config'
 import { getSiteSettings } from '@/state/siteSettings'
 
 /** `pageSize` null means the Data tab fits as many rows as the tile is tall; a number fixes it. */
-export interface ExploreLimits { csvRows: number; pageSize: number | null; undoSteps: number; maxJoins: number }
+export interface ExploreLimits {
+  csvRows: number; pageSize: number | null; undoSteps: number; maxJoins: number
+  /** Groups a chart draws before it says it is cut; points a scatter plot samples; histogram bins; legend values; values a filter list offers; pivot rows. */
+  chartRows: number; scatterSample: number; histogramBins: number; legendSeries: number; distinctValues: number; pivotRows: number
+}
 export interface ExploreFeatures { sqlTab: boolean; csv: boolean; copySql: boolean; importExport: boolean; myTables: boolean; undo: boolean }
 export interface ColumnNote { label?: string; unit?: string; format?: string }
 export interface ExploreOptions {
@@ -24,10 +28,11 @@ export interface ExploreOptions {
   warnings: string[]
 }
 
-export const DEFAULT_LIMITS: ExploreLimits = { csvRows: 100_000, pageSize: null, undoSteps: 60, maxJoins: 4 }
+export const DEFAULT_LIMITS: ExploreLimits = {
+  csvRows: 100_000, pageSize: null, undoSteps: 60, maxJoins: 4,
+  chartRows: 50_000, scatterSample: 5_000, histogramBins: 12, legendSeries: 15, distinctValues: 200, pivotRows: 500,
+}
 export const DEFAULT_FEATURES: ExploreFeatures = { sqlTab: true, csv: true, copySql: true, importExport: true, myTables: true, undo: true }
-/** A value outside its range is pulled to the nearest end, with a warning. */
-const BOUNDS: Record<keyof ExploreLimits, [number, number]> = { csvRows: [1, 5_000_000], pageSize: [5, 200], undoSteps: [1, 500], maxJoins: [1, 8] }
 
 export function defaultOptions(): ExploreOptions {
   return {
@@ -39,7 +44,12 @@ export function defaultOptions(): ExploreOptions {
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v)
 const strList = (v: unknown): string[] | null => (Array.isArray(v) && v.every((x) => typeof x === 'string') ? (v as string[]) : null)
 
-const LIMIT_KEYS: [string, keyof ExploreLimits][] = [['csv_rows', 'csvRows'], ['page_size', 'pageSize'], ['undo_steps', 'undoSteps'], ['max_joins', 'maxJoins']]
+/** The YAML key of each limit and its field name; the ranges come from src/config/exploreLimits.ts (a value outside is pulled to the nearest end, with a warning). */
+const LIMIT_KEYS: [string, keyof ExploreLimits][] = [
+  ['csv_rows', 'csvRows'], ['page_size', 'pageSize'], ['undo_steps', 'undoSteps'], ['max_joins', 'maxJoins'],
+  ['chart_rows', 'chartRows'], ['scatter_sample', 'scatterSample'], ['histogram_bins', 'histogramBins'],
+  ['legend_series', 'legendSeries'], ['distinct_values', 'distinctValues'], ['pivot_rows', 'pivotRows'],
+]
 const FEATURE_KEYS: [string, keyof ExploreFeatures][] = [['sql_tab', 'sqlTab'], ['csv', 'csv'], ['copy_sql', 'copySql'], ['import_export', 'importExport'], ['my_tables', 'myTables'], ['undo', 'undo']]
 
 /**
@@ -76,7 +86,7 @@ export function resolveExploreOptions(raw: unknown, site: Tree = getSiteSettings
         const v = raw.limits[yaml]
         if (v === undefined) continue
         if (typeof v !== 'number' || !Number.isFinite(v)) { warn(`limits.${yaml}: expected a number.`); continue }
-        const [lo, hi] = BOUNDS[key]
+        const { min: lo, max: hi } = limitDef(yaml)!
         const n = Math.min(hi, Math.max(lo, Math.round(v)))
         o.limits[key] = n
         if (n !== v) warn(`limits.${yaml}: ${v} is outside ${lo} to ${hi}, so ${n} is used.`)

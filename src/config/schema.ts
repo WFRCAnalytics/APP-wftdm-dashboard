@@ -4,6 +4,7 @@
 //
 // This folder is PURE: relative imports only, no `import.meta.env`, no `@/` alias, no DOM. Node (the Vite plugin) loads it too.
 import { addendumCheck, cleanProviders, limitCheck } from './assistant'
+import { EXPLORE_LIMITS, limitClean, limitText } from './exploreLimits'
 import { cleanSettingsTabs, isRelativePath, isWebAddress } from './viewer'
 
 export type SettingType = 'string' | 'number' | 'integer' | 'boolean' | 'boolean|string' | 'color' | 'url' | 'enum' | 'list' | 'map'
@@ -121,7 +122,7 @@ export const SETTINGS: readonly SettingDef[] = [
   { path: 'basemap.default', type: 'string', cascade: true, description: 'Default basemap id (a tab or panel may choose its own).' },
   { path: 'basemap.protomaps.pmtiles_url', type: 'url', cascade: site, description: 'A self-hosted PMTiles file for the Protomaps basemaps.' },
   { path: 'basemap.protomaps.api_key', type: 'string', cascade: site, description: 'A hosted Protomaps key restricted to the site domain (never a secret token).' },
-  { path: 'explore.limits', type: 'map', cascade: true, check: plainMap, description: 'Explore builder limits (csv_rows, page_size, undo_steps, max_joins); maps merge per key.' },
+  ...EXPLORE_LIMITS.map((def): SettingDef => ({ path: `explore.limits.${def.key}`, type: 'integer', cascade: true, clean: limitClean(def.key), description: `Explore builder limit. ${limitText(def)} A panel or page may set its own; the lower level wins per key.` })),
   { path: 'explore.features', type: 'map', cascade: true, check: plainMap, description: 'Explore builder features switched on or off; maps merge per key.' },
   { path: 'explore.charts.allow', type: 'list', of: 'string', cascade: { merge: 'replace' }, description: 'Chart types the builder offers; a lower level replaces the list.' },
   { path: 'explore.tables.include', type: 'list', of: 'string', cascade: { merge: 'replace' }, description: 'Table name globs the builder may use; a lower level replaces the list.' },

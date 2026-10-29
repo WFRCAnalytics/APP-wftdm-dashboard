@@ -14,7 +14,7 @@ describe('resolving the panel settings', () => {
   it('gives today\'s behaviour when nothing is set', () => {
     const o = resolveExploreOptions(undefined)
     expect(o).toEqual(defaultOptions())
-    expect(o.limits).toEqual({ csvRows: 100_000, pageSize: null, undoSteps: 60, maxJoins: 4 })
+    expect(o.limits).toEqual({ csvRows: 100_000, pageSize: null, undoSteps: 60, maxJoins: 4, chartRows: 50_000, scatterSample: 5_000, histogramBins: 12, legendSeries: 15, distinctValues: 200, pivotRows: 500 })
     expect(Object.values(o.features).every(Boolean)).toBe(true)
     expect(o.charts.allow).toEqual([...MARKS])
     expect(o.charts.default).toBe('bar')
@@ -31,7 +31,7 @@ describe('resolving the panel settings', () => {
       presets: [{ version: 1 }],
     })
     expect(o.warnings).toEqual([])
-    expect(o.limits).toEqual({ csvRows: 500, pageSize: 25, undoSteps: 10, maxJoins: 2 })
+    expect(o.limits).toEqual({ csvRows: 500, pageSize: 25, undoSteps: 10, maxJoins: 2, chartRows: 50_000, scatterSample: 5_000, histogramBins: 12, legendSeries: 15, distinctValues: 200, pivotRows: 500 })
     expect(o.features).toEqual({ sqlTab: false, csv: false, copySql: false, importExport: false, myTables: false, undo: false })
     // allowed charts keep the grid order, not the order written
     expect(o.charts.allow).toEqual(['bar', 'line'])
@@ -178,5 +178,20 @@ describe('site defaults under the panel (cascade)', () => {
     const o = resolveExploreOptions({ limits: { csv_rows: 'many' }, charts: { default: 'nope' } }, site)
     expect(o.warnings.join(' ')).toMatch(/limits\.csv_rows/)
     expect(o.warnings.join(' ')).toMatch(/charts\.default/)
+  })
+})
+
+describe('the chart limits', () => {
+  it('reads each new limit and clamps it into its range with a warning', () => {
+    const o = resolveExploreOptions({ limits: { chart_rows: 2000, scatter_sample: 50, histogram_bins: 500, legend_series: 6, distinct_values: 80, pivot_rows: 100 } })
+    expect(o.limits).toMatchObject({ chartRows: 2000, scatterSample: 100, histogramBins: 100, legendSeries: 6, distinctValues: 80, pivotRows: 100 })
+    expect(o.warnings.join(' ')).toMatch(/limits\.scatter_sample: 50 is outside 100 to 100000/)
+    expect(o.warnings.join(' ')).toMatch(/limits\.histogram_bins: 500 is outside 2 to 100/)
+  })
+
+  it('takes the site value per key and lets the panel win', () => {
+    const site = { explore: { limits: { chart_rows: 300, legend_series: 4 } } }
+    expect(resolveExploreOptions({}, site).limits).toMatchObject({ chartRows: 300, legendSeries: 4, pivotRows: 500 })
+    expect(resolveExploreOptions({ limits: { chart_rows: 900 } }, site).limits).toMatchObject({ chartRows: 900, legendSeries: 4 })
   })
 })
