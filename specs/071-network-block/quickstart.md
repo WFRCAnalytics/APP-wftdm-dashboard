@@ -46,3 +46,9 @@ Then the full run; compare with the known flakes in CLAUDE.md (re-run a failure 
 - A scratch site with `fonts: bundled`, an extension address, an allow-list of `protomaps-*` and `basemap.default: protomaps-light`: `--explain` ends with `no outside host is known`; exit 0.
 - A scratch site with `fonts: sideways`, `duckdb_extensions: "ftp://x"` and an allow-list of `["nope-*", "protomaps-*"]`: four problems with their paths (the font mode, the address, the pattern that matches nothing, and the app default replaced by `protomaps-light`); exit 1.
 
+
+## Walked (2026-10-29)
+
+- Unit layer: 115 files, 1523 tests pass. `npm run check` on the demo folder is clean; the `--explain` and mistake walks are recorded above.
+- Browser spec `networkBlock.spec.ts` (9 cases): no keys, an allow-list (tab, default replaced, no other basemap host, note), a raster pattern, a list that matches nothing, fonts bundled and not, the extension address (parquet autoload and nothing to DuckDB's host) and without it, and the mistakes.
+- Full Playwright run (655 tests): 646 passed, 9 failed. `realDemo.spec.ts:19` and `:39` (pre-existing) and `chartMaps.spec.ts:95` and `:189` (known flaky) are the baseline. `observablePlotPanel:403` and `:642`, `panelExpand:314`, `pieChartPanel:122` and `layoutExport:66` passed when re-run alone (load flakes; a second dev server was running during the full run).
