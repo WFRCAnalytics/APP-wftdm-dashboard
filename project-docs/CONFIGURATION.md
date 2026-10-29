@@ -415,8 +415,8 @@ Why it exists: an agency behind a firewall, or one that must not send a viewer's
 
 | Outside call | Where | Today |
 |---|---|---|
-| Interface fonts | the app's own fonts are bundled (`@fontsource`); the Appearance tab's font picker loads the chosen family from `fonts.googleapis.com` (`layout/settings/appearanceTab.tsx`) | a viewer's pick reaches Google |
-| Basemap tiles and styles | the Basemap tab catalogue: UGRC, CARTO, OpenFreeMap, Protomaps and the raster dropdown (`public/basemap/leaflet-providers.json`, dozens of hosts) | any entry the viewer picks reaches its host; the default is blank without a PMTiles source |
+| Interface fonts | the default font (Schibsted Grotesk) is bundled; the Appearance tab's Geist and IBM Plex Sans cards, its custom-font inputs and its shortlist load families from `fonts.googleapis.com`, and two of the cards load a preview font from Google as the tab opens (`layout/settings/appearanceTab.tsx`) | a viewer's pick (and the previews) reach Google |
+| Basemap tiles and styles | the Basemap tab catalogue: UGRC, CARTO, OpenFreeMap, Protomaps and the raster dropdown (`public/basemap/leaflet-providers.json`, dozens of hosts) | any entry the viewer picks reaches its host; **the app's own default is `openfreemap-positron` (`panels/basemap/registry.ts` `APP_DEFAULT`), an outside host**, so even an untouched deployment's maps call out (an earlier version of this note said the default was blank: wrong) |
 | DuckDB extensions | `INSTALL spatial` (and the parquet extension on first use) fetch from `extensions.duckdb.org` (`panels/zoneGeometry.ts`) | one fixed outside fetch; no offline mode |
 | Assistant providers | the Settings assistant | already controlled by `assistant.providers` (068), not part of this block |
 
