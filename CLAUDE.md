@@ -106,7 +106,7 @@ manifest.yaml         per-scenario metadata
   row there plus the code that uses it. `npm run check -- <site folder> [--explain]` checks a site before deploying (`config/check.ts`); the same run
   of `docs:config` writes `project-docs/dashboard-config.schema.json` (JSON Schema for editors). `index.json` no longer holds any setting (no compatibility; a leftover one gets a "moved" note).
 - No `topsheet.yaml` or `summarize-preprocessor.yaml`.
-- **Delivery targets:** a Python library and an R package (constitution Principle X); neither holds app logic.
+- **Delivery target:** a Python library (constitution Principle X, 2.9.0: the R package was dropped); it holds no app logic.
 - **Undecided (constitution "Open Decisions"):** whether data is pre-processed to Parquet (as now) or read directly from the model's raw
   output; to be tested on two branches with real WFRC model output. Keep the current design on `main` until then. The observed-data
   stream is not designed yet.

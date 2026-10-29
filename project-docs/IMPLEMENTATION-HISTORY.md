@@ -6675,3 +6675,10 @@ and the contracts are in the spec folder; the non-obvious ones:
 - **Out**: `init --scenario-dir`, a library `check` (needs the TypeScript core), the R package, a demo shortcut.
 - **Gotchas**: this shell turns a backslash-n in Python and TypeScript strings into a real newline (use `chr(10)` or the Edit tool); `ruff --fix` on `python/` also edits the older `observed.py` (revert it); the served demo site file named logos on `raw.githubusercontent.com`, which is why the walk saw that host.
 - Tests: `python/tests/{test_server,test_server_live,test_scaffold,test_cli}.py`, `tests/unit/configPackageSchema.test.ts`.
+
+## R package dropped as a delivery target (constitution 2.9.0, 2026-10-29)
+
+- Principle X is now "Delivery Target: the Python Library". Reasons: the users run ActivitySim and the TDM model scripts (Python); no R user is known; R is not installed here, so an R package could not be built or tested; and an R wrapper would either repeat the file server's path-safety rules a second time or need Python anyway.
+- Kept: the static bundle plus plain YAML and JSON configuration, no application logic in the wrapper, no URL baked into the library's bundle. Because the configuration is language-neutral a wrapper can be added later, by amending Principle X first.
+- Changed in the same commit: the constitution (Sync Impact Report, Principle X, a wording fix in VII, version 2.9.0), `project-docs/CONFIGURATION.md` (goal, principle 7, the schema note, Phase G step 13 dropped, the "thin wrappers" decision, "What is the core?", the Rust note) and `CLAUDE.md`. The core's packaging question (how a `check` reaches the Python library) is still open and is now Python-only.
+

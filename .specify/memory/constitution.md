@@ -1,5 +1,28 @@
 <!--
 Sync Impact Report
+- Version change: 2.8.1 → 2.9.0
+- Modified principles:
+  - X (was: Delivery Targets: Python Library and R Package; now: Delivery Target: the Python Library): the R package is no
+    longer a delivery target. The dashboard's users run ActivitySim and the TDM model scripts, which are Python, and no R user
+    is known; nothing in this repository can build or test an R package (R is not installed), and an R wrapper would either
+    repeat the file server's path-safety rules a second time or need Python anyway. The rest of the principle stands: a static
+    bundle plus plain YAML and JSON configuration, no application logic in the wrapper, no URL baked into the shipped bundle.
+    Because the configuration stays plain YAML and JSON, another wrapper (an R package, say) can be added later; this
+    principle MUST be amended first, as any new target would be.
+  - VII (rationale text only): `a Python or R package to write` now reads `a Python package (or any other tool) to write`.
+  - X (status): the base-path rule is met for the library's bundle (072: Vite mode `package`, `base: ./`); the Pages build still
+    sets its own path, which is not a shipped artifact of the library.
+- Added sections: none. Removed sections: none.
+- MINOR, not MAJOR: a delivery target is dropped, but no principle is removed and nothing that was valid becomes invalid. Checked
+  against this file's own versioning policy, not assumed.
+- Follow-up: `project-docs/CONFIGURATION.md` (goal, principle 7, the schema note, Phase G step 13 dropped, the "two thin
+  wrappers" decision, "What is the core?", the Rust note) and `CLAUDE.md` (Delivery targets) are corrected in the same change.
+- Deferred TODOs: none for R. The core's packaging question (how a check reaches the Python library) is still open and is now a
+  Python-only question.
+-->
+
+<!--
+Sync Impact Report (2.8.1, superseded above)
 - Version change: 2.8.0 → 2.8.1
 - Modified principles: none
 - Modified sections: references to `CONFIGURATION.md` (Principle VII and X
@@ -617,7 +640,7 @@ that would otherwise do the same job. The site settings had grown into
 `index.json`, an undocumented JSON file that was a fourth config file in
 practice; naming it, putting it in YAML with the other three, and giving it a
 cascade is more honest than leaving it hidden, and a single YAML file is easy
-for a Python or R package to write.
+for a Python package (or any other tool) to write.
 **Status**: `dashboard-config.yaml` is built (066): one schema table in
 `src/config/schema.ts` drives loading, validation, the cascade and the generated
 `project-docs/CONFIG-REFERENCE.md`. `index.json` carries no setting any more. The
@@ -673,20 +696,24 @@ source layouts had already drifted (a stale `uv_build` default `module-root` of
 path). Fixing this once and pinning it here prevents the two trees from silently
 re-diverging as new Python or JS files are added.
 
-### X. Delivery Targets: Python Library and R Package
+### X. Delivery Target: the Python Library
 The dashboard is delivered as a **static bundle plus YAML configuration** (and
-Parquet data), wrapped by two packages: a Python library
-(`python/wftdm_dashboard/`, Principle IX) and an R package. Both are targets,
-equally. Neither package may contain application logic: they place the bundle,
-write or validate the YAML, run the data steps that exist, and serve or open
-the result. The bundle MUST NOT depend on the URL it is served from (no
+Parquet data), wrapped by a Python library (`python/wftdm_dashboard/`,
+Principle IX). The library MUST NOT contain application logic: it places the
+bundle, writes the starter YAML, runs the data steps that exist, and serves or
+opens the result. The bundle MUST NOT depend on the URL it is served from (no
 build-time base path in the shipped artifact), and configuration MUST be plain
-YAML and JSON that either language can write. The R package does not exist yet;
-its location is fixed when it is created, and it MUST NOT live under `src/`.
-Today's build still sets a base path (`vite.config.ts`), which breaks the URL
-rule; removing it is `project-docs/CONFIGURATION.md` phase A.
-**Rationale**: the dashboard's users run their models from R as well as Python,
-and one bundle with one configuration format avoids two diverging apps.
+YAML and JSON, so that any tool can write it. An R package was a second target
+until 2.9.0 and was dropped: nothing in this repository can build or test one,
+and no R user is known. A new target (an R package, say) MUST be added by
+amending this principle first, and MUST NOT live under `src/`.
+**Status**: the library's bundle is built with a relative base (`vite build
+--mode package`, `npm run build:package`, 072); the GitHub Pages build still
+sets its own path, which is not a shipped artifact of the library.
+**Rationale**: the dashboard's users run ActivitySim and the TDM model
+scripts, which are Python; one bundle with one configuration format avoids
+diverging apps, and keeping the configuration language-neutral keeps a second
+wrapper possible without a redesign.
 
 ## Open Decisions (non-binding records)
 
@@ -791,4 +818,4 @@ forbidden config files, no Mapbox/Webpack/Web Storage usage. Any exception
 requires a
 prior amendment to this document, not a one-off waiver in review.
 
-**Version**: 2.8.1 | **Ratified**: 2026-08-19 | **Last Amended**: 2026-10-28
+**Version**: 2.9.0 | **Ratified**: 2026-08-19 | **Last Amended**: 2026-10-29
