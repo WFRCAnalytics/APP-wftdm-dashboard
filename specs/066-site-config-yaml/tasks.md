@@ -91,10 +91,10 @@
 
 **Independent Test**: add a test-only row; it loads, validates, cascades and appears in the generated reference with no other source edit.
 
-- [ ] T032 [US4] Implement `src/config/reference.ts` (schema → Markdown table: path, type, default, cascade rule, description) and `scripts/gen-config-reference.ts` writing `project-docs/CONFIG-REFERENCE.md`; run `npm run docs:config` and commit the output
-- [ ] T033 [P] [US4] Unit test `tests/unit/configReference.test.ts`: regenerate in memory and fail when it differs from the committed `project-docs/CONFIG-REFERENCE.md`; fail when a schema path is missing from it (SC-007)
-- [ ] T034 [US4] (done early in T018: the plugin already reads `dashboard-config.yaml` through `src/config`; only its header comment and a unit check remain) Replace the hand-written parser in `scripts/viteBootSkeletonPlugin.ts` with the pure `src/config` modules (title, page count, assistant on/off); delete its duplicated `index.json` reading and update its header comment
-- [ ] T035 [P] [US4] Unit test the "one place" property in `tests/unit/configExtensible.test.ts`: build a temporary schema with one extra row and show `validate`, `resolve` and `reference` handle it without other changes (the functions take the table as a parameter, default the real one)
+- [X] T032 [US4] Implement `src/config/reference.ts` (schema → Markdown table: path, type, default, cascade rule, description) and `scripts/gen-config-reference.ts` writing `project-docs/CONFIG-REFERENCE.md`; run `npm run docs:config` and commit the output
+- [X] T033 [P] [US4] Unit test `tests/unit/configReference.test.ts`: regenerate in memory and fail when it differs from the committed `project-docs/CONFIG-REFERENCE.md`; fail when a schema path is missing from it (SC-007)
+- [X] T034 [US4] (done early in T018: the plugin already reads `dashboard-config.yaml` through `src/config`; only its header comment and a unit check remain) Replace the hand-written parser in `scripts/viteBootSkeletonPlugin.ts` with the pure `src/config` modules (title, page count, assistant on/off); delete its duplicated `index.json` reading and update its header comment
+- [X] T035 [P] [US4] Unit test the "one place" property in `tests/unit/configExtensible.test.ts`: build a temporary schema with one extra row and show `validate`, `resolve` and `reference` handle it without other changes (the functions take the table as a parameter, default the real one)
 
 **Checkpoint**: adding a key is one row plus the code that uses it.
 
