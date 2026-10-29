@@ -7,6 +7,7 @@ import { slugCollisions } from '../state/routeState'
 import { getPath, isTree, type Tree } from './paths'
 import { pageSettings } from './levels'
 import { checkDefault } from './assistant'
+import { checkAllowList, checkDefaultBasemap, type CatalogueEntry } from './network'
 import { allHidden } from './pages'
 import { resolve } from './resolve'
 import { SETTINGS } from './schema'
@@ -17,6 +18,8 @@ export const SITE_FILE = 'dashboard-config.yaml'
 export interface CheckOptions {
   /** Extra check of one panel (the Explore options live outside this folder); returns messages. */
   panelCheck?: (panel: Tree, site: Tree) => string[]
+  /** The basemap catalogue (071), so the allow-list can be checked: the ids it knows, the app's own default, and each entry's hosts. */
+  network?: { basemapIds: readonly string[]; appDefault: string; catalogue: readonly CatalogueEntry[] }
 }
 
 export interface PageReport {
@@ -66,6 +69,15 @@ export function checkSite(read: (file: string) => string | undefined, options: C
   for (const message of checkDefault(checked.settings)) {
     problems.push({ file: SITE_FILE, path: 'assistant.default.provider', kind: 'invalid_value', message })
   }
+  const allow = networkAllowList(checked.settings)
+  const net = options.network
+  if (net) {
+    for (const message of checkAllowList(allow, net.basemapIds)) problems.push({ file: SITE_FILE, path: 'network.basemaps.allow', kind: 'invalid_value', message })
+    const siteDefault = getPath(checked.settings, 'basemap.default')
+    const effective = typeof siteDefault === 'string' ? siteDefault : net.appDefault
+    const message = checkDefaultBasemap(effective, allow, net.basemapIds)
+    if (message) problems.push({ file: SITE_FILE, path: 'basemap.default', kind: 'invalid_value', message: typeof siteDefault === 'string' ? message : `${message} (nothing sets basemap.default, so the app default applies)` })
+  }
 
   const pages = getPath(checked.settings, 'pages')
   const headers: { tab: string; slug?: string }[] = []
@@ -97,6 +109,21 @@ export function checkSite(read: (file: string) => string | undefined, options: C
     }
     if (entry.header) headers.push(entry.header)
 
+    if (net) {
+      const pageDefault = getPath(settings, 'basemap.default')
+      const pageMessage = typeof pageDefault === 'string' ? checkDefaultBasemap(pageDefault, allow, net.basemapIds) : undefined
+      if (pageMessage) problems.push({ file, path: 'basemap.default', kind: 'invalid_value', message: pageMessage })
+      if (isTree(raw.layout)) {
+        for (const [row, panels] of Object.entries(raw.layout)) {
+          for (const [i, panel] of (Array.isArray(panels) ? panels : []).entries()) {
+            const choice = isTree(panel) ? panel.basemap : undefined
+            const message = typeof choice === 'string' ? checkDefaultBasemap(choice, allow, net.basemapIds) : undefined
+            if (message) problems.push({ file, path: `layout.${row}[${i}].basemap`, kind: 'invalid_value', message })
+          }
+        }
+      }
+    }
+
     if (options.panelCheck && isTree(raw.layout)) {
       for (const [row, panels] of Object.entries(raw.layout)) {
         for (const [i, panel] of (Array.isArray(panels) ? panels : []).entries()) {
@@ -120,6 +147,12 @@ export function checkSite(read: (file: string) => string | undefined, options: C
     })
   }
   return report
+}
+
+/** The `network.basemaps.allow` list of a validated site tree (text entries only), or undefined. */
+function networkAllowList(settings: Tree): string[] | undefined {
+  const v = getPath(settings, 'network.basemaps.allow')
+  return Array.isArray(v) ? v.filter((e): e is string => typeof e === 'string') : undefined
 }
 
 /** Each cascading setting that is set somewhere, as `path = value (level)`, per page. */

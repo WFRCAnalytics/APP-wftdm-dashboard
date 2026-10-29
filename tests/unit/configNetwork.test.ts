@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { allowedIds, globToRegExp, hostOf, isAllowed, matchesAny, outsideHosts, unmatchedPatterns } from '../../src/config'
+import { allowedIds, checkAllowList, checkDefaultBasemap, globToRegExp, hostOf, isAllowed, matchesAny, outsideHosts, unmatchedPatterns } from '../../src/config'
 
 const ids = ['carto-positron', 'openfreemap-liberty', 'openfreemap-bright', 'ugrc-vector-lite', 'protomaps-light', 'OpenStreetMap.Mapnik', 'Esri.WorldImagery']
 
@@ -90,5 +90,41 @@ describe('hostOf', () => {
     expect(hostOf('https://tiles.arcgis.com/x/y.json')).toBe('tiles.arcgis.com')
     expect(hostOf('not an address')).toBeUndefined()
     expect(hostOf('Esri.WorldImagery')).toBeUndefined()
+  })
+})
+
+describe('checkAllowList', () => {
+  const known = ['carto-positron', 'ugrc-vector-lite', 'protomaps-light']
+
+  it('is quiet for no list, an empty list and a list that matches', () => {
+    expect(checkAllowList(undefined, known)).toEqual([])
+    expect(checkAllowList([], known)).toEqual([])
+    expect(checkAllowList(['carto-*', 'ugrc-vector-lite'], known)).toEqual([])
+  })
+
+  it('reports each pattern that matches nothing and keeps the others quiet', () => {
+    expect(checkAllowList(['carto-*', 'nope-*', 'ugrc-lite'], known)).toEqual(['the pattern "nope-*" matches no known basemap', 'the pattern "ugrc-lite" matches no known basemap'])
+  })
+
+  it('also says when the list allows nothing at all', () => {
+    expect(checkAllowList(['nope-*'], known)).toEqual(['the pattern "nope-*" matches no known basemap', 'no basemap is allowed, so every map shows the plain background'])
+  })
+})
+
+describe('checkDefaultBasemap', () => {
+  const known = ['carto-positron', 'ugrc-vector-lite', 'protomaps-light']
+
+  it('is fine for an allowed name, no list, and a style URL', () => {
+    expect(checkDefaultBasemap('ugrc-vector-lite', ['ugrc-*'], known)).toBeUndefined()
+    expect(checkDefaultBasemap('openfreemap-positron', undefined, known)).toBeUndefined()
+    expect(checkDefaultBasemap('https://tiles.example.org/style.json', ['nope-*'], known)).toBeUndefined()
+  })
+
+  it('names the replacement, the first allowed id in catalogue order', () => {
+    expect(checkDefaultBasemap('openfreemap-positron', ['ugrc-*', 'protomaps-*'], known)).toBe('the basemap "openfreemap-positron" is not allowed by network.basemaps.allow; "ugrc-vector-lite" is used')
+  })
+
+  it('says the plain background is used when nothing is allowed', () => {
+    expect(checkDefaultBasemap('carto-positron', ['nope-*'], known)).toContain('the plain background is used')
   })
 })

@@ -43,6 +43,7 @@ import { configureAssistant } from '@/services/ai/assistantPolicy'
 import { applyAssistantPolicy } from '@/state/aiState'
 import { loadSite } from './services/siteConfig.ts'
 import { configureNetwork, getExtensionRepository } from './services/networkPolicy.ts'
+import { reportAllowListProblems } from './panels/basemap/networkReport.ts'
 import { loadDashboards } from './services/yamlLoader.ts'
 import { setDeployerScenarioPalette } from './panels/scenarioDisplay.ts'
 import { setDeployerProtomapsSource } from './state/protomapsSourceState.ts'
@@ -152,6 +153,7 @@ try {
   // mirror must be set before the first Parquet read or extension install.
   site = await loadSite()
   configureNetwork(site.branding.network)
+  void reportAllowListProblems() // once the raster provider file is loaded; never blocks boot
   try {
     await setExtensionRepository(getExtensionRepository())
   } catch (err) {

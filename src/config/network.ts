@@ -78,3 +78,21 @@ export function hostOf(address: string): string | undefined {
     return undefined
   }
 }
+
+/** The problems of an allow-list against the known ids: each pattern that matches nothing, and a list that allows nothing at all. */
+export function checkAllowList(patterns: readonly string[] | undefined, ids: readonly string[]): string[] {
+  if (!patterns || patterns.length === 0) return []
+  const messages = unmatchedPatterns(patterns, ids).map((p) => `the pattern "${p}" matches no known basemap`)
+  if (allowedIds(patterns, ids).length === 0) messages.push('no basemap is allowed, so every map shows the plain background')
+  return messages
+}
+
+/**
+ * The problem of a default basemap (the app's, the site's, a page's or a panel's) that the allow-list does not allow; undefined when it is fine.
+ * Only a catalogue name is checked: a full style URL or a style written in the page is the deployer's own choice and is never blocked.
+ */
+export function checkDefaultBasemap(name: string, patterns: readonly string[] | undefined, ids: readonly string[]): string | undefined {
+  if (/^https?:\/\//i.test(name.trim()) || isAllowed(patterns, name)) return undefined
+  const first = allowedIds(patterns, ids)[0]
+  return `the basemap "${name}" is not allowed by network.basemaps.allow; ${first ? `"${first}" is used` : 'the plain background is used'}`
+}

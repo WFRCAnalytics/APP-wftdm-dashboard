@@ -151,3 +151,22 @@ test('without an extension address the download goes to DuckDB as before', async
   await goToNetworkTab(page)
   await expect.poll(() => duckdbHost.length, { timeout: 60_000 }).toBeGreaterThan(0)
 })
+
+test('mistakes are listed with their paths, the app loads and each setting stays at its default', async ({ page }) => {
+  const requests = await open(page, 'network:\n  fonts: sideways\n  duckdb_extensions: "ftp://mirror.example.org/duckdb"\n  basemaps:\n    allow: ["nope-*"]')
+  // the first page shows the configuration note
+  await expect(page.getByTestId('config-notice')).toBeVisible({ timeout: 30_000 })
+  const paths = await page.getByTestId('config-notice').locator('[data-problem-path]').evaluateAll((els) => els.map((e) => e.getAttribute('data-problem-path')))
+  expect(paths).toContain('network.fonts')
+  expect(paths).toContain('network.duckdb_extensions')
+  expect(paths.filter((p) => p === 'network.basemaps.allow').length).toBeGreaterThanOrEqual(2)
+  // the unknown font mode and the bad address keep their defaults: four fonts, and the extension request is not aimed at the ftp address
+  const dialog = await openAppearanceTab(page)
+  await expect(dialog.getByRole('radiogroup', { name: 'Font' }).getByRole('radio')).toHaveCount(4)
+  await page.keyboard.press('Escape')
+  // the list that matches nothing gives the plain background: no basemap host is called on a map page
+  await openNetworkPage(page)
+  await page.waitForTimeout(1500)
+  expect(requests.filter((u) => BASEMAP_HOSTS.test(u))).toEqual([])
+  expect(requests.filter((u) => u.includes('mirror.example.org'))).toEqual([])
+})

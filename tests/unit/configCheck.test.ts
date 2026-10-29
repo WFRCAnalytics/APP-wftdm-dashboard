@@ -185,3 +185,62 @@ describe('check: explore settings', () => {
     expect(r.problems.map((p) => p.path)).toEqual(['layout.row_one[0]'])
   })
 })
+
+describe('check: network block', () => {
+  const ids = ['carto-positron', 'openfreemap-positron', 'ugrc-vector-lite', 'protomaps-light', 'OpenStreetMap.Mapnik']
+  const network = { basemapIds: ids, appDefault: 'openfreemap-positron', catalogue: ids.map((id) => ({ id, hosts: [] as string[] })) }
+  const site = (extra: string) => `pages: [p.yaml]\n${extra}`
+  const onePage = page('layout:\n  row_one:\n    - { type: markdown, title: Hi, content: x }\n')
+  const run = (extra: string, pageBody = onePage) => checkSite(files({ 'dashboard-config.yaml': site(extra), 'p.yaml': pageBody }), { network })
+  const paths = (r: ReturnType<typeof checkSite>) => r.problems.map((p) => `${p.file}:${p.path}`)
+
+  it('is clean without the block, and for a list that matches with an allowed default', () => {
+    expect(run('').problems).toEqual([])
+    expect(run('network: { basemaps: { allow: ["openfreemap-*", "ugrc-*"] } }\n').problems).toEqual([])
+  })
+
+  it('reports each pattern that matches nothing, once, with its path', () => {
+    const r = run('network: { basemaps: { allow: ["openfreemap-*", "nope-*", "nada"] } }\n')
+    expect(r.problems.filter((p) => p.path === 'network.basemaps.allow').map((p) => p.message)).toEqual(['the pattern "nope-*" matches no known basemap', 'the pattern "nada" matches no known basemap'])
+  })
+
+  it('reports a list that allows nothing', () => {
+    const messages = run('network: { basemaps: { allow: ["nope-*"] } }\n').problems.map((p) => p.message)
+    expect(messages).toContain('no basemap is allowed, so every map shows the plain background')
+  })
+
+  it('reports the app default when nothing sets a default and it is not allowed', () => {
+    const r = run('network: { basemaps: { allow: ["ugrc-vector-lite"] } }\n')
+    const p = r.problems.find((x) => x.path === 'basemap.default')!
+    expect(p.file).toBe('dashboard-config.yaml')
+    expect(p.message).toContain('"openfreemap-positron" is not allowed')
+    expect(p.message).toContain('"ugrc-vector-lite" is used')
+    expect(p.message).toContain('the app default applies')
+  })
+
+  it('reports a site default that is not allowed, without the app-default remark', () => {
+    const r = run('basemap: { default: carto-positron }\nnetwork: { basemaps: { allow: ["ugrc-*"] } }\n')
+    const p = r.problems.find((x) => x.path === 'basemap.default')!
+    expect(p.message).toContain('"carto-positron" is not allowed')
+    expect(p.message).not.toContain('the app default applies')
+  })
+
+  it('is quiet when the site default is allowed, even if the app default is not', () => {
+    expect(run('basemap: { default: ugrc-vector-lite }\nnetwork: { basemaps: { allow: ["ugrc-*"] } }\n').problems).toEqual([])
+  })
+
+  it('reports a page default and a panel basemap that are not allowed, under the page', () => {
+    const body = page('default_basemap: carto-positron\nlayout:\n  row_one:\n    - { type: zonemap, title: Z, basemap: openfreemap-positron }\n    - { type: zonemap, title: Y, basemap: ugrc-vector-lite }\n')
+    const r = run('basemap: { default: ugrc-vector-lite }\nnetwork: { basemaps: { allow: ["ugrc-*"] } }\n', body)
+    expect(paths(r)).toEqual(['p.yaml:basemap.default', 'p.yaml:layout.row_one[0].basemap'])
+  })
+
+  it('never reports a style URL or a style written in the page', () => {
+    const body = page('layout:\n  row_one:\n    - { type: zonemap, title: Z, basemap: "https://tiles.example.org/style.json" }\n    - { type: zonemap, title: Y, basemap: { layers: ["https://tiles.example.org/a.json"] } }\n')
+    expect(run('basemap: { default: ugrc-vector-lite }\nnetwork: { basemaps: { allow: ["ugrc-*"] } }\n', body).problems).toEqual([])
+  })
+
+  it('does nothing without a catalogue (an older caller)', () => {
+    expect(checkSite(files({ 'dashboard-config.yaml': site('network: { basemaps: { allow: ["nope-*"] } }\n'), 'p.yaml': onePage })).problems).toEqual([])
+  })
+})

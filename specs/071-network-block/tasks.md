@@ -89,9 +89,9 @@ Single web-app project: `src/`, `scripts/`, `tests/`, `project-docs/` at the rep
 
 **Independent Test**: a site with one of each mistake loads, behaves as today for each, and each is listed once in the note and by `check`.
 
-- [ ] T017 [US5] `src/config/check.ts` and `scripts/check-config.ts`: pass the catalogue ids to `checkSite` (an option like `panelCheck`); report a pattern that matches no known id, an allow-list that matches nothing, and a `basemap.default` (site, page, or a panel's `basemap`) that is a catalogue name not allowed; reuse `unmatchedPatterns` and `isAllowed`. Unit tests in `tests/unit/configCheck.test.ts` with a small id list: each mistake once with its path, a clean site gives none
-- [ ] T018 [US5] `src/services/siteConfig.ts`: report the site-level cross-key problems the app can know at boot (the site `basemap.default` not allowed); the unmatched-pattern report waits for the raster catalogue to load (Basemap tab) and is reported once. Extend `tests/unit/siteConfigDemo.test.ts` or a new test for the site-level report
-- [ ] T019 [US5] Extend `tests/integration/networkBlock.spec.ts`: a site file with an unknown font mode, a bad extension address and an allow-list matching nothing loads, the note lists each path, and the maps draw the blank background with no basemap request
+- [X] T017 [US5] `src/config/check.ts` and `scripts/check-config.ts`: pass the catalogue ids to `checkSite` (an option like `panelCheck`); report a pattern that matches no known id, an allow-list that matches nothing, and a `basemap.default` (site, page, or a panel's `basemap`) that is a catalogue name not allowed; reuse `unmatchedPatterns` and `isAllowed`. Unit tests in `tests/unit/configCheck.test.ts` with a small id list: each mistake once with its path, a clean site gives none
+- [X] T018 [US5] Done in `src/panels/basemap/networkReport.ts` (called from `main.tsx`, not `siteConfig.ts`): the unmatched-pattern and matches-nothing report waits for the raster provider file and is reported once; a default that is not allowed is reported where it is used (`basemapPolicy`), once per level. Extend `tests/unit/siteConfigDemo.test.ts` or a new test for the site-level report
+- [X] T019 [US5] Extend `tests/integration/networkBlock.spec.ts`: a site file with an unknown font mode, a bad extension address and an allow-list matching nothing loads, the note lists each path, and the maps draw the blank background with no basemap request
 
 ---
 
