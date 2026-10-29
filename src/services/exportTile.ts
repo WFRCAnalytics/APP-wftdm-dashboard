@@ -165,7 +165,8 @@ interface Walk {
   captureMap: (container: HTMLElement) => Promise<string | null>
 }
 
-const SKIP = 'button, select, input, textarea, [data-export-skip], .wf-tip, .maplibregl-ctrl, .sr-only, .wfz-ctl, .wfz-linked'
+// Explore's legend entries are buttons (hover isolates a series) but are part of the picture, so `.lgi` is kept.
+const SKIP = 'button:not(.lgi), select, input, textarea, [data-export-skip], .wf-tip, .maplibregl-ctrl, .sr-only, .wfz-ctl, .wfz-linked'
 
 function visible(cs: CSSStyleDeclaration): boolean {
   return cs.display !== 'none' && cs.visibility !== 'hidden' && Number(cs.opacity) > 0
