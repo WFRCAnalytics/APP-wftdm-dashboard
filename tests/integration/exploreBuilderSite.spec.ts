@@ -73,3 +73,18 @@ test('a panel starting chart wins over the site one', async ({ page }) => {
   await page.getByRole('button', { name: 'Add chart tab' }).click()
   await expect(page.locator('.xb .mkgrid').getByRole('button', { name: /^Pie/ })).toHaveAttribute('aria-pressed', 'true')
 })
+
+test('mistakes in the site file are listed with their paths, the app loads and Explore keeps the defaults', async ({ page }) => {
+  await openExplore(page, { site: 'explore:\n  limits:\n    chart_rows: 10\n    scatter_sample: lots\n    foo: 1\n  charts:\n    default: 7' })
+  // the Explore page is full-screen without the note, so read it on another page
+  await page.hover('[data-sidebar=sidebar]')
+  await page.getByRole('tab').first().click()
+  await expect(page.getByTestId('config-notice')).toBeVisible({ timeout: 30_000 })
+  const paths = await page.getByTestId('config-notice').locator('[data-problem-path]').evaluateAll((els) => els.map((e) => e.getAttribute('data-problem-path')))
+  expect(paths.sort()).toEqual(['explore.charts.default', 'explore.limits.chart_rows', 'explore.limits.foo', 'explore.limits.scatter_sample'])
+  await page.hover('[data-sidebar=sidebar]')
+  await page.getByRole('tab', { name: 'Explore' }).first().click()
+  // the defaults hold: a new tab starts as a bar chart and nothing is cut
+  await page.getByRole('button', { name: 'Add chart tab' }).click()
+  await expect(page.locator('.xb .mkgrid').getByRole('button', { name: /^Bar/ })).toHaveAttribute('aria-pressed', 'true')
+})

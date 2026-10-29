@@ -77,9 +77,9 @@ Single web-app project: `src/`, `tests/`, `scripts/`, `project-docs/` at the rep
 
 **Independent Test**: a site file with an out-of-range limit, a text limit, an unknown limit key and an unknown default chart loads; each is listed once in the note and by `check`, which exits 1.
 
-- [ ] T014 [US3] `tests/unit/configCheck.test.ts`: a site with each mistake gives one problem each with its path (`explore.limits.chart_rows`, `explore.limits.scatter_sample`, `explore.limits.foo`), and a clean site gives none; verify the site-level problem is not repeated when a panel opens (the clamped value reaches `options.ts` already in range)
-- [ ] T015 [US3] Make `explore.charts.default` naming an unknown chart reach `check`: through the existing `panelCheck` (`resolveExploreOptions(panel, site).warnings` in `scripts/check-config.ts`) when an Explore panel exists, so no chart list enters `src/config`; unit test with a stub panel
-- [ ] T016 [US3] Extend `tests/integration/exploreBuilderSite.spec.ts`: a site file with the four mistakes loads, the configuration note lists each with its path, and Explore still draws with the defaults
+- [X] T014 [US3] `tests/unit/configCheck.test.ts`: a site with each mistake gives one problem each with its path (`explore.limits.chart_rows`, `explore.limits.scatter_sample`, `explore.limits.foo`), and a clean site gives none; verify the site-level problem is not repeated when a panel opens (the clamped value reaches `options.ts` already in range)
+- [X] T015 [US3] Make `explore.charts.default` naming an unknown chart reach `check`: through the existing `panelCheck` (`resolveExploreOptions(panel, site).warnings` in `scripts/check-config.ts`) when an Explore panel exists, so no chart list enters `src/config`; unit test with a stub panel
+- [X] T016 [US3] Extend `tests/integration/exploreBuilderSite.spec.ts`: a site file with the four mistakes loads, the configuration note lists each with its path, and Explore still draws with the defaults
 
 ---
 
