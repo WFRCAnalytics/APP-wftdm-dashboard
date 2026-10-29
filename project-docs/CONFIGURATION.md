@@ -24,11 +24,11 @@ Principles:
 
 | Area | State |
 |---|---|
-| Title, logos, colours, scenario palette | Configurable, but in `index.json` (JSON, undocumented) |
-| Tabs, sections, layout mode, panel options | Configurable (`dashboard-*.yaml`; the page list and `layout` in `index.json`) |
+| Title, logos, colours, scenario palette | Configurable in `dashboard-config.yaml` (066; reference in `CONFIG-REFERENCE.md`) |
+| Tabs, sections, layout mode, panel options | Configurable (`dashboard-*.yaml`; the page list and layout mode in `dashboard-config.yaml`) |
 | Page addresses | Configurable: `header.slug` sets a page's `#/<slug>` address (default: the tab name, lower-cased and dash-separated; a repeat gets `-2`, `-3`). A section is `#/<slug>/<section id>`. Settings, the assistant and expanded tiles are not in the address |
-| Category names, metric labels and units | Configurable (`vocab`, `metrics`, `units` in `index.json`) |
-| Years, compare defaults, export footer | Configurable (`index.json`) |
+| Category names, metric labels and units | Configurable (`vocab`, `metrics`, `units` in `dashboard-config.yaml`) |
+| Years, compare defaults, export footer | Configurable (`dashboard-config.yaml`) |
 | Basemap and Protomaps | Key or URL configurable; the catalogue is fixed |
 | Explore builder | Configurable per panel (limits, features, charts, tables, columns, presets) |
 | Viewer preferences (theme, font, text size, colour presets) | Fixed in code |
@@ -228,13 +228,15 @@ Not drafted here, on purpose: how the charts find the deployer's tables and colu
    check: the boot skeleton and a Python-served copy.
 
 **Phase B: `dashboard-config.yaml`**
-4. One table-driven definition of every key (name, type, default, whether it cascades, description). The loader, the cascade, the
-   boot-skeleton plugin and the docs read it, so adding a key is one edit.
-5. Load the file at runtime, then the cascade. Report unknown keys and wrong values the way the Explore options do (a visible note for the
-   deployer, console detail).
-6. ~~Migration~~ Dropped: no backward compatibility for now (section 7, Versioning). The old `index.json` settings keys are removed when
-   the YAML loader lands.
-7. Document it in `GRAMMAR.md` and publish a JSON Schema file for editors (Python and R can validate with it before writing).
+4. **Done (066).** One table-driven definition of every key, `src/config/schema.ts`. The loader, the cascade, the boot-skeleton plugin and
+   the generated `CONFIG-REFERENCE.md` read it, so adding a key is one row (plus the code that uses it).
+5. **Done (066).** The file loads at runtime and the cascade (site, page, panel) resolves `layout.mode`, `basemap.default`, `export.footer` and
+   the `explore.*` keys. Unknown keys and wrong values are reported in one visible note and in the console. Two roots stay: the deployment's
+   file wins per setting over the demo's, page lists concatenate (until the demo build flag, step 1, is decided).
+6. ~~Migration~~ Dropped: no backward compatibility (section 7, Versioning). The old `index.json` settings keys are removed and not read; a
+   leftover one gets a "moved" note.
+7. **Partly done.** `GRAMMAR.md` points at the generated reference and `header.slug`/`header.layout_mode` are documented. Still to do: publish a
+   JSON Schema file for editors (Python and R can validate with it before writing) and the `check` command.
 
 **Phase C: viewer-facing settings**
 8. `settings.tabs`, the documentation link and sidebar icon, and hidden and draft pages. (No deployer theme or font defaults, and no custom
