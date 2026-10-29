@@ -68,6 +68,10 @@ export interface ChartSpec {
   table: TableOpts
   labels?: LabelMode
   ref: string
+  /** Chosen category order per field (field name to values); a field without an entry stays alphabetical. */
+  order: Record<string, string[]>
+  /** Wrap a single facet field into this many columns; 0 keeps one row or column. */
+  wrap: number
   /** Histogram bin count; 0 uses the deployer default. */
   bins: number
   /** Axis titles on the drawing; blank titles use the field name. */
@@ -171,7 +175,7 @@ export const channelAggregates = (mark: Mark, ch: Channel): boolean => defaultAg
 
 export function defaultSpec(over: Partial<ChartSpec> = {}): ChartSpec {
   return {
-    mark: 'bar', donut: false, stack: 'group', sort: 'natural', enc: {}, filter: { f: '', v: '' }, zero: false, grid: true, table: { ...TABLE_DEFAULTS }, ref: '', bins: 0, axisTitles: false, xTitle: '', yTitle: '', pie: { ...PIE_DEFAULTS }, alt: '', footAlign: 'left',
+    mark: 'bar', donut: false, stack: 'group', sort: 'natural', enc: {}, filter: { f: '', v: '' }, zero: false, grid: true, table: { ...TABLE_DEFAULTS }, ref: '', bins: 0, order: {}, wrap: 0, axisTitles: false, xTitle: '', yTitle: '', pie: { ...PIE_DEFAULTS }, alt: '', footAlign: 'left',
     text: {
       tag: { t: '', size: 'xs', b: true, i: false }, title: { t: '', size: 'lg', b: true, i: false }, sub: { t: '', size: 'md', b: false, i: false },
       foot: { t: '', size: 'xs', b: false, i: true },
@@ -243,6 +247,8 @@ export interface ChartConfig {
   encoding: Partial<Record<Channel, { field: string; type?: string; aggregate?: Agg; show?: ShowAs; decimals?: number; prefix?: string; suffix?: string }>>
   stack: Stack
   filter: { field: string; op: '='; value: string }[]
+  order?: Record<string, string[]>
+  wrap?: number
   axes: { zeroBaseline: boolean; gridlines: boolean; referenceLine: number | null; bins?: number; sort?: Sort; titles?: { x: string; y: string } }
   /** Only the options that differ from the defaults. */
   pie?: Partial<PieOpts>
@@ -279,6 +285,8 @@ export function toConfig(spec: ChartSpec, ctx: { relation: string; scenarios: st
     encoding, stack: spec.stack,
     filter: spec.filter.f ? [{ field: spec.filter.f, op: '=', value: spec.filter.v }] : [],
     axes: { zeroBaseline: spec.zero, gridlines: spec.grid, referenceLine: spec.ref === '' ? null : Number(spec.ref), ...(spec.bins > 0 ? { bins: spec.bins } : {}), ...(spec.sort !== 'natural' ? { sort: spec.sort } : {}), ...(spec.axisTitles ? { titles: { x: spec.xTitle, y: spec.yTitle } } : {}) },
+    ...(Object.keys(spec.order).length ? { order: spec.order } : {}),
+    ...(spec.wrap >= 2 ? { wrap: spec.wrap } : {}),
     ...(Object.keys(pieDiff(spec.pie)).length ? { pie: pieDiff(spec.pie) } : {}),
     ...(spec.alt ? { alt: spec.alt } : {}),
     ...(spec.footAlign === 'right' ? { footerAlign: 'right' as const } : {}),
@@ -337,6 +345,8 @@ export function fromConfig(text: string, ctx: ImportContext): ImportResult {
     mark, donut, enc, stack: c.stack ?? 'group', sort: sort ?? 'natural',
     filter: c.filter?.[0] ? { f: c.filter[0].field, v: String(c.filter[0].value) } : { f: '', v: '' },
     zero: c.axes?.zeroBaseline === true, grid: c.axes?.gridlines !== false,
+    order: c.order && typeof c.order === 'object' ? Object.fromEntries(Object.entries(c.order).filter(([, v]) => Array.isArray(v)).map(([k, v]) => [k, (v as unknown[]).map(String)])) : {},
+    wrap: typeof c.wrap === 'number' && c.wrap >= 2 ? Math.min(6, Math.round(c.wrap)) : 0,
     bins: typeof c.axes?.bins === 'number' && c.axes.bins >= 2 ? Math.min(100, Math.round(c.axes.bins)) : 0,
     axisTitles: !!c.axes?.titles, xTitle: String(c.axes?.titles?.x ?? ''), yTitle: String(c.axes?.titles?.y ?? ''),
     pie: { ...PIE_DEFAULTS, ...(typeof c.pie?.other === 'number' ? { other: c.pie.other } : {}), ...(typeof c.pie?.hole === 'number' ? { hole: c.pie.hole } : {}) },

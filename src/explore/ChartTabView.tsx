@@ -7,6 +7,7 @@ import { chainEntries, chainIndex, chainOrder, closeGap, dropZone, insertIntoCha
 import { buildChart, relabel, type ChartModel, type Col, type DrawnChart } from '@/charts/builder/compile'
 import { chartRole, DATA_TYPES, TYPE_LABEL, typesPresent, type DataType } from '@/charts/builder/columnTypes'
 import { suggest } from '@/charts/builder/rules'
+import { CategoryOrder } from './CategoryOrder'
 import {
   assignField, swapAxes, AXIS_MARKS, GRID_MARKS, REF_MARKS, ZERO_MARKS, acceptsShort, chainOf, CHAINS, effectiveLabels, LABEL_MARKS, labelModesFor, SHOW_AS, TABLE_VALUES, ZOOMABLE_MARKS, AGGS, channelAggregates, channelLabel, COMING_SOON, MARK_LABEL, MARKS, SLOTS, SORTS, switchMark, TEXT_SIZES,
   type Agg, type CellStyle, type LabelMode, type Channel, type ChartSpec, type Density, type MeasureFormat, type ShowAs, type TableOpts, type Mark, type Sort, type Stack, type TextKey,
@@ -509,6 +510,8 @@ function Rail({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: ChartDat
   // the chart types a deployer allows (`charts.allow`); the open chart's own type always stays so it never disappears
   const offered = getExploreOptions().charts.allow
   const values = useDistinct(data.relSql, spec.filter.f)
+  // the text fields on a shelf whose values can be put in a chosen order
+  const orderFields = [...new Set((['x', 'y', 'color', 'row', 'column', 'pattern'] as const).map((ch) => spec.enc[ch]?.f).filter((f): f is string => !!f && data.rows.some((r) => r[f] !== undefined && r[f] !== null) && data.rows.every((r) => typeof r[f] !== 'number')))]
   const tabs: [typeof s.railTab, string][] = [['chart', 'Chart'], ['style', 'Style'], ['axes', spec.mark === 'text' ? 'Table' : spec.mark === 'pie' ? 'Pie' : AXIS_MARKS.includes(spec.mark) ? 'Axes' : 'Options'], ['filter', 'Filter']]
   const setTable = (patch: Partial<TableOpts>) => setSpec((x) => ({ ...x, table: { ...x.table, ...patch } }))
   const setMeasure = (ch: Channel, patch: MeasureFormat) => setSpec((x) => (x.enc[ch] ? { ...x, enc: { ...x.enc, [ch]: { ...x.enc[ch]!, ...patch } } } : x))
@@ -656,6 +659,16 @@ function Rail({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: ChartDat
               </div>
               <p className="hint">{spec.mark === 'bar' ? 'Largest and smallest order the bars by their size. Put the number on X to lay the bars down.' : 'Works when the X axis is an ordered category or a date, not a number.'}</p>
             </>
+          )}
+          {orderFields.length > 0 && <CategoryOrder fields={orderFields} rows={data.rows} order={spec.order} onChange={(order) => setSpec((x) => ({ ...x, order }))} />}
+          {!!spec.enc.row !== !!spec.enc.column && (
+            <div className="rrow">
+              <span className="lab" style={{ minWidth: 96 }}>Grid columns</span>
+              <XSelect className="mini sel2" aria-label="Grid columns" value={String(spec.wrap)} onChange={(e) => setSpec((x) => ({ ...x, wrap: Number(e.target.value) }))}>
+                <option value="0">One {spec.enc.row ? 'column' : 'row'}</option>
+                {[2, 3, 4, 5, 6].map((n) => <option key={n} value={n}>Wrap into {n} columns</option>)}
+              </XSelect>
+            </div>
           )}
         </div>
       )}

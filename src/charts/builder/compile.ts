@@ -125,6 +125,14 @@ export function uniqSorted(rows: Row[], f: string): any[] {
   return a.sort((x, y) => String(x).localeCompare(String(y)))
 }
 
+/** Puts the categories in a chosen order; any the order does not name keep their place after it. */
+export function applyOrder<T>(cats: T[], order: string[] | undefined): T[] {
+  if (!order?.length) return cats
+  const pos = new Map(order.map((v, i) => [v, i] as const))
+  const named = cats.filter((c) => pos.has(String(c))).sort((a, b) => pos.get(String(a))! - pos.get(String(b))!)
+  return [...named, ...cats.filter((c) => !pos.has(String(c)))]
+}
+
 /**
  * Orders categories. `V` holds each category's value per series (key `category\u0002series`); a category's height is the sum
  * over its series when they stack and the tallest one when they sit side by side. Ties keep the natural order.
@@ -187,6 +195,8 @@ export function shelfProblem(spec: ChartSpec, cols: Col[]): string | null {
 export function buildChart(input: BuildInput): ChartModel {
   const { spec, cols, theme: T } = input
   const enc = spec.enc, mark = spec.mark
+  // a chosen category order wins over the alphabetical one; values the order does not name follow, alphabetically
+  const us = (rs: Row[], f: string): any[] => applyOrder(uniqSorted(rs, f), spec.order?.[f])
   const problem = shelfProblem(spec, cols)
   if (problem) return { problem }
   let rows = input.rows
@@ -198,23 +208,35 @@ export function buildChart(input: BuildInput): ChartModel {
   const prePivot = mark === 'text' && rows[0]?.__m0 !== undefined
   if (!prePivot) rows = rows.filter((r) => used.every((f) => r[f] !== null && r[f] !== undefined))
   if (!rows.length) return { problem: 'No rows match this data and filter.' }
-  if (mark === 'pie' && uniqSorted(rows, enc.color!.f).length > 12) return { problem: `Pie and donut charts need 12 slices or fewer. ${enc.color!.f} has ${uniqSorted(rows, enc.color!.f).length}.` }
-  if (mark === 'waffle' && uniqSorted(rows, enc.color!.f).length > 12) return { problem: `Waffle charts need 12 groups or fewer. ${enc.color!.f} has ${uniqSorted(rows, enc.color!.f).length}.` }
+  if (mark === 'pie' && us(rows, enc.color!.f).length > 12) return { problem: `Pie and donut charts need 12 slices or fewer. ${enc.color!.f} has ${us(rows, enc.color!.f).length}.` }
+  if (mark === 'waffle' && us(rows, enc.color!.f).length > 12) return { problem: `Waffle charts need 12 groups or fewer. ${enc.color!.f} has ${us(rows, enc.color!.f).length}.` }
 
   if (mark === 'radar') {
-    const n = uniqSorted(rows, enc.x!.f).length
+    const n = us(rows, enc.x!.f).length
     if (n < 3 || n > 16) return { problem: `Radar charts need 3 to 16 spokes. ${enc.x!.f} has ${n}.` }
   }
 
   if (mark === 'sankey' || mark === 'chord') {
-    const n = new Set([...uniqSorted(rows, enc.x!.f), ...uniqSorted(rows, enc.y!.f)].map(String)).size
+    const n = new Set([...us(rows, enc.x!.f), ...us(rows, enc.y!.f)].map(String)).size
     const most = mark === 'chord' ? 24 : 60
     if (n > most) return { problem: `${mark === 'chord' ? 'Chord' : 'Sankey'} charts need ${most} categories or fewer. ${enc.x!.f} and ${enc.y!.f} have ${n} together.` }
   }
 
   const rf = enc.row?.f, cf = enc.column?.f
-  const rv: any[] = rf ? uniqSorted(rows, rf).slice(0, 6) : [null], cv: any[] = cf ? uniqSorted(rows, cf).slice(0, 6) : [null]
-  const nr = rv.length, nc = cv.length, small = nr * nc > 1, gap = 14
+  // one facet field can wrap into a grid of `wrap` columns instead of a single row or column
+  const wrapField = spec.wrap >= 2 && !!rf !== !!cf ? (rf ?? cf)! : null
+  const cells: { rvv: any; cvv: any; ri: number; ci: number }[] = []
+  let nr: number, nc: number
+  if (wrapField) {
+    const vals = us(rows, wrapField).slice(0, 12)
+    nc = Math.min(spec.wrap, vals.length); nr = Math.ceil(vals.length / nc)
+    vals.forEach((v, i) => cells.push({ rvv: rf ? v : null, cvv: cf ? v : null, ri: Math.floor(i / nc), ci: i % nc }))
+  } else {
+    const rv: any[] = rf ? us(rows, rf).slice(0, 6) : [null], cv: any[] = cf ? us(rows, cf).slice(0, 6) : [null]
+    nr = rv.length; nc = cv.length
+    rv.forEach((rvv, ri) => cv.forEach((cvv, ci) => cells.push({ rvv, cvv, ri, ci })))
+  }
+  const small = cells.length > 1, gap = 14
   const W = Math.max(320, input.width), HF = Math.max(240, input.height)
   const pw = (W - (nc - 1) * gap) / nc
   const ph = nr === 1 ? HF : Math.max(150, Math.floor((HF - (nr - 1) * gap) / nr))
@@ -235,7 +257,7 @@ export function buildChart(input: BuildInput): ChartModel {
   let limitedSeries = false
   const seriesLimit = input.legendSeries ?? MAX_SERIES
   for (const f of serF) {
-    const all = uniqSorted(rows, f)
+    const all = us(rows, f)
     if (all.length > seriesLimit) limitedSeries = true
     dom[f] = all.slice(0, seriesLimit)
   }
@@ -269,12 +291,12 @@ export function buildChart(input: BuildInput): ChartModel {
   const op = (s: Series) => (input.hot && !s.has[input.hot] ? 0.2 : 1)
 
   const panels: (Panel & { prows: Row[]; V?: Map<string, number>; B?: Record<string, number>[]; S?: Map<string, any>; G?: Map<string, number> })[] = []
-  rv.forEach((rvv, ri) => cv.forEach((cvv, ci) => {
+  cells.forEach(({ rvv, cvv, ri, ci }) => {
     panels.push({
       tf: `translate(${r1(ci * (pw + gap))} ${r1(ri * (ph + gap))})`, prows: rows.filter((r) => (rvv === null || r[rf!] === rvv) && (cvv === null || r[cf!] === cvv)),
       title: [rvv, cvv].filter((x) => x !== null).join(' · '), rects: [], paths: [], lines: [], texts: [],
     })
-  }))
+  })
   const labelMode = effectiveLabels(spec)
   const horizontal = isHorizontalBar(spec, (f) => roleOf(input.cols, f))
   // labels above bars and points need a little headroom
@@ -381,7 +403,7 @@ export function buildChart(input: BuildInput): ChartModel {
 
   if (mark === 'bar' && !horizontal) {
     const xf = enc.x!.f, yf = enc.y!.f, agg = enc.y!.agg ?? 'sum'
-    const cats = sortCategories(uniqSorted(rows, xf), spec.sort, gm(rows, xf, yf, agg), series.map((s) => s.key), stackMode === 'group')
+    const cats = sortCategories(us(rows, xf), spec.sort, gm(rows, xf, yf, agg), series.map((s) => s.key), stackMode === 'group')
     for (const pn of panels) pn.V = gm(pn.prows, xf, yf, agg)
     let ymax = 0
     for (const pn of panels) for (const c of cats) {
@@ -435,7 +457,7 @@ export function buildChart(input: BuildInput): ChartModel {
   } else if (mark === 'bar') {
     // horizontal bars: the number on X sets each bar's length, the category on Y gives the rows
     const vf = enc.x!.f, cf = enc.y!.f, agg = enc.x!.agg ?? 'sum'
-    const cats = sortCategories(uniqSorted(rows, cf), spec.sort, gm(rows, cf, vf, agg), series.map((s) => s.key), stackMode === 'group')
+    const cats = sortCategories(us(rows, cf), spec.sort, gm(rows, cf, vf, agg), series.map((s) => s.key), stackMode === 'group')
     for (const pn of panels) pn.V = gm(pn.prows, cf, vf, agg)
     let vmax = 0
     for (const pn of panels) for (const c of cats) {
@@ -493,7 +515,7 @@ export function buildChart(input: BuildInput): ChartModel {
   } else if (mark === 'line' || mark === 'area') {
     const xf = enc.x!.f, yf = enc.y!.f, agg = enc.y!.agg ?? 'sum', xc = roleOf(cols, xf) === 'q'
     // only a line over categories or dates sorts; a numeric axis keeps its scale
-    const xs = mark === 'line' && !xc ? sortCategories(uniqSorted(rows, xf), spec.sort, gm(rows, xf, yf, agg), series.map((s) => s.key), true) : uniqSorted(rows, xf)
+    const xs = mark === 'line' && !xc ? sortCategories(us(rows, xf), spec.sort, gm(rows, xf, yf, agg), series.map((s) => s.key), true) : us(rows, xf)
     for (const pn of panels) pn.V = gm(pn.prows, xf, yf, agg)
     let lo = Infinity, hi = 0
     for (const pn of panels) for (const x of xs) {
@@ -622,7 +644,7 @@ export function buildChart(input: BuildInput): ChartModel {
       }
     }
   } else if (mark === 'box') {
-    const xf = enc.x!.f, yf = enc.y!.f, cats = uniqSorted(rows, xf)
+    const xf = enc.x!.f, yf = enc.y!.f, cats = us(rows, xf)
     let lo = Infinity, hi = -Infinity
     for (const pn of panels) {
       pn.S = new Map()
@@ -667,7 +689,7 @@ export function buildChart(input: BuildInput): ChartModel {
     }
   } else if (mark === 'heatmap') {
     const xf = enc.x!.f, yf = enc.y!.f, vf = enc.color!.f, agg = enc.color!.agg ?? 'sum'
-    const xc2 = uniqSorted(rows, xf), yc2 = uniqSorted(rows, yf)
+    const xc2 = us(rows, xf), yc2 = us(rows, yf)
     let lo = Infinity, hi = -Infinity
     for (const pn of panels) {
       const raw2 = new Map<string, number[]>()
@@ -750,7 +772,7 @@ export function buildChart(input: BuildInput): ChartModel {
       tx(pn, pw / 2, y0 + side + 18, 'Each square is 1% of the total', 'middle')
     }
   } else if (mark === 'tick') {
-    const xf = enc.x!.f, yf = enc.y?.f, cats = yf ? uniqSorted(rows, yf) : [null]
+    const xf = enc.x!.f, yf = enc.y?.f, cats = yf ? us(rows, yf) : [null]
     let lo = Infinity, hi = -Infinity
     for (const r of rows) { lo = Math.min(lo, r[xf]); hi = Math.max(hi, r[xf]) }
     const lm = yf ? Math.min(150, Math.max(46, Math.max(...cats.map((c) => String(c).length)) * 6.4 + 14)) : 20
@@ -820,7 +842,7 @@ export function buildChart(input: BuildInput): ChartModel {
     }
   } else if (mark === 'rule') {
     // the range of a number per category, with a dot at the mean
-    const xf = enc.x!.f, yf = enc.y!.f, cats = uniqSorted(rows, yf), pre = rows[0]?.__lo !== undefined
+    const xf = enc.x!.f, yf = enc.y!.f, cats = us(rows, yf), pre = rows[0]?.__lo !== undefined
     type St = { lo: number; hi: number; mean: number; n: number }
     const stats = new Map<Panel, Map<string, St>>()
     let lo = Infinity, hi = -Infinity
@@ -892,7 +914,7 @@ export function buildChart(input: BuildInput): ChartModel {
     }
   } else if (mark === 'radar') {
     // one spoke per category, one polygon per series
-    const xf = enc.x!.f, yf = enc.y!.f, agg = enc.y!.agg ?? 'sum', axes = uniqSorted(rows, xf), n = axes.length, head = small ? 20 : 0
+    const xf = enc.x!.f, yf = enc.y!.f, agg = enc.y!.agg ?? 'sum', axes = us(rows, xf), n = axes.length, head = small ? 20 : 0
     let mx = 0
     for (const pn of panels) { pn.V = gm(pn.prows, xf, yf, agg); pn.V.forEach((v) => { mx = Math.max(mx, v) }) }
     mx = mx || 1
@@ -995,7 +1017,7 @@ export function buildChart(input: BuildInput): ChartModel {
   } else if (mark === 'chord') {
     // every category is an arc around the circle; a ribbon joins two arcs and is as wide as the flow between them
     const ff = enc.x!.f, tf = enc.y!.f, sz = enc.size!.f, agg = enc.size!.agg ?? 'sum', head = small ? 20 : 0
-    const names = Array.from(new Set([...uniqSorted(rows, ff), ...uniqSorted(rows, tf)].map(String))).sort((p, c) => p.localeCompare(c)), n = names.length
+    const names = Array.from(new Set([...us(rows, ff), ...us(rows, tf)].map(String))).sort((p, c) => p.localeCompare(c)), n = names.length
     for (const pn of panels) {
       const g = new Map<string, number[]>()
       for (const r of pn.prows) { const k = `${r[ff]}\u0002${r[tf]}`; let q = g.get(k); if (!q) { q = []; g.set(k, q) } q.push(Number(r[sz])) }
