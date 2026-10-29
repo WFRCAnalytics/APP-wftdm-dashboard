@@ -55,7 +55,7 @@ const FEATURE_KEYS: [string, keyof ExploreFeatures][] = [['sql_tab', 'sqlTab'], 
 /**
  * The panel's own keys over the site's `explore` defaults, by each key's cascade rule (src/config/resolve.ts): maps merge per key,
  * the chart and include lists are replaced by the panel's, the exclude list and presets are added to. Keys the schema does not
- * cascade (such as `charts.default`) and unknown keys stay as the panel wrote them, so they are still checked below.
+ * cascade and unknown keys stay as the panel wrote them, so they are still checked below.
  */
 function withSiteDefaults(panel: Record<string, unknown>, site: Tree): Record<string, unknown> {
   if (!isTree(site.explore)) return panel

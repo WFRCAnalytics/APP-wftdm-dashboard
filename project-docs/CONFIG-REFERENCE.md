@@ -64,6 +64,7 @@ A wrong value is reported (in a note on the page and in the browser console) and
 | `explore.limits.distinct_values` | integer | — | page, panel (scalars replace, maps merge per key) | Explore builder limit. Values a filter list offers. 10 to 5,000 (default 200). A panel or page may set its own; the lower level wins per key. |
 | `explore.limits.pivot_rows` | integer | — | page, panel (scalars replace, maps merge per key) | Explore builder limit. Rows a pivot table draws. 20 to 5,000 (default 500). A panel or page may set its own; the lower level wins per key. |
 | `explore.features` | map | — | page, panel (scalars replace, maps merge per key) | Explore builder features switched on or off; maps merge per key. |
+| `explore.charts.default` | string | — | page, panel (scalars replace, maps merge per key) | The chart type a new Explore chart tab starts with; it must be one of the allowed charts (otherwise the first allowed chart is used). A lower level replaces it. |
 | `explore.charts.allow` | list of string | — | page, panel (a lower level replaces the list) | Chart types the builder offers; a lower level replaces the list. |
 | `explore.tables.include` | list of string | — | page, panel (a lower level replaces the list) | Table name globs the builder may use; a lower level replaces the list. |
 | `explore.tables.exclude` | list of string | — | page, panel (lower levels add to the list) | Table name globs the builder hides; lower levels add to the list. |

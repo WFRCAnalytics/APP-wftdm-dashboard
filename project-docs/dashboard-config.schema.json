@@ -376,6 +376,10 @@
           "type": "object",
           "additionalProperties": false,
           "properties": {
+            "default": {
+              "type": "string",
+              "description": "The chart type a new Explore chart tab starts with; it must be one of the allowed charts (otherwise the first allowed chart is used). A lower level replaces it."
+            },
             "allow": {
               "type": "array",
               "items": {

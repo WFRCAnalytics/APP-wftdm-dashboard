@@ -61,3 +61,15 @@ test('a panel value wins over the site value', async ({ page }) => {
   await drawColoured(page)
   await expect(page.getByText(/values of a legend field/)).toHaveCount(0)
 })
+
+test('a starting chart in the site file is what a new chart tab starts with, and a panel can choose another', async ({ page }) => {
+  await openExplore(page, { site: 'explore:\n  charts:\n    default: line' })
+  await page.getByRole('button', { name: 'Add chart tab' }).click()
+  await expect(page.locator('.xb .mkgrid').getByRole('button', { name: /^Line/ })).toHaveAttribute('aria-pressed', 'true')
+})
+
+test('a panel starting chart wins over the site one', async ({ page }) => {
+  await openExplore(page, { site: 'explore:\n  charts:\n    default: line', panel: 'charts: { default: pie }' })
+  await page.getByRole('button', { name: 'Add chart tab' }).click()
+  await expect(page.locator('.xb .mkgrid').getByRole('button', { name: /^Pie/ })).toHaveAttribute('aria-pressed', 'true')
+})

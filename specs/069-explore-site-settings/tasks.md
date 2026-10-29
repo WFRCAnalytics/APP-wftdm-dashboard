@@ -66,8 +66,8 @@ Single web-app project: `src/`, `tests/`, `scripts/`, `project-docs/` at the rep
 
 **Independent Test**: set it in the site file, open a new chart tab, see that chart; set another on a panel, that panel starts with its own.
 
-- [ ] T012 [US2] `src/explore/options.ts#withSiteDefaults`: take `charts.default` from the resolved cascade like the other charts keys (a panel's value over the site's), then the existing check against the allowed list; the warning names the key path. Extend `tests/unit/exploreOptions.test.ts` (site only, panel over site, disallowed falls back to the first allowed with a message, not a string)
-- [ ] T013 [US2] Extend `tests/integration/exploreBuilderSite.spec.ts`: a site default of `line` starts a new chart tab as a line chart; the panel's own default wins in that panel
+- [X] T012 [US2] `src/explore/options.ts#withSiteDefaults`: take `charts.default` from the resolved cascade like the other charts keys (a panel's value over the site's), then the existing check against the allowed list; the warning names the key path. Extend `tests/unit/exploreOptions.test.ts` (site only, panel over site, disallowed falls back to the first allowed with a message, not a string)
+- [X] T013 [US2] Extend `tests/integration/exploreBuilderSite.spec.ts`: a site default of `line` starts a new chart tab as a line chart; the panel's own default wins in that panel
 
 ---
 

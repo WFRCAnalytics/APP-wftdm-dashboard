@@ -19,6 +19,7 @@ describe('config schema table', () => {
       [
         'basemap.default',
         'explore.charts.allow',
+        'explore.charts.default',
         'explore.columns',
         'explore.features',
         'explore.limits.chart_rows',

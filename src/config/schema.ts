@@ -124,6 +124,7 @@ export const SETTINGS: readonly SettingDef[] = [
   { path: 'basemap.protomaps.api_key', type: 'string', cascade: site, description: 'A hosted Protomaps key restricted to the site domain (never a secret token).' },
   ...EXPLORE_LIMITS.map((def): SettingDef => ({ path: `explore.limits.${def.key}`, type: 'integer', cascade: true, clean: limitClean(def.key), description: `Explore builder limit. ${limitText(def)} A panel or page may set its own; the lower level wins per key.` })),
   { path: 'explore.features', type: 'map', cascade: true, check: plainMap, description: 'Explore builder features switched on or off; maps merge per key.' },
+  { path: 'explore.charts.default', type: 'string', cascade: true, description: 'The chart type a new Explore chart tab starts with; it must be one of the allowed charts (otherwise the first allowed chart is used). A lower level replaces it.' },
   { path: 'explore.charts.allow', type: 'list', of: 'string', cascade: { merge: 'replace' }, description: 'Chart types the builder offers; a lower level replaces the list.' },
   { path: 'explore.tables.include', type: 'list', of: 'string', cascade: { merge: 'replace' }, description: 'Table name globs the builder may use; a lower level replaces the list.' },
   { path: 'explore.tables.exclude', type: 'list', of: 'string', cascade: { merge: 'concat' }, description: 'Table name globs the builder hides; lower levels add to the list.' },

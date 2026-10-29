@@ -202,3 +202,28 @@ describe('the distinct-values list', () => {
     expect(distinctSql('SELECT 1 AS a;', 'a', 80)).toMatch(/ORDER BY 1 LIMIT 80$/)
   })
 })
+
+describe('the starting chart', () => {
+  it('takes the site default', () => {
+    const o = resolveExploreOptions({}, { explore: { charts: { default: 'line' } } })
+    expect(o.charts.default).toBe('line')
+    expect(o.warnings).toEqual([])
+  })
+
+  it('lets the panel win', () => {
+    const o = resolveExploreOptions({ charts: { default: 'pie' } }, { explore: { charts: { default: 'line' } } })
+    expect(o.charts.default).toBe('pie')
+  })
+
+  it('works with the site allow-list, and falls back to the first allowed chart with a warning', () => {
+    const o = resolveExploreOptions({}, { explore: { charts: { allow: ['bar', 'pie'], default: 'line' } } })
+    expect(o.charts.default).toBe('bar')
+    expect(o.warnings.join(' ')).toMatch(/charts\.default: "line" is not one of the allowed charts/)
+  })
+
+  it('reports an unknown chart name', () => {
+    const o = resolveExploreOptions({}, { explore: { charts: { default: 'spiral' } } })
+    expect(o.charts.default).toBe('bar')
+    expect(o.warnings.join(' ')).toMatch(/charts\.default: "spiral"/)
+  })
+})
