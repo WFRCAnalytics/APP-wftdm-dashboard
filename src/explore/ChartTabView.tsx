@@ -613,12 +613,12 @@ function Rail({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: ChartDat
                 )
               })()}
               {spec.mark === 'histogram' && (
-                <div className="rrow" role="group" aria-label="Vertical lines">
-                  <span className="lab" style={{ minWidth: 96 }}>Vertical lines</span>
-                  <div className="pills sm">
+                <div role="group" aria-label="Vertical lines" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <span className="lab">Vertical lines</span>
+                  <div className="pills sm" style={{ display: 'flex', width: '100%' }}>
                     {HIST_STATS.map((o) => {
                       const on = spec.stats.includes(o.v)
-                      return <button key={o.v} type="button" className={`pill ${on ? 'on' : ''}`} aria-pressed={on} onClick={() => setSpec((x) => ({ ...x, stats: on ? x.stats.filter((v) => v !== o.v) : [...x.stats, o.v] }))}>{o.short}</button>
+                      return <button key={o.v} type="button" className={`pill ${on ? 'on' : ''}`} style={{ flex: '1 1 0', justifyContent: 'center' }} title={o.label} aria-pressed={on} onClick={() => setSpec((x) => ({ ...x, stats: on ? x.stats.filter((v) => v !== o.v) : [...x.stats, o.v] }))}>{o.short}</button>
                     })}
                   </div>
                 </div>

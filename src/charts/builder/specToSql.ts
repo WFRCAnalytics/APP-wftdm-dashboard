@@ -122,9 +122,9 @@ export function chartQuery(spec: ChartSpec, relSql: string, roleOf: (field: stri
     const w = `(CASE WHEN mm.hi = mm.lo THEN 1.0 ELSE (mm.hi - mm.lo) / ${histogramBins} END)`
     const sql =
       `WITH r0 AS (SELECT CAST(${x} AS DOUBLE) AS v${dsel.length ? `, ${dsel.join(', ')}` : ''}\nFROM ${rel}\n${where}),\n` +
-      `mm AS (SELECT min(v) AS lo, max(v) AS hi, avg(v) AS mean, quantile_cont(v, 0.25) AS q1, quantile_cont(v, 0.5) AS md, quantile_cont(v, 0.75) AS q3 FROM r0)\n` +
+      `mm AS (SELECT min(v) AS lo, max(v) AS hi, avg(v) AS mean, stddev_samp(v) AS sd, quantile_cont(v, 0.25) AS q1, quantile_cont(v, 0.5) AS md, quantile_cont(v, 0.75) AS q3 FROM r0)\n` +
       `SELECT mm.lo + (least(${histogramBins - 1}, CAST(floor((r0.v - mm.lo) / ${w}) AS INTEGER)) + 0.5) * ${w} AS ${x}, ` +
-      `count(*) AS __n, ${histogramBins} AS __nb, any_value(mm.mean) AS __mean, any_value(mm.q1) AS __q1, any_value(mm.md) AS __md, any_value(mm.q3) AS __q3, any_value(mm.lo) AS __lo, any_value(mm.hi) AS __hi${dsel.length ? `, ${dsel.map((d) => `r0.${d}`).join(', ')}` : ''}\n` +
+      `count(*) AS __n, ${histogramBins} AS __nb, any_value(mm.mean) AS __mean, any_value(mm.sd) AS __sd, any_value(mm.q1) AS __q1, any_value(mm.md) AS __md, any_value(mm.q3) AS __q3, any_value(mm.lo) AS __lo, any_value(mm.hi) AS __hi${dsel.length ? `, ${dsel.map((d) => `r0.${d}`).join(', ')}` : ''}\n` +
       `FROM r0, mm\nGROUP BY 1${dsel.length ? `, ${dsel.map((d) => `r0.${d}`).join(', ')}` : ''}\n${cap}`
     return { mode: 'histogram', sql, spec }
   }

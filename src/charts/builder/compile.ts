@@ -649,6 +649,16 @@ export function buildChart(input: BuildInput): ChartModel {
       const dashes: Record<string, string> = { mean: '2 3', median: '9 3 2 3', q1: '7 4', q3: '7 4' }
       const names: Record<string, string> = { mean: 'Mean', median: 'Median', q1: 'Q1', q3: 'Q3' }
       spec.stats.forEach((st, k) => {
+        if (st === 'sd') {
+          // a soft band and two dashed edges at the mean plus and minus one sample standard deviation
+          const m = Number(rows[0]?.__mean), sd = Number(rows[0]?.__sd)
+          if (rows[0]?.__mean == null || rows[0]?.__sd == null || Number.isNaN(m) || Number.isNaN(sd) || sd <= 0) return
+          const a = nx.sx(m - sd), b = nx.sx(m + sd), x0 = Math.max(bx.x0, Math.min(a, b)), x1 = Math.min(bx.x1, Math.max(a, b))
+          if (x1 > x0) pn.rects.push({ x: r1(x0), y: r1(bx.y0), w: r1(x1 - x0), h: r1(bx.y1 - bx.y0), rx: 0, fill: T.ink, stroke: 'none', op: 0.08, tip: tip('Mean ± 1 SD', [['mean', fmtCompact(m)], ['standard deviation', fmtCompact(sd)], ['range', `${fmtCompact(m - sd)} to ${fmtCompact(m + sd)}`]]) })
+          for (const e of [a, b]) if (e >= bx.x0 && e <= bx.x1) ln(pn, e, bx.y0, e, bx.y1, T.ink, 1.2, '3 3')
+          tx(pn, Math.min(b, bx.x1 - 2) - 4, bx.y0 + 11 + (spec.ref !== '' ? 12 : 0) + k * 12, `± 1 SD ${fmtCompact(sd)}`, 'end', T.fs, '', T.ink)
+          return
+        }
         const v = Number(sv[st])
         if (sv[st] === undefined || sv[st] === null || Number.isNaN(v)) return
         ln(pn, nx.sx(v), bx.y0, nx.sx(v), bx.y1, T.ink, 1.5, dashes[st])

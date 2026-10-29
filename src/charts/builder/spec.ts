@@ -60,9 +60,9 @@ export const REF_MARKS: readonly Mark[] = ['bar', 'line', 'area', 'scatter', 'hi
 export const HIST_BINS_MIN = 2
 export const HIST_BINS_MAX = 20
 
-export type HistStat = 'mean' | 'median' | 'q1' | 'q3'
+export type HistStat = 'mean' | 'median' | 'q1' | 'q3' | 'sd'
 export const HIST_STATS: { v: HistStat; label: string; short: string }[] = [
-  { v: 'mean', label: 'Mean', short: 'Mean' }, { v: 'median', label: 'Median', short: 'Median' }, { v: 'q1', label: 'First quartile', short: 'Q1' }, { v: 'q3', label: 'Third quartile', short: 'Q3' },
+  { v: 'mean', label: 'Mean', short: 'Mean' }, { v: 'median', label: 'Median', short: 'Median' }, { v: 'q1', label: 'First quartile', short: 'Q1' }, { v: 'q3', label: 'Third quartile', short: 'Q3' }, { v: 'sd', label: 'One standard deviation around the mean', short: '± 1 SD' },
 ]
 
 export interface ChartSpec {
