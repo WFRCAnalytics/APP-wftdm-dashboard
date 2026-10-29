@@ -3,6 +3,7 @@ import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 import { checkSite, explain, formatProblem } from '../../src/config'
+import { resolveExploreOptions } from '../../src/explore/options'
 
 const files = (map: Record<string, string>) => (name: string) => map[name]
 const page = (extra = '', tab = 'A') => `header:\n  tab: ${tab}\n  title: ${tab}\n${extra}`
@@ -148,5 +149,39 @@ describe('check: assistant settings', () => {
   it('reports each limit out of range and an over-long note', () => {
     const r = only(`assistant:\n  prompt_addendum: "${'x'.repeat(2001)}"\n  limits: { round_trips: 99, preview_rows: 5, model_rows: 500 }\n`)
     expect(r.problems.map((p) => p.path)).toEqual(['assistant.prompt_addendum', 'assistant.limits.round_trips', 'assistant.limits.preview_rows', 'assistant.limits.model_rows'])
+  })
+})
+
+describe('check: explore settings', () => {
+  const site = (explore: string) => `pages: [p.yaml]\nexplore:\n${explore}`
+  const withPanel = page('layout:\n  row_one:\n    - { type: explore-builder }\n')
+  const run = (explore: string) =>
+    checkSite(files({ 'dashboard-config.yaml': site(explore), 'p.yaml': withPanel }), {
+      panelCheck: (panel, s) => (panel.type === 'explore-builder' ? resolveExploreOptions(panel, s).warnings : []),
+    })
+
+  it('is clean for valid limits and a starting chart', () => {
+    expect(run('  limits: { chart_rows: 2000, legend_series: 6 }\n  charts: { default: line }\n').problems).toEqual([])
+  })
+
+  it('reports each kind of mistake once, with its path', () => {
+    const r = run('  limits: { chart_rows: 10, scatter_sample: lots, foo: 1 }\n  charts: { default: spiral }\n')
+    const lines = r.problems.map((p) => `${p.path}: ${p.message}`)
+    expect(lines.filter((l) => l.startsWith('explore.limits.chart_rows'))).toHaveLength(1)
+    expect(lines.filter((l) => l.startsWith('explore.limits.scatter_sample'))).toHaveLength(1)
+    expect(lines.filter((l) => l.startsWith('explore.limits.foo'))).toHaveLength(1)
+    // a chart name is checked against the allowed charts by the panel check, once, under the panel
+    expect(r.problems.filter((p) => p.path === 'layout.row_one[0]' && /charts\.default: "spiral"/.test(p.message))).toHaveLength(1)
+    expect(r.problems).toHaveLength(4)
+  })
+
+  it('does not repeat a site limit mistake under the panel', () => {
+    const r = run('  limits: { histogram_bins: 500 }\n')
+    expect(r.problems.map((p) => p.path)).toEqual(['explore.limits.histogram_bins'])
+  })
+
+  it('reports a default chart that the site allow-list hides, under the panel', () => {
+    const r = run('  charts: { allow: [bar, pie], default: line }\n')
+    expect(r.problems.map((p) => p.path)).toEqual(['layout.row_one[0]'])
   })
 })

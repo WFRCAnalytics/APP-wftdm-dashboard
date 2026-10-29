@@ -28,7 +28,7 @@ export interface SNode { name: string; v: number; color: string; tip: string }
 export interface HSankey { tf: string; title: string; w: number; h: number; small: boolean; from: SNode[]; to: SNode[]; flows: { f: string; t: string; v: number; tip: string }[] }
 export type ChartModel =
   | { problem: string }
-  | { problem?: undefined; panels: Panel[]; legend: LegendGroup[]; defs: PatternDef[]; W: number; H: number; rows: number; limitedSeries: boolean; /** Data labels were asked for but the bars are too narrow to carry them. */ labelsHidden?: boolean; trees?: HTree[]; sankeys?: HSankey[]; tables?: PivotTable[] }
+  | { problem?: undefined; panels: Panel[]; legend: LegendGroup[]; defs: PatternDef[]; W: number; H: number; rows: number; limitedSeries: boolean; /** The legend limit in force, for the note. */ seriesLimit: number; /** Data labels were asked for but the bars are too narrow to carry them. */ labelsHidden?: boolean; trees?: HTree[]; sankeys?: HSankey[]; tables?: PivotTable[] }
 
 export type DrawnChart = Exclude<ChartModel, { problem: string }>
 
@@ -66,6 +66,8 @@ export interface BuildInput {
   height: number
   /** A legend entry (`field=value`) being hovered: everything else dims. */
   hot: string | null
+  /** Legend values drawn per field before the rest are cut (explore.limits.legend_series); default `MAX_SERIES`. */
+  legendSeries?: number
 }
 
 const DASH = ['', '7 4', '2 3', '9 3 2 3', '1 4']
@@ -231,10 +233,11 @@ export function buildChart(input: BuildInput): ChartModel {
   for (const ch of RING_CHANNELS) if (enc[ch] && !serF.includes(enc[ch]!.f)) serF.push(enc[ch]!.f)
   const dom: Record<string, any[]> = {}
   let limitedSeries = false
+  const seriesLimit = input.legendSeries ?? MAX_SERIES
   for (const f of serF) {
     const all = uniqSorted(rows, f)
-    if (all.length > MAX_SERIES) limitedSeries = true
-    dom[f] = all.slice(0, MAX_SERIES)
+    if (all.length > seriesLimit) limitedSeries = true
+    dom[f] = all.slice(0, seriesLimit)
   }
   const skey = (r: Row) => serF.map((f) => r[f]).join('|')
   const seen = new Set<string>(), combos: Row[] = []
@@ -1059,5 +1062,5 @@ export function buildChart(input: BuildInput): ChartModel {
       if (yn) tx(pn, 12, my, yn, 'middle', T.fs, `rotate(-90 12 ${r1(my)})`, T.ink)
     })
   }
-  return { panels: panels.map(({ tf, title, rects, paths, lines, texts }) => ({ tf, title, rects, paths, lines, texts })), legend, defs, W, H, rows: rows.length, limitedSeries, ...(labelsHidden ? { labelsHidden } : {}), ...(trees.length ? { trees } : {}), ...(sankeys.length ? { sankeys } : {}), ...(tables.length ? { tables } : {}) }
+  return { panels: panels.map(({ tf, title, rects, paths, lines, texts }) => ({ tf, title, rects, paths, lines, texts })), legend, defs, W, H, rows: rows.length, limitedSeries, seriesLimit, ...(labelsHidden ? { labelsHidden } : {}), ...(trees.length ? { trees } : {}), ...(sankeys.length ? { sankeys } : {}), ...(tables.length ? { tables } : {}) }
 }

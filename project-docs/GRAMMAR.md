@@ -1515,12 +1515,13 @@ One tile holding several views of the same data. The tile shows a view switcher 
 ### `type: explore-builder` (065-chart-builder)
 
 The Explore chart builder, a full-page panel. It needs no data keys. Every setting below is optional and an unset one keeps
-the builder's own behaviour. Full contract: `specs/065-chart-builder/contracts/deployer-options.md`.
+the builder's own behaviour. Full contract: `specs/065-chart-builder/contracts/deployer-options.md`. The same keys can be set once for the whole site under `explore:` in
+`dashboard-config.yaml` (069; see `CONFIG-REFERENCE.md`); a panel's own value wins.
 
 ```yaml
 - type: explore-builder
   title: Explore
-  limits:   { csv_rows: 100000, page_size: 12, undo_steps: 60, max_joins: 4 }
+  limits:   { csv_rows: 100000, page_size: 12, undo_steps: 60, max_joins: 4, chart_rows: 50000, scatter_sample: 5000, histogram_bins: 12, legend_series: 15, distinct_values: 200, pivot_rows: 500 }
   features: { sql_tab: true, csv: true, copy_sql: true, import_export: true, my_tables: true, undo: true }
   charts:   { allow: [bar, line, pie], default: bar }
   tables:   { include: [trips_*], exclude: ["*_raw"] }

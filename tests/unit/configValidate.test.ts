@@ -230,3 +230,31 @@ describe('secret-like keys', () => {
     expect(validate({ basemap: { protomaps: { api_key: 'abc123' } } }, { file }).problems).toEqual([])
   })
 })
+
+describe('explore limits', () => {
+  it('accepts every limit and keeps the number', () => {
+    const limits = { csv_rows: 500, page_size: 25, undo_steps: 10, max_joins: 2, chart_rows: 2000, scatter_sample: 300, histogram_bins: 8, legend_series: 6, distinct_values: 80, pivot_rows: 100 }
+    const { settings, problems } = validate({ explore: { limits } }, { file })
+    expect(problems).toEqual([])
+    expect(getPath(settings, 'explore.limits')).toEqual(limits)
+  })
+
+  it('pulls a number outside its range to the nearest end and says so', () => {
+    const { settings, problems } = validate({ explore: { limits: { histogram_bins: 500, chart_rows: 10 } } }, { file })
+    expect(getPath(settings, 'explore.limits.histogram_bins')).toBe(100)
+    expect(getPath(settings, 'explore.limits.chart_rows')).toBe(100)
+    expect(problems.map((p) => p.path).sort()).toEqual(['explore.limits.chart_rows', 'explore.limits.histogram_bins'])
+    expect(problems[0].message).toMatch(/is outside/)
+  })
+
+  it('reports a text and an unknown key by path and keeps the rest', () => {
+    const { settings, problems } = validate({ explore: { limits: { scatter_sample: 'lots', foo: 1, pivot_rows: 60 } } }, { file })
+    expect(getPath(settings, 'explore.limits.scatter_sample')).toBeUndefined()
+    expect(getPath(settings, 'explore.limits.pivot_rows')).toBe(60)
+    expect(problems.map((p) => `${p.path}:${p.kind}`).sort()).toEqual(['explore.limits.foo:unknown_key', 'explore.limits.scatter_sample:wrong_type'])
+  })
+
+  it('lets a page set a limit (it cascades)', () => {
+    expect(validate({ explore: { limits: { legend_series: 5 } } }, { file, level: 'page' }).problems).toEqual([])
+  })
+})

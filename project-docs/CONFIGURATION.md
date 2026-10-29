@@ -260,8 +260,10 @@ Not drafted here, on purpose: how the charts find the deployer's tables and colu
    extension location), so an offline or locked-down site works: its own later spec.
 
 **Phase E: Explore and limits**
-11. App-level `explore:` and `limits:` blocks inherited by every Explore panel. Add the constants the first pass missed (chart rows,
-    scatter sample, histogram bins, legend series, distinct-values list, list sizes).
+11. **Done (069, `specs/069-explore-site-settings/`):** the site-level `explore:` block (the keys already cascaded; `charts.default` now does too) and the
+    constants the first pass missed, as `explore.limits` keys: `chart_rows`, `scatter_sample`, `histogram_bins`, `legend_series`, `distinct_values`, `pivot_rows`
+    (ranges in `CONFIG-REFERENCE.md`). A separate app-level `limits:` block was not added: the limits are Explore panel keys. Column-summary sizes, label lengths and
+    the query time limit stay fixed.
 
 **Phase F: the data layer. Blocked on the data-path decision (section 8).** Nothing is built here until it is made.
 
@@ -393,6 +395,9 @@ Nothing below changes code. Each topic is settled before anything is built.
 - **Assistant block (Phase D, first half): scoped in `specs/068-assistant-config/`.** The network block waits for its own design. A deployer's `assistant.providers`
   list REPLACES the built-in providers when set (unset keeps today's); a listed provider's address is fixed in the form; no key or token key exists (key-like
   fields are reported, not read); each provider names its message format (`protocol`: `openai`, the default, or `anthropic`).
+- **Explore settings (Phase E): built in `specs/069-explore-site-settings/`.** Limits live under `explore.limits` (one schema row each, one shared range table), the
+  starting chart is `explore.charts.default`, and a panel's own value wins per key. Mistakes are reported at load and by `check`; a chart name that is not allowed is
+  reported under the panel.
 - **Hidden versus draft: hidden decided, draft deferred.** `hidden: true` is built in 067; `draft` waits for the profiles design and nothing is reserved for it. Original proposal: `hidden: true` leaves the page out of the sidebar but reachable by its link; `draft: true` leaves
   it out entirely in a production profile and shows it in a development profile (this ties to topic 5).
 - **CSS: deferred** until the app is stable. When revisited, the supported surface would be the app's CSS variables (the tokens), not

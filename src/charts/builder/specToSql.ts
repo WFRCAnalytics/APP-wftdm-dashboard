@@ -9,6 +9,10 @@ export const ROW_CAP = 50_000
 export const SCATTER_SAMPLE = 5_000
 export const HIST_BINS = 12
 
+/** The three numbers a deployer may change (explore.limits); each defaults to the constant above. */
+export interface ChartCaps { rowCap: number; scatterSample: number; histogramBins: number }
+export const DEFAULT_CAPS: ChartCaps = { rowCap: ROW_CAP, scatterSample: SCATTER_SAMPLE, histogramBins: HIST_BINS }
+
 export type ChartQueryMode = 'aggregated' | 'histogram' | 'box' | 'range' | 'raw'
 export interface ChartQuery {
   sql: string
@@ -52,12 +56,13 @@ function resetAgg(spec: ChartSpec, ch: Channel): ChartSpec {
   return e ? { ...spec, enc: { ...spec.enc, [ch]: { ...e, agg: 'sum' } } } : spec
 }
 
-export function chartQuery(spec: ChartSpec, relSql: string, roleOf: (field: string) => Role = () => ''): ChartQuery {
+export function chartQuery(spec: ChartSpec, relSql: string, roleOf: (field: string) => Role = () => '', caps: Partial<ChartCaps> = {}): ChartQuery {
+  const { rowCap, scatterSample, histogramBins } = { ...DEFAULT_CAPS, ...caps }
   const rel = `(\n${relSql.replace(/[;\s]+$/, '')}\n) AS r`
   const where = whereClause(spec)
   const ser = seriesFields(spec), fac = facetFields(spec)
   const { mark } = spec
-  const cap = `LIMIT ${ROW_CAP + 1}`
+  const cap = `LIMIT ${rowCap + 1}`
   const grouped = (dims: string[], measure: string, name: string): string => {
     const d = uniq(dims)
     return `SELECT ${[...d.map(q), `${measure} AS ${q(name)}`].join(', ')}\nFROM ${rel}\n${where}\nGROUP BY ${d.map(q).join(', ')}\n${cap}`
@@ -87,7 +92,7 @@ export function chartQuery(spec: ChartSpec, relSql: string, roleOf: (field: stri
   if (mark === 'trail') {
     // a path needs its points in order, so take the first rows by the order field instead of a random sample
     const cols = uniq(Object.values(spec.enc).map((e) => e!.f)).map(q)
-    return { mode: 'raw', spec, sql: `SELECT ${cols.join(', ')}\nFROM ${rel}\n${where}\nORDER BY ${q(spec.enc.order!.f)}\nLIMIT ${SCATTER_SAMPLE}` }
+    return { mode: 'raw', spec, sql: `SELECT ${cols.join(', ')}\nFROM ${rel}\n${where}\nORDER BY ${q(spec.enc.order!.f)}\nLIMIT ${scatterSample}` }
   }
   if (mark === 'rule') {
     // one row per category and series: the range of the number and its mean
@@ -112,11 +117,11 @@ export function chartQuery(spec: ChartSpec, relSql: string, roleOf: (field: stri
     const x = q(spec.enc.x!.f)
     const dims = uniq([...ser, ...fac])
     const dsel = dims.map(q)
-    const w = `(CASE WHEN mm.hi = mm.lo THEN 1.0 ELSE (mm.hi - mm.lo) / ${HIST_BINS} END)`
+    const w = `(CASE WHEN mm.hi = mm.lo THEN 1.0 ELSE (mm.hi - mm.lo) / ${histogramBins} END)`
     const sql =
       `WITH r0 AS (SELECT CAST(${x} AS DOUBLE) AS v${dsel.length ? `, ${dsel.join(', ')}` : ''}\nFROM ${rel}\n${where}),\n` +
       `mm AS (SELECT min(v) AS lo, max(v) AS hi FROM r0)\n` +
-      `SELECT mm.lo + (least(${HIST_BINS - 1}, CAST(floor((r0.v - mm.lo) / ${w}) AS INTEGER)) + 0.5) * ${w} AS ${x}, ` +
+      `SELECT mm.lo + (least(${histogramBins - 1}, CAST(floor((r0.v - mm.lo) / ${w}) AS INTEGER)) + 0.5) * ${w} AS ${x}, ` +
       `count(*) AS __n, any_value(mm.lo) AS __lo, any_value(mm.hi) AS __hi${dsel.length ? `, ${dsel.map((d) => `r0.${d}`).join(', ')}` : ''}\n` +
       `FROM r0, mm\nGROUP BY 1${dsel.length ? `, ${dsel.map((d) => `r0.${d}`).join(', ')}` : ''}\n${cap}`
     return { mode: 'histogram', sql, spec }
@@ -137,5 +142,5 @@ export function chartQuery(spec: ChartSpec, relSql: string, roleOf: (field: stri
   }
   // scatter: points are the data, so take a repeatable sample rather than every row
   const cols = uniq(Object.values(spec.enc).map((e) => e!.f)).map(q)
-  return { mode: 'raw', sql: `SELECT ${cols.join(', ')}\nFROM ${rel}\n${where}\nUSING SAMPLE ${SCATTER_SAMPLE} ROWS (reservoir, 42)`, spec }
+  return { mode: 'raw', sql: `SELECT ${cols.join(', ')}\nFROM ${rel}\n${where}\nUSING SAMPLE ${scatterSample} ROWS (reservoir, 42)`, spec }
 }

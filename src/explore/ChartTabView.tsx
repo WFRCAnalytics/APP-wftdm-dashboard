@@ -25,7 +25,7 @@ import { typeColorKey, type ColumnProfile } from '@/explore/profile/profile'
 import { useDistinct } from '@/explore/useDistinct'
 import { ExportDialog, Modal } from '@/explore/ExportDialog'
 import { columnLabel, getExploreOptions } from '@/explore/options'
-import { ROW_CAP, useChartData, type ChartData } from '@/explore/useChartData'
+import { useChartData, type ChartData } from '@/explore/useChartData'
 import { useColorScheme } from '@/hooks/useColorScheme'
 import { tooltip } from '@/services/tooltip'
 import { setExplore, updateChart, type ChartTab, type ExploreState } from '@/state/exploreState'
@@ -167,7 +167,7 @@ function Plot({ model, spec, hot, size, theme }: { model: DrawnChart; spec: Char
   const pivoted = !!model.tables
   useEffect(() => {
     if (!host.current || !(hierarchical || pivoted)) return
-    host.current.replaceChildren(model.tables ? renderPivots(model.tables, pivot.current) : drawHierarchy(model, theme, open.current))
+    host.current.replaceChildren(model.tables ? renderPivots(model.tables, pivot.current, getExploreOptions().limits.pivotRows) : drawHierarchy(model, theme, open.current))
     return () => tooltip.hide()
   }, [model, theme, hierarchical, pivoted])
   const ref = useRef<SVGSVGElement>(null)
@@ -252,7 +252,7 @@ function ChartCard({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: Cha
   const roleOf = (f: string) => chartRole(data.cols.find((c) => c.name === f)?.type ?? 'text')
   const model = useMemo<ChartModel | null>(() => {
     if (!theme) return null
-    const built = buildChart({ spec: data.spec, cols: data.cols, rows: data.rows, theme, width: size.w, height: size.h, hot })
+    const built = buildChart({ spec: data.spec, cols: data.cols, rows: data.rows, theme, width: size.w, height: size.h, hot, legendSeries: getExploreOptions().limits.legendSeries })
     const labels: Record<string, string> = {}
     for (const [name, note] of Object.entries(getExploreOptions().columns)) if (note.label) labels[name] = note.label
     return relabel(built, labels)
@@ -408,7 +408,7 @@ function ChartCard({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: Cha
           {drawn && !data.error && <Plot model={drawn} spec={spec} hot={hot} size={{ w: drawn.W, h: drawn.H }} theme={theme!} />}
         </div>
         {txt('foot').t && <p className={`tb tfoot ${spec.footAlign === 'right' ? 'tright' : 'tleft'} ${cls('foot')}`}>{txt('foot').t}</p>}
-        {(data.truncated || drawn?.limitedSeries || drawn?.labelsHidden) && <p className="hint" style={{ marginTop: 4 }}>{data.truncated ? (data.mode === 'raw' ? 'Showing a sample of the points. ' : `Showing the first ${ROW_CAP.toLocaleString('en-US')} groups. `) : ''}{drawn?.limitedSeries ? 'Showing the first 15 values of a legend field.' : ''}{drawn?.labelsHidden ? ' Data labels are hidden: the bars are too thin to carry them. Use fewer groups, or expand the chart.' : ''}</p>}
+        {(data.truncated || drawn?.limitedSeries || drawn?.labelsHidden) && <p className="hint" style={{ marginTop: 4 }}>{data.truncated ? (data.mode === 'raw' ? 'Showing a sample of the points. ' : `Showing the first ${getExploreOptions().limits.chartRows.toLocaleString('en-US')} groups. `) : ''}{drawn?.limitedSeries ? `Showing the first ${drawn.seriesLimit} values of a legend field.` : ''}{drawn?.labelsHidden ? ' Data labels are hidden: the bars are too thin to carry them. Use fewer groups, or expand the chart.' : ''}</p>}
       </div>
   )
 
