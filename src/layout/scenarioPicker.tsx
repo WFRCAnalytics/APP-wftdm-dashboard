@@ -17,6 +17,7 @@ import { scenarioGroupOf, runKindOf } from '@/services/runResolution'
 import { getState, setScenarioGroupActive, setFocus, setReference, subscribe as subscribeCompare } from '@/state/compareState'
 import { openSettings } from '@/state/settingsState'
 import { cn } from '@/lib/utils'
+import { prettyOperators } from '@/services/typography'
 
 // The Scenarios chip and its popover (project-docs/redesign/10-toolbar-layout-export-proposal.md section A). The chip
 // shows the focus, how many other scenarios are compared and the reference in one control; the popover chooses all
@@ -95,7 +96,7 @@ export function ScenarioPicker() {
       out.push({
         alt,
         run: forYear.name,
-        label: resolveScenarioLabel(forYear.name, display),
+        label: prettyOperators(resolveScenarioLabel(forYear.name, display)),
         color: resolveScenarioColor(forYear.name, display),
         active: forYear.active,
         tag: forYear.tag ?? s.tag,
@@ -176,7 +177,7 @@ export function ScenarioPicker() {
 
   const labelOf = (alt: string) => {
     const run = manifest.runs.find((r) => r.scenarioGroup === alt && (r.year === view.year || r.year === undefined)) ?? manifest.runs.find((r) => r.scenarioGroup === alt)
-    return run ? resolveScenarioLabel(run.name, display) : alt
+    return prettyOperators(run ? resolveScenarioLabel(run.name, display) : alt)
   }
   const focusRun = manifest.runs.find((r) => r.scenarioGroup === view.focus && (r.year === view.year || r.year === undefined)) ?? manifest.runs.find((r) => r.scenarioGroup === view.focus)
   const focusLabel = labelOf(view.focus)

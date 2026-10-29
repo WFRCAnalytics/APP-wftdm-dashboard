@@ -7,12 +7,13 @@ import { get as getScenario } from '@/state/appState'
 import { resolveScenarioColor, resolveScenarioLabel } from '@/panels/scenarioDisplay'
 import type { CompareInputs } from '@/panels/compareStrategy'
 import { OBSERVED_LABEL } from '@/services/viewContext'
+import { prettyOperators } from '@/services/typography'
 
 /** What the compare strategies need from the resolved view, plus label helpers. Stable until the view changes. */
 export function useCompareInputs(): { inputs: CompareInputs; referenceLabel: string; referenceColor: string | undefined } {
   const view = useResolvedView()
   const display = useScenarioDisplay()
-  const label = useCallback((run: string) => resolveScenarioLabel(run, display), [display])
+  const label = useCallback((run: string) => prettyOperators(resolveScenarioLabel(run, display)), [display])
 
   return useMemo(() => {
     const selfBaseRun = view.isBaseYear ? undefined : runNameFor(view.focus, view.baseYear)
