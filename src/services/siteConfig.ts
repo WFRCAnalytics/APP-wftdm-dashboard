@@ -1,8 +1,9 @@
-// Loads the site settings: `dashboard-config.yaml` of each config root (the deployment's own, then the demo's fallback), through
+// Loads the site settings: `dashboard-config.yaml` of each config root (the deployment's own, then, only when the demo is on, the demo's fallback), through
 // the pure schema in src/config. A wrong value is reported and keeps its default; nothing here throws.
 import { load } from 'js-yaml'
 
 import { checkDefault, getPath, overlay, toBranding, validate, type ConfigProblem, type Tree } from '@/config'
+import { DEMO_CONTENT } from '@/services/demoContent'
 import { addProblems } from '@/state/configProblems'
 import type { DashboardBranding } from '@/services/yamlLoader'
 
@@ -65,25 +66,30 @@ export interface Site {
   branding: DashboardBranding
   /** The merged site-level settings tree, the broadest level of the cascade. */
   settings: Tree
-  /** Page files to load, per root, in display order (the deployment's first, then the demo's). */
+  /** Page files to load, per root, in display order (the deployment's first, then the demo's when the demo is on). */
   pageSources: { baseUrl: string; pages: string[] }[]
+  /** 070: whether the deployment's own site file was found, and the folder that was searched (for the first-run screen). */
+  siteFound: boolean
+  searched: string
   problems: ConfigProblem[]
 }
 
 /**
- * Both roots, merged: per setting the deployment's own value wins and the demo's is the fallback (the same precedence the
- * index.json branding had). The page lists are not merged but concatenated, deployment first, as before.
+ * The deployment's root and, only when the demo is on (070: the dev server and `--mode demo` builds), the demo's, merged: per setting the
+ * deployment's own value wins and the demo's is the fallback. The page lists are not merged but concatenated, deployment first.
+ * Without a demo URL there is no fallback at all: a deployment is neutral by default.
  */
 export async function loadSite(
   deploymentUrl: string = `${import.meta.env.BASE_URL}dashboard-config/`,
-  demoUrl: string = `${import.meta.env.BASE_URL}demo-dashboard-config/`,
+  demoUrl: string | undefined = DEMO_CONTENT ? `${import.meta.env.BASE_URL}demo-dashboard-config/` : undefined,
 ): Promise<Site> {
-  const [primary, demo] = await Promise.all([loadSiteRoot(deploymentUrl), loadSiteRoot(demoUrl)])
+  const noDemo: SiteRoot = { baseUrl: '', found: false, settings: {}, pages: [], problems: [] }
+  const [primary, demo] = await Promise.all([loadSiteRoot(deploymentUrl), demoUrl ? loadSiteRoot(demoUrl) : Promise.resolve(noDemo)])
   const problems = [...primary.problems, ...demo.problems]
   if (!primary.found) {
     const legacy = await probeLegacy(primary.baseUrl)
     if (legacy) problems.push(legacy)
-    else if (!demo.found) problems.push({ file: SITE_CONFIG_FILE, path: '', kind: 'missing_file', message: 'no site configuration was found; showing defaults' })
+    else if (!demo.found) problems.push({ file: SITE_CONFIG_FILE, path: '', kind: 'missing_file', message: 'no site configuration was found' })
   }
   const settings = overlay(demo.settings, primary.settings)
   // the default provider must be one that is offered (a check across two settings, so after the roots are merged)
@@ -94,7 +100,9 @@ export async function loadSite(
   return {
     branding: toBranding(settings),
     settings,
-    pageSources: [primary, demo].map((r) => ({ baseUrl: r.baseUrl, pages: r.pages })),
+    pageSources: [primary, demo].filter((r) => r.baseUrl !== '').map((r) => ({ baseUrl: r.baseUrl, pages: r.pages })),
+    siteFound: primary.found || demo.found,
+    searched: primary.baseUrl,
     problems,
   }
 }

@@ -2,9 +2,15 @@ import { fileURLToPath, URL } from 'node:url'
 import { defineConfig } from 'vite'
 import tailwindcss from '@tailwindcss/vite'
 import { bootSkeletonPlugin } from './scripts/viteBootSkeletonPlugin.ts'
+import { demoContentPlugin } from './scripts/viteDemoContentPlugin.ts'
 import { legacyDemoPlugin } from './scripts/viteLegacyDemoPlugin.ts'
 
-export default defineConfig({
+// 070-demo-build-flag: the demo content (public/demo-*) is in the dev server and in a build run in the `demo` mode
+// (`npm run build:pages`, `npm run build:demo`); every other build (`npm run build`, which feeds the Python and R packages) has none.
+// A mode rather than an environment variable, because VAR=1 npm run ... does not work on Windows.
+export default defineConfig(({ command, mode }) => {
+  const demo = command === 'serve' || mode === 'demo'
+  return {
   // GitHub Pages *project* page for WFRCAnalytics/APP-wftdm-dashboard —
   // served at https://wfrcanalytics.github.io/APP-wftdm-dashboard/, so every
   // asset URL must be prefixed with the repo name or it 404s once deployed.
@@ -25,7 +31,8 @@ export default defineConfig({
   // here is irrelevant to it — it only touches index.html's own markup
   // via transformIndexHtml, never CSS. Listed second simply because it
   // was added second; no real ordering dependency exists between them.
-  plugins: [tailwindcss(), bootSkeletonPlugin(), legacyDemoPlugin()],
+  define: { 'import.meta.env.VITE_WFTDM_DEMO': JSON.stringify(demo ? '1' : '') },
+  plugins: [tailwindcss(), bootSkeletonPlugin({ demo }), demoContentPlugin({ demo }), legacyDemoPlugin()],
   worker: { format: 'es' }, // REQUIRED for DuckDB-WASM
   optimizeDeps: { exclude: ['@duckdb/duckdb-wasm'] }, // REQUIRED
   resolve: {
@@ -330,4 +337,5 @@ export default defineConfig({
       'Cross-Origin-Embedder-Policy': 'require-corp',
     },
   },
+  }
 })

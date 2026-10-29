@@ -16,7 +16,7 @@ Expected: the first-run decision (no site, no pages, loaded), `loadSite` reading
 npm run build
 ```
 
-Expected: `dist/` holds no `demo-*` folder (`ls dist`), and is about 12 MB smaller than step 3's output. `grep -r "demo-scenarios" dist/assets` finds nothing (the demo code paths are removed as dead code).
+Expected: `dist/` holds no `demo-*` folder (`ls dist`), and is about 12 MB smaller than step 3's output. `grep -rl "demo-" dist` finds only the service worker's cache pattern and the URL builder in the geometry chunk (strings, no request is made).
 
 ## 3. The demo build is unchanged
 

@@ -2,7 +2,7 @@
 // ST_GeomFromWKB()/ST_AsGeoJSON(), never ST_Read()) and the rail line + stations (public/demo-geometry/*.geoparquet,
 // columns kind line|station, name, WKB geometry). Loaded once per page and cached.
 import { computeGeometryBounds, type BoundsTuple } from '@/panels/mapBounds'
-import { ensureSpatialExtensionLoaded, loadZoneGeometry, resolveDemoGeometryUrl } from '@/panels/zoneGeometry'
+import { ensureSpatialExtensionLoaded, loadZoneGeometry, railGeometryUrl } from '@/panels/zoneGeometry'
 import { query, registerFileURL } from '@/services/duckdb'
 
 export const DEFAULT_ZONES_FILE = 'zones.geoparquet'
@@ -31,7 +31,7 @@ async function loadRail(file: string | null): Promise<RailFeatures> {
     p = (async () => {
       await ensureSpatialExtensionLoaded()
       const view = `mapgeom-rail__${file}`
-      await registerFileURL(view, resolveDemoGeometryUrl(file))
+      await registerFileURL(view, railGeometryUrl(file))
       const rows = await query(`SELECT kind, name, ST_AsGeoJSON(ST_GeomFromWKB(geometry)) AS geojson FROM "${view}"`)
       const lines: GeoJSON.Feature[] = []
       const stations: GeoJSON.Feature[] = []
