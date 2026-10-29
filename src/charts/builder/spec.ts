@@ -56,6 +56,11 @@ export const ZERO_MARKS: readonly Mark[] = ['line', 'scatter', 'box', 'trail']
 export const GRID_MARKS: readonly Mark[] = AXIS_MARKS.filter((m) => m !== 'heatmap')
 export const REF_MARKS: readonly Mark[] = ['bar', 'line', 'area', 'scatter', 'histogram', 'box', 'density']
 
+export type HistStat = 'mean' | 'median' | 'q1' | 'q3'
+export const HIST_STATS: { v: HistStat; label: string }[] = [
+  { v: 'mean', label: 'Mean' }, { v: 'median', label: 'Median' }, { v: 'q1', label: 'First quartile' }, { v: 'q3', label: 'Third quartile' },
+]
+
 export interface ChartSpec {
   mark: Mark
   donut: boolean
@@ -72,6 +77,8 @@ export interface ChartSpec {
   order: Record<string, string[]>
   /** Wrap a single facet field into this many columns; 0 keeps one row or column. */
   wrap: number
+  /** Histogram vertical lines: which summary statistics to mark. */
+  stats: HistStat[]
   /** Histogram bin count; 0 uses the deployer default. */
   bins: number
   /** Axis titles on the drawing; blank titles use the field name. */
@@ -175,7 +182,7 @@ export const channelAggregates = (mark: Mark, ch: Channel): boolean => defaultAg
 
 export function defaultSpec(over: Partial<ChartSpec> = {}): ChartSpec {
   return {
-    mark: 'bar', donut: false, stack: 'group', sort: 'natural', enc: {}, filter: { f: '', v: '' }, zero: false, grid: true, table: { ...TABLE_DEFAULTS }, ref: '', bins: 0, order: {}, wrap: 0, axisTitles: false, xTitle: '', yTitle: '', pie: { ...PIE_DEFAULTS }, alt: '', footAlign: 'left',
+    mark: 'bar', donut: false, stack: 'group', sort: 'natural', enc: {}, filter: { f: '', v: '' }, zero: false, grid: true, table: { ...TABLE_DEFAULTS }, ref: '', bins: 0, stats: [], order: {}, wrap: 0, axisTitles: false, xTitle: '', yTitle: '', pie: { ...PIE_DEFAULTS }, alt: '', footAlign: 'left',
     text: {
       tag: { t: '', size: 'xs', b: true, i: false }, title: { t: '', size: 'lg', b: true, i: false }, sub: { t: '', size: 'md', b: false, i: false },
       foot: { t: '', size: 'xs', b: false, i: true },
@@ -249,7 +256,7 @@ export interface ChartConfig {
   filter: { field: string; op: '='; value: string }[]
   order?: Record<string, string[]>
   wrap?: number
-  axes: { zeroBaseline: boolean; gridlines: boolean; referenceLine: number | null; bins?: number; sort?: Sort; titles?: { x: string; y: string } }
+  axes: { zeroBaseline: boolean; gridlines: boolean; referenceLine: number | null; bins?: number; stats?: HistStat[]; sort?: Sort; titles?: { x: string; y: string } }
   /** Only the options that differ from the defaults. */
   pie?: Partial<PieOpts>
   alt?: string
@@ -284,7 +291,7 @@ export function toConfig(spec: ChartSpec, ctx: { relation: string; scenarios: st
     mark: spec.mark + (spec.mark === 'pie' && spec.donut ? ':donut' : ''),
     encoding, stack: spec.stack,
     filter: spec.filter.f ? [{ field: spec.filter.f, op: '=', value: spec.filter.v }] : [],
-    axes: { zeroBaseline: spec.zero, gridlines: spec.grid, referenceLine: spec.ref === '' ? null : Number(spec.ref), ...(spec.bins > 0 ? { bins: spec.bins } : {}), ...(spec.sort !== 'natural' ? { sort: spec.sort } : {}), ...(spec.axisTitles ? { titles: { x: spec.xTitle, y: spec.yTitle } } : {}) },
+    axes: { zeroBaseline: spec.zero, gridlines: spec.grid, referenceLine: spec.ref === '' ? null : Number(spec.ref), ...(spec.bins > 0 ? { bins: spec.bins } : {}), ...(spec.stats.length ? { stats: spec.stats } : {}), ...(spec.sort !== 'natural' ? { sort: spec.sort } : {}), ...(spec.axisTitles ? { titles: { x: spec.xTitle, y: spec.yTitle } } : {}) },
     ...(Object.keys(spec.order).length ? { order: spec.order } : {}),
     ...(spec.wrap >= 2 ? { wrap: spec.wrap } : {}),
     ...(Object.keys(pieDiff(spec.pie)).length ? { pie: pieDiff(spec.pie) } : {}),
@@ -347,6 +354,7 @@ export function fromConfig(text: string, ctx: ImportContext): ImportResult {
     zero: c.axes?.zeroBaseline === true, grid: c.axes?.gridlines !== false,
     order: c.order && typeof c.order === 'object' ? Object.fromEntries(Object.entries(c.order).filter(([, v]) => Array.isArray(v)).map(([k, v]) => [k, (v as unknown[]).map(String)])) : {},
     wrap: typeof c.wrap === 'number' && c.wrap >= 2 ? Math.min(6, Math.round(c.wrap)) : 0,
+    stats: Array.isArray(c.axes?.stats) ? HIST_STATS.map((o) => o.v).filter((v) => (c.axes!.stats as unknown[]).includes(v)) : [],
     bins: typeof c.axes?.bins === 'number' && c.axes.bins >= 2 ? Math.min(100, Math.round(c.axes.bins)) : 0,
     axisTitles: !!c.axes?.titles, xTitle: String(c.axes?.titles?.x ?? ''), yTitle: String(c.axes?.titles?.y ?? ''),
     pie: { ...PIE_DEFAULTS, ...(typeof c.pie?.other === 'number' ? { other: c.pie.other } : {}), ...(typeof c.pie?.hole === 'number' ? { hole: c.pie.hole } : {}) },

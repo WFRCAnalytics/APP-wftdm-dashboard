@@ -642,6 +642,16 @@ export function buildChart(input: BuildInput): ChartModel {
         ln(pn, nx.sx(rv), bx.y0, nx.sx(rv), bx.y1, T.ink, 1.5, '5 4')
         tx(pn, nx.sx(rv) + 4, bx.y0 + 11, `Reference ${fmtCompact(rv)}`, 'start', T.fs, '', T.ink)
       }
+      // summary lines, computed by DuckDB over all the filtered rows; labels step down so close lines stay readable
+      const sv: Record<string, unknown> = { mean: rows[0]?.__mean, median: rows[0]?.__md, q1: rows[0]?.__q1, q3: rows[0]?.__q3 }
+      const dashes: Record<string, string> = { mean: '2 3', median: '9 3 2 3', q1: '7 4', q3: '7 4' }
+      const names: Record<string, string> = { mean: 'Mean', median: 'Median', q1: 'Q1', q3: 'Q3' }
+      spec.stats.forEach((st, k) => {
+        const v = Number(sv[st])
+        if (sv[st] === undefined || sv[st] === null || Number.isNaN(v)) return
+        ln(pn, nx.sx(v), bx.y0, nx.sx(v), bx.y1, T.ink, 1.5, dashes[st])
+        tx(pn, nx.sx(v) + 4, bx.y0 + 11 + (spec.ref !== '' ? 12 : 0) + k * 12, `${names[st]} ${fmtCompact(v)}`, 'start', T.fs, '', T.ink)
+      })
     }
   } else if (mark === 'box') {
     const xf = enc.x!.f, yf = enc.y!.f, cats = us(rows, xf)
