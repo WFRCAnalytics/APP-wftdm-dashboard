@@ -36,7 +36,7 @@ Principles:
 | AI assistant | On or off only; providers, models, URLs, prompt and limits are fixed |
 | Chart data layer | Fixed to ActivitySim table and column names (`charts/data/adapt.ts`) |
 | Build and deploy path | Fixed: `base: '/APP-wftdm-dashboard/'` at build time (the demo content is a build flag, 070) |
-| External network calls (fonts, basemaps, DuckDB spatial extension) | Fixed |
+| External network calls (fonts, basemaps, DuckDB extensions) | Configurable (071): `network.fonts`, `network.basemaps.allow`, `network.duckdb_extensions`; `check --explain` lists what is left |
 
 ### What `index.json` is, and why it has to change
 
@@ -201,9 +201,9 @@ assistant:
   limits: { round_trips: 6, preview_rows: 1000, model_rows: 50 }
 
 # new: outside services
-network:
-  fonts: self-hosted                   # self-hosted | google
-  basemaps: { allow: ["protomaps-*"], default: protomaps-light }
+network:                               # 071: built
+  fonts: bundled                       # bundled | any (default any)
+  basemaps: { allow: ["protomaps-*"] } # patterns on basemap ids; the default falls to the first allowed entry
   duckdb_extensions: "https://mirror.example.org/duckdb"
 
 # new: defaults inherited by every panel of a type (the page's, then the panel's own keys win), see the cascade proposal
@@ -260,8 +260,11 @@ Not drafted here, on purpose: how the charts find the deployer's tables and colu
 9. **Done (068, `specs/068-assistant-config/`):** the `assistant` block: `providers` (replace the built-ins; id, label, `base_url`, `models`, `needs_key`, `protocol`), `default`,
    `prompt_addendum` (at most 2000 characters, added last, not shown to the viewer) and `limits` (`round_trips` 1 to 12, `preview_rows` 100 to 5000, `model_rows` 1 to 200).
    No key or token setting exists: a secret-like field anywhere in the site file is refused unread. The address lock is a client-side guard, not a defence against
-   someone who edits the page code in their own browser. 10. **The `network` block: proposal written, not decided** (fonts, a basemap allow-list, a mirrored DuckDB
-   extension location; see section 7, "The network block"), so an offline or locked-down site works: its own later spec.
+   someone who edits the page code in their own browser. 10. **Done (071, `specs/071-network-block/`):** the `network` block. `fonts: bundled` offers only the default font and System UI and loads nothing from Google (previews included);
+    `basemaps.allow` is a list of `*` patterns on basemap ids (built-in styles, Protomaps flavours, raster providers as `Provider.Variant`): the Basemap tab lists only matches, every map
+    resolves through the list (`resolveEffectiveBasemap`), a default that is not allowed becomes the first allowed entry or the plain background, reported once; a style a deployer writes
+    in a page is never blocked (`check --explain` lists its hosts); `duckdb_extensions` is one `http`/`https` address set as the extension repository before any extension is used (the
+    parquet autoload honours it too). `check` reports patterns that match nothing and defaults that are not allowed; `check --explain` lists the outside hosts still reachable.
 
 **Phase E: Explore and limits**
 11. **Done (069, `specs/069-explore-site-settings/`):** the site-level `explore:` block (the keys already cascaded; `charts.default` now does too) and the
@@ -409,7 +412,7 @@ Nothing below changes code. Each topic is settled before anything is built.
 - **Conditional pages** (SimWrapper's `triggerPattern`: a page appears only if a file exists). Not adopted: a deployer already chooses
   which pages exist, and a panel whose data a run lacks is skipped automatically. Revisit only if a real use case turns up.
 
-### The network block (Phase D step 10): proposal, not decided
+### The network block (Phase D step 10): decided and built (071, `specs/071-network-block/`)
 
 Why it exists: an agency behind a firewall, or one that must not send a viewer's browser to outside hosts, needs to know every outside call the app can make and be able to switch each off or move it inside. The audit (2026-10-29) found four kinds:
 
@@ -430,7 +433,7 @@ network:
   duckdb_extensions: "https://mirror.example.org/duckdb"   # an http(s) address used as DuckDB's custom extension repository
 ```
 
-Decisions needed (my recommendation first):
+Decisions (all four taken as recommended, built in 071; the app default basemap is `openfreemap-positron`, an outside host, so a default deployment already calls out):
 
 1. **Font picker when `fonts: bundled`.** Recommended: offer only the families that ship in the bundle, hide the rest, and say nothing else. Alternative: keep the list and let the pick fail silently (confusing).
 2. **Basemap allow-list matching.** Recommended: glob patterns on the catalogue ids (`*` only, as for Explore tables), an empty or missing list means all, an id that matches nothing is reported by `check` and the app, and a viewer cannot add one. The raster provider dropdown is filtered the same way. Alternative: allow by host name (more precise for the raster catalogue, but ids are what a deployer sees).

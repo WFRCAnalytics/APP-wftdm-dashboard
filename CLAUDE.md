@@ -121,7 +121,7 @@ manifest.yaml         per-scenario metadata
   `{primary, secondary, accent}` (the three DATA colours: transit, walking, biking and the chart palette) and `colors.brand` (the interface colour for
   selected pills, titles, tags and focus rings; separate so a data colour never recolours the chrome), `years` `{list, base, default}`, `compare`,
   `layout.mode`, `export.footer`, `assistant.enabled`, `vocab`, `metrics`, `units`, `docs: {url, label}` (a documentation link at the foot of the sidebar,
-  `http`/`https` only, with an optional page `header.docs` path appended), `settings.tabs` (order and visibility of the Settings tabs).
+  `http`/`https` only, with an optional page `header.docs` path appended), `settings.tabs` (order and visibility of the Settings tabs), `network` (071: `fonts` `bundled`|`any`, `basemaps.allow` patterns on basemap ids, `duckdb_extensions` an http(s) address; the pure rules are `config/network.ts`, the runtime state `services/networkPolicy.ts` and `panels/basemap/basemapPolicy.ts`, enforced in `resolveEffectiveBasemap`; the app default basemap `openfreemap-positron` is an outside host; `check --explain` lists the outside hosts left).
   A page's `header.hidden` keeps it out of the sidebar (still reachable at `#/<slug>`; `config/pages.ts` decides what is listed and the landing page).
   Page-scoped schema rows (`scope: 'page'`) are set in a page's `header:`, never in the site file, and never cascade; a row's `clean` hook keeps the usable part of a list. All optional; an unconfigured deployment renders exactly as it
   always did. A mistake (unknown key, wrong type, bad colour, a site-only key on a page, invalid YAML, a missing page file) is listed in one dismissible

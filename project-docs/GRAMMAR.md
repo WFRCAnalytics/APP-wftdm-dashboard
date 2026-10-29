@@ -21,7 +21,7 @@ where each one's published copy is fetched from.
 **What does not exist:**
 - No `topsheet.yaml` — `dashboard-1-summary.yaml` is the landing page
 - No `summarize-preprocessor.yaml` — join logic lives in `sql_fragments`
-- `dashboard-config.yaml` — the site-level settings file (constitution 2.8.0), specified in `project-docs/CONFIGURATION.md`; every key is listed in the generated `project-docs/CONFIG-REFERENCE.md`. Its `assistant:` block (068) sets the AI providers on offer (`providers`, replacing the built-ins, each with `id`, `label`, `base_url`, `models`, `needs_key`, `protocol`), `default: {provider, model}`, a `prompt_addendum` note and `limits: {round_trips, preview_rows, model_rows}`; it never holds a key or token (viewers enter their own)
+- `dashboard-config.yaml` — the site-level settings file (constitution 2.8.0), specified in `project-docs/CONFIGURATION.md`; every key is listed in the generated `project-docs/CONFIG-REFERENCE.md`. Its `assistant:` block (068) sets the AI providers on offer (`providers`, replacing the built-ins, each with `id`, `label`, `base_url`, `models`, `needs_key`, `protocol`), `default: {provider, model}`, a `prompt_addendum` note and `limits: {round_trips, preview_rows, model_rows}`; it never holds a key or token (viewers enter their own). Its `network:` block (071) controls the outside calls: `fonts: bundled` (only the bundled fonts, no Google), `basemaps.allow` (patterns on basemap ids), `duckdb_extensions` (an http(s) address for DuckDB's extension files)
 
 ---
 

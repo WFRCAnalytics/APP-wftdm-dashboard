@@ -108,8 +108,8 @@ Single web-app project: `src/`, `scripts/`, `tests/`, `project-docs/` at the rep
 
 ## Phase 8: Polish and cross-cutting
 
-- [ ] T022 [P] Docs: `project-docs/CONFIGURATION.md` (Phase D step 10 done, the draft shape in section 4, the proposal in section 7 marked decided with the answers), `project-docs/GRAMMAR.md` (the `network` block sentence), `CLAUDE.md` (the site settings list, the policy modules, that the app default basemap is an outside host), `project-docs/IMPLEMENTATION-HISTORY.md` ("071 Control the outside calls": the choke point, the catalogue ids, deployer-authored styles not blocked, the extension setting, gotchas)
-- [ ] T023 `npm run docs:config`; `npx tsc --noEmit`; `npx vitest run`
+- [X] T022 [P] Docs: `project-docs/CONFIGURATION.md` (Phase D step 10 done, the draft shape in section 4, the proposal in section 7 marked decided with the answers), `project-docs/GRAMMAR.md` (the `network` block sentence), `CLAUDE.md` (the site settings list, the policy modules, that the app default basemap is an outside host), `project-docs/IMPLEMENTATION-HISTORY.md` ("071 Control the outside calls": the choke point, the catalogue ids, deployer-authored styles not blocked, the extension setting, gotchas)
+- [X] T023 `npm run docs:config`; `npx tsc --noEmit`; `npx vitest run`
 - [ ] T024 Full Playwright run (`npx playwright test`); compare failures with the known flakes in CLAUDE.md and re-run each alone with `--workers=1` before treating it as real
 - [ ] T025 Walk `quickstart.md` and record the result at its foot
 - [ ] T026 Rebuild `docs/` with `npm run build:pages` (only when the user asks; not part of the implementation)
