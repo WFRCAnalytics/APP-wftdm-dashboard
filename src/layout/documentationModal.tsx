@@ -1,5 +1,8 @@
 import type { ReactNode } from 'react'
 
+import wfrcColor from '@/assets/logo/horizontal/WFRC_logo_horizontal_color_transparent.png'
+import wfrcWhite from '@/assets/logo/horizontal/WFRC_logo_horizontal_white_transparent.png'
+import { useColorScheme } from '@/hooks/useColorScheme'
 import { GroupHeading, TabHeader } from '@/layout/settings/settingsParts'
 
 // The Documentation content (project-docs/redesign/02-layout-and-components.md section 4.4). Documentation is the fourth tab
@@ -33,18 +36,61 @@ function P({ children }: { children: ReactNode }) {
   return <p className="mb-2.5 max-w-[72ch]">{children}</p>
 }
 
-function ExtLink({ href, children }: { href: string; children: ReactNode }) {
+const CREDITS: { name: string; href: string; role: string }[] = [
+  { name: 'SimWrapper', href: 'https://simwrapper.github.io', role: 'Inspiration: viewing transport model output in the browser' },
+  { name: 'Dash', href: 'https://github.com/gropaul/dash', role: 'Inspiration: a DuckDB interface, by Paul Gross (gropaul)' },
+  { name: 'MapLibre GL', href: 'https://maplibre.org', role: 'Maps' },
+  { name: 'Observable Plot', href: 'https://observablehq.com/plot/', role: 'Charts' },
+  { name: 'DuckDB', href: 'https://duckdb.org', role: 'Every query, running in your browser through WebAssembly' },
+]
+
+// Credits sit first on the page. Outside logos are not loaded (no outside requests, works offline, no trademark use):
+// each credit is a wordmark card that links out. WFRC's own logo ships with the app.
+function AboutPanel() {
+  const logo = useColorScheme() === 'dark' ? wfrcWhite : wfrcColor
+  const card = 'flex flex-col gap-1 rounded-[14px] border border-[var(--line)] bg-[var(--tile-hi)] p-3.5 no-underline transition-colors hover:border-[var(--brand-text)] focus-visible:outline-2 focus-visible:outline-[var(--brand-text)]'
   return (
-    <a href={href} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">
-      {children}
-    </a>
+    <section aria-label="About" className="mb-6" data-testid="docs-about">
+      <div className="mb-3 flex flex-wrap items-center gap-x-6 gap-y-3 rounded-[18px] border border-[var(--line)] bg-[var(--tile-hi)] p-4">
+        <a href="https://wfrc.utah.gov" target="_blank" rel="noopener noreferrer" aria-label="Wasatch Front Regional Council">
+          <img src={logo} alt="Wasatch Front Regional Council" className="h-10 w-auto" />
+        </a>
+        <p className="min-w-[220px] flex-1 text-[13.5px] text-[var(--mute)]">
+          Open source, and owned by WFRC: it was developed in part during hours paid for by the Wasatch Front Regional Council.
+        </p>
+        <a href="https://github.com/WFRCAnalytics/APP-wftdm-dashboard" target="_blank" rel="noopener noreferrer" className="inline-flex h-9 items-center gap-2 rounded-full border border-[var(--line)] px-4 text-sm font-medium text-[var(--ink)] hover:border-[var(--brand-text)]">
+          <GitHub /> Source on GitHub
+        </a>
+      </div>
+      <h3 className="mb-2 text-[12.5px] font-medium text-[var(--mute)]">Inspiration and credits</h3>
+      <ul className="m-0 grid list-none grid-cols-[repeat(auto-fill,minmax(210px,1fr))] gap-2.5 p-0">
+        {CREDITS.map((c) => (
+          <li key={c.name}>
+            <a href={c.href} target="_blank" rel="noopener noreferrer" className={card}>
+              <span className="text-[15px] font-semibold text-[var(--ink)]">{c.name} <span aria-hidden="true">↗</span></span>
+              <span className="text-[12.5px] text-[var(--mute)]">{c.role}</span>
+            </a>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
+function GitHub() {
+  return (
+    <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true">
+      <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38v-1.33c-2.23.48-2.7-1.07-2.7-1.07-.36-.92-.89-1.17-.89-1.17-.73-.5.05-.49.05-.49.8.06 1.23.83 1.23.83.71 1.22 1.87.87 2.33.66.07-.52.28-.87.5-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.6 7.6 0 0 1 4 0c1.53-1.03 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.28.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48v2.2c0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z" />
+    </svg>
   )
 }
 
 export function DocumentationContent() {
   return (
     <div>
-      <TabHeader title="Documentation">How to read this dashboard.</TabHeader>
+      <TabHeader title="Documentation">About this dashboard, and how to read it.</TabHeader>
+
+      <AboutPanel />
 
       <GroupHeading className="mt-0">Focus and compare</GroupHeading>
       <P>
@@ -110,25 +156,6 @@ export function DocumentationContent() {
       <P>
         The charts read post-processed Parquet summaries published with each scenario. Observed values come from the survey
         data the deployment publishes alongside them.
-      </P>
-
-      <GroupHeading>Source code and ownership</GroupHeading>
-      <P>
-        The source code is open and lives in the <ExtLink href="https://github.com/WFRCAnalytics/APP-wftdm-dashboard">GitHub repository</ExtLink>.
-        Although it is open source, this work was developed in part during hours paid for by the Wasatch Front Regional
-        Council (WFRC), so ownership of it belongs to WFRC.
-      </P>
-
-      <GroupHeading>Inspiration and credits</GroupHeading>
-      <P>
-        The design drew on <ExtLink href="https://simwrapper.github.io">SimWrapper</ExtLink> for viewing transport model
-        output in the browser, and on <ExtLink href="https://github.com/gropaul/dash">Dash</ExtLink> by Paul Gross (gropaul),
-        a DuckDB user interface, for its settings patterns.
-      </P>
-      <P>
-        Major third-party libraries: <ExtLink href="https://maplibre.org">MapLibre GL</ExtLink> for maps,{' '}
-        <ExtLink href="https://observablehq.com/plot/">Observable Plot</ExtLink> for charts and{' '}
-        <ExtLink href="https://duckdb.org">DuckDB</ExtLink> (running in your browser through WebAssembly) for every query.
       </P>
     </div>
   )
