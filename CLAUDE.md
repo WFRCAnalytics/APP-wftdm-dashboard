@@ -99,7 +99,8 @@ manifest.yaml         per-scenario metadata
   deployment's own, gitignored; `public/demo-dashboard-config/`, the tracked demo). The deployment's value wins per setting and the demo is the fallback;
   the page lists are concatenated, deployment first. The one schema table is `src/config/schema.ts` (pure: loader, validator, cascade resolver,
   boot-skeleton plugin and the generated `project-docs/CONFIG-REFERENCE.md` all read it; run `npm run docs:config` after changing it). A new setting is a new
-  row there plus the code that uses it. `index.json` no longer holds any setting (no compatibility; a leftover one gets a "moved" note).
+  row there plus the code that uses it. `npm run check -- <site folder> [--explain]` checks a site before deploying (`config/check.ts`); the same run
+  of `docs:config` writes `project-docs/dashboard-config.schema.json` (JSON Schema for editors). `index.json` no longer holds any setting (no compatibility; a leftover one gets a "moved" note).
 - No `topsheet.yaml` or `summarize-preprocessor.yaml`.
 - **Delivery targets:** a Python library and an R package (constitution Principle X); neither holds app logic.
 - **Undecided (constitution "Open Decisions"):** whether data is pre-processed to Parquet (as now) or read directly from the model's raw
