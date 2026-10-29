@@ -2,11 +2,13 @@ import { useEffect, useMemo, useState } from 'react'
 import { LayoutDashboard } from 'lucide-react'
 
 import { getActiveSection } from '@/state/layoutState'
-import { assignSlugs, buildHash, parseHash, replaceAddress, setCurrentSlug } from '@/state/routeState'
+import { addProblems } from '@/state/configProblems'
+import { assignSlugs, slugCollisions, buildHash, parseHash, replaceAddress, setCurrentSlug } from '@/state/routeState'
 
 import { cn } from '@/lib/utils'
 
 import { AssistantButton, ChatHost } from '@/layout/chat/chatLauncher'
+import { ConfigNotice } from '@/layout/configNotice'
 import { ControlBar } from '@/layout/controlBar'
 import { DashboardRenderer } from '@/layout/dashboardRenderer'
 import { findFullPagePanel } from '@/layout/dashboardLayout'
@@ -33,6 +35,11 @@ export function Shell({
   branding?: DashboardBranding
 }) {
   const slugs = useMemo(() => assignSlugs(dashboards.map((d) => d.header)), [dashboards])
+  // two pages that resolve to the same address are reported once (the second one gets a suffix)
+  useEffect(() => {
+    const clashes = slugCollisions(dashboards.map((d) => d.header))
+    addProblems(clashes.map((c) => ({ file: 'dashboard-config.yaml', path: 'pages', kind: 'duplicate' as const, message: `pages "${c.tab}" and an earlier page share the address "${c.slug}"; this one is "${c.used}"` })))
+  }, [dashboards])
   const indexOfHash = () => {
     const i = slugs.indexOf(parseHash(window.location.hash).page ?? '')
     return i >= 0 ? i : 0
@@ -66,7 +73,8 @@ export function Shell({
 
   if (dashboards.length === 0) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background">
+        <ConfigNotice />
         <PanelEmptyState
           icon={LayoutDashboard}
           message="No dashboards available"
@@ -114,6 +122,7 @@ export function Shell({
             Menu
           </button>
         )}
+        {!chromeless && <ConfigNotice />}
         <DashboardRenderer tab={active} />
       </main>
       {chromeless && findFullPagePanel(active)?.type !== 'explore-builder' && <AssistantButton floating />}

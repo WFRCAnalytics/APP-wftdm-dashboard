@@ -59,11 +59,11 @@
 
 **Independent Test**: load a config with an unknown key, a wrong type and a site-only key on a page; the app renders and the three problems are listed.
 
-- [ ] T022 [US2] Add `src/state/configProblems.ts` (plain module state, subscribe and get, no Web Storage) and have `loadSite()` push all problems into it and `console.warn` each as `file › path: message`
-- [ ] T023 [US2] Implement `src/layout/configNotice.tsx`: one dismissible note listing problems (file, path, message), nothing when empty; mount it once in `src/layout/shell.tsx`; reuse the note styling the Explore options report uses
-- [ ] T024 [US2] Validate each page file's own keys at load (site-only key set on a page or panel, duplicate slugs from `assignSlugs` in `src/state/routeState.ts`, a listed page file that is missing or fails to parse) and add those problems in `src/services/yamlLoader.ts#loadDashboards`, skipping only the bad page
-- [ ] T025 [US2] When `dashboard-config.yaml` is missing, probe the deployment root's `index.json` once in `src/services/siteConfig.ts` and word the problem `moved` (old keys found) or `missing_file`; no probe on the success path
-- [ ] T026 [P] [US2] Playwright spec cases in `tests/integration/siteConfig.spec.ts`: unknown key, wrong type, site-only key on a page, invalid YAML, missing file with and without a legacy `index.json`; the app loads in all, defaults hold, the note lists exactly the expected paths, a clean config shows no note
+- [X] T022 [US2] Add `src/state/configProblems.ts` (plain module state, subscribe and get, no Web Storage) and have `loadSite()` push all problems into it and `console.warn` each as `file › path: message`
+- [X] T023 [US2] Implement `src/layout/configNotice.tsx`: one dismissible note listing problems (file, path, message), nothing when empty; mount it once in `src/layout/shell.tsx`; reuse the note styling the Explore options report uses
+- [X] T024 [US2] Validate each page file's own keys at load (site-only key set on a page or panel, duplicate slugs from `assignSlugs` in `src/state/routeState.ts`, a listed page file that is missing or fails to parse) and add those problems in `src/services/yamlLoader.ts#loadDashboards`, skipping only the bad page
+- [X] T025 [US2] When `dashboard-config.yaml` is missing, probe the deployment root's `index.json` once in `src/services/siteConfig.ts` and word the problem `moved` (old keys found) or `missing_file`; no probe on the success path
+- [X] T026 [P] [US2] Playwright spec cases in `tests/integration/siteConfig.spec.ts`: unknown key, wrong type, site-only key on a page, invalid YAML, missing file with and without a legacy `index.json`; the app loads in all, defaults hold, the note lists exactly the expected paths, a clean config shows no note
 
 **Checkpoint**: US1 + US2 deliver a safe, observable config load.
 

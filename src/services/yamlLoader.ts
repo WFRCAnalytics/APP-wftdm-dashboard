@@ -3,6 +3,9 @@
 // specs/001-data-state-layer/contracts/yaml-loader.md.
 import { load as parseYAML } from 'js-yaml'
 
+import { pageSettings, validate } from '@/config'
+import { addProblems } from '@/state/configProblems'
+
 export interface DashboardConfig {
   raw: unknown
   sourcePath: string
@@ -186,10 +189,14 @@ export interface ModelYear {
 export async function loadDashboards(baseUrl: string, pages: readonly string[]): Promise<DashboardConfig[]> {
   const configs: DashboardConfig[] = []
   for (const filename of pages) {
+    const file = `${baseUrl}${filename}`
     try {
-      configs.push(await loadConfig(`${baseUrl}${filename}`))
-    } catch {
-      // a missing or malformed page is skipped; the others load
+      const config = await loadConfig(file)
+      // a site-only setting written on a page is reported and ignored (the page itself still loads)
+      addProblems(validate(pageSettings(config.raw), { file, level: 'page' }).problems)
+      configs.push(config)
+    } catch (err) {
+      addProblems([{ file, path: '', kind: 'missing_file', message: `page not loaded: ${err instanceof Error ? err.message : String(err)}` }])
     }
   }
   return configs
