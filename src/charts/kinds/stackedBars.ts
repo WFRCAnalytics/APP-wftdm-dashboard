@@ -9,6 +9,7 @@ import { labelFits, ownsLegend, segmentLabel, segments, stackSpec, stackTables, 
 import type { ChartKind, LegendSpec } from '@/charts/types'
 import { wireModeHover } from '@/panels/crossHighlight'
 import { tooltip } from '@/services/tooltip'
+import { prettyText } from '@/services/typography'
 
 const kind: ChartKind = {
   tables: (plan) => stackTables(stackVariant((plan.config as { variant?: unknown }).variant)),
@@ -50,7 +51,7 @@ const kind: ChartKind = {
         .attr('dy', '.35em')
         .attr('text-anchor', 'end')
         .attr('fill', t.ink)
-        .text(r.label)
+        .text(prettyText(r.label))
       for (const seg of segments(r.vals)) {
         const key = spec.keys[seg.j]
         const color = spec.colors[seg.j]
@@ -81,7 +82,7 @@ const kind: ChartKind = {
             .attr('fill', t.onColor(color))
             .attr('font-weight', 500)
             .style('pointer-events', 'none')
-            .text(segmentLabel(seg.pc))
+            .text(prettyText(segmentLabel(seg.pc)))
         }
         g.on('mousemove', (e: MouseEvent) =>
           tooltip.show({ title, rows: [{ k: 'Share', v: `${f1(seg.pc)}%`, b: true, c: color }, { k: `Of: ${spec.of}`, v: '' }] }, e),

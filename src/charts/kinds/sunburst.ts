@@ -11,6 +11,7 @@ import type { ChartKind } from '@/charts/types'
 import { emptyNote, f1 } from '@/charts/util'
 import { wireModeHover } from '@/panels/crossHighlight'
 import { tooltip } from '@/services/tooltip'
+import { prettyText } from '@/services/typography'
 
 interface Node {
   name: string
@@ -172,7 +173,7 @@ const kind: ChartKind = {
           const r = r0 + ring * 0.5
           return `rotate(${a}) translate(${r},0) rotate(${a > 90 ? 180 : 0})`
         })
-        .text((d) => d.node.data.name)
+        .text(prettyText((d) => d.node.data.name))
       if (animate) labels.attr('opacity', 0).transition().delay(TWEEN_MS * 0.6).duration(160).attr('opacity', 1)
 
       const centre = gg.append('g').style('cursor', scope ? 'pointer' : 'default')
@@ -187,14 +188,14 @@ const kind: ChartKind = {
         .attr('font-size', Math.max(16, R * 0.16))
         .attr('font-weight', 600)
         .attr('fill', t.ink)
-        .text(spec.fmt(root.value ?? 0))
+        .text(prettyText(spec.fmt(root.value ?? 0)))
       centre
         .append('text')
         .attr('text-anchor', 'middle')
         .attr('y', 16)
         .attr('fill', t.mute)
         .attr('font-size', 11.5)
-        .text(scope ? `${scope} · tap to go back` : spec.unit)
+        .text(prettyText(scope ? `${scope} · tap to go back` : spec.unit))
 
       if (spec.isMode) wireModeHover(gg.node() as Element)
     }

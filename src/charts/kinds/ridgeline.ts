@@ -9,6 +9,7 @@ import { emptyNote, f1, num, str } from '@/charts/util'
 import { RIDGE_HEIGHT_ROWS, RIDGE_MARGIN, RIDGE_MAX_MILES, ridgePoints, ridgeRows, ridgeSeries, showMeanMarkers, type RidgeSeries } from '@/charts/lib/ridge'
 import type { ChartKind } from '@/charts/types'
 import { tooltip } from '@/services/tooltip'
+import { prettyText } from '@/services/typography'
 
 const SVG_NS = 'http://www.w3.org/2000/svg'
 const TABLE = 'trip_length_frequency'
@@ -56,7 +57,7 @@ const kind: ChartKind = {
       .attr('y', h - 5)
       .attr('text-anchor', 'middle')
       .attr('fill', t.mute)
-      .text((d) => d + (d === 30 ? ' mi' : ''))
+      .text(prettyText((d) => d + (d === 30 ? ' mi' : '')))
 
     const markers: { x: number; y: number; text: string }[] = []
     PURPOSES.forEach((p, i) => {
@@ -78,7 +79,7 @@ const kind: ChartKind = {
           .curve(curveBasis)
         root.append('path').attr('d', l(ridgePoints(o.density))).attr('fill', 'none').attr('stroke', t.ink).attr('stroke-dasharray', '3 3').attr('stroke-width', 1.3).attr('opacity', 0.8).style('pointer-events', 'none')
       }
-      root.append('text').attr('x', RIDGE_MARGIN.left - 10).attr('y', b - 4).attr('text-anchor', 'end').attr('fill', t.ink).style('pointer-events', 'none').text(p)
+      root.append('text').attr('x', RIDGE_MARGIN.left - 10).attr('y', b - 4).attr('text-anchor', 'end').attr('fill', t.ink).style('pointer-events', 'none').text(prettyText(p))
       if (Number.isFinite(s.mean)) markers.push({ x: xs(s.mean), y: b + 12, text: `${f1(s.mean)} mi avg` })
 
       if (pinned) {
@@ -126,7 +127,7 @@ const kind: ChartKind = {
       .attr('font-size', 10.5)
       .style('pointer-events', 'none')
       .attr('display', show ? null : 'none')
-      .text((d) => d.text)
+      .text(prettyText((d) => d.text))
 
     svg.setAttribute('role', 'img')
     const means = PURPOSES.map((p) => `${p} ${f1(model.get(p)!.mean)} miles`).join(', ')

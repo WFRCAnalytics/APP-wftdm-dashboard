@@ -12,6 +12,7 @@ import type { DrawnChart, HNode, HTree } from '@/charts/builder/compile'
 import type { ChartTheme } from '@/charts/types'
 import { zoomableSankey } from '@/charts/builder/sankeyDraw'
 import { tooltip } from '@/services/tooltip'
+import { prettyText } from '@/services/typography'
 
 /** The open group of each panel as the names from the top down (empty: the whole chart), by panel index. */
 export type HierState = Record<number, string[]>
@@ -50,7 +51,7 @@ export function drawHierarchy(model: DrawnChart, theme: ChartTheme, state: HierS
   }
   ;(model.trees ?? []).forEach((tree, i) => {
     const g = select(svg).append('g').attr('transform', tree.tf) as unknown as G
-    if (tree.title) g.append('text').attr('x', 0).attr('y', 11).attr('font-size', 12.5).attr('font-weight', 600).attr('fill', theme.ink).text(tree.title)
+    if (tree.title) g.append('text').attr('x', 0).attr('y', 11).attr('font-size', 12.5).attr('font-weight', 600).attr('fill', theme.ink).text(prettyText(tree.title))
     const body = g.append('g') as G
     if (tree.kind === 'treemap') zoomableTreemap(body, tree, theme, state, i)
     else zoomableSunburst(body, tree, theme, state, i)
@@ -58,7 +59,7 @@ export function drawHierarchy(model: DrawnChart, theme: ChartTheme, state: HierS
 
   ;(model.sankeys ?? []).forEach((sk, i) => {
     const g = select(svg).append('g').attr('transform', sk.tf) as unknown as G
-    if (sk.title) g.append('text').attr('x', 0).attr('y', 11).attr('font-size', 12.5).attr('font-weight', 600).attr('fill', theme.ink).text(sk.title)
+    if (sk.title) g.append('text').attr('x', 0).attr('y', 11).attr('font-size', 12.5).attr('font-weight', 600).attr('fill', theme.ink).text(prettyText(sk.title))
     zoomableSankey(g.append('g') as G, sk, theme, state, i)
   })
 
@@ -126,14 +127,14 @@ function zoomableTreemap(body: G, tree: HTree, T: ChartTheme, state: HierState, 
     const head = holder.append('g')
     if (at.length) {
       head.append('text').attr('x', 1).attr('y', 14).attr('font-weight', 600).attr('fill', T.ink).style('cursor', 'zoom-out').on('click', () => go(at.slice(0, -1)))
-        .text(`‹ ${at.join(' › ')}`).append('tspan').attr('font-weight', 400).attr('fill', T.mute).text(`  ${fmt(here.node.value)} · click to go up`)
+        .text(prettyText(`‹ ${at.join(' › ')}`)).append('tspan').attr('font-weight', 400).attr('fill', T.mute).text(prettyText(`  ${fmt(here.node.value)} · click to go up`))
     }
     // a group with parts of its own is headed by its name; click the name to open it
     head.selectAll('text.grp').data((root.children ?? []).filter((d) => d.children) as HierarchyRectangularNode<Cut>[]).join('text').attr('class', 'grp')
       .attr('x', (d) => d.x0 + 1).attr('y', (d) => d.y0 + 14).attr('font-weight', 600).attr('fill', T.ink).style('cursor', 'zoom-in')
       .on('click', (_e, d) => go([...at, d.data.name]))
-      .text((d) => (d.x1 - d.x0 > 60 ? clip(d.data.name, d.x1 - d.x0 - 8) : ''))
-      .append('tspan').attr('font-weight', 400).attr('fill', T.mute).text((d) => (d.x1 - d.x0 > 130 ? `  ${fmt(d.value ?? 0)}` : ''))
+      .text(prettyText((d) => (d.x1 - d.x0 > 60 ? clip(d.data.name, d.x1 - d.x0 - 8) : '')))
+      .append('tspan').attr('font-weight', 400).attr('fill', T.mute).text(prettyText((d) => (d.x1 - d.x0 > 130 ? `  ${fmt(d.value ?? 0)}` : '')))
 
     // a tile opens the group it sits in, one level down from the view: never further, so each click is one step
     const target = (d: HierarchyRectangularNode<Cut>): string[] | null => {
@@ -150,8 +151,8 @@ function zoomableTreemap(body: G, tree: HTree, T: ChartTheme, state: HierState, 
     const total = root.value || 1
     const labels = leaf.filter((d) => d.x1 - d.x0 > 54 && d.y1 - d.y0 > 30).append('text').attr('font-size', T.fs).style('pointer-events', 'none')
       .attr('fill', (d) => (solid(d.data) ? T.onColor(d.data.color) : T.ink))
-    labels.append('tspan').attr('x', 8).attr('y', 18).text((d) => clip(d.data.name, d.x1 - d.x0 - 12))
-    labels.append('tspan').attr('x', 8).attr('y', 33).text((d) => `${Math.round(((d.value ?? 0) / total) * 100)}%`)
+    labels.append('tspan').attr('x', 8).attr('y', 18).text(prettyText((d) => clip(d.data.name, d.x1 - d.x0 - 12)))
+    labels.append('tspan').attr('x', 8).attr('y', 33).text(prettyText((d) => `${Math.round(((d.value ?? 0) / total) * 100)}%`))
 
     if (animate && before) {
       labels.attr('opacity', 0)
@@ -221,7 +222,7 @@ function zoomableSunburst(body: G, tree: HTree, T: ChartTheme, state: HierState,
         const a = (((q.a0 + q.a1) / 2) * 180) / Math.PI - 90
         return `rotate(${a}) translate(${(q.ir + q.or) / 2},0) rotate(${a > 90 ? 180 : 0})`
       })
-      .text((q) => clip(q.d.data.name, Math.min(q.or - q.ir, (q.a1 - q.a0) * ((q.ir + q.or) / 2)) * 1.5))
+      .text(prettyText((q) => clip(q.d.data.name, Math.min(q.or - q.ir, (q.a1 - q.a0) * ((q.ir + q.or) / 2)) * 1.5)))
     if (animate) labels.attr('opacity', 0).transition().delay(TWEEN_MS * 0.6).duration(160).attr('opacity', 1)
 
     // the centre is the open group; click it to go up a level
@@ -229,9 +230,9 @@ function zoomableSunburst(body: G, tree: HTree, T: ChartTheme, state: HierState,
     const onFill = open && solid(here.node) ? T.onColor(here.node.color) : null
     const centre = holder.append('g').style('cursor', open ? 'zoom-out' : 'default').on('click', () => { if (open) go(at.slice(0, -1)) })
     centre.append('circle').attr('r', r0 - 4).attr('fill', open ? here.node.fill : 'transparent').attr('opacity', open ? here.node.op : 1).attr('data-t', open ? here.node.tip : null)
-    centre.append('text').attr('text-anchor', 'middle').attr('y', 0).attr('font-size', 16).attr('font-weight', 600).attr('fill', onFill ?? T.ink).style('pointer-events', 'none').text(fmt(here.node.value))
-    centre.append('text').attr('text-anchor', 'middle').attr('y', 16).attr('font-size', T.fs).attr('fill', onFill ?? T.mute).style('pointer-events', 'none').text(clip(open ? at[at.length - 1] : tree.unit, r0 * 1.6))
-    if (open) centre.append('text').attr('text-anchor', 'middle').attr('y', 30).attr('font-size', T.fs - 1).attr('fill', onFill ?? T.mute).style('pointer-events', 'none').text('click to go up')
+    centre.append('text').attr('text-anchor', 'middle').attr('y', 0).attr('font-size', 16).attr('font-weight', 600).attr('fill', onFill ?? T.ink).style('pointer-events', 'none').text(prettyText(fmt(here.node.value)))
+    centre.append('text').attr('text-anchor', 'middle').attr('y', 16).attr('font-size', T.fs).attr('fill', onFill ?? T.mute).style('pointer-events', 'none').text(prettyText(clip(open ? at[at.length - 1] : tree.unit, r0 * 1.6)))
+    if (open) centre.append('text').attr('text-anchor', 'middle').attr('y', 30).attr('font-size', T.fs - 1).attr('fill', onFill ?? T.mute).style('pointer-events', 'none').text(prettyText('click to go up'))
   }
   render(false)
 }

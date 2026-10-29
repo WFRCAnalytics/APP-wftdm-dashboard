@@ -9,6 +9,7 @@ import type { HSankey } from '@/charts/builder/compile'
 import type { HierState } from '@/charts/builder/hierarchyDraw'
 import type { ChartTheme } from '@/charts/types'
 import { tooltip } from '@/services/tooltip'
+import { prettyText } from '@/services/typography'
 
 type G = Selection<SVGGElement, unknown, null, undefined>
 interface LinkGeo { sx: number; a0: number; b0: number; h: number }
@@ -91,10 +92,10 @@ export function zoomableSankey(body: G, sk: HSankey, T: ChartTheme, state: HierS
     const hy = sk.small ? 24 : 12 // below a small-multiples panel title
     if (focus) {
       body.append('text').attr('x', 0).attr('y', hy).attr('fill', T.ink).attr('font-weight', 600).style('cursor', 'zoom-out').on('click', () => go(null))
-        .text(`‹ Only flows ${focus.side === 'from' ? 'from' : 'to'} ${clip(focus.name, 28)}`)
-        .append('tspan').attr('font-weight', 400).attr('fill', T.mute).text('  · click to show all')
+        .text(prettyText(`‹ Only flows ${focus.side === 'from' ? 'from' : 'to'} ${clip(focus.name, 28)}`))
+        .append('tspan').attr('font-weight', 400).attr('fill', T.mute).text(prettyText('  · click to show all'))
     } else {
-      body.append('text').attr('x', 0).attr('y', hy).attr('fill', T.mute).style('pointer-events', 'none').text('Click a node to show only its flows')
+      body.append('text').attr('x', 0).attr('y', hy).attr('fill', T.mute).style('pointer-events', 'none').text(prettyText('Click a node to show only its flows'))
     }
 
     const linkSel = body.append('g').selectAll<SVGPathElement, (typeof links)[number]>('path').data(links).join('path')
@@ -106,7 +107,7 @@ export function zoomableSankey(body: G, sk: HSankey, T: ChartTheme, state: HierS
       .attr('y', (q) => q.y).attr('height', (q) => q.th)
       .attr('stroke', (q) => (focus && focus.side === q.side && focus.name === q.n.name ? T.ink : 'none')).attr('stroke-width', 1.5)
     const texts = nodeG.append('text').attr('fill', T.ink).attr('font-size', T.fs).attr('text-anchor', (q) => (q.side === 'from' ? 'end' : 'start'))
-      .attr('x', (q) => (q.side === 'from' ? xL - 6 : xR + NODE_W + 6)).attr('y', (q) => q.y + q.th / 2 + 4).text((q) => clip(q.n.name))
+      .attr('x', (q) => (q.side === 'from' ? xL - 6 : xR + NODE_W + 6)).attr('y', (q) => q.y + q.th / 2 + 4).text(prettyText((q) => clip(q.n.name)))
 
     if (animate) {
       linkSel.attr('opacity', (l) => (beforeL?.has(l.k) ? 0.42 : 0)).transition().duration(TWEEN_MS).attr('opacity', 0.42)

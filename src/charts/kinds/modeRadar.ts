@@ -9,6 +9,7 @@ import type { ChartKind, LegendSpec } from '@/charts/types'
 import { emptyNote, f1 } from '@/charts/util'
 import { MODES } from '@/charts/vocab'
 import { tooltip } from '@/services/tooltip'
+import { prettyText } from '@/services/typography'
 
 const NS = 'http://www.w3.org/2000/svg'
 
@@ -89,7 +90,7 @@ const kind: ChartKind = {
         .attr('text-anchor', labelAnchor(Math.cos(axisAngle(i, n))))
         .attr('fill', t.mute)
         .style('pointer-events', 'none')
-        .text(mode)
+        .text(prettyText(mode))
       const [ex, ey] = pt(i, max)
       svg
         .append('line')
@@ -118,7 +119,7 @@ const kind: ChartKind = {
 
     rings.forEach((v) => {
       const a0 = axisAngle(0, n) + Math.PI / n
-      svg.append('text').attr('x', cx + Math.cos(a0) * ((v / max) * R) + 3).attr('y', cy + Math.sin(a0) * ((v / max) * R) - 2).attr('fill', t.mute).attr('font-size', 10.5).style('pointer-events', 'none').text(`${v}%`)
+      svg.append('text').attr('x', cx + Math.cos(a0) * ((v / max) * R) + 3).attr('y', cy + Math.sin(a0) * ((v / max) * R) - 2).attr('fill', t.mute).attr('font-size', 10.5).style('pointer-events', 'none').text(prettyText(`${v}%`))
     })
 
     el.replaceChildren(svg.node() as SVGSVGElement)

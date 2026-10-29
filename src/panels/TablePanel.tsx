@@ -37,6 +37,7 @@ import {
   type TableQueryMode,
 } from '@/panels/panelQuery'
 import { formatValue } from '@/panels/formatValue'
+import { prettyOperators } from '@/services/typography'
 import { cellColor, filterRows, resolveColumns, sortRows, type ColumnValueType } from '@/panels/tableLogic'
 import { PanelEmptyState } from '@/panels/PanelEmptyState'
 import { PanelErrorState } from '@/panels/PanelErrorState'
@@ -634,11 +635,13 @@ export function TablePanel({ config }: { config: TablePanelConfig }) {
                           style={background ? { backgroundColor: background } : undefined}
                           className="whitespace-nowrap px-3 py-2"
                         >
-                          {column.field === 'scenario'
-                            ? resolveScenarioLabel(String(value), scenarioDisplay)
-                            : column.format
-                              ? formatValue(value, column.format)
-                              : String(value ?? '')}
+                          {prettyOperators(
+                            column.field === 'scenario'
+                              ? resolveScenarioLabel(String(value), scenarioDisplay)
+                              : column.format
+                                ? formatValue(value, column.format)
+                                : String(value ?? ''),
+                          )}
                         </td>
                       )
                     })}

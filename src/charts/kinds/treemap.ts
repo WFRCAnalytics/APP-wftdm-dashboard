@@ -21,6 +21,7 @@ import type { ChartKind } from '@/charts/types'
 import { emptyNote, f1 } from '@/charts/util'
 import { wireModeHover } from '@/panels/crossHighlight'
 import { tooltip } from '@/services/tooltip'
+import { prettyText } from '@/services/typography'
 
 interface Node {
   name: string
@@ -132,11 +133,11 @@ const kind: ChartKind = {
           .attr('font-weight', 600)
           .style('cursor', 'zoom-in')
           .on('click', (_e: MouseEvent, d) => zoomTo(d.data.name))
-          .text((d) => (showGroupName(gw(d)) ? d.data.name : ''))
+          .text(prettyText((d) => (showGroupName(gw(d)) ? d.data.name : '')))
           .append('tspan')
           .attr('fill', t.mute)
           .attr('font-weight', 400)
-          .text((d) => (showGroupTotal(gw(d)) ? `  ${spec.fmt(d.value ?? 0)}` : ''))
+          .text(prettyText((d) => (showGroupTotal(gw(d)) ? `  ${spec.fmt(d.value ?? 0)}` : '')))
         // a group name too long for its box loses its total first, then ends in an ellipsis
         header.selectAll<SVGTextElement, HierarchyRectangularNode<Node>>('text').each(function (d) {
           const room = d.x1 - d.x0 - 2
@@ -154,11 +155,11 @@ const kind: ChartKind = {
           .attr('font-weight', 600)
           .style('cursor', 'zoom-out')
           .on('click', () => zoomTo(null))
-          .text(`‹ ${scope}`)
+          .text(prettyText(`‹ ${scope}`))
           .append('tspan')
           .attr('fill', t.mute)
           .attr('font-weight', 400)
-          .text(`  ${spec.fmt(root.value ?? 0)} · click to go back`)
+          .text(prettyText(`  ${spec.fmt(root.value ?? 0)} · click to go back`))
       }
 
       const leaf = body
@@ -191,14 +192,14 @@ const kind: ChartKind = {
         .attr('font-weight', 600)
         .attr('stroke', 'none') // the synced-hover outline is set on the group: text must not inherit it
         .style('pointer-events', 'none')
-        .text((d) => d.data.name)
+        .text(prettyText((d) => d.data.name))
       labels
         .append('tspan')
         .attr('x', 9)
         .attr('dy', 16)
         .attr('font-weight', 400)
         .attr('opacity', 0.85)
-        .text((d) => `${spec.fmt(d.value ?? 0)}${ref ? `  ${delta(groupName(d), d.data.name, d.value ?? 0)}` : ''}`)
+        .text(prettyText((d) => `${spec.fmt(d.value ?? 0)}${ref ? `  ${delta(groupName(d), d.data.name, d.value ?? 0)}` : ''}`))
       // a label never spills out of its box: it ends in an ellipsis, or is left out when not even a few letters fit
       labels.each(function (d) {
         const room = Math.max(0, gw(d) - 9 - 6)

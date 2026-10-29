@@ -10,6 +10,7 @@ import { fmtMillions, gapStatus, modeShare, rankModes, statusColors, totalTrips 
 import { drawModeBars } from '@/charts/kinds/modeBars'
 import type { ChartKind } from '@/charts/types'
 import { wireModeHover } from '@/panels/crossHighlight'
+import { prettyText } from '@/services/typography'
 
 const kind: ChartKind = {
   tables: () => ['trip_mode_share'],
@@ -51,11 +52,11 @@ const kind: ChartKind = {
     const slices = d3pie<number>().sort(null).value((d) => d)(vals)
     const arcGen = d3arc<(typeof slices)[number]>().innerRadius(R * 0.64).outerRadius(R).padAngle(0.012).cornerRadius(5)
     const idle = { big: fmtMillions(total), sub: 'daily trips' }
-    const big = gg.append('text').attr('text-anchor', 'middle').attr('y', 2).attr('font-size', R * 0.3).attr('font-weight', 600).attr('fill', t.ink).text(idle.big)
-    const sub = gg.append('text').attr('text-anchor', 'middle').attr('y', R * 0.22 + 6).attr('fill', t.mute).text(idle.sub)
+    const big = gg.append('text').attr('text-anchor', 'middle').attr('y', 2).attr('font-size', R * 0.3).attr('font-weight', 600).attr('fill', t.ink).text(prettyText(idle.big))
+    const sub = gg.append('text').attr('text-anchor', 'middle').attr('y', R * 0.22 + 6).attr('fill', t.mute).text(prettyText(idle.sub))
     const show = (i: number | null) => {
-      big.text(i === null ? idle.big : `${f1(vals[i])}%`)
-      sub.text(i === null ? idle.sub : MODES[i])
+      big.text(prettyText(i === null ? idle.big : `${f1(vals[i])}%`))
+      sub.text(prettyText(i === null ? idle.sub : MODES[i]))
     }
     gg.selectAll('path')
       .data(slices)
@@ -73,7 +74,7 @@ const kind: ChartKind = {
       rankModes(vals).forEach((i, r) => {
         const row = list.append('g').attr('transform', `translate(0,${r * rowH})`).attr('data-m', MODES[i]).style('cursor', 'default')
         row.append('circle').attr('cx', 6).attr('cy', rowH / 2).attr('r', 6).attr('fill', t.mode(MODES[i]))
-        row.append('text').attr('x', 20).attr('y', rowH / 2).attr('dy', '.35em').attr('fill', t.ink).text(MODES[i])
+        row.append('text').attr('x', 20).attr('y', rowH / 2).attr('dy', '.35em').attr('fill', t.ink).text(prettyText(MODES[i]))
         row
           .append('text')
           .attr('x', w - x0 - 62)
@@ -82,7 +83,7 @@ const kind: ChartKind = {
           .attr('text-anchor', 'end')
           .attr('fill', t.ink)
           .attr('font-weight', 600)
-          .text(`${f1(vals[i])}%`)
+          .text(prettyText(`${f1(vals[i])}%`))
         if (cmp) {
           const gap = vals[i] - cmp[i]
           row
@@ -92,7 +93,7 @@ const kind: ChartKind = {
             .attr('dy', '.35em')
             .attr('text-anchor', 'end')
             .attr('fill', status[gapStatus(gap)])
-            .text(`${sgn(gap) || (gap < 0 ? '−' : '+')}${Math.abs(gap).toFixed(1)}`)
+            .text(prettyText(`${sgn(gap) || (gap < 0 ? '−' : '+')}${Math.abs(gap).toFixed(1)}`))
         }
       })
       if (cmp) {
@@ -103,7 +104,7 @@ const kind: ChartKind = {
           .attr('text-anchor', 'end')
           .attr('fill', t.mute)
           .attr('font-size', 11)
-          .text(`vs ${cmpName}, pts`)
+          .text(prettyText(`vs ${cmpName}, pts`))
       }
     }
 

@@ -15,6 +15,7 @@ import { emptyNote, f1 } from '@/charts/util'
 import { MODES } from '@/charts/vocab'
 import { wireModeHover } from '@/panels/crossHighlight'
 import { tooltip } from '@/services/tooltip'
+import { prettyText } from '@/services/typography'
 
 type N = DNode<SankeyNode, SankeyLink>
 type L = DLink<SankeyNode, SankeyLink>
@@ -123,13 +124,13 @@ const kind: ChartKind = {
           .attr('font-weight', 600)
           .style('cursor', 'zoom-out')
           .on('click', () => go(null))
-          .text(`‹ Only flows through ${focusName}`)
+          .text(prettyText(`‹ Only flows through ${focusName}`))
           .append('tspan')
           .attr('font-weight', 400)
           .attr('fill', t.mute)
-          .text('  · click to show all')
+          .text(prettyText('  · click to show all'))
       } else {
-        body.append('text').attr('x', 2).attr('y', 14).attr('fill', t.mute).style('pointer-events', 'none').text('Click a node to show only its flows')
+        body.append('text').attr('x', 2).attr('y', 14).attr('fill', t.mute).style('pointer-events', 'none').text(prettyText('Click a node to show only its flows'))
       }
 
       const linkSel = body
@@ -207,7 +208,7 @@ const kind: ChartKind = {
         .attr('paint-order', 'stroke')
         .attr('font-weight', 500)
         .style('pointer-events', 'none')
-        .text((d) => (showNodeLabel((d.y1 ?? 0) - (d.y0 ?? 0)) ? d.name : ''))
+        .text(prettyText((d) => (showNodeLabel((d.y1 ?? 0) - (d.y0 ?? 0)) ? d.name : '')))
 
       if (animate && before) {
         linkSel

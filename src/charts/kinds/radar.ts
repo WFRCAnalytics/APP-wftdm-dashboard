@@ -22,6 +22,7 @@ import {
 import type { ChartKind, LegendSpec } from '@/charts/types'
 import { emptyNote, f1 } from '@/charts/util'
 import { tooltip } from '@/services/tooltip'
+import { prettyText } from '@/services/typography'
 
 const TABLE = 'calibration_errors'
 const NS = 'http://www.w3.org/2000/svg'
@@ -112,7 +113,7 @@ const kind: ChartKind = {
         .attr('fill', st0 === 'ok' ? t.mute : statusColor[st0])
         .attr('font-weight', st0 === 'ok' ? 400 : 600)
         .style('pointer-events', 'none')
-        .text(d.short)
+        .text(prettyText(d.short))
       const [ex, ey] = pt(i, max)
       svg
         .append('line')
@@ -150,7 +151,7 @@ const kind: ChartKind = {
       const a0 = axisAngle(0, n) + Math.PI / n
       const px = cx + Math.cos(a0) * ((v / max) * R)
       const py = cy + Math.sin(a0) * ((v / max) * R)
-      svg.append('text').attr('x', px + 3).attr('y', py - 2).attr('fill', t.mute).attr('font-size', 10.5).style('pointer-events', 'none').text(`${v}%`)
+      svg.append('text').attr('x', px + 3).attr('y', py - 2).attr('fill', t.mute).attr('font-size', 10.5).style('pointer-events', 'none').text(prettyText(`${v}%`))
     })
 
     el.replaceChildren(svg.node() as SVGSVGElement)

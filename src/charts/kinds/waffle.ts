@@ -7,6 +7,7 @@ import { f1, num, str } from '@/charts/util'
 import { largestRemainder, waffleCells, waffleLayout, waffleSlot } from '@/charts/lib/waffle'
 import type { ChartKind } from '@/charts/types'
 import { tooltip } from '@/services/tooltip'
+import { prettyText } from '@/services/typography'
 
 const SVG_NS = 'http://www.w3.org/2000/svg'
 
@@ -105,7 +106,7 @@ const kind: ChartKind = {
         .attr('transform', (j) => `translate(0,${j * rh})`)
         .style('cursor', 'default')
       legendRows.append('rect').attr('width', 14).attr('height', 14).attr('y', rh / 2 - 7).attr('rx', 4).attr('fill', (j) => cols[j])
-      legendRows.append('text').attr('x', 24).attr('y', rh / 2).attr('dy', '.35em').attr('fill', t.ink).text((j) => AUTOS[j])
+      legendRows.append('text').attr('x', 24).attr('y', rh / 2).attr('dy', '.35em').attr('fill', t.ink).text(prettyText((j) => AUTOS[j]))
       legendRows
         .append('text')
         .attr('x', Math.min(260, w - x0 - 4))
@@ -114,7 +115,7 @@ const kind: ChartKind = {
         .attr('text-anchor', 'end')
         .attr('fill', t.ink)
         .attr('font-weight', 600)
-        .text((j) => `${f1(share[j])}%`)
+        .text(prettyText((j) => `${f1(share[j])}%`))
       if (!pinned) legendRows.on('mouseenter', (_e, j) => hl(j)).on('mouseleave', () => hl(null))
       root
         .append('text')
@@ -122,7 +123,7 @@ const kind: ChartKind = {
         .attr('y', y0 - 10)
         .attr('fill', t.mute)
         .attr('font-size', t.fs)
-        .text(`Each square is 1% of ${hhLabel} households`)
+        .text(prettyText(`Each square is 1% of ${hhLabel} households`))
     }
 
     svg.setAttribute('role', 'img')

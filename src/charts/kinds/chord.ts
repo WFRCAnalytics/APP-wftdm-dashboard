@@ -13,6 +13,7 @@ import type { ChartKind } from '@/charts/types'
 import { emptyNote } from '@/charts/util'
 import { DISTRICTS } from '@/charts/vocab'
 import { tooltip } from '@/services/tooltip'
+import { prettyText } from '@/services/typography'
 
 const kind: ChartKind = {
   tables: () => ['od_district'],
@@ -70,7 +71,7 @@ const kind: ChartKind = {
       .attr('fill', t.ink)
       .attr('font-weight', 500)
       .style('pointer-events', 'none')
-      .text((d) => DISTRICTS[d.index])
+      .text(prettyText((d) => DISTRICTS[d.index]))
 
     const isolate = (i: number | null) =>
       rib.attr('fill-opacity', (d) => (i === null || d.source.index === i || d.target.index === i ? (i === null ? 0.55 : 0.8) : 0.08))

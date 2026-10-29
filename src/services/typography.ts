@@ -37,3 +37,9 @@ export function prettyOperators(text: string): string {
   for (const [re, to] of RULES) out = out.replace(re, to)
   return out
 }
+
+/** For d3's `.text(...)`: takes the string or the (d, i) => string function it would take and returns the same kind. */
+export function prettyText<F extends string | ((...args: any[]) => string)>(v: F): F {
+  if (typeof v === 'function') return ((...args: unknown[]) => prettyOperators((v as (...a: unknown[]) => string)(...args))) as F
+  return prettyOperators(v as string) as F
+}

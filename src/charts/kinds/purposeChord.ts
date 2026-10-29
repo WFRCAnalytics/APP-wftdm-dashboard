@@ -11,6 +11,7 @@ import type { ChartKind } from '@/charts/types'
 import { emptyNote, num, str } from '@/charts/util'
 import { MODES, PURPOSES } from '@/charts/vocab'
 import { tooltip } from '@/services/tooltip'
+import { prettyText } from '@/services/typography'
 
 const kind: ChartKind = {
   tables: () => ['purpose_mode_flow'],
@@ -71,7 +72,7 @@ const kind: ChartKind = {
       .attr('fill', t.ink)
       .attr('font-weight', (d) => (d.index < np ? 400 : 500))
       .style('pointer-events', 'none')
-      .text((d) => (d.endAngle - d.startAngle > 0.16 ? name(d.index) : ''))
+      .text(prettyText((d) => (d.endAngle - d.startAngle > 0.16 ? name(d.index) : '')))
 
     const isolate = (i: number | null) =>
       rib.attr('fill-opacity', (d) => (i === null ? 0.6 : d.source.index === i || d.target.index === i ? 0.85 : 0.07))
