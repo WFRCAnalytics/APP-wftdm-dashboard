@@ -717,6 +717,7 @@ export function parseDashboardConfig(raw: unknown, sourcePath = '(unknown source
       description: typeof header.description === 'string' ? header.description : undefined,
       icon: typeof header.icon === 'string' ? header.icon : undefined,
       full_page: typeof header.full_page === 'boolean' ? header.full_page : undefined,
+      layout_mode: header.layout_mode === 'tabs' || header.layout_mode === 'scroll' ? header.layout_mode : undefined,
       slug: typeof header.slug === 'string' && header.slug.trim().length > 0 ? header.slug.trim() : undefined,
       aria_label:
         typeof header.aria_label === 'string' && header.aria_label.length > 0

@@ -4,6 +4,7 @@
 //   - the active tab (section) of each page and the tile picked in a "pick" tab.
 import { useSyncExternalStore } from 'react'
 
+import { resolve } from '@/config'
 import { buildHash, getCurrentSlug, replaceAddress } from '@/state/routeState'
 
 export type LayoutMode = 'scroll' | 'tabs'
@@ -49,11 +50,12 @@ export function setViewerLayout(mode: ViewerLayout): void {
   emit()
 }
 
-/** viewer choice > the page's `layout_mode` > the deployment default > scroll. */
+/** viewer choice > the cascade: the page's `layout_mode` over the site's `layout.mode` > scroll. */
 export function resolveLayoutMode(pageMode: unknown): LayoutMode {
   if (viewer !== 'default') return viewer
-  if (pageMode === 'tabs' || pageMode === 'scroll') return pageMode
-  return deployment ?? 'scroll'
+  const valid = (m: unknown) => (m === 'tabs' || m === 'scroll' ? m : undefined)
+  const { values } = resolve({ site: { layout: { mode: deployment } }, page: { layout: { mode: valid(pageMode) } } })
+  return valid((values.layout as { mode?: unknown } | undefined)?.mode) ?? 'scroll'
 }
 
 export function getActiveSection(page: string): string | undefined {

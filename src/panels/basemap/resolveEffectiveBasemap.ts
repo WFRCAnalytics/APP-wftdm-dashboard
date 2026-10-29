@@ -11,7 +11,9 @@
 // type this file used to export is deleted along with it; its only
 // consumers were this function's own removed parameter and
 // resolveEffectiveBasemap.test.ts's call sites.
+import { resolveLevels } from '@/config'
 import { APP_DEFAULT } from '@/panels/basemap/registry'
+import { getSiteBasemapDefault } from '@/state/siteSettings'
 import type { BasemapPresetName, BasemapSelection, EffectiveBasemap } from '@/panels/basemap/types'
 
 /**
@@ -34,20 +36,25 @@ export function resolveEffectiveBasemap(
   panelBasemap: BasemapSelection | undefined,
   tabDefaultBasemap: BasemapSelection | undefined,
   globalBasemap?: BasemapPresetName,
+  siteDefault: BasemapSelection | undefined = getSiteBasemapDefault(),
 ): EffectiveBasemap {
-  if (isSet(panelBasemap)) {
-    return { selection: panelBasemap, source: 'panel' }
-  }
-  if (isSet(tabDefaultBasemap)) {
-    return { selection: tabDefaultBasemap, source: 'tab' }
-  }
-  if (isSet(globalBasemap)) {
-    return { selection: globalBasemap, source: 'global' }
-  }
-  return {
-    selection: APP_DEFAULT,
-    source: 'app-default',
-  }
+  // The cascade (src/config/resolve.ts) picks the most specific level that is set. Each level carries its own name, and the
+  // original selection is read back from it, because a composition object must never be merged key by key.
+  const levels: { name: EffectiveBasemap['source']; value: BasemapSelection | undefined }[] = [
+    { name: 'global', value: globalBasemap },
+    { name: 'tab', value: tabDefaultBasemap },
+    { name: 'panel', value: panelBasemap },
+  ]
+  const site = isSet(siteDefault) ? siteDefault : undefined
+  const winner = resolveLevels([
+    { name: 'app-default', values: { basemap: { default: 'app-default' } } },
+    ...(site ? [{ name: 'site', values: { basemap: { default: 'site' } } }] : []),
+    ...levels.filter((l) => isSet(l.value)).map((l) => ({ name: l.name, values: { basemap: { default: l.name } } })),
+  ]).values as { basemap: { default: string } }
+  const name = winner.basemap.default
+  if (name === 'app-default') return { selection: APP_DEFAULT, source: 'app-default' }
+  if (name === 'site') return { selection: site as BasemapSelection, source: 'global' }
+  return { selection: levels.find((l) => l.name === name)!.value as BasemapSelection, source: name as EffectiveBasemap['source'] }
 }
 
 function isSet(v: BasemapSelection | undefined): v is BasemapSelection {

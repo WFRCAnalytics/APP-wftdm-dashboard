@@ -75,11 +75,11 @@
 
 **Independent Test**: site layout `tabs`, one page `scroll`: that page scrolls, the rest tab; a panel's Explore list overrides or concatenates by its declared rule.
 
-- [ ] T027 [US3] Adapt the existing page and panel spellings into schema paths in one place (`src/config/levels.ts`: `header.layout_mode`→`layout.mode`, tab or panel `default_basemap`→`basemap.default`, panel Explore option keys→`explore.*`) with a unit test in `tests/unit/configLevels.test.ts`
-- [ ] T028 [US3] Resolve the page layout mode through `resolve()` in `src/state/layoutState.ts` (replacing its hand-written site/page precedence), keeping the viewer override above the cascade
-- [ ] T029 [P] [US3] Resolve the default basemap through `resolve()` in `src/panels/basemap/loadBasemapStyle.ts` / `src/panels/basemap/registry.ts` (replacing the panel > tab > app chain), same precedence as today
-- [ ] T030 [US3] Resolve the Explore options in `src/explore/options.ts`: site and page `explore` defaults under the panel's own keys using each key's declared list rule; wrong values still reported under the panel title
-- [ ] T031 [US3] Playwright cases in `tests/integration/siteConfig.spec.ts` (or `layoutTabs.spec.ts`): page layout beats site layout; an Explore `charts.allow` set at site is replaced by the panel's, a `tables.exclude` is concatenated
+- [X] T027 [US3] Adapt the existing page and panel spellings into schema paths in one place (`src/config/levels.ts`: `header.layout_mode`→`layout.mode`, tab or panel `default_basemap`→`basemap.default`, panel Explore option keys→`explore.*`) with a unit test in `tests/unit/configLevels.test.ts`
+- [X] T028 [US3] Resolve the page layout mode through `resolve()` in `src/state/layoutState.ts` (replacing its hand-written site/page precedence), keeping the viewer override above the cascade
+- [X] T029 [P] [US3] Resolve the default basemap through `resolve()` in `src/panels/basemap/loadBasemapStyle.ts` / `src/panels/basemap/registry.ts` (replacing the panel > tab > app chain), same precedence as today
+- [X] T030 [US3] Resolve the Explore options in `src/explore/options.ts`: site and page `explore` defaults under the panel's own keys using each key's declared list rule; wrong values still reported under the panel title
+- [X] T031 [US3] Playwright cases in `tests/integration/siteConfig.spec.ts` (or `layoutTabs.spec.ts`): page layout beats site layout; an Explore `charts.allow` set at site is replaced by the panel's, a `tables.exclude` is concatenated
 
 **Checkpoint**: the cascade is live for the three keys that cascade today.
 

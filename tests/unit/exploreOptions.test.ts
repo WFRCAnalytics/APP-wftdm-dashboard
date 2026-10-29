@@ -145,3 +145,38 @@ describe('labels on a drawn chart', () => {
   })
   it('returns the same chart when there are no labels', () => expect(relabel(built, {})).toBe(built))
 })
+
+describe('site defaults under the panel (cascade)', () => {
+  const site = {
+    explore: {
+      limits: { csv_rows: 500, page_size: 25 },
+      features: { sql_tab: false },
+      charts: { allow: ['bar', 'line'] },
+      tables: { include: ['trips_*'], exclude: ['raw_*'] },
+    },
+  }
+
+  it('applies the site defaults when the panel sets nothing', () => {
+    const o = resolveExploreOptions({ type: 'explore-builder' }, site)
+    expect(o.limits.csvRows).toBe(500)
+    expect(o.limits.pageSize).toBe(25)
+    expect(o.features.sqlTab).toBe(false)
+    expect(o.charts.allow).toEqual(['bar', 'line'])
+    expect(o.warnings).toEqual([])
+  })
+
+  it('merges maps per key, replaces the chart list and concatenates the exclude list', () => {
+    const o = resolveExploreOptions({ limits: { csv_rows: 900 }, charts: { allow: ['pie'] }, tables: { exclude: ['tmp_*'] } }, site)
+    expect(o.limits.csvRows).toBe(900)
+    expect(o.limits.pageSize).toBe(25)
+    expect(o.charts.allow).toEqual(['pie'])
+    expect(o.tables.include).toEqual(['trips_*'])
+    expect(o.tables.exclude).toEqual(['raw_*', 'tmp_*'])
+  })
+
+  it('still reports a wrong panel value and keeps checking keys the schema does not cascade', () => {
+    const o = resolveExploreOptions({ limits: { csv_rows: 'many' }, charts: { default: 'nope' } }, site)
+    expect(o.warnings.join(' ')).toMatch(/limits\.csv_rows/)
+    expect(o.warnings.join(' ')).toMatch(/charts\.default/)
+  })
+})
