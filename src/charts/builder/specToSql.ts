@@ -57,7 +57,8 @@ function resetAgg(spec: ChartSpec, ch: Channel): ChartSpec {
 }
 
 export function chartQuery(spec: ChartSpec, relSql: string, roleOf: (field: string) => Role = () => '', caps: Partial<ChartCaps> = {}): ChartQuery {
-  const { rowCap, scatterSample, histogramBins } = { ...DEFAULT_CAPS, ...caps }
+  const caps0 = { ...DEFAULT_CAPS, ...caps }
+  const { rowCap, scatterSample } = caps0
   const rel = `(\n${relSql.replace(/[;\s]+$/, '')}\n) AS r`
   const where = whereClause(spec)
   const ser = seriesFields(spec), fac = facetFields(spec)
@@ -115,6 +116,7 @@ export function chartQuery(spec: ChartSpec, relSql: string, roleOf: (field: stri
   }
   if (mark === 'histogram') {
     const x = q(spec.enc.x!.f)
+    const histogramBins = spec.bins > 0 ? spec.bins : caps0.histogramBins
     const dims = uniq([...ser, ...fac])
     const dsel = dims.map(q)
     const w = `(CASE WHEN mm.hi = mm.lo THEN 1.0 ELSE (mm.hi - mm.lo) / ${histogramBins} END)`
@@ -122,7 +124,7 @@ export function chartQuery(spec: ChartSpec, relSql: string, roleOf: (field: stri
       `WITH r0 AS (SELECT CAST(${x} AS DOUBLE) AS v${dsel.length ? `, ${dsel.join(', ')}` : ''}\nFROM ${rel}\n${where}),\n` +
       `mm AS (SELECT min(v) AS lo, max(v) AS hi FROM r0)\n` +
       `SELECT mm.lo + (least(${histogramBins - 1}, CAST(floor((r0.v - mm.lo) / ${w}) AS INTEGER)) + 0.5) * ${w} AS ${x}, ` +
-      `count(*) AS __n, any_value(mm.lo) AS __lo, any_value(mm.hi) AS __hi${dsel.length ? `, ${dsel.map((d) => `r0.${d}`).join(', ')}` : ''}\n` +
+      `count(*) AS __n, ${histogramBins} AS __nb, any_value(mm.lo) AS __lo, any_value(mm.hi) AS __hi${dsel.length ? `, ${dsel.map((d) => `r0.${d}`).join(', ')}` : ''}\n` +
       `FROM r0, mm\nGROUP BY 1${dsel.length ? `, ${dsel.map((d) => `r0.${d}`).join(', ')}` : ''}\n${cap}`
     return { mode: 'histogram', sql, spec }
   }

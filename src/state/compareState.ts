@@ -2,7 +2,13 @@
 // pub/sub, like every other store here: nothing is persisted. The compare SET itself stays in appState (each run's
 // `active` flag); this store holds the rest. Tiles never read it directly, they read the ViewContext that
 // services/viewContext.ts resolves from it.
+import { toast } from 'sonner'
+
 import * as appState from './appState.ts'
+
+/** A warning shows when more scenarios than this are on; turning on more than the hard cap is refused (WebGL allows ~16 maps). */
+export const SOFT_ACTIVE_GROUPS = 8
+export const MAX_ACTIVE_GROUPS = 16
 
 export type DisplayMode = 'val' | 'abs' | 'pct'
 export type ReferenceSpec =
@@ -101,6 +107,22 @@ export function focusScenarioGroup(scenarioGroup: string): void {
 /** Adds or removes a scenario group from the compare set. Every run of it (all model years) follows, so the choice
  * survives a year change. */
 export function setScenarioGroupActive(scenarioGroup: string, active: boolean): void {
+  if (active) {
+    const groups = new Set<string>()
+    let already = false
+    for (const run of appState.list()) {
+      const g = run.scenarioGroup ?? run.name
+      if (run.active) groups.add(g)
+      if (g === scenarioGroup && run.active) already = true
+    }
+    if (!already && groups.size >= MAX_ACTIVE_GROUPS) {
+      toast.error(`Up to ${MAX_ACTIVE_GROUPS} scenarios can be on at once`, { id: 'scenario-hard-cap', description: 'Turn one off to add another. Side-by-side maps use one WebGL view per scenario, and browsers allow about 16.' })
+      return
+    }
+    if (!already && groups.size + 1 > SOFT_ACTIVE_GROUPS) {
+      toast.warning(`${groups.size + 1} scenarios are on`, { id: 'scenario-soft-cap', description: `Above ${SOFT_ACTIVE_GROUPS}, charts get crowded and maps may slow down.` })
+    }
+  }
   for (const run of appState.list()) {
     if ((run.scenarioGroup ?? run.name) === scenarioGroup) appState.setActive(run.name, active)
   }

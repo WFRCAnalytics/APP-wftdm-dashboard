@@ -33,6 +33,14 @@ function P({ children }: { children: ReactNode }) {
   return <p className="mb-2.5 max-w-[72ch]">{children}</p>
 }
 
+function ExtLink({ href, children }: { href: string; children: ReactNode }) {
+  return (
+    <a href={href} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">
+      {children}
+    </a>
+  )
+}
+
 export function DocumentationContent() {
   return (
     <div>
@@ -102,6 +110,25 @@ export function DocumentationContent() {
       <P>
         The charts read post-processed Parquet summaries published with each scenario. Observed values come from the survey
         data the deployment publishes alongside them.
+      </P>
+
+      <GroupHeading>Source code and ownership</GroupHeading>
+      <P>
+        The source code is open and lives in the <ExtLink href="https://github.com/WFRCAnalytics/APP-wftdm-dashboard">GitHub repository</ExtLink>.
+        Although it is open source, this work was developed in part during hours paid for by the Wasatch Front Regional
+        Council (WFRC), so ownership of it belongs to WFRC.
+      </P>
+
+      <GroupHeading>Inspiration and credits</GroupHeading>
+      <P>
+        The design drew on <ExtLink href="https://simwrapper.github.io">SimWrapper</ExtLink> for viewing transport model
+        output in the browser, and on <ExtLink href="https://github.com/gropaul/dash">Dash</ExtLink> by Paul Gross (gropaul),
+        a DuckDB user interface, for its settings patterns.
+      </P>
+      <P>
+        Major third-party libraries: <ExtLink href="https://maplibre.org">MapLibre GL</ExtLink> for maps,{' '}
+        <ExtLink href="https://observablehq.com/plot/">Observable Plot</ExtLink> for charts and{' '}
+        <ExtLink href="https://duckdb.org">DuckDB</ExtLink> (running in your browser through WebAssembly) for every query.
       </P>
     </div>
   )

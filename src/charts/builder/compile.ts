@@ -584,7 +584,7 @@ export function buildChart(input: BuildInput): ChartModel {
       refLine(pn, bx, ax.sy)
     }
   } else if (mark === 'histogram') {
-    const xf = enc.x!.f, nb = 12
+    const xf = enc.x!.f, nb = Number(rows[0]?.__nb) || spec.bins || 12
     // rows from DuckDB arrive already binned: x is the bin centre, __n the count, __lo/__hi the true range
     const weighted = rows[0]?.__n !== undefined
     let lo = Infinity, hi = -Infinity
@@ -600,14 +600,26 @@ export function buildChart(input: BuildInput): ChartModel {
       const bx = frame(), ax = yAx(pn, bx, 0, ymax), nx = xNum(pn, bx, lo, hi)
       pn.B!.forEach((b, i) => {
         let acc = 0
+        const total = series.reduce((a, s) => a + (b[s.key] ?? 0), 0)
+        // every segment of a bin lists all the series in that bin, the hovered one first, so colour-split bins are readable
+        const lines = (s: (typeof series)[number]): [string, string][] => {
+          const mine: [string, string] = [s.label || 'rows', fmtExact(b[s.key] ?? 0)]
+          if (series.length < 2) return [mine]
+          return [mine, ...series.filter((o) => o !== s && (b[o.key] ?? 0) > 0).map((o): [string, string] => [o.label || 'rows', fmtExact(b[o.key])]), ['bin total', fmtExact(total)]]
+        }
         for (const s of series) {
           const v = b[s.key] ?? 0
           if (!v) continue
           const x0 = nx.sx(lo + i * bw0), x1 = nx.sx(lo + (i + 1) * bw0)
-          rect(pn, x0 + 1, ax.sy(acc + v), x1 - x0 - 2, ax.sy(acc) - ax.sy(acc + v), s, tip(`${fmtCompact(lo + i * bw0)} to ${fmtCompact(lo + (i + 1) * bw0)}`, [[s.label || 'rows', fmtExact(v)]]), 3)
+          rect(pn, x0 + 1, ax.sy(acc + v), x1 - x0 - 2, ax.sy(acc) - ax.sy(acc + v), s, tip(`${fmtCompact(lo + i * bw0)} to ${fmtCompact(lo + (i + 1) * bw0)}`, lines(s)), 3)
           acc += v
         }
       })
+      const rv = Number(spec.ref)
+      if (spec.ref !== '' && !Number.isNaN(rv) && rv >= lo && rv <= hi) {
+        ln(pn, nx.sx(rv), bx.y0, nx.sx(rv), bx.y1, T.ink, 1.5, '5 4')
+        tx(pn, nx.sx(rv) + 4, bx.y0 + 11, `Reference ${fmtCompact(rv)}`, 'start', T.fs, '', T.ink)
+      }
     }
   } else if (mark === 'box') {
     const xf = enc.x!.f, yf = enc.y!.f, cats = uniqSorted(rows, xf)
