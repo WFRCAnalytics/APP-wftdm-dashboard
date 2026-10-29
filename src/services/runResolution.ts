@@ -106,7 +106,10 @@ export function bootCompareState(config: {
   compareScenarios?: string[]
   compareFocus?: string
   compareReference?: string
+  scenarioWarnAt?: number
+  scenarioMaxActive?: number
 }): void {
+  compareState.setScenarioLimits(config.scenarioWarnAt, config.scenarioMaxActive)
   const runs = appState.listByDisplayOrder().map(runInfoOf)
   const deployment = deriveDeployment(runs, config)
   const independents = independentScenarioGroups(runs)
@@ -127,6 +130,7 @@ export function bootCompareState(config: {
   }
   // calibration rounds join the comparison only when a viewer picks them
   for (const alt of scenarioGroupsOf(runs)) if (runs.find((r) => r.scenarioGroup === alt)?.kind === 'round') compareState.setScenarioGroupActive(alt, false)
+  compareState.enforceActiveCap([focus, ...(config.compareReference && known.has(config.compareReference) ? [config.compareReference] : []), baseline, ...independents])
   const reference = config.compareReference
   if (reference === 'observed') compareState.setReference({ kind: 'observed' })
   else if (reference && known.has(reference)) compareState.setReference({ kind: 'scenario', name: reference })

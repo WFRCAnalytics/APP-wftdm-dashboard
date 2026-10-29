@@ -35,6 +35,8 @@ A wrong value is reported (in a note on the page and in the browser console) and
 | `compare.scenarios` | list of string | — | site only | Scenario groups compared at first load (default: every loaded one). |
 | `compare.focus` | string | — | site only | The focus scenario group. |
 | `compare.reference` | string | — | site only | The reference: a scenario group id or `observed`. |
+| `scenarios.warn_at` | integer | — | site only | Scenarios on at once above which the viewer sees a warning (default 8). |
+| `scenarios.max_active` | integer | — | site only | The most scenarios that can be on at once, at startup and when a viewer turns one on (default 16). Browsers allow about 16 WebGL views, one per side-by-side map, so a larger value is accepted but reported with a warning. |
 | `layout.mode` | `scroll` | `tabs` | — | page, panel (scalars replace, maps merge per key) | How pages are shown unless a page or the viewer says otherwise. |
 | `export.footer` | boolean|string | — | page, panel (scalars replace, maps merge per key) | Line under exported images: true (source, scenarios, year, date), false (none) or your own text. |
 | `assistant.enabled` | boolean | — | site only | Turns the AI assistant (button, panel and Settings tab) on or off. |

@@ -46,6 +46,8 @@ export function toBranding(settings: Tree): DashboardBranding {
     compareScenarios: scenarios && scenarios.length > 0 ? scenarios : undefined,
     compareFocus: str(settings, 'compare.focus'),
     compareReference: str(settings, 'compare.reference'),
+    scenarioWarnAt: num(settings, 'scenarios.warn_at'),
+    scenarioMaxActive: num(settings, 'scenarios.max_active'),
     vocab: vocab(settings),
     metrics: getPath(settings, 'metrics') as DashboardBranding['metrics'],
     units: units(settings),

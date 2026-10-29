@@ -6,9 +6,22 @@ import { toast } from 'sonner'
 
 import * as appState from './appState.ts'
 
-/** A warning shows when more scenarios than this are on; turning on more than the hard cap is refused (WebGL allows ~16 maps). */
-export const SOFT_ACTIVE_GROUPS = 8
-export const MAX_ACTIVE_GROUPS = 16
+import { DEFAULT_MAX_ACTIVE, DEFAULT_WARN_AT, resolveLimits, type ScenarioLimits } from '../config/scenarioLimits.ts'
+
+let limits: ScenarioLimits = { warnAt: DEFAULT_WARN_AT, maxActive: DEFAULT_MAX_ACTIVE }
+/** Set once at boot from dashboard-config.yaml (`scenarios.warn_at`, `scenarios.max_active`). */
+export function setScenarioLimits(warnAt: number | undefined, maxActive: number | undefined): void {
+  limits = resolveLimits(warnAt, maxActive)
+}
+export function getScenarioLimits(): ScenarioLimits {
+  return limits
+}
+
+/** Observed data and hidden runs are not compared scenarios, so they do not count toward the limits. */
+const counts = (s: appState.Scenario): boolean => {
+  const kind = s.kind ?? (s.pinned ? 'observed' : 'scenario')
+  return kind !== 'observed' && kind !== 'hidden'
+}
 
 export type DisplayMode = 'val' | 'abs' | 'pct'
 export type ReferenceSpec =
@@ -112,15 +125,15 @@ export function setScenarioGroupActive(scenarioGroup: string, active: boolean): 
     let already = false
     for (const run of appState.list()) {
       const g = run.scenarioGroup ?? run.name
-      if (run.active) groups.add(g)
+      if (run.active && counts(run)) groups.add(g)
       if (g === scenarioGroup && run.active) already = true
     }
-    if (!already && groups.size >= MAX_ACTIVE_GROUPS) {
-      toast.error(`Up to ${MAX_ACTIVE_GROUPS} scenarios can be on at once`, { id: 'scenario-hard-cap', description: 'Turn one off to add another. Side-by-side maps use one WebGL view per scenario, and browsers allow about 16.' })
+    if (!already && groups.size >= limits.maxActive) {
+      toast.error(`Up to ${limits.maxActive} scenarios can be on at once`, { id: 'scenario-hard-cap', description: 'Turn one off to add another. Side-by-side maps use one WebGL view per scenario, and browsers allow about 16.' })
       return
     }
-    if (!already && groups.size + 1 > SOFT_ACTIVE_GROUPS) {
-      toast.warning(`${groups.size + 1} scenarios are on`, { id: 'scenario-soft-cap', description: `Above ${SOFT_ACTIVE_GROUPS}, charts get crowded and maps may slow down.` })
+    if (!already && groups.size + 1 > limits.warnAt) {
+      toast.warning(`${groups.size + 1} scenarios are on`, { id: 'scenario-soft-cap', description: `Above ${limits.warnAt}, charts get crowded and maps may slow down.` })
     }
   }
   for (const run of appState.list()) {
@@ -132,4 +145,24 @@ export function setScenarioGroupActive(scenarioGroup: string, active: boolean): 
 export function toggleCompareMember(scenarioGroup: string): void {
   const on = appState.list().some((s) => (s.scenarioGroup ?? s.name) === scenarioGroup && s.active)
   setScenarioGroupActive(scenarioGroup, !on)
+}
+
+/**
+ * Startup cap: when more scenario groups are on than the maximum allows, keeps the ones in `priority` order (focus and reference
+ * first) and turns the rest off. Returns how many were turned off.
+ */
+export function enforceActiveCap(priority: readonly string[]): number {
+  const on = new Set<string>()
+  for (const run of appState.list()) if (run.active && counts(run)) on.add(run.scenarioGroup ?? run.name)
+  if (on.size <= limits.maxActive) return 0
+  const keep = new Set<string>()
+  for (const g of [...priority, ...on]) if (on.has(g) && keep.size < limits.maxActive) keep.add(g)
+  let off = 0
+  for (const g of on) {
+    if (keep.has(g)) continue
+    for (const run of appState.list()) if ((run.scenarioGroup ?? run.name) === g) appState.setActive(run.name, false)
+    off++
+  }
+  toast.info(`${off} scenario${off === 1 ? '' : 's'} started off`, { id: 'scenario-startup-cap', description: `This dashboard allows ${limits.maxActive} on at once. Turn others on in the scenario picker.` })
+  return off
 }

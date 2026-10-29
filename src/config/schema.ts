@@ -4,6 +4,7 @@
 //
 // This folder is PURE: relative imports only, no `import.meta.env`, no `@/` alias, no DOM. Node (the Vite plugin) loads it too.
 import { addendumCheck, cleanProviders, limitCheck } from './assistant'
+import { cleanMaxActive, cleanWarnAt } from './scenarioLimits'
 import { EXPLORE_LIMITS, limitClean, limitText } from './exploreLimits'
 import { NETWORK_FONT_MODES } from './network'
 import { cleanSettingsTabs, isRelativePath, isWebAddress } from './viewer'
@@ -105,6 +106,8 @@ export const SETTINGS: readonly SettingDef[] = [
   { path: 'compare.scenarios', type: 'list', of: 'string', cascade: site, description: 'Scenario groups compared at first load (default: every loaded one).' },
   { path: 'compare.focus', type: 'string', cascade: site, description: 'The focus scenario group.' },
   { path: 'compare.reference', type: 'string', cascade: site, description: 'The reference: a scenario group id or `observed`.' },
+  { path: 'scenarios.warn_at', type: 'integer', cascade: site, clean: cleanWarnAt, description: 'Scenarios on at once above which the viewer sees a warning (default 8).' },
+  { path: 'scenarios.max_active', type: 'integer', cascade: site, clean: cleanMaxActive, description: 'The most scenarios that can be on at once, at startup and when a viewer turns one on (default 16). Browsers allow about 16 WebGL views, one per side-by-side map, so a larger value is accepted but reported with a warning.' },
   { path: 'layout.mode', type: 'enum', values: ['scroll', 'tabs'], cascade: true, description: 'How pages are shown unless a page or the viewer says otherwise.' },
   { path: 'export.footer', type: 'boolean|string', cascade: true, description: 'Line under exported images: true (source, scenarios, year, date), false (none) or your own text.' },
   { path: 'assistant.enabled', type: 'boolean', cascade: site, description: 'Turns the AI assistant (button, panel and Settings tab) on or off.' },

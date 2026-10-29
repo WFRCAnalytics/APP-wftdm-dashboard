@@ -173,6 +173,9 @@ export interface DashboardBranding {
   /** `compare.focus` / `compare.reference`: the focus scenario group and the reference (a scenario group id or `observed`). */
   compareFocus?: string
   compareReference?: string
+  /** `scenarios.warn_at` / `scenarios.max_active`: the soft and hard limits on scenarios on at once. */
+  scenarioWarnAt?: number
+  scenarioMaxActive?: number
   /** `vocab`: this deployment's category labels and the raw data values that map onto them (charts/vocab.ts). */
   vocab?: import('../charts/vocab.ts').VocabConfig
   /** `metrics`: per-metric label/unit/decimals/scale overrides for the scorecard, ranking and trend charts. */

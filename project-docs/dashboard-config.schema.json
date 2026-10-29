@@ -188,6 +188,20 @@
         }
       }
     },
+    "scenarios": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "warn_at": {
+          "type": "integer",
+          "description": "Scenarios on at once above which the viewer sees a warning (default 8)."
+        },
+        "max_active": {
+          "type": "integer",
+          "description": "The most scenarios that can be on at once, at startup and when a viewer turns one on (default 16). Browsers allow about 16 WebGL views, one per side-by-side map, so a larger value is accepted but reported with a warning."
+        }
+      }
+    },
     "layout": {
       "type": "object",
       "additionalProperties": false,
