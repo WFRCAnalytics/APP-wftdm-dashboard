@@ -91,7 +91,7 @@ export function FloatingNav({ tabs, activeIndex, onTabChange, branding, mobile =
           if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setEngaged(false)
         }}
       >
-        {/* Branding, all deployer-configured (dashboard-config/index.json). Collapsed shows the abbreviated mark (markUrl, or
+        {/* Branding, all deployer-configured (dashboard-config.yaml: `logo`, `mark`). Collapsed shows the abbreviated mark (markUrl, or
             the generic mark when none is set); expanded replaces it with the full logo (logoUrl) or, with no logo, the title
             text. The mark never sits beside either. With neither a logo nor a title there is nothing to swap in, so the mark
             stays. */}

@@ -2,6 +2,8 @@
 // validation, table globs) plus the one module-level slot the panel fills, so non-React code (undo depth, page size) can read it.
 // Every key is optional; an unset key behaves exactly as the builder always did. Contract: specs/065-chart-builder/contracts/deployer-options.md.
 import { MARKS, type Mark } from '@/charts/builder/spec'
+import { exploreSettings, isTree, resolve, type Tree } from '@/config'
+import { getSiteSettings } from '@/state/siteSettings'
 
 /** `pageSize` null means the Data tab fits as many rows as the tile is tall; a number fixes it. */
 export interface ExploreLimits { csvRows: number; pageSize: number | null; undoSteps: number; maxJoins: number }
@@ -40,9 +42,30 @@ const strList = (v: unknown): string[] | null => (Array.isArray(v) && v.every((x
 const LIMIT_KEYS: [string, keyof ExploreLimits][] = [['csv_rows', 'csvRows'], ['page_size', 'pageSize'], ['undo_steps', 'undoSteps'], ['max_joins', 'maxJoins']]
 const FEATURE_KEYS: [string, keyof ExploreFeatures][] = [['sql_tab', 'sqlTab'], ['csv', 'csv'], ['copy_sql', 'copySql'], ['import_export', 'importExport'], ['my_tables', 'myTables'], ['undo', 'undo']]
 
+/**
+ * The panel's own keys over the site's `explore` defaults, by each key's cascade rule (src/config/resolve.ts): maps merge per key,
+ * the chart and include lists are replaced by the panel's, the exclude list and presets are added to. Keys the schema does not
+ * cascade (such as `charts.default`) and unknown keys stay as the panel wrote them, so they are still checked below.
+ */
+function withSiteDefaults(panel: Record<string, unknown>, site: Tree): Record<string, unknown> {
+  if (!isTree(site.explore)) return panel
+  const { explore } = resolve({ site, panel: exploreSettings(panel) }).values
+  if (!isTree(explore)) return panel
+  const out: Record<string, unknown> = { ...panel }
+  const group = (key: 'charts' | 'tables') => (isTree(explore[key]) ? { ...(isObj(panel[key]) ? panel[key] : {}), ...(explore[key] as Tree) } : panel[key])
+  for (const k of ['limits', 'features', 'columns', 'presets'] as const) if (explore[k] !== undefined) out[k] = explore[k]
+  const charts = group('charts')
+  if (charts !== undefined) out.charts = charts
+  const tables = group('tables')
+  if (tables !== undefined) out.tables = tables
+  return out
+}
+
 /** Reads the panel's YAML keys. Nothing here throws: a wrong value is reported in `warnings` and the default stays. */
-export function resolveExploreOptions(raw: unknown): ExploreOptions {
+export function resolveExploreOptions(raw: unknown, site: Tree = getSiteSettings()): ExploreOptions {
   const o = defaultOptions()
+  if (!isObj(raw)) return o
+  raw = withSiteDefaults(raw, site)
   if (!isObj(raw)) return o
   const warn = (m: string) => o.warnings.push(m)
 

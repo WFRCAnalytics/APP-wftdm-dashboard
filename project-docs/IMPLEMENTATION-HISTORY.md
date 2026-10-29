@@ -6553,3 +6553,24 @@ and the contracts are in the spec folder; the non-obvious ones:
   one connection, so a long assistant query queues behind panel queries.
 - Tests: Vitest `tests/unit/ai*.test.ts` (guard, providers, loop, catalogue); Playwright `tests/integration/aiChat.spec.ts`
   (project `real`, provider mocked with `page.route`).
+
+## 066 Site configuration in `dashboard-config.yaml` (`specs/066-site-config-yaml/`)
+
+- **What moved**: every site setting of `dashboard-config/index.json` now lives in `dashboard-config.yaml` (snake_case, nested:
+  `logo`/`mark` `{light, dark}`, `colors`, `years` `{list, base, default}`, `basemap.protomaps`, `assistant.enabled`, `pages` instead of
+  `dashboards`). No compatibility layer (sole user); a leftover `index.json` of settings gets a "moved" note. `scenarios/index.json` is unchanged.
+- **One table**: `src/config/schema.ts` (path, type, default, cascade rule, description). `validate.ts`, `resolve.ts`, `toBranding.ts`,
+  `reference.ts` (the generated `project-docs/CONFIG-REFERENCE.md`, `npm run docs:config`) and the boot-skeleton plugin all read it.
+  `src/config/` is pure (relative imports, no `import.meta.env`, no DOM) so Node loads it too.
+- **Two roots**: the deployment's `dashboard-config.yaml` wins per setting over the demo root's (`overlay`), page lists concatenate,
+  deployment first. This stays until the demo build flag (CONFIGURATION.md Phase A1) is decided.
+- **Reporting**: `state/configProblems.ts` + `layout/configNotice.tsx` (one dismissible note; also in the console). Reported: unknown key, wrong type,
+  invalid colour or URL, site-only key on a page, duplicate page or slug, missing or unparsable page, invalid YAML (with line), missing file,
+  moved `index.json`. The affected key keeps its default and the app always loads.
+- **Cascade** (site -> page -> panel): `layout.mode`, `basemap.default`, `export.footer`, `explore.*` only. `config/levels.ts` maps the existing
+  spellings (`header.layout_mode`, `default_basemap`, a panel's Explore keys). Found on the way: `header.layout_mode` was typed but never parsed, so a
+  page layout never took effect; it is parsed now.
+- **Gotchas**: the dev server answers an unknown path with its index page (treated as "file absent"); the DuckDB worker resolves relative data URLs
+  against `assets/` (fixed in `registerFileURL`); a page file's own top-level `layout:` (tile rows) is not the `layout.mode` setting.
+- Tests: `tests/unit/config*.test.ts`, `noLegacyKeys`, `exploreOptions` (cascade); Playwright `siteConfig.spec.ts` (project `chromium`) and
+  `layoutSiteCascade.spec.ts` (project `real`).

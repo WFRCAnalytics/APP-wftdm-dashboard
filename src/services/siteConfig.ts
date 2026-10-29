@@ -3,6 +3,7 @@
 import { load } from 'js-yaml'
 
 import { getPath, overlay, toBranding, validate, type ConfigProblem, type Tree } from '@/config'
+import { addProblems } from '@/state/configProblems'
 import type { DashboardBranding } from '@/services/yamlLoader'
 
 export const SITE_CONFIG_FILE = 'dashboard-config.yaml'
@@ -42,9 +43,28 @@ export async function loadSiteRoot(baseUrl: string): Promise<SiteRoot> {
   return { baseUrl, found: true, settings, pages: Array.isArray(pages) ? (pages as string[]) : [], problems }
 }
 
+/** The site-level keys the old `index.json` carried; finding one there means a deployment that has not moved. */
+const LEGACY_KEYS = ['dashboards', 'title', 'logoUrl', 'logoUrlDark', 'markUrl', 'markUrlDark', 'scenarioPalette', 'primaryColor', 'protomapsPmtilesUrl', 'protomapsApiKey', 'vocab', 'metrics', 'units', 'years', 'compare', 'layout', 'export', 'assistant']
+
+/** Looks for a leftover `index.json` of settings in a root that has no dashboard-config.yaml. Only runs on that path. */
+async function probeLegacy(baseUrl: string): Promise<ConfigProblem | undefined> {
+  try {
+    const res = await fetch(`${baseUrl}index.json`)
+    if (!res.ok || (res.headers.get('content-type') ?? '').includes('text/html')) return undefined
+    const json: unknown = await res.json()
+    const found = json && typeof json === 'object' && !Array.isArray(json) ? LEGACY_KEYS.filter((k) => k in (json as object)) : []
+    if (found.length === 0) return undefined
+    return { file: `${baseUrl}index.json`, path: '', kind: 'moved', message: `site settings (${found.join(', ')}) now live in ${SITE_CONFIG_FILE}; this file is no longer read` }
+  } catch {
+    return undefined
+  }
+}
+
 export interface Site {
   /** The settings in the shape the app reads. */
   branding: DashboardBranding
+  /** The merged site-level settings tree, the broadest level of the cascade. */
+  settings: Tree
   /** Page files to load, per root, in display order (the deployment's first, then the demo's). */
   pageSources: { baseUrl: string; pages: string[] }[]
   problems: ConfigProblem[]
@@ -60,12 +80,16 @@ export async function loadSite(
 ): Promise<Site> {
   const [primary, demo] = await Promise.all([loadSiteRoot(deploymentUrl), loadSiteRoot(demoUrl)])
   const problems = [...primary.problems, ...demo.problems]
-  if (!primary.found && !demo.found) {
-    problems.push({ file: SITE_CONFIG_FILE, path: '', kind: 'missing_file', message: 'no site configuration was found; showing defaults' })
+  if (!primary.found) {
+    const legacy = await probeLegacy(primary.baseUrl)
+    if (legacy) problems.push(legacy)
+    else if (!demo.found) problems.push({ file: SITE_CONFIG_FILE, path: '', kind: 'missing_file', message: 'no site configuration was found; showing defaults' })
   }
-  for (const p of problems) console.warn(`dashboard-config: ${p.file}${p.path ? ` › ${p.path}` : ''}: ${p.message}${p.line ? ` (line ${p.line})` : ''}`)
+  addProblems(problems)
+  const settings = overlay(demo.settings, primary.settings)
   return {
-    branding: toBranding(overlay(demo.settings, primary.settings)),
+    branding: toBranding(settings),
+    settings,
     pageSources: [primary, demo].map((r) => ({ baseUrl: r.baseUrl, pages: r.pages })),
     problems,
   }

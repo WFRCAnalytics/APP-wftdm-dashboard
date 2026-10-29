@@ -59,11 +59,11 @@
 
 **Independent Test**: load a config with an unknown key, a wrong type and a site-only key on a page; the app renders and the three problems are listed.
 
-- [ ] T022 [US2] Add `src/state/configProblems.ts` (plain module state, subscribe and get, no Web Storage) and have `loadSite()` push all problems into it and `console.warn` each as `file › path: message`
-- [ ] T023 [US2] Implement `src/layout/configNotice.tsx`: one dismissible note listing problems (file, path, message), nothing when empty; mount it once in `src/layout/shell.tsx`; reuse the note styling the Explore options report uses
-- [ ] T024 [US2] Validate each page file's own keys at load (site-only key set on a page or panel, duplicate slugs from `assignSlugs` in `src/state/routeState.ts`, a listed page file that is missing or fails to parse) and add those problems in `src/services/yamlLoader.ts#loadDashboards`, skipping only the bad page
-- [ ] T025 [US2] When `dashboard-config.yaml` is missing, probe the deployment root's `index.json` once in `src/services/siteConfig.ts` and word the problem `moved` (old keys found) or `missing_file`; no probe on the success path
-- [ ] T026 [P] [US2] Playwright spec cases in `tests/integration/siteConfig.spec.ts`: unknown key, wrong type, site-only key on a page, invalid YAML, missing file with and without a legacy `index.json`; the app loads in all, defaults hold, the note lists exactly the expected paths, a clean config shows no note
+- [X] T022 [US2] Add `src/state/configProblems.ts` (plain module state, subscribe and get, no Web Storage) and have `loadSite()` push all problems into it and `console.warn` each as `file › path: message`
+- [X] T023 [US2] Implement `src/layout/configNotice.tsx`: one dismissible note listing problems (file, path, message), nothing when empty; mount it once in `src/layout/shell.tsx`; reuse the note styling the Explore options report uses
+- [X] T024 [US2] Validate each page file's own keys at load (site-only key set on a page or panel, duplicate slugs from `assignSlugs` in `src/state/routeState.ts`, a listed page file that is missing or fails to parse) and add those problems in `src/services/yamlLoader.ts#loadDashboards`, skipping only the bad page
+- [X] T025 [US2] When `dashboard-config.yaml` is missing, probe the deployment root's `index.json` once in `src/services/siteConfig.ts` and word the problem `moved` (old keys found) or `missing_file`; no probe on the success path
+- [X] T026 [P] [US2] Playwright spec cases in `tests/integration/siteConfig.spec.ts`: unknown key, wrong type, site-only key on a page, invalid YAML, missing file with and without a legacy `index.json`; the app loads in all, defaults hold, the note lists exactly the expected paths, a clean config shows no note
 
 **Checkpoint**: US1 + US2 deliver a safe, observable config load.
 
@@ -75,11 +75,11 @@
 
 **Independent Test**: site layout `tabs`, one page `scroll`: that page scrolls, the rest tab; a panel's Explore list overrides or concatenates by its declared rule.
 
-- [ ] T027 [US3] Adapt the existing page and panel spellings into schema paths in one place (`src/config/levels.ts`: `header.layout_mode`→`layout.mode`, tab or panel `default_basemap`→`basemap.default`, panel Explore option keys→`explore.*`) with a unit test in `tests/unit/configLevels.test.ts`
-- [ ] T028 [US3] Resolve the page layout mode through `resolve()` in `src/state/layoutState.ts` (replacing its hand-written site/page precedence), keeping the viewer override above the cascade
-- [ ] T029 [P] [US3] Resolve the default basemap through `resolve()` in `src/panels/basemap/loadBasemapStyle.ts` / `src/panels/basemap/registry.ts` (replacing the panel > tab > app chain), same precedence as today
-- [ ] T030 [US3] Resolve the Explore options in `src/explore/options.ts`: site and page `explore` defaults under the panel's own keys using each key's declared list rule; wrong values still reported under the panel title
-- [ ] T031 [US3] Playwright cases in `tests/integration/siteConfig.spec.ts` (or `layoutTabs.spec.ts`): page layout beats site layout; an Explore `charts.allow` set at site is replaced by the panel's, a `tables.exclude` is concatenated
+- [X] T027 [US3] Adapt the existing page and panel spellings into schema paths in one place (`src/config/levels.ts`: `header.layout_mode`→`layout.mode`, tab or panel `default_basemap`→`basemap.default`, panel Explore option keys→`explore.*`) with a unit test in `tests/unit/configLevels.test.ts`
+- [X] T028 [US3] Resolve the page layout mode through `resolve()` in `src/state/layoutState.ts` (replacing its hand-written site/page precedence), keeping the viewer override above the cascade
+- [X] T029 [P] [US3] Resolve the default basemap through `resolve()` in `src/panels/basemap/loadBasemapStyle.ts` / `src/panels/basemap/registry.ts` (replacing the panel > tab > app chain), same precedence as today
+- [X] T030 [US3] Resolve the Explore options in `src/explore/options.ts`: site and page `explore` defaults under the panel's own keys using each key's declared list rule; wrong values still reported under the panel title
+- [X] T031 [US3] Playwright cases in `tests/integration/siteConfig.spec.ts` (or `layoutTabs.spec.ts`): page layout beats site layout; an Explore `charts.allow` set at site is replaced by the panel's, a `tables.exclude` is concatenated
 
 **Checkpoint**: the cascade is live for the three keys that cascade today.
 
@@ -91,10 +91,10 @@
 
 **Independent Test**: add a test-only row; it loads, validates, cascades and appears in the generated reference with no other source edit.
 
-- [ ] T032 [US4] Implement `src/config/reference.ts` (schema → Markdown table: path, type, default, cascade rule, description) and `scripts/gen-config-reference.ts` writing `project-docs/CONFIG-REFERENCE.md`; run `npm run docs:config` and commit the output
-- [ ] T033 [P] [US4] Unit test `tests/unit/configReference.test.ts`: regenerate in memory and fail when it differs from the committed `project-docs/CONFIG-REFERENCE.md`; fail when a schema path is missing from it (SC-007)
-- [ ] T034 [US4] (done early in T018: the plugin already reads `dashboard-config.yaml` through `src/config`; only its header comment and a unit check remain) Replace the hand-written parser in `scripts/viteBootSkeletonPlugin.ts` with the pure `src/config` modules (title, page count, assistant on/off); delete its duplicated `index.json` reading and update its header comment
-- [ ] T035 [P] [US4] Unit test the "one place" property in `tests/unit/configExtensible.test.ts`: build a temporary schema with one extra row and show `validate`, `resolve` and `reference` handle it without other changes (the functions take the table as a parameter, default the real one)
+- [X] T032 [US4] Implement `src/config/reference.ts` (schema → Markdown table: path, type, default, cascade rule, description) and `scripts/gen-config-reference.ts` writing `project-docs/CONFIG-REFERENCE.md`; run `npm run docs:config` and commit the output
+- [X] T033 [P] [US4] Unit test `tests/unit/configReference.test.ts`: regenerate in memory and fail when it differs from the committed `project-docs/CONFIG-REFERENCE.md`; fail when a schema path is missing from it (SC-007)
+- [X] T034 [US4] (done early in T018: the plugin already reads `dashboard-config.yaml` through `src/config`; only its header comment and a unit check remain) Replace the hand-written parser in `scripts/viteBootSkeletonPlugin.ts` with the pure `src/config` modules (title, page count, assistant on/off); delete its duplicated `index.json` reading and update its header comment
+- [X] T035 [P] [US4] Unit test the "one place" property in `tests/unit/configExtensible.test.ts`: build a temporary schema with one extra row and show `validate`, `resolve` and `reference` handle it without other changes (the functions take the table as a parameter, default the real one)
 
 **Checkpoint**: adding a key is one row plus the code that uses it.
 
@@ -106,18 +106,18 @@
 
 **Independent Test**: grep the source for the old keys; none is read; the demo behaves as before.
 
-- [ ] T036 [US5] Remove the remaining readers of the old keys (any left in `src/services/yamlLoader.ts`, `src/state/assistantAvailability.ts`, `src/state/compareState.ts`, `src/state/layoutState.ts`, `src/state/exportState.ts`, `src/layout/dashboardBrand.tsx`, `src/layout/floatingNav.tsx`, `src/charts/vocab.ts`, `src/services/runResolution.ts` comments and code that name `index.json` settings) and update their comments to point at `dashboard-config.yaml`
-- [ ] T037 [P] [US5] Add a unit test `tests/unit/noLegacyKeys.test.ts` that scans `src/` and `scripts/` for the old flat keys (`logoUrl` as a config read, `scenarioPalette`, `protomapsApiKey`, `dashboards:` index reads) outside the `toBranding` mapping and `DashboardBranding` type, failing on a hit (SC-006)
-- [ ] T038 [US5] Update `python/wftdm_dashboard/observed.py` and `python/tests/test_observed.py` only if they read `dashboard-config/index.json` (they list `observed/summary/index.json`, which stays); otherwise leave untouched and note it in the PR
-- [ ] T039 [US5] Confirm `scenarios/index.json` and `observed/summary/index.json` discovery is unchanged (`src/services/scenarioDiscovery.ts`, `src/state/appState.ts`) with the existing `scenarioAutoActivation.spec.ts`
+- [X] T036 [US5] Remove the remaining readers of the old keys (any left in `src/services/yamlLoader.ts`, `src/state/assistantAvailability.ts`, `src/state/compareState.ts`, `src/state/layoutState.ts`, `src/state/exportState.ts`, `src/layout/dashboardBrand.tsx`, `src/layout/floatingNav.tsx`, `src/charts/vocab.ts`, `src/services/runResolution.ts` comments and code that name `index.json` settings) and update their comments to point at `dashboard-config.yaml`
+- [X] T037 [P] [US5] Add a unit test `tests/unit/noLegacyKeys.test.ts` that scans `src/` and `scripts/` for the old flat keys (`logoUrl` as a config read, `scenarioPalette`, `protomapsApiKey`, `dashboards:` index reads) outside the `toBranding` mapping and `DashboardBranding` type, failing on a hit (SC-006)
+- [X] T038 [US5] Update `python/wftdm_dashboard/observed.py` and `python/tests/test_observed.py` only if they read `dashboard-config/index.json` (they list `observed/summary/index.json`, which stays); otherwise leave untouched and note it in the PR
+- [X] T039 [US5] Confirm `scenarios/index.json` and `observed/summary/index.json` discovery is unchanged (`src/services/scenarioDiscovery.ts`, `src/state/appState.ts`) with the existing `scenarioAutoActivation.spec.ts`
 
 ---
 
 ## Phase 8: Polish & cross-cutting
 
-- [ ] T040 [P] Update `project-docs/CONFIGURATION.md`: mark Phase B steps 4, 5 and 7 done, point to `CONFIG-REFERENCE.md`, record the two-root precedence note
-- [ ] T041 [P] Update `CLAUDE.md` (Config file set, the `index.json` paragraph, File structure, Do not) and the constitution references to `index.json` settings; add the new `src/config/` and `siteConfig.ts` to the file structure; record the feature in `project-docs/IMPLEMENTATION-HISTORY.md`
-- [ ] T042 [P] Update `project-docs/GRAMMAR.md` for `header.slug` and a pointer to `CONFIG-REFERENCE.md`
+- [X] T040 [P] Update `project-docs/CONFIGURATION.md`: mark Phase B steps 4, 5 and 7 done, point to `CONFIG-REFERENCE.md`, record the two-root precedence note
+- [X] T041 [P] Update `CLAUDE.md` (Config file set, the `index.json` paragraph, File structure, Do not) and the constitution references to `index.json` settings; add the new `src/config/` and `siteConfig.ts` to the file structure; record the feature in `project-docs/IMPLEMENTATION-HISTORY.md`
+- [X] T042 [P] Update `project-docs/GRAMMAR.md` for `header.slug` and a pointer to `CONFIG-REFERENCE.md`
 - [ ] T043 Run `npx tsc --noEmit`, `npx vitest run`, then the Playwright projects (`chromium`, `redesign`, `real`); compare failures with the known flakes in `CLAUDE.md` and `realDemo.spec.ts:19`/`chartMaps.spec.ts:189` (pre-existing), re-running with `--workers=1` first
 - [ ] T044 Walk `quickstart.md` by hand, including the `WFTDM_BASE=./` build still loading its config from a nested folder
 - [ ] T045 Rebuild `docs/` with `npm run build:pages` only after the user asks

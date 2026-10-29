@@ -47,11 +47,9 @@ Sync Impact Report (2.8.0, superseded above)
 - Follow-up: `CLAUDE.md`, `project-docs/GRAMMAR.md` and
   `project-docs/SPEC.md` repeat the old "exactly three" rule and the ban on
   `dashboard-config.yaml`; they are corrected in the same change. The file
-  itself is specified in `project-docs/CONFIGURATION.md` and is NOT built yet:
-  `index.json` still carries the site settings until the migration there is
-  done.
-- Deferred TODOs: build `dashboard-config.yaml` and migrate the
-  `index.json` settings (project-docs/CONFIGURATION.md, phases A to B); decide the data
+  itself is specified in `project-docs/CONFIGURATION.md` and is built (066): it holds
+  the site settings, and `index.json` no longer carries any.
+- Deferred TODOs: the rest of `dashboard-config.yaml` (project-docs/CONFIGURATION.md, later phases); decide the data
   path after the two-branch test; decide how observed data fits; fix the R
   package's location when it is created.
 -->
@@ -620,9 +618,11 @@ that would otherwise do the same job. The site settings had grown into
 practice; naming it, putting it in YAML with the other three, and giving it a
 cascade is more honest than leaving it hidden, and a single YAML file is easy
 for a Python or R package to write.
-**Status**: this describes the target. `dashboard-config.yaml` is specified in
-`project-docs/CONFIGURATION.md` and is not built yet; until it is, `index.json` still carries
-the settings it has today.
+**Status**: `dashboard-config.yaml` is built (066): one schema table in
+`src/config/schema.ts` drives loading, validation, the cascade and the generated
+`project-docs/CONFIG-REFERENCE.md`. `index.json` carries no setting any more. The
+parts of `project-docs/CONFIGURATION.md` not yet built (panel defaults, the `network`
+block, brand.yml, the check command) remain targets.
 
 ### VIII. Reuse Proven Reference Implementations
 When implementing DuckDB-WASM/Arrow wiring, MapLibre + flowmap.gl/deck.gl

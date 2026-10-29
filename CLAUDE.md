@@ -95,8 +95,11 @@ dashboard-*.yaml      tab layout and panels — first page listed is the landing
 manifest.yaml         per-scenario metadata
 ```
 
-- **`dashboard-config.yaml` is specified (`project-docs/CONFIGURATION.md`) but NOT built yet.** Until it is, the site settings below still live in
-  `public/dashboard-config/index.json`. New deployer settings go in `dashboard-config.yaml` (or a panel's own keys), never in `index.json`.
+- **`dashboard-config.yaml` is built (066).** The site settings and the page list live in it, one per config root (`public/dashboard-config/`, the
+  deployment's own, gitignored; `public/demo-dashboard-config/`, the tracked demo). The deployment's value wins per setting and the demo is the fallback;
+  the page lists are concatenated, deployment first. The one schema table is `src/config/schema.ts` (pure: loader, validator, cascade resolver,
+  boot-skeleton plugin and the generated `project-docs/CONFIG-REFERENCE.md` all read it; run `npm run docs:config` after changing it). A new setting is a new
+  row there plus the code that uses it. `index.json` no longer holds any setting (no compatibility; a leftover one gets a "moved" note).
 - No `topsheet.yaml` or `summarize-preprocessor.yaml`.
 - **Delivery targets:** a Python library and an R package (constitution Principle X); neither holds app logic.
 - **Undecided (constitution "Open Decisions"):** whether data is pre-processed to Parquet (as now) or read directly from the model's raw
@@ -104,19 +107,21 @@ manifest.yaml         per-scenario metadata
   stream is not designed yet.
 - Dashboard YAML configs are authored alongside model scripts in the TDM
   repo, not this one — same authored-vs-published split as `manifest.yaml`.
-  A published copy lives in `public/dashboard-config/` here, discovered at
-  runtime via `public/dashboard-config/index.json` (same pattern as
-  `public/scenarios/index.json`).
-- `public/dashboard-config/index.json`/`public/scenarios/index.json` are
-  discovery metadata, not a 4th config type. `dashboard-config/index.json`
-  (and `demo-dashboard-config/index.json`) may additionally carry
-  deployer-configurable app-wide fields — see `services/yamlLoader.ts`'s
-  `DashboardBranding`: `title`, `logoUrl`/`logoUrlDark` (full logo, shown when the nav
-  is expanded), `markUrl`/`markUrlDark` (abbreviated logo, shown on the collapsed rail;
-  the generic mark when unset), `scenarioPalette`,
-  `protomapsPmtilesUrl`/`protomapsApiKey` (a self-hosted PMTiles file, or a Protomaps hosted-API key), `primaryColor`/`secondaryColor`/`accentColor` (the three DATA colours: transit, walking, biking and the chart palette) and `brandColor` (the
-  interface colour for selected pills, titles, tags and focus rings; separate so a data colour never recolours the chrome). All
-  optional; an unconfigured deployment renders exactly as it always did.
+  A published copy lives in `public/dashboard-config/` here; its `dashboard-config.yaml` `pages` list names the files.
+- `public/scenarios/index.json` is generated discovery metadata (a static host cannot list a folder), not config.
+- `dashboard-config.yaml` carries the deployer-configurable app-wide settings (`services/siteConfig.ts` loads and checks them,
+  `config/toBranding.ts` maps them onto `services/yamlLoader.ts`'s `DashboardBranding`, so consumers are unchanged); keys are `snake_case`:
+  `title`, `logo`/`mark` `{light, dark}` (full logo when the nav is expanded; abbreviated mark on the collapsed rail, the generic mark when unset),
+  `scenario_palette`, `basemap.protomaps.{pmtiles_url, api_key}` (a self-hosted PMTiles file, or a Protomaps hosted-API key), `colors`
+  `{primary, secondary, accent}` (the three DATA colours: transit, walking, biking and the chart palette) and `colors.brand` (the interface colour for
+  selected pills, titles, tags and focus rings; separate so a data colour never recolours the chrome), `years` `{list, base, default}`, `compare`,
+  `layout.mode`, `export.footer`, `assistant.enabled`, `vocab`, `metrics`, `units`. All optional; an unconfigured deployment renders exactly as it
+  always did. A mistake (unknown key, wrong type, bad colour, a site-only key on a page, invalid YAML, a missing page file) is listed in one dismissible
+  note (`layout/configNotice.tsx`, store `state/configProblems.ts`) and in the console; the key keeps its default and the app loads.
+- **The cascade** (`config/resolve.ts`, site → page → panel): only `layout.mode`, `basemap.default`, `export.footer` and the `explore.*` keys cascade;
+  scalars replace, maps merge per key, `explore.charts.allow` and `explore.tables.include` replace, `explore.tables.exclude` and `explore.presets` concatenate,
+  `false`/`[]` switch off, there is no `null` reset. `config/levels.ts` maps the spellings pages and panels already use (`header.layout_mode`,
+  `default_basemap`, a panel's Explore keys) onto the schema paths. The site tree is `state/siteSettings.ts`.
 - Parquet outputs live in `{scenario-dir}/summary/` — written by the post-processor.
 - `public/scenarios/`, `public/dashboard-config/`, `public/observed/` are
   ALL gitignored (`npm run dev:fixtures` copies `tests/fixtures/{...}`
@@ -129,10 +134,9 @@ manifest.yaml         per-scenario metadata
 
 ## Navigation model
 
-Tabs are **discovered at runtime**: `main.ts` fetches
-`public/dashboard-config/index.json` (array of `dashboard-*.yaml`
-filenames, display order) — same pattern `scenarios/index.json` uses. The
-first filename is always the landing page.
+Tabs are **discovered at runtime**: `main.tsx` loads each config root's
+`dashboard-config.yaml` and its `pages` list (`dashboard-*.yaml`
+filenames, display order). The first page listed is always the landing page.
 
 The default set WFRC ships (`public/demo-dashboard-config/`, the real tabs only):
 ```
@@ -145,7 +149,7 @@ broken/edge-case panels only: missing metric per panel type, unreachable basemap
 markdown, etc.) lives in `tests/fixtures/test-tab/`. Playwright specs that need it import
 `test` from `tests/integration/_testTab.ts`, which appends it to the dashboard index at run
 time through a `page.route` (it stays unobtrusive via `header.tab: " "` + omitted
-`header.icon` + `header.aria_label: "Test"`). Never list it in `index.json`.
+`header.icon` + `header.aria_label: "Test"`). Never list it in `dashboard-config.yaml`.
 
 Sidebar navigation (`030-sidebar-navigation`) replaced the old top
 `navBar.tsx` tab strip — a persistent, collapsible left `Sidebar`
@@ -172,7 +176,9 @@ APP-wftdm-dashboard/
 │   ├── UX-REDESIGN-PROPOSAL.md
 │   ├── BASEMAP-PICKER-PROPOSAL.md
 │   ├── ZERO-STEP-SUMMARIZATION-PROPOSAL.md  # deferred: `here` summarizes on launch, Parquet hand-off
-│   └── OBSERVABLE-PLOT-THEMING-PROPOSAL.md
+│   ├── OBSERVABLE-PLOT-THEMING-PROPOSAL.md
+│   ├── CONFIGURATION.md             # the dashboard-config.yaml design and phases
+│   └── CONFIG-REFERENCE.md          # GENERATED from src/config/schema.ts (`npm run docs:config`); never hand-edit
 ├── docs/                        # ⚠ NOT docs — committed GitHub Pages build output
 ├── index.html                   # <script type="module" src="/src/main.tsx">
 ├── package.json
@@ -197,7 +203,8 @@ APP-wftdm-dashboard/
 │   └── tests/                    # pytest suite, separate from repo-root tests/ (Vitest/Playwright)
 └── src/
     ├── main.tsx                  # boot sequence
-    ├── state/                    # appState.ts, compareState.ts (year/focus/compare/reference/display),
+    ├── config/                   # PURE (no DOM, no alias): schema.ts (the one settings table), validate, resolve (cascade), levels, toBranding, reference
+    ├── state/                    # configProblems.ts, siteSettings.ts, appState.ts, compareState.ts (year/focus/compare/reference/display),
     │                              # filterState.ts, basemapState.ts,
     │                              # protomapsSourceState.ts, colorPreferenceState.ts,
     │                              # interfaceColorState.ts, fontPreferenceState.ts, textSizeState.ts
@@ -210,6 +217,7 @@ APP-wftdm-dashboard/
     │   ├── viewContext.ts         # pure resolveViewContext(): compare state + run catalog -> what every tile shows
     │   ├── runResolution.ts       # stores -> viewContext; getBaselineForYear(), bootCompareState()
     │   ├── yamlLoader.ts          # fetch + parse dashboard-*.yaml, DashboardBranding
+    │   ├── siteConfig.ts          # loads and checks each root's dashboard-config.yaml (src/config), merges the two roots
     │   └── sqlExpander.ts         # expand $mappings/$bins/$sql/$filters/$scenario/$inputs/$baseline
     ├── hooks/                     # useFilterState, useActiveScenarios, useColorScheme, useBaseline,
     │                              # useGlobalBasemap, useScenarioList, useProtomapsSource,
@@ -450,7 +458,7 @@ shared preview `maplibregl.Map` + stage-then-Apply flow; nothing is
 applied live until the author clicks Apply.
 
 Protomaps needs a real PMTiles source configured (`protomapsPmtilesUrl` on
-`dashboard-config/index.json`, two-tier deployer-default/viewer-session-
+`dashboard-config.yaml` (`basemap.protomaps.pmtiles_url`), two-tier deployer-default/viewer-session-
 override precedence, `state/protomapsSourceState.ts`) — with none
 configured (the real demo's own state today), the flavors fall back to
 `freshBlankStyle()` like any other unreachable basemap. Full design in
@@ -584,7 +592,7 @@ before touching charts).
   the pure `services/viewContext.ts#resolveViewContext`; read it through `hooks/useViewContext.ts`. Runs are identified by
   manifest `scenario_group` + `year` (`scenario_group` was called `alternative` until 2026-10-28; the old key is still read); `kind: scenario | round | observed`, and `hidden: true` keeps a run loadable/pinnable
   but out of the picker, Scenarios tab and compare set (the legacy ActivitySim runs the Test tab pins).
-- **Default selection**: unless `compare.focus`/`compare.reference` are set in index.json, the first scenario is the reference and the second the focus.
+- **Default selection**: unless `compare.focus`/`compare.reference` are set in dashboard-config.yaml, the first scenario is the reference and the second the focus.
 - **Tiles**: `type: multi-view` wraps views, a Group by control and compare strategies (`panels/multiView.ts`,
   `layout/multiViewTile.tsx`, `panels/CompareHost.tsx` + `compareStrategy.ts` for overlay/diff/multi/grid/switch/swipe).
   Tile keys: panel `id` (else `row-index`), session state in `state/tileState.ts`. `show_when: compare|single`,
@@ -602,19 +610,19 @@ before touching charts).
   `scripts/viteLegacyDemoPlugin.ts`); the older specs run against `tests/fixtures/legacy-demo` (`WFTDM_DEMO=legacy`).
 - **Data adapters**: charts read logical tables (`trip_mode_share_by_purpose`, `trips_by_hour_purpose`, `zone_transit_share`,
   `population_age_sex`, ...); `charts/data/adapt.ts` derives them from the tables a deployment really publishes and maps raw
-  category values onto the deployment's vocabulary. `dashboard-config/index.json` describes it: `vocab` (modes, purposes,
+  category values onto the deployment's vocabulary. `dashboard-config.yaml` describes it: `vocab` (modes, purposes,
   incomes, autos: label, raw `ids`, mode colour token), `metrics` (label/unit/decimals/scale/hidden for scorecard, ranking and
   trend metrics) and `units` (`trips` divisor/suffix for time-of-day charts, `transit_share_max` for the map ramp). `panels/panelQuery.ts#resolveActiveScenarios` skips runs whose metric catalog
   lacks a panel's metric. `wftdm-dashboard validate-observed <folder>` checks a published observed folder.
 - **Layout, toolbar and export** (`project-docs/redesign/10-toolbar-layout-export-proposal.md`): the control bar is one row (a
   Scenarios chip for focus, compared set and reference; Show greyed out when Compare is off; Compare right-most). Tiles in a
   row share the tallest height. Pages are `scroll` or `tabs` (`state/layoutState.ts`: viewer setting or `?layout=` >
-  `header.layout_mode` > `layout.mode` in index.json > scroll); in tabs mode `sections:` are the tabs (`mode: pick` shows one
+  `header.layout_mode` > `layout.mode` in dashboard-config.yaml > scroll (resolved by `config/resolve.ts`)); in tabs mode `sections:` are the tabs (`mode: pick` shows one
   tile at a time), hero rows stay above them, tiles fill the screen (`layout/fill.tsx`) and their controls move to a rail; a section's `shared_controls: [group, view, strategy]` lifts those
   controls into the tab strip, one value driving every tile that offers the option id.
   Every tile has an Export menu (`layout/tileExport.tsx`, `services/exportTile.ts`: CSV, PNG, SVG), also inside the expanded dialog, and
   an Export all button zips the tiles on screen (`layout/pageExport.tsx`); `export.footer` in
-  index.json sets the image footer. The real demo is tabbed; the synthetic and legacy sets stay scrolling.
+  dashboard-config.yaml sets the image footer. The real demo is tabbed; the synthetic and legacy sets stay scrolling.
 - **Facets and single-scenario views**: a zoom in one facet of a side-by-side tile is made in all of them (`env.sync(name)` in a kind, backed by `charts/lib/facetSync.ts`, keyed by tile + kind + group; treemap and sunburst use it for their scope, and a kind subscribes in `draw` and returns the unsubscribe as `dispose`). A view that shows one scenario (`switch`, `swipe`, a plain-panel `diff`, and the kinds in `SINGLE_SCENARIO_KINDS` in Values mode) gets the tile's Scenario dropdown (`offersScenarioPick`). `ChartPanel` claims the tile's legend row in a layout effect, never in render (a discarded render used to leave a stale owner and the legend never showed). Radar markers are concentric per scenario so near-identical scenarios stay visible. The tile's Layout (Auto/Row/Grid) is an icon Select in the header beside Export (`components/ui/layout-menu.tsx`, reusing `select.tsx`). Compare as offers arrangements only: a difference is the Show control's job (`effectiveStrategy` draws it), so `diff` is never an option and the control is hidden while Show is not Values. A tile's description sits behind an info button beside its title (click-to-open popover; inline in the expanded dialog). **Loading skeletons**: every panel's placeholder is `panels/PanelSkeleton.tsx`, a silhouette of the chart chosen by the pure `panels/skeleton.ts#skeletonShape` (a `KIND_SHAPE` entry per chart kind: a unit test fails when a new kind has none; legacy types by `TYPE_SHAPE`, plot panels by `mark`); keep `animate-pulse` on it (specs assert it is gone once ready) and use it for any new panel's loading state. **Difference facets**: Change / % change on a view whose strategy is `diff` (treemap, donut, difference map) draws one facet per compared scenario except the reference, paged like Side by side (`diffFacets` in `compareStrategy.ts`; each chart facet is pinned with `diff_facet: true`, so `plan.pinned` stays false and it keeps drawing its change; the grid has `data-own-tips`, so facets keep their own tooltips and `syncGrid` is off). A facet's scale is shared through `charts/lib/facetSync.ts#sharedExtent` (zone difference map, mode-bars/donut axis). In Side by side the reference is pinned first on every page. Treemap labels are clipped with an ellipsis to their box (`fitText`). A one-scenario chart grouped by Scenario that already draws every scenario (`drawsAllScenarios`, the Time of day heatmap) is not pinned, and its Scenario dropdown shows "All scenarios", disabled.
 - Dial KPIs: a hero `valuebox` with `ring: {}` draws its value (a `max` is picked automatically unless given) on a half-circle dial with a tick at the reference. Mode share has a `mode-radar` view, trips by purpose a `purpose-radar` view and purpose to mode a `purpose-chord` view; all three read tables the real demo publishes.
 - New D3 submodules (no new chart library): d3-selection/scale/array/chord/zoom/format/interpolate/transition.
@@ -630,8 +638,8 @@ through `services/duckdb.ts` and is authorized by `sqlGuard.authorize()` first: 
 second connection. No new dependency (plain `fetch`). Design and history: `specs/064-ai-chat-assistant/` and
 `project-docs/IMPLEMENTATION-HISTORY.md` ("064 AI chat assistant").
 The Assistant button is a glass circle in the page header beside the control bar (`AssistantButton` in `chatLauncher.tsx`;
-fixed top right on chromeless pages). A deployer turns the whole feature off with `"assistant": { "enabled": false }` in
-`dashboard-config/index.json` (`DashboardBranding.assistantEnabled`, read once at boot into
+fixed top right on chromeless pages). A deployer turns the whole feature off with `assistant: { enabled: false }` in
+`dashboard-config.yaml` (`DashboardBranding.assistantEnabled`, read once at boot into
 `state/assistantAvailability.ts`): no button, no panel, no Settings tab. Enabled by default. The Model field is a
 searchable combobox (`components/ui/combobox-input.tsx`) over per-provider presets in `state/aiState.ts`; any other model
 name can be typed.
@@ -721,7 +729,7 @@ shipped feature, read `project-docs/IMPLEMENTATION-HISTORY.md`.
 - Use localStorage/sessionStorage
 - Create `topsheet.yaml` — the first dashboard-*.yaml is the landing page
 - Create `summarize-preprocessor.yaml` — join logic lives in sql_fragments
-- Put new deployer settings in `index.json` — they belong in `dashboard-config.yaml` (the `public/dashboard-config/` directory is a different thing)
+- Put deployer settings in `index.json` — they belong in `dashboard-config.yaml` (the schema row in `src/config/schema.ts`; the `public/dashboard-config/` directory is a different thing)
 - Create `services/observedRegistry.ts` — replaced by `services/scenarioDiscovery.ts`
 - Recreate the `duckdbLoaderPool.ts` multi-instance pattern — removed, measured slower
 - Add a chart library, a per-chart tooltip element, a native `title`/`tip: true` tooltip, or hard-coded colours in a chart kind

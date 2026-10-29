@@ -21,7 +21,7 @@ where each one's published copy is fetched from.
 **What does not exist:**
 - No `topsheet.yaml` — `dashboard-1-summary.yaml` is the landing page
 - No `summarize-preprocessor.yaml` — join logic lives in `sql_fragments`
-- `dashboard-config.yaml` — the site-level settings file (constitution 2.8.0), specified in `project-docs/CONFIGURATION.md`, not built yet; until then the site settings live in `index.json`
+- `dashboard-config.yaml` — the site-level settings file (constitution 2.8.0), specified in `project-docs/CONFIGURATION.md`; every key is listed in the generated `project-docs/CONFIG-REFERENCE.md`
 
 ---
 
@@ -81,14 +81,14 @@ public/
         ...
 
   dashboard-config/           ← published tab layout, discovered + fetched at startup
-    index.json                ← ["dashboard-1-summary.yaml", "dashboard-2-person.yaml", ...]
+    dashboard-config.yaml     ← site settings + `pages: [dashboard-1-summary.yaml, ...]` (see CONFIG-REFERENCE.md)
     dashboard-1-summary.yaml
     dashboard-2-person.yaml
     dashboard-3-tour.yaml
     dashboard-4-mode.yaml
     dashboard-5-trip.yaml
     dashboard-6-network.yaml
-    dashboard-7-explore.yaml   ← WFRC's default set; index.json can list any set
+    dashboard-7-explore.yaml   ← WFRC's default set; `pages:` can list any set
 ```
 
 **Publish workflow:** the TDM repo and dashboard repo are separate project folders.
@@ -100,16 +100,15 @@ To publish a scenario, use any file manager (FileZilla, Windows Explorer, etc.):
 
 To publish dashboard layout changes (not per-scenario — published once, shared by
 every scenario): copy the `dashboard-*.yaml` files from wherever they're authored in
-the TDM repo → `APP-wftdm-dashboard/public/dashboard-config/`, update
-`public/dashboard-config/index.json` to list exactly the filenames now present (same
-step as `public/scenarios/index.json`, just for tabs), commit, push.
+the TDM repo → `APP-wftdm-dashboard/public/dashboard-config/`, update the `pages:` list in
+`public/dashboard-config/dashboard-config.yaml` to the filenames now present, commit, push.
 
 **Fetch mechanism:** `summarize.yaml` is authored alongside model scripts in the TDM
 repo and is post-processor-only — it is never published and the browser never reads
 it. `dashboard-*.yaml` is also authored there, but its published copy **is** fetched
-by the browser at startup: `main.ts` fetches `public/dashboard-config/index.json`
-first, then each filename it lists, from `public/dashboard-config/{filename}` in the
-dashboard repo — the same discovery pattern as `public/scenarios/index.json`, not a
+by the browser at startup: `main.tsx` fetches `dashboard-config.yaml`
+first, then each filename its `pages:` list names, from `public/dashboard-config/{filename}` in the
+dashboard repo — a list the deployer controls, not a
 fixed filename list, and not via the old shared-`.wfrc/`-folder model this replaced.
 
 **URL deep links:** `?s=observed&s=2027-rtp-baseyear` *adds* scenarios to the
@@ -803,6 +802,10 @@ header:
                                   # default/placeholder substitute.
   full_page:   false              # optional (030-sidebar-navigation), default false —
                                   # see "Chromeless full-page panel mode" below
+  slug:        summary            # optional: this page's address (#/summary). Default: the tab name,
+                                  # lower-cased and dash-separated; a repeat gets -2, -3
+  layout_mode: tabs               # optional: scroll | tabs. Overrides layout.mode of
+                                  # dashboard-config.yaml for this page (the cascade)
 
 # Global sidebar filters — drive reactive updates across ALL panels on this tab
 filters:
@@ -1668,7 +1671,7 @@ family:         calibration         # rounds only: the family id
 family_index:   12                  # rounds only: 1-based position in the family
 ```
 
-`dashboard-config/index.json` may also carry `years` (`[{year, label}]`), `baseYear`, `defaultYear` and
+`dashboard-config.yaml` may also carry `years: {list: [{year, label}], base, default}` and
 `compare: {default: auto|on|off}`. When `years` is absent the years are taken from the manifests' `year` values and the
 base year is the earliest. Rounds and Observed exist only in the base year; a run without a `year` belongs to every year.
 
@@ -1825,8 +1828,8 @@ Reads per-run Parquet tables chosen by the kind, for every compared run, the ref
 | `scenario_independent: true` | multi-view / view | "Same in every scenario" badge in Compare mode. |
 | `sections[].tile: <id>` | tab | Sub-navigation entry scrolls to that tile instead of the row. |
 
-### `dashboard-config/index.json` additions
-`years` (`[{year,label}]`), `baseYear`, `defaultYear`, `compare: { default: auto|on|off, scenarios: [scenario group ids],
+### `dashboard-config.yaml` additions
+`years: {list: [{year,label}], base, default}`, `compare: { default: auto|on|off, scenarios: [scenario group ids],
 focus, reference }`. Run manifests may carry `kind`, `scenario_group`, `year`, `tag`, `family`, `family_index`, `hidden`,
 and (for an observed run) `observed: { source, sample, metrics: { <table>: { source, sample } } }`.
 

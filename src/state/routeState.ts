@@ -29,6 +29,15 @@ export function assignSlugs(headers: ReadonlyArray<{ tab: string; slug?: string 
   })
 }
 
+/** Pages whose address had to be changed because an earlier page already has it. */
+export function slugCollisions(headers: ReadonlyArray<{ tab: string; slug?: string }>): { tab: string; slug: string; used: string }[] {
+  const used = assignSlugs(headers)
+  return headers.flatMap((h, i) => {
+    const base = slugify(h.slug ?? '') || slugify(h.tab) || `page-${i + 1}`
+    return used[i] === base ? [] : [{ tab: h.tab, slug: base, used: used[i] }]
+  })
+}
+
 export function parseHash(hash: string): Route {
   const raw = hash.replace(/^#/, '')
   if (!raw) return {}

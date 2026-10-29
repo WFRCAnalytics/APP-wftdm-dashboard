@@ -11,6 +11,7 @@ import { configureMetrics } from '@/charts/lib/metrics'
 import { configureUnits } from '@/charts/units'
 import { configureExport } from '@/state/exportState'
 import { configureLayout } from '@/state/layoutState'
+import { setSiteSettings } from '@/state/siteSettings'
 // 033-shadcn-default-theme: self-hosted Schibsted Grotesk / DM Mono font
 // side-effecting imports — the real replacement for the old Google-Fonts-
 // CDN runtime-injection module this project used to keep under
@@ -158,6 +159,7 @@ setAssistantEnabled(branding.assistantEnabled !== false)
 configureVocab(branding.vocab)
 configureMetrics(branding.metrics)
 configureUnits(branding.units)
+setSiteSettings(site.settings)
 configureLayout(branding.layout)
 configureExport({ footer: branding.exportFooter, title: branding.title })
 // 063 redesign: model years, focus and Compare defaults (project-docs/redesign/03-state-and-compare.md §1.1). Needs the

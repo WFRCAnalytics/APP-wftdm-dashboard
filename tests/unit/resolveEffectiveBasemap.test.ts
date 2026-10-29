@@ -81,3 +81,12 @@ describe('resolveEffectiveBasemap', () => {
     expect(basemapKey(first.selection)).toBe(basemapKey(second.selection))
   })
 })
+
+describe('the site default (basemap.default) sits under every other level', () => {
+  it('is used when nothing else is set, and loses to the viewer, the page and the panel', () => {
+    expect(resolveEffectiveBasemap(undefined, undefined, undefined, 'carto-light').selection).toBe('carto-light')
+    expect(resolveEffectiveBasemap(undefined, undefined, 'carto-dark' as never, 'carto-light').selection).toBe('carto-dark')
+    expect(resolveEffectiveBasemap(undefined, 'tab-one', undefined, 'carto-light')).toEqual({ selection: 'tab-one', source: 'tab' })
+    expect(resolveEffectiveBasemap('panel-one', 'tab-one', undefined, 'carto-light')).toEqual({ selection: 'panel-one', source: 'panel' })
+  })
+})

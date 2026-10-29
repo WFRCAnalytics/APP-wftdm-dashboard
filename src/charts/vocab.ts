@@ -1,7 +1,7 @@
 // Category vocabularies and their display order (project-docs/redesign/04-chart-catalogue.md, top). Charts draw
 // categories in this order whatever order a table returns them in; a category absent from a table still gets its slot.
 //
-// The arrays are live: a deployment can describe its own categories in dashboard-config/index.json (`vocab`), and
+// The arrays are live: a deployment can describe its own categories in dashboard-config.yaml (`vocab`), and
 // `configureVocab` replaces their contents in place at boot, so every `import { MODES }` keeps working. Raw values in a
 // run's tables are mapped onto these labels when the rows are loaded (charts/data/adapt.ts), several raw values can
 // share one label (the rows are summed), and a mode names the colour token it is drawn with.

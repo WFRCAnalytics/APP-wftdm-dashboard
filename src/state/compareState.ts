@@ -20,7 +20,7 @@ export interface CompareState {
   year: number
 }
 
-/** The deployment's year setup (dashboard-config/index.json, or derived from the manifests). */
+/** The deployment's year setup (dashboard-config.yaml, or derived from the manifests). */
 export interface Deployment {
   years: { year: number; label?: string }[]
   baseYear: number

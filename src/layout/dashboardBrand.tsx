@@ -6,7 +6,7 @@ import type { DashboardBranding } from '@/services/yamlLoader'
 // Deployer-configurable app-wide branding (title/logo), rendered at the
 // left edge of shell.tsx's own <header>, before NavBar's tab strip — see
 // yamlLoader.ts's own DashboardBranding doc comment for the full "why
-// this lives in dashboard-config/index.json, not a new config file"
+// this lives in dashboard-config.yaml, not a new config file"
 // story. A small, standalone component (not inlined in shell.tsx
 // directly) for the same reason resetViewControl.ts/mapTooltip.ts are
 // their own modules — a real, independently-testable UI concern (image-
@@ -29,7 +29,7 @@ export function DashboardBrand({ branding }: { branding: DashboardBranding }) {
 
   // Real, confirmed reason this needs a genuine light/dark PAIR, not one
   // url used for both themes: WFRC's own real logo assets (see
-  // public/demo-dashboard-config/index.json) are dark-navy-on-transparent
+  // public/demo-dashboard-config/dashboard-config.yaml) are dark-navy-on-transparent
   // for light mode and white-on-transparent for dark mode — either one
   // alone is illegible against the other theme's own header background.
   // Falls back to the light url in dark mode if no dark-specific one was

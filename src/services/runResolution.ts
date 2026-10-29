@@ -84,7 +84,7 @@ export function getBaselineForYear(): string | undefined {
   return resolveRun(manifest.runs, manifest.baseline, year)?.name ?? appState.getBaseline()
 }
 
-/** Years come from dashboard-config/index.json when configured, else from the distinct manifest years. */
+/** Years come from dashboard-config.yaml (`years`) when configured, else from the distinct manifest years. */
 export function deriveDeployment(
   runs: readonly RunInfo[],
   config: { years?: { year: number; label?: string }[]; baseYear?: number; defaultYear?: number },
