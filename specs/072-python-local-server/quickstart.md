@@ -59,3 +59,10 @@ Expected: the wheel lists `wftdm_dashboard/static/index.html` and `wftdm_dashboa
 - `here` on a scratch folder (the demo pages, three demo runs and the demo geometry copied in, every `index.json` removed): `scenarios/index.json` and each run's `summary/index.json` were generated; a `Range: bytes=0-99` on a Parquet file answered 206 with 100 bytes; `..`, `%2e%2e`, `..%2f..%2f` and `/dashboard-config/../` all answered 404; `Host: evil.example` answered 400; a POST answered 405.
 - In a browser the app loaded and drew its charts (24 SVGs, no console error, no first-run screen) from `http://127.0.0.1:8061/` and from a second server on `8050`; an edit to a page title showed after a reload; no file was written to the folder. The page also requested `raw.githubusercontent.com` (the logo addresses in the demo site file) and `extensions.duckdb.org` (the DuckDB extension download).
 
+## Walked (2026-10-29, US2 and US4)
+
+- `init` into an empty scratch folder wrote `dashboard-config.yaml` and `dashboard-1-overview.yaml`; `npm run check -- <folder>` reported no problem (exit 0), and `check --explain` listed the outside hosts left. A second `init` printed `kept` twice and changed nothing. `here` on that folder showed the page "Overview" with the welcome text, no configuration note, no console error.
+- The generated site file is 184 lines (every setting of this version, commented out). The pytest uncomments it and checks that its settings are exactly the schema's settings, none twice, none missing.
+- `uv build` (after `npm run build:package`): the wheel holds `wftdm_dashboard/static/index.html`, the service worker, the assets and `wftdm_dashboard/templates/dashboard-config.schema.json`, with no `demo-*` entry. The gitignored `static/` folder IS included by `uv_build`, so no include setting was needed.
+- The wheel installed into a clean virtual environment: `wftdm-dashboard init` and `wftdm-dashboard here --no-browser --port 8072` worked from it; the app loaded in a browser (page "Overview") and `scenarios/index.json` answered `[]` for the folder with no runs.
+

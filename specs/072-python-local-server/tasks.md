@@ -79,8 +79,8 @@ Python in `python/wftdm_dashboard/` and `python/tests/`; Vite/Node changes in `v
 
 **Independent Test**: `uv build`, install the wheel in a clean environment, `here` works on a folder.
 
-- [ ] T016 [US4] Run `uv build` (after `npm run build:package`) and list the wheel (`python -m zipfile -l dist/*.whl` or `unzip -l`): it must contain `wftdm_dashboard/static/index.html`, `wftdm_dashboard/static/assets/*` and `wftdm_dashboard/templates/dashboard-config.schema.json`. If the ignored `static/` folder is missing from the wheel, add the include setting to `[tool.uv.build-backend]` in `pyproject.toml` (research.md decision 15) and re-check. Install the wheel into a clean virtual environment and run `wftdm-dashboard init` and `wftdm-dashboard here --no-browser` for a few seconds: both work from the installed package. Record the wheel listing and the result in `quickstart.md`
-- [ ] T017 [P] [US4] A repository checkout that has not built the app: with `static/` absent, `here` and `serve` stop with the build message (the test already exists from T004/T010; add a case that `init` still works without the bundle)
+- [X] T016 [US4] Run `uv build` (after `npm run build:package`) and list the wheel (`python -m zipfile -l dist/*.whl` or `unzip -l`): it must contain `wftdm_dashboard/static/index.html`, `wftdm_dashboard/static/assets/*` and `wftdm_dashboard/templates/dashboard-config.schema.json`. If the ignored `static/` folder is missing from the wheel, add the include setting to `[tool.uv.build-backend]` in `pyproject.toml` (research.md decision 15) and re-check. Install the wheel into a clean virtual environment and run `wftdm-dashboard init` and `wftdm-dashboard here --no-browser` for a few seconds: both work from the installed package. Record the wheel listing and the result in `quickstart.md`
+- [X] T017 [P] [US4] A repository checkout that has not built the app: with `static/` absent, `here` and `serve` stop with the build message (the test already exists from T004/T010; add a case that `init` still works without the bundle)
 
 ---
 

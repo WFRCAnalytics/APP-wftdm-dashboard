@@ -336,3 +336,31 @@ def test_init_reports_a_file_where_a_folder_is_expected(tmp_path):
     result = CliRunner().invoke(main, ["init", str(blocker)])
     assert result.exit_code != 0
     assert "Traceback" not in result.output
+
+
+# ---------------------------------------------------------------- a checkout that has not built the app (072)
+
+
+@pytest.fixture
+def no_bundle(monkeypatch):
+    """Makes the embedded app look unbuilt, as in a repository checkout before `make build`."""
+    from wftdm_dashboard import server
+
+    def missing(package_root=None):
+        raise BundleMissingError(server.BUNDLE_MESSAGE)
+
+    monkeypatch.setattr(server, "static_dir", missing)
+
+
+def test_here_without_the_bundle_stops_with_the_build_message(no_bundle, tmp_path):
+    result = CliRunner().invoke(main, ["here", str(tmp_path), "--no-browser"])
+    assert result.exit_code == 1
+    assert "make build" in result.output
+    assert "npm run build:package" in result.output
+    assert "Traceback" not in result.output
+
+
+def test_init_does_not_need_the_bundle(no_bundle, tmp_path):
+    result = CliRunner().invoke(main, ["init", str(tmp_path)])
+    assert result.exit_code == 0
+    assert (tmp_path / "dashboard-config.yaml").is_file()
