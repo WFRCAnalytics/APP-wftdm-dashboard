@@ -29,3 +29,10 @@ npx playwright test --project=real tests/integration/exploreBuilderSite.spec.ts
 ```
 
 Then the full run; compare with the known flakes in CLAUDE.md (re-run a failure with `--workers=1` first).
+
+## Walked (2026-10-29)
+
+- Step 1: the listed unit files pass (full run: 104 files, 1416 tests).
+- Steps 2, 3 and 4 through `tests/integration/exploreBuilderSite.spec.ts` (6 cases: no keys, a site limit with the note quoting it, a panel value winning, a site starting chart, a panel starting chart winning, the mistakes listed with their paths) and by hand with `npm run check`: a site with an out-of-range `chart_rows`, a text `scatter_sample`, an out-of-range `histogram_bins`, an unknown `explore.limits.foo` and a `charts.default` of `nonsense` gives five problems with their key paths and exits 1 (the chart name is reported under the Explore panel); the demo folder checks clean.
+- Full Playwright run: 636 passed, 6 failed. `realDemo.spec.ts:19` and `:39` (pre-existing) and `chartMaps.spec.ts:95` (known flaky, fails again alone) are the baseline; `observablePlotPanel:167`, `radarChartPanel:131` and `settingsRedesign:185` passed when re-run alone (load flakes).
+- Not covered by a browser test: `chart_rows`, `scatter_sample`, `histogram_bins`, `distinct_values` and `pivot_rows` taking effect on screen (unit tests check the SQL, the legend/pivot arguments and the value-list query).

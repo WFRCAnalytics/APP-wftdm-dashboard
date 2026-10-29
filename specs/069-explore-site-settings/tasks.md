@@ -87,8 +87,8 @@ Single web-app project: `src/`, `tests/`, `scripts/`, `project-docs/` at the rep
 
 - [X] T017 [P] Docs: `project-docs/CONFIGURATION.md` (Phase E step 11 done, section 4 draft, section 7 decision), `project-docs/GRAMMAR.md` (explore keys sentence), `CLAUDE.md` (Explore builder: the site-wide keys and the exploreLimits module), `project-docs/IMPLEMENTATION-HISTORY.md` ("069 Explore settings for the whole site"), `specs/065-chart-builder/contracts/deployer-options.md` (the new keys and the site level)
 - [X] T018 Regenerate `project-docs/CONFIG-REFERENCE.md` and `project-docs/dashboard-config.schema.json` (`npm run docs:config`); `npx tsc --noEmit`; `npx vitest run`
-- [ ] T019 Full Playwright run (`npx playwright test`); compare failures with the known flakes in CLAUDE.md and re-run each alone with `--workers=1` before treating it as real
-- [ ] T020 Walk `quickstart.md` and record the result at its foot; `npm run check -- public/demo-dashboard-config` is clean
+- [X] T019 Full Playwright run (`npx playwright test`); compare failures with the known flakes in CLAUDE.md and re-run each alone with `--workers=1` before treating it as real
+- [X] T020 Walk `quickstart.md` and record the result at its foot; `npm run check -- public/demo-dashboard-config` is clean
 - [ ] T021 Rebuild `docs/` with `npm run build:pages` (only when the user asks; not part of the implementation)
 
 ---
