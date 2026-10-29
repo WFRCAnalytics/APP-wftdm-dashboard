@@ -21,6 +21,7 @@
 // faster than the pool at every batch size this app's real tabs produce,
 // and this rewrite removes the ~105-file eager-boot event the pool was
 // built for in the first place, so nothing calls it anymore either way.
+import { DEMO_CONTENT } from './demoContent.ts'
 import { loadManifest } from './yamlLoader.ts'
 import { manifestFromObject, type ParsedManifest } from '../scenario/manifestReader.ts'
 import * as appState from '../state/appState.ts'
@@ -279,6 +280,7 @@ function applyURLParams(): void {
 export async function discoverScenarios(): Promise<void> {
   await registerObserved()
   await registerPublishedScenarios()
-  await registerDemoScenarios()
+  // 070-demo-build-flag: the demo runs only when the demo is on (the dev server, a `--mode demo` build)
+  if (DEMO_CONTENT) await registerDemoScenarios()
   applyURLParams()
 }

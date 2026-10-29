@@ -7,6 +7,8 @@ import { defineConfig, devices } from '@playwright/test'
 // production public/ tree (see tests/global-setup.js).
 // Specs written for the redesign (they assert on the Corridor Pro demo content).
 const REAL_SPECS = ['**/realDemo.spec.ts', '**/layout*.spec.ts', '**/aiChat.spec.ts', '**/exploreBuilder*.spec.ts']
+// 070-demo-build-flag: a normal build (no demo, no deployment folder), served by scripts/serve-first-run.ts on 5196.
+const FIRST_RUN_SPECS = ['**/firstRun.spec.ts']
 const REDESIGN_SPECS = [
   '**/chart*.spec.ts',
   '**/settingsRedesign.spec.ts',
@@ -62,17 +64,28 @@ export default defineConfig({
       reuseExistingServer: !process.env.CI,
       timeout: 60_000,
     },
+    {
+      command: 'npx vite-node scripts/serve-first-run.ts',
+      url: 'http://127.0.0.1:5196/APP-wftdm-dashboard/',
+      reuseExistingServer: !process.env.CI,
+      timeout: 240_000,
+    },
   ],
   projects: [
     {
       name: 'chromium',
-      testIgnore: [...REDESIGN_SPECS, ...REAL_SPECS],
+      testIgnore: [...REDESIGN_SPECS, ...REAL_SPECS, ...FIRST_RUN_SPECS],
       use: { ...devices['Desktop Chrome'] },
     },
     {
       name: 'redesign',
       testMatch: REDESIGN_SPECS,
       use: { ...devices['Desktop Chrome'], baseURL: 'http://127.0.0.1:5198/APP-wftdm-dashboard/' },
+    },
+    {
+      name: 'firstrun',
+      testMatch: FIRST_RUN_SPECS,
+      use: { ...devices['Desktop Chrome'], baseURL: 'http://127.0.0.1:5196/APP-wftdm-dashboard/' },
     },
     {
       name: 'real',

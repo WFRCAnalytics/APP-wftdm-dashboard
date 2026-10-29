@@ -181,7 +181,7 @@ function buildSkeletonHtml(tabs: SkeletonTab[], assistant: boolean): string {
 const MARKER_START = '<!-- BOOT_SKELETON -->'
 const MARKER_END = '<!-- /BOOT_SKELETON -->'
 
-export function bootSkeletonPlugin(): Plugin {
+export function bootSkeletonPlugin({ demo = true }: { demo?: boolean } = {}): Plugin {
   return {
     name: 'wftdm-boot-skeleton',
     transformIndexHtml(html) {
@@ -199,13 +199,14 @@ export function bootSkeletonPlugin(): Plugin {
       }
 
       const primary = readDashboardRoot(resolve(process.cwd(), 'public/dashboard-config'))
-      const demo = readDashboardRoot(resolve(process.cwd(), 'public/demo-dashboard-config'))
+      // 070-demo-build-flag: the demo's tabs and settings only when the demo is on (a normal build paints the deployment's alone)
+      const demoRoot = demo ? readDashboardRoot(resolve(process.cwd(), 'public/demo-dashboard-config')) : EMPTY_ROOT
 
       // Tabs concatenate like main.tsx's real boot sequence: the deployer's own first, then the demo's.
-      const tabs = [...primary.tabs, ...demo.tabs]
+      const tabs = [...primary.tabs, ...demoRoot.tabs]
 
       // The assistant's header button is on unless the deployment turns it off (the deployer's own config wins).
-      const assistant = (primary.branding.assistantEnabled ?? demo.branding.assistantEnabled) !== false
+      const assistant = (primary.branding.assistantEnabled ?? demoRoot.branding.assistantEnabled) !== false
 
       const generated = `${MARKER_START}\n${buildSkeletonHtml(tabs, assistant)}\n${MARKER_END}`
       return html.slice(0, startIdx) + generated + html.slice(endIdx + MARKER_END.length)

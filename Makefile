@@ -11,7 +11,7 @@ install:
 dev:
 	npm run dev
 
-# Build JS app → dist/, then embed in Python package
+# Build JS app → dist/ (no demo content, 070), then embed in Python package
 build:
 	npm run build
 	rm -rf python/wftdm_dashboard/static

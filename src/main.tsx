@@ -49,6 +49,8 @@ import { setDeployerInterfaceColor } from './panels/interfaceColor.ts'
 import { startAccentSync, startThemeSync } from './services/theme.ts'
 import { parseDashboardConfig } from './layout/types.ts'
 import { Shell } from './layout/shell.tsx'
+import { FirstRun } from './layout/firstRun.tsx'
+import { firstRunState } from './services/firstRun.ts'
 import { Toaster } from './components/ui/sonner.tsx'
 import { get as getFilter, set as setFilter } from './state/filterState.ts'
 
@@ -287,12 +289,18 @@ if (!branding.docsUrl) {
   )
 }
 
+// 070-demo-build-flag: with nothing to show (no site file, or no page that loaded) say so instead of rendering an empty shell.
+const firstRun = firstRunState({
+  siteFound: site.siteFound,
+  listed: site.pageSources.reduce((n, source) => n + source.pages.length, 0),
+  loaded: parsedDashboards.length,
+  searched: site.searched,
+})
+
 const rootEl = document.getElementById('app')
 if (rootEl) {
   ReactDOM.createRoot(rootEl).render(
-    <React.StrictMode>
-      <Shell dashboards={parsedDashboards} branding={branding} />
-    </React.StrictMode>,
+    <React.StrictMode>{firstRun ? <FirstRun state={firstRun} /> : <Shell dashboards={parsedDashboards} branding={branding} />}</React.StrictMode>,
   )
 }
 

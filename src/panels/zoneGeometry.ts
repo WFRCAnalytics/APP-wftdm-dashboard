@@ -11,6 +11,7 @@
 // data-model.md), never something a local scenario folder supplies, so
 // this path was never going to touch registerFileBuffer() in the first
 // place — this isn't a defensive workaround, it's the natural shape.
+import { DEMO_CONTENT } from '@/services/demoContent'
 import { query, registerFileURL } from '@/services/duckdb'
 
 const base = import.meta.env.BASE_URL
@@ -46,6 +47,11 @@ export function resolveGeometryUrl(boundaries: string): string {
  * are completely unaffected. */
 export function resolveDemoGeometryUrl(boundaries: string): string {
   return `${base}demo-geometry/${boundaries}`
+}
+
+/** 070-demo-build-flag: a rail file lives in the demo's geometry folder when the demo is on, and beside the deployment's boundaries otherwise. */
+export function railGeometryUrl(file: string, demo: boolean = DEMO_CONTENT): string {
+  return demo ? resolveDemoGeometryUrl(file) : resolveGeometryUrl(file)
 }
 
 let spatialExtensionPromise: Promise<void> | null = null
@@ -139,7 +145,9 @@ export function loadZoneGeometry(boundaries: string, boundariesId: string): Prom
     let activeViewName = viewName
     try {
       await registerFileURL(viewName, resolveGeometryUrl(boundaries))
-    } catch {
+    } catch (err) {
+      // 070-demo-build-flag: the fallback to the demo's geometry exists only when the demo is on
+      if (!DEMO_CONTENT) throw err
       activeViewName = `zonemap-geom-demo__${boundaries}`
       await registerFileURL(activeViewName, resolveDemoGeometryUrl(boundaries))
     }
