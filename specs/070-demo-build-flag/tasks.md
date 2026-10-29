@@ -79,8 +79,8 @@ Single web-app project: `src/`, `scripts/`, `tests/`, `project-docs/` at the rep
 
 **Independent Test**: the Pages output has the same files and the same behaviour as `docs/`; the existing Playwright suites pass.
 
-- [ ] T014 [US3] Build `npm run build:demo` into a scratch folder and compare with `docs/`: the same top-level entries (all four `demo-*` folders, `index.html`, `assets`, service worker, basemap), the demo content files byte-identical to `public/demo-*`; only `assets/*` hash names and the bundle may differ. Do not touch `docs/` (the rebuild waits for the user's request)
-- [ ] T015 [US3] Confirm the demo mode in the browser: `npm run dev`, open it, check the demo title, tabs and runs appear and the first-run screen does not; run `npx playwright test --project=real tests/integration/realDemo.spec.ts tests/integration/exploreBuilderSite.spec.ts` and one spec from each of `chromium` and `redesign`; compare with the known flakes in CLAUDE.md (re-run a failure with `--workers=1`)
+- [X] T014 [US3] Build `npm run build:demo` into a scratch folder and compare with `docs/`: the same top-level entries (all four `demo-*` folders, `index.html`, `assets`, service worker, basemap), the demo content files byte-identical to `public/demo-*`; only `assets/*` hash names and the bundle may differ. Do not touch `docs/` (the rebuild waits for the user's request)
+- [X] T015 [US3] Confirm the demo mode in the browser: `npm run dev`, open it, check the demo title, tabs and runs appear and the first-run screen does not; run `npx playwright test --project=real tests/integration/realDemo.spec.ts tests/integration/exploreBuilderSite.spec.ts` and one spec from each of `chromium` and `redesign`; compare with the known flakes in CLAUDE.md (re-run a failure with `--workers=1`)
 
 ---
 
@@ -90,7 +90,7 @@ Single web-app project: `src/`, `scripts/`, `tests/`, `project-docs/` at the rep
 
 **Independent Test**: `check` gives its old results on the demo folder and on a small deployer folder.
 
-- [ ] T016 [US4] Run `npm run check -- public/demo-dashboard-config` (clean) and on a scratch folder with one deliberate mistake (reports only that folder's problem, exit 1) with the flag off (the default for `vite-node`); the existing `tests/unit/configCheck.test.ts` still passes. No code change is expected; if `scripts/check-config.ts` fails because `import.meta.env.VITE_WFTDM_DEMO` is undefined, make `DEMO_CONTENT` read it safely
+- [X] T016 [US4] Run `npm run check -- public/demo-dashboard-config` (clean) and on a scratch folder with one deliberate mistake (reports only that folder's problem, exit 1) with the flag off (the default for `vite-node`); the existing `tests/unit/configCheck.test.ts` still passes. No code change is expected; if `scripts/check-config.ts` fails because `import.meta.env.VITE_WFTDM_DEMO` is undefined, make `DEMO_CONTENT` read it safely
 
 ---
 

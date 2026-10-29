@@ -44,3 +44,11 @@ Expected: the demo as today. Then the full Playwright run: no new failures compa
 ## 6. The check command
 
 `npm run check -- public/demo-dashboard-config` is clean; on a small deployer folder it reports only that folder's problems.
+
+## Checked so far (2026-10-29, US1 to US4)
+
+- Normal build: `dist/` has no `demo-*` folder; 94 MB before, 81 MB after. `grep -rl "demo-"` finds the service worker's cache pattern and the geometry chunk's URL builder only.
+- Demo build (`vite build --mode demo`) against the committed `docs/`: same top-level entries, the same non-asset file list, all four `demo-*` folders byte-identical to `public/demo-*` and to `docs/`; asset names equal apart from content hashes.
+- Demo mode in the browser: `realDemo`, `settingsModal`, `settingsRedesign`, `layoutTabs`, `boot`, `exploreBuilderSite`, `assistantConfig` ran (87 + 29 passed); the only failures are `realDemo.spec.ts:19` and `:39`, the known pre-existing ones.
+- First run (project `firstrun`, 3 cases): no site file, a site file with `pages: []`, and a one-page deployment; no `demo-` request, no console error.
+- `npm run check`: the demo folder is clean (exit 0); a scratch folder with one bad limit reports only that problem (exit 1).
