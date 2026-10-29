@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
+import { routeDemoConfig, routeDeploymentConfig, type SiteConfig } from './_siteConfig'
 import type { WftdmDebugHook } from '../../src/main.tsx'
 
 declare global {
@@ -15,25 +16,25 @@ declare global {
 const BASES = ['activitysim-baseline', 'activitysim-density-variant', 'activitysim-transit-variant']
 const ALL_RUNS = [...BASES, ...BASES.map((n) => `${n}-2036`)]
 const DASHBOARD_INDEX = {
-  dashboards: ['dashboard-6-network.yaml'],
-  years: [
-    { year: 2023, label: 'Base year' },
-    { year: 2036, label: 'End of RTP Phase I' },
-  ],
-  baseYear: 2023,
-  defaultYear: 2023,
+  pages: ['dashboard-6-network.yaml'],
+  years: {
+    list: [
+      { year: 2023, label: 'Base year' },
+      { year: 2036, label: 'End of RTP Phase I' },
+    ],
+    base: 2023,
+    default: 2023,
+  },
 }
 
-async function boot(page: Page, runs: string[], index: object = DASHBOARD_INDEX) {
-  await page.route('**/demo-dashboard-config/index.json', (r) =>
-    r.fulfill({ contentType: 'application/json', body: JSON.stringify(index) }),
-  )
+async function boot(page: Page, runs: string[], index: SiteConfig = DASHBOARD_INDEX) {
+  await routeDemoConfig(page, index)
   await page.route('**/demo-scenarios/index.json', (r) =>
     r.fulfill({ contentType: 'application/json', body: JSON.stringify(runs) }),
   )
   await page.route('**/observed/summary/index.json', (r) => r.fulfill({ status: 404, body: '' }))
   await page.route('**/scenarios/index.json', (r) => r.fulfill({ status: 404, body: '' }))
-  await page.route('**/dashboard-config/index.json', (r) => r.fulfill({ status: 404, body: '' }))
+  await routeDeploymentConfig(page, null)
   await page.goto('/')
   await page.waitForFunction(() => window.__wftdm !== undefined, null, { timeout: 30_000 })
   await page.waitForFunction(
@@ -111,7 +112,7 @@ test.describe('063 P3 — model years', () => {
   })
 
   test('a single-year deployment has no Year control', async ({ page }) => {
-    await boot(page, BASES, { dashboards: ['dashboard-6-network.yaml'] })
+    await boot(page, BASES, { pages: ['dashboard-6-network.yaml'] })
     await expect(page.getByTestId('control-year')).toHaveCount(0)
     await expect(page.getByTestId('scenario-picker-button')).toBeVisible()
   })

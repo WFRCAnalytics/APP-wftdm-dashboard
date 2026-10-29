@@ -35,7 +35,8 @@ import { initDuckDB } from './services/duckdb.ts'
 import { discoverScenarios } from './services/scenarioDiscovery.ts'
 import { bootCompareState } from './services/runResolution.ts'
 import { setAssistantEnabled } from './state/assistantAvailability.ts'
-import { loadDashboards, loadDashboardBranding, type DashboardBranding } from './services/yamlLoader.ts'
+import { loadSite } from './services/siteConfig.ts'
+import { loadDashboards } from './services/yamlLoader.ts'
 import { setDeployerScenarioPalette } from './panels/scenarioDisplay.ts'
 import { setDeployerProtomapsSource } from './state/protomapsSourceState.ts'
 import { setDeployerInterfaceColor } from './panels/interfaceColor.ts'
@@ -135,67 +136,23 @@ toast.success('DuckDB connected', { id: duckdbToastId })
 
 const scenariosToastId = toast.loading('Loading scenarios…')
 let dashboards: Awaited<ReturnType<typeof loadDashboards>>
+let site: Awaited<ReturnType<typeof loadSite>>
 try {
   await discoverScenarios()
 
-  // 026-activitysim-demo-content: dashboards from the new, git-tracked
-  // public/demo-dashboard-config/ content root are concatenated after the
-  // existing public/dashboard-config/ tabs — loadDashboards() itself needs
-  // no change at all, its existing `baseUrl` parameter already supports
-  // this second call (research.md #4).
-  dashboards = [
-    ...(await loadDashboards()),
-    ...(await loadDashboards(`${import.meta.env.BASE_URL}demo-dashboard-config/`)),
-  ]
+  // The site settings (dashboard-config.yaml of the deployment's root, then the git-tracked demo root as the fallback) name
+  // the page files: the deployment's pages first, then the demo's.
+  site = await loadSite()
+  dashboards = []
+  for (const source of site.pageSources) dashboards.push(...(await loadDashboards(source.baseUrl, source.pages)))
 } catch (err) {
   toast.error('Failed to load scenarios', { id: scenariosToastId, description: String(err) })
   throw err
 }
 toast.success('Scenarios loaded', { id: scenariosToastId })
 
-// Deployer-configurable app-wide branding (title/logo) — same two-root
-// read as `dashboards` above, but PRECEDENCE, not concatenation: a real
-// deployment's own public/dashboard-config/index.json (gitignored,
-// populated externally per deployment) wins per-field when it sets one,
-// falling back to the git-tracked demo root's own real branding
-// otherwise — the same "author choice, then a real default" precedence
-// shape resolveEffectiveBasemap() already establishes for basemaps, not
-// a new pattern invented here. In THIS repo's own demo/dev/CI
-// environment, public/dashboard-config/ is either empty or fixture-only
-// (gitignored, ephemeral — see CLAUDE.md's own Config file set section),
-// so the demo root's real WFRC branding (public/demo-dashboard-config/
-// index.json) is what actually shows up out of the box.
-const [primaryBranding, demoBranding] = await Promise.all([
-  loadDashboardBranding(),
-  loadDashboardBranding(`${import.meta.env.BASE_URL}demo-dashboard-config/`),
-])
-const branding: DashboardBranding = {
-  title: primaryBranding.title ?? demoBranding.title,
-  logoUrl: primaryBranding.logoUrl ?? demoBranding.logoUrl,
-  logoUrlDark: primaryBranding.logoUrlDark ?? demoBranding.logoUrlDark,
-  markUrl: primaryBranding.markUrl ?? demoBranding.markUrl,
-  markUrlDark: primaryBranding.markUrlDark ?? demoBranding.markUrlDark,
-  scenarioPalette: primaryBranding.scenarioPalette ?? demoBranding.scenarioPalette,
-  protomapsPmtilesUrl: primaryBranding.protomapsPmtilesUrl ?? demoBranding.protomapsPmtilesUrl,
-  protomapsApiKey: primaryBranding.protomapsApiKey ?? demoBranding.protomapsApiKey,
-  primaryColor: primaryBranding.primaryColor ?? demoBranding.primaryColor,
-  secondaryColor: primaryBranding.secondaryColor ?? demoBranding.secondaryColor,
-  accentColor: primaryBranding.accentColor ?? demoBranding.accentColor,
-  brandColor: primaryBranding.brandColor ?? demoBranding.brandColor,
-  years: primaryBranding.years ?? demoBranding.years,
-  baseYear: primaryBranding.baseYear ?? demoBranding.baseYear,
-  defaultYear: primaryBranding.defaultYear ?? demoBranding.defaultYear,
-  compareDefault: primaryBranding.compareDefault ?? demoBranding.compareDefault,
-  compareScenarios: primaryBranding.compareScenarios ?? demoBranding.compareScenarios,
-  compareFocus: primaryBranding.compareFocus ?? demoBranding.compareFocus,
-  compareReference: primaryBranding.compareReference ?? demoBranding.compareReference,
-  vocab: primaryBranding.vocab ?? demoBranding.vocab,
-  metrics: primaryBranding.metrics ?? demoBranding.metrics,
-  units: primaryBranding.units ?? demoBranding.units,
-  exportFooter: primaryBranding.exportFooter ?? demoBranding.exportFooter,
-  layout: primaryBranding.layout ?? demoBranding.layout,
-  assistantEnabled: primaryBranding.assistantEnabled ?? demoBranding.assistantEnabled,
-}
+// Deployer-configurable settings (title, logos, colours, vocabularies, years, ...), in the shape the app reads.
+const branding = site.branding
 setAssistantEnabled(branding.assistantEnabled !== false)
 // 063 redesign: this deployment's category vocabulary (modes, purposes, income groups) for the chart kinds.
 configureVocab(branding.vocab)
@@ -207,7 +164,7 @@ configureExport({ footer: branding.exportFooter, title: branding.title })
 // discovered runs and the merged config above; every tile and the control bar read the result.
 bootCompareState(branding)
 // 036-scenario-color-picker: semantic validation (is each entry a real
-// CSS color) lives here, at the one real consumption point — loadDashboardBranding()
+// CSS color) lives here, at the one real consumption point — the site loader
 // itself stays a thin, format-only parse, matching its own existing
 // convention for title/logoUrl/logoUrlDark. CSS.supports() is the real,
 // standard browser API for this — no hand-rolled hex-only regex that

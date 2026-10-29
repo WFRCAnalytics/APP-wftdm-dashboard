@@ -1,9 +1,8 @@
 // 055-build-time-skeleton: generates the boot skeleton's real markup at
 // BUILD TIME (not runtime — the skeleton paints before any JavaScript
 // executes, so it structurally CANNOT read deployer config the normal
-// browser-fetch way main.tsx's own loadDashboards()/loadDashboardBranding()
-// do). This plugin reads the exact same on-disk config files those
-// runtime functions fetch — public/dashboard-config/ (a real deployer's
+// browser-fetch way main.tsx's own site loader does). This plugin reads the exact same on-disk config files that
+// loader fetches — public/dashboard-config/ (a real deployer's
 // own, gitignored) and public/demo-dashboard-config/ (this repo's own
 // git-tracked demo content) — straight off `fs`, at the moment Vite
 // processes `index.html`, and splices a REAL sidebar skeleton (actual
@@ -23,20 +22,13 @@
 // scenarioDiscovery.ts's registerDemoScenarios() applies unconditionally,
 // not gated by NODE_ENV).
 //
-// Deliberately does NOT reuse services/yamlLoader.ts's real
-// loadDashboards()/loadDashboardBranding() — those are browser-fetch-
-// based (`fetch(url)`) and cannot run in this plugin's own Node/build
-// context at all. This is an independent, build-time reimplementation of
-// the same two on-disk shapes, the same category of deliberate
-// duplication this project's own python/wftdm_dashboard/postprocessor
-// already established for parsing the SAME summarize.yaml grammar in a
-// different runtime (expand.py mirrors sqlExpander.ts; this file mirrors
-// yamlLoader.ts) — not a shortcut, a genuinely different execution
-// context with no shared runtime to call into.
+// The site settings (title, logo, page list, assistant on/off) are read through src/config, the same pure schema and
+// validator the browser uses, so there is no second parser. The page files themselves are read here with `fs`.
 import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import yaml from 'js-yaml'
 import type { Plugin } from 'vite'
+import { getPath, validate } from '../src/config'
 
 interface SkeletonTab {
   label: string
@@ -46,7 +38,7 @@ interface SkeletonTab {
 interface SkeletonBranding {
   title?: string
   hasLogo: boolean
-  /** `assistant: { enabled: false }` in index.json (the deployment turned the AI assistant off). */
+  /** `assistant: { enabled: false }` in dashboard-config.yaml (the deployment turned the AI assistant off). */
   assistantEnabled?: boolean
 }
 
@@ -57,56 +49,29 @@ interface SkeletonRoot {
 
 const EMPTY_ROOT: SkeletonRoot = { tabs: [], branding: { hasLogo: false } }
 
-// Same reading as services/yamlLoader.ts#parseAssistantEnabled: `assistant: false` or `assistant: { enabled: false }`.
-function parseAssistantEnabled(value: unknown): boolean | undefined {
-  if (typeof value === 'boolean') return value
-  const e = typeof value === 'object' && value !== null ? (value as { enabled?: unknown }).enabled : undefined
-  return typeof e === 'boolean' ? e : undefined
-}
-
-function readJSONSafe(path: string): unknown {
-  try {
-    return JSON.parse(readFileSync(path, 'utf-8'))
-  } catch {
-    return null
-  }
-}
-
 /**
- * Mirrors services/yamlLoader.ts's own loadDashboards()/
- * loadDashboardBranding() read of one config root's index.json — the
- * SAME two real shapes (028-dashboard-branding): either a bare filename
- * array, or `{ dashboards: [...], title?, logoUrl?, logoUrlDark? }`.
- * Fails soft exactly like the runtime version's own `if (!res.ok) return
- * []` — a missing/malformed root contributes nothing to the skeleton,
- * never fails the build.
+ * Reads one config root's dashboard-config.yaml through the same pure schema the browser uses (src/config), so there is no
+ * second parser to keep in step. Fails soft like the runtime: a missing or malformed file contributes nothing to the
+ * skeleton and never fails the build.
  */
 function readDashboardRoot(rootDir: string): SkeletonRoot {
-  const indexPath = resolve(rootDir, 'index.json')
-  if (!existsSync(indexPath)) return EMPTY_ROOT
+  const configPath = resolve(rootDir, 'dashboard-config.yaml')
+  if (!existsSync(configPath)) return EMPTY_ROOT
 
-  const index = readJSONSafe(indexPath)
-  if (index === null) return EMPTY_ROOT
-
-  const isBareArray = Array.isArray(index)
-  const filenames: unknown[] = isBareArray
-    ? index
-    : Array.isArray((index as Record<string, unknown>).dashboards)
-      ? (index as Record<string, unknown>).dashboards as unknown[]
-      : []
-
-  const branding: SkeletonBranding = isBareArray
-    ? { hasLogo: false }
-    : {
-        title:
-          typeof (index as Record<string, unknown>).title === 'string'
-            ? ((index as Record<string, unknown>).title as string)
-            : undefined,
-        hasLogo: Boolean(
-          (index as Record<string, unknown>).logoUrl || (index as Record<string, unknown>).logoUrlDark,
-        ),
-        assistantEnabled: parseAssistantEnabled((index as Record<string, unknown>).assistant),
-      }
+  let raw: unknown
+  try {
+    raw = yaml.load(readFileSync(configPath, 'utf-8'))
+  } catch {
+    return EMPTY_ROOT
+  }
+  const { settings } = validate(raw, { file: configPath })
+  const pages = getPath(settings, 'pages')
+  const filenames: unknown[] = Array.isArray(pages) ? pages : []
+  const branding: SkeletonBranding = {
+    title: typeof getPath(settings, 'title') === 'string' ? (getPath(settings, 'title') as string) : undefined,
+    hasLogo: Boolean(getPath(settings, 'logo.light') || getPath(settings, 'logo.dark')),
+    assistantEnabled: getPath(settings, 'assistant.enabled') as boolean | undefined,
+  }
 
   const tabs: SkeletonTab[] = []
   for (const filename of filenames) {

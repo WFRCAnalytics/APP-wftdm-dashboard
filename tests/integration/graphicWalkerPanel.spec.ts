@@ -1,4 +1,5 @@
 import { test, expect, type Page, type Locator } from '@playwright/test'
+import { patchDemoConfig } from './_siteConfig'
 import type { WftdmDebugHook } from '../../src/main.tsx'
 
 declare global {
@@ -129,11 +130,8 @@ async function boot(page: Page, searchParams = '') {
   // Inject the test tab FIRST in the list — so it's the landing tab,
   // matching the old fixture's own "Detail" tab being reachable without
   // depending on Summary's own content having loaded/rendered first.
-  await page.route('**/demo-dashboard-config/index.json', async (route) => {
-    const res = await route.fetch()
-    const json = await res.json()
-    json.dashboards = ['dashboard-9-gwtest.yaml', ...json.dashboards]
-    await route.fulfill({ response: res, json })
+  await patchDemoConfig(page, (config) => {
+    config.pages = ['dashboard-9-gwtest.yaml', ...((config.pages as string[]) ?? [])]
   })
   await page.route('**/demo-dashboard-config/dashboard-9-gwtest.yaml', async (route) => {
     await route.fulfill({ contentType: 'text/yaml', body: INJECTED_TAB_YAML })

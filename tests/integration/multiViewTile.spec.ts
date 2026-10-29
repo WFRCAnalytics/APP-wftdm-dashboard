@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
+import { routeDemoConfig, routeDeploymentConfig } from './_siteConfig'
 import type { WftdmDebugHook } from '../../src/main.tsx'
 
 declare global {
@@ -15,12 +16,7 @@ const TITLE = 'Trips by Purpose and Mode'
 const SCENARIOS = ['activitysim-baseline', 'activitysim-density-variant', 'activitysim-transit-variant']
 
 async function boot(page: Page, mutateYaml?: (text: string) => string) {
-  await page.route('**/demo-dashboard-config/index.json', (r) =>
-    r.fulfill({
-      contentType: 'application/json',
-      body: JSON.stringify({ dashboards: ['dashboard-4-mode-choice.yaml', 'dashboard-5-trip-models.yaml'] }),
-    }),
-  )
+  await routeDemoConfig(page, { pages: ['dashboard-4-mode-choice.yaml', 'dashboard-5-trip-models.yaml'] })
   await page.route('**/demo-scenarios/index.json', (r) =>
     r.fulfill({ contentType: 'application/json', body: JSON.stringify(SCENARIOS) }),
   )
@@ -32,7 +28,7 @@ async function boot(page: Page, mutateYaml?: (text: string) => string) {
   }
   await page.route('**/observed/summary/index.json', (r) => r.fulfill({ status: 404, body: '' }))
   await page.route('**/scenarios/index.json', (r) => r.fulfill({ status: 404, body: '' }))
-  await page.route('**/dashboard-config/index.json', (r) => r.fulfill({ status: 404, body: '' }))
+  await routeDeploymentConfig(page, null)
   await page.goto('/')
   await page.waitForFunction(() => window.__wftdm !== undefined, null, { timeout: 30_000 })
   await page.waitForFunction(

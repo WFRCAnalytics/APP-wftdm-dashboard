@@ -74,7 +74,7 @@ test.describe('038 US1 — the Switch universally controls every unpinned panel'
     let navigated = false
 
     await boot(page)
-    page.on('framenavigated', () => {
+    page.on('load', () => {
       navigated = true
     })
 

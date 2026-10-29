@@ -1,4 +1,5 @@
 import { test, expect, type Page } from './_testTab'
+import { patchDemoConfig, routeDemoConfig } from './_siteConfig'
 import type { WftdmDebugHook } from '../../src/main.tsx'
 
 declare global {
@@ -16,7 +17,7 @@ declare global {
 // PERMANENT 8th dashboard-8-test.yaml entry (header.tab is a single
 // space " ", so its visible label normalizes to ''). FR-003's "tracks
 // whatever is discovered, zero code change" is proven by routing the
-// demo index.json to a smaller subset and re-booting — no on-disk
+// demo dashboard-config.yaml to a smaller subset and re-booting — no on-disk
 // mutation.
 
 // The 8th ("Test") tab's header.tab is " "; Playwright's toHaveText
@@ -51,21 +52,16 @@ test.describe('030-sidebar-navigation — User Story 1 (sidebar shell)', () => {
     await expect(sidebarTablist(page).getByRole('tab')).toHaveText(REAL_TABS)
 
     // A genuinely DIFFERENT, smaller discovered set — re-verified with NO
-    // code change (FR-003). Route the demo index.json to a 4-entry subset.
-    await page.route('**/demo-dashboard-config/index.json', (route) =>
-      route.fulfill({
-        contentType: 'application/json',
-        body: JSON.stringify({
-          dashboards: [
-            'dashboard-1-summary.yaml',
-            'dashboard-2-person-household.yaml',
-            'dashboard-7-explore.yaml',
-            'dashboard-8-test.yaml',
-          ],
-          title: 'WFRC TDM Calibration Dashboard',
-        }),
-      }),
-    )
+    // code change (FR-003). Route the demo page list to a 4-entry subset.
+    await routeDemoConfig(page, {
+      pages: [
+        'dashboard-1-summary.yaml',
+        'dashboard-2-person-household.yaml',
+        'dashboard-7-explore.yaml',
+        'dashboard-8-test.yaml',
+      ],
+      title: 'WFRC TDM Calibration Dashboard',
+    })
     await boot(page)
     await expect(sidebarTablist(page).getByRole('tab')).toHaveCount(4)
     await expect(sidebarTablist(page).getByRole('tab')).toHaveText([
@@ -152,18 +148,16 @@ test.describe('030-sidebar-navigation — User Story 1 (sidebar shell)', () => {
   })
 })
 
-// Navigation branding is deployer-configured (dashboard-config/index.json: logoUrl/logoUrlDark for the expanded menu,
-// markUrl/markUrlDark for the collapsed rail), never built in. Collapsed shows the mark; expanded REPLACES it with the logo
+// Navigation branding is deployer-configured (dashboard-config.yaml: logo for the expanded menu,
+// mark for the collapsed rail), never built in. Collapsed shows the mark; expanded REPLACES it with the logo
 // (or the title when there is no logo): the mark is never shown beside either.
 const PIXEL =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='
 
-async function bootWithBranding(page: Page, branding: Record<string, string | undefined>) {
-  await page.route('**/demo-dashboard-config/index.json', async (route) => {
-    const res = await route.fetch()
-    const json = await res.json()
-    for (const key of ['title', 'logoUrl', 'logoUrlDark', 'markUrl', 'markUrlDark']) delete json[key]
-    await route.fulfill({ response: res, json: { ...json, ...branding } })
+async function bootWithBranding(page: Page, branding: { title?: string; logo?: { light?: string; dark?: string }; mark?: { light?: string; dark?: string } }) {
+  await patchDemoConfig(page, (config) => {
+    for (const key of ['title', 'logo', 'mark']) delete config[key]
+    Object.assign(config, branding)
   })
   await boot(page)
 }
@@ -173,7 +167,7 @@ const hiddenWrapper = (page: Page, selector: string) =>
 
 test.describe('deployer-configured navigation branding', () => {
   test('a configured mark shows collapsed and the logo replaces it expanded, never both', async ({ page }) => {
-    await bootWithBranding(page, { title: 'Test Org', logoUrl: PIXEL, markUrl: PIXEL })
+    await bootWithBranding(page, { title: 'Test Org', logo: { light: PIXEL }, mark: { light: PIXEL } })
     await expect(page.locator('.dashboard-brand-mark')).toHaveCount(1)
     expect(await hiddenWrapper(page, '.dashboard-brand-mark')).toBe('false')
     expect(await hiddenWrapper(page, '.dashboard-brand-logo')).toBe('true')
@@ -186,10 +180,8 @@ test.describe('deployer-configured navigation branding', () => {
 
   test('the dark-mode variants are used in dark mode', async ({ page }) => {
     await bootWithBranding(page, {
-      logoUrl: 'data:image/png;base64,LIGHTLOGO',
-      logoUrlDark: PIXEL,
-      markUrl: 'data:image/png;base64,LIGHTMARK',
-      markUrlDark: PIXEL,
+      logo: { light: 'data:image/png;base64,LIGHTLOGO', dark: PIXEL },
+      mark: { light: 'data:image/png;base64,LIGHTMARK', dark: PIXEL },
     })
     await page.evaluate(() => document.documentElement.classList.add('dark'))
     await expect(page.locator('.dashboard-brand-mark')).toHaveAttribute('src', PIXEL)

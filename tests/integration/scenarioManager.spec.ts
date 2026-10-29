@@ -1,6 +1,7 @@
 import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { test, expect, type Page } from '@playwright/test'
+import { routeDemoConfig, routeDeploymentConfig } from './_siteConfig'
 import type { WftdmDebugHook } from '../../src/main.tsx'
 
 declare global {
@@ -174,7 +175,7 @@ async function openScenariosTab(page: Page) {
 }
 
 const REAL_DEMO_DASHBOARD_INDEX = {
-  dashboards: [
+  pages: [
     'dashboard-1-summary.yaml',
     'dashboard-2-person-household.yaml',
     'dashboard-3-tour-models.yaml',
@@ -196,15 +197,13 @@ async function boot(page: Page) {
   // real, pinned appState entry unconditionally — see this file's own
   // header comment — just with status: 'failed'/active: false, honestly
   // reflecting that no real observed dataset exists in this repo).
-  await page.route('**/demo-dashboard-config/index.json', (r) =>
-    r.fulfill({ contentType: 'application/json', body: JSON.stringify(REAL_DEMO_DASHBOARD_INDEX) }),
-  )
+  await routeDemoConfig(page, REAL_DEMO_DASHBOARD_INDEX)
   await page.route('**/demo-scenarios/index.json', (r) =>
     r.fulfill({ contentType: 'application/json', body: JSON.stringify(['activitysim-baseline']) }),
   )
   await page.route('**/observed/summary/index.json', (r) => r.fulfill({ status: 404, body: '' }))
   await page.route('**/scenarios/index.json', (r) => r.fulfill({ status: 404, body: '' }))
-  await page.route('**/dashboard-config/index.json', (r) => r.fulfill({ status: 404, body: '' }))
+  await routeDeploymentConfig(page, null)
 
   await page.goto('/')
   await page.waitForFunction(() => window.__wftdm !== undefined, null, { timeout: 30_000 })
@@ -532,15 +531,13 @@ test.describe('User Story 2 - Unsupported browser sees a clear, non-broken contr
     // reached by its other bound-interface hostname. Route mocks are
     // origin-agnostic (path-pattern based), so boot()'s own routes still
     // apply the same way here.
-    await page.route('**/demo-dashboard-config/index.json', (r) =>
-      r.fulfill({ contentType: 'application/json', body: JSON.stringify(REAL_DEMO_DASHBOARD_INDEX) }),
-    )
+    await routeDemoConfig(page, REAL_DEMO_DASHBOARD_INDEX)
     await page.route('**/demo-scenarios/index.json', (r) =>
       r.fulfill({ contentType: 'application/json', body: JSON.stringify(['activitysim-baseline']) }),
     )
     await page.route('**/observed/summary/index.json', (r) => r.fulfill({ status: 404, body: '' }))
     await page.route('**/scenarios/index.json', (r) => r.fulfill({ status: 404, body: '' }))
-    await page.route('**/dashboard-config/index.json', (r) => r.fulfill({ status: 404, body: '' }))
+    await routeDeploymentConfig(page, null)
 
     await page.goto('http://localhost:5199/APP-wftdm-dashboard/')
     await page.waitForFunction(() => window.__wftdm !== undefined, null, { timeout: 30_000 })

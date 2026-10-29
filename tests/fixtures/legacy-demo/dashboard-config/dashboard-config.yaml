@@ -1,0 +1,33 @@
+# Site settings (see project-docs/CONFIG-REFERENCE.md). Pages are listed in order; the first is the landing page.
+version: 1
+pages:
+  - dashboard-1-summary.yaml
+  - dashboard-2-person-household.yaml
+  - dashboard-3-tour-models.yaml
+  - dashboard-4-mode-choice.yaml
+  - dashboard-5-trip-models.yaml
+  - dashboard-6-network.yaml
+  - dashboard-7-explore.yaml
+  - dashboard-8-test.yaml
+title: WFRC TDM Calibration Dashboard
+logo:
+  light: >-
+    https://raw.githubusercontent.com/WFRCAnalytics/wfrc-brand/main/_extensions/wfrc-brand/assets/logo/horizontal/WFRC_logo_horizontal_color_transparent.png
+  dark: >-
+    https://raw.githubusercontent.com/WFRCAnalytics/wfrc-brand/main/_extensions/wfrc-brand/assets/logo/horizontal/WFRC_logo_horizontal_white_transparent.png
+vocab:
+  districts:
+    - {label: Weber}
+    - {label: Davis}
+    - {label: Salt Lake}
+    - {label: Utah}
+    - {label: Tooele}
+years:
+  list:
+    - {year: 2023, label: Base year}
+    - {year: 2036, label: End of RTP Phase I}
+  base: 2023
+  default: 2023
+basemap:
+  protomaps:
+    api_key: 2c497b58fdc8c210
