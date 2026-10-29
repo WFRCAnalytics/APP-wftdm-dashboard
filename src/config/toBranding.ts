@@ -56,7 +56,19 @@ export function toBranding(settings: Tree): DashboardBranding {
     docsLabel: str(settings, 'docs.label'),
     settingsTabs: strList(settings, 'settings.tabs'),
     assistant: assistant(settings),
+    network: network(settings),
   }
+}
+
+function network(t: Tree): DashboardBranding['network'] {
+  const out: NonNullable<DashboardBranding['network']> = {}
+  const fonts = str(t, 'network.fonts')
+  if (fonts === 'bundled' || fonts === 'any') out.fonts = fonts
+  const allow = strList(t, 'network.basemaps.allow')
+  if (allow) out.basemapsAllow = allow
+  const mirror = str(t, 'network.duckdb_extensions')
+  if (mirror) out.duckdbExtensions = mirror
+  return Object.keys(out).length > 0 ? out : undefined
 }
 
 function assistant(t: Tree): DashboardBranding['assistant'] {

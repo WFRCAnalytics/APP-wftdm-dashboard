@@ -293,6 +293,37 @@
         }
       }
     },
+    "network": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "fonts": {
+          "enum": [
+            "bundled",
+            "any"
+          ],
+          "description": "bundled: the Appearance tab offers only the fonts that ship with the app (the default and System UI) and no font is loaded from an outside host. any: today’s behaviour (default)."
+        },
+        "basemaps": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "allow": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Patterns (* is the only wildcard, letter case ignored) on basemap ids such as carto-positron, openfreemap-*, ugrc-vector-lite, protomaps-light or OpenStreetMap.Mapnik. The Basemap tab offers only matching entries and a default that does not match is replaced by the first allowed one. Empty or absent: every basemap is allowed."
+            }
+          }
+        },
+        "duckdb_extensions": {
+          "type": "string",
+          "pattern": "^\\S*$",
+          "description": "One http or https address the database downloads its extensions (spatial, parquet) from, instead of DuckDB’s own host. The deployer hosts the files."
+        }
+      }
+    },
     "basemap": {
       "type": "object",
       "additionalProperties": false,

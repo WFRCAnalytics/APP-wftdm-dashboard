@@ -105,3 +105,20 @@ describe('toBranding: assistant note and limits', () => {
     expect(toBranding(settings).assistant?.limits).toEqual({ previewRows: 200 })
   })
 })
+
+describe('network block', () => {
+  it('is unset when nothing is configured', () => {
+    expect(toBranding({}).network).toBeUndefined()
+  })
+
+  it('maps each key', () => {
+    const t = { network: { fonts: 'bundled', basemaps: { allow: ['carto-*'] }, duckdb_extensions: 'https://m.example.org/duckdb' } }
+    expect(toBranding(t).network).toEqual({ fonts: 'bundled', basemapsAllow: ['carto-*'], duckdbExtensions: 'https://m.example.org/duckdb' })
+  })
+
+  it('maps a partial block and ignores a value of the wrong kind', () => {
+    expect(toBranding({ network: { fonts: 'any' } }).network).toEqual({ fonts: 'any' })
+    expect(toBranding({ network: { fonts: 'sideways' } }).network).toBeUndefined()
+    expect(toBranding({ network: { basemaps: { allow: ['a', 1] } } }).network).toEqual({ basemapsAllow: ['a'] })
+  })
+})
