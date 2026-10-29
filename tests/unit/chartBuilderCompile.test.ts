@@ -52,7 +52,7 @@ describe('bar', () => {
   it('totals values per bar', () => {
     const m = ok(build({ enc: { x: { f: 'mode' }, y: { f: 'trips', agg: 'sum' } } }))
     const total = [0, 1, 2, 3].reduce((s, h) => s + 10 + h, 0) + [0, 1, 2, 3].reduce((s, h) => s + 15 + h, 0)
-    expect(m.panels[0].rects[0].tip).toBe(`Bus~trips=${total}`)
+    expect(m.panels[0].rects[0].tip).toBe(`Bus~trips\u0001${total}`)
   })
   it('reaches 100 percent when normalised', () => {
     const m = ok(build({ enc, stack: 'normalize' }))

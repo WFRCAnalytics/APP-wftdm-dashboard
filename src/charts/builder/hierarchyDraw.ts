@@ -66,7 +66,7 @@ export function drawHierarchy(model: DrawnChart, theme: ChartTheme, state: HierS
     const t = (e.target as Element).closest?.('[data-t]')?.getAttribute('data-t')
     if (!t) { tooltip.hide(); return }
     const [title, ...rest] = t.split('~')
-    tooltip.show({ title, rows: rest.map((p) => { const k = p.indexOf('='); return { k: p.slice(0, k), v: p.slice(k + 1) } }) }, e)
+    tooltip.show({ title, rows: rest.map((p) => { const k = p.indexOf('\u0001'); return { k: p.slice(0, k), v: p.slice(k + 1) } }) }, e)
   }
   svg.addEventListener('mouseover', show)
   svg.addEventListener('mousemove', show)

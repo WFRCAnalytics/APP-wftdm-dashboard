@@ -43,7 +43,7 @@ export function relabel(m: ChartModel, labels: Record<string, string>): ChartMod
   const tip = (t: string) => {
     if (!t) return t
     const [title, ...rest] = t.split('~')
-    return [L(title), ...rest.map((p) => { const i = p.indexOf('='); return i < 0 ? p : `${L(p.slice(0, i))}${p.slice(i)}` })].join('~')
+    return [L(title), ...rest.map((p) => { const i = p.indexOf('\u0001'); return i < 0 ? p : `${L(p.slice(0, i))}${p.slice(i)}` })].join('~')
   }
   return {
     ...m,
@@ -315,7 +315,8 @@ export function buildChart(input: BuildInput): ChartModel {
   const pa = (o: P, d: string, fill: string, stroke: string, sw: number, dash: string, opac: number, tip: string) => o.paths.push({ d, fill, stroke, sw, dash, op: opac, tip })
   const rect = (o: P, x: number, y: number, w: number, h: number, s: Series, tip: string, rx = T.r) =>
     o.rects.push({ x: r1(x), y: r1(y), w: r1(Math.max(0, w)), h: r1(Math.max(0, h)), rx: Math.min(rx, Math.max(0, w) / 2, Math.max(0, h) / 2), fill: s.fill, stroke: s.pat ? s.color : 'none', op: op(s), tip })
-  const tip = (title: string, pairs: [string, string][]) => [title, ...pairs.map((p) => `${p[0]}=${p[1]}`)].join('~')
+  // a tooltip is title~label\u0001value~...: the separator is a control character so a label like "Autos >= Workers" survives
+  const tip = (title: string, pairs: [string, string][]) => [title, ...pairs.map((p) => `${p[0]}\u0001${p[1]}`)].join('~')
   // treemap and sunburst: the groups (colour field) and the pieces inside each (detail field), as a tree the drawing can zoom into
   const trees: HTree[] = []
   const sankeys: HSankey[] = []
