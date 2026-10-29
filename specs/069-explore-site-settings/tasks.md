@@ -89,7 +89,7 @@ Single web-app project: `src/`, `tests/`, `scripts/`, `project-docs/` at the rep
 - [X] T018 Regenerate `project-docs/CONFIG-REFERENCE.md` and `project-docs/dashboard-config.schema.json` (`npm run docs:config`); `npx tsc --noEmit`; `npx vitest run`
 - [X] T019 Full Playwright run (`npx playwright test`); compare failures with the known flakes in CLAUDE.md and re-run each alone with `--workers=1` before treating it as real
 - [X] T020 Walk `quickstart.md` and record the result at its foot; `npm run check -- public/demo-dashboard-config` is clean
-- [ ] T021 Rebuild `docs/` with `npm run build:pages` (only when the user asks; not part of the implementation)
+- [X] T021 Rebuild `docs/` with `npm run build:pages` (only when the user asks; not part of the implementation)
 
 ---
 
