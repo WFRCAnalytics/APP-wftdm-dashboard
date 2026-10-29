@@ -260,8 +260,8 @@ Not drafted here, on purpose: how the charts find the deployer's tables and colu
 9. **Done (068, `specs/068-assistant-config/`):** the `assistant` block: `providers` (replace the built-ins; id, label, `base_url`, `models`, `needs_key`, `protocol`), `default`,
    `prompt_addendum` (at most 2000 characters, added last, not shown to the viewer) and `limits` (`round_trips` 1 to 12, `preview_rows` 100 to 5000, `model_rows` 1 to 200).
    No key or token setting exists: a secret-like field anywhere in the site file is refused unread. The address lock is a client-side guard, not a defence against
-   someone who edits the page code in their own browser. 10. **The `network` block is still open and undesigned** (fonts, a basemap allow-list, a mirrored DuckDB
-   extension location), so an offline or locked-down site works: its own later spec.
+   someone who edits the page code in their own browser. 10. **The `network` block: proposal written, not decided** (fonts, a basemap allow-list, a mirrored DuckDB
+   extension location; see section 7, "The network block"), so an offline or locked-down site works: its own later spec.
 
 **Phase E: Explore and limits**
 11. **Done (069, `specs/069-explore-site-settings/`):** the site-level `explore:` block (the keys already cascaded; `charts.default` now does too) and the
@@ -408,6 +408,38 @@ Nothing below changes code. Each topic is settled before anything is built.
   its class names.
 - **Conditional pages** (SimWrapper's `triggerPattern`: a page appears only if a file exists). Not adopted: a deployer already chooses
   which pages exist, and a panel whose data a run lacks is skipped automatically. Revisit only if a real use case turns up.
+
+### The network block (Phase D step 10): proposal, not decided
+
+Why it exists: an agency behind a firewall, or one that must not send a viewer's browser to outside hosts, needs to know every outside call the app can make and be able to switch each off or move it inside. The audit (2026-10-29) found four kinds:
+
+| Outside call | Where | Today |
+|---|---|---|
+| Interface fonts | the app's own fonts are bundled (`@fontsource`); the Appearance tab's font picker loads the chosen family from `fonts.googleapis.com` (`layout/settings/appearanceTab.tsx`) | a viewer's pick reaches Google |
+| Basemap tiles and styles | the Basemap tab catalogue: UGRC, CARTO, OpenFreeMap, Protomaps and the raster dropdown (`public/basemap/leaflet-providers.json`, dozens of hosts) | any entry the viewer picks reaches its host; the default is blank without a PMTiles source |
+| DuckDB extensions | `INSTALL spatial` (and the parquet extension on first use) fetch from `extensions.duckdb.org` (`panels/zoneGeometry.ts`) | one fixed outside fetch; no offline mode |
+| Assistant providers | the Settings assistant | already controlled by `assistant.providers` (068), not part of this block |
+
+Proposed keys (all optional, site-only, `snake_case`; unset means today's behaviour):
+
+```yaml
+network:
+  fonts: bundled                       # bundled | any. bundled: the picker offers only the bundled families and never calls Google. any: today's behaviour (default)
+  basemaps:
+    allow: ["protomaps-*", "ugrc-*"]   # glob patterns on basemap ids; the Basemap tab lists only these, and `basemap.default` must match one
+  duckdb_extensions: "https://mirror.example.org/duckdb"   # an http(s) address used as DuckDB's custom extension repository
+```
+
+Decisions needed (my recommendation first):
+
+1. **Font picker when `fonts: bundled`.** Recommended: offer only the families that ship in the bundle, hide the rest, and say nothing else. Alternative: keep the list and let the pick fail silently (confusing).
+2. **Basemap allow-list matching.** Recommended: glob patterns on the catalogue ids (`*` only, as for Explore tables), an empty or missing list means all, an id that matches nothing is reported by `check` and the app, and a viewer cannot add one. The raster provider dropdown is filtered the same way. Alternative: allow by host name (more precise for the raster catalogue, but ids are what a deployer sees).
+3. **Extension mirror.** Recommended: one address, applied with DuckDB's `custom_extension_repository` before the first `INSTALL`, `http`/`https` only, reported if it is not; no per-extension override. A deployer hosts the files themselves (the follow-up in the project memory about self-hosting the parquet extension).
+4. **A fully offline mode.** Recommended: not a key of its own. `fonts: bundled`, an `allow` list of self-hosted basemaps and a mirror together make it; `check` can list any remaining outside call it knows of. Alternative: an `offline: true` switch that implies all three.
+
+What `check` would add: a basemap id in `allow` that is not in the catalogue, an `allow` list that excludes `basemap.default`, a mirror that is not `http`/`https`, and (when `offline` thinking is wanted) a summary of the outside hosts a configuration still reaches.
+
+Out of scope for the first build: a content-security-policy header (that is the host's job, though the list of hosts could be generated), tile proxying, and a per-scenario data host.
 
 ## 8. Not decided: the data path, and observed data
 
