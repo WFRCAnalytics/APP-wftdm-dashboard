@@ -380,9 +380,9 @@ Nothing below changes code. Each topic is settled before anything is built.
   (maturin) and R (extendr) can load, with no separate program or runtime. It would need a second toolchain, and the browser could only
   share it through WebAssembly. To keep the door open, write the schema as data and the resolver as a small pure function with no
   browser dependencies. Reassess after the data-path test and once the core's scope is clear.
-- **Docs links.** A site-level `docs:` URL, and a per-page `header.docs` path appended to it, so each page can link to its own
-  section of the documentation. Wanted?
-- **Hidden versus draft.** Proposed: `hidden: true` leaves the page out of the sidebar but reachable by its link; `draft: true` leaves
+- **Docs links: decided.** A site-level `docs:` URL, and a per-page `header.docs` path appended to it, so each page can link to its own
+  section of the documentation (`specs/067-viewer-settings/`).
+- **Hidden versus draft: hidden decided, draft deferred.** `hidden: true` is built in 067; `draft` waits for the profiles design and nothing is reserved for it. Original proposal: `hidden: true` leaves the page out of the sidebar but reachable by its link; `draft: true` leaves
   it out entirely in a production profile and shows it in a development profile (this ties to topic 5).
 - **CSS: deferred** until the app is stable. When revisited, the supported surface would be the app's CSS variables (the tokens), not
   its class names.
