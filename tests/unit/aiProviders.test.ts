@@ -1,6 +1,7 @@
 // 064-ai-chat-assistant: provider wire formats, error mapping and token scrubbing (fetch mocked).
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { checkConnection, complete, ProviderError } from '@/services/ai/providers'
+import { configureAssistant, resetAssistantPolicy } from '@/services/ai/assistantPolicy'
+import { ADDRESS_REFUSED, checkConnection, complete, ProviderError } from '@/services/ai/providers'
 import { DEMO_SCRIPT, demoResultFor } from '@/services/ai/demoScript'
 import type { ChatTurn, ProviderConfig, ToolSpec } from '@/services/ai/types'
 
@@ -241,5 +242,40 @@ describe('protocol decides the message format, not the provider id', () => {
     await complete(ANTHROPIC, 's', [{ role: 'user', text: 'x' }], TOOLS, signal)
     expect(lastCall(fn).url).toBe('https://api.anthropic.com/v1/messages')
     expect(lastCall(fn).headers['x-api-key']).toBe('ant-secret')
+  })
+})
+
+describe('the address guard (a deployer\'s provider list is in force)', () => {
+  const LISTED: ProviderConfig = { provider: 'gw', protocol: 'openai', baseUrl: 'https://llm.example.org/v1', apiKey: 'tok', model: 'm' }
+
+  afterEach(() => resetAssistantPolicy())
+
+  it('lets a request to a listed provider through', async () => {
+    configureAssistant({ providers: [{ id: 'gw', label: 'Gateway', base_url: 'https://llm.example.org/v1', models: [], needs_key: true, protocol: 'openai' }] })
+    const fn = mockFetch({ json: async () => ({ choices: [{ message: { content: 'ok' } }] }) })
+    await complete(LISTED, 's', [{ role: 'user', text: 'x' }], TOOLS, signal)
+    expect(fn).toHaveBeenCalledTimes(1)
+  })
+
+  it('refuses any other address, on a completion and on a check, and never calls fetch', async () => {
+    configureAssistant({ providers: [{ id: 'gw', label: 'Gateway', base_url: 'https://llm.example.org/v1', models: [], needs_key: true, protocol: 'openai' }] })
+    const fn = mockFetch({ json: async () => ({}) })
+    for (const baseUrl of ['https://api.openai.com/v1', 'https://llm.example.org.evil.com/v1', 'https://llm.example.org/v2']) {
+      await expect(complete({ ...LISTED, baseUrl }, 's', [{ role: 'user', text: 'x' }], TOOLS, signal), baseUrl).rejects.toThrow(ADDRESS_REFUSED)
+      expect(await checkConnection({ ...LISTED, baseUrl }, signal), baseUrl).toEqual({ ok: false, message: ADDRESS_REFUSED })
+    }
+    expect(fn).not.toHaveBeenCalled()
+  })
+
+  it('does not touch anything while no list is in force', async () => {
+    const fn = mockFetch({ json: async () => ({ choices: [{ message: { content: 'ok' } }] }) })
+    await complete({ ...OPENAI, baseUrl: 'https://anywhere.example.org/v1' }, 's', [{ role: 'user', text: 'x' }], TOOLS, signal)
+    expect(fn).toHaveBeenCalledTimes(1)
+  })
+
+  it('never puts the token in the refusal', async () => {
+    configureAssistant({ providers: [{ id: 'gw', label: 'Gateway', base_url: 'https://llm.example.org/v1', models: [], needs_key: true, protocol: 'openai' }] })
+    const r = await checkConnection({ ...LISTED, baseUrl: 'https://evil.example.org', apiKey: 'SECRET-123' }, signal)
+    expect(JSON.stringify(r)).not.toContain('SECRET-123')
   })
 })

@@ -1,6 +1,7 @@
 // Maps the resolved settings tree onto the object the app already reads (`DashboardBranding`), so no chart, layout or state
 // module has to know the file layout. Pure (the import below is a type only).
 import type { DashboardBranding, ModelYear } from '../services/yamlLoader'
+import type { ProviderEntry } from './assistant'
 import { getPath, type Tree } from './paths'
 
 const str = (t: Tree, p: string): string | undefined => {
@@ -54,7 +55,18 @@ export function toBranding(settings: Tree): DashboardBranding {
     docsUrl: str(settings, 'docs.url'),
     docsLabel: str(settings, 'docs.label'),
     settingsTabs: strList(settings, 'settings.tabs'),
+    assistant: assistant(settings),
   }
+}
+
+function assistant(t: Tree): DashboardBranding['assistant'] {
+  const providers = getPath(t, 'assistant.providers')
+  const provider = str(t, 'assistant.default.provider')
+  const model = str(t, 'assistant.default.model')
+  const out: NonNullable<DashboardBranding['assistant']> = {}
+  if (Array.isArray(providers) && providers.length > 0) out.providers = providers as ProviderEntry[]
+  if (provider || model) out.default = { provider, model }
+  return Object.keys(out).length > 0 ? out : undefined
 }
 
 function vocab(t: Tree): DashboardBranding['vocab'] {

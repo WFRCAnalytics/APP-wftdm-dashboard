@@ -9,7 +9,9 @@ import {
   getAiSettings,
   getPreset,
   getProviderPresets,
+  patchDraft,
   PROVIDER_PRESETS,
+  saveDraft,
   setDraftProvider,
   startDemo,
 } from '../../src/state/aiState'
@@ -69,5 +71,38 @@ describe('a configured catalogue', () => {
     startDemo()
     expect(getAiSettings().saved).toBeUndefined()
     expect(getAiSettings().draft.provider).toBe('gw')
+  })
+})
+
+describe('the address lock in the form state', () => {
+  it('ignores an address edit while a list is in force, and still takes a model and a token', () => {
+    configureAssistant({ providers: [gw()] })
+    applyAssistantPolicy()
+    patchDraft({ baseUrl: 'https://evil.example.org', model: 'typed', apiKey: 'tok' })
+    expect(getAiSettings().draft).toMatchObject({ baseUrl: 'https://llm.example.org/v1', model: 'typed', apiKey: 'tok' })
+  })
+
+  it('takes an address edit as before when no list is in force', () => {
+    patchDraft({ baseUrl: 'https://my.proxy.example.org/v1' })
+    expect(getAiSettings().draft.baseUrl).toBe('https://my.proxy.example.org/v1')
+  })
+
+  it('does not save a draft whose address is not a listed provider\'s', () => {
+    configureAssistant({ providers: [gw()] })
+    applyAssistantPolicy()
+    // a stale draft (as if from before the list) pointing elsewhere
+    setDraftProvider('gw')
+    ;(getAiSettings().draft as { baseUrl: string }).baseUrl = 'https://evil.example.org'
+    saveDraft()
+    expect(getAiSettings().saved).toBeUndefined()
+    expect(getAiSettings().status).toBe('error')
+  })
+
+  it('saves a draft on a listed address', () => {
+    configureAssistant({ providers: [gw()] })
+    applyAssistantPolicy()
+    saveDraft()
+    expect(getAiSettings().saved).toMatchObject({ provider: 'gw', baseUrl: 'https://llm.example.org/v1' })
+    expect(getAiSettings().status).toBe('ready')
   })
 })

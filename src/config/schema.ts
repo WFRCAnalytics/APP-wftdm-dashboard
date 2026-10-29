@@ -3,6 +3,7 @@
 // row here plus the code that uses the value.
 //
 // This folder is PURE: relative imports only, no `import.meta.env`, no `@/` alias, no DOM. Node (the Vite plugin) loads it too.
+import { cleanProviders } from './assistant'
 import { cleanSettingsTabs, isRelativePath, isWebAddress } from './viewer'
 
 export type SettingType = 'string' | 'number' | 'integer' | 'boolean' | 'boolean|string' | 'color' | 'url' | 'enum' | 'list' | 'map'
@@ -105,6 +106,9 @@ export const SETTINGS: readonly SettingDef[] = [
   { path: 'layout.mode', type: 'enum', values: ['scroll', 'tabs'], cascade: true, description: 'How pages are shown unless a page or the viewer says otherwise.' },
   { path: 'export.footer', type: 'boolean|string', cascade: true, description: 'Line under exported images: true (source, scenarios, year, date), false (none) or your own text.' },
   { path: 'assistant.enabled', type: 'boolean', cascade: site, description: 'Turns the AI assistant (button, panel and Settings tab) on or off.' },
+  { path: 'assistant.providers', type: 'list', cascade: site, clean: cleanProviders, description: 'The AI providers the assistant tab offers, replacing the built-in ones: id, label, base_url, models, needs_key, protocol (openai or anthropic). The address of a listed provider is fixed.' },
+  { path: 'assistant.default.provider', type: 'string', cascade: site, description: 'The provider the assistant tab starts on (an id from the offered providers).' },
+  { path: 'assistant.default.model', type: 'string', cascade: site, description: 'The model the assistant tab starts with (any model name).' },
   { path: 'docs.url', type: 'url', cascade: site, check: (v) => (isWebAddress(String(v)) ? undefined : 'expected an http or https address'), description: 'Address of the documentation site; sets a link at the foot of the left sidebar (none when unset).' },
   { path: 'docs.label', type: 'string', cascade: site, description: 'Text of the documentation link (default: Documentation).' },
   { path: 'header.docs', type: 'string', scope: 'page', cascade: false, check: (v) => (isRelativePath(String(v)) ? undefined : 'expected a path relative to the documentation address'), description: 'A page header key: a path appended to docs.url, so the sidebar link opens the section for that page.' },

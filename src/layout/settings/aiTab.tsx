@@ -8,14 +8,12 @@ import { useAiSettings } from '@/hooks/useAiSettings'
 import { checkConnection } from '@/services/ai/providers'
 import { resetSessionData } from '@/services/ai/sqlRunner'
 import type { Permission, PrivacyMode, ProviderId } from '@/services/ai/types'
-import { patchDraft, PROVIDER_PRESETS, saveDraft, setCheckState, setDraftProvider, setPermission, setPrivacy } from '@/state/aiState'
+import { getPreset, getProviderPresets, patchDraft, saveDraft, setCheckState, setDraftProvider, setPermission, setPrivacy } from '@/state/aiState'
 import { cn } from '@/lib/utils'
 
 // The Assistant tab (064-ai-chat-assistant, contracts/settings-ui.md): provider, token, model and a Check and Save that only
 // replaces the working settings when the check passes; plus query permissions and what is shared with the provider.
 // Everything here is session-only: the token is gone on reload, by design.
-
-const PROVIDERS = (Object.keys(PROVIDER_PRESETS) as ProviderId[]).map((id) => ({ id, label: PROVIDER_PRESETS[id].label }))
 
 const PERMISSIONS: { id: Permission; label: string }[] = [
   { id: 'read-only', label: 'Read-Only' },
@@ -51,7 +49,11 @@ function Field({ label, htmlFor, children }: { label: string; htmlFor: string; c
 export function AiTab() {
   const s = useAiSettings()
   const { draft } = s
-  const preset = PROVIDER_PRESETS[draft.provider]
+  // the providers on offer (the deployer's list, or the built-ins) and the one chosen
+  const providers = getProviderPresets().map((p) => ({ id: p.id, label: p.label }))
+  const preset = getPreset(draft.provider)
+  // a deployer's provider has a fixed address; its token field is shown only when it needs a key
+  const showToken = preset.needsKey || !preset.locked
   const ollama = draft.provider === 'ollama'
   const checking = s.status === 'checking'
   const abortRef = useRef<AbortController | null>(null)
@@ -89,7 +91,7 @@ export function AiTab() {
       <GroupHeading className="mt-0">Provider</GroupHeading>
       <Segmented
         label="Provider"
-        options={PROVIDERS}
+        options={providers}
         value={draft.provider}
         onChange={(id) => setDraftProvider(id as ProviderId)}
         size="lg"
@@ -97,12 +99,26 @@ export function AiTab() {
       <div className="max-w-[680px]">
         <div className="grid grid-cols-[minmax(0,1fr)_200px] gap-x-3 max-[620px]:grid-cols-1">
           <Field label="Server address" htmlFor="ai-base-url">
-            <Input id="ai-base-url" value={draft.baseUrl} onChange={(e) => patchDraft({ baseUrl: e.target.value })} spellCheck={false} autoComplete="off" />
+            <Input
+              id="ai-base-url"
+              value={draft.baseUrl}
+              onChange={(e) => patchDraft({ baseUrl: e.target.value })}
+              readOnly={preset.locked}
+              aria-describedby={preset.locked ? 'ai-base-url-note' : undefined}
+              spellCheck={false}
+              autoComplete="off"
+            />
+            {preset.locked && (
+              <p id="ai-base-url-note" className="text-[12.5px] text-[var(--mute)]">
+                Set by this dashboard’s configuration.
+              </p>
+            )}
           </Field>
           <Field label="Model" htmlFor="ai-model">
             <ComboboxInput id="ai-model" value={draft.model} options={preset.models} onChange={(model) => patchDraft({ model })} placeholder="Search or type a model" aria-label="Model" />
           </Field>
         </div>
+        {showToken && (
         <Field label={preset.needsKey ? 'API token' : 'API token (optional for Ollama)'} htmlFor="ai-token">
           <Input
             id="ai-token"
@@ -114,6 +130,7 @@ export function AiTab() {
             placeholder={preset.needsKey ? 'Paste your key' : 'Not needed'}
           />
         </Field>
+        )}
         {draft.provider === 'ollama' && (
           <p className="text-[12.5px] text-[var(--mute)]">
             Use a model that supports tool calling. Ollama must allow this page’s origin (OLLAMA_ORIGINS).

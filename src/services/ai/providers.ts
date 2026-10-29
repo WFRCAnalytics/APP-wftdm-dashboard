@@ -1,6 +1,7 @@
 // 064-ai-chat-assistant: the provider clients. Plain fetch, no SDK. One OpenAI-compatible client (OpenAI, Deepseek,
 // Ollama, any gateway) and one Anthropic Messages client. Non-streaming; the agent loop shows step status instead.
 // Wire formats: specs/064-ai-chat-assistant/contracts/provider-wire.md.
+import { isAddressAllowed } from './assistantPolicy.ts'
 import { demoStepFor } from './demoScript.ts'
 import type { ChatTurn, Completion, ProviderConfig, ProviderProtocol, ToolCall, ToolSpec } from './types.ts'
 
@@ -45,7 +46,11 @@ function anthropicBase(cfg: ProviderConfig): string {
   return trimUrl(cfg.baseUrl).replace(/\/v1$/, '')
 }
 
+export const ADDRESS_REFUSED = 'This address is not allowed by the dashboard configuration.'
+
 async function send(cfg: ProviderConfig, url: string, init: RequestInit): Promise<unknown> {
+  // With a deployer's provider list in force only a listed provider's address is reachable: nothing is sent anywhere else
+  if (!isAddressAllowed(url)) throw new ProviderError('bad-request', ADDRESS_REFUSED)
   let res: Response
   try {
     res = await fetch(url, { ...init, headers: headersFor(cfg) })

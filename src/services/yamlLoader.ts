@@ -141,6 +141,8 @@ export interface DashboardBranding {
   docsLabel?: string
   /** `settings.tabs`: the Settings window tabs to show, in order, by config name (unset: all five). */
   settingsTabs?: string[]
+  /** `assistant:` beyond `enabled` (068): the deployer's providers and defaults (the note and limits join in a later step). */
+  assistant?: import('./ai/assistantPolicy.ts').AssistantInput
   /** 061-appearance-controls: an optional deployer-configured default for
    * each of the three Primary/Secondary/Accent visual roles — same
    * discovery/precedence rules as every other field above (the real

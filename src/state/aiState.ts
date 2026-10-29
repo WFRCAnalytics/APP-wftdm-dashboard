@@ -1,7 +1,7 @@
 // 064-ai-chat-assistant: the assistant's settings. Session-only module state like every other store here
 // (constitution VI: no Web Storage): the token is lost on reload, deliberately. The token is only ever read through
 // getSavedConfig() by services/ai/providers.ts; nothing here logs or serializes it.
-import { BUILTIN_PRESETS, getDefaultProvider, getProviderCatalogue, type ProviderPreset } from '@/services/ai/assistantPolicy'
+import { BUILTIN_PRESETS, getDefaultProvider, getProviderCatalogue, isAddressAllowed, isLocked, type ProviderPreset } from '@/services/ai/assistantPolicy'
 import type { Permission, PrivacyMode, ProviderConfig, ProviderId } from '@/services/ai/types'
 
 // The providers on offer (the deployer's list or the built-ins) are resolved once at boot into services/ai/assistantPolicy.ts.
@@ -78,7 +78,9 @@ export function setDraftProvider(provider: ProviderId): void {
 }
 
 export function patchDraft(patch: Partial<Pick<ProviderConfig, 'baseUrl' | 'apiKey' | 'model'>>): void {
-  commit({ ...state, draft: { ...state.draft, ...patch } })
+  // with a deployer's list the address is the listed provider's and cannot be changed
+  const { baseUrl, ...rest } = patch
+  commit({ ...state, draft: { ...state.draft, ...(isLocked() ? rest : { ...rest, ...(baseUrl !== undefined ? { baseUrl } : {}) }) } })
 }
 
 export function setCheckState(status: AiStatus, statusMessage: string): void {
@@ -87,6 +89,10 @@ export function setCheckState(status: AiStatus, statusMessage: string): void {
 
 /** Called only after a successful check; the previous saved configuration stays in effect on failure. */
 export function saveDraft(): void {
+  if (!isAddressAllowed(state.draft.baseUrl)) {
+    commit({ ...state, status: 'error', statusMessage: 'This address is not allowed by the dashboard configuration.' })
+    return
+  }
   commit({ ...state, saved: { ...state.draft }, status: 'ready', statusMessage: 'Connected.' })
 }
 

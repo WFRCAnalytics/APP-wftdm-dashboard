@@ -221,6 +221,25 @@
         "enabled": {
           "type": "boolean",
           "description": "Turns the AI assistant (button, panel and Settings tab) on or off."
+        },
+        "providers": {
+          "type": "array",
+          "items": {},
+          "description": "The AI providers the assistant tab offers, replacing the built-in ones: id, label, base_url, models, needs_key, protocol (openai or anthropic). The address of a listed provider is fixed."
+        },
+        "default": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "provider": {
+              "type": "string",
+              "description": "The provider the assistant tab starts on (an id from the offered providers)."
+            },
+            "model": {
+              "type": "string",
+              "description": "The model the assistant tab starts with (any model name)."
+            }
+          }
         }
       }
     },

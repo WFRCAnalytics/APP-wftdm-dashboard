@@ -77,3 +77,17 @@ describe('toBranding: settings tabs', () => {
     expect(toBranding(validate({}, { file: 'x' }).settings).settingsTabs).toBeUndefined()
   })
 })
+
+describe('toBranding: assistant providers', () => {
+  it('maps a cleaned list and the default, and leaves the assistant unset otherwise', () => {
+    const { settings, problems } = validate(
+      { assistant: { providers: [{ id: 'gw', base_url: 'https://llm.example.org/v1', models: ['m'] }, { id: 'bad' }], default: { provider: 'gw', model: 'm' } } },
+      { file: 'x' },
+    )
+    expect(problems.map((p) => p.path)).toEqual(['assistant.providers'])
+    const a = toBranding(settings).assistant
+    expect(a?.providers).toEqual([{ id: 'gw', label: 'gw', base_url: 'https://llm.example.org/v1', models: ['m'], needs_key: true, protocol: 'openai' }])
+    expect(a?.default).toEqual({ provider: 'gw', model: 'm' })
+    expect(toBranding(validate({ assistant: { enabled: true } }, { file: 'x' }).settings).assistant).toBeUndefined()
+  })
+})

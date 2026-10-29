@@ -143,3 +143,27 @@ describe('settings.tabs', () => {
     expect(validate({ settings: { tabs: ['basemap'] } }, { file: 'p.yaml', level: 'page' }).problems.map((p) => p.kind)).toEqual(['not_allowed_here'])
   })
 })
+
+describe('assistant providers', () => {
+  const gw = { id: 'gw', base_url: 'https://llm.example.org/v1' }
+  it('keeps the valid entries, reports each bad one with the assistant.providers path and skips it', () => {
+    const { settings, problems } = validate({ assistant: { providers: [gw, { id: 'gw', base_url: 'https://x.org' }, { id: 'p', base_url: 'ftp://x', protocol: 'soap' }] } }, { file })
+    expect((getPath(settings, 'assistant.providers') as { id: string }[]).map((p) => p.id)).toEqual(['gw'])
+    expect(problems.every((p) => p.kind === 'invalid_value' && p.path === 'assistant.providers')).toBe(true)
+    expect(problems.map((p) => p.message).join(' | ')).toMatch(/provider 2: id "gw" is already used.*provider 3: base_url must be an http or https address.*provider 3: unknown protocol/)
+  })
+
+  it('leaves the key unset for an empty list, a list with no usable entry and a non-list', () => {
+    for (const providers of [[], [{ id: 'x' }], 'gw']) {
+      const r = validate({ assistant: { providers } }, { file })
+      expect(getPath(r.settings, 'assistant.providers'), JSON.stringify(providers)).toBeUndefined()
+      expect(r.problems.length).toBeGreaterThan(0)
+    }
+  })
+
+  it('accepts the default provider and model as text and is site-only', () => {
+    expect(validate({ assistant: { default: { provider: 'gw', model: 'm' } } }, { file }).problems).toEqual([])
+    expect(validate({ assistant: { default: { provider: 3 } } }, { file }).problems.map((p) => p.kind)).toEqual(['wrong_type'])
+    expect(validate({ assistant: { providers: [gw] } }, { file: 'p.yaml', level: 'page' }).problems.map((p) => p.kind)).toEqual(['not_allowed_here'])
+  })
+})
