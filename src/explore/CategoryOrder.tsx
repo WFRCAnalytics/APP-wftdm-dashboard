@@ -6,6 +6,9 @@ type Row = Record<string, any>
 
 const MAX_VALUES = 50
 
+/** The look of an arrow that cannot move further (the shared `.mini` button has no disabled style). */
+const OFF = { opacity: 0.3, cursor: 'not-allowed', pointerEvents: 'none' } as const
+
 /** The values of a field in the order they are drawn: the chosen order first, then the alphabetical rest. */
 function current(rows: Row[], field: string, order: string[] | undefined): string[] {
   return applyOrder(uniqSorted(rows, field), order).map(String)
@@ -71,8 +74,8 @@ export function CategoryOrder({ fields, rows, order, onChange }: { fields: strin
           >
             <span aria-hidden="true">⋮⋮</span>
             <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v}</span>
-            <button type="button" className="mini" aria-label={`Move ${v} up`} disabled={i === 0} onClick={() => move(i, i - 1)}>↑</button>
-            <button type="button" className="mini" aria-label={`Move ${v} down`} disabled={i === values.length - 1} onClick={() => move(i, i + 1)}>↓</button>
+            <button type="button" className="mini" aria-label={`Move ${v} up`} disabled={i === 0} style={i === 0 ? OFF : undefined} onClick={() => move(i, i - 1)}>↑</button>
+            <button type="button" className="mini" aria-label={`Move ${v} down`} disabled={i === values.length - 1} style={i === values.length - 1 ? OFF : undefined} onClick={() => move(i, i + 1)}>↓</button>
           </li>
         ))}
       </ol>
