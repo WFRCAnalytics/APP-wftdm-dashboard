@@ -387,9 +387,9 @@ function ChartCard({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: Cha
 
   const body = (
       <div className="cardbody" data-testid="chart-export-card" ref={bodyRef}>
-        {txt('tag').t && <p className={`tb ttag ${cls('tag')}`}>{txt('tag').t}</p>}
-        {txt('title').t && <h3 className={`tb ${cls('title')}`}>{txt('title').t}</h3>}
-        {txt('sub').t && <p className={`tb tsub ${cls('sub')}`}>{txt('sub').t}</p>}
+        {txt('tag').t && <p className={`tb ttag ${cls('tag')}`}>{prettyOperators(txt('tag').t)}</p>}
+        {txt('title').t && <h3 className={`tb ${cls('title')}`}>{prettyOperators(txt('title').t)}</h3>}
+        {txt('sub').t && <p className={`tb tsub ${cls('sub')}`}>{prettyOperators(txt('sub').t)}</p>}
         {drawn && drawn.legend.length > 0 && (
           <div className="legend">
             {drawn.legend.map((g) => (

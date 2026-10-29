@@ -16,6 +16,7 @@ import { setMode, type ThemeMode } from '@/state/themeState'
 import { cn } from '@/lib/utils'
 import type { DashboardTabConfig } from '@/layout/types'
 import type { DashboardBranding } from '@/services/yamlLoader'
+import { prettyOperators } from '@/services/typography'
 
 // The floating navigation (project-docs/redesign/02-layout-and-components.md §1.1). A glass rail fixed at the left edge:
 // 68px wide, 248px once its labels are pinned open with the toggle. Pinned, the shell docks the page beside it (the canvas
@@ -148,7 +149,7 @@ export function FloatingNav({ tabs, activeIndex, onTabChange, branding, mobile =
                     onClose?.()
                   }}
                 >
-                  {tab.header.tab}
+                  {prettyOperators(tab.header.tab)}
                 </NavButton>
                 {sections.length > 0 && expanded && (
                   <ul
@@ -168,7 +169,7 @@ export function FloatingNav({ tabs, activeIndex, onTabChange, branding, mobile =
                             onClose?.()
                           }}
                         >
-                          {section.label}
+                          {prettyOperators(section.label)}
                         </button>
                       </li>
                     ))}

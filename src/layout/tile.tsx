@@ -12,6 +12,7 @@ import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { cn } from '@/lib/utils'
 import { registerPageTile } from '@/layout/pageExport'
 import { createExportRegistry, ExportMenu, TileExportContext } from '@/layout/tileExport'
+import { prettyOperators } from '@/services/typography'
 
 // The tile chrome (project-docs/redesign/02-layout-and-components.md section 2), top to bottom: header row (title,
 // badges, info button, expand), control row, legend row, body. The error boundary, Suspense and expand
@@ -54,7 +55,7 @@ function InfoButton({ title, text }: { title: string; text: string }) {
         <Info className="size-4 group-data-[state=open]:fill-[var(--ink)] group-data-[state=open]:stroke-[var(--surface)]" aria-hidden="true" />
       </PopoverTrigger>
       <PopoverContent align="start" className="glass w-72 rounded-[16px] border-[var(--glass-line)] p-3 text-[12.5px] leading-relaxed text-[var(--ink)]">
-        {text}
+        {prettyOperators(text)}
       </PopoverContent>
     </Popover>
   )
@@ -99,7 +100,7 @@ export function Tile({ title, subtitle, badges, controls, actions, height, expan
 
   // Called unconditionally (rules of hooks); see panelExpandHost.tsx for why `body` is simply never placed when the
   // tile is not expandable.
-  const { trigger, body } = usePanelExpandHost(title, panel, { height: fill.active ? '100%' : height, chrome: <>{subtitle && <p className="text-[12.5px] text-[var(--mute)]">{subtitle}</p>}{chrome}</>, exportMenu: (ref) => <>{actions}<ExportMenu title={title} cardRef={ref} tables={exports.all} /></> })
+  const { trigger, body } = usePanelExpandHost(title, panel, { height: fill.active ? '100%' : height, chrome: <>{subtitle && <p className="text-[12.5px] text-[var(--mute)]">{prettyOperators(subtitle)}</p>}{chrome}</>, exportMenu: (ref) => <>{actions}<ExportMenu title={title} cardRef={ref} tables={exports.all} /></> })
   const hasPanel = panel !== null && !errorMessage
   useEffect(() => (hasPanel ? registerPageTile({ title, cardRef, tables: exports.all }) : undefined), [hasPanel, title, exports])
 
@@ -107,7 +108,7 @@ export function Tile({ title, subtitle, badges, controls, actions, height, expan
     <TileExportContext.Provider value={exports.registry}>
     <Card ref={cardRef} className="flex h-full flex-col">
       <CardHeader className="flex-row items-center gap-2 space-y-0 px-[18px] pb-0 pt-4">
-        <CardTitle className="text-[15.5px]">{title}</CardTitle>
+        <CardTitle className="text-[15.5px]">{prettyOperators(title)}</CardTitle>
         {subtitle && <InfoButton title={title} text={subtitle} />}
         {badges}
         <span className="flex-1" />
