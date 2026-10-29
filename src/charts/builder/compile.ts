@@ -2,6 +2,7 @@
 // 065-chart-builder: turns a chart spec and its rows into drawing primitives (rects, paths, lines, texts) for eight marks.
 // Pure: no DOM, no DuckDB. It draws its own SVG, like the radar and pie panels, because Observable Plot has no dash channel,
 // no fill patterns and no pie. Colours come from the app's ChartTheme (tokens), never hard-coded. tests/unit/chartBuilderCompile.test.ts.
+import { prettyOperators } from '@/services/typography'
 import type { ChartTheme } from '@/charts/types'
 import { buildPivot, type PivotTable } from '@/charts/builder/pivot'
 import { chartRole, type DataType, type Role } from '@/charts/builder/columnTypes'
@@ -310,7 +311,7 @@ export function buildChart(input: BuildInput): ChartModel {
     return f
   }
   type P = Panel
-  const tx = (o: P, x: number, y: number, t: string | number, anchor: TextP['anchor'] = 'start', size = T.fs, tf = '', fill = T.mute, halo?: string) => o.texts.push({ x: r1(x), y: r1(y), t: String(t), anchor, fill, size, tf, ...(halo ? { halo } : {}) })
+  const tx = (o: P, x: number, y: number, t: string | number, anchor: TextP['anchor'] = 'start', size = T.fs, tf = '', fill = T.mute, halo?: string) => o.texts.push({ x: r1(x), y: r1(y), t: prettyOperators(String(t)), anchor, fill, size, tf, ...(halo ? { halo } : {}) })
   const ln = (o: P, x1: number, y1: number, x2: number, y2: number, stroke: string, sw: number, dash = '') => o.lines.push({ x1: r1(x1), y1: r1(y1), x2: r1(x2), y2: r1(y2), stroke, sw, dash })
   const pa = (o: P, d: string, fill: string, stroke: string, sw: number, dash: string, opac: number, tip: string) => o.paths.push({ d, fill, stroke, sw, dash, op: opac, tip })
   const rect = (o: P, x: number, y: number, w: number, h: number, s: Series, tip: string, rx = T.r) =>

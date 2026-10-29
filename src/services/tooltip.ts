@@ -2,6 +2,7 @@
 // element with one anatomy (title with swatch, label/value rows, optional delta, optional footer). Plain TypeScript, no
 // React. Charts hand it a TipSpec; it follows the pointer, flips at the viewport edges and never takes pointer events.
 import '@/styles/chartInteraction.css'
+import { prettyOperators } from '@/services/typography'
 
 export interface TipRow {
   /** Label. */
@@ -42,7 +43,7 @@ export const escapeHtml = (s: unknown): string => String(s).replace(/[&<>"]/g, (
 export function tipHtml(o: TipSpec): string {
   const color = (c: string) => escapeHtml(c)
   const head = o.title
-    ? `<div class="tt-h">${o.swatch ? `<i style="background:${color(o.swatch)}"></i>` : ''}<span>${escapeHtml(o.title)}</span>${
+    ? `<div class="tt-h">${o.swatch ? `<i style="background:${color(o.swatch)}"></i>` : ''}<span>${escapeHtml(prettyOperators(o.title))}</span>${
         o.sub ? `<em>${escapeHtml(o.sub)}</em>` : ''
       }</div>`
     : ''
@@ -50,13 +51,13 @@ export function tipHtml(o: TipSpec): string {
     .map(
       (r) =>
         `<div class="tt-r${r.b ? ' b' : ''}">${r.c ? `<i style="background:${color(r.c)}"></i>` : '<i class="n"></i>'}<span class="tt-k">${escapeHtml(
-          r.k,
-        )}</span><b class="tt-v">${escapeHtml(r.v)}</b>${
+          prettyOperators(r.k),
+        )}</span><b class="tt-v">${escapeHtml(prettyOperators(r.v))}</b>${
           r.d ? `<em class="tt-d" style="color:${color(r.dc ?? 'var(--mute)')}">${escapeHtml(r.d)}</em>` : ''
         }</div>`,
     )
     .join('')
-  const foot = o.foot ? `<div class="tt-f">${escapeHtml(o.foot)}</div>` : ''
+  const foot = o.foot ? `<div class="tt-f">${escapeHtml(prettyOperators(o.foot))}</div>` : ''
   return head + rows + foot
 }
 

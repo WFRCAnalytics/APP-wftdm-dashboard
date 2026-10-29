@@ -8,6 +8,7 @@ import { buildChart, relabel, type ChartModel, type Col, type DrawnChart } from 
 import { chartRole, DATA_TYPES, TYPE_LABEL, typesPresent, type DataType } from '@/charts/builder/columnTypes'
 import { suggest } from '@/charts/builder/rules'
 import { CategoryOrder } from './CategoryOrder'
+import { prettyOperators } from '@/services/typography'
 import {
   HIST_STATS, assignField, swapAxes, AXIS_MARKS, GRID_MARKS, REF_MARKS, ZERO_MARKS, acceptsShort, chainOf, CHAINS, effectiveLabels, LABEL_MARKS, labelModesFor, SHOW_AS, TABLE_VALUES, ZOOMABLE_MARKS, AGGS, channelAggregates, channelLabel, COMING_SOON, MARK_LABEL, MARKS, SLOTS, SORTS, switchMark, TEXT_SIZES,
   type Agg, type CellStyle, type LabelMode, type Channel, type ChartSpec, type Density, type MeasureFormat, type ShowAs, type TableOpts, type Mark, type Sort, type Stack, type TextKey,
@@ -395,7 +396,7 @@ function ChartCard({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: Cha
                 <span className="lgt">{g.title}</span>
                 {g.items.map((it, i) => (
                   <button key={`${it.key}${i}`} type="button" className={`lgi ${hot && it.key && hot !== it.key ? 'dim' : ''}`} onMouseEnter={() => it.key && setHot(it.key)} onMouseLeave={() => setHot(null)} onFocus={() => it.key && setHot(it.key)} onBlur={() => setHot(null)}>
-                    <svg width="18" height="14" viewBox="0 0 18 14" aria-hidden="true"><path d={it.d} fill={it.fill} stroke={it.stroke} strokeWidth={it.sw} strokeDasharray={it.dash || undefined} strokeLinecap="round" /></svg>{it.label}
+                    <svg width="18" height="14" viewBox="0 0 18 14" aria-hidden="true"><path d={it.d} fill={it.fill} stroke={it.stroke} strokeWidth={it.sw} strokeDasharray={it.dash || undefined} strokeLinecap="round" /></svg>{prettyOperators(it.label)}
                   </button>
                 ))}
               </div>

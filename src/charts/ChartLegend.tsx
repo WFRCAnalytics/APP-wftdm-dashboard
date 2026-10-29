@@ -1,5 +1,6 @@
 import { highlightMode, isolateScenario } from '@/panels/crossHighlight'
 import type { LegendSpec } from '@/charts/types'
+import { prettyOperators } from '@/services/typography'
 
 // The tile's legend row (project-docs/redesign/05-tooltips-and-interaction.md section 3): round colour chips; hovering
 // a run chip isolates that run in the tile, hovering a mode chip cross-highlights the mode in every chart.
@@ -35,7 +36,7 @@ export function ChartLegend({ spec, chartEl, runColors }: ChartLegendProps) {
           ) : (
             <i aria-hidden="true" className="inline-block size-[10px] rounded-full" style={{ background: item.color }} />
           )}
-          {item.label}
+          {prettyOperators(item.label)}
         </span>
       ))}
       {spec.diverge && (

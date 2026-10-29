@@ -1,3 +1,4 @@
+import { prettyOperators } from '@/services/typography'
 // 060-radar-pie-charts (research.md §6, data-model.md §5) — a small,
 // genuinely shared presentational component: neither SankeyPanel.tsx nor
 // HierarchicalChartHost.tsx renders a legend at all (a Sankey's own node
@@ -23,7 +24,7 @@ export function ChartLegend({ entries }: { entries: ChartLegendEntry[] }) {
       {entries.map((entry) => (
         <div key={entry.label} className="flex items-center gap-1.5">
           <div className="h-2 w-2 shrink-0 rounded-[2px]" style={{ backgroundColor: entry.color }} />
-          {entry.label}
+          {prettyOperators(entry.label)}
         </div>
       ))}
     </div>
