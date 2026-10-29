@@ -677,10 +677,12 @@ a drop target is read from the shelves' own fixed boxes, never from enter/leave 
 are absolutely positioned overlays; `selectedField` is never set by a drag (that runs profiling queries).
 
 A deployer shapes the builder from the panel's YAML, every key optional (`explore/options.ts`, contract
-`specs/065-chart-builder/contracts/deployer-options.md`): `limits` (csv_rows, page_size, undo_steps, max_joins), `features` (sql_tab, csv,
+`specs/065-chart-builder/contracts/deployer-options.md`): `limits` (csv_rows, page_size, undo_steps, max_joins and, from 069, chart_rows, scatter_sample,
+histogram_bins, legend_series, distinct_values, pivot_rows; the table and ranges are `src/config/exploreLimits.ts`, one schema row each), `features` (sql_tab, csv,
 copy_sql, import_export, my_tables, undo), `charts` (allow, default), `tables` (include/exclude globs), `columns` (label, unit, format)
 and `presets` (starter charts). A new Explore control that has a sensible deployer choice gets a key there, not a constant; a wrong
-value is reported under the panel title and the default stays.
+value is reported under the panel title and the default stays. The same keys can be set site-wide under `explore:` in `dashboard-config.yaml` (069;
+including `charts.default`); the chart core (`chartQuery`, `buildChart`, `renderPivots`) takes the limits as optional arguments and never reads a store.
 
 `type: chart, kind: custom, spec: {...}` (`charts/kinds/custom.ts`) draws a chart in a dashboard tile from the same spec the
 builder exports; `spec.data.table` names a metric table and the scenarios are the tile's compared runs.

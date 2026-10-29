@@ -16,6 +16,9 @@ Code: `src/explore/options.ts` (`resolveExploreOptions`, defaults, table globs, 
     page_size: 12         # fixed rows per page (5 to 200). Unset: as many as fit the tile
     undo_steps: 60        # undo history per session (1 to 500)
     max_joins: 4          # tables joined to the first (1 to 8)
+    # 069: chart_rows 50000 (100 to 1,000,000: groups drawn before a chart says it is cut), scatter_sample 5000 (100 to 100,000),
+    # histogram_bins 12 (2 to 100), legend_series 15 (2 to 50), distinct_values 200 (10 to 5,000: values a filter list offers),
+    # pivot_rows 500 (20 to 5,000)
   features:               # every one true unless set
     sql_tab: true         # the SQL view of the Query box (and so hand-written SQL)
     csv: true             # Download CSV on the table
@@ -36,6 +39,10 @@ Code: `src/explore/options.ts` (`resolveExploreOptions`, defaults, table globs, 
 ```
 
 ## Rules
+
+- **Site level (069).** Every key above except `presets`' content can also be set once for the whole site in `dashboard-config.yaml` under `explore:`
+  (`limits`, `features`, `charts` with `allow` and `default`, `tables`, `columns`, `presets`), and on a page; the cascade is site, page, panel, and the panel's own
+  value wins per key. The numbers are rows of the schema table (`src/config/exploreLimits.ts`), so a bad site value is reported at load and by `check`.
 
 - **A wrong value never stops the page.** The key keeps its default, the problem is listed under the panel title
   ("Explore settings were not all applied: ...") and in the console. A number outside its range is pulled to the nearest end.

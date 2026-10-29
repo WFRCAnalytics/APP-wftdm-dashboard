@@ -6612,3 +6612,20 @@ and the contracts are in the spec folder; the non-obvious ones:
 - **Gotchas**: heredocs and Python escapes in this shell turn `\n` and `\'` into real newlines or lone quotes, so write TypeScript with escapes through the Write tool;
   a mock model list must contain the provider's model name or Check and Save fails with "Model was not found".
 - Tests: `tests/unit/config{Assistant,Validate,ToBranding,Check}.test.ts`, `assistantPolicy`, `aiState`, `aiProviders`, `aiAgentLoop`; Playwright `assistantConfig.spec.ts` (`chromium`, gateway mocked).
+
+## 069 Explore settings for the whole site (`specs/069-explore-site-settings/`)
+
+- **What already worked**: the 066 cascade carried `explore.limits`, `features`, `columns`, `presets`, `charts.allow` and the table globs. 069 adds the two gaps:
+  `explore.charts.default` (a cascading string row) and six limits that were constants: `chart_rows` 50 000, `scatter_sample` 5 000, `histogram_bins` 12,
+  `legend_series` 15, `distinct_values` 200, `pivot_rows` 500.
+- **One row per limit**: the single `explore.limits` map row became ten integer rows built from `src/config/exploreLimits.ts` (key, default, range, text), each with a
+  `clean` hook that pulls a number to the nearest end and reports it. `explore/options.ts` reads the same table, so a panel gets the same ranges and messages. No row
+  carries a `default`, because `validate` copies a row default into the settings and that would set every limit at site level; the defaults are in the descriptions.
+- **Chart core**: `chartQuery(..., caps)`, `buildChart({ legendSeries })` (the model returns `seriesLimit` for the note) and `renderPivots(..., maxRows)` take optional
+  numbers that default to the old constants; `ChartTabView` and `useChartData` pass `getExploreOptions().limits`. `kind: custom` tiles keep the defaults. The Data tab's
+  column summaries (`profile.ts`), label lengths and `RUN_TIMEOUT_MS` stay fixed.
+- **Reporting**: site-level mistakes come from `validate` (note and `check`); a chart name that is not allowed is checked in `options.ts` (the chart list sits behind the
+  `@/` alias, so `src/config` cannot see it) and reaches `check` through `panelCheck`, once, under the panel. A site limit mistake is not repeated under the panel.
+- **Gotchas**: the Explore page is full-screen and does not show the configuration note, so a spec reads the note from another page; the builder starts with two of three
+  runs selected, so a legend test must select all; a Playwright spec must be named `exploreBuilder*` to run in the `real` project.
+- Tests: `tests/unit/configExploreLimits.test.ts`, `exploreOptions`, `configValidate`, `configCheck`, `chartBuilderSql`, `chartBuilderCompile`; Playwright `exploreBuilderSite.spec.ts` (`real`).
