@@ -90,7 +90,7 @@ Python in `python/wftdm_dashboard/` and `python/tests/`; Vite/Node changes in `v
 
 **Independent Test**: fetch a file from another origin: it arrives with the cross-origin header and a range works.
 
-- [ ] T018 [US3] `create_app(..., serve_app=False, cors=True)`: no app routes (`/` is 404), every response (and `OPTIONS` preflight) carries `Access-Control-Allow-Origin: *`, `Access-Control-Expose-Headers: Content-Range, Accept-Ranges, Content-Length, ETag`, `Access-Control-Allow-Headers: Range, If-None-Match`, and `Access-Control-Allow-Private-Network: true` for a preflight that asks; the folder rules, ranges and refusals are the same as `here`. In `cli.py` add `serve [FOLDER] [--port] [--host]` printing the address and the limits note of the contract. Tests: preflight, the headers on a file and on a 404, `/` is not the app, a range request, a path escape refused, the printed note, a non-loopback `--host` warning
+- [X] T018 [US3] `create_app(..., serve_app=False, cors=True)`: no app routes (`/` is 404), every response (and `OPTIONS` preflight) carries `Access-Control-Allow-Origin: *`, `Access-Control-Expose-Headers: Content-Range, Accept-Ranges, Content-Length, ETag`, `Access-Control-Allow-Headers: Range, If-None-Match`, and `Access-Control-Allow-Private-Network: true` for a preflight that asks; the folder rules, ranges and refusals are the same as `here`. In `cli.py` add `serve [FOLDER] [--port] [--host]` printing the address and the limits note of the contract. Tests: preflight, the headers on a file and on a 404, `/` is not the app, a range request, a path escape refused, the printed note, a non-loopback `--host` warning
 
 ---
 

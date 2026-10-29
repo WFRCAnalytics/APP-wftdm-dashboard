@@ -389,3 +389,73 @@ def test_the_bundle_is_looked_up_when_not_given(flat: Path, monkeypatch: pytest.
         create_app(flat)
     # `serve` has no app, so it never needs the bundle
     assert create_app(flat, serve_app=False).test_client().get("/dashboard-config/dashboard-config.yaml").status_code == 200
+
+
+# ---------------------------------------------------------------- serve: cross-origin access, no app
+
+
+@pytest.fixture
+def served(flat: Path):
+    """The `serve` app: only the folder, with cross-origin access (no bundle needed)."""
+    return create_app(flat, serve_app=False, cors=True).test_client()
+
+
+def test_serve_does_not_serve_the_app(served) -> None:
+    assert served.get("/").status_code == 404
+    assert served.get("/index.html").status_code == 404
+    assert served.get("/assets/app.js").status_code == 404
+
+
+def test_serve_serves_the_folder_like_here(served) -> None:
+    assert served.get("/dashboard-config/dashboard-config.yaml").status_code == 200
+    assert served.get("/scenarios/baseline/summary/kpis.parquet").data == PARQUET_BYTES
+    assert json.loads(served.get("/scenarios/index.json").data) == ["alt", "baseline"]
+    assert served.get("/scenarios/baseline/summary/kpis.parquet", headers={"Range": "bytes=0-9"}).status_code == 206
+
+
+def test_serve_allows_any_origin_to_read(served) -> None:
+    response = served.get("/dashboard-config/dashboard-config.yaml", headers={"Origin": "https://hosted.example.org"})
+    assert response.headers["Access-Control-Allow-Origin"] == "*"
+    assert "Content-Range" in response.headers["Access-Control-Expose-Headers"]
+    assert "Accept-Ranges" in response.headers["Access-Control-Expose-Headers"]
+    assert "ETag" in response.headers["Access-Control-Expose-Headers"]
+
+
+def test_serve_cross_origin_headers_are_on_a_refusal_too(served) -> None:
+    response = served.get("/scenarios/../secret.txt", headers={"Origin": "https://hosted.example.org"})
+    assert response.status_code == 404
+    assert response.headers["Access-Control-Allow-Origin"] == "*"
+
+
+def test_serve_answers_a_preflight(served) -> None:
+    response = served.options(
+        "/scenarios/baseline/summary/kpis.parquet",
+        headers={"Origin": "https://hosted.example.org", "Access-Control-Request-Method": "GET", "Access-Control-Request-Headers": "range"},
+    )
+    assert response.status_code in (200, 204)
+    assert response.headers["Access-Control-Allow-Origin"] == "*"
+    assert "Range" in response.headers["Access-Control-Allow-Headers"]
+    assert "GET" in response.headers["Access-Control-Allow-Methods"]
+
+
+def test_serve_allows_a_private_network_preflight_when_asked(served) -> None:
+    asked = served.options("/scenarios/index.json", headers={"Origin": "https://h.example", "Access-Control-Request-Private-Network": "true"})
+    assert asked.headers["Access-Control-Allow-Private-Network"] == "true"
+    plain = served.options("/scenarios/index.json", headers={"Origin": "https://h.example"})
+    assert "Access-Control-Allow-Private-Network" not in plain.headers
+
+
+def test_serve_keeps_the_folder_rules(served, flat: Path) -> None:
+    for url in ["/scenarios/%2e%2e/secret.txt", "/dashboard-config/../secret.txt", "/geometry/.hidden"]:
+        assert served.get(url).status_code == 404, url
+    assert served.get("/scenarios/index.json", headers={"Host": "evil.example"}).status_code == 400
+    assert served.post("/scenarios/index.json", data=b"x").status_code == 405
+    assert (flat / "secret.txt").read_text(encoding="utf-8") == "private"  # nothing written
+
+
+def test_serve_does_not_need_a_bundle(flat: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def missing(package_root: Path | None = None) -> Path:
+        raise BundleMissingError(server.BUNDLE_MESSAGE)
+
+    monkeypatch.setattr(server, "static_dir", missing)
+    assert create_app(flat, serve_app=False, cors=True).test_client().get("/scenarios/index.json").status_code == 200

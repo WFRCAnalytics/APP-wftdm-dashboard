@@ -66,3 +66,9 @@ Expected: the wheel lists `wftdm_dashboard/static/index.html` and `wftdm_dashboa
 - `uv build` (after `npm run build:package`): the wheel holds `wftdm_dashboard/static/index.html`, the service worker, the assets and `wftdm_dashboard/templates/dashboard-config.schema.json`, with no `demo-*` entry. The gitignored `static/` folder IS included by `uv_build`, so no include setting was needed.
 - The wheel installed into a clean virtual environment: `wftdm-dashboard init` and `wftdm-dashboard here --no-browser --port 8072` worked from it; the app loaded in a browser (page "Overview") and `scenarios/index.json` answered `[]` for the folder with no runs.
 
+## Walked (2026-10-29, US3)
+
+- `wftdm-dashboard serve <folder> --port 8082`: `/` answers 404 (no app); a file answers with `Access-Control-Allow-Origin: *` and the range headers exposed; the start message gives the address and the limits note (mixed content, private network access, use `here`).
+- From a page served by a `here` on another port (another origin), a browser `fetch` read `scenarios/index.json` (the three runs) and a ranged Parquet request (`Range: bytes=0-3`) answered 206 with `Content-Range: bytes 0-3/1107` and the bytes `PAR1`.
+- pytest: 201 pass (2 skipped symbolic-link tests on Windows); `ruff` is clean for everything this feature added.
+

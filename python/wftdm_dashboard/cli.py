@@ -3,8 +3,8 @@
 `pyproject.toml`'s `[project.scripts] wftdm-dashboard = "wftdm_dashboard.cli:main"`
 points here. `serve`/`here`/`init` (CLAUDE.md's other two documented
 subcommands) are NOT built by this feature — `summarize` is the first real
-subcommand this CLI gets (025-python-postprocessor). `here` and `init` are built by 072-python-local-server
-(`serve` follows in the same feature).
+subcommand this CLI gets (025-python-postprocessor). `here`, `init` and `serve` are built by
+072-python-local-server.
 """
 
 from __future__ import annotations
@@ -168,3 +168,36 @@ def init(folder: Path) -> None:
         click.echo(f"wrote {name}" if written else f"kept {name} (already there)")
     click.echo(f"Next: wftdm-dashboard here {folder}")
     click.echo("To check the files, run `npm run check -- <folder>` in the repository (the check is not in this library yet).")
+
+
+SERVE_LIMITS = (
+    "Some browsers block a secure (https) web page from reading a local http address "
+    "(mixed content, private network access)."
+    + chr(10)
+    + "If the hosted app cannot read these files, use `wftdm-dashboard here`, which always works."
+)
+
+
+@main.command()
+@click.argument("folder", default=".", type=click.Path(exists=True, file_okay=False, path_type=Path))
+@click.option("--port", type=int, default=None, help=f"Port to use (exact). Default: {DEFAULT_PORT}, or the next free one.")
+@click.option("--host", default="127.0.0.1", show_default=True, help="Address to listen on (loopback keeps it on this machine).")
+def serve(folder: Path, port: int | None, host: str) -> None:
+    """Serve FOLDER's files (without the app) with cross-origin access, for use with a hosted copy of the app."""
+    app = create_app(folder, serve_app=False, cors=True, allow_any_host=not is_loopback(host))
+    try:
+        server = bind_server(app, host, port or DEFAULT_PORT, exact_port=port is not None)
+    except PortInUseError as err:
+        raise click.ClickException(str(err)) from err
+
+    shown_host = "127.0.0.1" if host in {"0.0.0.0", "::"} else host  # only compared here, never bound
+    url = f"http://{shown_host}:{server.server_port}/"
+    if not is_loopback(host):
+        click.echo(f"Warning: listening on {host}: the folder is visible to the network.", err=True)
+    click.echo(SERVE_LIMITS, err=True)
+    serve_until_stopped(
+        server,
+        message=f"Serving the files of {folder} at {url} (Ctrl+C to stop)",
+        url=url,
+        open_browser=False,
+    )

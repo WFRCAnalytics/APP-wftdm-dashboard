@@ -364,3 +364,89 @@ def test_init_does_not_need_the_bundle(no_bundle, tmp_path):
     result = CliRunner().invoke(main, ["init", str(tmp_path)])
     assert result.exit_code == 0
     assert (tmp_path / "dashboard-config.yaml").is_file()
+
+
+# ---------------------------------------------------------------- serve (072)
+
+
+@pytest.fixture
+def run_serve(monkeypatch):
+    calls: dict = {}
+
+    def fake_create_app(folder, **kwargs):
+        calls["app"] = (folder, kwargs)
+        return object()
+
+    def fake_bind(app, host, port, *, exact_port):
+        calls["bind"] = (host, port, exact_port)
+        return _FakeServer()
+
+    def fake_serve(server, *, message, url, open_browser):
+        calls["serve"] = (message, url, open_browser)
+
+    monkeypatch.setattr(cli_module, "create_app", fake_create_app)
+    monkeypatch.setattr(cli_module, "bind_server", fake_bind)
+    monkeypatch.setattr(cli_module, "serve_until_stopped", fake_serve)
+
+    def run(*args):
+        return CliRunner().invoke(main, ["serve", *args]), calls
+
+    return run
+
+
+def test_serve_help_lists_its_options():
+    result = CliRunner().invoke(main, ["serve", "--help"])
+    assert result.exit_code == 0
+    assert "--port" in result.output
+    assert "--host" in result.output
+    assert "--no-browser" not in result.output  # it never opens a browser
+
+
+def test_serve_starts_the_app_without_the_bundle_and_with_cross_origin_access(run_serve, tmp_path):
+    result, calls = run_serve(str(tmp_path))
+    assert result.exit_code == 0
+    assert calls["app"][1] == {"serve_app": False, "cors": True, "allow_any_host": False}
+    assert calls["bind"] == ("127.0.0.1", 8050, False)
+    message, url, open_browser = calls["serve"]
+    assert url == "http://127.0.0.1:8123/"
+    assert "Serving the files of" in message
+    assert open_browser is False
+
+
+def test_serve_prints_the_limits_of_use_with_a_hosted_page(run_serve, tmp_path):
+    result, _ = run_serve(str(tmp_path))
+    assert "mixed content" in result.output
+    assert "private network access" in result.output
+    assert "wftdm-dashboard here" in result.output
+
+
+def test_serve_forwards_an_asked_for_port_as_exact(run_serve, tmp_path):
+    _, calls = run_serve(str(tmp_path), "--port", "9002")
+    assert calls["bind"] == ("127.0.0.1", 9002, True)
+
+
+def test_serve_warns_when_it_listens_beyond_this_machine(run_serve, tmp_path):
+    result, calls = run_serve(str(tmp_path), "--host", "0.0.0.0")
+    assert "visible to the network" in result.output
+    assert calls["app"][1]["allow_any_host"] is True
+
+
+def test_serve_does_not_warn_on_loopback(run_serve, tmp_path):
+    result, _ = run_serve(str(tmp_path))
+    assert "visible to the network" not in result.output
+
+
+def test_serve_reports_a_taken_port(monkeypatch, tmp_path):
+    monkeypatch.setattr(cli_module, "create_app", lambda folder, **kwargs: object())
+
+    def taken(app, host, port, *, exact_port):
+        raise PortInUseError(f"Port {port} is already in use.")
+
+    monkeypatch.setattr(cli_module, "bind_server", taken)
+    result = CliRunner().invoke(main, ["serve", str(tmp_path), "--port", "8050"])
+    assert result.exit_code == 1
+    assert "Port 8050 is already in use." in result.output
+
+
+def test_serve_needs_an_existing_folder(tmp_path):
+    assert CliRunner().invoke(main, ["serve", str(tmp_path / "missing")]).exit_code == 2
