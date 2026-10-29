@@ -49,12 +49,12 @@ Single web-app project: `src/`, `tests/`, `scripts/`, `project-docs/` at the rep
 
 **Independent Test**: set `chart_rows` and `legend_series` low in the site file; a chart past both is cut at the new values and says so with those numbers; removing the keys restores today's behaviour.
 
-- [ ] T006 [US1] `src/charts/builder/specToSql.ts`: give `chartQuery` an optional `caps` argument `{ rowCap, scatterSample, histogramBins }` defaulting to `ROW_CAP`, `SCATTER_SAMPLE`, `HIST_BINS`, used in the `LIMIT`, `USING SAMPLE` and histogram expressions. Extend `tests/unit/chartBuilderSql.test.ts`: no caps gives the same SQL as before (existing assertions unchanged), each cap appears in the SQL when given
-- [ ] T007 [P] [US1] `src/charts/builder/compile.ts` and `src/charts/builder/pivotDraw.ts`: an optional legend series limit (default `MAX_SERIES`) and an optional pivot row limit (default `MAX_ROWS`) through the existing options argument of each draw function; the pivot note quotes the limit in force. Extend `tests/unit/chartBuilderCompile.test.ts` and `chartBuilderPivot.test.ts`: default unchanged, a lower limit cuts and flags `limitedSeries` / writes the note
-- [ ] T008 [US1] `src/explore/useChartData.ts` and `src/explore/ChartTabView.tsx`: pass `getExploreOptions().limits` as the caps and the draw options; the truncation flag uses the cap in force (`ROW_CAP` and `SCATTER_SAMPLE` re-exports stay for other importers); the notes read "first N groups", "first N values of a legend field" from the resolved numbers instead of the literals 50 000 (formatted) and 15
-- [ ] T009 [P] [US1] `src/explore/useDistinct.ts`: the `LIMIT` and `pageSize` come from `distinctValues` (the column-summary list in `explore/profile/profile.ts` stays at 200). Unit test or extend an existing Explore test for the SQL text
-- [ ] T010 [US1] Playwright `tests/integration/exploreSiteSettings.spec.ts` (same project as `exploreBuilderOptions.spec.ts`): with the site file served through `page.route` carrying low `chart_rows` and `legend_series`, a chart past both shows the notes with those numbers; a panel value overrides the site's for that panel; with no keys the notes read as before
-- [ ] T011 [US1] Regenerate if the schema text changed (`npm run docs:config`) and run `npx vitest run` for the touched unit files plus the new spec
+- [X] T006 [US1] `src/charts/builder/specToSql.ts`: give `chartQuery` an optional `caps` argument `{ rowCap, scatterSample, histogramBins }` defaulting to `ROW_CAP`, `SCATTER_SAMPLE`, `HIST_BINS`, used in the `LIMIT`, `USING SAMPLE` and histogram expressions. Extend `tests/unit/chartBuilderSql.test.ts`: no caps gives the same SQL as before (existing assertions unchanged), each cap appears in the SQL when given
+- [X] T007 [P] [US1] `src/charts/builder/compile.ts` and `src/charts/builder/pivotDraw.ts`: an optional legend series limit (default `MAX_SERIES`) and an optional pivot row limit (default `MAX_ROWS`) through the existing options argument of each draw function; the pivot note quotes the limit in force. Extend `tests/unit/chartBuilderCompile.test.ts` and `chartBuilderPivot.test.ts`: default unchanged, a lower limit cuts and flags `limitedSeries` / writes the note
+- [X] T008 [US1] `src/explore/useChartData.ts` and `src/explore/ChartTabView.tsx`: pass `getExploreOptions().limits` as the caps and the draw options; the truncation flag uses the cap in force (`ROW_CAP` and `SCATTER_SAMPLE` re-exports stay for other importers); the notes read "first N groups", "first N values of a legend field" from the resolved numbers instead of the literals 50 000 (formatted) and 15
+- [X] T009 [P] [US1] `src/explore/useDistinct.ts`: the `LIMIT` and `pageSize` come from `distinctValues` (the column-summary list in `explore/profile/profile.ts` stays at 200). Unit test or extend an existing Explore test for the SQL text
+- [X] T010 [US1] Playwright `tests/integration/exploreBuilderSite.spec.ts` (same project as `exploreBuilderOptions.spec.ts`): with the site file served through `page.route` carrying low `chart_rows` and `legend_series`, a chart past both shows the notes with those numbers; a panel value overrides the site's for that panel; with no keys the notes read as before
+- [X] T011 [US1] Regenerate if the schema text changed (`npm run docs:config`) and run `npx vitest run` for the touched unit files plus the new spec
 
 **Checkpoint**: US1 works alone: all six limits configurable at the site level.
 
@@ -67,7 +67,7 @@ Single web-app project: `src/`, `tests/`, `scripts/`, `project-docs/` at the rep
 **Independent Test**: set it in the site file, open a new chart tab, see that chart; set another on a panel, that panel starts with its own.
 
 - [ ] T012 [US2] `src/explore/options.ts#withSiteDefaults`: take `charts.default` from the resolved cascade like the other charts keys (a panel's value over the site's), then the existing check against the allowed list; the warning names the key path. Extend `tests/unit/exploreOptions.test.ts` (site only, panel over site, disallowed falls back to the first allowed with a message, not a string)
-- [ ] T013 [US2] Extend `tests/integration/exploreSiteSettings.spec.ts`: a site default of `line` starts a new chart tab as a line chart; the panel's own default wins in that panel
+- [ ] T013 [US2] Extend `tests/integration/exploreBuilderSite.spec.ts`: a site default of `line` starts a new chart tab as a line chart; the panel's own default wins in that panel
 
 ---
 
@@ -79,7 +79,7 @@ Single web-app project: `src/`, `tests/`, `scripts/`, `project-docs/` at the rep
 
 - [ ] T014 [US3] `tests/unit/configCheck.test.ts`: a site with each mistake gives one problem each with its path (`explore.limits.chart_rows`, `explore.limits.scatter_sample`, `explore.limits.foo`), and a clean site gives none; verify the site-level problem is not repeated when a panel opens (the clamped value reaches `options.ts` already in range)
 - [ ] T015 [US3] Make `explore.charts.default` naming an unknown chart reach `check`: through the existing `panelCheck` (`resolveExploreOptions(panel, site).warnings` in `scripts/check-config.ts`) when an Explore panel exists, so no chart list enters `src/config`; unit test with a stub panel
-- [ ] T016 [US3] Extend `tests/integration/exploreSiteSettings.spec.ts`: a site file with the four mistakes loads, the configuration note lists each with its path, and Explore still draws with the defaults
+- [ ] T016 [US3] Extend `tests/integration/exploreBuilderSite.spec.ts`: a site file with the four mistakes loads, the configuration note lists each with its path, and Explore still draws with the defaults
 
 ---
 

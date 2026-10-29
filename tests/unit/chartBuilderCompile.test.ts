@@ -219,6 +219,14 @@ describe('data handling', () => {
   it('applies the chart filter and reports when nothing is left', () => {
     expect(build({ enc: { x: { f: 'mode' }, y: { f: 'trips' } }, filter: { f: 'scenario', v: 'zzz' } }).problem).toContain('No rows')
   })
+  it('cuts the legend at the configured number of values and reports the limit', () => {
+    const many = Array.from({ length: 20 }, (_, i) => ({ mode: 'Car', trips: 1, scenario: `s${i}`, hour: 0, notes: '' }))
+    const spec = defaultSpec({ enc: { x: { f: 'mode' }, y: { f: 'trips' }, color: { f: 'scenario' } } })
+    const m = ok(buildChart({ spec, cols, rows: many, theme, width: 600, height: 400, hot: null, legendSeries: 4 }))
+    expect(m.limitedSeries).toBe(true)
+    expect(m.seriesLimit).toBe(4)
+    expect(ok(buildChart({ spec, cols, rows: many, theme, width: 600, height: 400, hot: null })).seriesLimit).toBe(15)
+  })
   it('flags more than 15 series', () => {
     const many = Array.from({ length: 20 }, (_, i) => ({ mode: 'Car', trips: 1, scenario: `s${i}`, hour: 0, notes: '' }))
     expect(ok(build({ enc: { x: { f: 'mode' }, y: { f: 'trips' }, color: { f: 'scenario' } } }, many)).limitedSeries).toBe(true)

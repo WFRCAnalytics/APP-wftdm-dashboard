@@ -25,7 +25,7 @@ Add `chart_rows: 10`, `scatter_sample: lots`, `histogram_bins: 500`, an unknown 
 ## 5. Browser spec
 
 ```
-npx playwright test --project=chromium tests/integration/exploreSiteSettings.spec.ts
+npx playwright test --project=real tests/integration/exploreBuilderSite.spec.ts
 ```
 
 Then the full run; compare with the known flakes in CLAUDE.md (re-run a failure with `--workers=1` first).

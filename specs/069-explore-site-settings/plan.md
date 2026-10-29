@@ -84,7 +84,7 @@ tests/unit/
 ├── exploreOptions.test.ts        # (extended: new keys, site + panel, charts.default site-wide)  [name per existing file]
 ├── configValidate.test.ts, configCheck.test.ts, configReference.test.ts   # (extended or adjusted for the new rows)
 └── builder specs for specToSql/compile/pivot                              # (extended: caps default and override)  [names per existing files]
-tests/integration/exploreSiteSettings.spec.ts   # NEW
+tests/integration/exploreBuilderSite.spec.ts   # NEW
 project-docs/CONFIG-REFERENCE.md, dashboard-config.schema.json   # regenerated (`npm run docs:config`)
 ```
 

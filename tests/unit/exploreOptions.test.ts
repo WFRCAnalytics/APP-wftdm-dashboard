@@ -195,3 +195,10 @@ describe('the chart limits', () => {
     expect(resolveExploreOptions({ limits: { chart_rows: 900 } }, site).limits).toMatchObject({ chartRows: 900, legendSeries: 4 })
   })
 })
+
+describe('the distinct-values list', () => {
+  it('uses the configured size in its query', async () => {
+    const { distinctSql } = await import('../../src/explore/useDistinct')
+    expect(distinctSql('SELECT 1 AS a;', 'a', 80)).toMatch(/ORDER BY 1 LIMIT 80$/)
+  })
+})

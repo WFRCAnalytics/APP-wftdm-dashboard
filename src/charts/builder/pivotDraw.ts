@@ -18,7 +18,8 @@ export interface PivotView {
 /** The view of each table, by table index. */
 export type PivotState = Record<number, PivotView | undefined>
 
-const MAX_ROWS = 500
+/** Rows a pivot draws when the deployer sets no `pivot_rows`. */
+export const MAX_ROWS = 500
 const SEP = '\u0002'
 const k = (p: string[]) => p.join(SEP)
 const SHARE: Record<string, string> = { row: 'Share of row', col: 'Share of column', total: 'Share of total' }
@@ -30,9 +31,9 @@ const el = <T extends keyof HTMLElementTagNameMap>(tag: T, cls?: string, text?: 
   return e
 }
 
-export function renderPivots(tables: PivotTable[], state: PivotState): HTMLElement {
+export function renderPivots(tables: PivotTable[], state: PivotState, maxRows: number = MAX_ROWS): HTMLElement {
   const host = el('div', 'pvt-host')
-  tables.forEach((t, i) => host.appendChild(renderPivot(t, state, i)))
+  tables.forEach((t, i) => host.appendChild(renderPivot(t, state, i, maxRows)))
   const show = (e: MouseEvent) => {
     const t = (e.target as Element).closest?.('[data-t]')?.getAttribute('data-t')
     if (!t) { tooltip.hide(); return }
@@ -51,7 +52,7 @@ interface Unit { cp: string[]; kind: 'leaf' | 'sub' | 'total' }
 /** Every group of a tree (a node with children), as path keys. */
 const groupKeys = (nodes: PNode[]): string[] => nodes.flatMap((n) => (n.children.length ? [k(n.path), ...groupKeys(n.children)] : []))
 
-function renderPivot(t: PivotTable, state: PivotState, idx: number): HTMLElement {
+function renderPivot(t: PivotTable, state: PivotState, idx: number, maxRows: number): HTMLElement {
   const M = t.measures.length
   const C = t.colLabels.length
   const subtotals = t.opts.subtotals
@@ -220,8 +221,8 @@ function renderPivot(t: PivotTable, state: PivotState, idx: number): HTMLElement
       }
     }
     walk(t.rowTree, 0)
-    const shownRows = visible.slice(0, MAX_ROWS)
-    note.textContent = visible.length > MAX_ROWS ? `Showing the first ${MAX_ROWS.toLocaleString('en-US')} of ${visible.length.toLocaleString('en-US')} rows. Collapse a group or filter the data to see the rest.` : ''
+    const shownRows = visible.slice(0, maxRows)
+    note.textContent = visible.length > maxRows ? `Showing the first ${maxRows.toLocaleString('en-US')} of ${visible.length.toLocaleString('en-US')} rows. Collapse a group or filter the data to see the rest.` : ''
     note.hidden = !note.textContent
 
     const pathText = (p: string[]) => (p.length ? p.join(' › ') : 'All')

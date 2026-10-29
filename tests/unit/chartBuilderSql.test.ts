@@ -133,3 +133,23 @@ describe('horizontal bars', () => {
     expect(v.spec.enc.y?.agg).toBe('sum')
   })
 })
+
+describe('chartQuery: deployer caps', () => {
+  it('uses the constants when no caps are given', () => {
+    const c = chartQuery(defaultSpec({ mark: 'histogram', enc: { x: { f: 'trips' } } }), rel, () => '', {})
+    expect(c.sql).toContain('/ 12 END)')
+    expect(c.sql).toContain('least(11,')
+  })
+  it('limits the groups to the row cap plus one (to detect a cut)', () => {
+    const c = chartQuery(defaultSpec({ enc: { x: { f: 'mode' }, y: { f: 'trips' } } }), rel, () => '', { rowCap: 300 })
+    expect(c.sql).toContain('LIMIT 301')
+  })
+  it('samples the scatter points to the configured size, raw and ordered', () => {
+    expect(chartQuery(defaultSpec({ mark: 'scatter', enc: { x: { f: 'a' }, y: { f: 'b' } } }), rel, () => '', { scatterSample: 250 }).sql).toContain('USING SAMPLE 250 ROWS (reservoir, 42)')
+  })
+  it('bins a histogram into the configured number of bins', () => {
+    const c = chartQuery(defaultSpec({ mark: 'histogram', enc: { x: { f: 'trips' } } }), rel, () => '', { histogramBins: 30 })
+    expect(c.sql).toContain('/ 30 END)')
+    expect(c.sql).toContain('least(29,')
+  })
+})
