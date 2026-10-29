@@ -1,4 +1,4 @@
-// Deployment settings for tile export (index.json `export.footer`), plain module state set once at boot.
+// Deployment settings for tile export (dashboard-config.yaml `export.footer`), plain module state set once at boot.
 let footer: boolean | string = true
 let title: string | undefined
 

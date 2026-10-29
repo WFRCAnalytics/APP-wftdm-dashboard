@@ -106,10 +106,10 @@
 
 **Independent Test**: grep the source for the old keys; none is read; the demo behaves as before.
 
-- [ ] T036 [US5] Remove the remaining readers of the old keys (any left in `src/services/yamlLoader.ts`, `src/state/assistantAvailability.ts`, `src/state/compareState.ts`, `src/state/layoutState.ts`, `src/state/exportState.ts`, `src/layout/dashboardBrand.tsx`, `src/layout/floatingNav.tsx`, `src/charts/vocab.ts`, `src/services/runResolution.ts` comments and code that name `index.json` settings) and update their comments to point at `dashboard-config.yaml`
-- [ ] T037 [P] [US5] Add a unit test `tests/unit/noLegacyKeys.test.ts` that scans `src/` and `scripts/` for the old flat keys (`logoUrl` as a config read, `scenarioPalette`, `protomapsApiKey`, `dashboards:` index reads) outside the `toBranding` mapping and `DashboardBranding` type, failing on a hit (SC-006)
-- [ ] T038 [US5] Update `python/wftdm_dashboard/observed.py` and `python/tests/test_observed.py` only if they read `dashboard-config/index.json` (they list `observed/summary/index.json`, which stays); otherwise leave untouched and note it in the PR
-- [ ] T039 [US5] Confirm `scenarios/index.json` and `observed/summary/index.json` discovery is unchanged (`src/services/scenarioDiscovery.ts`, `src/state/appState.ts`) with the existing `scenarioAutoActivation.spec.ts`
+- [X] T036 [US5] Remove the remaining readers of the old keys (any left in `src/services/yamlLoader.ts`, `src/state/assistantAvailability.ts`, `src/state/compareState.ts`, `src/state/layoutState.ts`, `src/state/exportState.ts`, `src/layout/dashboardBrand.tsx`, `src/layout/floatingNav.tsx`, `src/charts/vocab.ts`, `src/services/runResolution.ts` comments and code that name `index.json` settings) and update their comments to point at `dashboard-config.yaml`
+- [X] T037 [P] [US5] Add a unit test `tests/unit/noLegacyKeys.test.ts` that scans `src/` and `scripts/` for the old flat keys (`logoUrl` as a config read, `scenarioPalette`, `protomapsApiKey`, `dashboards:` index reads) outside the `toBranding` mapping and `DashboardBranding` type, failing on a hit (SC-006)
+- [X] T038 [US5] Update `python/wftdm_dashboard/observed.py` and `python/tests/test_observed.py` only if they read `dashboard-config/index.json` (they list `observed/summary/index.json`, which stays); otherwise leave untouched and note it in the PR
+- [X] T039 [US5] Confirm `scenarios/index.json` and `observed/summary/index.json` discovery is unchanged (`src/services/scenarioDiscovery.ts`, `src/state/appState.ts`) with the existing `scenarioAutoActivation.spec.ts`
 
 ---
 

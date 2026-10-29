@@ -1,6 +1,6 @@
 // Page layout state (project-docs/redesign/10-toolbar-layout-export-proposal.md section C), session-only module state:
 //   - the viewer's choice between scrolling and tabbed pages (overrides the page and the deployment),
-//   - the deployment default (`layout.mode` of index.json),
+//   - the deployment default (`layout.mode` of dashboard-config.yaml),
 //   - the active tab (section) of each page and the tile picked in a "pick" tab.
 import { useSyncExternalStore } from 'react'
 
