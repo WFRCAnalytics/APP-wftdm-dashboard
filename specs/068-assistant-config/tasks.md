@@ -100,7 +100,7 @@ Single web-app project: `src/`, `tests/`, `scripts/`, `project-docs/` at the rep
 - [X] T025 [P] Update `project-docs/CONFIGURATION.md` (Phase D step 9 done with the 068 key shapes; step 10, the network block, still open and undesigned; section 4's draft matches the built keys incl. `protocol`), `project-docs/GRAMMAR.md` (the `assistant:` block), `CLAUDE.md` (the AI assistant section: the keys, the policy module, the lock and its limit, the secrets rule) and add a "068 assistant settings" entry to `project-docs/IMPLEMENTATION-HISTORY.md`
 - [X] T026 Confirm FR-014 (no new key set, nothing changes) and FR-009 (the SQL guard untouched): `npx tsc --noEmit`, `npx vitest run`, then the full Playwright run (`npx playwright test --reporter=line`); compare failures with the known ones in `CLAUDE.md` (`realDemo.spec.ts:19` and `:39`, `chartMaps:95`, load flakes) and re-run any other with `--workers=1` first, especially `aiChat.spec.ts` and the settings specs
 - [X] T027 Walk `quickstart.md` by hand (steps 2, 3 and 5 against the dev server and `npm run check`) and note the result at its foot
-- [ ] T028 Rebuild `docs/` with `npm run build:pages` only after the user asks
+- [X] T028 Rebuild `docs/` with `npm run build:pages` only after the user asks
 
 ---
 
