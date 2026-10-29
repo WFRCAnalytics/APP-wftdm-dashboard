@@ -245,7 +245,11 @@ Not drafted here, on purpose: how the charts find the deployer's tables and colu
    unrestricted-map-key warning and the model-mix warning, which wait for those features.
 
 **Phase C: viewer-facing settings**
-8. `settings.tabs`, the documentation link and sidebar icon, and hidden and draft pages. (No deployer theme or font defaults, and no custom
+8. **Done (067, `specs/067-viewer-settings/`):** `settings.tabs` (order and visibility of the Settings tabs; names `appearance`, `scenarios`, `basemap`,
+   `assistant`, `documentation`; the assistant switch still wins), the documentation link (`docs: { url, label }`, an icon at the foot of the sidebar, a
+   per-page `header.docs` path appended to the address; `http`/`https` only) and hidden pages (`header.hidden`: out of the sidebar, still reachable at
+   `#/<slug>`; the first page that is not hidden is the landing page). **Draft pages are deferred** until the profiles design (topic 5); nothing is
+   reserved. (No deployer theme or font defaults, and no custom
    CSS for now; see section 7.)
 
 **Phase D: assistant and network**

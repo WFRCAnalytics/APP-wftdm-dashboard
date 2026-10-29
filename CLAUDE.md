@@ -116,7 +116,10 @@ manifest.yaml         per-scenario metadata
   `scenario_palette`, `basemap.protomaps.{pmtiles_url, api_key}` (a self-hosted PMTiles file, or a Protomaps hosted-API key), `colors`
   `{primary, secondary, accent}` (the three DATA colours: transit, walking, biking and the chart palette) and `colors.brand` (the interface colour for
   selected pills, titles, tags and focus rings; separate so a data colour never recolours the chrome), `years` `{list, base, default}`, `compare`,
-  `layout.mode`, `export.footer`, `assistant.enabled`, `vocab`, `metrics`, `units`. All optional; an unconfigured deployment renders exactly as it
+  `layout.mode`, `export.footer`, `assistant.enabled`, `vocab`, `metrics`, `units`, `docs: {url, label}` (a documentation link at the foot of the sidebar,
+  `http`/`https` only, with an optional page `header.docs` path appended), `settings.tabs` (order and visibility of the Settings tabs).
+  A page's `header.hidden` keeps it out of the sidebar (still reachable at `#/<slug>`; `config/pages.ts` decides what is listed and the landing page).
+  Page-scoped schema rows (`scope: 'page'`) are set in a page's `header:`, never in the site file, and never cascade; a row's `clean` hook keeps the usable part of a list. All optional; an unconfigured deployment renders exactly as it
   always did. A mistake (unknown key, wrong type, bad colour, a site-only key on a page, invalid YAML, a missing page file) is listed in one dismissible
   note (`layout/configNotice.tsx`, store `state/configProblems.ts`) and in the console; the key keeps its default and the app loads.
 - **The cascade** (`config/resolve.ts`, site → page → panel): only `layout.mode`, `basemap.default`, `export.footer` and the `explore.*` keys cascade;

@@ -802,6 +802,10 @@ header:
                                   # default/placeholder substitute.
   full_page:   false              # optional (030-sidebar-navigation), default false —
                                   # see "Chromeless full-page panel mode" below
+  hidden:      false              # optional (067): true keeps the page out of the sidebar; it still opens at its address.
+                                  # The first page that is not hidden is the landing page.
+  docs:        modes/#shares      # optional (067): a relative path appended to docs.url (dashboard-config.yaml), so the
+                                  # sidebar documentation link opens this page's section. Ignored (and reported) without docs.url.
   slug:        summary            # optional: this page's address (#/summary). Default: the tab name,
                                   # lower-cased and dash-separated; a repeat gets -2, -3
   layout_mode: tabs               # optional: scroll | tabs. Overrides layout.mode of
