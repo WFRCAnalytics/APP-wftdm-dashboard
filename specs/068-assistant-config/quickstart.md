@@ -37,3 +37,9 @@ npx playwright test --project=chromium tests/integration/assistantConfig.spec.ts
 ```
 
 Then the full run; compare with the known flakes in CLAUDE.md (re-run a failure with `--workers=1` first).
+
+## Walked (2026-10-28)
+
+- Step 1: the eight listed unit files pass (111 tests).
+- Steps 2, 3 and 5 through `tests/integration/assistantConfig.spec.ts` (17 cases: no keys, a deployer list, the locked address, the default, the Anthropic protocol, the note, each limit, every mistake, a sentinel secret that appears in neither the page nor the console) and by hand with `npm run check`: a site with a secret-like `api_key`, a provider with an unknown protocol, a secret-like `token` inside a provider, a limit of 99 and a default naming a provider that is not offered gives five problems with their key paths, the secret values appear nowhere in the output, and the demo folder checks clean.
+- Note: a provider skipped for a bad field does not take its id, so a later provider with the same id is kept (the repeat is reported only when the first was valid).
