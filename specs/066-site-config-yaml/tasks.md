@@ -119,7 +119,7 @@
 - [X] T041 [P] Update `CLAUDE.md` (Config file set, the `index.json` paragraph, File structure, Do not) and the constitution references to `index.json` settings; add the new `src/config/` and `siteConfig.ts` to the file structure; record the feature in `project-docs/IMPLEMENTATION-HISTORY.md`
 - [X] T042 [P] Update `project-docs/GRAMMAR.md` for `header.slug` and a pointer to `CONFIG-REFERENCE.md`
 - [ ] T043 Run `npx tsc --noEmit`, `npx vitest run`, then the Playwright projects (`chromium`, `redesign`, `real`); compare failures with the known flakes in `CLAUDE.md` and `realDemo.spec.ts:19`/`chartMaps.spec.ts:189` (pre-existing), re-running with `--workers=1` first
-- [ ] T044 Walk `quickstart.md` by hand, including the `WFTDM_BASE=./` build still loading its config from a nested folder
+- [X] T044 Walk `quickstart.md` by hand, including the `WFTDM_BASE=./` build still loading its config from a nested folder
 - [ ] T045 Rebuild `docs/` with `npm run build:pages` only after the user asks
 
 ---
