@@ -7,8 +7,8 @@ are in section 7.
 ## 1. Goal
 
 A deployer should be able to run this dashboard for their own agency, with their own data, name, look and rules, **without editing or
-rebuilding `src/`**. The same bundle ships inside a **Python library and an R package** (constitution Principle X), and neither package
-holds application logic.
+rebuilding `src/`**. The same bundle ships inside a **Python library** (constitution Principle X; an R package was a second target until 2.9.0 and was
+dropped on 2026-10-29: the users run ActivitySim and the TDM scripts, which are Python), and the library holds no application logic.
 
 Principles:
 
@@ -18,7 +18,7 @@ Principles:
 4. **Wrong values are reported, never fatal.** The key keeps its default and the problem is listed (page and console).
 5. **YAML throughout, one file per job.** Four config files (constitution Principle VII); one documented schema each.
 6. **A cascade, as in Quarto.** Site settings apply everywhere; a page may override them; a panel may override the page.
-7. **Language neutral.** Plain YAML, so the Python library, the R package or a hand edit can all write it.
+7. **Language neutral.** Plain YAML, so the Python library, a hand edit or any other tool (an R script, say) can write it.
 
 ## 2. Where things stand
 
@@ -48,7 +48,7 @@ generated file. The site settings move to `dashboard-config.yaml`.
 
 ### Structural problems found
 
-1. **Base path is baked in.** `make build` embeds a `dist/` built for `/APP-wftdm-dashboard/`, so a wheel or R package cannot serve it
+1. **Base path is baked in.** `make build` embeds a `dist/` built for `/APP-wftdm-dashboard/`, so a wheel cannot serve it
    from another URL. Runtime fetches already use `import.meta.env.BASE_URL`; a relative base is untested.
 2. **Demo content was always mixed in (fixed in 070).** `main.tsx` appended `demo-dashboard-config/` tabs after `dashboard-config/`, and branding falls
    back per field to the WFRC demo values (title, logos, colours, Protomaps key). An unconfigured deployment looked like WFRC. Now the demo is read only in the
@@ -241,11 +241,11 @@ Not drafted here, on purpose: how the charts find the deployer's tables and colu
    leftover one gets a "moved" note.
 7. **Done.** `GRAMMAR.md` points at the generated reference. `npm run docs:config` also writes the JSON Schema
    `project-docs/dashboard-config.schema.json` (for an editor: first line `# yaml-language-server: $schema=<path or URL of that file>`; Python
-   and R can validate with it before writing). `npm run check -- <site folder> [--explain] [--json]` (`src/config/check.ts`, run by
+   or any language can validate with it before writing). `npm run check -- <site folder> [--explain] [--json]` (`src/config/check.ts`, run by
    `scripts/check-config.ts`) reports what the app would report, before deploying: unknown keys and wrong values, a missing or unparsable
    page file, a page missing `header.tab` or `header.title`, a site-only key on a page, two pages with one address, and a wrong Explore
    option on a panel. `--explain` prints each cascading setting per page and the level it came from. Exit code 1 when anything is
-   reported. Not yet: packaging the TypeScript core inside the Python library and the R package (section 7, "What is the core?"), the
+   reported. Not yet: packaging the TypeScript core inside the Python library (section 7, "What is the core?"), the
    unrestricted-map-key warning and the model-mix warning, which wait for those features.
 
 **Phase C: viewer-facing settings**
@@ -276,7 +276,7 @@ Not drafted here, on purpose: how the charts find the deployer's tables and colu
 
 **Phase G: packaging**
 12. **Done (072, `specs/072-python-local-server/`):** the Python library's `here` (serves the embedded app and a site folder on localhost, generates the run lists a static host cannot, ranges, `no-cache`, loopback-only, path-safe), `init` (a starter `dashboard-config.yaml` generated from the packaged schema, listing every setting as a comment, plus one page; never overwrites) and `serve` (the folder only, with CORS, and an honest note on the limits with a hosted https page). The package embeds the normal app build (`npm run build:package`, Vite mode `package`, relative base, no demo). Deferred: `init --scenario-dir` (the summarize scaffold) and a `check` in the library (needs the TypeScript core, section 7).
-13. The R package wraps the same files. Nothing language-specific goes into the app.
+13. **Dropped (2026-10-29, constitution 2.9.0).** The R package: the users run ActivitySim and the TDM scripts (Python), no R user is known, and nothing here can build or test an R package. The configuration stays plain YAML and JSON and the app has no language-specific part, so a wrapper can be added later by amending Principle X first.
 
 ## 6. Out of scope for now
 
@@ -296,8 +296,8 @@ Nothing below changes code. Each topic is settled before anything is built.
   disabled, with a reason). It can come back if something really needs locking. (Confirmed for font and text size too.)
 - **A one-command local server** (`serve` / `here`, part of the core), in the manner of `simwrapper serve`.
 - Site settings move to YAML, in a new `dashboard-config.yaml` (constitution 2.8.0, Principle VII); a cascade site → page → panel.
-- The target is a Python library and an R package (Principle X). **One core and two thin wrappers**, as quarto-r and quarto-py wrap Quarto.
-  The wrappers hold no logic of their own.
+- The target is a Python library (Principle X; the R package was dropped on 2026-10-29). The library is a thin wrapper, as quarto-py wraps Quarto:
+  it holds no application logic. The app and its configuration stay language-neutral.
 - **Brand: thin brand.yml support.** Logos, colours and fonts follow the open brand.yml spec (the one Quarto reads), so an agency's
   existing brand file works. Only a small part of the spec is read; how much is detailed later.
 - **Validation: all three.** A published JSON Schema for editors, errors that name the file and the key path (and the line where the
@@ -389,12 +389,12 @@ Nothing below changes code. Each topic is settled before anything is built.
 
 **Questions raised by the decisions above**
 - **What is the core?** (Language decided for now: TypeScript.) The `check` command, schema validation and the cascade resolver need one
-  implementation. A TypeScript core, shipped as a standalone program, lets the app and `check` share one schema and one resolver, and
-  R users need no Python, which is how Quarto is built. The data steps (`summarize`) stay in Python either way. Still to settle: how
-  the TypeScript core is packaged inside the Python library and the R package.
+  implementation. A TypeScript core, shipped as a standalone program, lets the app and `check` share one schema and one resolver. The
+  data steps (`summarize`) stay in Python either way. With R dropped, the question is Python-only: how a `check` reaches the Python library
+  (the TypeScript core packaged inside it, or the generated JSON Schema plus a small Python port of the few cross-key rules).
 - **Rust: revisit later.** Not now: the core does not exist yet, the app's interface stays TypeScript regardless, and the work is
-  config validation and file placement, not heavy computation. The case for Rust is packaging: one native core that both Python
-  (maturin) and R (extendr) can load, with no separate program or runtime. It would need a second toolchain, and the browser could only
+  config validation and file placement, not heavy computation. The case for Rust is packaging: one native core that Python
+  (maturin) can load, with no separate program or runtime. It would need a second toolchain, and the browser could only
   share it through WebAssembly. To keep the door open, write the schema as data and the resolver as a small pure function with no
   browser dependencies. Reassess after the data-path test and once the core's scope is clear.
 - **Docs links: decided.** A site-level `docs:` URL, and a per-page `header.docs` path appended to it, so each page can link to its own
