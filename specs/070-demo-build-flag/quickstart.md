@@ -52,3 +52,10 @@ Expected: the demo as today. Then the full Playwright run: no new failures compa
 - Demo mode in the browser: `realDemo`, `settingsModal`, `settingsRedesign`, `layoutTabs`, `boot`, `exploreBuilderSite`, `assistantConfig` ran (87 + 29 passed); the only failures are `realDemo.spec.ts:19` and `:39`, the known pre-existing ones.
 - First run (project `firstrun`, 3 cases): no site file, a site file with `pages: []`, and a one-page deployment; no `demo-` request, no console error.
 - `npm run check`: the demo folder is clean (exit 0); a scratch folder with one bad limit reports only that problem (exit 1).
+
+## Walked (2026-10-29)
+
+- Step 1 and the unit layer: 109 files, 1438 tests pass.
+- Steps 2 to 4 as recorded above (normal build 94 MB to 81 MB with no `demo-*`; the demo build matches `docs/`; the first-run screen on a normal build, 3 cases in project `firstrun`).
+- Step 5, full Playwright run (645 tests): 639 passed, 6 failed. `realDemo.spec.ts:19` and `:39` (pre-existing) and `chartMaps.spec.ts:95` (known flaky) are the baseline. `observablePlotMarkVariety:216` and `chartScenarioCompare:8` passed when re-run alone. `observablePlotPanel.spec.ts:167` (hovering a line mark) is a hover-timing flake: it failed in the 068 and 069 runs too, and alone it fails on `main` as well (1 of 4 runs there, 4 of 6 on this branch), so it is not caused by this change.
+- Not covered by a browser test: nothing new beyond the first-run cases.

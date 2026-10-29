@@ -98,8 +98,8 @@ Single web-app project: `src/`, `scripts/`, `tests/`, `project-docs/` at the rep
 
 - [X] T017 [P] Docs: `project-docs/CONFIGURATION.md` (Phase A step 1 done: what the flag is, the scripts, that demo fallbacks are gone; section 2 table "Demo content is always mixed in" resolved; section 7 decision), `CLAUDE.md` (the Deployment section: `build` vs `build:demo` vs `build:pages`; the dev server is always the demo; a normal build has no demo; first-run screen), `project-docs/IMPLEMENTATION-HISTORY.md` ("070 Demo content only when asked for": mode plus define, the post-copy removal, the geometry change, the first-run screen, gotchas such as vitest reading the flag as off), `README`/deployment notes if they say how to build, and the `Makefile` comment on `build`
 - [X] T018 `npx tsc --noEmit`; `npx vitest run`; `npm run docs:config` (no schema change, so no diff expected)
-- [ ] T019 Full Playwright run (`npx playwright test`) including the new `firstrun` project; compare failures with the known flakes in CLAUDE.md and re-run each alone with `--workers=1` before treating it as real
-- [ ] T020 Walk `quickstart.md` and record the result at its foot (sizes before and after, the grep result, the first-run screenshot path)
+- [X] T019 Full Playwright run (`npx playwright test`) including the new `firstrun` project; compare failures with the known flakes in CLAUDE.md and re-run each alone with `--workers=1` before treating it as real
+- [X] T020 Walk `quickstart.md` and record the result at its foot (sizes before and after, the grep result, the first-run screenshot path)
 - [ ] T021 Rebuild `docs/` with `npm run build:pages` (only when the user asks; not part of the implementation)
 
 ---
