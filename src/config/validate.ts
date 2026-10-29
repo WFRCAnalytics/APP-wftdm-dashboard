@@ -102,7 +102,12 @@ export function validate(raw: unknown, opts: ValidateOptions): { settings: Tree;
       const path = prefix ? `${prefix}.${key}` : key
       const row = byPath.get(path)
       if (row) {
-        if (level !== 'site' && !row.cascade) {
+        if (row.scope === 'page') {
+          if (level !== 'page') {
+            report(path, 'not_allowed_here', `"${path}" belongs in a page's header, not in the ${level} settings`)
+            continue
+          }
+        } else if (level !== 'site' && !row.cascade) {
           report(path, 'not_allowed_here', `"${path}" is a site setting and cannot be set on a ${level}`)
           continue
         }
@@ -116,7 +121,13 @@ export function validate(raw: unknown, opts: ValidateOptions): { settings: Tree;
           report(path, 'invalid_value', extra)
           continue
         }
-        if (checked.value !== undefined) setPath(settings, path, checked.value)
+        let kept = checked.value
+        if (row.clean) {
+          const cleaned = row.clean(kept)
+          for (const message of cleaned.messages) report(path, 'invalid_value', message)
+          kept = cleaned.value
+        }
+        if (kept !== undefined) setPath(settings, path, kept)
       } else if (groups.has(path)) {
         if (isTree(value)) walk(value, path)
         else report(path, 'wrong_type', 'expected a group of settings')
@@ -144,7 +155,7 @@ export function validate(raw: unknown, opts: ValidateOptions): { settings: Tree;
 
 function withDefaults(settings: Tree, schema: readonly SettingDef[]): Tree {
   for (const row of schema) {
-    if (row.default !== undefined && getPath(settings, row.path) === undefined) setPath(settings, row.path, row.default)
+    if (row.scope !== 'page' && row.default !== undefined && getPath(settings, row.path) === undefined) setPath(settings, row.path, row.default)
   }
   return settings
 }

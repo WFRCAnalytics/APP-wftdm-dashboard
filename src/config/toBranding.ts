@@ -51,6 +51,9 @@ export function toBranding(settings: Tree): DashboardBranding {
     exportFooter: getPath(settings, 'export.footer') as DashboardBranding['exportFooter'],
     layout: layout(settings),
     assistantEnabled: getPath(settings, 'assistant.enabled') as boolean | undefined,
+    docsUrl: str(settings, 'docs.url'),
+    docsLabel: str(settings, 'docs.label'),
+    settingsTabs: strList(settings, 'settings.tabs'),
   }
 }
 

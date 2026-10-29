@@ -65,3 +65,49 @@ describe('check', () => {
     expect(explain(r)).toEqual(['a.yaml', '  layout.mode = "tabs" (site)', 'b.yaml', '  layout.mode = "scroll" (page: b.yaml)'])
   })
 })
+
+describe('check: documentation link', () => {
+  const site = (extra: string) => `pages: [p.yaml]\n${extra}`
+  const withDocs = page('  docs: modes/\n')
+
+  it('reports a page path when the site has no documentation address', () => {
+    const r = checkSite(files({ 'dashboard-config.yaml': site(''), 'p.yaml': withDocs }))
+    expect(kinds(r)).toEqual([['invalid_value', 'p.yaml', 'header.docs']])
+  })
+
+  it('accepts it with an address, refuses a non-web address and a full-address path', () => {
+    expect(checkSite(files({ 'dashboard-config.yaml': site('docs: { url: "https://example.org/d/" }\n'), 'p.yaml': withDocs })).problems).toEqual([])
+    expect(kinds(checkSite(files({ 'dashboard-config.yaml': site('docs: { url: "javascript:alert(1)" }\n'), 'p.yaml': page() })))).toEqual([['invalid_value', 'dashboard-config.yaml', 'docs.url']])
+    const full = checkSite(files({ 'dashboard-config.yaml': site('docs: { url: "https://example.org/d/" }\n'), 'p.yaml': page('  docs: "https://evil.org/x"\n') }))
+    expect(kinds(full)).toEqual([['invalid_value', 'p.yaml', 'header.docs']])
+  })
+
+  it('refuses header.docs in the site file', () => {
+    const r = checkSite(files({ 'dashboard-config.yaml': 'header: { docs: x }\n' }))
+    expect(kinds(r)).toEqual([['not_allowed_here', 'dashboard-config.yaml', 'header.docs']])
+  })
+})
+
+describe('check: hidden pages', () => {
+  const site = 'pages: [a.yaml, b.yaml]\n'
+  const hidden = (tab: string) => page('  hidden: true\n', tab)
+
+  it('accepts some pages hidden and a single hidden page', () => {
+    expect(checkSite(files({ 'dashboard-config.yaml': site, 'a.yaml': page('', 'A'), 'b.yaml': hidden('B') })).problems).toEqual([])
+    expect(checkSite(files({ 'dashboard-config.yaml': 'pages: [a.yaml]\n', 'a.yaml': hidden('A') })).problems).toEqual([])
+  })
+
+  it('reports every page hidden, once', () => {
+    const r = checkSite(files({ 'dashboard-config.yaml': site, 'a.yaml': hidden('A'), 'b.yaml': hidden('B') }))
+    expect(kinds(r)).toEqual([['invalid_value', 'dashboard-config.yaml', 'pages']])
+  })
+
+  it('reports a hidden flag that is not true or false', () => {
+    const r = checkSite(files({ 'dashboard-config.yaml': site, 'a.yaml': page('  hidden: yes please\n', 'A'), 'b.yaml': page('', 'B') }))
+    expect(kinds(r)).toEqual([['wrong_type', 'a.yaml', 'header.hidden']])
+  })
+
+  it('refuses header.hidden in the site file', () => {
+    expect(kinds(checkSite(files({ 'dashboard-config.yaml': 'header: { hidden: true }\n' })))).toEqual([['not_allowed_here', 'dashboard-config.yaml', 'header.hidden']])
+  })
+})

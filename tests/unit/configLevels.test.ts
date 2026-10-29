@@ -26,4 +26,9 @@ describe('level adapters', () => {
     expect(exploreSettings({ type: 'explore-builder' })).toEqual({})
     expect(exploreSettings(null)).toEqual({})
   })
+
+  it('passes header.docs and header.hidden, and no other header key', () => {
+    expect(pageSettings({ header: { tab: 'A', title: 'A', slug: 'a', docs: 'x/', hidden: true } })).toEqual({ header: { docs: 'x/', hidden: true } })
+    expect(pageSettings({ header: { tab: 'A', title: 'A' } })).toEqual({})
+  })
 })

@@ -6574,3 +6574,20 @@ and the contracts are in the spec folder; the non-obvious ones:
   against `assets/` (fixed in `registerFileURL`); a page file's own top-level `layout:` (tile rows) is not the `layout.mode` setting.
 - Tests: `tests/unit/config*.test.ts`, `noLegacyKeys`, `exploreOptions` (cascade); Playwright `siteConfig.spec.ts` (project `chromium`) and
   `layoutSiteCascade.spec.ts` (project `real`).
+
+## 067 Viewer-facing settings (`specs/067-viewer-settings/`)
+
+- **Keys** (all rows in `src/config/schema.ts`, so the reference, JSON Schema, `validate` and `check` know them): `docs.url`, `docs.label`,
+  `settings.tabs` (site file) and `header.docs`, `header.hidden` (a page's `header:`). Draft pages are deferred until the profiles design; nothing reserved.
+- **Schema machinery**: `SettingDef.scope: 'page'` (set in a page header, refused in the site file, never cascades, left out of the site JSON Schema) and
+  `SettingDef.clean` (keeps the usable part of a value and reports each dropped item). `levels.ts#pageSettings` passes only `header.docs` and `header.hidden`
+  to the validator, so other header keys stay unchecked as before.
+- **Documentation link**: `config/viewer.ts#docsHref` joins address and path (one `/`, fragment kept) and refuses anything but `http`/`https`
+  (a `javascript:` address must never reach an `href`); `layout/navButton.tsx#NavLink` is an anchor with `rel="noopener noreferrer"` sharing the nav item class.
+  A page path without `docs.url` is reported and ignored (app: `main.tsx`; `check`: `checkSite`).
+- **Settings tabs**: `config/viewer.ts#cleanSettingsTabs` and `resolveSettingsTabs`; `state/settingsState.ts#configureSettingsTabs` (set once at boot, the first listed
+  tab opens, `openSettings`/`setSettingsTab` fall back to it). The config name is `assistant`; the internal id stays `ai`. The assistant switch wins.
+- **Hidden pages**: `config/pages.ts` (`listedPages`, `landingIndex`, `allHidden`). The nav skips unlisted entries but keeps iterating the full list, because the shell
+  tracks the active page by array index. One page, or every page, hidden: they are listed (the second case is reported), never an empty sidebar.
+- **Gotcha**: `settingsState.rememberOpener` used `instanceof HTMLElement` unguarded and threw in a non-DOM test environment; it is guarded now.
+- Tests: `tests/unit/config{Viewer,Pages,Check,Validate,ToBranding}.test.ts`, `settingsState`, `dashboardConfigTypes`; Playwright `viewerSettings.spec.ts` (`chromium`).

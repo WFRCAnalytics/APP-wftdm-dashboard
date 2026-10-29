@@ -82,3 +82,64 @@ describe('validate', () => {
     expect(validate({ x: 1 }, { file: 'site.yaml' }).problems[0].file).toBe('site.yaml')
   })
 })
+
+describe('page-scoped rows and the clean hook', () => {
+  const schema = [
+    { path: 'header.note', type: 'string', cascade: false, scope: 'page', description: 'A test-only page key.' },
+    { path: 'header.flag', type: 'boolean', cascade: false, scope: 'page', default: true, description: 'A test-only page flag.' },
+    {
+      path: 'tabs',
+      type: 'list',
+      of: 'string',
+      cascade: false,
+      description: 'A test-only list.',
+      clean: (v: unknown) => {
+        const list = (v as string[]).filter((x) => x !== 'bad')
+        return { value: list.length ? list : undefined, messages: (v as string[]).filter((x) => x === 'bad').map((x) => `drop ${x}`) }
+      },
+    },
+  ] as const
+
+  it('accepts a page-scoped row on a page and refuses it in the site file', () => {
+    const onPage = validate({ header: { note: 'x' } }, { file: 'p.yaml', level: 'page', schema: schema as never })
+    expect(onPage.problems).toEqual([])
+    expect(getPath(onPage.settings, 'header.note')).toBe('x')
+    const onSite = validate({ header: { note: 'x' } }, { file, schema: schema as never })
+    expect(onSite.problems.map((p) => [p.kind, p.path])).toEqual([['not_allowed_here', 'header.note']])
+    expect(getPath(onSite.settings, 'header.note')).toBeUndefined()
+  })
+
+  it('never fills a default for a page-scoped row', () => {
+    expect(getPath(validate({}, { file, schema: schema as never }).settings, 'header.flag')).toBeUndefined()
+  })
+
+  it('keeps the usable part of a value and reports each thing dropped', () => {
+    const r = validate({ tabs: ['a', 'bad', 'b'] }, { file, schema: schema as never })
+    expect(getPath(r.settings, 'tabs')).toEqual(['a', 'b'])
+    expect(r.problems.map((p) => [p.kind, p.path, p.message])).toEqual([['invalid_value', 'tabs', 'drop bad']])
+  })
+
+  it('leaves the key unset when clean returns undefined', () => {
+    const r = validate({ tabs: ['bad'] }, { file, schema: schema as never })
+    expect(getPath(r.settings, 'tabs')).toBeUndefined()
+    expect(r.problems).toHaveLength(1)
+  })
+})
+
+describe('settings.tabs', () => {
+  it('keeps the valid names and reports an unknown and a repeated one with the settings.tabs path', () => {
+    const { settings, problems } = validate({ settings: { tabs: ['scenarios', 'bogus', 'scenarios', 'appearance'] } }, { file })
+    expect(getPath(settings, 'settings.tabs')).toEqual(['scenarios', 'appearance'])
+    expect(problems.map((p) => [p.kind, p.path])).toEqual([['invalid_value', 'settings.tabs'], ['invalid_value', 'settings.tabs']])
+  })
+
+  it('leaves the key unset and says so when no usable tab is listed', () => {
+    const { settings, problems } = validate({ settings: { tabs: ['bogus'] } }, { file })
+    expect(getPath(settings, 'settings.tabs')).toBeUndefined()
+    expect(problems.map((p) => p.message).join(' ')).toContain('all tabs are shown')
+  })
+
+  it('is a site setting: not allowed on a page', () => {
+    expect(validate({ settings: { tabs: ['basemap'] } }, { file: 'p.yaml', level: 'page' }).problems.map((p) => p.kind)).toEqual(['not_allowed_here'])
+  })
+})

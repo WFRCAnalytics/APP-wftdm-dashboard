@@ -11,6 +11,7 @@ function typeOf(row: SettingDef): string {
 }
 
 function cascadeOf(row: SettingDef): string {
+  if (row.scope === 'page') return 'page `header:` only'
   if (!row.cascade) return 'site only'
   if (row.cascade === true) return 'page, panel (scalars replace, maps merge per key)'
   return row.cascade.merge === 'replace' ? 'page, panel (a lower level replaces the list)' : 'page, panel (lower levels add to the list)'

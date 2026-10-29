@@ -18,6 +18,11 @@ export function pageSettings(raw: unknown): Tree {
   const header = isTree(raw.header) ? raw.header : {}
   if (header.layout_mode !== undefined) out.layout = { mode: header.layout_mode }
   if (raw.default_basemap !== undefined) out.basemap = { default: raw.default_basemap }
+  // the page-scoped settings; the page's other header keys (tab, title, icon, slug, ...) are not checked here
+  const own: Tree = {}
+  if (header.docs !== undefined) own.docs = header.docs
+  if (header.hidden !== undefined) own.hidden = header.hidden
+  if (Object.keys(own).length > 0) out.header = own
   for (const [k, v] of Object.entries(raw)) if (ROOTS.has(k) && !PAGE_OWN.has(k)) out[k] = v
   return out
 }

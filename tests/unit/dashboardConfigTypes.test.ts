@@ -51,3 +51,19 @@ describe('parseDashboardConfig', () => {
     expect(parseDashboardConfig(raw).layout).toEqual({})
   })
 })
+
+describe('parseDashboardConfig: header.hidden and header.docs', () => {
+  const base = { tab: 'A', title: 'A' }
+  it('reads a boolean hidden and a text docs path', () => {
+    const h = parseDashboardConfig({ header: { ...base, hidden: true, docs: ' modes/#shares ' } }).header
+    expect(h.hidden).toBe(true)
+    expect(h.docs).toBe('modes/#shares')
+  })
+  it('leaves them unset when absent or of the wrong type', () => {
+    expect(parseDashboardConfig({ header: base }).header.hidden).toBeUndefined()
+    const h = parseDashboardConfig({ header: { ...base, hidden: 'yes', docs: 3 } }).header
+    expect(h.hidden).toBeUndefined()
+    expect(h.docs).toBeUndefined()
+    expect(parseDashboardConfig({ header: { ...base, docs: '  ' } }).header.docs).toBeUndefined()
+  })
+})

@@ -245,7 +245,11 @@ Not drafted here, on purpose: how the charts find the deployer's tables and colu
    unrestricted-map-key warning and the model-mix warning, which wait for those features.
 
 **Phase C: viewer-facing settings**
-8. `settings.tabs`, the documentation link and sidebar icon, and hidden and draft pages. (No deployer theme or font defaults, and no custom
+8. **Done (067, `specs/067-viewer-settings/`):** `settings.tabs` (order and visibility of the Settings tabs; names `appearance`, `scenarios`, `basemap`,
+   `assistant`, `documentation`; the assistant switch still wins), the documentation link (`docs: { url, label }`, an icon at the foot of the sidebar, a
+   per-page `header.docs` path appended to the address; `http`/`https` only) and hidden pages (`header.hidden`: out of the sidebar, still reachable at
+   `#/<slug>`; the first page that is not hidden is the landing page). **Draft pages are deferred** until the profiles design (topic 5); nothing is
+   reserved. (No deployer theme or font defaults, and no custom
    CSS for now; see section 7.)
 
 **Phase D: assistant and network**
@@ -380,9 +384,9 @@ Nothing below changes code. Each topic is settled before anything is built.
   (maturin) and R (extendr) can load, with no separate program or runtime. It would need a second toolchain, and the browser could only
   share it through WebAssembly. To keep the door open, write the schema as data and the resolver as a small pure function with no
   browser dependencies. Reassess after the data-path test and once the core's scope is clear.
-- **Docs links.** A site-level `docs:` URL, and a per-page `header.docs` path appended to it, so each page can link to its own
-  section of the documentation. Wanted?
-- **Hidden versus draft.** Proposed: `hidden: true` leaves the page out of the sidebar but reachable by its link; `draft: true` leaves
+- **Docs links: decided.** A site-level `docs:` URL, and a per-page `header.docs` path appended to it, so each page can link to its own
+  section of the documentation (`specs/067-viewer-settings/`).
+- **Hidden versus draft: hidden decided, draft deferred.** `hidden: true` is built in 067; `draft` waits for the profiles design and nothing is reserved for it. Original proposal: `hidden: true` leaves the page out of the sidebar but reachable by its link; `draft: true` leaves
   it out entirely in a production profile and shows it in a development profile (this ties to topic 5).
 - **CSS: deferred** until the app is stable. When revisited, the supported surface would be the app's CSS variables (the tokens), not
   its class names.

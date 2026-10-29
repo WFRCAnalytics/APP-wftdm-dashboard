@@ -6,6 +6,7 @@ import { load } from 'js-yaml'
 import { slugCollisions } from '../state/routeState'
 import { getPath, isTree, type Tree } from './paths'
 import { pageSettings } from './levels'
+import { allHidden } from './pages'
 import { resolve } from './resolve'
 import { SETTINGS } from './schema'
 import { validate, type ConfigProblem } from './validate'
@@ -87,6 +88,9 @@ export function checkSite(read: (file: string) => string | undefined, options: C
       header: typeof header.tab === 'string' ? { tab: header.tab, slug: typeof header.slug === 'string' ? header.slug : undefined } : undefined,
     }
     report.pages.push(entry)
+    if (getPath(settings, 'header.docs') !== undefined && getPath(checked.settings, 'docs.url') === undefined) {
+      problems.push({ file, path: 'header.docs', kind: 'invalid_value', message: 'no documentation address (docs.url) is set in the site file; this path is ignored' })
+    }
     if (entry.header) headers.push(entry.header)
 
     if (options.panelCheck && isTree(raw.layout)) {
@@ -99,6 +103,9 @@ export function checkSite(read: (file: string) => string | undefined, options: C
         }
       }
     }
+  }
+  if (allHidden(report.pages.map((p) => ({ hidden: getPath(p.settings, 'header.hidden') === true })))) {
+    problems.push({ file: SITE_FILE, path: 'pages', kind: 'invalid_value', message: 'every page is hidden (header.hidden); the app lists all of them instead' })
   }
   for (const c of slugCollisions(headers)) {
     problems.push({
