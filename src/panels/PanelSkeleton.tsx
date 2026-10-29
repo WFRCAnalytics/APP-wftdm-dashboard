@@ -62,6 +62,26 @@ const Svg = ({ children, box = '0 0 200 100', stretch, slice }: { children: Reac
 )
 const LINE = { fill: 'none', stroke: 'var(--sk)', strokeWidth: 3, strokeLinecap: 'round', strokeLinejoin: 'round', vectorEffect: 'non-scaling-stroke' } as const
 
+/** Deterministic pseudo-random in [0, 1): the same skeleton every render, but not a perfect pattern (real data is never regular). */
+const jit = (i: number, salt = 0) => {
+  const x = Math.sin(i * 12.9898 + salt * 78.233) * 43758.5453
+  return x - Math.floor(x)
+}
+const gauss = (x: number, mean: number, spread: number) => Math.exp(-(((x - mean) / spread) ** 2))
+
+/** A jagged series of n points (y in a 0..100 box, small is high): a trend `f(t)` plus noise, so a line looks measured, not drawn. */
+const series = (salt: number, n: number, f: (t: number) => number, noise: number): number[] =>
+  Array.from({ length: n }, (_, i) => Math.max(3, Math.min(97, f(i / (n - 1)) + (jit(i, salt) - 0.5) * noise)))
+const linePath = (ys: number[], w = 200, h = 1) => ys.map((y, i) => `${i ? 'L' : 'M'}${(i / (ys.length - 1)) * w} ${y * h}`).join(' ')
+/** The band between a top series and a bottom one (a number is a flat floor). */
+const bandPath = (top: number[], bottom: number[] | number, w = 200, h = 1) => {
+  const back = Array.isArray(bottom) ? [...bottom].reverse().map((y, i, a) => `L${((a.length - 1 - i) / (a.length - 1)) * w} ${y * h}`).join(' ') : `L${w} ${bottom * h} L0 ${bottom * h}`
+  return `${linePath(top, w, h)} ${back}Z`
+}
+
+/** The KPI sparkline, shared with its end dot. */
+const KPI_YS = series(19, 18, (t) => 74 - 46 * t + 6 * Math.sin(t * 8), 16)
+
 const pt = (r: number, a: number, c = 50): [number, number] => [c + r * Math.sin(a), c - r * Math.cos(a)]
 
 const hex = (r: number) => Array.from({ length: 6 }, (_, i) => pt(r, (Math.PI / 3) * i).join(',')).join(' ')
@@ -147,13 +167,13 @@ const CHORD = (() => {
 const HEAT_COLS = 24
 const heatCell = (c: number, r: number, rows: number) => {
   const peak = Math.exp(-(((c - 7.5) / 2) ** 2)) * 0.9 + Math.exp(-(((c - 17) / 2.6) ** 2))
-  return 0.22 + 0.78 * Math.min(1, peak * (r < rows - 2 ? 1 : 0.5) * (0.85 + ((c * 5 + r * 3) % 4) * 0.05))
+  return 0.22 + 0.78 * Math.min(1, peak * (r < rows - 2 ? 1 : 0.5) * (0.62 + jit(c * 7 + r, 3) * 0.6))
 }
 
 /** Treemap tiles as percent boxes: [left, top, width, height, tone]. */
 const TILES: [number, number, number, number, number][] = [
-  [0, 0, 46, 60, 1], [46, 0, 30, 36, 0.7], [76, 0, 24, 36, 0.5],
-  [46, 36, 54, 24, 0.6], [0, 60, 30, 40, 0.55], [30, 60, 38, 40, 0.8], [68, 60, 32, 40, 0.4],
+  [0, 0, 42, 58, 1], [42, 0, 26, 34, 0.7], [68, 0, 32, 34, 0.48], [42, 34, 38, 24, 0.62], [80, 34, 20, 24, 0.4],
+  [0, 58, 27, 42, 0.55], [27, 58, 30, 42, 0.82], [57, 58, 24, 21, 0.42], [57, 79, 24, 21, 0.66], [81, 58, 19, 42, 0.5],
 ]
 
 /** The map's zone blocks: a tilted street grid with a choropleth tint per block. */
@@ -239,9 +259,9 @@ function Drawing({ shape }: { shape: SkeletonShape }): ReactNode {
           {(w) => (
             <Plot className="flex items-end gap-[2.5%] px-[2%]">
               {Array.from({ length: clamp(Math.floor(w / 36), 5, 36) }, (_, i) => (
-                <div key={i} className="relative flex flex-1 flex-col justify-end overflow-hidden rounded-t-sm" style={{ height: `${38 + 58 * Math.abs(Math.sin(i * 1.9 + 0.6))}%` }}>
-                  <div className="bg-[var(--sk)] opacity-60" style={{ height: `${28 + ((i * 11) % 22)}%` }} />
-                  <div className="bg-[var(--sk)]" style={{ height: `${50 - ((i * 7) % 14)}%` }} />
+                <div key={i} className="relative flex flex-1 flex-col justify-end overflow-hidden rounded-t-sm" style={{ height: `${26 + 54 * (0.6 * jit(i, 1) + 0.4 * (0.5 + 0.5 * Math.sin(i * 0.8)))}%` }}>
+                  <div className="bg-[var(--sk)] opacity-60" style={{ height: `${22 + jit(i, 2) * 30}%` }} />
+                  <div className="bg-[var(--sk)]" style={{ height: `${34 + jit(i, 3) * 26}%` }} />
                 </div>
               ))}
             </Plot>
@@ -253,17 +273,21 @@ function Drawing({ shape }: { shape: SkeletonShape }): ReactNode {
         <Sized>
           {(_, h) => {
             const n = clamp(Math.floor(h / 34), 3, 16)
+            let prev = 96
             return (
               <div className="flex h-full flex-col">
-                {Array.from({ length: n }, (_, i) => (
-                  <div key={i} className="flex min-h-0 flex-1 items-center gap-3">
-                    <div className={cn(STUB, 'h-2 w-16 shrink-0')} />
-                    <div className="h-4 flex-1 rounded-md bg-[var(--sk-line)]">
-                      <div className="h-full rounded-md bg-[var(--sk)]" style={{ width: `${94 * (1 - (0.75 * i) / n) - (i % 3) * 2}%` }} />
+                {Array.from({ length: n }, (_, i) => {
+                  const w = (prev = Math.min(prev - 1, 92 * 0.84 ** i * (0.86 + jit(i, 4) * 0.22)))
+                  return (
+                    <div key={i} className="flex min-h-0 flex-1 items-center gap-3">
+                      <div className={cn(STUB, 'h-2 shrink-0')} style={{ width: 44 + jit(i, 5) * 34 }} />
+                      <div className="h-4 flex-1 rounded-md bg-[var(--sk-line)]">
+                        <div className="h-full rounded-md bg-[var(--sk)]" style={{ width: `${Math.max(6, w)}%` }} />
+                      </div>
+                      <div className={cn(STUB, 'h-1.5 w-8 shrink-0')} />
                     </div>
-                    <div className={cn(STUB, 'h-1.5 w-8 shrink-0')} />
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             )
           }}
@@ -273,7 +297,7 @@ function Drawing({ shape }: { shape: SkeletonShape }): ReactNode {
       return (
         <Sized>
           {(_, h) => {
-            const n = clamp(Math.floor(h / 24), 6, 32)
+            const n = clamp(Math.floor(h / 24), 8, 32)
             return (
               <div className="flex h-full gap-3">
                 <div className="flex w-7 shrink-0 flex-col justify-between py-1">
@@ -281,11 +305,15 @@ function Drawing({ shape }: { shape: SkeletonShape }): ReactNode {
                 </div>
                 <div className="flex min-w-0 flex-1 flex-col gap-1">
                   {Array.from({ length: n }, (_, i) => {
-                    const w = 24 + 76 * Math.sin((Math.PI * (i + 0.5)) / n) ** 0.7
+                    const a = (n - 1 - i) / (n - 1) // 0 = the youngest cohort at the bottom
+                    // a broad base, a dip after the youngest, the baby-boom bulge, then a long taper; women live a little longer
+                    const base = a < 0.6 ? 80 + 18 * gauss(a, 0.32, 0.12) - 9 * gauss(a, 0.1, 0.07) : 80 - ((a - 0.6) / 0.4) ** 1.35 * 70 + 7 * gauss(a, 0.7, 0.07)
+                    const left = Math.max(6, Math.min(100, base + (jit(i, 6) - 0.5) * 5))
+                    const right = Math.max(6, Math.min(100, base * 0.96 + (a > 0.7 ? 5 * ((a - 0.7) / 0.3) : 0) + (jit(i, 7) - 0.5) * 5))
                     return (
                       <div key={i} className="flex min-h-0 flex-1 items-stretch gap-[3px]">
-                        <div className="flex flex-1 justify-end rounded-l-md bg-[var(--sk-line)]"><div className="rounded-l-md bg-[var(--sk)]" style={{ width: `${w}%` }} /></div>
-                        <div className="flex-1 rounded-r-md bg-[var(--sk-line)]"><div className="h-full rounded-r-md bg-[var(--sk)] opacity-70" style={{ width: `${w * 0.9}%` }} /></div>
+                        <div className="flex flex-1 justify-end rounded-l-md bg-[var(--sk-line)]"><div className="rounded-l-md bg-[var(--sk)]" style={{ width: `${left}%` }} /></div>
+                        <div className="flex-1 rounded-r-md bg-[var(--sk-line)]"><div className="h-full rounded-r-md bg-[var(--sk)] opacity-70" style={{ width: `${right}%` }} /></div>
                       </div>
                     )
                   })}
@@ -300,10 +328,19 @@ function Drawing({ shape }: { shape: SkeletonShape }): ReactNode {
         <Plot>
           <div className="absolute inset-0">
             <Svg stretch>
-              <path d="M0 58 C25 40 45 66 75 46 S130 18 160 30 S190 24 200 20 L200 100 L0 100Z" fill="var(--sk)" fillOpacity={0.35} />
-              <path d="M0 58 C25 40 45 66 75 46 S130 18 160 30 S190 24 200 20" {...LINE} />
-              <path d="M0 78 C30 70 50 84 85 68 S140 56 200 58" {...LINE} strokeOpacity={0.55} />
-              <path d="M0 90 C35 84 70 92 110 82 S170 80 200 76" {...LINE} strokeOpacity={0.35} strokeDasharray="2 5" />
+              {(() => {
+                const a = series(1, 32, (t) => 64 - 36 * t + 7 * Math.sin(t * 9), 10)
+                const b = series(2, 32, (t) => 76 - 16 * t + 6 * Math.sin(t * 7 + 1), 8)
+                const c = series(3, 32, (t) => 88 - 8 * t + 3 * Math.sin(t * 5), 6)
+                return (
+                  <>
+                    <path d={bandPath(a, 100)} fill="var(--sk)" fillOpacity={0.3} />
+                    <path d={linePath(a)} {...LINE} />
+                    <path d={linePath(b)} {...LINE} strokeOpacity={0.55} />
+                    <path d={linePath(c)} {...LINE} strokeOpacity={0.35} strokeDasharray="2 5" />
+                  </>
+                )
+              })()}
             </Svg>
           </div>
           <div className="absolute inset-y-0 left-[62%] border-l border-dashed border-[var(--sk)]" />
@@ -314,9 +351,18 @@ function Drawing({ shape }: { shape: SkeletonShape }): ReactNode {
         <Plot>
           <div className="absolute inset-0">
             <Svg stretch>
-              <path d="M0 100 L0 40 C40 20 80 50 120 28 S175 14 200 22 L200 100Z" fill="var(--sk)" fillOpacity={0.3} />
-              <path d="M0 100 L0 60 C40 44 85 70 125 52 S175 40 200 46 L200 100Z" fill="var(--sk)" fillOpacity={0.55} />
-              <path d="M0 100 L0 80 C45 70 85 88 130 76 S175 70 200 72 L200 100Z" fill="var(--sk)" />
+              {(() => {
+                const low = series(4, 30, (t) => 82 - 8 * Math.sin(t * 6), 8)
+                const mid = series(5, 30, (t) => 62 - 8 * Math.sin(t * 5 + 1), 9).map((y, i) => Math.min(y, low[i] - 9))
+                const top = series(6, 30, (t) => 40 - 12 * Math.sin(t * 4 + 2), 9).map((y, i) => Math.min(y, mid[i] - 9))
+                return (
+                  <>
+                    <path d={bandPath(top, mid)} fill="var(--sk)" fillOpacity={0.3} />
+                    <path d={bandPath(mid, low)} fill="var(--sk)" fillOpacity={0.55} />
+                    <path d={bandPath(low, 100)} fill="var(--sk)" />
+                  </>
+                )
+              })()}
             </Svg>
           </div>
         </Plot>
@@ -326,17 +372,20 @@ function Drawing({ shape }: { shape: SkeletonShape }): ReactNode {
         <Sized>
           {(_, h) => {
             const n = clamp(Math.floor(h / 40), 3, 10)
-            const SEG = [[34, 26, 22, 18], [28, 30, 24, 18], [42, 20, 22, 16], [30, 24, 28, 18]]
             return (
               <div className="flex h-full flex-col">
-                {Array.from({ length: n }, (_, i) => (
-                  <div key={i} className="flex min-h-0 flex-1 items-center gap-3">
-                    <div className={cn(STUB, 'h-2 w-16 shrink-0')} />
-                    <div className="flex h-5 flex-1 gap-[2px] overflow-hidden rounded-md">
-                      {SEG[i % 4].map((w, j) => <div key={j} className="h-full bg-[var(--sk)]" style={{ width: `${w}%`, opacity: [1, 0.7, 0.45, 0.25][j] }} />)}
+                {Array.from({ length: n }, (_, i) => {
+                  const raw = [0, 1, 2, 3].map((j) => 8 + jit(i * 4 + j, 8) * 40)
+                  const sum = raw.reduce((a, b) => a + b, 0)
+                  return (
+                    <div key={i} className="flex min-h-0 flex-1 items-center gap-3">
+                      <div className={cn(STUB, 'h-2 shrink-0')} style={{ width: 44 + jit(i, 9) * 34 }} />
+                      <div className="flex h-5 flex-1 gap-[2px] overflow-hidden rounded-md">
+                        {raw.map((v, j) => <div key={j} className="h-full bg-[var(--sk)]" style={{ width: `${(v / sum) * 100}%`, opacity: [1, 0.7, 0.45, 0.25][j] }} />)}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             )
           }}
@@ -351,10 +400,10 @@ function Drawing({ shape }: { shape: SkeletonShape }): ReactNode {
               <div className="flex h-full gap-3">
                 <div className="flex flex-1 flex-col">
                   {Array.from({ length: n }, (_, i) => {
-                    const a = 18 + ((i * 29) % 40), b = a + 14 + ((i * 17) % 34)
+                    const a = 12 + jit(i, 10) * 50, b = Math.min(94, a + 6 + jit(i, 11) * 38)
                     return (
                       <div key={i} className="flex min-h-0 flex-1 items-center gap-3">
-                        <div className={cn(STUB, 'h-2 w-16 shrink-0')} />
+                        <div className={cn(STUB, 'h-2 shrink-0')} style={{ width: 44 + jit(i, 12) * 34 }} />
                         <div className="relative h-full min-h-0 flex-1">
                           <div className="absolute inset-x-0 top-1/2 border-t border-dashed border-[var(--sk-line)]" />
                           <div className="absolute top-1/2 h-px bg-[var(--sk)]" style={{ left: `${a}%`, width: `${b - a}%` }} />
@@ -394,15 +443,15 @@ function Drawing({ shape }: { shape: SkeletonShape }): ReactNode {
       return (
         <div className="flex h-full gap-3">
           <div className="flex w-14 shrink-0 flex-col justify-between py-2">
-            {Array.from({ length: 5 }, (_, i) => <div key={i} className={cn(STUB, 'h-1.5 w-full')} />)}
+            {Array.from({ length: 5 }, (_, i) => <div key={i} className={cn(STUB, 'h-1.5 w-full')} style={{ width: `${70 + jit(i, 13) * 30}%` }} />)}
           </div>
           <div className="relative min-w-0 flex-1 border-b border-[var(--sk)]">
             <Svg stretch>
               {Array.from({ length: 5 }, (_, i) => {
-                const base = 30 + i * 17, peak = 26 - (i % 2) * 6, cx = 30 + i * 22
-                return (
-                  <path key={i} d={`M0 ${base} C${cx - 30} ${base} ${cx - 22} ${base - peak} ${cx} ${base - peak} S${cx + 40} ${base} 200 ${base} L200 ${base + 3} L0 ${base + 3}Z`} fill="var(--sk)" fillOpacity={0.35 + i * 0.1} stroke="var(--sk)" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
-                )
+                // skewed humps: a quick rise and a long right tail, each with its own height and position
+                const base = 30 + i * 17, peak = 20 + jit(i, 14) * 12, cx = 22 + jit(i, 15) * 70, rise = 16 + jit(i, 16) * 14, tail = 40 + jit(i, 17) * 50
+                const d = `M0 ${base} C${Math.max(0, cx - rise * 1.4)} ${base} ${cx - rise} ${base - peak} ${cx} ${base - peak} S${cx + tail * 0.5} ${base} ${Math.min(200, cx + tail)} ${base} L200 ${base} L200 ${base + 3} L0 ${base + 3}Z`
+                return <path key={i} d={d} fill="var(--sk)" fillOpacity={0.3 + i * 0.1} stroke="var(--sk)" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
               })}
             </Svg>
           </div>
@@ -467,17 +516,17 @@ function Drawing({ shape }: { shape: SkeletonShape }): ReactNode {
         <div className="flex h-full items-center justify-center gap-8">
           <div className="aspect-square h-full max-h-[260px] min-w-0">
             <Svg box="0 0 100 100">
-              {split([40, 28, 20, 12], 0, TAU, 0.05).map(([a0, a1], i) => (
-                <path key={i} d={sector(26, 42, a0, a1)} fill="var(--sk)" fillOpacity={[1, 0.65, 0.4, 0.25][i]} />
+              {split([38, 24, 17, 12, 6, 3], 0, TAU, 0.045).map(([a0, a1], i) => (
+                <path key={i} d={sector(26, 42, a0, a1)} fill="var(--sk)" fillOpacity={[1, 0.7, 0.5, 0.36, 0.26, 0.18][i]} />
               ))}
               <circle cx="50" cy="50" r="19" fill="none" stroke="var(--sk-line)" strokeDasharray="2 3" />
             </Svg>
           </div>
           <div className="hidden shrink-0 flex-col gap-3 sm:flex">
-            {[1, 0.65, 0.4, 0.25].map((o, i) => (
+            {[1, 0.7, 0.5, 0.36, 0.26].map((o, i) => (
               <div key={i} className="flex items-center gap-2">
                 <div className="size-2.5 rounded-sm bg-[var(--sk)]" style={{ opacity: o }} />
-                <div className={cn(STUB, 'h-1.5')} style={{ width: 44 + ((i * 17) % 28) }} />
+                <div className={cn(STUB, 'h-1.5')} style={{ width: 36 + jit(i, 18) * 40 }} />
               </div>
             ))}
           </div>
@@ -582,10 +631,10 @@ function Drawing({ shape }: { shape: SkeletonShape }): ReactNode {
           <div className="relative mt-1 min-h-10 w-full flex-1">
             <div className="absolute inset-x-0 top-[45%] border-t border-dashed border-[var(--sk)]" />
             <Svg stretch box="0 0 100 40">
-              <path d="M0 32 L12 26 L24 30 L36 19 L48 23 L60 14 L72 18 L84 8 L100 11 L100 40 L0 40Z" fill="var(--sk)" fillOpacity={0.35} />
-              <path d="M0 32 L12 26 L24 30 L36 19 L48 23 L60 14 L72 18 L84 8 L100 11" {...LINE} />
+              <path d={bandPath(KPI_YS, 100, 100, 0.4)} fill="var(--sk)" fillOpacity={0.35} />
+              <path d={linePath(KPI_YS, 100, 0.4)} {...LINE} />
             </Svg>
-            <div className="absolute right-0 top-[27%] size-2.5 -translate-y-1/2 translate-x-0 rounded-full bg-[var(--sk)] ring-4 ring-[var(--sk-line)]" />
+            <div className="absolute right-0 size-2.5 -translate-y-1/2 translate-x-0 rounded-full bg-[var(--sk)] ring-4 ring-[var(--sk-line)]" style={{ top: `${KPI_YS[KPI_YS.length - 1]}%` }} />
           </div>
         </div>
       )
