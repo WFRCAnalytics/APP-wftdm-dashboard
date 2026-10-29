@@ -42,4 +42,7 @@ Then the full run; compare with the known flakes in CLAUDE.md (re-run a failure 
 
 - Extension address: with `network.duckdb_extensions` set to a routed address, the app requested `<address>/v1.4.3/wasm_eh/parquet.duckdb_extension.wasm` (the parquet autoload, not only the spatial install) and made no request to `extensions.duckdb.org`. Without it, the request goes to DuckDB's host as before.
 - Boot order: the site file is now read before the runs are discovered (the mirror must be set before the first Parquet read); `boot`, `zonemapPanel`, `assistantConfig`, `exploreBuilderSite` and `firstRun` specs pass.
+- `npm run check -- public/demo-dashboard-config --explain` (no network keys): ends with the outside-hosts block, one line per host (Google Fonts, DuckDB's extension host, and every catalogue host such as `basemaps.cartocdn.com  allowed basemaps carto-positron, carto-dark-matter, carto-voyager`); exit 0.
+- A scratch site with `fonts: bundled`, an extension address, an allow-list of `protomaps-*` and `basemap.default: protomaps-light`: `--explain` ends with `no outside host is known`; exit 0.
+- A scratch site with `fonts: sideways`, `duckdb_extensions: "ftp://x"` and an allow-list of `["nope-*", "protomaps-*"]`: four problems with their paths (the font mode, the address, the pattern that matches nothing, and the app default replaced by `protomaps-light`); exit 1.
 

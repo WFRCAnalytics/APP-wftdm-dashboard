@@ -101,8 +101,8 @@ Single web-app project: `src/`, `scripts/`, `tests/`, `project-docs/` at the rep
 
 **Independent Test**: `check --explain` on a site with some outside hosts left and on one with none.
 
-- [ ] T020 [US4] `src/config/check.ts#explain` takes the catalogue hosts (and the hosts of styles written in pages, read from the page files) and appends the `outside hosts` block from `outsideHosts` (data-model.md format) only when asked; `scripts/check-config.ts` builds the catalogue (preset URLs, composition layers, `public/basemap/leaflet-providers.json` tile templates). Unit tests: fonts not bundled adds Google, no extension address adds the DuckDB host, a self-hosted-only configuration says `no outside host is known`, the exit code is unchanged
-- [ ] T021 [US4] Run `npm run check -- public/demo-dashboard-config --explain` and on a scratch site with fonts bundled, an extension address and a PMTiles-only allow-list; record both outputs in the quickstart
+- [X] T020 [US4] `src/config/check.ts#explain` takes the catalogue hosts (and the hosts of styles written in pages, read from the page files) and appends the `outside hosts` block from `outsideHosts` (data-model.md format) only when asked; `scripts/check-config.ts` builds the catalogue (preset URLs, composition layers, `public/basemap/leaflet-providers.json` tile templates). Unit tests: fonts not bundled adds Google, no extension address adds the DuckDB host, a self-hosted-only configuration says `no outside host is known`, the exit code is unchanged
+- [X] T021 [US4] Run `npm run check -- public/demo-dashboard-config --explain` and on a scratch site with fonts bundled, an extension address and a PMTiles-only allow-list; record both outputs in the quickstart
 
 ---
 

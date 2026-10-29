@@ -244,3 +244,38 @@ describe('check: network block', () => {
     expect(checkSite(files({ 'dashboard-config.yaml': site('network: { basemaps: { allow: ["nope-*"] } }\n'), 'p.yaml': onePage })).problems).toEqual([])
   })
 })
+
+describe('check --explain: outside hosts', () => {
+  const catalogue = [
+    { id: 'carto-positron', hosts: ['basemaps.cartocdn.com'] },
+    { id: 'ugrc-vector-lite', hosts: ['tiles.arcgis.com'] },
+    { id: 'protomaps-light', hosts: [] as string[] },
+  ]
+  const page1 = page('layout:\n  row_one:\n    - { type: zonemap, title: Z, basemap: "https://tiles.selfhosted.example.org/style.json" }\n')
+  const run = (extra: string) => checkSite(files({ 'dashboard-config.yaml': `pages: [p.yaml]\n${extra}`, 'p.yaml': page1 }), { network: { basemapIds: catalogue.map((e) => e.id), appDefault: 'carto-positron', catalogue } })
+  const hostLines = (extra: string) => explain(run(extra), { catalogue }).filter((l) => !l.startsWith('p.yaml') && !l.startsWith('  layout'))
+
+  it('lists fonts, the extension host, the allowed basemap hosts and a style written in a page', () => {
+    const lines = hostLines('')
+    expect(lines[0]).toBe('outside hosts this configuration can still reach:')
+    const text = lines.join('\n')
+    expect(text).toMatch(/fonts\.googleapis\.com\s+fonts are not bundled/)
+    expect(text).toMatch(/extensions\.duckdb\.org\s+no network\.duckdb_extensions/)
+    expect(text).toMatch(/basemaps\.cartocdn\.com\s+allowed basemap carto-positron/)
+    expect(text).toMatch(/tiles\.selfhosted\.example\.org\s+a style written in p\.yaml layout\.row_one\[0\]\.basemap/)
+  })
+
+  it('says no outside host is known when everything is self-hosted', () => {
+    const lines = explain(
+      checkSite(files({ 'dashboard-config.yaml': 'pages: [p.yaml]\nnetwork: { fonts: bundled, duckdb_extensions: "https://m.example.org/x", basemaps: { allow: ["protomaps-*"] } }\nbasemap: { default: protomaps-light }\n', 'p.yaml': page('layout:\n  row_one:\n    - { type: markdown, title: Hi, content: x }\n') }), { network: { basemapIds: catalogue.map((e) => e.id), appDefault: 'carto-positron', catalogue } }),
+      { catalogue },
+    )
+    expect(lines.at(-1)).toBe('no outside host is known')
+  })
+
+  it('adds nothing without --explain data, and never changes the problems or the exit state', () => {
+    const r = run('')
+    expect(explain(r).some((l) => l.includes('outside hosts'))).toBe(false)
+    expect(r.problems).toEqual([])
+  })
+})

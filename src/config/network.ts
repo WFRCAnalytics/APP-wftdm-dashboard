@@ -53,21 +53,31 @@ export interface OutsideHost {
 export const GOOGLE_FONTS_HOST = 'fonts.googleapis.com'
 export const DUCKDB_EXTENSIONS_HOST = 'extensions.duckdb.org'
 
-/** The outside hosts a configuration can still reach where the app knows them, sorted and unique by host and reason. */
+/**
+ * The outside hosts a configuration can still reach where the app knows them, one entry per host (sorted), with every reason joined: the font host
+ * when fonts are not bundled, the extension host when no address is set, the allowed catalogue entries that reach it (named, up to three), and styles
+ * the deployer wrote in pages.
+ */
 export function outsideHosts({ fonts, extensionAddress, patterns, catalogue, authored = [] }: OutsideHostInput): OutsideHost[] {
-  const found = new Map<string, OutsideHost>()
+  const reasons = new Map<string, string[]>()
   const add = (host: string, why: string) => {
-    const key = `${host}|${why}`
-    if (host && !found.has(key)) found.set(key, { host, why })
+    if (!host) return
+    const list = reasons.get(host) ?? []
+    if (!list.includes(why)) list.push(why)
+    reasons.set(host, list)
   }
   if (fonts !== 'bundled') add(GOOGLE_FONTS_HOST, 'fonts are not bundled')
   if (!extensionAddress) add(DUCKDB_EXTENSIONS_HOST, 'no network.duckdb_extensions')
+  const byHost = new Map<string, string[]>()
   for (const entry of catalogue) {
     if (!isAllowed(patterns, entry.id)) continue
-    for (const host of entry.hosts) add(host, `allowed basemap ${entry.id}`)
+    for (const host of entry.hosts) byHost.set(host, [...(byHost.get(host) ?? []), entry.id])
+  }
+  for (const [host, ids] of byHost) {
+    add(host, ids.length === 1 ? `allowed basemap ${ids[0]}` : ids.length <= 3 ? `allowed basemaps ${ids.join(', ')}` : `allowed basemaps ${ids.slice(0, 3).join(', ')} and ${ids.length - 3} more`)
   }
   for (const a of authored) add(a.host, a.where)
-  return [...found.values()].sort((a, b) => a.host.localeCompare(b.host) || a.why.localeCompare(b.why))
+  return [...reasons.entries()].map(([host, list]) => ({ host, why: list.join('; ') })).sort((a, b) => a.host.localeCompare(b.host))
 }
 
 /** The host of an address, or undefined when it is not one. */

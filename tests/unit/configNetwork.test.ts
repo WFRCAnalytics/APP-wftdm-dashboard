@@ -128,3 +128,26 @@ describe('checkDefaultBasemap', () => {
     expect(checkDefaultBasemap('carto-positron', ['nope-*'], known)).toContain('the plain background is used')
   })
 })
+
+describe('outsideHosts: one line per host', () => {
+  const catalogue = [
+    { id: 'openfreemap-liberty', hosts: ['tiles.openfreemap.org'] },
+    { id: 'openfreemap-bright', hosts: ['tiles.openfreemap.org'] },
+    { id: 'openfreemap-dark', hosts: ['tiles.openfreemap.org'] },
+    { id: 'openfreemap-fiord', hosts: ['tiles.openfreemap.org'] },
+    { id: 'ugrc-vector-lite', hosts: ['tiles.arcgis.com'] },
+  ]
+
+  it('names up to three entries that reach a host and counts the rest', () => {
+    const hosts = outsideHosts({ catalogue, fonts: 'bundled', extensionAddress: 'https://m.example.org/x' })
+    expect(hosts).toEqual([
+      { host: 'tiles.arcgis.com', why: 'allowed basemap ugrc-vector-lite' },
+      { host: 'tiles.openfreemap.org', why: 'allowed basemaps openfreemap-liberty, openfreemap-bright, openfreemap-dark and 1 more' },
+    ])
+  })
+
+  it('joins every reason a host has (a style written in a page on a catalogue host)', () => {
+    const hosts = outsideHosts({ catalogue, fonts: 'bundled', extensionAddress: 'https://m.example.org/x', patterns: ['ugrc-*'], authored: [{ host: 'tiles.arcgis.com', where: 'a style written in p.yaml' }] })
+    expect(hosts).toEqual([{ host: 'tiles.arcgis.com', why: 'allowed basemap ugrc-vector-lite; a style written in p.yaml' }])
+  })
+})

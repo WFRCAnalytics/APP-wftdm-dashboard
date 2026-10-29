@@ -32,7 +32,7 @@ const report = checkSite(
 if (flags.has('--json')) console.log(JSON.stringify(report.problems, null, 2))
 else {
   for (const p of report.problems) console.log(formatProblem(p))
-  if (flags.has('--explain')) console.log(explain(report).join('\n'))
+  if (flags.has('--explain')) console.log(explain(report, { catalogue }).join('\n'))
   console.log(report.problems.length === 0 ? `ok: ${report.pages.length} page(s) in ${folder}` : `${report.problems.length} problem(s) in ${folder}`)
 }
 process.exit(report.problems.length === 0 ? 0 : 1)
