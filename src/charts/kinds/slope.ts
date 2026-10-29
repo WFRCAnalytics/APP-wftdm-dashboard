@@ -7,6 +7,7 @@ import { emptyNote, f1 } from '@/charts/util'
 import { modeShare, SLOPE_DOMAIN, slopeRows, slopeY, type SlopeRow } from '@/charts/lib/modeShare'
 import type { ChartKind } from '@/charts/types'
 import { armPlot } from '@/panels/plotInteraction'
+import { prettyOperators } from '@/services/typography'
 
 const kind: ChartKind = {
   tables: () => ['trip_mode_share'],
@@ -42,14 +43,14 @@ const kind: ChartKind = {
       marginRight: 120,
       marginTop: 14,
       marginBottom: 8,
-      x: { label: null, domain: ['a', 'b'], axis: 'top', tickSize: 0, padding: 0, tickFormat: (d: 'a' | 'b') => name(d) },
+      x: { label: null, domain: ['a', 'b'], axis: 'top', tickSize: 0, padding: 0, tickFormat: (d: 'a' | 'b') => prettyOperators(name(d)) },
       y: { type: 'log', axis: null, domain: SLOPE_DOMAIN },
       color: { domain: [...MODES], range: MODES.map((m) => t.mode(m)) },
       marks: [
         Plot.line(plotted, { x: 'col', y: 'y', z: 'mode', stroke: 'mode', strokeWidth: 3, strokeLinecap: 'round' }),
         Plot.dot(plotted, { x: 'col', y: 'y', fill: 'mode', stroke: t.surface, strokeWidth: 2, r: 5.5, title: (_d: unknown, i: number) => `wfa:${i}` }),
-        Plot.text(left, { x: 'col', y: 'y', text: (d: SlopeRow) => `${d.mode}  ${f1(d.v)}%`, textAnchor: 'end', dx: -12, fill: t.ink }),
-        Plot.text(right, { x: 'col', y: 'y', text: (d: SlopeRow) => `${f1(d.v)}%  ${d.mode}`, textAnchor: 'start', dx: 12, fill: t.ink }),
+        Plot.text(left, { x: 'col', y: 'y', text: (d: SlopeRow) => prettyOperators(`${d.mode}  ${f1(d.v)}%`), textAnchor: 'end', dx: -12, fill: t.ink }),
+        Plot.text(right, { x: 'col', y: 'y', text: (d: SlopeRow) => prettyOperators(`${f1(d.v)}%  ${d.mode}`), textAnchor: 'start', dx: 12, fill: t.ink }),
       ],
     }) as unknown as SVGSVGElement
 

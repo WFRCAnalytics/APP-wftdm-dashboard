@@ -8,6 +8,7 @@ import type { ChartKind } from '@/charts/types'
 import { emptyNote } from '@/charts/util'
 import { deltaValue, formatDelta } from '@/panels/compareMath'
 import { armPlot } from '@/panels/plotInteraction'
+import { prettyOperators } from '@/services/typography'
 
 const TABLE = 'summary_kpis'
 
@@ -61,7 +62,7 @@ const kind: ChartKind = {
       marginBottom: 38,
       marginTop: 6,
       x: { grid: false, nice: true, inset: 40, ...x },
-      y: { label: null, domain: ranked.map((r) => r.key), padding: 0.32, tickFormat: (d: string) => { const t = info.get(d)?.label ?? d; return t.length > 30 ? `${t.slice(0, 29)}…` : t } },
+      y: { label: null, domain: ranked.map((r) => r.key), padding: 0.32, tickFormat: (d: string) => { const t = info.get(d)?.label ?? d; return prettyOperators(t.length > 30 ? `${t.slice(0, 29)}…` : t) } },
       color: { domain: ranked.map((r) => r.key), range: ranked.map((r) => info.get(r.key)?.color ?? t.mute) },
       marks: [
         Plot.barX(barRows, { x: 'v', y: 'key', fill: 'key', rx: 4, title: (_d: unknown, i: number) => `wfa:${i}` }),

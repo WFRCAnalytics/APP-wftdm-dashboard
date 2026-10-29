@@ -6,6 +6,7 @@ import { emptyNote } from '@/charts/util'
 import type { ChartKind, ChartPlan } from '@/charts/types'
 import { HOURS, buildTodSeries, hourTickEvery3, hourTitle, rowShares, todGroup, todTable } from '@/charts/lib/timeOfDay'
 import { armPlot } from '@/panels/plotInteraction'
+import { prettyOperators } from '@/services/typography'
 
 /** A row label cut to `max` characters with an ellipsis, so a long scenario name stays inside the left margin (the tooltip has it whole). */
 const clip = (text: string, max: number): string => (text.length > max ? `${text.slice(0, max - 1).trimEnd()}…` : text)
@@ -32,7 +33,7 @@ const kind: ChartKind = {
       marginTop: 4,
       marginRight: 6,
       x: { label: null, domain: Array.from({ length: HOURS }, (_, h) => h), tickFormat: hourTickEvery3, padding: 0.08 },
-      y: { label: null, domain: series.names, padding: 0.12, tickFormat: (n: string) => clip(labelOf(n), group === 'scn' ? 21 : 13) },
+      y: { label: null, domain: series.names, padding: 0.12, tickFormat: (n: string) => prettyOperators(clip(labelOf(n), group === 'scn' ? 21 : 13)) },
       color: { type: 'sqrt', range: [t.mix(t.surface, t.tokens.c1, 0.1), t.tokens.c1], domain: [0, 16] },
       marks: [Plot.cell(rows, { x: 'hour', y: 'g', fill: 'v', rx: 4, title: (_d: unknown, i: number) => `wfa:${i}` })],
     }) as unknown as SVGSVGElement
