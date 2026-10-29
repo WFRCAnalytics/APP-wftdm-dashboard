@@ -56,6 +56,10 @@ export const ZERO_MARKS: readonly Mark[] = ['line', 'scatter', 'box', 'trail']
 export const GRID_MARKS: readonly Mark[] = AXIS_MARKS.filter((m) => m !== 'heatmap')
 export const REF_MARKS: readonly Mark[] = ['bar', 'line', 'area', 'scatter', 'histogram', 'box', 'density']
 
+/** The histogram bin slider's range. */
+export const HIST_BINS_MIN = 2
+export const HIST_BINS_MAX = 20
+
 export type HistStat = 'mean' | 'median' | 'q1' | 'q3'
 export const HIST_STATS: { v: HistStat; label: string }[] = [
   { v: 'mean', label: 'Mean' }, { v: 'median', label: 'Median' }, { v: 'q1', label: 'First quartile' }, { v: 'q3', label: 'Third quartile' },
@@ -355,7 +359,7 @@ export function fromConfig(text: string, ctx: ImportContext): ImportResult {
     order: c.order && typeof c.order === 'object' ? Object.fromEntries(Object.entries(c.order).filter(([, v]) => Array.isArray(v)).map(([k, v]) => [k, (v as unknown[]).map(String)])) : {},
     wrap: typeof c.wrap === 'number' && c.wrap >= 2 ? Math.min(6, Math.round(c.wrap)) : 0,
     stats: Array.isArray(c.axes?.stats) ? HIST_STATS.map((o) => o.v).filter((v) => (c.axes!.stats as unknown[]).includes(v)) : [],
-    bins: typeof c.axes?.bins === 'number' && c.axes.bins >= 2 ? Math.min(100, Math.round(c.axes.bins)) : 0,
+    bins: typeof c.axes?.bins === 'number' && c.axes.bins >= HIST_BINS_MIN ? Math.min(HIST_BINS_MAX, Math.round(c.axes.bins)) : 0,
     axisTitles: !!c.axes?.titles, xTitle: String(c.axes?.titles?.x ?? ''), yTitle: String(c.axes?.titles?.y ?? ''),
     pie: { ...PIE_DEFAULTS, ...(typeof c.pie?.other === 'number' ? { other: c.pie.other } : {}), ...(typeof c.pie?.hole === 'number' ? { hole: c.pie.hole } : {}) },
     alt: typeof c.alt === 'string' ? c.alt : '', footAlign: c.footerAlign === 'right' ? 'right' : 'left',

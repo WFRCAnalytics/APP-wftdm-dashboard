@@ -10,7 +10,7 @@ import { suggest } from '@/charts/builder/rules'
 import { CategoryOrder } from './CategoryOrder'
 import { prettyOperators } from '@/services/typography'
 import {
-  HIST_STATS, assignField, swapAxes, AXIS_MARKS, GRID_MARKS, REF_MARKS, ZERO_MARKS, acceptsShort, chainOf, CHAINS, effectiveLabels, LABEL_MARKS, labelModesFor, SHOW_AS, TABLE_VALUES, ZOOMABLE_MARKS, AGGS, channelAggregates, channelLabel, COMING_SOON, MARK_LABEL, MARKS, SLOTS, SORTS, switchMark, TEXT_SIZES,
+  HIST_STATS, HIST_BINS_MIN, HIST_BINS_MAX, assignField, swapAxes, AXIS_MARKS, GRID_MARKS, REF_MARKS, ZERO_MARKS, acceptsShort, chainOf, CHAINS, effectiveLabels, LABEL_MARKS, labelModesFor, SHOW_AS, TABLE_VALUES, ZOOMABLE_MARKS, AGGS, channelAggregates, channelLabel, COMING_SOON, MARK_LABEL, MARKS, SLOTS, SORTS, switchMark, TEXT_SIZES,
   type Agg, type CellStyle, type LabelMode, type Channel, type ChartSpec, type Density, type MeasureFormat, type ShowAs, type TableOpts, type Mark, type Sort, type Stack, type TextKey,
 } from '@/charts/builder/spec'
 import { drawHierarchy, type HierState } from '@/charts/builder/hierarchyDraw'
@@ -599,7 +599,18 @@ function Rail({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: ChartDat
               )}
               {ZERO_MARKS.includes(spec.mark) && <div className="rrow"><span className="lab" style={{ minWidth: 96 }}>{spec.mark === 'scatter' || spec.mark === 'trail' ? 'Axes start at zero' : 'Y axis starts at zero'}</span>{pills<boolean>([[true, 'Yes'], [false, 'No']], spec.zero, (v) => setSpec((x) => ({ ...x, zero: v })), 'Zero baseline')}</div>}
               {GRID_MARKS.includes(spec.mark) && <div className="rrow"><span className="lab" style={{ minWidth: 96 }}>Gridlines</span>{pills<boolean>([[true, 'Show'], [false, 'Hide']], spec.grid, (v) => setSpec((x) => ({ ...x, grid: v })), 'Gridlines')}</div>}
-              {spec.mark === 'histogram' && <div className="rrow"><label className="lab" htmlFor="binsin" style={{ minWidth: 96 }}>Bins</label><input id="binsin" className="inp" inputMode="numeric" value={spec.bins > 0 ? String(spec.bins) : ''} placeholder="Auto (2 to 100)" onChange={(e) => { const n = Number(e.target.value.replace(/\D/g, '')); setSpec((x) => ({ ...x, bins: n > 0 ? Math.min(100, n) : 0 })) }} /></div>}
+              {spec.mark === 'histogram' && (() => {
+                const auto = Math.min(HIST_BINS_MAX, Math.max(HIST_BINS_MIN, getExploreOptions().limits.histogramBins))
+                const shown = spec.bins > 0 ? spec.bins : auto
+                return (
+                  <div className="rrow">
+                    <label className="lab" htmlFor="binsin" style={{ minWidth: 96 }}>Bins</label>
+                    <input id="binsin" type="range" min={HIST_BINS_MIN} max={HIST_BINS_MAX} step={1} value={shown} style={{ flex: 1, accentColor: 'var(--brand-text, currentColor)' }} aria-valuetext={`${shown} bins${spec.bins > 0 ? '' : ' (default)'}`} onChange={(e) => setSpec((x) => ({ ...x, bins: Number(e.target.value) }))} />
+                    <span style={{ minWidth: 24, textAlign: 'right' }} aria-hidden="true">{shown}</span>
+                    {spec.bins > 0 && <button type="button" className="mini" onClick={() => setSpec((x) => ({ ...x, bins: 0 }))}>Auto</button>}
+                  </div>
+                )
+              })()}
               {spec.mark === 'histogram' && (
                 <div className="rrow" role="group" aria-label="Vertical lines" style={{ flexWrap: 'wrap', gap: 6 }}>
                   <span className="lab" style={{ minWidth: 96 }}>Vertical lines</span>
