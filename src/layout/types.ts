@@ -643,6 +643,10 @@ export interface DashboardTabConfig {
      * Cases). Default false/absent — every existing dashboard-*.yaml is
      * unaffected. */
     full_page?: boolean
+    /** `header.hidden`: the page is not listed in the sidebar but opens at its address. Default false. */
+    hidden?: boolean
+    /** `header.docs`: a path appended to the site's documentation address, so the sidebar link opens this page's section. */
+    docs?: string
     /** The page's address: `#/<slug>`. Default: the tab name, lower-cased and dash-separated. */
     slug?: string
     /** `tabs`: each section is a tab and the page does not scroll; `scroll`: all rows in order. Default: the deployment's. */
@@ -717,6 +721,8 @@ export function parseDashboardConfig(raw: unknown, sourcePath = '(unknown source
       description: typeof header.description === 'string' ? header.description : undefined,
       icon: typeof header.icon === 'string' ? header.icon : undefined,
       full_page: typeof header.full_page === 'boolean' ? header.full_page : undefined,
+      hidden: typeof header.hidden === 'boolean' ? header.hidden : undefined,
+      docs: typeof header.docs === 'string' && header.docs.trim().length > 0 ? header.docs.trim() : undefined,
       layout_mode: header.layout_mode === 'tabs' || header.layout_mode === 'scroll' ? header.layout_mode : undefined,
       slug: typeof header.slug === 'string' && header.slug.trim().length > 0 ? header.slug.trim() : undefined,
       aria_label:

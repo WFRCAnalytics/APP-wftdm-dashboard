@@ -41,7 +41,8 @@ export function renderJsonSchema(schema: readonly SettingDef[] = SETTINGS): Json
     additionalProperties: false,
     properties: {},
   }
-  for (const row of schema) {
+  // page-scoped rows belong in a page file's header:, so the site file's schema leaves them out
+  for (const row of schema.filter((r) => r.scope !== 'page')) {
     let node = root
     const parts = row.path.split('.')
     for (const key of parts.slice(0, -1)) {

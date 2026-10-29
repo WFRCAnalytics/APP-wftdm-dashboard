@@ -23,6 +23,16 @@ export interface SettingDef {
   values?: readonly string[]
   /** Extra check for a structured value: returns a message when it is wrong. */
   check?: (value: unknown) => string | undefined
+  /**
+   * `page`: set in a page file's `header:`, never in the site file, and never cascading (a page's identity stays with the page).
+   * Absent: a site setting (it may also cascade, per `cascade`).
+   */
+  scope?: 'page'
+  /**
+   * Keeps the usable part of a value: returns it, with a message for each thing dropped (reported as `invalid_value`). Used for a
+   * list where one bad entry must not discard the good ones. A returned `undefined` leaves the key unset.
+   */
+  clean?: (value: unknown) => { value: unknown; messages: string[] }
 }
 
 /** The newest file version this app reads. */

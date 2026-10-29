@@ -76,3 +76,12 @@ describe('cascade resolver', () => {
     expect(getPath(out, 'colors.primary')).toBe('#111111')
   })
 })
+
+describe('page-scoped rows', () => {
+  it('never reach the cascade or the overlay', () => {
+    const schema = [{ path: 'header.note', type: 'string', cascade: false, scope: 'page', description: 'A test-only page key.' }] as never
+    const tree = { header: { note: 'x' } }
+    expect(getPath(resolve({ site: tree, page: tree }, schema).values, 'header.note')).toBeUndefined()
+    expect(getPath(overlay(tree, tree, schema), 'header.note')).toBeUndefined()
+  })
+})

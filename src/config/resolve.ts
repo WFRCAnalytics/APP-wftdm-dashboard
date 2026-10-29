@@ -25,7 +25,7 @@ export function resolveLevels(levels: readonly NamedLevel[], schema: readonly Se
   const source: Record<string, string> = {}
   levels.forEach((level, index) => {
     for (const row of schema) {
-      if (index > 0 && !row.cascade) continue
+      if (row.scope === 'page' || (index > 0 && !row.cascade)) continue
       const v = getPath(level.values, row.path)
       if (v === undefined) continue
       const before = getPath(values, row.path)
@@ -68,6 +68,7 @@ function clone<T>(v: T): T {
 export function overlay(base: Tree, over: Tree, schema: readonly SettingDef[] = SETTINGS): Tree {
   const out: Tree = {}
   for (const row of schema) {
+    if (row.scope === 'page') continue
     const v = getPath(over, row.path) ?? getPath(base, row.path)
     if (v !== undefined) setPath(out, row.path, clone(v))
   }

@@ -26,7 +26,7 @@ Single web-app project: `src/`, `tests/`, `scripts/`, `project-docs/` at the rep
 
 ## Phase 1: Setup
 
-- [ ] T001 Confirm the baseline on branch `067-viewer-settings`: `npx tsc --noEmit` and `npx vitest run` are green before any change (so a later failure is ours)
+- [X] T001 Confirm the baseline on branch `067-viewer-settings`: `npx tsc --noEmit` and `npx vitest run` are green before any change (so a later failure is ours)
 
 ---
 
@@ -34,11 +34,11 @@ Single web-app project: `src/`, `tests/`, `scripts/`, `project-docs/` at the rep
 
 **Purpose**: the two generic extensions to the 066 schema machinery and the header parsing every story reads.
 
-- [ ] T002 Extend `SettingDef` in `src/config/schema.ts` with `scope?: 'page'` (set in a page's `header:`, never in the site file, never cascades) and `clean?: (value) => { value: unknown; messages: string[] }`; document both in the interface comment
-- [ ] T003 Teach `src/config/validate.ts` the two extensions: a `scope: 'page'` row is accepted when `level` is `page` and reported `not_allowed_here` ("belongs in a page's header") when it appears in the site file; after the type and `check` steps, run `clean`, report each message as `invalid_value` on that path and keep the returned value (leave the key unset when the value is `undefined`). The cascade resolver (`src/config/resolve.ts`) must skip `scope: 'page'` rows (a unit test proves it)
-- [ ] T004 [P] Unit tests in `tests/unit/configValidate.test.ts` (and `tests/unit/configResolve.test.ts` for the skip) using a test-only schema: a page-scoped row is valid on a page and `not_allowed_here` on the site; `clean` keeps the good part and reports each dropped item; `clean` returning `undefined` leaves the key unset; a page-scoped row never reaches `resolve()`
-- [ ] T005 [P] Extend `pageSettings()` in `src/config/levels.ts` so a page's `header.docs` and `header.hidden` (and only those header keys) are passed through as `{ header: { docs, hidden } }`; unit test in `tests/unit/configLevels.test.ts` (other header keys such as `tab` and `slug` are not passed, so they stay unchecked as today)
-- [ ] T006 [P] Parse `header.hidden` (boolean) and `header.docs` (string) fail-soft into `DashboardTabConfig['header']` in `src/layout/types.ts#parseDashboardConfig` and document both fields on the type; extend the existing parser unit test (a non-boolean or non-string value is left unset)
+- [X] T002 Extend `SettingDef` in `src/config/schema.ts` with `scope?: 'page'` (set in a page's `header:`, never in the site file, never cascades) and `clean?: (value) => { value: unknown; messages: string[] }`; document both in the interface comment
+- [X] T003 Teach `src/config/validate.ts` the two extensions: a `scope: 'page'` row is accepted when `level` is `page` and reported `not_allowed_here` ("belongs in a page's header") when it appears in the site file; after the type and `check` steps, run `clean`, report each message as `invalid_value` on that path and keep the returned value (leave the key unset when the value is `undefined`). The cascade resolver (`src/config/resolve.ts`) must skip `scope: 'page'` rows (a unit test proves it)
+- [X] T004 [P] Unit tests in `tests/unit/configValidate.test.ts` (and `tests/unit/configResolve.test.ts` for the skip) using a test-only schema: a page-scoped row is valid on a page and `not_allowed_here` on the site; `clean` keeps the good part and reports each dropped item; `clean` returning `undefined` leaves the key unset; a page-scoped row never reaches `resolve()`
+- [X] T005 [P] Extend `pageSettings()` in `src/config/levels.ts` so a page's `header.docs` and `header.hidden` (and only those header keys) are passed through as `{ header: { docs, hidden } }`; unit test in `tests/unit/configLevels.test.ts` (other header keys such as `tab` and `slug` are not passed, so they stay unchecked as today)
+- [X] T006 [P] Parse `header.hidden` (boolean) and `header.docs` (string) fail-soft into `DashboardTabConfig['header']` in `src/layout/types.ts#parseDashboardConfig` and document both fields on the type; extend the existing parser unit test (a non-boolean or non-string value is left unset)
 
 **Checkpoint**: the table can describe a page-scoped key and a list that is cleaned instead of rejected. Nothing user-visible yet.
 
