@@ -113,10 +113,13 @@ describe('resolveObservablePlotEncoding', () => {
     ).toEqual({ tip: 'x' })
   })
 
-  it('resolves tip: true to the "xy" default for lineY and other non-bar marks', () => {
+  it('resolves tip: true to "x" pointer mode with no radius limit for lineY, so the tip shows anywhere along the line, not only near a node', () => {
     expect(
       resolveObservablePlotEncoding({ ...baseConfig, mark: 'lineY', tip: true }, rows).options,
-    ).toEqual({ tip: true })
+    ).toEqual({ tip: { pointer: 'x', maxRadius: Infinity } })
+  })
+
+  it('keeps the "xy" default for other marks (dot)', () => {
     expect(
       resolveObservablePlotEncoding({ ...baseConfig, mark: 'dot', tip: true }, rows).options,
     ).toEqual({ tip: true })

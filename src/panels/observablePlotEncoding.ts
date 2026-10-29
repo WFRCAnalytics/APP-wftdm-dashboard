@@ -9,7 +9,8 @@
 // reason for being split out of the retired chart panel. Only ObservablePlotPanel.tsx
 // itself ever calls Plot[markName](data, options).
 import type { ObservablePlotPanelConfig } from '@/layout/types'
-import { resolveScenarioColor, resolveScenarioLabel, type ScenarioDisplayMap } from '@/panels/scenarioDisplay'
+import { resolveScenarioColor, resolveScenarioLabel, type ScenarioDisplayMap } from '@/panels/scenarioDisplay'
+
 import { plotBaseStyle, plotLegendStyle } from './chartTheme.ts'
 
 export interface ResolvedObservablePlotEncoding {
@@ -419,10 +420,22 @@ export function resolveObservablePlotEncoding(
  * doesn't document. `barY` — the one bar-shaped mark this app currently
  * supports, x holding the discrete category, y the continuous value —
  * gets `"x"` (any hover position within a bar's column triggers it,
- * matching Plot's own recommendation). Every other mark (today: `lineY`,
- * whose own docs example uses `tip: true` directly) keeps the "xy"
- * default, which is already correct for point/line-based marks.
+ * matching Plot's own recommendation).
+ *
+ * `lineY` gets `"x"` with an unlimited radius: with the "xy" default
+ * the tip only appears within ~40px of an actual data point, so hovering
+ * ALONG a line, between its nodes, showed nothing (the same dead-spot
+ * symptom as bars, found when a hover-position spec failed at random).
+ * Plot's `"x"` mode alone is not enough, because every pointer mode also
+ * stops at `maxRadius` (40px, measured along x in this mode) and a line's
+ * nodes can be further apart than that; Plot accepts a tip options object
+ * (`tip: { pointer, maxRadius }`, see plot.js `inferTips`), so the tip
+ * follows the nearest node by x over the whole plot. Every other mark
+ * (today: `dot`) keeps the "xy" default, which is correct for point
+ * marks.
  */
-function resolveTipMode(mark: string): true | 'x' {
+type TipOption = true | 'x' | { pointer: 'x'; maxRadius: number }
+function resolveTipMode(mark: string): TipOption {
+  if (mark === 'lineY') return { pointer: 'x', maxRadius: Infinity }
   return mark === 'barY' ? 'x' : true
 }
