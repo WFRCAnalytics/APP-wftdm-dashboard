@@ -32,7 +32,7 @@ import '@fontsource/dm-mono/400.css'
 import '@fontsource/dm-mono/500.css'
 import { toast } from 'sonner'
 
-import { initDuckDB } from './services/duckdb.ts'
+import { initDuckDB, setExtensionRepository } from './services/duckdb.ts'
 import { discoverScenarios } from './services/scenarioDiscovery.ts'
 import { bootCompareState } from './services/runResolution.ts'
 import { setAssistantEnabled } from './state/assistantAvailability.ts'
@@ -42,7 +42,7 @@ import { configureSettingsTabs } from '@/state/settingsState'
 import { configureAssistant } from '@/services/ai/assistantPolicy'
 import { applyAssistantPolicy } from '@/state/aiState'
 import { loadSite } from './services/siteConfig.ts'
-import { configureNetwork } from './services/networkPolicy.ts'
+import { configureNetwork, getExtensionRepository } from './services/networkPolicy.ts'
 import { loadDashboards } from './services/yamlLoader.ts'
 import { setDeployerScenarioPalette } from './panels/scenarioDisplay.ts'
 import { setDeployerProtomapsSource } from './state/protomapsSourceState.ts'
@@ -147,11 +147,18 @@ const scenariosToastId = toast.loading('Loading scenarios…')
 let dashboards: Awaited<ReturnType<typeof loadDashboards>>
 let site: Awaited<ReturnType<typeof loadSite>>
 try {
-  await discoverScenarios()
-
-  // The site settings (dashboard-config.yaml of the deployment's root, then the git-tracked demo root as the fallback) name
-  // the page files: the deployment's pages first, then the demo's.
+  // The site settings (dashboard-config.yaml of the deployment's root, then, with the demo on, the demo root as the fallback) name
+  // the page files: the deployment's pages first, then the demo's. Read before the runs are discovered (071-network-block): the extension
+  // mirror must be set before the first Parquet read or extension install.
   site = await loadSite()
+  configureNetwork(site.branding.network)
+  try {
+    await setExtensionRepository(getExtensionRepository())
+  } catch (err) {
+    // never blocks boot: DuckDB's own host stays
+    addProblems([{ file: 'dashboard-config.yaml', path: 'network.duckdb_extensions', kind: 'invalid_value', message: `the extension address could not be set (${String(err)}); the database's own host is used` }])
+  }
+  await discoverScenarios()
   dashboards = []
   for (const source of site.pageSources) dashboards.push(...(await loadDashboards(source.baseUrl, source.pages)))
 } catch (err) {
@@ -175,8 +182,6 @@ configureVocab(branding.vocab)
 configureMetrics(branding.metrics)
 configureUnits(branding.units)
 setSiteSettings(site.settings)
-// 071-network-block: the outside calls the site allows (font mode, the basemap allow-list, the extension mirror), before any map or control reads them.
-configureNetwork(branding.network)
 configureLayout(branding.layout)
 configureExport({ footer: branding.exportFooter, title: branding.title })
 // 063 redesign: model years, focus and Compare defaults (project-docs/redesign/03-state-and-compare.md §1.1). Needs the

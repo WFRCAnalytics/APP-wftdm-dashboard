@@ -77,9 +77,9 @@ Single web-app project: `src/`, `scripts/`, `tests/`, `project-docs/` at the rep
 
 **Independent Test**: set an address routed in the browser; a zone map's extension request goes there.
 
-- [ ] T014 [US3] `src/services/duckdb.ts`: `setExtensionRepository(url)` runs one `SET custom_extension_repository = '<url>'` on the shared connection (single quotes doubled; only an `http`/`https` address is accepted, otherwise it does nothing); `src/main.tsx`: load the site first, call it with `getExtensionRepository()` before `discoverScenarios()` so it precedes any extension use. Unit test for the statement text and the refusal of a non-web address (mock the connection)
-- [ ] T015 [US3] Confirm `sqlGuard` still refuses `SET`, `INSTALL`, `LOAD` (existing tests) and add one assertion in `tests/unit/` that the guard source is unchanged in behaviour for `SET custom_extension_repository`; no code change to the guard
-- [ ] T016 [US3] Extend `tests/integration/networkBlock.spec.ts`: an extension address routed to a local fake that answers 404 (the request itself is the assertion); open a zone map; the first extension request goes to that address and none to `extensions.duckdb.org`. Record in the spec whether the parquet autoload also uses it (research.md risk) and note the result in the quickstart
+- [X] T014 [US3] `src/services/duckdb.ts`: `setExtensionRepository(url)` runs one `SET custom_extension_repository = '<url>'` on the shared connection (single quotes doubled; only an `http`/`https` address is accepted, otherwise it does nothing); `src/main.tsx`: load the site first, call it with `getExtensionRepository()` before `discoverScenarios()` so it precedes any extension use. Unit test for the statement text and the refusal of a non-web address (mock the connection)
+- [X] T015 [US3] Confirm `sqlGuard` still refuses `SET`, `INSTALL`, `LOAD` (existing tests) and add one assertion in `tests/unit/` that the guard source is unchanged in behaviour for `SET custom_extension_repository`; no code change to the guard
+- [X] T016 [US3] Extend `tests/integration/networkBlock.spec.ts`: an extension address routed to a local fake that answers 404 (the request itself is the assertion); open a zone map; the first extension request goes to that address and none to `extensions.duckdb.org`. Recorded: the parquet autoload DOES use the address (the spec saw `<address>/v1.4.3/wasm_eh/parquet.duckdb_extension.wasm`, and nothing went to `extensions.duckdb.org`); the spatial install goes through the same setting
 
 ---
 

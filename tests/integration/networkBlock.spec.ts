@@ -114,3 +114,40 @@ test('without the key the Appearance tab has four fonts, the custom inputs, and 
   await expect(dialog.getByText('Custom fonts')).toBeVisible()
   await expect.poll(() => requests.some((u) => u.includes('fonts.googleapis.com')), { timeout: 20_000 }).toBe(true)
 })
+
+// The parquet reader autoloads from the same repository as the spatial extension, so with a mirror that answers 404 the data panels cannot load:
+// these two specs read the requests only and never wait for a chart.
+async function goToNetworkTab(page: Page) {
+  await page.hover('[data-sidebar=sidebar]')
+  await page.getByRole('tab', { name: 'Network' }).first().click()
+}
+
+test('an extension address sends the extension download to that address and not to DuckDB', async ({ page }) => {
+  const mirror: string[] = []
+  const duckdbHost: string[] = []
+  // a made-up mirror that answers 404 (the request itself is the assertion), and DuckDB's own host, which must stay unused
+  await page.route('http://mirror.example.test/**', (route) => {
+    mirror.push(route.request().url())
+    return route.fulfill({ status: 404, headers: { 'access-control-allow-origin': '*' }, body: 'not here' })
+  })
+  await page.route('**://extensions.duckdb.org/**', (route) => {
+    duckdbHost.push(route.request().url())
+    return route.continue()
+  })
+  await open(page, 'network:\n  duckdb_extensions: "http://mirror.example.test/duckdb"')
+  await goToNetworkTab(page)
+  await expect.poll(() => mirror.length, { timeout: 60_000 }).toBeGreaterThan(0)
+  console.log('MIRROR_REQUESTS', JSON.stringify(mirror))
+  expect(duckdbHost).toEqual([])
+})
+
+test('without an extension address the download goes to DuckDB as before', async ({ page }) => {
+  const duckdbHost: string[] = []
+  await page.route('**://extensions.duckdb.org/**', (route) => {
+    duckdbHost.push(route.request().url())
+    return route.continue()
+  })
+  await open(page)
+  await goToNetworkTab(page)
+  await expect.poll(() => duckdbHost.length, { timeout: 60_000 }).toBeGreaterThan(0)
+})
