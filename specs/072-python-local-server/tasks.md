@@ -99,7 +99,7 @@ Python in `python/wftdm_dashboard/` and `python/tests/`; Vite/Node changes in `v
 - [X] T019 [P] Docs: `README.md` (remove the "designed but not built yet" notice for `here`, `serve` and `init`; how to use each; the two folder layouts; the limits of `serve`; that `init --scenario-dir` and `check` are not in the library yet), `project-docs/ARCHITECTURE.md` (the deployment-model paragraphs for `serve`, `here` and `init` as built; the note that `init` writes the site starter here and the scenario scaffold is a later step), `project-docs/CONFIGURATION.md` (Phase G step 12 done, what is deferred, section 2 table), `CLAUDE.md` (the file structure: `server.py`, `scaffold.py`, `templates/`, `static/`, the `build:package` script and mode), `project-docs/IMPLEMENTATION-HISTORY.md` ("072 Run the dashboard locally from the Python library")
 - [X] T020 `uv run ruff check python`, `uv run pytest python/tests -q`, `npx tsc --noEmit`, `npx vitest run`; then `npx playwright test` only for the specs that read the base path or the build (`firstRun`, `boot`) to confirm the Vite config change did not move the default base
 - [X] T021 Walk `quickstart.md` end to end and record the result at its foot
-- [ ] T022 Rebuild `docs/` with `npm run build:pages` (only when the user asks; not part of the implementation)
+- [X] T022 Rebuild `docs/` with `npm run build:pages` (only when the user asks; not part of the implementation)
 
 ---
 
