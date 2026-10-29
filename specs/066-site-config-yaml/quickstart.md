@@ -20,7 +20,7 @@ Open the app. Expected: same title, logos, pages, vocabularies, metric labels, y
 
 ## 3. A mistake is reported, never fatal
 
-Edit the demo's `dashboard-config.yaml`: add `titel: x`, set `years.base: "abc"`, and put `title: y` in a page's header. Reload. Expected: the app loads; one note lists three problems with their paths; the console shows the same; the title and base year are unchanged. Remove the edits; the note disappears.
+Edit the demo's `dashboard-config.yaml`: add `titel: x`, set `years.base: "abc"`, and put `title: y` at the top level of a page file (not under `header:`, whose `title` is the page's own title). Reload. Expected: the app loads; one note lists three problems with their paths; the console shows the same; the title and base year are unchanged. Remove the edits; the note disappears. (Covered by `siteConfig.spec.ts`.)
 
 ## 4. Missing file and legacy file
 
@@ -37,3 +37,9 @@ Then the full run; compare against the known flakes in CLAUDE.md (re-run a failu
 ## 6. Adding a setting touches one place
 
 Add a test-only row to the schema table and a value in a config. Expected: it loads, validates and appears in the regenerated reference with no other source edit.
+
+## 7. Nested folder (walked 2026-10-28)
+
+`WFTDM_BASE=./ npx vite build --outDir <folder>/deep/site`, serve `<folder>` statically, open `/deep/site/index.html`. Result: the title,
+logo and pages come from the demo's `dashboard-config.yaml`, no config note, and the only 404s are the roots that are normally absent
+(`dashboard-config/dashboard-config.yaml`, then one probe of `dashboard-config/index.json`, `scenarios/`, `observed/`).
