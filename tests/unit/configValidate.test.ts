@@ -167,3 +167,35 @@ describe('assistant providers', () => {
     expect(validate({ assistant: { providers: [gw] } }, { file: 'p.yaml', level: 'page' }).problems.map((p) => p.kind)).toEqual(['not_allowed_here'])
   })
 })
+
+describe('assistant note and limits', () => {
+  it('accepts a note of 2000 characters and refuses one of 2001, leaving it unset with the length in the message', () => {
+    expect(validate({ assistant: { prompt_addendum: 'x'.repeat(2000) } }, { file }).problems).toEqual([])
+    const r = validate({ assistant: { prompt_addendum: 'x'.repeat(2001) } }, { file })
+    expect(getPath(r.settings, 'assistant.prompt_addendum')).toBeUndefined()
+    expect(r.problems.map((p) => [p.kind, p.path])).toEqual([['invalid_value', 'assistant.prompt_addendum']])
+    expect(r.problems[0].message).toContain('2001')
+  })
+
+  it('takes each limit at its bounds and refuses one outside, keeping it unset', () => {
+    const edges: [string, number, number][] = [['round_trips', 1, 12], ['preview_rows', 100, 5000], ['model_rows', 1, 200]]
+    for (const [name, min, max] of edges) {
+      for (const ok of [min, max]) expect(validate({ assistant: { limits: { [name]: ok } } }, { file }).problems, `${name}=${ok}`).toEqual([])
+      for (const bad of [min - 1, max + 1]) {
+        const r = validate({ assistant: { limits: { [name]: bad } } }, { file })
+        expect(getPath(r.settings, `assistant.limits.${name}`), `${name}=${bad}`).toBeUndefined()
+        expect(r.problems.map((p) => [p.kind, p.path]), `${name}=${bad}`).toEqual([['invalid_value', `assistant.limits.${name}`]])
+      }
+    }
+  })
+
+  it('refuses a limit that is not a whole number and a note that is not text', () => {
+    expect(validate({ assistant: { limits: { round_trips: 2.5 } } }, { file }).problems.map((p) => p.kind)).toEqual(['wrong_type'])
+    expect(validate({ assistant: { limits: { model_rows: 'many' } } }, { file }).problems.map((p) => p.kind)).toEqual(['wrong_type'])
+    expect(validate({ assistant: { prompt_addendum: 5 } }, { file }).problems.map((p) => p.kind)).toEqual(['wrong_type'])
+  })
+
+  it('is site-only', () => {
+    expect(validate({ assistant: { limits: { round_trips: 3 } } }, { file: 'p.yaml', level: 'page' }).problems.map((p) => p.kind)).toEqual(['not_allowed_here'])
+  })
+})

@@ -240,6 +240,28 @@
               "description": "The model the assistant tab starts with (any model name)."
             }
           }
+        },
+        "prompt_addendum": {
+          "type": "string",
+          "description": "A short plain-text note added after the assistant’s instructions (for example: Our zones are called TAZs). At most 2000 characters; the viewer does not see it."
+        },
+        "limits": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "round_trips": {
+              "type": "integer",
+              "description": "Steps the assistant may take to answer one question: 1 to 12 (default 6)."
+            },
+            "preview_rows": {
+              "type": "integer",
+              "description": "Rows of a query result shown to the viewer: 100 to 5000 (default 1000)."
+            },
+            "model_rows": {
+              "type": "integer",
+              "description": "Rows of a result shared with the model when the viewer shares results: 1 to 200 (default 50)."
+            }
+          }
         }
       }
     },

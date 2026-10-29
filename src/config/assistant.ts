@@ -29,6 +29,19 @@ export const ASSISTANT_LIMITS = {
   model_rows: { min: 1, max: 200, default: 50 },
 } as const
 
+type LimitName = keyof typeof ASSISTANT_LIMITS
+
+/** The schema `check` for one limit: an integer inside its bounds (the type check has already seen a whole number). */
+export function limitCheck(name: LimitName): (value: unknown) => string | undefined {
+  const { min, max, default: dflt } = ASSISTANT_LIMITS[name]
+  return (value) => (typeof value === 'number' && value >= min && value <= max ? undefined : `must be between ${min} and ${max}; ${dflt} is used`)
+}
+
+/** The schema `check` for the prompt note: not longer than the maximum (it is dropped, never cut short). */
+export function addendumCheck(value: unknown): string | undefined {
+  return typeof value === 'string' && value.length > MAX_PROMPT_ADDENDUM ? `the note is ${value.length} characters; the most allowed is ${MAX_PROMPT_ADDENDUM}, so no note is added` : undefined
+}
+
 export const SECRETS_MESSAGE = 'secrets are not configuration; viewers enter their own token'
 
 const SECRET_PARTS = new Set(['key', 'token', 'secret', 'password', 'passwd', 'authorization', 'apikey', 'bearer'])

@@ -1,4 +1,4 @@
-import { MAX_PREVIEW_ROWS } from '@/services/ai/sqlRunner'
+import { getLimits } from '@/services/ai/assistantPolicy'
 import type { QueryAttempt } from '@/services/ai/types'
 
 // 064-ai-chat-assistant: the capped result of one query. Cells are rendered as text (never HTML).
@@ -51,7 +51,7 @@ export function ResultTable({ attempt }: { attempt: QueryAttempt }) {
         </table>
       </div>
       <p className="mt-1 text-[11.5px] text-[var(--mute)]">
-        {truncated ? `Showing the first ${MAX_PREVIEW_ROWS.toLocaleString()} rows; more exist.` : `${rows.length.toLocaleString()} row${rows.length === 1 ? '' : 's'}`}
+        {truncated ? `Showing the first ${getLimits().previewRows.toLocaleString()} rows; more exist.` : `${rows.length.toLocaleString()} row${rows.length === 1 ? '' : 's'}`}
       </p>
     </div>
   )

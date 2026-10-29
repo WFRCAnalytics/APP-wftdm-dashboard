@@ -3,7 +3,7 @@
 // row here plus the code that uses the value.
 //
 // This folder is PURE: relative imports only, no `import.meta.env`, no `@/` alias, no DOM. Node (the Vite plugin) loads it too.
-import { cleanProviders } from './assistant'
+import { addendumCheck, cleanProviders, limitCheck } from './assistant'
 import { cleanSettingsTabs, isRelativePath, isWebAddress } from './viewer'
 
 export type SettingType = 'string' | 'number' | 'integer' | 'boolean' | 'boolean|string' | 'color' | 'url' | 'enum' | 'list' | 'map'
@@ -109,6 +109,10 @@ export const SETTINGS: readonly SettingDef[] = [
   { path: 'assistant.providers', type: 'list', cascade: site, clean: cleanProviders, description: 'The AI providers the assistant tab offers, replacing the built-in ones: id, label, base_url, models, needs_key, protocol (openai or anthropic). The address of a listed provider is fixed.' },
   { path: 'assistant.default.provider', type: 'string', cascade: site, description: 'The provider the assistant tab starts on (an id from the offered providers).' },
   { path: 'assistant.default.model', type: 'string', cascade: site, description: 'The model the assistant tab starts with (any model name).' },
+  { path: 'assistant.prompt_addendum', type: 'string', cascade: site, check: addendumCheck, description: 'A short plain-text note added after the assistant’s instructions (for example: Our zones are called TAZs). At most 2000 characters; the viewer does not see it.' },
+  { path: 'assistant.limits.round_trips', type: 'integer', cascade: site, check: limitCheck('round_trips'), description: 'Steps the assistant may take to answer one question: 1 to 12 (default 6).' },
+  { path: 'assistant.limits.preview_rows', type: 'integer', cascade: site, check: limitCheck('preview_rows'), description: 'Rows of a query result shown to the viewer: 100 to 5000 (default 1000).' },
+  { path: 'assistant.limits.model_rows', type: 'integer', cascade: site, check: limitCheck('model_rows'), description: 'Rows of a result shared with the model when the viewer shares results: 1 to 200 (default 50).' },
   { path: 'docs.url', type: 'url', cascade: site, check: (v) => (isWebAddress(String(v)) ? undefined : 'expected an http or https address'), description: 'Address of the documentation site; sets a link at the foot of the left sidebar (none when unset).' },
   { path: 'docs.label', type: 'string', cascade: site, description: 'Text of the documentation link (default: Documentation).' },
   { path: 'header.docs', type: 'string', scope: 'page', cascade: false, check: (v) => (isRelativePath(String(v)) ? undefined : 'expected a path relative to the documentation address'), description: 'A page header key: a path appended to docs.url, so the sidebar link opens the section for that page.' },

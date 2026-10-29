@@ -91,3 +91,17 @@ describe('toBranding: assistant providers', () => {
     expect(toBranding(validate({ assistant: { enabled: true } }, { file: 'x' }).settings).assistant).toBeUndefined()
   })
 })
+
+describe('toBranding: assistant note and limits', () => {
+  it('maps the note and each limit that is set', () => {
+    const { settings } = validate({ assistant: { prompt_addendum: ' Our zones are called TAZs. ', limits: { round_trips: 3, model_rows: 20 } } }, { file: 'x' })
+    const a = toBranding(settings).assistant
+    expect(a?.promptAddendum).toBe(' Our zones are called TAZs. ')
+    expect(a?.limits).toEqual({ roundTrips: 3, modelRows: 20 })
+  })
+
+  it('leaves out a limit that was refused', () => {
+    const { settings } = validate({ assistant: { limits: { round_trips: 99, preview_rows: 200 } } }, { file: 'x' })
+    expect(toBranding(settings).assistant?.limits).toEqual({ previewRows: 200 })
+  })
+})

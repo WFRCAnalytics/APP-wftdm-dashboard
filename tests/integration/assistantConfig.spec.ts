@@ -167,3 +167,98 @@ test.describe('with a deployer provider list', () => {
     await expect(page.getByTestId('ai-try-demo')).toHaveCount(0)
   })
 })
+
+// US2: the note and the limits, with the gateway mocked as a scripted model.
+interface ChatRequest {
+  messages: { role: string; content: string | null }[]
+}
+
+async function mockModel(page: Page, queue: ({ sql: string } | { text: string })[]): Promise<ChatRequest[]> {
+  const requests: ChatRequest[] = []
+  let id = 0
+  await page.route(`${GATEWAY}/**`, async (route: Route) => {
+    const req = route.request()
+    if (req.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: CORS })
+    if (req.method() === 'GET') return route.fulfill({ status: 200, headers: CORS, contentType: 'application/json', body: JSON.stringify({ data: [{ id: 'llama3.1' }] }) })
+    requests.push(req.postDataJSON())
+    const next = queue.shift() ?? { text: '(script exhausted)' }
+    const message =
+      'sql' in next
+        ? { content: null, tool_calls: [{ id: `call${++id}`, type: 'function', function: { name: 'run_sql', arguments: JSON.stringify({ sql: next.sql }) } }] }
+        : { content: next.text }
+    return route.fulfill({ status: 200, headers: CORS, contentType: 'application/json', body: JSON.stringify({ choices: [{ message }] }) })
+  })
+  return requests
+}
+
+async function connectAndAsk(page: Page, question: string, opts: { shareResults?: boolean } = {}) {
+  await openAiSettings(page)
+  await page.locator('#ai-token').fill('viewer-token')
+  await page.getByRole('button', { name: 'Check and Save' }).click()
+  await expect(page.getByTestId('ai-status')).toHaveText('Connected.')
+  if (opts.shareResults) await page.getByRole('group', { name: 'Privacy' }).getByRole('button', { name: 'Schema + results', exact: true }).click()
+  await page.keyboard.press('Escape')
+  await page.getByRole('button', { name: 'Open AI assistant' }).click()
+  const panel = page.getByRole('dialog', { name: 'AI assistant' })
+  await expect(panel).toBeVisible()
+  await panel.getByLabel('Ask a question').fill(question)
+  await panel.getByRole('button', { name: 'Send' }).click()
+  return panel
+}
+
+const withGateway = (extra: Record<string, unknown>) => ({ providers: [{ id: 'agency-gw', label: 'Agency gateway', base_url: GATEWAY, models: ['llama3.1'] }], ...extra })
+
+test.describe('the assistant note and limits', () => {
+  test('the privacy help shows the configured number of shared rows', async ({ page }) => {
+    await patchDemoConfig(page, (c) => {
+      c.assistant = withGateway({ limits: { model_rows: 20 } })
+    })
+    await boot(page)
+    await openAiSettings(page)
+    await page.getByRole('group', { name: 'Privacy' }).getByRole('button', { name: 'Schema + results', exact: true }).click()
+    await expect(page.getByText('up to 20 result rows per query')).toBeVisible()
+  })
+
+  test('the model gets the note and 20 rows, the viewer sees 100 rows, and the note is never shown', async ({ page }) => {
+    const requests = await mockModel(page, [{ sql: 'SELECT * FROM range(500)' }, { text: 'Counted them.' }])
+    await patchDemoConfig(page, (c) => {
+      c.assistant = withGateway({ prompt_addendum: 'NOTE-FOR-THE-MODEL: our zones are called TAZs.', limits: { preview_rows: 100, model_rows: 20 } })
+    })
+    await boot(page)
+    const panel = await connectAndAsk(page, 'How many numbers are there?', { shareResults: true })
+    await expect(panel.getByText('Counted them.')).toBeVisible({ timeout: 30_000 })
+    await expect(panel.getByText('Showing the first 100 rows; more exist.')).toBeVisible()
+    expect(requests).toHaveLength(2)
+    const system = requests[0].messages[0].content ?? ''
+    expect(system.endsWith('LOCAL CONTEXT (from the dashboard\'s deployer):\nNOTE-FOR-THE-MODEL: our zones are called TAZs.')).toBe(true)
+    const tool = requests[1].messages.find((m) => m.role === 'tool')
+    const shared = JSON.parse(tool?.content ?? '{}') as { rows?: unknown[] }
+    expect(shared.rows).toHaveLength(20)
+    expect(await page.locator('body').innerText()).not.toContain('NOTE-FOR-THE-MODEL')
+  })
+
+  test('a question stops after the configured number of steps', async ({ page }) => {
+    const requests = await mockModel(page, Array.from({ length: 10 }, () => ({ sql: 'SELECT 1' })))
+    await patchDemoConfig(page, (c) => {
+      c.assistant = withGateway({ limits: { round_trips: 2 } })
+    })
+    await boot(page)
+    const panel = await connectAndAsk(page, 'Keep going.')
+    await expect(panel.getByText(/more steps than the assistant allows/)).toBeVisible({ timeout: 30_000 })
+    expect(requests).toHaveLength(2)
+  })
+
+  test('with no note and no limits the behaviour is today\'s: 50 shared rows and no local context', async ({ page }) => {
+    const requests = await mockModel(page, [{ sql: 'SELECT * FROM range(500)' }, { text: 'Done.' }])
+    await patchDemoConfig(page, (c) => {
+      c.assistant = withGateway({})
+    })
+    await boot(page)
+    const panel = await connectAndAsk(page, 'Count.', { shareResults: true })
+    await expect(panel.getByText('Done.')).toBeVisible({ timeout: 30_000 })
+    expect(requests[0].messages[0].content).not.toContain('LOCAL CONTEXT')
+    const shared = JSON.parse(requests[1].messages.find((m) => m.role === 'tool')?.content ?? '{}') as { rows?: unknown[] }
+    expect(shared.rows).toHaveLength(50)
+    await expect(panel.getByText('Showing the first 1,000 rows; more exist.')).toHaveCount(0)
+  })
+})

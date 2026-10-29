@@ -66,6 +66,16 @@ function assistant(t: Tree): DashboardBranding['assistant'] {
   const out: NonNullable<DashboardBranding['assistant']> = {}
   if (Array.isArray(providers) && providers.length > 0) out.providers = providers as ProviderEntry[]
   if (provider || model) out.default = { provider, model }
+  const note = str(t, 'assistant.prompt_addendum')
+  if (note) out.promptAddendum = note
+  const limits: NonNullable<typeof out.limits> = {}
+  const rounds = num(t, 'assistant.limits.round_trips')
+  const preview = num(t, 'assistant.limits.preview_rows')
+  const shared = num(t, 'assistant.limits.model_rows')
+  if (rounds !== undefined) limits.roundTrips = rounds
+  if (preview !== undefined) limits.previewRows = preview
+  if (shared !== undefined) limits.modelRows = shared
+  if (Object.keys(limits).length > 0) out.limits = limits
   return Object.keys(out).length > 0 ? out : undefined
 }
 

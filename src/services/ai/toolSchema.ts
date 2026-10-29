@@ -1,7 +1,9 @@
 // 064-ai-chat-assistant: the tool definitions and the privacy shaping of tool results. Pure, so the agent loop and
 // its tests need none of DuckDB. The dispatcher that runs the tools is in tools.ts.
+import { getLimits } from './assistantPolicy.ts'
 import type { Permission, PrivacyMode, QueryAttempt, ToolSpec } from './types.ts'
 
+/** Rows of a result shared with the model unless the deployment sets `assistant.limits.model_rows` (assistantPolicy.ts). */
 export const MODEL_ROW_LIMIT = 50
 export const MODEL_BYTE_LIMIT = 8 * 1024
 
@@ -61,7 +63,7 @@ export function shapeForModel(attempt: QueryAttempt, privacy: PrivacyMode): Reco
   if (privacy === 'schema-only') {
     return { ...base, note: 'Row values are hidden from you by the privacy setting; the viewer sees the result table. Do not state or guess values.' }
   }
-  let rows = attempt.rows.slice(0, MODEL_ROW_LIMIT)
+  let rows = attempt.rows.slice(0, getLimits().modelRows)
   while (rows.length > 0 && JSON.stringify(rows).length > MODEL_BYTE_LIMIT) rows = rows.slice(0, Math.floor(rows.length / 2))
   const cut = rows.length < attempt.rows.length
   return { ...base, rows, ...(cut ? { note: `Only the first ${rows.length} rows are shown to you; the viewer sees more.` } : {}) }

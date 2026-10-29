@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Segmented } from '@/components/ui/segmented'
 import { GroupHeading, PillButton, SettingsRow, TabHeader } from '@/layout/settings/settingsParts'
 import { useAiSettings } from '@/hooks/useAiSettings'
+import { getLimits } from '@/services/ai/assistantPolicy'
 import { checkConnection } from '@/services/ai/providers'
 import { resetSessionData } from '@/services/ai/sqlRunner'
 import type { Permission, PrivacyMode, ProviderId } from '@/services/ai/types'
@@ -30,10 +31,11 @@ const PERMISSION_HELP: Record<Permission, string> = {
   modify: 'May create and change tables and views. Changes last for this session; dashboard views stay protected.',
 }
 
-const PRIVACY_HELP: Record<PrivacyMode, string> = {
-  'schema-only': 'Sends table and column names, types, row counts and your question. Values stay in your browser.',
-  'schema-and-results': 'Also sends up to 50 result rows per query so the assistant can describe values.',
-}
+// the number of rows shared is the deployment's setting (assistant.limits.model_rows; 50 unless set)
+const privacyHelp = (mode: PrivacyMode): string =>
+  mode === 'schema-only'
+    ? 'Sends table and column names, types, row counts and your question. Values stay in your browser.'
+    : `Also sends up to ${getLimits().modelRows} result rows per query so the assistant can describe values.`
 
 function Field({ label, htmlFor, children }: { label: string; htmlFor: string; children: React.ReactNode }) {
   return (
@@ -169,7 +171,7 @@ export function AiTab() {
       <GroupHeading>Privacy</GroupHeading>
       <SettingsRow
         title="What is sent to the provider"
-        help={ollama ? 'Ollama runs on your machine, so nothing leaves it.' : PRIVACY_HELP[s.privacy]}
+        help={ollama ? 'Ollama runs on your machine, so nothing leaves it.' : privacyHelp(s.privacy)}
         align="start"
       >
         <div className="shrink-0">
