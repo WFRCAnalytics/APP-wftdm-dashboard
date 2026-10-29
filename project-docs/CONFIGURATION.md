@@ -35,7 +35,7 @@ Principles:
 | Settings tabs, navigation, documentation text | Fixed (only the Assistant tab can be hidden) |
 | AI assistant | On or off only; providers, models, URLs, prompt and limits are fixed |
 | Chart data layer | Fixed to ActivitySim table and column names (`charts/data/adapt.ts`) |
-| Build and deploy path | Fixed: `base: '/APP-wftdm-dashboard/'` at build time |
+| Build and deploy path | Fixed: `base: '/APP-wftdm-dashboard/'` at build time (the demo content is a build flag, 070) |
 | External network calls (fonts, basemaps, DuckDB spatial extension) | Fixed |
 
 ### What `index.json` is, and why it has to change
@@ -50,8 +50,9 @@ generated file. The site settings move to `dashboard-config.yaml`.
 
 1. **Base path is baked in.** `make build` embeds a `dist/` built for `/APP-wftdm-dashboard/`, so a wheel or R package cannot serve it
    from another URL. Runtime fetches already use `import.meta.env.BASE_URL`; a relative base is untested.
-2. **Demo content is always mixed in.** `main.tsx` appends `demo-dashboard-config/` tabs after `dashboard-config/`, and branding falls
-   back per field to the WFRC demo values (title, logos, colours, Protomaps key). An unconfigured deployment looks like WFRC.
+2. **Demo content was always mixed in (fixed in 070).** `main.tsx` appended `demo-dashboard-config/` tabs after `dashboard-config/`, and branding falls
+   back per field to the WFRC demo values (title, logos, colours, Protomaps key). An unconfigured deployment looked like WFRC. Now the demo is read only in the
+   dev server and in a `--mode demo` build; see Phase A step 1.
 3. **No schema, no validation.** Keys are parsed with `typeof x === 'string' ? x : undefined`. A new key needs edits in four places
    (type, parser, per-field merge in `main.tsx`, consumer), and `scripts/viteBootSkeletonPlugin.ts` has a second parser.
 4. **Docs gap.** `GRAMMAR.md` never mentions `vocab`, `units`, `assistant`, `scenarioPalette`, `brandColor`, `markUrl` or `header.slug`.
@@ -216,8 +217,11 @@ Not drafted here, on purpose: how the charts find the deployer's tables and colu
 ## 5. Plan, in order
 
 **Phase A: neutral and clean (small; unblocks the rest)**
-1. Demo split, **decided: an opt-in build flag.** A normal build ships no demo roots and no WFRC fallbacks. `build:pages` sets the demo
-   flag and copies `public/demo-*` in, with its own `dashboard-config.yaml`, so GitHub Pages keeps working.
+1. **Done (070, `specs/070-demo-build-flag/`):** the demo split, an opt-in build flag. A normal build (`npm run build`, which feeds the packages) ships no `demo-*`
+   folders and reads no demo root, setting, run or geometry; an unconfigured copy shows a first-run screen ("No site configuration was found", or "The site lists no
+   pages") instead of the WFRC demo. The flag is Vite's `demo` mode: on for the dev server and for `vite build --mode demo` (`build:pages`, `build:demo`), off otherwise
+   (`services/demoContent.ts#DEMO_CONTENT`). Not a schema setting, so `check` is unaffected. A deployer who relied on a demo value as a fallback now gets the neutral default
+   (no backward compatibility, section 7). Profiles (topic 5) may later replace the flag.
 2. **Done (branch `config/phase-a-neutral`).** Neutral defaults: the `index.html` title ("Calibration Dashboard"), the export footer
    fallback, no default `vocab.districts` (the demo configs now list theirs; `COUNTIES` was not unused, it is now the districts plus
    External), default geometry `zones.geoparquet` / `rail.geoparquet` (the demo files were renamed), and the colour presets "Blue" and

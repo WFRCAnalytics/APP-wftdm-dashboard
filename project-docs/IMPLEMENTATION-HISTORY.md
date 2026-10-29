@@ -6629,3 +6629,18 @@ and the contracts are in the spec folder; the non-obvious ones:
 - **Gotchas**: the Explore page is full-screen and does not show the configuration note, so a spec reads the note from another page; the builder starts with two of three
   runs selected, so a legend test must select all; a Playwright spec must be named `exploreBuilder*` to run in the `real` project.
 - Tests: `tests/unit/configExploreLimits.test.ts`, `exploreOptions`, `configValidate`, `configCheck`, `chartBuilderSql`, `chartBuilderCompile`; Playwright `exploreBuilderSite.spec.ts` (`real`).
+
+## 070 Demo content only when asked for (`specs/070-demo-build-flag/`)
+
+- **The flag**: Vite's mode, not an environment variable (`VAR=1 npm run ...` does not work on Windows). `vite.config.ts` is a function of `{ command, mode }`: `demo = command === 'serve' || mode === 'demo'`,
+  and `define` sets `import.meta.env.VITE_WFTDM_DEMO`. The app reads it through `services/demoContent.ts#DEMO_CONTENT`. The dev server and the Playwright projects (they start `npx vite`) keep the demo;
+  `build:pages` and the new `build:demo` run `vite build --mode demo`; `npm run build` has none. `vitest.config.js` is separate, so the constant is off in unit tests (pass explicit URLs).
+- **Output**: Vite copies all of `public/`, so `scripts/viteDemoContentPlugin.ts` deletes `demo-*` from the OUTPUT in `closeBundle` when the demo is off; the tracked source folders are never touched. A normal build went 94 MB to 81 MB.
+  `demo-synthetic` (11 MB) is still in the Pages output; trimming it is a separate decision.
+- **Run time**: `loadSite(deploymentUrl, demoUrl)` takes the demo root only when `DEMO_CONTENT` (or an explicit URL, for tests) and returns `siteFound` and `searched`; `discoverScenarios` registers `demo-scenarios` only with the demo;
+  `zoneGeometry` retries under `demo-geometry/` only with the demo; the rail file resolves through `railGeometryUrl` (`demo-geometry/` with the demo, `geometry/` without); the boot skeleton takes `{ demo }`.
+- **First run**: pure `services/firstRun.ts#firstRunState` (`no_site`, `no_pages`, `pages_unreadable`, or none once a page loaded) and `layout/firstRun.tsx`, rendered by `main.tsx` instead of the shell; the configuration note is shown inside it.
+  `addProblems` writes `console.warn`, not an error, so the first-run page logs no error.
+- **Leftover strings**: `demo-` still appears in the service worker's cache pattern and in `resolveDemoGeometryUrl`'s body (a URL builder never called without the demo); no request is made.
+- **Gotchas**: a new Playwright project needs its spec excluded from `chromium` (`testIgnore`); the first-run server builds into `test-results/firstrun-dist` and removes the deployment folders `public/` had (global setup copies fixtures into it); a heredoc with apostrophes fails in this shell, write files with the Write tool.
+- Tests: `tests/unit/{demoContentPlugin,siteConfigDemo,firstRun,resolveGeometry,bootSkeletonDemo}.test.ts`; Playwright `firstRun.spec.ts` (`firstrun`).

@@ -24,16 +24,20 @@ existing code or a past bug's history; read this file for what's true now.
 documentation** — it is the committed GitHub Pages output. Deliberate,
 temporary arrangement (local build, commit the output, no CI/Actions):
 
-- `npm run build:pages` → `tsc --noEmit && vite build --outDir docs --emptyOutDir`.
+- `npm run build:pages` → `tsc --noEmit && vite build --mode demo --outDir docs --emptyOutDir`.
   Produces the production demo app in `docs/`, base path `/APP-wftdm-dashboard/`.
 - GitHub Pages serves it via **"Deploy from a branch → `/docs` folder"** at
   `https://wfrcanalytics.github.io/APP-wftdm-dashboard/`. **No
   `.github/workflows/` file exists or should be added** — the built output
   is committed by hand after running `build:pages`.
 - `docs/.nojekyll` (from `public/.nojekyll`) disables Jekyll processing.
-- `npm run build` is UNCHANGED — still outputs to `dist/` for the Python
+- `npm run build` still outputs to `dist/` for the Python
   package embed (`make build` → `cp -r dist python/wftdm_dashboard/static`).
   Only `build:pages` targets `docs/`.
+- **Demo content is opt-in (070).** `public/demo-*` is in the dev server and in a build run in Vite's `demo` mode (`npm run build:pages`, `npm run build:demo`);
+  a plain `npm run build` removes `demo-*` from its output (`scripts/viteDemoContentPlugin.ts`) and the app reads no demo root, run or geometry
+  (`services/demoContent.ts#DEMO_CONTENT`, set by `vite.config.ts`; vitest reads it as off). With no site file, or a site that lists no pages, a normal build
+  shows `layout/firstRun.tsx` (decided by the pure `services/firstRun.ts`). The Playwright `firstrun` project serves such a build (`scripts/serve-first-run.ts`, port 5196).
 
 **Future:** once the real dashboard deploys from WFRC's own server, `docs/`
 reverts to a normal source tree and the built demo output is removed.

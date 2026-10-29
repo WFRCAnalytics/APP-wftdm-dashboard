@@ -31,6 +31,7 @@ Input: whether the deployment's site file was found, how many page files were lo
 |---|---|---|
 | `no_site` | site file absent and no pages loaded | "No site configuration was found" + folder searched + next steps |
 | `no_pages` | site file present, `pages` empty or none loadable | "The site lists no pages" + the file + next step |
+| `pages_unreadable` | pages are listed but none loaded | "None of the listed pages could be loaded" + the console hint |
 | none | at least one page loaded | the normal app |
 
 The existing problems note (`configProblems`) is unchanged and still lists unreadable files, wrong values and the like.

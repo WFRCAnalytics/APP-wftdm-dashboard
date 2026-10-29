@@ -186,8 +186,9 @@ npm run dev
 Requires Chrome or Edge for local development (cross-origin isolation headers).
 
 ```bash
-npm run build       # production build → dist/  (feeds the Python package embed)
-npm run build:pages # production build → docs/  (the GitHub Pages demo output)
+npm run build       # production build → dist/  (feeds the Python package embed; no demo content, so an unconfigured copy shows a first-run screen)
+npm run build:demo  # the same build with the demo content in it → dist/  (to try the app)
+npm run build:pages # the demo build → docs/  (the GitHub Pages demo output)
 npm run preview     # preview the dist/ build locally
 ```
 
