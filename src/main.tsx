@@ -36,6 +36,7 @@ import { initDuckDB } from './services/duckdb.ts'
 import { discoverScenarios } from './services/scenarioDiscovery.ts'
 import { bootCompareState } from './services/runResolution.ts'
 import { setAssistantEnabled } from './state/assistantAvailability.ts'
+import { addProblems } from '@/state/configProblems'
 import { loadSite } from './services/siteConfig.ts'
 import { loadDashboards } from './services/yamlLoader.ts'
 import { setDeployerScenarioPalette } from './panels/scenarioDisplay.ts'
@@ -259,6 +260,15 @@ for (const dashboard of parsedDashboards) {
       setFilter(filterDef.id, filterDef.default)
     }
   }
+}
+
+// A page's documentation path needs the site's documentation address; without one it is ignored (reported once here).
+if (!branding.docsUrl) {
+  addProblems(
+    parsedDashboards
+      .filter((d) => d.header.docs)
+      .map((d) => ({ file: `page "${d.header.tab}"`, path: 'header.docs', kind: 'invalid_value' as const, message: 'no documentation address (docs.url) is set; this path is ignored' })),
+  )
 }
 
 const rootEl = document.getElementById('app')

@@ -54,4 +54,18 @@ describe('toBranding', () => {
     expect(b.layout).toBeUndefined()
     expect(b.title).toBeUndefined()
   })
+
+  it('maps the documentation address and label, and leaves both unset otherwise', () => {
+    const { settings } = validate({ docs: { url: 'https://example.org/d/', label: 'Help' } }, { file: 'x' })
+    const b = toBranding(settings)
+    expect(b.docsUrl).toBe('https://example.org/d/')
+    expect(b.docsLabel).toBe('Help')
+    expect(toBranding(validate({}, { file: 'x' }).settings).docsUrl).toBeUndefined()
+  })
+
+  it('drops a documentation address that is not a web address', () => {
+    const { settings, problems } = validate({ docs: { url: 'javascript:alert(1)' } }, { file: 'x' })
+    expect(problems.map((p) => [p.kind, p.path])).toEqual([['invalid_value', 'docs.url']])
+    expect(toBranding(settings).docsUrl).toBeUndefined()
+  })
 })

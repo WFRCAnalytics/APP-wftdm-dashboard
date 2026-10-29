@@ -96,6 +96,7 @@ export function Shell({
         activeIndex={activeIndex}
         onTabChange={changePage}
         branding={branding}
+        docsPath={chromeless ? undefined : active.header.docs}
         mobile={mobile}
         open={menuOpen}
         onClose={() => setMenuOpen(false)}

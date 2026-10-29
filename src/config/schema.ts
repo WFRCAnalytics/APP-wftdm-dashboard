@@ -3,6 +3,7 @@
 // row here plus the code that uses the value.
 //
 // This folder is PURE: relative imports only, no `import.meta.env`, no `@/` alias, no DOM. Node (the Vite plugin) loads it too.
+import { isRelativePath, isWebAddress } from './viewer'
 
 export type SettingType = 'string' | 'number' | 'integer' | 'boolean' | 'boolean|string' | 'color' | 'url' | 'enum' | 'list' | 'map'
 
@@ -104,6 +105,9 @@ export const SETTINGS: readonly SettingDef[] = [
   { path: 'layout.mode', type: 'enum', values: ['scroll', 'tabs'], cascade: true, description: 'How pages are shown unless a page or the viewer says otherwise.' },
   { path: 'export.footer', type: 'boolean|string', cascade: true, description: 'Line under exported images: true (source, scenarios, year, date), false (none) or your own text.' },
   { path: 'assistant.enabled', type: 'boolean', cascade: site, description: 'Turns the AI assistant (button, panel and Settings tab) on or off.' },
+  { path: 'docs.url', type: 'url', cascade: site, check: (v) => (isWebAddress(String(v)) ? undefined : 'expected an http or https address'), description: 'Address of the documentation site; sets a link at the foot of the left sidebar (none when unset).' },
+  { path: 'docs.label', type: 'string', cascade: site, description: 'Text of the documentation link (default: Documentation).' },
+  { path: 'header.docs', type: 'string', scope: 'page', cascade: false, check: (v) => (isRelativePath(String(v)) ? undefined : 'expected a path relative to the documentation address'), description: 'A page header key: a path appended to docs.url, so the sidebar link opens the section for that page.' },
   { path: 'basemap.default', type: 'string', cascade: true, description: 'Default basemap id (a tab or panel may choose its own).' },
   { path: 'basemap.protomaps.pmtiles_url', type: 'url', cascade: site, description: 'A self-hosted PMTiles file for the Protomaps basemaps.' },
   { path: 'basemap.protomaps.api_key', type: 'string', cascade: site, description: 'A hosted Protomaps key restricted to the site domain (never a secret token).' },

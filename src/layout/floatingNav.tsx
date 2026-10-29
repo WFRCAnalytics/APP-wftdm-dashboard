@@ -1,8 +1,10 @@
 import { useState, type ReactNode } from 'react'
-import { Monitor, Moon, PanelLeftClose, PanelLeftOpen, Sun } from 'lucide-react'
+import { BookOpen, Monitor, Moon, PanelLeftClose, PanelLeftOpen, Sun } from 'lucide-react'
+
+import { docsHref, docsLabel } from '@/config'
 
 import { DashboardBrand, DashboardMark, hasConfiguredLogo } from '@/layout/dashboardBrand'
-import { NavButton } from '@/layout/navButton'
+import { NavButton, NavLink } from '@/layout/navButton'
 import { SettingsModal } from '@/layout/settingsModal'
 import { resolveSections } from '@/layout/dashboardLayout'
 import { iconComponentFor } from '@/lib/iconComponentFor'
@@ -34,6 +36,8 @@ export interface FloatingNavProps {
   /** Labels pinned open with the toggle. Owned by the shell, which also shrinks the page beside a pinned nav. */
   pinned?: boolean
   onPinnedChange?: (pinned: boolean) => void
+  /** The open page's `header.docs`, appended to `branding.docsUrl` for the documentation link (none on a chromeless page). */
+  docsPath?: string
 }
 
 // The theme button cycles System -> Light -> Dark and always shows the mode that is set (the Settings modal offers the
@@ -58,7 +62,7 @@ const GENERIC_MARK = (
   </span>
 )
 
-export function FloatingNav({ tabs, activeIndex, onTabChange, branding, mobile = false, open = false, onClose, pinned = false, onPinnedChange }: FloatingNavProps) {
+export function FloatingNav({ tabs, activeIndex, onTabChange, branding, mobile = false, open = false, onClose, pinned = false, onPinnedChange, docsPath }: FloatingNavProps) {
   // Keyboard focus inside the rail shows the labels as a transient overlay; the toggle pins them open (state lives in the
   // shell, which docks the page beside a pinned nav).
   const [engaged, setEngaged] = useState(false)
@@ -67,6 +71,7 @@ export function FloatingNav({ tabs, activeIndex, onTabChange, branding, mobile =
   useLayoutVersion()
   const activePlan = useTabsPlan(tabs[activeIndex])
   const expanded = mobile ? open : pinned || engaged
+  const documentation = docsHref(branding.docsUrl, docsPath)
 
   if (mobile && !open) return null
 
@@ -182,6 +187,11 @@ export function FloatingNav({ tabs, activeIndex, onTabChange, branding, mobile =
             >
               {pinned ? 'Hide labels' : 'Show labels'}
             </NavButton>
+          )}
+          {documentation && (
+            <NavLink href={documentation} icon={<BookOpen className="h-5 w-5" aria-hidden="true" />}>
+              {docsLabel(branding.docsLabel)}
+            </NavLink>
           )}
           <SettingsModal />
           <NavButton

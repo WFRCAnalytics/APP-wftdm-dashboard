@@ -87,6 +87,9 @@ export function checkSite(read: (file: string) => string | undefined, options: C
       header: typeof header.tab === 'string' ? { tab: header.tab, slug: typeof header.slug === 'string' ? header.slug : undefined } : undefined,
     }
     report.pages.push(entry)
+    if (getPath(settings, 'header.docs') !== undefined && getPath(checked.settings, 'docs.url') === undefined) {
+      problems.push({ file, path: 'header.docs', kind: 'invalid_value', message: 'no documentation address (docs.url) is set in the site file; this path is ignored' })
+    }
     if (entry.header) headers.push(entry.header)
 
     if (options.panelCheck && isTree(raw.layout)) {

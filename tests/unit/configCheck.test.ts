@@ -65,3 +65,25 @@ describe('check', () => {
     expect(explain(r)).toEqual(['a.yaml', '  layout.mode = "tabs" (site)', 'b.yaml', '  layout.mode = "scroll" (page: b.yaml)'])
   })
 })
+
+describe('check: documentation link', () => {
+  const site = (extra: string) => `pages: [p.yaml]\n${extra}`
+  const withDocs = page('  docs: modes/\n')
+
+  it('reports a page path when the site has no documentation address', () => {
+    const r = checkSite(files({ 'dashboard-config.yaml': site(''), 'p.yaml': withDocs }))
+    expect(kinds(r)).toEqual([['invalid_value', 'p.yaml', 'header.docs']])
+  })
+
+  it('accepts it with an address, refuses a non-web address and a full-address path', () => {
+    expect(checkSite(files({ 'dashboard-config.yaml': site('docs: { url: "https://example.org/d/" }\n'), 'p.yaml': withDocs })).problems).toEqual([])
+    expect(kinds(checkSite(files({ 'dashboard-config.yaml': site('docs: { url: "javascript:alert(1)" }\n'), 'p.yaml': page() })))).toEqual([['invalid_value', 'dashboard-config.yaml', 'docs.url']])
+    const full = checkSite(files({ 'dashboard-config.yaml': site('docs: { url: "https://example.org/d/" }\n'), 'p.yaml': page('  docs: "https://evil.org/x"\n') }))
+    expect(kinds(full)).toEqual([['invalid_value', 'p.yaml', 'header.docs']])
+  })
+
+  it('refuses header.docs in the site file', () => {
+    const r = checkSite(files({ 'dashboard-config.yaml': 'header: { docs: x }\n' }))
+    expect(kinds(r)).toEqual([['not_allowed_here', 'dashboard-config.yaml', 'header.docs']])
+  })
+})

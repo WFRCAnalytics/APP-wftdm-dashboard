@@ -38,6 +38,9 @@ A wrong value is reported (in a note on the page and in the browser console) and
 | `layout.mode` | `scroll` | `tabs` | — | page, panel (scalars replace, maps merge per key) | How pages are shown unless a page or the viewer says otherwise. |
 | `export.footer` | boolean|string | — | page, panel (scalars replace, maps merge per key) | Line under exported images: true (source, scenarios, year, date), false (none) or your own text. |
 | `assistant.enabled` | boolean | — | site only | Turns the AI assistant (button, panel and Settings tab) on or off. |
+| `docs.url` | url | — | site only | Address of the documentation site; sets a link at the foot of the left sidebar (none when unset). |
+| `docs.label` | string | — | site only | Text of the documentation link (default: Documentation). |
+| `header.docs` | string | — | page `header:` only | A page header key: a path appended to docs.url, so the sidebar link opens the section for that page. |
 | `basemap.default` | string | — | page, panel (scalars replace, maps merge per key) | Default basemap id (a tab or panel may choose its own). |
 | `basemap.protomaps.pmtiles_url` | url | — | site only | A self-hosted PMTiles file for the Protomaps basemaps. |
 | `basemap.protomaps.api_key` | string | — | site only | A hosted Protomaps key restricted to the site domain (never a secret token). |

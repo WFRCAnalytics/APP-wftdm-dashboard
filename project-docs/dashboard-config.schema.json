@@ -224,6 +224,21 @@
         }
       }
     },
+    "docs": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "url": {
+          "type": "string",
+          "pattern": "^\\S*$",
+          "description": "Address of the documentation site; sets a link at the foot of the left sidebar (none when unset)."
+        },
+        "label": {
+          "type": "string",
+          "description": "Text of the documentation link (default: Documentation)."
+        }
+      }
+    },
     "basemap": {
       "type": "object",
       "additionalProperties": false,
