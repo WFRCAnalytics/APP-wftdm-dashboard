@@ -129,7 +129,7 @@ export function setScenarioGroupActive(scenarioGroup: string, active: boolean): 
       if (g === scenarioGroup && run.active) already = true
     }
     if (!already && groups.size >= limits.maxActive) {
-      toast.error(`Up to ${limits.maxActive} scenarios can be on at once`, { id: 'scenario-hard-cap', description: 'Turn one off to add another. Side-by-side maps use one WebGL view per scenario, and browsers allow about 16.' })
+      toast.error(`Up to ${limits.maxActive} scenarios can be on at once`, { id: 'scenario-hard-cap', description: 'Turn one off to add another. A scenario you just loaded stays loaded, but off.' })
       return
     }
     if (!already && groups.size + 1 > limits.warnAt) {

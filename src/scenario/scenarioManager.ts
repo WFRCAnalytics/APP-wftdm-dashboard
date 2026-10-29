@@ -4,6 +4,7 @@
 import { registerScenario, unregisterScenario } from '@/services/duckdb'
 import * as appState from '@/state/appState'
 import { readManifest } from '@/scenario/manifestReader'
+import { setScenarioGroupActive } from '@/state/compareState'
 
 /** WEB vs LOCAL deployment mode (project-docs/SPEC.md) — research.md §5. */
 export function isLocalDeployment(): boolean {
@@ -103,7 +104,11 @@ export async function loadLocalScenario(): Promise<LoadResult> {
   try {
     await registerScenario(name, dirHandle)
     appState.setStatus(name, 'ready')
-    appState.setActive(name, true) // FR-007 — immediate, unlike published scenarios
+    // FR-007 — immediate, unlike published scenarios. It goes through the same limit as every other way of turning a scenario
+    // on (each side-by-side map is a WebGL view, and browsers allow about 16): over the maximum it stays loaded but off,
+    // and the viewer is told why.
+    const run = appState.get(name)
+    setScenarioGroupActive(run?.scenarioGroup ?? name, true)
     return { outcome: 'registered', name }
   } catch (err) {
     appState.setStatus(name, 'failed')
