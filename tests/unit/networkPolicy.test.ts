@@ -40,3 +40,42 @@ describe('when configured', () => {
     expect(getBasemapAllowList()).toEqual([])
   })
 })
+
+describe('the font preference with network.fonts: bundled', async () => {
+  const { BUNDLED_FONTS, clearFont, getFont, isFontOffered, setFont } = await import('../../src/state/fontPreferenceState')
+
+  afterEach(() => {
+    for (const role of ['body', 'heading', 'mono'] as const) clearFont(role)
+  })
+
+  it('offers any family when the fonts are not bundled', () => {
+    expect(isFontOffered('Roboto')).toBe(true)
+    setFont('body', 'Roboto')
+    expect(getFont('body')).toBe('Roboto')
+  })
+
+  it('offers only the default font and the system font when bundled', () => {
+    configureNetwork({ fonts: 'bundled' })
+    expect(BUNDLED_FONTS).toEqual(['Schibsted Grotesk', 'System UI'])
+    expect(isFontOffered('Schibsted Grotesk')).toBe(true)
+    expect(isFontOffered('System UI')).toBe(true)
+    expect(isFontOffered('Geist')).toBe(false)
+    expect(isFontOffered('Roboto')).toBe(false)
+  })
+
+  it('refuses to set a family that is not offered and keeps what was set', () => {
+    configureNetwork({ fonts: 'bundled' })
+    setFont('body', 'Roboto')
+    expect(getFont('body')).toBeUndefined()
+    setFont('body', 'System UI')
+    expect(getFont('body')).toBe('System UI')
+  })
+
+  it('ignores a stored preference for a family that is no longer offered', () => {
+    setFont('heading', 'Geist')
+    configureNetwork({ fonts: 'bundled' })
+    expect(getFont('heading')).toBeUndefined()
+    resetNetworkPolicy()
+    expect(getFont('heading')).toBe('Geist')
+  })
+})

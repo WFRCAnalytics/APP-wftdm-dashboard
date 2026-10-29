@@ -16,7 +16,8 @@ import { DEFAULT_SCALE, MAX_SCALE, MIN_SCALE, setScale } from '@/state/textSizeS
 import { InterfaceColorControl } from '@/layout/settings/interfaceColorControl'
 import { GroupHeading, PillButton, SettingsRow, TabHeader } from '@/layout/settings/settingsParts'
 import { useFontPreference } from '@/hooks/useFontPreference'
-import { clearFont, setFont, type FontRole } from '@/state/fontPreferenceState'
+import { fontsBundled } from '@/services/networkPolicy'
+import { BUNDLED_FONTS, clearFont, DEFAULT_FONT, setFont, SYSTEM_FONT, type FontRole } from '@/state/fontPreferenceState'
 import { clearInterfaceColorOverride, setInterfaceColorOverride } from '@/state/interfaceColorState'
 import { clearGoogleFont, ensureGoogleFontLoaded } from '@/panels/googleFontLoader'
 import type { InterfaceColorRole } from '@/panels/interfaceColor'
@@ -49,8 +50,6 @@ const PRESETS: { name: string; colors: [string, string, string] }[] = [
 
 // The four type cards. Schibsted Grotesk is the self-hosted default (selecting it clears the preference); Geist and IBM
 // Plex Sans load from Google Fonts like any custom font; System UI is the platform's own font, loaded from nowhere.
-const DEFAULT_FONT = 'Schibsted Grotesk'
-const SYSTEM_FONT = 'System UI'
 const SYSTEM_STACK = 'system-ui, -apple-system, "Segoe UI", sans-serif'
 const FONT_CARDS: { name: string; family: string }[] = [
   { name: DEFAULT_FONT, family: '"Schibsted Grotesk Variable", sans-serif' },
@@ -98,6 +97,9 @@ export function AppearanceTab() {
   const colorblindSafe = useColorblindSafePreference()
   const textSize = useTextSize()
   const fontPreference = useFontPreference()
+  // 071-network-block: with `network.fonts: bundled` only the fonts that ship with the app are offered
+  const bundledOnly = fontsBundled()
+  const fontCards = bundledOnly ? FONT_CARDS.filter((f) => BUNDLED_FONTS.includes(f.name)) : FONT_CARDS
 
   // Applies the text-size scale: every rem-based element resizes through the ordinary cascade.
   useEffect(() => {
@@ -113,7 +115,9 @@ export function AppearanceTab() {
   }, [fontPreference])
 
   // Loads the two Google-hosted card fonts so their "Aa" previews render in them. Offline it just falls back.
+  // 071-network-block: never with `network.fonts: bundled` (no outside call at all).
   useEffect(() => {
+    if (bundledOnly) return
     const links = PREVIEW_FONTS.map((name) => {
       const link = document.createElement('link')
       link.rel = 'stylesheet'
@@ -230,7 +234,7 @@ export function AppearanceTab() {
 
       <GroupHeading>Type</GroupHeading>
       <div role="radiogroup" aria-label="Font" className="grid grid-cols-4 gap-2.5 max-[900px]:grid-cols-2">
-        {FONT_CARDS.map((f) => {
+        {fontCards.map((f) => {
           const checked = selectedFont === f.name
           return (
             <button
@@ -255,7 +259,8 @@ export function AppearanceTab() {
           )
         })}
       </div>
-      {/* Any Google Font by name, per role: kept from the earlier design for deployments that want a specific face. */}
+      {/* Any Google Font by name, per role: kept from the earlier design for deployments that want a specific face. Not offered when the fonts are bundled (071). */}
+      {!bundledOnly && (
       <details className="mt-3 text-[var(--mute)]">
         <summary className="w-fit cursor-pointer rounded text-[12.5px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-text)]">
           Custom fonts
@@ -299,6 +304,7 @@ export function AppearanceTab() {
           ))}
         </div>
       </details>
+      )}
 
       <div className="mt-3">
         <SettingsRow title="Text size" help={`${textSize}%`}>

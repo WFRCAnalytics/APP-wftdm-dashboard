@@ -66,8 +66,8 @@ Single web-app project: `src/`, `scripts/`, `tests/`, `project-docs/` at the rep
 
 **Independent Test**: set it; the Appearance tab has two cards and no custom inputs, and the network log has no request to a font host.
 
-- [ ] T012 [US2] `src/state/fontPreferenceState.ts` and `src/layout/settings/appearanceTab.tsx`: with `fontsBundled()`, render only the default and System UI cards, do not render the custom-font inputs or the shortlist, skip the effect that loads the two preview fonts, make `setFont` refuse a family that is not offered, and ignore (do not apply) a stored preference for a hidden family. Unit tests added to `tests/unit/networkPolicy.test.ts` for the filter and the refusal
-- [ ] T013 [US2] Extend `tests/integration/networkBlock.spec.ts`: with `fonts: bundled` two cards, no custom inputs, no request to `fonts.googleapis.com`; without it the four cards and the inputs are there
+- [X] T012 [US2] `src/state/fontPreferenceState.ts` and `src/layout/settings/appearanceTab.tsx`: with `fontsBundled()`, render only the default and System UI cards, do not render the custom-font inputs or the shortlist, skip the effect that loads the two preview fonts, make `setFont` refuse a family that is not offered, and ignore (do not apply) a stored preference for a hidden family. Unit tests added to `tests/unit/networkPolicy.test.ts` for the filter and the refusal
+- [X] T013 [US2] Extend `tests/integration/networkBlock.spec.ts`: with `fonts: bundled` two cards, no custom inputs, no request to `fonts.googleapis.com`; without it the four cards and the inputs are there
 
 ---
 

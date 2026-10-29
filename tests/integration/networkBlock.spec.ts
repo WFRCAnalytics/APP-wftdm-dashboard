@@ -86,3 +86,31 @@ test('a list that matches nothing gives the plain background and calls no basema
   const dialog = await openBasemapTab(page)
   await expect(dialog.getByRole('radio')).toHaveCount(0)
 })
+
+async function openAppearanceTab(page: Page) {
+  await page.getByRole('button', { name: 'Settings' }).click()
+  const dialog = page.getByRole('dialog')
+  await dialog.getByRole('tab', { name: 'Appearance' }).click()
+  await expect(dialog.getByRole('radiogroup', { name: 'Font' })).toBeVisible()
+  return dialog
+}
+
+test('with fonts bundled the Appearance tab offers two fonts and calls no font host', async ({ page }) => {
+  const requests = await open(page, 'network:\n  fonts: bundled')
+  const dialog = await openAppearanceTab(page)
+  await expect(dialog.getByRole('radiogroup', { name: 'Font' }).getByRole('radio')).toHaveCount(2)
+  await expect(dialog.getByRole('radio', { name: /Schibsted Grotesk/ })).toBeVisible()
+  await expect(dialog.getByRole('radio', { name: /System UI/ })).toBeVisible()
+  await expect(dialog.getByText('Custom fonts')).toHaveCount(0)
+  await expect(dialog.getByLabel('Body')).toHaveCount(0)
+  await page.waitForTimeout(1000)
+  expect(requests.filter((u) => /fonts\.googleapis\.com|fonts\.gstatic\.com/.test(u))).toEqual([])
+})
+
+test('without the key the Appearance tab has four fonts, the custom inputs, and asks Google for the previews', async ({ page }) => {
+  const requests = await open(page)
+  const dialog = await openAppearanceTab(page)
+  await expect(dialog.getByRole('radiogroup', { name: 'Font' }).getByRole('radio')).toHaveCount(4)
+  await expect(dialog.getByText('Custom fonts')).toBeVisible()
+  await expect.poll(() => requests.some((u) => u.includes('fonts.googleapis.com')), { timeout: 20_000 }).toBe(true)
+})
