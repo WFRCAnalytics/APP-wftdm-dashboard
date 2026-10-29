@@ -51,3 +51,11 @@ uv build
 ```
 
 Expected: the wheel lists `wftdm_dashboard/static/index.html` and `wftdm_dashboard/templates/dashboard-config.schema.json`; installed into a clean environment, `wftdm-dashboard here` works on a folder.
+
+## Walked (2026-10-29, US1)
+
+- Python: `uv run pytest python/tests -q` all pass (the two symbolic-link tests skip on Windows without the privilege); `uv run ruff check python` reports only the two findings that were already in `observed.py` (an import order and a complexity of 16).
+- Bundle: `npm run build:package` writes `python/wftdm_dashboard/static/` (asset URLs start with `./`, no `demo-*`, git status clean: the folder is ignored).
+- `here` on a scratch folder (the demo pages, three demo runs and the demo geometry copied in, every `index.json` removed): `scenarios/index.json` and each run's `summary/index.json` were generated; a `Range: bytes=0-99` on a Parquet file answered 206 with 100 bytes; `..`, `%2e%2e`, `..%2f..%2f` and `/dashboard-config/../` all answered 404; `Host: evil.example` answered 400; a POST answered 405.
+- In a browser the app loaded and drew its charts (24 SVGs, no console error, no first-run screen) from `http://127.0.0.1:8061/` and from a second server on `8050`; an edit to a page title showed after a reload; no file was written to the folder. The page also requested `raw.githubusercontent.com` (the logo addresses in the demo site file) and `extensions.duckdb.org` (the DuckDB extension download).
+
