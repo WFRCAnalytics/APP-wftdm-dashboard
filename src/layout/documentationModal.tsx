@@ -48,7 +48,7 @@ const CREDITS: { name: string; href: string; role: string }[] = [
 // each credit is a wordmark card that links out. WFRC's own logo ships with the app.
 function AboutPanel() {
   const logo = useColorScheme() === 'dark' ? wfrcWhite : wfrcColor
-  const card = 'flex flex-col gap-1 rounded-[14px] border border-[var(--line)] bg-[var(--tile-hi)] p-3.5 no-underline transition-colors hover:border-[var(--brand-text)] focus-visible:outline-2 focus-visible:outline-[var(--brand-text)]'
+  const card = 'flex h-full w-full flex-col gap-1 rounded-[14px] border border-[var(--line)] bg-[var(--tile-hi)] p-3.5 no-underline transition-colors hover:border-[var(--brand-text)] focus-visible:outline-2 focus-visible:outline-[var(--brand-text)]'
   return (
     <section aria-label="About" className="mb-6" data-testid="docs-about">
       <div className="mb-3 flex flex-wrap items-center gap-x-6 gap-y-3 rounded-[18px] border border-[var(--line)] bg-[var(--tile-hi)] p-4">
@@ -56,7 +56,7 @@ function AboutPanel() {
           <img src={logo} alt="Wasatch Front Regional Council" className="h-10 w-auto" />
         </a>
         <p className="min-w-[220px] flex-1 text-[13.5px] text-[var(--mute)]">
-          Open source, and owned by WFRC: it was developed in part during hours paid for by the Wasatch Front Regional Council.
+          Open source, and owned by WFRC. It was built by a salaried WFRC employee as part of their paid work, and also in their own time. WFRC supplied the tools used, including AI assistance.
         </p>
         <a href="https://github.com/WFRCAnalytics/APP-wftdm-dashboard" target="_blank" rel="noopener noreferrer" className="inline-flex h-9 items-center gap-2 rounded-full border border-[var(--line)] px-4 text-sm font-medium text-[var(--ink)] hover:border-[var(--brand-text)]">
           <GitHub /> Source on GitHub
@@ -65,7 +65,7 @@ function AboutPanel() {
       <h3 className="mb-2 text-[12.5px] font-medium text-[var(--mute)]">Inspiration and credits</h3>
       <ul className="m-0 grid list-none grid-cols-[repeat(auto-fill,minmax(210px,1fr))] gap-2.5 p-0">
         {CREDITS.map((c) => (
-          <li key={c.name}>
+          <li key={c.name} className="flex">
             <a href={c.href} target="_blank" rel="noopener noreferrer" className={card}>
               <span className="text-[15px] font-semibold text-[var(--ink)]">{c.name} <span aria-hidden="true">↗</span></span>
               <span className="text-[12.5px] text-[var(--mute)]">{c.role}</span>
