@@ -42,7 +42,7 @@ export function renderChartSvg(model: DrawnChart, width: number, height: number,
     const t = (e.target as Element).getAttribute?.('data-t')
     if (!t) { tooltip.hide(); return }
     const [title, ...rest] = t.split('~')
-    tooltip.show({ title, rows: rest.map((p) => { const i = p.indexOf('\u0001'); return { k: p.slice(0, i), v: p.slice(i + 1) } }) }, e)
+    tooltip.show({ title, rows: rest.map((p) => { const i = p.indexOf('\u2063'); return { k: p.slice(0, i), v: p.slice(i + 1) } }) }, e)
   }
   svg.addEventListener('mouseover', show)
   svg.addEventListener('mousemove', show)

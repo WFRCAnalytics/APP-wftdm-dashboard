@@ -186,7 +186,7 @@ function Plot({ model, spec, hot, size, theme }: { model: DrawnChart; spec: Char
     const t = (e.target as SVGElement).getAttribute?.('data-t')
     if (!t) { tooltip.hide(); return }
     const [title, ...rest] = t.split('~')
-    tooltip.show({ title, rows: rest.map((p) => { const i = p.indexOf('\u0001'); return { k: p.slice(0, i), v: p.slice(i + 1) } }) }, e)
+    tooltip.show({ title, rows: rest.map((p) => { const i = p.indexOf('\u2063'); return { k: p.slice(0, i), v: p.slice(i + 1) } }) }, e)
   }
   if (pivoted) return <div ref={host} className="plot pivot" />
   if (hierarchical) return <div ref={host} className="plot hier" role="img" aria-label="Chart" />

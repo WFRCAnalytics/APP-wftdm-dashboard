@@ -38,7 +38,7 @@ export function renderPivots(tables: PivotTable[], state: PivotState, maxRows: n
     const t = (e.target as Element).closest?.('[data-t]')?.getAttribute('data-t')
     if (!t) { tooltip.hide(); return }
     const [title, ...rest] = t.split('~')
-    tooltip.show({ title, rows: rest.map((p) => { const i = p.indexOf('\u0001'); return { k: p.slice(0, i), v: p.slice(i + 1) } }) }, e)
+    tooltip.show({ title, rows: rest.map((p) => { const i = p.indexOf('\u2063'); return { k: p.slice(0, i), v: p.slice(i + 1) } }) }, e)
   }
   host.addEventListener('mouseover', show)
   host.addEventListener('mousemove', show)
@@ -234,7 +234,7 @@ function renderPivot(t: PivotTable, state: PivotState, idx: number, maxRows: num
       const text = me.fmt(x)
       td.textContent = text
       const raw = t.val(m, rp, cp)
-      const pairs = me.pct && raw !== null ? [`${me.label}\u0001${me.exact(raw)}`, `${SHARE[me.show]}\u0001${text}`] : [`${me.label}\u0001${me.exact(x)}`]
+      const pairs = me.pct && raw !== null ? [`${me.label}\u2063${me.exact(raw)}`, `${SHARE[me.show]}\u2063${text}`] : [`${me.label}\u2063${me.exact(x)}`]
       td.setAttribute('data-t', `${pathText(rp)} · ${pathText(cp)}~${pairs.join('~')}`)
       if (body && t.opts.cells !== 'plain') {
         const u01 = me.hi === me.lo ? 0.5 : (x - me.lo) / (me.hi - me.lo)

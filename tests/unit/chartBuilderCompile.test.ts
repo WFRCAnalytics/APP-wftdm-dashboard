@@ -49,10 +49,19 @@ describe('bar', () => {
     expect(m.panels[0].rects).toHaveLength(6)
     expect(m.legend[0].items.map((i) => i.label)).toEqual(['a', 'b'])
   })
+  it('keeps every tooltip legal in XML (the SVG export writes it into an attribute) and splits labels that contain "="', () => {
+    const eq = rows.map((r) => ({ ...r, mode: r.mode === 'Car' ? 'Autos >= Workers' : r.mode }))
+    const m = ok(build({ enc: { x: { f: 'mode' }, y: { f: 'trips', agg: 'sum' } } }, eq))
+    const tips = m.panels[0].rects.map((r) => r.tip)
+    for (const t of tips) expect(t).not.toMatch(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/)
+    const car = tips.find((t) => t.startsWith('Autos >= Workers'))!
+    const [, pair] = car.split('~')
+    expect(pair.split('\u2063')[0]).toBe('trips')
+  })
   it('totals values per bar', () => {
     const m = ok(build({ enc: { x: { f: 'mode' }, y: { f: 'trips', agg: 'sum' } } }))
     const total = [0, 1, 2, 3].reduce((s, h) => s + 10 + h, 0) + [0, 1, 2, 3].reduce((s, h) => s + 15 + h, 0)
-    expect(m.panels[0].rects[0].tip).toBe(`Bus~trips\u0001${total}`)
+    expect(m.panels[0].rects[0].tip).toBe(`Bus~trips\u2063${total}`)
   })
   it('reaches 100 percent when normalised', () => {
     const m = ok(build({ enc, stack: 'normalize' }))

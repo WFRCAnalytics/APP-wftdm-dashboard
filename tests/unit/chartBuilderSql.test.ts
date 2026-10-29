@@ -105,7 +105,7 @@ describe('the compiler reads DuckDB results', () => {
     const m = draw(defaultSpec({ mark: 'histogram', enc: { x: { f: 'trips' } } }), cols, rows)
     if (m.problem !== undefined) throw new Error(m.problem)
     expect(m.panels[0].rects).toHaveLength(3)
-    expect(m.panels[0].rects.map((r) => r.tip.split('\u0001')[1])).toEqual(['4', '5', '6'])
+    expect(m.panels[0].rects.map((r) => r.tip.split('\u2063')[1])).toEqual(['4', '5', '6'])
   })
   it('draws boxes from precomputed statistics', () => {
     const cols: Col[] = [{ name: 'mode', type: 'category' }, { name: 'trips', type: 'integer' }]
@@ -117,7 +117,7 @@ describe('the compiler reads DuckDB results', () => {
     if (m.problem !== undefined) throw new Error(m.problem)
     expect(m.panels[0].rects).toHaveLength(2)
     expect(m.panels[0].paths).toHaveLength(2)
-    expect(m.panels[0].rects[0].tip).toContain('median\u00018')
+    expect(m.panels[0].rects[0].tip).toContain('median\u20638')
   })
 })
 
