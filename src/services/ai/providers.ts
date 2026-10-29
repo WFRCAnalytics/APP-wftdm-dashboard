@@ -2,7 +2,7 @@
 // Ollama, any gateway) and one Anthropic Messages client. Non-streaming; the agent loop shows step status instead.
 // Wire formats: specs/064-ai-chat-assistant/contracts/provider-wire.md.
 import { demoStepFor } from './demoScript.ts'
-import type { ChatTurn, Completion, ProviderConfig, ToolCall, ToolSpec } from './types.ts'
+import type { ChatTurn, Completion, ProviderConfig, ProviderProtocol, ToolCall, ToolSpec } from './types.ts'
 
 export type ProviderErrorKind = 'auth' | 'rate-limit' | 'model' | 'network' | 'server' | 'abort' | 'bad-request'
 
@@ -19,13 +19,18 @@ function scrub(text: string, key: string): string {
   return key ? text.split(key).join('[token]') : text
 }
 
+/** The message format to use: the configured protocol, else the one the built-in provider id implies. */
+export function protocolOf(cfg: Pick<ProviderConfig, 'provider' | 'protocol'>): ProviderProtocol {
+  return cfg.protocol ?? (cfg.provider === 'anthropic' ? 'anthropic' : 'openai')
+}
+
 function trimUrl(url: string): string {
   return url.trim().replace(/\/+$/, '')
 }
 
 function headersFor(cfg: ProviderConfig): Record<string, string> {
   const h: Record<string, string> = { 'Content-Type': 'application/json' }
-  if (cfg.provider === 'anthropic') {
+  if (protocolOf(cfg) === 'anthropic') {
     h['x-api-key'] = cfg.apiKey
     h['anthropic-version'] = '2023-06-01'
     // Required for a browser to call the Anthropic API directly.
@@ -225,7 +230,7 @@ export async function complete(
 ): Promise<Completion> {
   try {
     if (cfg.provider === 'demo') return await completeDemo(system, turns, signal)
-    return cfg.provider === 'anthropic'
+    return protocolOf(cfg) === 'anthropic'
       ? await completeAnthropic(cfg, system, turns, tools, signal)
       : await completeOpenAi(cfg, system, turns, tools, signal)
   } catch (e) {
@@ -240,8 +245,10 @@ export async function checkConnection(
   signal?: AbortSignal,
 ): Promise<{ ok: true } | { ok: false; message: string }> {
   if (cfg.provider === 'demo') return { ok: true }
-  const base = cfg.provider === 'anthropic' ? `${anthropicBase(cfg)}/v1` : trimUrl(cfg.baseUrl)
-  const exact = cfg.provider === 'openai' || cfg.provider === 'anthropic'
+  const anthropic = protocolOf(cfg) === 'anthropic'
+  const base = anthropic ? `${anthropicBase(cfg)}/v1` : trimUrl(cfg.baseUrl)
+  // OpenAI and the Anthropic format can look a model up by name; any other OpenAI-compatible server is asked for its list
+  const exact = cfg.provider === 'openai' || anthropic
   try {
     if (exact) {
       await send(cfg, `${base}/models/${encodeURIComponent(cfg.model)}`, { method: 'GET', signal })

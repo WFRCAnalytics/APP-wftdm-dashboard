@@ -202,3 +202,44 @@ describe('demo provider (development)', () => {
     expect(demoResultFor('SELECT 1')).toBeUndefined()
   })
 })
+
+describe('protocol decides the message format, not the provider id', () => {
+  const GATEWAY_ANTHROPIC: ProviderConfig = { provider: 'agency-gw', protocol: 'anthropic', baseUrl: 'https://llm.agency.example/v1', apiKey: 'tok', model: 'm' }
+  const GATEWAY_OPENAI: ProviderConfig = { provider: 'agency-gw', protocol: 'openai', baseUrl: 'https://llm.agency.example/v1/', apiKey: 'tok', model: 'm' }
+
+  it('a custom provider with the anthropic protocol is sent Messages requests with the Anthropic headers', async () => {
+    const fn = mockFetch({ json: async () => ({ content: [{ type: 'text', text: 'hi' }] }) })
+    const out = await complete(GATEWAY_ANTHROPIC, 'SYS', [{ role: 'user', text: 'x' }], TOOLS, signal)
+    const { url, headers, body } = lastCall(fn)
+    expect(url).toBe('https://llm.agency.example/v1/messages')
+    expect(headers['x-api-key']).toBe('tok')
+    expect(headers.Authorization).toBeUndefined()
+    expect(body.system).toBe('SYS')
+    expect(out.text).toBe('hi')
+  })
+
+  it('a custom provider with the openai protocol is sent chat/completions with bearer auth', async () => {
+    const fn = mockFetch({ json: async () => ({ choices: [{ message: { content: 'ok' } }] }) })
+    await complete(GATEWAY_OPENAI, 'SYS', [{ role: 'user', text: 'x' }], TOOLS, signal)
+    const { url, headers } = lastCall(fn)
+    expect(url).toBe('https://llm.agency.example/v1/chat/completions')
+    expect(headers.Authorization).toBe('Bearer tok')
+  })
+
+  it('checks a custom openai-protocol server by its model list, and an anthropic one by model name', async () => {
+    const list = mockFetch({ json: async () => ({ data: [{ id: 'm' }] }) })
+    expect(await checkConnection(GATEWAY_OPENAI, signal)).toEqual({ ok: true })
+    expect(lastCall(list).url).toBe('https://llm.agency.example/v1/models')
+    vi.unstubAllGlobals()
+    const exact = mockFetch({ json: async () => ({}) })
+    expect(await checkConnection(GATEWAY_ANTHROPIC, signal)).toEqual({ ok: true })
+    expect(lastCall(exact).url).toBe('https://llm.agency.example/v1/models/m')
+  })
+
+  it('leaves the built-in providers exactly as they were when protocol is absent', async () => {
+    const fn = mockFetch({ json: async () => ({ content: [{ type: 'text', text: 'a' }] }) })
+    await complete(ANTHROPIC, 's', [{ role: 'user', text: 'x' }], TOOLS, signal)
+    expect(lastCall(fn).url).toBe('https://api.anthropic.com/v1/messages')
+    expect(lastCall(fn).headers['x-api-key']).toBe('ant-secret')
+  })
+})
