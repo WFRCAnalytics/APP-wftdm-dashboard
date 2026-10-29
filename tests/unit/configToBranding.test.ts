@@ -69,3 +69,11 @@ describe('toBranding', () => {
     expect(toBranding(settings).docsUrl).toBeUndefined()
   })
 })
+
+describe('toBranding: settings tabs', () => {
+  it('maps the cleaned list and leaves it unset otherwise', () => {
+    const { settings } = validate({ settings: { tabs: ['scenarios', 'bogus', 'appearance'] } }, { file: 'x' })
+    expect(toBranding(settings).settingsTabs).toEqual(['scenarios', 'appearance'])
+    expect(toBranding(validate({}, { file: 'x' }).settings).settingsTabs).toBeUndefined()
+  })
+})

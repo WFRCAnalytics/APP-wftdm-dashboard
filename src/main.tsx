@@ -36,7 +36,9 @@ import { initDuckDB } from './services/duckdb.ts'
 import { discoverScenarios } from './services/scenarioDiscovery.ts'
 import { bootCompareState } from './services/runResolution.ts'
 import { setAssistantEnabled } from './state/assistantAvailability.ts'
+import { resolveSettingsTabs } from '@/config'
 import { addProblems } from '@/state/configProblems'
+import { configureSettingsTabs } from '@/state/settingsState'
 import { loadSite } from './services/siteConfig.ts'
 import { loadDashboards } from './services/yamlLoader.ts'
 import { setDeployerScenarioPalette } from './panels/scenarioDisplay.ts'
@@ -156,6 +158,10 @@ toast.success('Scenarios loaded', { id: scenariosToastId })
 // Deployer-configurable settings (title, logos, colours, vocabularies, years, ...), in the shape the app reads.
 const branding = site.branding
 setAssistantEnabled(branding.assistantEnabled !== false)
+// The Settings window's tabs and their order (`settings.tabs`); the assistant switch above wins over the list.
+configureSettingsTabs(
+  resolveSettingsTabs(branding.settingsTabs, { assistantEnabled: branding.assistantEnabled !== false }).map((n) => (n === 'assistant' ? 'ai' : n)),
+)
 // 063 redesign: this deployment's category vocabulary (modes, purposes, income groups) for the chart kinds.
 configureVocab(branding.vocab)
 configureMetrics(branding.metrics)

@@ -139,6 +139,8 @@ export interface DashboardBranding {
   /** `docs.url` / `docs.label`: the documentation site and the text of the sidebar link to it (none when no address). */
   docsUrl?: string
   docsLabel?: string
+  /** `settings.tabs`: the Settings window tabs to show, in order, by config name (unset: all five). */
+  settingsTabs?: string[]
   /** 061-appearance-controls: an optional deployer-configured default for
    * each of the three Primary/Secondary/Accent visual roles — same
    * discovery/precedence rules as every other field above (the real

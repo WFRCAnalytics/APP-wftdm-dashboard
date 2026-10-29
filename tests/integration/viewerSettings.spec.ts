@@ -66,3 +66,59 @@ test.describe('documentation link', () => {
     await expect(page.locator('nav[data-sidebar=sidebar] a[target=_blank]')).toHaveCount(0)
   })
 })
+
+test.describe('Settings tabs', () => {
+  const settingsTabs = (page: Page) => page.getByRole('tablist', { name: 'Settings sections' }).getByRole('tab')
+  async function openSettings(page: Page) {
+    await page.getByRole('button', { name: 'Settings' }).click()
+    await expect(page.getByRole('tablist', { name: 'Settings sections' })).toBeVisible()
+  }
+
+  test('with no list the five tabs of today show, in order', async ({ page }) => {
+    await open(page)
+    await openSettings(page)
+    await expect(settingsTabs(page)).toHaveText(['Appearance', 'Scenarios', 'Basemap', 'Assistant', 'Documentation'])
+  })
+
+  test('a list shows exactly those tabs in that order and opens the first', async ({ page }) => {
+    await patchDemoConfig(page, (c) => {
+      c.settings = { tabs: ['scenarios', 'appearance'] }
+    })
+    await open(page)
+    await openSettings(page)
+    await expect(settingsTabs(page)).toHaveText(['Scenarios', 'Appearance'])
+    await expect(settingsTabs(page).first()).toHaveAttribute('aria-selected', 'true')
+    await expect(page.getByTestId('config-notice')).toHaveCount(0)
+  })
+
+  test('the assistant switch wins over the list', async ({ page }) => {
+    await patchDemoConfig(page, (c) => {
+      c.assistant = { enabled: false }
+      c.settings = { tabs: ['assistant', 'basemap'] }
+    })
+    await open(page)
+    await openSettings(page)
+    await expect(settingsTabs(page)).toHaveText(['Basemap'])
+  })
+
+  test('an unknown name is reported and the valid tabs still show', async ({ page }) => {
+    await patchDemoConfig(page, (c) => {
+      c.settings = { tabs: ['basemap', 'bogus', 'appearance'] }
+    })
+    await open(page)
+    await expect(page.getByTestId('config-notice')).toContainText('settings.tabs')
+    await expect(page.getByTestId('config-notice')).toContainText('bogus')
+    await openSettings(page)
+    await expect(settingsTabs(page)).toHaveText(['Basemap', 'Appearance'])
+  })
+
+  test('a list with no usable name is reported and every tab shows', async ({ page }) => {
+    await patchDemoConfig(page, (c) => {
+      c.settings = { tabs: ['bogus'] }
+    })
+    await open(page)
+    await expect(page.getByTestId('config-notice')).toContainText('all tabs are shown')
+    await openSettings(page)
+    await expect(settingsTabs(page)).toHaveCount(5)
+  })
+})

@@ -53,6 +53,7 @@ export function toBranding(settings: Tree): DashboardBranding {
     assistantEnabled: getPath(settings, 'assistant.enabled') as boolean | undefined,
     docsUrl: str(settings, 'docs.url'),
     docsLabel: str(settings, 'docs.label'),
+    settingsTabs: strList(settings, 'settings.tabs'),
   }
 }
 

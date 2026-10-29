@@ -15,6 +15,7 @@ import { DocumentationTab } from '@/layout/settings/documentationTab'
 import {
   getSettingsOpener,
   getSettingsUi,
+  getShownSettingsTabs,
   setSettingsOpen,
   setSettingsTab,
   subscribe as subscribeSettings,
@@ -50,7 +51,10 @@ export function SettingsModal() {
   const bodyRef = useScrollEdges<HTMLDivElement>([ui.tab])
   // A deployment can switch the assistant off (state/assistantAvailability.ts, set once at boot): no tab then. Read at
   // render, not at module load, which runs before main.tsx has read the deployment's config.
-  const TABS = ALL_TABS.filter((t) => t.id !== 'ai' || isAssistantEnabled())
+  // The deployment's tab list (`settings.tabs`: which tabs, in what order); the assistant switch still wins.
+  const TABS = getShownSettingsTabs()
+    .map((id) => ALL_TABS.find((t) => t.id === id))
+    .filter((t): t is (typeof ALL_TABS)[number] => t !== undefined && (t.id !== 'ai' || isAssistantEnabled()))
 
   // Roving tabindex with arrow keys, as the tab pattern asks.
   function onRailKey(e: KeyboardEvent<HTMLDivElement>) {
@@ -87,7 +91,7 @@ export function SettingsModal() {
         >
           <div className="flex min-h-0 flex-col gap-[3px] border-r border-[var(--line)] bg-[var(--tile-hi)] px-3 py-[18px] max-[900px]:flex-row max-[900px]:overflow-x-auto max-[900px]:border-b max-[900px]:border-r-0 max-[900px]:py-3">
             <DialogTitle className="mx-2 mb-[14px] font-heading text-[17px] font-semibold leading-[1.45] max-[900px]:sr-only">Settings</DialogTitle>
-            <DialogDescription className="sr-only">Appearance, scenarios, basemap, assistant and documentation.</DialogDescription>
+            <DialogDescription className="sr-only">{TABS.map((t) => t.label).join(', ')}.</DialogDescription>
             <div
               ref={railRef}
               role="tablist"
@@ -142,7 +146,7 @@ export function SettingsModal() {
             className="scroll-frame flex min-h-0 min-w-0 flex-col py-3"
           >
             <div ref={bodyRef} className="scrollbar-thin scroll-fade min-h-0 flex-1 overflow-auto px-7 pb-5 pt-3">
-              {(TABS.some((t) => t.id === ui.tab) ? PANEL[ui.tab] : PANEL.appearance)()}
+              {(TABS.some((t) => t.id === ui.tab) ? PANEL[ui.tab] : PANEL[TABS[0]?.id ?? 'appearance'])()}
             </div>
           </div>
         </DialogPrimitive.Content>

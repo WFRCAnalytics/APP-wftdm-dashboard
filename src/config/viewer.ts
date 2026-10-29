@@ -36,3 +36,40 @@ export function docsHref(url: string | undefined, path?: string): string | undef
   if (path === undefined || !isRelativePath(path)) return base
   return `${base.replace(/\/+$/, '')}/${path.trim().replace(/^\/+/, '')}`
 }
+
+/** The Settings window's tabs, by the names a deployer writes, in today's order. (`assistant` is the tab the app calls `ai` inside.) */
+export const SETTINGS_TAB_NAMES = ['appearance', 'scenarios', 'basemap', 'assistant', 'documentation'] as const
+export type SettingsTabName = (typeof SETTINGS_TAB_NAMES)[number]
+
+const isTabName = (v: unknown): v is SettingsTabName => (SETTINGS_TAB_NAMES as readonly unknown[]).includes(v)
+
+/**
+ * The schema's `clean` for `settings.tabs`: keeps the known, first-time names in the order written and reports each unknown or
+ * repeated one; when nothing usable is left the value is dropped, so every tab is shown.
+ */
+export function cleanSettingsTabs(value: unknown): { value: unknown; messages: string[] } {
+  const list = Array.isArray(value) ? value : []
+  const messages: string[] = []
+  const kept: SettingsTabName[] = []
+  for (const entry of list) {
+    if (!isTabName(entry)) messages.push(`unknown tab "${String(entry)}" (known: ${SETTINGS_TAB_NAMES.join(', ')})`)
+    else if (kept.includes(entry)) messages.push(`tab "${entry}" is listed twice`)
+    else kept.push(entry)
+  }
+  if (kept.length === 0) {
+    messages.push('no usable tab, so all tabs are shown')
+    return { value: undefined, messages }
+  }
+  return { value: kept, messages }
+}
+
+/**
+ * The tabs the Settings window shows, in order. Unset gives today's five. The assistant switch wins: with the assistant off the
+ * Assistant tab is never shown, whether or not it is listed. Never empty: a list that would leave nothing gives the default.
+ */
+export function resolveSettingsTabs(list: readonly string[] | undefined, opts: { assistantEnabled: boolean }): SettingsTabName[] {
+  const base = list && list.length > 0 ? list.filter(isTabName) : [...SETTINGS_TAB_NAMES]
+  const shown = base.filter((t) => t !== 'assistant' || opts.assistantEnabled)
+  if (shown.length > 0) return shown
+  return SETTINGS_TAB_NAMES.filter((t) => t !== 'assistant' || opts.assistantEnabled)
+}

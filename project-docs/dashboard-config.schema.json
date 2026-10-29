@@ -239,6 +239,19 @@
         }
       }
     },
+    "settings": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "tabs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Settings window tabs, in order: appearance, scenarios, basemap, assistant, documentation (default: all five)."
+        }
+      }
+    },
     "basemap": {
       "type": "object",
       "additionalProperties": false,

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { docsHref, docsLabel, isRelativePath, isWebAddress } from '../../src/config'
+import { cleanSettingsTabs, docsHref, docsLabel, isRelativePath, isWebAddress, resolveSettingsTabs, SETTINGS_TAB_NAMES } from '../../src/config'
 
 describe('isWebAddress', () => {
   it('accepts http and https addresses only', () => {
@@ -50,5 +50,43 @@ describe('docsLabel', () => {
     expect(docsLabel(undefined)).toBe('Documentation')
     expect(docsLabel('  ')).toBe('Documentation')
     expect(docsLabel(' Help ')).toBe('Help')
+  })
+})
+
+describe('cleanSettingsTabs', () => {
+  it('keeps the known names in the order written', () => {
+    expect(cleanSettingsTabs(['scenarios', 'appearance'])).toEqual({ value: ['scenarios', 'appearance'], messages: [] })
+  })
+  it('reports each unknown or repeated name and keeps the rest', () => {
+    const r = cleanSettingsTabs(['basemap', 'bogus', 'basemap', 'appearance'])
+    expect(r.value).toEqual(['basemap', 'appearance'])
+    expect(r.messages).toEqual([expect.stringContaining('unknown tab "bogus"'), expect.stringContaining('"basemap" is listed twice')])
+  })
+  it('drops the value when nothing usable is left', () => {
+    for (const list of [[], ['x', 'y'], 'appearance']) {
+      const r = cleanSettingsTabs(list)
+      expect(r.value, JSON.stringify(list)).toBeUndefined()
+      expect(r.messages.at(-1)).toContain('all tabs are shown')
+    }
+  })
+})
+
+describe('resolveSettingsTabs', () => {
+  const on = { assistantEnabled: true }
+  const off = { assistantEnabled: false }
+  it('gives the five tabs of today, in order, when unset', () => {
+    expect(resolveSettingsTabs(undefined, on)).toEqual([...SETTINGS_TAB_NAMES])
+    expect(resolveSettingsTabs([], on)).toEqual([...SETTINGS_TAB_NAMES])
+  })
+  it('keeps the listed order', () => {
+    expect(resolveSettingsTabs(['scenarios', 'appearance'], on)).toEqual(['scenarios', 'appearance'])
+  })
+  it('lets the assistant switch win', () => {
+    expect(resolveSettingsTabs(undefined, off)).toEqual(['appearance', 'scenarios', 'basemap', 'documentation'])
+    expect(resolveSettingsTabs(['assistant', 'basemap'], off)).toEqual(['basemap'])
+  })
+  it('never returns an empty list', () => {
+    expect(resolveSettingsTabs(['assistant'], off)).toEqual(['appearance', 'scenarios', 'basemap', 'documentation'])
+    expect(resolveSettingsTabs(['bogus'], on)).toEqual([...SETTINGS_TAB_NAMES])
   })
 })

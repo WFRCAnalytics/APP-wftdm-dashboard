@@ -125,3 +125,21 @@ describe('page-scoped rows and the clean hook', () => {
     expect(r.problems).toHaveLength(1)
   })
 })
+
+describe('settings.tabs', () => {
+  it('keeps the valid names and reports an unknown and a repeated one with the settings.tabs path', () => {
+    const { settings, problems } = validate({ settings: { tabs: ['scenarios', 'bogus', 'scenarios', 'appearance'] } }, { file })
+    expect(getPath(settings, 'settings.tabs')).toEqual(['scenarios', 'appearance'])
+    expect(problems.map((p) => [p.kind, p.path])).toEqual([['invalid_value', 'settings.tabs'], ['invalid_value', 'settings.tabs']])
+  })
+
+  it('leaves the key unset and says so when no usable tab is listed', () => {
+    const { settings, problems } = validate({ settings: { tabs: ['bogus'] } }, { file })
+    expect(getPath(settings, 'settings.tabs')).toBeUndefined()
+    expect(problems.map((p) => p.message).join(' ')).toContain('all tabs are shown')
+  })
+
+  it('is a site setting: not allowed on a page', () => {
+    expect(validate({ settings: { tabs: ['basemap'] } }, { file: 'p.yaml', level: 'page' }).problems.map((p) => p.kind)).toEqual(['not_allowed_here'])
+  })
+})
