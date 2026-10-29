@@ -88,13 +88,13 @@ Single web-app project: `src/`, `tests/`, `scripts/`, `project-docs/` at the rep
 
 **Independent Test**: mark one of three pages hidden, the sidebar lists two, `#/<slug>` still opens the hidden one.
 
-- [ ] T023 [US3] Add the row `header.hidden` (`boolean`, `scope: 'page'`) to `src/config/schema.ts`
-- [ ] T024 [P] [US3] Create `src/config/pages.ts` (pure): `listedPages(headers)`, `landingIndex(headers)` and `allHidden(headers)` per data-model.md (hidden pages are not listed; when every page of several is hidden, all are listed; a single page is always listed); export from `src/config/index.ts`; unit tests `tests/unit/configPages.test.ts` for each rule and for index stability
-- [ ] T025 [US3] In `src/layout/floatingNav.tsx` skip the entries that `listedPages` does not list while still iterating the full `tabs` array (indices stay unchanged), in all three forms; a hidden active page shows no selected item and keeps its sections list out of the nav
-- [ ] T026 [US3] In `src/layout/shell.tsx` use `landingIndex` for the initial active index and for an address that names no page; an address that names a hidden page's slug opens it
-- [ ] T027 [US3] Report "every page is hidden; all are shown" once (`invalid_value`, path `pages`) in the boot sequence (`src/main.tsx` through `addProblems`) and in `checkSite`; extend `tests/unit/configCheck.test.ts` (also covers a single hidden page: no problem)
-- [ ] T028 [P] [US3] Playwright cases in `tests/integration/viewerSettings.spec.ts`: a hidden page is absent from the expanded and collapsed sidebar and from the mobile sheet; the landing page is the first non-hidden one; `#/<slug>` opens the hidden page with its own title; a single hidden page is the landing page; every page hidden lists all and shows the note
-- [ ] T029 [US3] Run `npm run docs:config` and commit the regenerated reference and JSON Schema
+- [X] T023 [US3] Add the row `header.hidden` (`boolean`, `scope: 'page'`) to `src/config/schema.ts`
+- [X] T024 [P] [US3] Create `src/config/pages.ts` (pure): `listedPages(headers)`, `landingIndex(headers)` and `allHidden(headers)` per data-model.md (hidden pages are not listed; when every page of several is hidden, all are listed; a single page is always listed); export from `src/config/index.ts`; unit tests `tests/unit/configPages.test.ts` for each rule and for index stability
+- [X] T025 [US3] In `src/layout/floatingNav.tsx` skip the entries that `listedPages` does not list while still iterating the full `tabs` array (indices stay unchanged), in all three forms; a hidden active page shows no selected item and keeps its sections list out of the nav
+- [X] T026 [US3] In `src/layout/shell.tsx` use `landingIndex` for the initial active index and for an address that names no page; an address that names a hidden page's slug opens it
+- [X] T027 [US3] Report "every page is hidden; all are shown" once (`invalid_value`, path `pages`) in the boot sequence (`src/main.tsx` through `addProblems`) and in `checkSite`; extend `tests/unit/configCheck.test.ts` (also covers a single hidden page: no problem)
+- [X] T028 [P] [US3] Playwright cases in `tests/integration/viewerSettings.spec.ts`: a hidden page is absent from the expanded and collapsed sidebar and from the mobile sheet; the landing page is the first non-hidden one; `#/<slug>` opens the hidden page with its own title; a single hidden page is the landing page; every page hidden lists all and shows the note
+- [X] T029 [US3] Run `npm run docs:config` and commit the regenerated reference and JSON Schema
 
 **Checkpoint**: all three stories work independently.
 

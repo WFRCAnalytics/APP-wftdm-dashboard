@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { LayoutDashboard } from 'lucide-react'
 
+import { landingIndex } from '@/config'
 import { getActiveSection } from '@/state/layoutState'
 import { addProblems } from '@/state/configProblems'
 import { assignSlugs, slugCollisions, buildHash, parseHash, replaceAddress, setCurrentSlug } from '@/state/routeState'
@@ -42,7 +43,7 @@ export function Shell({
   }, [dashboards])
   const indexOfHash = () => {
     const i = slugs.indexOf(parseHash(window.location.hash).page ?? '')
-    return i >= 0 ? i : 0
+    return i >= 0 ? i : landingIndex(dashboards.map((d) => d.header))
   }
   const [activeIndex, setActiveIndex] = useState(indexOfHash)
   // The slug is read by the section state when it writes the address; set during render so children see it first.

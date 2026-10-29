@@ -87,3 +87,27 @@ describe('check: documentation link', () => {
     expect(kinds(r)).toEqual([['not_allowed_here', 'dashboard-config.yaml', 'header.docs']])
   })
 })
+
+describe('check: hidden pages', () => {
+  const site = 'pages: [a.yaml, b.yaml]\n'
+  const hidden = (tab: string) => page('  hidden: true\n', tab)
+
+  it('accepts some pages hidden and a single hidden page', () => {
+    expect(checkSite(files({ 'dashboard-config.yaml': site, 'a.yaml': page('', 'A'), 'b.yaml': hidden('B') })).problems).toEqual([])
+    expect(checkSite(files({ 'dashboard-config.yaml': 'pages: [a.yaml]\n', 'a.yaml': hidden('A') })).problems).toEqual([])
+  })
+
+  it('reports every page hidden, once', () => {
+    const r = checkSite(files({ 'dashboard-config.yaml': site, 'a.yaml': hidden('A'), 'b.yaml': hidden('B') }))
+    expect(kinds(r)).toEqual([['invalid_value', 'dashboard-config.yaml', 'pages']])
+  })
+
+  it('reports a hidden flag that is not true or false', () => {
+    const r = checkSite(files({ 'dashboard-config.yaml': site, 'a.yaml': page('  hidden: yes please\n', 'A'), 'b.yaml': page('', 'B') }))
+    expect(kinds(r)).toEqual([['wrong_type', 'a.yaml', 'header.hidden']])
+  })
+
+  it('refuses header.hidden in the site file', () => {
+    expect(kinds(checkSite(files({ 'dashboard-config.yaml': 'header: { hidden: true }\n' })))).toEqual([['not_allowed_here', 'dashboard-config.yaml', 'header.hidden']])
+  })
+})

@@ -122,3 +122,64 @@ test.describe('Settings tabs', () => {
     await expect(settingsTabs(page)).toHaveCount(5)
   })
 })
+
+test.describe('hidden pages', () => {
+  const hide = (page: Page, glob: string | RegExp) =>
+    page.route(glob, async (route) => {
+      const res = await route.fetch()
+      await route.fulfill({ response: res, body: (await res.text()).replace(/^header:/m, `header:\n  hidden: true`) })
+    })
+  const navTab = (page: Page, name: string) => page.locator('nav[data-sidebar=sidebar]').getByRole('tab', { name, exact: true })
+
+  test('a hidden page is not in the sidebar, and the landing page is the first one that is not hidden', async ({ page }) => {
+    await hide(page, '**/dashboard-1-*.yaml')
+    await open(page)
+    await expect(page.locator('h1')).toHaveText('Person & Households')
+    await expect(navTab(page, 'Summary')).toHaveCount(0)
+    await expect(navTab(page, 'Person & Households')).toHaveCount(1)
+    await expect(page.getByTestId('config-notice')).toHaveCount(0)
+  })
+
+  test('a hidden page still opens at its address, with its own title', async ({ page }) => {
+    await hide(page, '**/dashboard-1-*.yaml')
+    await page.goto('/#/summary')
+    await page.waitForFunction(() => document.querySelector('h1') && !document.body.innerText.includes('Connecting to DuckDB'), null, { timeout: 60_000 })
+    await expect(page.locator('h1')).toHaveText('Summary')
+    await expect(navTab(page, 'Summary')).toHaveCount(0)
+    // another page loses nothing: the others are still listed and open
+    await page.hover('[data-sidebar=sidebar]')
+    await navTab(page, 'Person & Households').click()
+    await expect(page.locator('h1')).toHaveText('Person & Households')
+  })
+
+  test('a hidden page is also absent from the mobile sheet', async ({ page }) => {
+    await hide(page, '**/dashboard-1-*.yaml')
+    await page.setViewportSize({ width: 500, height: 800 })
+    await page.goto('/')
+    await page.waitForFunction(() => document.querySelector('h1') && !document.body.innerText.includes('Connecting to DuckDB'), null, { timeout: 60_000 })
+    await page.getByRole('button', { name: 'Open navigation' }).click()
+    await expect(navTab(page, 'Person & Households')).toBeVisible()
+    await expect(navTab(page, 'Summary')).toHaveCount(0)
+  })
+
+  test('a single hidden page is the landing page', async ({ page }) => {
+    await patchDemoConfig(page, (c) => {
+      c.pages = ['dashboard-1-summary.yaml']
+    })
+    await hide(page, '**/dashboard-1-*.yaml')
+    await open(page)
+    await expect(page.locator('h1')).toHaveText('Summary')
+    await expect(page.getByTestId('config-notice')).toHaveCount(0)
+  })
+
+  test('every page hidden is reported and all pages are listed', async ({ page }) => {
+    await patchDemoConfig(page, (c) => {
+      c.pages = ['dashboard-1-summary.yaml', 'dashboard-2-person-household.yaml']
+    })
+    await hide(page, /dashboard-[12]-[^/]*\.yaml/)
+    await open(page)
+    await expect(page.getByTestId('config-notice')).toContainText('every page is hidden')
+    await expect(navTab(page, 'Summary')).toHaveCount(1)
+    await expect(navTab(page, 'Person & Households')).toHaveCount(1)
+  })
+})

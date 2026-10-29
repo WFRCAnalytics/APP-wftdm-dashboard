@@ -36,7 +36,7 @@ import { initDuckDB } from './services/duckdb.ts'
 import { discoverScenarios } from './services/scenarioDiscovery.ts'
 import { bootCompareState } from './services/runResolution.ts'
 import { setAssistantEnabled } from './state/assistantAvailability.ts'
-import { resolveSettingsTabs } from '@/config'
+import { allHidden, resolveSettingsTabs } from '@/config'
 import { addProblems } from '@/state/configProblems'
 import { configureSettingsTabs } from '@/state/settingsState'
 import { loadSite } from './services/siteConfig.ts'
@@ -266,6 +266,11 @@ for (const dashboard of parsedDashboards) {
       setFilter(filterDef.id, filterDef.default)
     }
   }
+}
+
+// Every page hidden would leave an empty sidebar: reported once, and the shell then lists them all.
+if (allHidden(parsedDashboards.map((d) => d.header))) {
+  addProblems([{ file: 'dashboard-config.yaml', path: 'pages', kind: 'invalid_value', message: 'every page is hidden (header.hidden); all are listed instead' }])
 }
 
 // A page's documentation path needs the site's documentation address; without one it is ignored (reported once here).

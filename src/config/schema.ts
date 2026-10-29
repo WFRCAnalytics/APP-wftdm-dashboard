@@ -108,6 +108,7 @@ export const SETTINGS: readonly SettingDef[] = [
   { path: 'docs.url', type: 'url', cascade: site, check: (v) => (isWebAddress(String(v)) ? undefined : 'expected an http or https address'), description: 'Address of the documentation site; sets a link at the foot of the left sidebar (none when unset).' },
   { path: 'docs.label', type: 'string', cascade: site, description: 'Text of the documentation link (default: Documentation).' },
   { path: 'header.docs', type: 'string', scope: 'page', cascade: false, check: (v) => (isRelativePath(String(v)) ? undefined : 'expected a path relative to the documentation address'), description: 'A page header key: a path appended to docs.url, so the sidebar link opens the section for that page.' },
+  { path: 'header.hidden', type: 'boolean', scope: 'page', cascade: false, description: 'A page header key: true keeps the page out of the sidebar; it still opens at its address. The first page that is not hidden is the landing page.' },
   { path: 'settings.tabs', type: 'list', of: 'string', cascade: site, clean: cleanSettingsTabs, description: 'Settings window tabs, in order: appearance, scenarios, basemap, assistant, documentation (default: all five).' },
   { path: 'basemap.default', type: 'string', cascade: true, description: 'Default basemap id (a tab or panel may choose its own).' },
   { path: 'basemap.protomaps.pmtiles_url', type: 'url', cascade: site, description: 'A self-hosted PMTiles file for the Protomaps basemaps.' },

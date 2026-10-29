@@ -6,6 +6,7 @@ import { load } from 'js-yaml'
 import { slugCollisions } from '../state/routeState'
 import { getPath, isTree, type Tree } from './paths'
 import { pageSettings } from './levels'
+import { allHidden } from './pages'
 import { resolve } from './resolve'
 import { SETTINGS } from './schema'
 import { validate, type ConfigProblem } from './validate'
@@ -102,6 +103,9 @@ export function checkSite(read: (file: string) => string | undefined, options: C
         }
       }
     }
+  }
+  if (allHidden(report.pages.map((p) => ({ hidden: getPath(p.settings, 'header.hidden') === true })))) {
+    problems.push({ file: SITE_FILE, path: 'pages', kind: 'invalid_value', message: 'every page is hidden (header.hidden); the app lists all of them instead' })
   }
   for (const c of slugCollisions(headers)) {
     problems.push({

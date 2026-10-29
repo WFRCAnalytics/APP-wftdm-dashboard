@@ -41,6 +41,7 @@ A wrong value is reported (in a note on the page and in the browser console) and
 | `docs.url` | url | — | site only | Address of the documentation site; sets a link at the foot of the left sidebar (none when unset). |
 | `docs.label` | string | — | site only | Text of the documentation link (default: Documentation). |
 | `header.docs` | string | — | page `header:` only | A page header key: a path appended to docs.url, so the sidebar link opens the section for that page. |
+| `header.hidden` | boolean | — | page `header:` only | A page header key: true keeps the page out of the sidebar; it still opens at its address. The first page that is not hidden is the landing page. |
 | `settings.tabs` | list of string | — | site only | Settings window tabs, in order: appearance, scenarios, basemap, assistant, documentation (default: all five). |
 | `basemap.default` | string | — | page, panel (scalars replace, maps merge per key) | Default basemap id (a tab or panel may choose its own). |
 | `basemap.protomaps.pmtiles_url` | url | — | site only | A self-hosted PMTiles file for the Protomaps basemaps. |

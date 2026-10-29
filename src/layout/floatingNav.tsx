@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import { BookOpen, Monitor, Moon, PanelLeftClose, PanelLeftOpen, Sun } from 'lucide-react'
 
-import { docsHref, docsLabel } from '@/config'
+import { docsHref, docsLabel, listedPages } from '@/config'
 
 import { DashboardBrand, DashboardMark, hasConfiguredLogo } from '@/layout/dashboardBrand'
 import { NavButton, NavLink } from '@/layout/navButton'
@@ -72,6 +72,8 @@ export function FloatingNav({ tabs, activeIndex, onTabChange, branding, mobile =
   const activePlan = useTabsPlan(tabs[activeIndex])
   const expanded = mobile ? open : pinned || engaged
   const documentation = docsHref(branding.docsUrl, docsPath)
+  // hidden pages are not listed; the indices stay those of the full list (see the shell)
+  const listed = new Set(listedPages(tabs.map((t) => t.header)))
 
   if (mobile && !open) return null
 
@@ -125,6 +127,7 @@ export function FloatingNav({ tabs, activeIndex, onTabChange, branding, mobile =
 
         <div role="tablist" aria-orientation="vertical" className="scrollbar-thin flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overflow-x-hidden">
           {tabs.map((tab, index) => {
+            if (!listed.has(index)) return null
             const isActive = index === activeIndex
             const Icon = tab.header.icon ? iconComponentFor(tab.header.icon) : undefined
             const tabsPlan = isActive ? activePlan : null
