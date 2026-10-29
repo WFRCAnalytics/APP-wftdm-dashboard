@@ -1,0 +1,455 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "dashboard-config.yaml",
+  "description": "Site settings of the calibration dashboard (file version 1). Generated from src/config/schema.ts.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "type": "integer",
+      "description": "File version; a newer one than the app reads is reported."
+    },
+    "pages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Page files in display order; the first is the landing page."
+    },
+    "title": {
+      "type": "string",
+      "description": "Dashboard title: the header text and the browser tab title."
+    },
+    "logo": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "light": {
+          "type": "string",
+          "pattern": "^\\S*$",
+          "description": "Full logo shown when the navigation is expanded (light theme)."
+        },
+        "dark": {
+          "type": "string",
+          "pattern": "^\\S*$",
+          "description": "Full logo for the dark theme."
+        }
+      }
+    },
+    "mark": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "light": {
+          "type": "string",
+          "pattern": "^\\S*$",
+          "description": "Abbreviated logo shown when the navigation is collapsed (light theme)."
+        },
+        "dark": {
+          "type": "string",
+          "pattern": "^\\S*$",
+          "description": "Abbreviated logo for the dark theme."
+        }
+      }
+    },
+    "colors": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "primary": {
+          "type": "string",
+          "description": "Primary data colour (transit and the chart palette)."
+        },
+        "secondary": {
+          "type": "string",
+          "description": "Secondary data colour (walking)."
+        },
+        "accent": {
+          "type": "string",
+          "description": "Accent data colour (biking)."
+        },
+        "brand": {
+          "type": "string",
+          "description": "Interface colour: selected pills, titles, tags and focus rings."
+        }
+      }
+    },
+    "scenario_palette": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Default scenario colours, in order."
+    },
+    "vocab": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "modes": {
+          "type": "array",
+          "items": {},
+          "description": "Travel modes: label, raw data ids and a mode colour token."
+        },
+        "purposes": {
+          "type": "array",
+          "items": {},
+          "description": "Trip purposes: label and raw data ids."
+        },
+        "incomes": {
+          "type": "array",
+          "items": {},
+          "description": "Income groups: label and raw data ids."
+        },
+        "autos": {
+          "type": "array",
+          "items": {},
+          "description": "Auto-ownership groups: label and raw data ids."
+        },
+        "districts": {
+          "type": "array",
+          "items": {},
+          "description": "District names for flow charts and the VMT hierarchy."
+        }
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "description": "Per-metric label, unit, decimals, scale and hidden overrides."
+    },
+    "units": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "trips": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "divisor": {
+              "type": "number",
+              "description": "Divisor for trip counts in the time-of-day charts."
+            },
+            "suffix": {
+              "type": "string",
+              "description": "Suffix shown after a divided trip count."
+            }
+          }
+        },
+        "transit_share_max": {
+          "type": "number",
+          "description": "Top of the transit-share map ramp."
+        }
+      }
+    },
+    "years": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "list": {
+          "type": "array",
+          "items": {},
+          "description": "Model years in display order: a year, or { year, label }."
+        },
+        "base": {
+          "type": "integer",
+          "description": "The base year."
+        },
+        "default": {
+          "type": "integer",
+          "description": "The year shown first."
+        }
+      }
+    },
+    "compare": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "default": {
+          "enum": [
+            "auto",
+            "on",
+            "off"
+          ],
+          "description": "Whether Compare starts on: auto turns it on with two or more independent scenarios."
+        },
+        "scenarios": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Scenario groups compared at first load (default: every loaded one)."
+        },
+        "focus": {
+          "type": "string",
+          "description": "The focus scenario group."
+        },
+        "reference": {
+          "type": "string",
+          "description": "The reference: a scenario group id or `observed`."
+        }
+      }
+    },
+    "layout": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "enum": [
+            "scroll",
+            "tabs"
+          ],
+          "description": "How pages are shown unless a page or the viewer says otherwise."
+        }
+      }
+    },
+    "export": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "footer": {
+          "type": [
+            "boolean",
+            "string"
+          ],
+          "description": "Line under exported images: true (source, scenarios, year, date), false (none) or your own text."
+        }
+      }
+    },
+    "assistant": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Turns the AI assistant (button, panel and Settings tab) on or off."
+        },
+        "providers": {
+          "type": "array",
+          "items": {},
+          "description": "The AI providers the assistant tab offers, replacing the built-in ones: id, label, base_url, models, needs_key, protocol (openai or anthropic). The address of a listed provider is fixed."
+        },
+        "default": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "provider": {
+              "type": "string",
+              "description": "The provider the assistant tab starts on (an id from the offered providers)."
+            },
+            "model": {
+              "type": "string",
+              "description": "The model the assistant tab starts with (any model name)."
+            }
+          }
+        },
+        "prompt_addendum": {
+          "type": "string",
+          "description": "A short plain-text note added after the assistant’s instructions (for example: Our zones are called TAZs). At most 2000 characters; the viewer does not see it."
+        },
+        "limits": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "round_trips": {
+              "type": "integer",
+              "description": "Steps the assistant may take to answer one question: 1 to 12 (default 6)."
+            },
+            "preview_rows": {
+              "type": "integer",
+              "description": "Rows of a query result shown to the viewer: 100 to 5000 (default 1000)."
+            },
+            "model_rows": {
+              "type": "integer",
+              "description": "Rows of a result shared with the model when the viewer shares results: 1 to 200 (default 50)."
+            }
+          }
+        }
+      }
+    },
+    "docs": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "url": {
+          "type": "string",
+          "pattern": "^\\S*$",
+          "description": "Address of the documentation site; sets a link at the foot of the left sidebar (none when unset)."
+        },
+        "label": {
+          "type": "string",
+          "description": "Text of the documentation link (default: Documentation)."
+        }
+      }
+    },
+    "settings": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "tabs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Settings window tabs, in order: appearance, scenarios, basemap, assistant, documentation (default: all five)."
+        }
+      }
+    },
+    "network": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "fonts": {
+          "enum": [
+            "bundled",
+            "any"
+          ],
+          "description": "bundled: the Appearance tab offers only the fonts that ship with the app (the default and System UI) and no font is loaded from an outside host. any: today’s behaviour (default)."
+        },
+        "basemaps": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "allow": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Patterns (* is the only wildcard, letter case ignored) on basemap ids such as carto-positron, openfreemap-*, ugrc-vector-lite, protomaps-light or OpenStreetMap.Mapnik. The Basemap tab offers only matching entries and a default that does not match is replaced by the first allowed one. Empty or absent: every basemap is allowed."
+            }
+          }
+        },
+        "duckdb_extensions": {
+          "type": "string",
+          "pattern": "^\\S*$",
+          "description": "One http or https address the database downloads its extensions (spatial, parquet) from, instead of DuckDB’s own host. The deployer hosts the files."
+        }
+      }
+    },
+    "basemap": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "default": {
+          "type": "string",
+          "description": "Default basemap id (a tab or panel may choose its own)."
+        },
+        "protomaps": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "pmtiles_url": {
+              "type": "string",
+              "pattern": "^\\S*$",
+              "description": "A self-hosted PMTiles file for the Protomaps basemaps."
+            },
+            "api_key": {
+              "type": "string",
+              "description": "A hosted Protomaps key restricted to the site domain (never a secret token)."
+            }
+          }
+        }
+      }
+    },
+    "explore": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "limits": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "csv_rows": {
+              "type": "integer",
+              "description": "Explore builder limit. Rows a CSV export may hold. 1 to 5,000,000 (default 100,000). A panel or page may set its own; the lower level wins per key."
+            },
+            "page_size": {
+              "type": "integer",
+              "description": "Explore builder limit. Rows per page in the Data tab (unset: as many as the tile is tall). 5 to 200. A panel or page may set its own; the lower level wins per key."
+            },
+            "undo_steps": {
+              "type": "integer",
+              "description": "Explore builder limit. How many changes can be undone. 1 to 500 (default 60). A panel or page may set its own; the lower level wins per key."
+            },
+            "max_joins": {
+              "type": "integer",
+              "description": "Explore builder limit. Joins the query builder allows. 1 to 8 (default 4). A panel or page may set its own; the lower level wins per key."
+            },
+            "chart_rows": {
+              "type": "integer",
+              "description": "Explore builder limit. Groups a chart may draw before it says it is cut. 100 to 1,000,000 (default 50,000). A panel or page may set its own; the lower level wins per key."
+            },
+            "scatter_sample": {
+              "type": "integer",
+              "description": "Explore builder limit. Points a scatter plot samples. 100 to 100,000 (default 5,000). A panel or page may set its own; the lower level wins per key."
+            },
+            "histogram_bins": {
+              "type": "integer",
+              "description": "Explore builder limit. Bins of the histogram chart. 2 to 100 (default 12). A panel or page may set its own; the lower level wins per key."
+            },
+            "legend_series": {
+              "type": "integer",
+              "description": "Explore builder limit. Legend values drawn before the rest are cut. 2 to 50 (default 15). A panel or page may set its own; the lower level wins per key."
+            },
+            "distinct_values": {
+              "type": "integer",
+              "description": "Explore builder limit. Values a filter list offers. 10 to 5,000 (default 200). A panel or page may set its own; the lower level wins per key."
+            },
+            "pivot_rows": {
+              "type": "integer",
+              "description": "Explore builder limit. Rows a pivot table draws. 20 to 5,000 (default 500). A panel or page may set its own; the lower level wins per key."
+            }
+          }
+        },
+        "features": {
+          "type": "object",
+          "description": "Explore builder features switched on or off; maps merge per key."
+        },
+        "charts": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "default": {
+              "type": "string",
+              "description": "The chart type a new Explore chart tab starts with; it must be one of the allowed charts (otherwise the first allowed chart is used). A lower level replaces it."
+            },
+            "allow": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Chart types the builder offers; a lower level replaces the list."
+            }
+          }
+        },
+        "tables": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "include": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Table name globs the builder may use; a lower level replaces the list."
+            },
+            "exclude": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Table name globs the builder hides; lower levels add to the list."
+            }
+          }
+        },
+        "columns": {
+          "type": "object",
+          "description": "Column label, unit and format overrides; maps merge per key."
+        },
+        "presets": {
+          "type": "array",
+          "items": {},
+          "description": "Starter charts; lower levels add to the list."
+        }
+      }
+    }
+  }
+}

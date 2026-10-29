@@ -189,3 +189,6 @@ either a fresh scenario directory or a manual edit, by design.
 | `WFRCAnalytics/APP-Commute-Explorer` | MapboxOverlay + FlowmapLayer + MapLibre + deck.gl v9 compat |
 | `ar-puuk/spatial-sql-explorer` | DuckDB spatial + MapLibre choropleth + basemap switching (plain JS) |
 | `ar-puuk/parquet-viewer` | GeoParquet metadata detection + spatial extension lazy-load + buffer-pool fix |
+### Update (072-python-local-server): `here`, `serve` and `init` are built
+
+The three commands above exist now. `here` serves the embedded app (`python/wftdm_dashboard/static/`, the normal build made by `npm run build:package` with a relative base) and a site folder: the site file and pages as `dashboard-config/`, the runs as `scenarios/` (with the `scenarios/index.json` and `summary/index.json` lists generated when the folder has none), `observed/` and `geometry/`. `serve` is the same server without the app and with cross-origin access. `init [FOLDER]` writes the site starter (`dashboard-config.yaml`, generated from the schema, and one page) and never overwrites; the **scenario scaffold** described under `init --scenario-dir` above is NOT built yet and stays a later step. The library has no dashboard logic and no configuration check (that needs the TypeScript core).

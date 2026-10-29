@@ -11,6 +11,7 @@
     "docs:config": "vite-node scripts/gen-config-reference.ts",
     "build:pages": "tsc --noEmit && vite build --mode demo --outDir docs --emptyOutDir",
     "build:demo": "tsc --noEmit && vite build --mode demo",
+    "build:package": "tsc --noEmit && vite build --mode package --outDir python/wftdm_dashboard/static --emptyOutDir",
     "preview": "vite preview",
     "preview:pages": "vite preview --outDir docs",
     "typecheck": "tsc --noEmit",

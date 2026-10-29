@@ -62,8 +62,9 @@ All computation happens locally. The hosted web app is static HTML/JS/CSS.
 
 ## Deployment modes
 
-> **Status:** the hosted web app and `wftdm-dashboard summarize` (the Python post-processor) exist today. The `serve`,
-> `here` and `init` commands described below are designed but not built yet.
+> **Status:** the hosted web app, `wftdm-dashboard summarize` (the Python post-processor) and, since 072, `here`, `serve` and
+> `init` exist. Not built yet: `init --scenario-dir` (the model-repository scaffold) and a configuration check in the library
+> (use `npm run check -- <folder>` in this repository).
 
 ### Web app (primary)
 Visit the hosted URL in Chrome or Edge. Published scenarios from `public/scenarios/` load
@@ -77,12 +78,31 @@ local files never leave the machine.
 # Install once
 uv tool install git+https://github.com/WFRCAnalytics/APP-wftdm-dashboard
 
-# Run from any scenario output folder
-wftdm-dashboard serve    # starts file server, use with hosted web app
-wftdm-dashboard here     # starts file server + local copy of app (intended for no internet;
-                         # see project-docs/ARCHITECTURE.md for one known, confirmed exception)
-wftdm-dashboard init --scenario-dir <path>   # scaffold default configs for a new scenario
+# Start a dashboard from a folder
+wftdm-dashboard init some-folder    # writes a starter dashboard-config.yaml and one page (never overwrites)
+wftdm-dashboard here some-folder    # serves the app and the folder on localhost and opens the browser
+wftdm-dashboard serve some-folder   # serves only the folder, with cross-origin access, for a hosted copy of the app
 ```
+
+The **folder** holds a `dashboard-config.yaml` (the site file), the page files it lists and the runs:
+
+```text
+some-folder/
+├── dashboard-config.yaml        # the site file
+├── dashboard-1-overview.yaml    # the pages it lists
+├── scenarios/<run>/             # one folder per run: manifest.yaml and summary/*.parquet
+├── observed/                    # optional
+└── geometry/                    # optional zone and rail GeoParquet files
+```
+
+A folder that already has a `dashboard-config/` subfolder (the app's own `public/` layout) is served as it is, so
+`wftdm-dashboard here public` works. `here` needs no internet for the app itself (DuckDB still downloads its own
+extensions unless `network.duckdb_extensions` points at a mirror, see `project-docs/CONFIG-REFERENCE.md`); it never writes to the
+folder, binds to `127.0.0.1` by default (`--host` changes that, with a warning), refuses any path outside the folder,
+supports range requests, and makes the browser re-check files on every load so an edit shows on reload. `--port` picks a
+port (otherwise 8050, or the next free one) and `--no-browser` skips opening the browser. A folder with no site file shows
+the app's first-run screen. `serve` has limits: some browsers refuse to let a secure (https) page read a local `http`
+address (mixed content, private network access); `here` always works.
 
 ### Add to model repo
 ```toml

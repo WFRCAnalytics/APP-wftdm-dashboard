@@ -4,10 +4,13 @@ additions) — per contracts/cli.md.
 
 from __future__ import annotations
 
+import pytest
 import yaml
 from click.testing import CliRunner
 
+import wftdm_dashboard.cli as cli_module
 from wftdm_dashboard.cli import main
+from wftdm_dashboard.server import BundleMissingError, PortInUseError
 
 
 def _invoke_summarize(raw_dir, config_path, output_dir, extra_args=()):
@@ -148,3 +151,302 @@ def test_missing_source_file_exits_one_with_a_specific_message(
 
     assert result.exit_code == 1
     assert "trips" in result.output
+
+
+# ---------------------------------------------------------------- here (072-python-local-server)
+
+
+class _FakeServer:
+    server_port = 8123
+
+
+@pytest.fixture
+def run_here(monkeypatch, tmp_path):
+    """Runs `here` with the server start patched out: returns (result, calls)."""
+    calls: dict = {}
+
+    def fake_create_app(folder, **kwargs):
+        calls["app"] = (folder, kwargs)
+        return object()
+
+    def fake_bind(app, host, port, *, exact_port):
+        calls["bind"] = (host, port, exact_port)
+        return _FakeServer()
+
+    def fake_serve(server, *, message, url, open_browser):
+        calls["serve"] = (message, url, open_browser)
+
+    monkeypatch.setattr(cli_module, "create_app", fake_create_app)
+    monkeypatch.setattr(cli_module, "bind_server", fake_bind)
+    monkeypatch.setattr(cli_module, "serve_until_stopped", fake_serve)
+
+    def run(*args):
+        return CliRunner().invoke(main, ["here", *args]), calls
+
+    return run
+
+
+def test_here_help_lists_its_options():
+    result = CliRunner().invoke(main, ["here", "--help"])
+    assert result.exit_code == 0
+    for text in ("--port", "--host", "--no-browser", "FOLDER"):
+        assert text in result.output
+
+
+def test_here_serves_the_folder_and_prints_the_address(run_here, tmp_path):
+    (tmp_path / "dashboard-config.yaml").write_text("version: 1\n", encoding="utf-8")
+    result, calls = run_here(str(tmp_path))
+    assert result.exit_code == 0
+    message, url, open_browser = calls["serve"]
+    assert url == "http://127.0.0.1:8123/"
+    assert f"Serving {tmp_path} at http://127.0.0.1:8123/" in message
+    assert open_browser is True
+    assert calls["bind"] == ("127.0.0.1", 8050, False)  # the default port, not an exact one
+    assert calls["app"][1] == {"allow_any_host": False}
+
+
+def test_here_forwards_an_asked_for_port_as_exact(run_here, tmp_path):
+    _, calls = run_here(str(tmp_path), "--port", "9001")
+    assert calls["bind"] == ("127.0.0.1", 9001, True)
+
+
+def test_here_no_browser(run_here, tmp_path):
+    _, calls = run_here(str(tmp_path), "--no-browser")
+    assert calls["serve"][2] is False
+
+
+def test_here_hints_at_init_when_there_is_no_site_file(run_here, tmp_path):
+    result, calls = run_here(str(tmp_path))
+    assert result.exit_code == 0
+    assert "No dashboard-config.yaml found" in result.output
+    assert f"wftdm-dashboard init {tmp_path}" in result.output
+    assert "serve" in calls  # the server still starts
+
+
+def test_here_is_quiet_about_init_when_the_site_file_is_there(run_here, tmp_path):
+    (tmp_path / "dashboard-config.yaml").write_text("version: 1\n", encoding="utf-8")
+    result, _ = run_here(str(tmp_path))
+    assert "No dashboard-config.yaml found" not in result.output
+
+
+def test_here_finds_the_site_file_in_the_public_layout(run_here, tmp_path):
+    (tmp_path / "dashboard-config").mkdir()
+    (tmp_path / "dashboard-config" / "dashboard-config.yaml").write_text("version: 1\n", encoding="utf-8")
+    result, _ = run_here(str(tmp_path))
+    assert "No dashboard-config.yaml found" not in result.output
+
+
+def test_here_warns_when_it_listens_beyond_this_machine(run_here, tmp_path):
+    result, calls = run_here(str(tmp_path), "--host", "0.0.0.0")
+    assert "visible to the network" in result.output
+    assert calls["app"][1] == {"allow_any_host": True}
+    assert calls["serve"][1].startswith("http://127.0.0.1:")  # a wildcard address is not one a browser can open
+
+
+def test_here_does_not_warn_on_loopback(run_here, tmp_path):
+    result, _ = run_here(str(tmp_path), "--host", "localhost")
+    assert "visible to the network" not in result.output
+
+
+def test_here_says_how_to_build_when_the_bundle_is_missing(monkeypatch, tmp_path):
+    def missing(folder, **kwargs):
+        raise BundleMissingError("The dashboard app has not been built into this package. In the repository run: make build")
+
+    monkeypatch.setattr(cli_module, "create_app", missing)
+    result = CliRunner().invoke(main, ["here", str(tmp_path)])
+    assert result.exit_code == 1
+    assert "make build" in result.output
+    assert "Traceback" not in result.output
+
+
+def test_here_reports_a_taken_port(monkeypatch, tmp_path):
+    monkeypatch.setattr(cli_module, "create_app", lambda folder, **kwargs: object())
+
+    def taken(app, host, port, *, exact_port):
+        raise PortInUseError(f"Port {port} is already in use.")
+
+    monkeypatch.setattr(cli_module, "bind_server", taken)
+    result = CliRunner().invoke(main, ["here", str(tmp_path), "--port", "8050"])
+    assert result.exit_code == 1
+    assert "Port 8050 is already in use." in result.output
+
+
+def test_here_needs_an_existing_folder(tmp_path):
+    result = CliRunner().invoke(main, ["here", str(tmp_path / "missing")])
+    assert result.exit_code == 2
+
+
+# ---------------------------------------------------------------- init (072-python-local-server)
+
+
+def test_init_help_names_the_folder():
+    result = CliRunner().invoke(main, ["init", "--help"])
+    assert result.exit_code == 0
+    assert "FOLDER" in result.output
+
+
+def test_init_writes_both_files_into_an_empty_folder(tmp_path):
+    result = CliRunner().invoke(main, ["init", str(tmp_path)])
+    assert result.exit_code == 0
+    assert "wrote dashboard-config.yaml" in result.output
+    assert "wrote dashboard-1-overview.yaml" in result.output
+    assert f"Next: wftdm-dashboard here {tmp_path}" in result.output
+    assert "npm run check" in result.output
+    assert (tmp_path / "dashboard-config.yaml").is_file()
+    assert (tmp_path / "dashboard-1-overview.yaml").is_file()
+
+
+def test_init_a_second_time_keeps_both(tmp_path):
+    CliRunner().invoke(main, ["init", str(tmp_path)])
+    before = {p.name: p.read_bytes() for p in tmp_path.iterdir()}
+    result = CliRunner().invoke(main, ["init", str(tmp_path)])
+    assert result.exit_code == 0
+    assert "kept dashboard-config.yaml (already there)" in result.output
+    assert "kept dashboard-1-overview.yaml (already there)" in result.output
+    assert "wrote" not in result.output
+    assert {p.name: p.read_bytes() for p in tmp_path.iterdir()} == before
+
+
+def test_init_writes_only_what_is_missing(tmp_path):
+    (tmp_path / "dashboard-config.yaml").write_text("title: Mine\n", encoding="utf-8")
+    result = CliRunner().invoke(main, ["init", str(tmp_path)])
+    assert result.exit_code == 0
+    assert "kept dashboard-config.yaml" in result.output
+    assert "wrote dashboard-1-overview.yaml" in result.output
+    assert (tmp_path / "dashboard-config.yaml").read_text(encoding="utf-8") == "title: Mine\n"
+
+
+def test_init_creates_a_folder_that_does_not_exist_yet(tmp_path):
+    target = tmp_path / "a" / "b"
+    result = CliRunner().invoke(main, ["init", str(target)])
+    assert result.exit_code == 0
+    assert (target / "dashboard-config.yaml").is_file()
+
+
+def test_init_defaults_to_the_current_folder(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    result = CliRunner().invoke(main, ["init"])
+    assert result.exit_code == 0
+    assert (tmp_path / "dashboard-config.yaml").is_file()
+
+
+def test_init_reports_a_file_where_a_folder_is_expected(tmp_path):
+    blocker = tmp_path / "file.txt"
+    blocker.write_text("x", encoding="utf-8")
+    result = CliRunner().invoke(main, ["init", str(blocker)])
+    assert result.exit_code != 0
+    assert "Traceback" not in result.output
+
+
+# ---------------------------------------------------------------- a checkout that has not built the app (072)
+
+
+@pytest.fixture
+def no_bundle(monkeypatch):
+    """Makes the embedded app look unbuilt, as in a repository checkout before `make build`."""
+    from wftdm_dashboard import server
+
+    def missing(package_root=None):
+        raise BundleMissingError(server.BUNDLE_MESSAGE)
+
+    monkeypatch.setattr(server, "static_dir", missing)
+
+
+def test_here_without_the_bundle_stops_with_the_build_message(no_bundle, tmp_path):
+    result = CliRunner().invoke(main, ["here", str(tmp_path), "--no-browser"])
+    assert result.exit_code == 1
+    assert "make build" in result.output
+    assert "npm run build:package" in result.output
+    assert "Traceback" not in result.output
+
+
+def test_init_does_not_need_the_bundle(no_bundle, tmp_path):
+    result = CliRunner().invoke(main, ["init", str(tmp_path)])
+    assert result.exit_code == 0
+    assert (tmp_path / "dashboard-config.yaml").is_file()
+
+
+# ---------------------------------------------------------------- serve (072)
+
+
+@pytest.fixture
+def run_serve(monkeypatch):
+    calls: dict = {}
+
+    def fake_create_app(folder, **kwargs):
+        calls["app"] = (folder, kwargs)
+        return object()
+
+    def fake_bind(app, host, port, *, exact_port):
+        calls["bind"] = (host, port, exact_port)
+        return _FakeServer()
+
+    def fake_serve(server, *, message, url, open_browser):
+        calls["serve"] = (message, url, open_browser)
+
+    monkeypatch.setattr(cli_module, "create_app", fake_create_app)
+    monkeypatch.setattr(cli_module, "bind_server", fake_bind)
+    monkeypatch.setattr(cli_module, "serve_until_stopped", fake_serve)
+
+    def run(*args):
+        return CliRunner().invoke(main, ["serve", *args]), calls
+
+    return run
+
+
+def test_serve_help_lists_its_options():
+    result = CliRunner().invoke(main, ["serve", "--help"])
+    assert result.exit_code == 0
+    assert "--port" in result.output
+    assert "--host" in result.output
+    assert "--no-browser" not in result.output  # it never opens a browser
+
+
+def test_serve_starts_the_app_without_the_bundle_and_with_cross_origin_access(run_serve, tmp_path):
+    result, calls = run_serve(str(tmp_path))
+    assert result.exit_code == 0
+    assert calls["app"][1] == {"serve_app": False, "cors": True, "allow_any_host": False}
+    assert calls["bind"] == ("127.0.0.1", 8050, False)
+    message, url, open_browser = calls["serve"]
+    assert url == "http://127.0.0.1:8123/"
+    assert "Serving the files of" in message
+    assert open_browser is False
+
+
+def test_serve_prints_the_limits_of_use_with_a_hosted_page(run_serve, tmp_path):
+    result, _ = run_serve(str(tmp_path))
+    assert "mixed content" in result.output
+    assert "private network access" in result.output
+    assert "wftdm-dashboard here" in result.output
+
+
+def test_serve_forwards_an_asked_for_port_as_exact(run_serve, tmp_path):
+    _, calls = run_serve(str(tmp_path), "--port", "9002")
+    assert calls["bind"] == ("127.0.0.1", 9002, True)
+
+
+def test_serve_warns_when_it_listens_beyond_this_machine(run_serve, tmp_path):
+    result, calls = run_serve(str(tmp_path), "--host", "0.0.0.0")
+    assert "visible to the network" in result.output
+    assert calls["app"][1]["allow_any_host"] is True
+
+
+def test_serve_does_not_warn_on_loopback(run_serve, tmp_path):
+    result, _ = run_serve(str(tmp_path))
+    assert "visible to the network" not in result.output
+
+
+def test_serve_reports_a_taken_port(monkeypatch, tmp_path):
+    monkeypatch.setattr(cli_module, "create_app", lambda folder, **kwargs: object())
+
+    def taken(app, host, port, *, exact_port):
+        raise PortInUseError(f"Port {port} is already in use.")
+
+    monkeypatch.setattr(cli_module, "bind_server", taken)
+    result = CliRunner().invoke(main, ["serve", str(tmp_path), "--port", "8050"])
+    assert result.exit_code == 1
+    assert "Port 8050 is already in use." in result.output
+
+
+def test_serve_needs_an_existing_folder(tmp_path):
+    assert CliRunner().invoke(main, ["serve", str(tmp_path / "missing")]).exit_code == 2

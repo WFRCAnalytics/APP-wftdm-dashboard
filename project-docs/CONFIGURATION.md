@@ -275,7 +275,7 @@ Not drafted here, on purpose: how the charts find the deployer's tables and colu
 **Phase F: the data layer. Blocked on the data-path decision (section 8).** Nothing is built here until it is made.
 
 **Phase G: packaging**
-12. The Python library: `init`, `serve` and `here` place the bundle and write a starter `dashboard-config.yaml` from the schema.
+12. **Done (072, `specs/072-python-local-server/`):** the Python library's `here` (serves the embedded app and a site folder on localhost, generates the run lists a static host cannot, ranges, `no-cache`, loopback-only, path-safe), `init` (a starter `dashboard-config.yaml` generated from the packaged schema, listing every setting as a comment, plus one page; never overwrites) and `serve` (the folder only, with CORS, and an honest note on the limits with a hosted https page). The package embeds the normal app build (`npm run build:package`, Vite mode `package`, relative base, no demo). Deferred: `init --scenario-dir` (the summarize scaffold) and a `check` in the library (needs the TypeScript core, section 7).
 13. The R package wraps the same files. Nothing language-specific goes into the app.
 
 ## 6. Out of scope for now
