@@ -7,6 +7,7 @@ import { slugCollisions } from '../state/routeState'
 import { getPath, isTree, type Tree } from './paths'
 import { pageSettings } from './levels'
 import { checkDefault } from './assistant'
+import { checkAllowList, checkDefaultBasemap, hostOf, outsideHosts, type CatalogueEntry } from './network'
 import { allHidden } from './pages'
 import { resolve } from './resolve'
 import { SETTINGS } from './schema'
@@ -17,6 +18,8 @@ export const SITE_FILE = 'dashboard-config.yaml'
 export interface CheckOptions {
   /** Extra check of one panel (the Explore options live outside this folder); returns messages. */
   panelCheck?: (panel: Tree, site: Tree) => string[]
+  /** The basemap catalogue (071), so the allow-list can be checked: the ids it knows, the app's own default, and each entry's hosts. */
+  network?: { basemapIds: readonly string[]; appDefault: string; catalogue: readonly CatalogueEntry[] }
 }
 
 export interface PageReport {
@@ -30,6 +33,8 @@ export interface CheckReport {
   problems: ConfigProblem[]
   site: Tree
   pages: PageReport[]
+  /** Hosts of basemap styles the deployer wrote out in full (a style URL or a composition), with where; listed by `explain` (071). */
+  authored: { host: string; where: string }[]
 }
 
 function parse(text: string, file: string, problems: ConfigProblem[]): { ok: boolean; raw?: unknown } {
@@ -51,7 +56,7 @@ function parse(text: string, file: string, problems: ConfigProblem[]): { ok: boo
 /** `read` returns a file's text, or undefined when it is not there. Names are relative to the site folder. */
 export function checkSite(read: (file: string) => string | undefined, options: CheckOptions = {}): CheckReport {
   const problems: ConfigProblem[] = []
-  const report: CheckReport = { problems, site: {}, pages: [] }
+  const report: CheckReport = { problems, site: {}, pages: [], authored: [] }
 
   const text = read(SITE_FILE)
   if (text === undefined) {
@@ -65,6 +70,16 @@ export function checkSite(read: (file: string) => string | undefined, options: C
   report.site = checked.settings
   for (const message of checkDefault(checked.settings)) {
     problems.push({ file: SITE_FILE, path: 'assistant.default.provider', kind: 'invalid_value', message })
+  }
+  const allow = networkAllowList(checked.settings)
+  noteAuthored(report, getPath(checked.settings, 'basemap.default'), `${SITE_FILE} basemap.default`)
+  const net = options.network
+  if (net) {
+    for (const message of checkAllowList(allow, net.basemapIds)) problems.push({ file: SITE_FILE, path: 'network.basemaps.allow', kind: 'invalid_value', message })
+    const siteDefault = getPath(checked.settings, 'basemap.default')
+    const effective = typeof siteDefault === 'string' ? siteDefault : net.appDefault
+    const message = checkDefaultBasemap(effective, allow, net.basemapIds)
+    if (message) problems.push({ file: SITE_FILE, path: 'basemap.default', kind: 'invalid_value', message: typeof siteDefault === 'string' ? message : `${message} (nothing sets basemap.default, so the app default applies)` })
   }
 
   const pages = getPath(checked.settings, 'pages')
@@ -97,6 +112,27 @@ export function checkSite(read: (file: string) => string | undefined, options: C
     }
     if (entry.header) headers.push(entry.header)
 
+    noteAuthored(report, getPath(settings, 'basemap.default'), `${file} basemap.default`)
+    if (isTree(raw.layout)) {
+      for (const [row, panels] of Object.entries(raw.layout)) {
+        for (const [i, panel] of (Array.isArray(panels) ? panels : []).entries()) noteAuthored(report, isTree(panel) ? panel.basemap : undefined, `${file} layout.${row}[${i}].basemap`)
+      }
+    }
+    if (net) {
+      const pageDefault = getPath(settings, 'basemap.default')
+      const pageMessage = typeof pageDefault === 'string' ? checkDefaultBasemap(pageDefault, allow, net.basemapIds) : undefined
+      if (pageMessage) problems.push({ file, path: 'basemap.default', kind: 'invalid_value', message: pageMessage })
+      if (isTree(raw.layout)) {
+        for (const [row, panels] of Object.entries(raw.layout)) {
+          for (const [i, panel] of (Array.isArray(panels) ? panels : []).entries()) {
+            const choice = isTree(panel) ? panel.basemap : undefined
+            const message = typeof choice === 'string' ? checkDefaultBasemap(choice, allow, net.basemapIds) : undefined
+            if (message) problems.push({ file, path: `layout.${row}[${i}].basemap`, kind: 'invalid_value', message })
+          }
+        }
+      }
+    }
+
     if (options.panelCheck && isTree(raw.layout)) {
       for (const [row, panels] of Object.entries(raw.layout)) {
         for (const [i, panel] of (Array.isArray(panels) ? panels : []).entries()) {
@@ -122,8 +158,23 @@ export function checkSite(read: (file: string) => string | undefined, options: C
   return report
 }
 
-/** Each cascading setting that is set somewhere, as `path = value (level)`, per page. */
-export function explain(report: CheckReport): string[] {
+/** The `network.basemaps.allow` list of a validated site tree (text entries only), or undefined. */
+function networkAllowList(settings: Tree): string[] | undefined {
+  const v = getPath(settings, 'network.basemaps.allow')
+  return Array.isArray(v) ? v.filter((e): e is string => typeof e === 'string') : undefined
+}
+
+/** Records the hosts of a basemap the deployer wrote out in full: a style URL, or each URL of a `layers` composition. Catalogue names have none. */
+function noteAuthored(report: CheckReport, choice: unknown, where: string): void {
+  const urls = typeof choice === 'string' ? [choice] : isTree(choice) && Array.isArray(choice.layers) ? choice.layers.filter((l): l is string => typeof l === 'string') : []
+  for (const url of urls) {
+    const host = /^https?:\/\//i.test(url.trim()) ? hostOf(url) : undefined
+    if (host) report.authored.push({ host, where: `a style written in ${where}` })
+  }
+}
+
+/** Each cascading setting that is set somewhere, as `path = value (level)`, per page; with a catalogue, also the outside hosts still reachable (071). */
+export function explain(report: CheckReport, options: { catalogue?: readonly CatalogueEntry[] } = {}): string[] {
   const lines: string[] = []
   for (const page of report.pages) {
     const { values, source } = resolve({ site: report.site, page: page.settings })
@@ -135,7 +186,26 @@ export function explain(report: CheckReport): string[] {
       lines.push(`  ${row.path} = ${JSON.stringify(v)} (${from})`)
     }
   }
+  if (options.catalogue) {
+    const fonts = getPath(report.site, 'network.fonts')
+    const address = getPath(report.site, 'network.duckdb_extensions')
+    const hosts = outsideHosts({
+      fonts: fonts === 'bundled' ? 'bundled' : 'any',
+      extensionAddress: typeof address === 'string' ? address : undefined,
+      patterns: networkAllowList(report.site),
+      catalogue: options.catalogue,
+      authored: report.authored,
+    })
+    lines.push(...formatOutsideHosts(hosts))
+  }
   return lines
+}
+
+/** The outside-hosts block of `check --explain`: information, never a problem. */
+export function formatOutsideHosts(hosts: readonly { host: string; why: string }[]): string[] {
+  if (hosts.length === 0) return ['no outside host is known']
+  const width = Math.max(...hosts.map((h) => h.host.length))
+  return ['outside hosts this configuration can still reach:', ...hosts.map((h) => `  ${h.host.padEnd(width)}  ${h.why}`)]
 }
 
 export function formatProblem(p: ConfigProblem): string {

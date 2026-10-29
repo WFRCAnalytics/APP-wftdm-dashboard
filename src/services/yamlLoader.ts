@@ -143,6 +143,8 @@ export interface DashboardBranding {
   settingsTabs?: string[]
   /** `assistant:` beyond `enabled` (068): the deployer's providers and defaults (the note and limits join in a later step). */
   assistant?: import('./ai/assistantPolicy.ts').AssistantInput
+  /** `network:` (071): which outside calls the app may make (font mode, the basemap allow-list, the extension mirror). Unset keys keep today's behaviour. */
+  network?: { fonts?: 'bundled' | 'any'; basemapsAllow?: string[]; duckdbExtensions?: string }
   /** 061-appearance-controls: an optional deployer-configured default for
    * each of the three Primary/Secondary/Accent visual roles — same
    * discovery/precedence rules as every other field above (the real

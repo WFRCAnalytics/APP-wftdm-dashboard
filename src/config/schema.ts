@@ -5,6 +5,7 @@
 // This folder is PURE: relative imports only, no `import.meta.env`, no `@/` alias, no DOM. Node (the Vite plugin) loads it too.
 import { addendumCheck, cleanProviders, limitCheck } from './assistant'
 import { EXPLORE_LIMITS, limitClean, limitText } from './exploreLimits'
+import { NETWORK_FONT_MODES } from './network'
 import { cleanSettingsTabs, isRelativePath, isWebAddress } from './viewer'
 
 export type SettingType = 'string' | 'number' | 'integer' | 'boolean' | 'boolean|string' | 'color' | 'url' | 'enum' | 'list' | 'map'
@@ -119,6 +120,9 @@ export const SETTINGS: readonly SettingDef[] = [
   { path: 'header.docs', type: 'string', scope: 'page', cascade: false, check: (v) => (isRelativePath(String(v)) ? undefined : 'expected a path relative to the documentation address'), description: 'A page header key: a path appended to docs.url, so the sidebar link opens the section for that page.' },
   { path: 'header.hidden', type: 'boolean', scope: 'page', cascade: false, description: 'A page header key: true keeps the page out of the sidebar; it still opens at its address. The first page that is not hidden is the landing page.' },
   { path: 'settings.tabs', type: 'list', of: 'string', cascade: site, clean: cleanSettingsTabs, description: 'Settings window tabs, in order: appearance, scenarios, basemap, assistant, documentation (default: all five).' },
+  { path: 'network.fonts', type: 'enum', values: NETWORK_FONT_MODES, cascade: site, description: 'bundled: the Appearance tab offers only the fonts that ship with the app (the default and System UI) and no font is loaded from an outside host. any: today’s behaviour (default).' },
+  { path: 'network.basemaps.allow', type: 'list', of: 'string', cascade: site, description: 'Patterns (* is the only wildcard, letter case ignored) on basemap ids such as carto-positron, openfreemap-*, ugrc-vector-lite, protomaps-light or OpenStreetMap.Mapnik. The Basemap tab offers only matching entries and a default that does not match is replaced by the first allowed one. Empty or absent: every basemap is allowed.' },
+  { path: 'network.duckdb_extensions', type: 'url', cascade: site, check: (v) => (isWebAddress(String(v)) ? undefined : 'expected an http or https address'), description: 'One http or https address the database downloads its extensions (spatial, parquet) from, instead of DuckDB’s own host. The deployer hosts the files.' },
   { path: 'basemap.default', type: 'string', cascade: true, description: 'Default basemap id (a tab or panel may choose its own).' },
   { path: 'basemap.protomaps.pmtiles_url', type: 'url', cascade: site, description: 'A self-hosted PMTiles file for the Protomaps basemaps.' },
   { path: 'basemap.protomaps.api_key', type: 'string', cascade: site, description: 'A hosted Protomaps key restricted to the site domain (never a secret token).' },

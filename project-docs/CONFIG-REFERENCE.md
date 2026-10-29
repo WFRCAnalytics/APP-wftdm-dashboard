@@ -50,6 +50,9 @@ A wrong value is reported (in a note on the page and in the browser console) and
 | `header.docs` | string | — | page `header:` only | A page header key: a path appended to docs.url, so the sidebar link opens the section for that page. |
 | `header.hidden` | boolean | — | page `header:` only | A page header key: true keeps the page out of the sidebar; it still opens at its address. The first page that is not hidden is the landing page. |
 | `settings.tabs` | list of string | — | site only | Settings window tabs, in order: appearance, scenarios, basemap, assistant, documentation (default: all five). |
+| `network.fonts` | `bundled` | `any` | — | site only | bundled: the Appearance tab offers only the fonts that ship with the app (the default and System UI) and no font is loaded from an outside host. any: today’s behaviour (default). |
+| `network.basemaps.allow` | list of string | — | site only | Patterns (* is the only wildcard, letter case ignored) on basemap ids such as carto-positron, openfreemap-*, ugrc-vector-lite, protomaps-light or OpenStreetMap.Mapnik. The Basemap tab offers only matching entries and a default that does not match is replaced by the first allowed one. Empty or absent: every basemap is allowed. |
+| `network.duckdb_extensions` | url | — | site only | One http or https address the database downloads its extensions (spatial, parquet) from, instead of DuckDB’s own host. The deployer hosts the files. |
 | `basemap.default` | string | — | page, panel (scalars replace, maps merge per key) | Default basemap id (a tab or panel may choose its own). |
 | `basemap.protomaps.pmtiles_url` | url | — | site only | A self-hosted PMTiles file for the Protomaps basemaps. |
 | `basemap.protomaps.api_key` | string | — | site only | A hosted Protomaps key restricted to the site domain (never a secret token). |

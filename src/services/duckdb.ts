@@ -15,6 +15,7 @@ import duckdb_wasm_mvp from '@duckdb/duckdb-wasm/dist/duckdb-mvp.wasm?url'
 import mvp_worker from '@duckdb/duckdb-wasm/dist/duckdb-browser-mvp.worker.js?url'
 import duckdb_wasm_eh from '@duckdb/duckdb-wasm/dist/duckdb-eh.wasm?url'
 import eh_worker from '@duckdb/duckdb-wasm/dist/duckdb-browser-eh.worker.js?url'
+import { extensionRepositoryStatement } from './extensionRepository'
 
 const MANUAL_BUNDLES: duckdb.DuckDBBundles = {
   mvp: { mainModule: duckdb_wasm_mvp, mainWorker: mvp_worker },
@@ -203,6 +204,15 @@ export async function queryArrow(sql: string) {
   debugQueryLog.push(sql)
   const conn = await getConnection()
   return conn.query(sql)
+}
+
+/**
+ * 071-network-block: points the shared connection at the deployer's extension files before any extension is installed or autoloaded. Called by
+ * main.tsx's startup only (never from user SQL, which sqlGuard refuses); an address that is not http or https does nothing, so DuckDB's own host stays.
+ */
+export async function setExtensionRepository(address: string | undefined): Promise<void> {
+  const statement = extensionRepositoryStatement(address)
+  if (statement) await query(statement)
 }
 
 /**

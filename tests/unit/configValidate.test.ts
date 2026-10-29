@@ -258,3 +258,44 @@ describe('explore limits', () => {
     expect(validate({ explore: { limits: { legend_series: 5 } } }, { file, level: 'page' }).problems).toEqual([])
   })
 })
+
+describe('network block', () => {
+  it('accepts each key', () => {
+    const net = { fonts: 'bundled', basemaps: { allow: ['carto-*', 'ugrc-vector-lite'] }, duckdb_extensions: 'https://m.example.org/duckdb' }
+    const { settings, problems } = validate({ network: net }, { file })
+    expect(problems).toEqual([])
+    expect(getPath(settings, 'network.fonts')).toBe('bundled')
+    expect(getPath(settings, 'network.basemaps.allow')).toEqual(['carto-*', 'ugrc-vector-lite'])
+    expect(getPath(settings, 'network.duckdb_extensions')).toBe('https://m.example.org/duckdb')
+  })
+
+  it('reports an unknown font mode by path and leaves it unset', () => {
+    const { settings, problems } = validate({ network: { fonts: 'sideways' } }, { file })
+    expect(getPath(settings, 'network.fonts')).toBeUndefined()
+    expect(problems.map((p) => [p.path, p.kind])).toEqual([['network.fonts', 'invalid_value']])
+  })
+
+  it('reports an allow-list that is not a list of text', () => {
+    const a = validate({ network: { basemaps: { allow: 'carto-*' } } }, { file })
+    expect(getPath(a.settings, 'network.basemaps.allow')).toBeUndefined()
+    expect(a.problems.map((p) => p.path)).toEqual(['network.basemaps.allow'])
+    const b = validate({ network: { basemaps: { allow: ['carto-*', 7] } } }, { file })
+    expect(b.problems.map((p) => p.path)).toEqual(['network.basemaps.allow'])
+  })
+
+  it('reports an extension address that is not http or https and drops it', () => {
+    for (const bad of ['ftp://x.example.org', 'not an address', 'file:///c/x']) {
+      const { settings, problems } = validate({ network: { duckdb_extensions: bad } }, { file })
+      expect(getPath(settings, 'network.duckdb_extensions'), bad).toBeUndefined()
+      expect(problems.map((p) => p.path), bad).toEqual(['network.duckdb_extensions'])
+    }
+  })
+
+  it('reports an unknown key under network by path', () => {
+    expect(validate({ network: { fonts: 'any', proxy: 'x' } }, { file }).problems.map((p) => [p.path, p.kind])).toEqual([['network.proxy', 'unknown_key']])
+  })
+
+  it('is a site setting: a page cannot set it', () => {
+    expect(validate({ network: { fonts: 'bundled' } }, { file, level: 'page' }).problems.map((p) => [p.path, p.kind])).toEqual([['network.fonts', 'not_allowed_here']])
+  })
+})

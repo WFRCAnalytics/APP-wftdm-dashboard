@@ -12,6 +12,7 @@
 // consumers were this function's own removed parameter and
 // resolveEffectiveBasemap.test.ts's call sites.
 import { resolveLevels } from '@/config'
+import { applyBasemapPolicy } from '@/panels/basemap/basemapPolicy'
 import { APP_DEFAULT } from '@/panels/basemap/registry'
 import { getSiteBasemapDefault } from '@/state/siteSettings'
 import type { BasemapPresetName, BasemapSelection, EffectiveBasemap } from '@/panels/basemap/types'
@@ -37,6 +38,17 @@ export function resolveEffectiveBasemap(
   tabDefaultBasemap: BasemapSelection | undefined,
   globalBasemap?: BasemapPresetName,
   siteDefault: BasemapSelection | undefined = getSiteBasemapDefault(),
+): EffectiveBasemap {
+  // 071-network-block: whatever wins is passed through the allow-list (the identity when none is configured)
+  const won = pickBasemap(panelBasemap, tabDefaultBasemap, globalBasemap, siteDefault)
+  return { selection: applyBasemapPolicy(won.selection, won.source), source: won.source }
+}
+
+function pickBasemap(
+  panelBasemap: BasemapSelection | undefined,
+  tabDefaultBasemap: BasemapSelection | undefined,
+  globalBasemap: BasemapPresetName | undefined,
+  siteDefault: BasemapSelection | undefined,
 ): EffectiveBasemap {
   // The cascade (src/config/resolve.ts) picks the most specific level that is set. Each level carries its own name, and the
   // original selection is read back from it, because a composition object must never be merged key by key.
