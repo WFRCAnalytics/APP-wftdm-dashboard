@@ -3,8 +3,8 @@
 `pyproject.toml`'s `[project.scripts] wftdm-dashboard = "wftdm_dashboard.cli:main"`
 points here. `serve`/`here`/`init` (CLAUDE.md's other two documented
 subcommands) are NOT built by this feature — `summarize` is the first real
-subcommand this CLI gets (025-python-postprocessor). `here` is built by 072-python-local-server (`serve` and
-`init` follow in the same feature).
+subcommand this CLI gets (025-python-postprocessor). `here` and `init` are built by 072-python-local-server
+(`serve` follows in the same feature).
 """
 
 from __future__ import annotations
@@ -19,6 +19,7 @@ from wftdm_dashboard.postprocessor.config import parse_summarize_yaml
 from wftdm_dashboard.postprocessor.errors import PostprocessorError
 from wftdm_dashboard.postprocessor.manifest import generate_manifest, write_manifest
 from wftdm_dashboard.postprocessor.pipeline import run_pipeline
+from wftdm_dashboard.scaffold import write_missing
 from wftdm_dashboard.server import (
     DEFAULT_PORT,
     BundleMissingError,
@@ -153,3 +154,17 @@ def here(folder: Path, port: int | None, host: str, no_browser: bool) -> None:
         url=url,
         open_browser=not no_browser,
     )
+
+
+@main.command()
+@click.argument("folder", default=".", type=click.Path(file_okay=False, path_type=Path))
+def init(folder: Path) -> None:
+    """Write a starter dashboard-config.yaml and one page into FOLDER (created if missing). Never overwrites a file."""
+    try:
+        results = write_missing(folder)
+    except OSError as err:
+        raise click.ClickException(f"Could not write into {folder}: {err}") from err
+    for name, written in results:
+        click.echo(f"wrote {name}" if written else f"kept {name} (already there)")
+    click.echo(f"Next: wftdm-dashboard here {folder}")
+    click.echo("To check the files, run `npm run check -- <folder>` in the repository (the check is not in this library yet).")

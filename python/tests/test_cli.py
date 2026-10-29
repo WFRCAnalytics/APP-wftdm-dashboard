@@ -274,3 +274,65 @@ def test_here_reports_a_taken_port(monkeypatch, tmp_path):
 def test_here_needs_an_existing_folder(tmp_path):
     result = CliRunner().invoke(main, ["here", str(tmp_path / "missing")])
     assert result.exit_code == 2
+
+
+# ---------------------------------------------------------------- init (072-python-local-server)
+
+
+def test_init_help_names_the_folder():
+    result = CliRunner().invoke(main, ["init", "--help"])
+    assert result.exit_code == 0
+    assert "FOLDER" in result.output
+
+
+def test_init_writes_both_files_into_an_empty_folder(tmp_path):
+    result = CliRunner().invoke(main, ["init", str(tmp_path)])
+    assert result.exit_code == 0
+    assert "wrote dashboard-config.yaml" in result.output
+    assert "wrote dashboard-1-overview.yaml" in result.output
+    assert f"Next: wftdm-dashboard here {tmp_path}" in result.output
+    assert "npm run check" in result.output
+    assert (tmp_path / "dashboard-config.yaml").is_file()
+    assert (tmp_path / "dashboard-1-overview.yaml").is_file()
+
+
+def test_init_a_second_time_keeps_both(tmp_path):
+    CliRunner().invoke(main, ["init", str(tmp_path)])
+    before = {p.name: p.read_bytes() for p in tmp_path.iterdir()}
+    result = CliRunner().invoke(main, ["init", str(tmp_path)])
+    assert result.exit_code == 0
+    assert "kept dashboard-config.yaml (already there)" in result.output
+    assert "kept dashboard-1-overview.yaml (already there)" in result.output
+    assert "wrote" not in result.output
+    assert {p.name: p.read_bytes() for p in tmp_path.iterdir()} == before
+
+
+def test_init_writes_only_what_is_missing(tmp_path):
+    (tmp_path / "dashboard-config.yaml").write_text("title: Mine\n", encoding="utf-8")
+    result = CliRunner().invoke(main, ["init", str(tmp_path)])
+    assert result.exit_code == 0
+    assert "kept dashboard-config.yaml" in result.output
+    assert "wrote dashboard-1-overview.yaml" in result.output
+    assert (tmp_path / "dashboard-config.yaml").read_text(encoding="utf-8") == "title: Mine\n"
+
+
+def test_init_creates_a_folder_that_does_not_exist_yet(tmp_path):
+    target = tmp_path / "a" / "b"
+    result = CliRunner().invoke(main, ["init", str(target)])
+    assert result.exit_code == 0
+    assert (target / "dashboard-config.yaml").is_file()
+
+
+def test_init_defaults_to_the_current_folder(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    result = CliRunner().invoke(main, ["init"])
+    assert result.exit_code == 0
+    assert (tmp_path / "dashboard-config.yaml").is_file()
+
+
+def test_init_reports_a_file_where_a_folder_is_expected(tmp_path):
+    blocker = tmp_path / "file.txt"
+    blocker.write_text("x", encoding="utf-8")
+    result = CliRunner().invoke(main, ["init", str(blocker)])
+    assert result.exit_code != 0
+    assert "Traceback" not in result.output
