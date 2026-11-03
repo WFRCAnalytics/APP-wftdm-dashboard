@@ -51,7 +51,7 @@ test('Explore: the panel replaces the site chart list and adds to the site table
   await expect(pick.getByText('mode_share_by_period')).toHaveCount(0)
   await expect(pick.getByText('purpose_mode_flow')).toHaveCount(0)
   await page.keyboard.press('Escape')
-  await page.getByRole('button', { name: 'Add chart tab' }).click()
+  await page.getByRole('button', { name: /(Create|Add) chart/ }).click()
   await expect(page.locator('.xb .mkgrid button.mk')).toHaveCount(2)
   await expect(page.locator('.xb .xwarn')).toHaveCount(0)
 })

@@ -48,7 +48,7 @@ test('a deployer can turn features off, fix the page size, limit the tables and 
 test('a deployer can limit the chart types and choose the one a new tab starts with', async ({ page }) => {
   await openExplore(page, ['charts: { allow: [bar, line, pie], default: line }', 'features: { undo: false, import_export: false }'].join('\n'))
   await expect(page.locator('.xb .tbl tbody tr').first()).toBeVisible({ timeout: 60_000 })
-  await page.getByRole('button', { name: 'Add chart tab' }).click()
+  await page.getByRole('button', { name: /(Create|Add) chart/ }).click()
   const grid = page.locator('.xb .mkgrid')
   await expect(grid.getByRole('button', { name: /^Line/ })).toHaveAttribute('aria-pressed', 'true')
   await expect(grid.locator('button.mk')).toHaveCount(3)

@@ -62,16 +62,16 @@ function TopBar({ m }: { m: DataTabModel }) {
             <button type="button" className="x" aria-label={`Close tab ${c.name}`} onClick={() => setExplore((st) => ({ charts: st.charts.filter((x) => x.id !== c.id), activeTab: st.activeTab === c.id ? 'data' : st.activeTab }))}><X size={12} aria-hidden="true" /></button>
           </span>
         ))}
-        <button type="button" className="pill" aria-label="Add chart tab" onClick={() => setExplore((st) => {
+        <button type="button" className="pill" onClick={() => setExplore((st) => {
           const id = `c${st.nextId}`
           const source = st.table.startsWith('m:') ? st.table : st.table || `t:${m.tableOptions.find((t) => t.missingIn.length === 0)?.name ?? ''}`
           return { charts: [...st.charts, { id, name: `Chart ${st.charts.length + 1}`, source, spec: defaultSpec({ mark: options.charts.default }) }], activeTab: id, nextId: st.nextId + 1, notice: '', selectedField: null }
-        })}><Plus size={15} aria-hidden="true" /></button>
+        })}><Plus size={15} aria-hidden="true" />{s.charts.length === 0 ? 'Create chart' : 'Add chart'}</button>
       </div>
-      {s.activeTab !== 'data' && features.undo && (
+      {features.undo && (
         <div className="undo" role="group" aria-label="Undo and redo">
-          <Btn icon aria-label="Undo" aria-keyshortcuts="Control+Z Meta+Z" disabled={s.undoDepth === 0} onClick={undoCharts}><Undo2 size={15} aria-hidden="true" /></Btn>
-          <Btn icon aria-label="Redo" aria-keyshortcuts="Control+Shift+Z Control+Y Meta+Shift+Z" disabled={s.redoDepth === 0} onClick={redoCharts}><Redo2 size={15} aria-hidden="true" /></Btn>
+          <Btn icon aria-label="Undo" aria-keyshortcuts="Control+Z Meta+Z" disabled={s.activeTab === 'data' || s.undoDepth === 0} onClick={undoCharts}><Undo2 size={15} aria-hidden="true" /></Btn>
+          <Btn icon aria-label="Redo" aria-keyshortcuts="Control+Shift+Z Control+Y Meta+Shift+Z" disabled={s.activeTab === 'data' || s.redoDepth === 0} onClick={redoCharts}><Redo2 size={15} aria-hidden="true" /></Btn>
         </div>
       )}
       {options.presets.length > 0 && (

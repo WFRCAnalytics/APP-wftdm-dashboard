@@ -20,7 +20,7 @@ const place = async (page: Page, field: string, shelf: string) => {
 test('a bar tooltip starts with a tile of the bar colour and its labels line up at the left', async ({ page }) => {
   const errors: string[] = []
   await openExplore(page, errors)
-  await page.getByRole('button', { name: 'Add chart tab' }).click()
+  await page.getByRole('button', { name: /(Create|Add) chart/ }).click()
   await place(page, 'scenario', 'X axis')
   await place(page, 'auPkTotal', 'Y axis')
   const bar = page.locator('.xb svg.plot rect[data-t]').first()
@@ -41,7 +41,7 @@ test('a treemap tooltip starts with a tile of the hovered group colour', async (
   await page.getByRole('dialog', { name: 'Choose a table' }).getByLabel('Search').fill('purpose_mode_flow')
   await page.getByRole('option', { name: 'purpose_mode_flow', exact: true }).click()
   await expect(page.locator('.xb .prow2', { hasText: 'major_trip_mode' })).toBeVisible({ timeout: 30_000 })
-  await page.getByRole('button', { name: 'Add chart tab' }).click()
+  await page.getByRole('button', { name: /(Create|Add) chart/ }).click()
   await page.locator('.xb .mk', { hasText: 'Treemap' }).click()
   await place(page, 'primary_purpose', 'Groups')
   await place(page, 'trips', 'Tile size')

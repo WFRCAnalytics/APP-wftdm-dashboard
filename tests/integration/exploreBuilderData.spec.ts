@@ -86,7 +86,7 @@ test('a chart tab builds a bar chart from the shelves and exports its configurat
   const errors: string[] = []
   await openExplore(page, errors)
   await expect(page.locator('.xb .tbl tbody tr').first()).toBeVisible({ timeout: 60_000 })
-  await page.getByRole('button', { name: 'Add chart tab' }).click()
+  await page.getByRole('button', { name: /(Create|Add) chart/ }).click()
   // chart-first: an empty bar chart says what it needs
   await expect(page.getByText('This chart needs a little more')).toBeVisible()
   // select a category field, then press the X shelf (keyboard path); then a number on Y
@@ -109,7 +109,7 @@ test('a chart tab can be renamed by double-click or F2', async ({ page }) => {
   const errors: string[] = []
   await openExplore(page, errors)
   await expect(page.locator('.xb .tbl tbody tr').first()).toBeVisible({ timeout: 60_000 })
-  await page.getByRole('button', { name: 'Add chart tab' }).click()
+  await page.getByRole('button', { name: /(Create|Add) chart/ }).click()
   await page.getByRole('tab', { name: 'Chart 1' }).dblclick()
   await page.getByLabel('Rename chart tab').fill('Trips by hour')
   await page.keyboard.press('Enter')
@@ -136,7 +136,7 @@ test.describe('DuckDB computes the chart data for every mark', () => {
   const setup = async (page: Page, errors: string[], mark: string) => {
     await openExplore(page, errors)
     await expect(page.locator('.xb .tbl tbody tr').first()).toBeVisible({ timeout: 60_000 })
-    await page.getByRole('button', { name: 'Add chart tab' }).click()
+    await page.getByRole('button', { name: /(Create|Add) chart/ }).click()
     await page.locator('.xb .mk', { hasText: mark }).click()
   }
   const drawn = async (page: Page) => {
@@ -191,7 +191,7 @@ test.describe('DuckDB computes the chart data for every mark', () => {
     await page.getByRole('dialog', { name: 'Choose a table' }).getByLabel('Search').fill('purpose_mode_flow')
     await page.getByRole('option', { name: 'purpose_mode_flow', exact: true }).click()
     await expect(page.locator('.xb .prow2', { hasText: 'major_trip_mode' })).toBeVisible({ timeout: 30_000 })
-    await page.getByRole('button', { name: 'Add chart tab' }).click()
+    await page.getByRole('button', { name: /(Create|Add) chart/ }).click()
     await page.locator('.xb .mk', { hasText: 'Text table' }).click()
   }
   test('text table is a pivot table with totals and sortable headings', async ({ page }) => {
@@ -506,7 +506,7 @@ test.describe('DuckDB computes the chart data for every mark', () => {
     await page.getByRole('dialog', { name: 'Choose a table' }).getByLabel('Search').fill('purpose_mode_flow')
     await page.getByRole('option', { name: 'purpose_mode_flow', exact: true }).click()
     await expect(page.locator('.xb .prow2', { hasText: 'major_trip_mode' })).toBeVisible({ timeout: 30_000 })
-    await page.getByRole('button', { name: 'Add chart tab' }).click()
+    await page.getByRole('button', { name: /(Create|Add) chart/ }).click()
     await page.locator('.xb .mk', { hasText: 'Treemap' }).click()
     await place(page, 'primary_purpose', 'Groups')
     await place(page, 'major_trip_mode', 'Add level')
@@ -564,7 +564,7 @@ test.describe('DuckDB computes the chart data for every mark', () => {
     await page.getByRole('dialog', { name: 'Choose a table' }).getByLabel('Search').fill('purpose_mode_flow')
     await page.getByRole('option', { name: 'purpose_mode_flow', exact: true }).click()
     await expect(page.locator('.xb .prow2', { hasText: 'major_trip_mode' })).toBeVisible({ timeout: 30_000 })
-    await page.getByRole('button', { name: 'Add chart tab' }).click()
+    await page.getByRole('button', { name: /(Create|Add) chart/ }).click()
     await page.locator('.xb .mk', { hasText: 'Sunburst' }).click()
     await place(page, 'primary_purpose', 'Inner ring')
     await place(page, 'major_trip_mode', 'Add ring')
@@ -634,7 +634,7 @@ test.describe('DuckDB computes the chart data for every mark', () => {
     await page.getByRole('dialog', { name: 'Choose a table' }).getByLabel('Search').fill('purpose_mode_flow')
     await page.getByRole('option', { name: 'purpose_mode_flow', exact: true }).click()
     await expect(page.locator('.xb .prow2', { hasText: 'major_trip_mode' })).toBeVisible({ timeout: 30_000 })
-    await page.getByRole('button', { name: 'Add chart tab' }).click()
+    await page.getByRole('button', { name: /(Create|Add) chart/ }).click()
     await page.locator('.xb .mk', { hasText: 'Sankey' }).click()
     await place(page, 'primary_purpose', 'From')
     await place(page, 'major_trip_mode', 'To')
@@ -741,9 +741,9 @@ test('a chart change can be undone and redone, and bars can be sorted', async ({
   const errors: string[] = []
   await openExplore(page, errors)
   await expect(page.locator('.xb .tbl tbody tr').first()).toBeVisible({ timeout: 60_000 })
-  // undo and redo belong to chart tabs
-  await expect(page.getByRole('button', { name: 'Undo' })).toHaveCount(0)
-  await page.getByRole('button', { name: 'Add chart tab' }).click()
+  // undo and redo belong to chart tabs: on Data they stay in place (so the toolbar does not change width) but do nothing
+  await expect(page.getByRole('button', { name: 'Undo' })).toBeDisabled()
+  await page.getByRole('button', { name: /(Create|Add) chart/ }).click()
   await expect(page.getByRole('button', { name: 'Undo' })).toBeEnabled()
   const place = async (field: string, shelf: string) => {
     await page.locator('.xb .fchip', { hasText: field }).first().click()
@@ -784,7 +784,7 @@ test('the Axes tab follows the chart: axis titles, zero baseline only where it a
   const errors: string[] = []
   await openExplore(page, errors)
   await expect(page.locator('.xb .tbl tbody tr').first()).toBeVisible({ timeout: 60_000 })
-  await page.getByRole('button', { name: 'Add chart tab' }).click()
+  await page.getByRole('button', { name: /(Create|Add) chart/ }).click()
   const place = async (field: string, shelf: string) => {
     await page.locator('.xb .fchip', { hasText: field }).first().click()
     await page.locator('.xb .sp', { hasText: shelf }).getByRole('button', { name: new RegExp(`Place ${field}`) }).click()

@@ -32,7 +32,7 @@ async function drawColoured(page: Page) {
   await page.getByRole('button', { name: 'Select all' }).click()
   await page.keyboard.press('Escape')
   await expect(page.getByRole('button', { name: /^Scenarios/ })).toContainText('3 of 3')
-  await page.getByRole('button', { name: 'Add chart tab' }).click()
+  await page.getByRole('button', { name: /(Create|Add) chart/ }).click()
   const place = async (field: string, shelf: string) => {
     await page.locator('.xb .fchip', { hasText: field }).first().click()
     await page.locator('.xb .sp', { hasText: shelf }).getByRole('button', { name: new RegExp(`Place ${field}`) }).click()
@@ -64,13 +64,13 @@ test('a panel value wins over the site value', async ({ page }) => {
 
 test('a starting chart in the site file is what a new chart tab starts with, and a panel can choose another', async ({ page }) => {
   await openExplore(page, { site: 'explore:\n  charts:\n    default: line' })
-  await page.getByRole('button', { name: 'Add chart tab' }).click()
+  await page.getByRole('button', { name: /(Create|Add) chart/ }).click()
   await expect(page.locator('.xb .mkgrid').getByRole('button', { name: /^Line/ })).toHaveAttribute('aria-pressed', 'true')
 })
 
 test('a panel starting chart wins over the site one', async ({ page }) => {
   await openExplore(page, { site: 'explore:\n  charts:\n    default: line', panel: 'charts: { default: pie }' })
-  await page.getByRole('button', { name: 'Add chart tab' }).click()
+  await page.getByRole('button', { name: /(Create|Add) chart/ }).click()
   await expect(page.locator('.xb .mkgrid').getByRole('button', { name: /^Pie/ })).toHaveAttribute('aria-pressed', 'true')
 })
 
@@ -85,6 +85,6 @@ test('mistakes in the site file are listed with their paths, the app loads and E
   await page.hover('[data-sidebar=sidebar]')
   await page.getByRole('tab', { name: 'Explore' }).first().click()
   // the defaults hold: a new tab starts as a bar chart and nothing is cut
-  await page.getByRole('button', { name: 'Add chart tab' }).click()
+  await page.getByRole('button', { name: /(Create|Add) chart/ }).click()
   await expect(page.locator('.xb .mkgrid').getByRole('button', { name: /^Bar/ })).toHaveAttribute('aria-pressed', 'true')
 })
