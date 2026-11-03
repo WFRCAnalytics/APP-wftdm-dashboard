@@ -15,7 +15,7 @@
 header:
   tab: Explore
   slug: explore
-  title: Explore the Demo Data
+  title: Explore the Data
   icon: compass
   full_page: true
 
@@ -24,6 +24,6 @@ layout:
   # graphic-walker) but is hidden from the demo until the builder is accepted.
   row_explore:
     - type:  explore-builder
-      title: Explore the Demo Data
+      title: Explore the Data
       description: Browse any table, build a query and chart it.
       width: 1.0
