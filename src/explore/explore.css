@@ -277,10 +277,11 @@
 .xb .prow .chk svg{opacity:0}
 .xb .prow.on .chk{background:var(--brand);border-color:var(--brand);color:var(--brand-fg)}
 .xb .prow.on .chk svg{opacity:1}
-/* a single-choice list shows the current pick as a bare checkmark (no box) and a soft row fill */
-.xb .prow.single .chk{border-color:transparent;background:none;color:var(--brand)}
+/* a single-choice list marks the current pick with a soft row fill and a filled circle with the check cut out, at the
+ * row's right end. Every row keeps the slot, so names truncate at the same width whether or not they are picked. */
+.xb .prow.single .chk{order:99;border-radius:50%;border-color:transparent;background:none}
 .xb .prow.single.on{background:color-mix(in srgb,var(--brand) 10%,transparent)}
-.xb .prow.single.on .chk{background:none;border-color:transparent;color:var(--brand)}
+.xb .prow.single.on .chk{background:var(--brand);border-color:var(--brand);color:var(--brand-fg)}
 .xb .prow.single.on .pl{font-weight:600}
 .xb .prow .dt{width:10px;height:10px;border-radius:50%;flex:none}
 .xb .prow .pl{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500}
