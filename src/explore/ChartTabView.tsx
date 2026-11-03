@@ -7,6 +7,7 @@ import { chainEntries, chainIndex, chainOrder, closeGap, dropZone, insertIntoCha
 import { buildChart, relabel, type ChartModel, type Col, type DrawnChart } from '@/charts/builder/compile'
 import { chartRole, DATA_TYPES, TYPE_LABEL, typesPresent, type DataType } from '@/charts/builder/columnTypes'
 import { suggest } from '@/charts/builder/rules'
+import { parseTip } from '@/charts/builder/tipTile'
 import { CategoryOrder } from './CategoryOrder'
 import { Slider } from '@/components/ui/slider'
 import { prettyOperators } from '@/services/typography'
@@ -195,8 +196,7 @@ function Plot({ model, spec, hot, size, theme }: { model: DrawnChart; spec: Char
   const onOver = (e: React.MouseEvent) => {
     const t = (e.target as SVGElement).getAttribute?.('data-t')
     if (!t) { tooltip.hide(); return }
-    const [title, ...rest] = t.split('~')
-    tooltip.show({ title, rows: rest.map((p) => { const i = p.indexOf('\u2063'); return { k: p.slice(0, i), v: p.slice(i + 1) } }) }, e)
+    tooltip.show(parseTip(t), e)
   }
   if (pivoted) return <div ref={host} className="plot pivot" />
   if (hierarchical) return <div ref={host} className="plot hier" role="img" aria-label="Chart" />

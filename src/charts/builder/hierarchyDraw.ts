@@ -11,6 +11,7 @@ import 'd3-transition'
 import type { DrawnChart, HNode, HTree } from '@/charts/builder/compile'
 import type { ChartTheme } from '@/charts/types'
 import { zoomableSankey } from '@/charts/builder/sankeyDraw'
+import { parseTip } from '@/charts/builder/tipTile'
 import { tooltip } from '@/services/tooltip'
 import { prettyText } from '@/services/typography'
 
@@ -66,8 +67,7 @@ export function drawHierarchy(model: DrawnChart, theme: ChartTheme, state: HierS
   const show = (e: MouseEvent) => {
     const t = (e.target as Element).closest?.('[data-t]')?.getAttribute('data-t')
     if (!t) { tooltip.hide(); return }
-    const [title, ...rest] = t.split('~')
-    tooltip.show({ title, rows: rest.map((p) => { const k = p.indexOf('\u2063'); return { k: p.slice(0, k), v: p.slice(k + 1) } }) }, e)
+    tooltip.show(parseTip(t), e)
   }
   svg.addEventListener('mouseover', show)
   svg.addEventListener('mousemove', show)

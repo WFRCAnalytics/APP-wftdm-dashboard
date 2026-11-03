@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { buildChart, type Col, type Row } from '../../src/charts/builder/compile.ts'
 import { chartQuery } from '../../src/charts/builder/specToSql.ts'
 import { defaultSpec } from '../../src/charts/builder/spec.ts'
+import { parseTip } from '../../src/charts/builder/tipTile.ts'
 import type { ChartTheme } from '../../src/charts/types.ts'
 
 const rel = 'SELECT * FROM "base__trips"'
@@ -105,7 +106,7 @@ describe('the compiler reads DuckDB results', () => {
     const m = draw(defaultSpec({ mark: 'histogram', enc: { x: { f: 'trips' } } }), cols, rows)
     if (m.problem !== undefined) throw new Error(m.problem)
     expect(m.panels[0].rects).toHaveLength(3)
-    expect(m.panels[0].rects.map((r) => r.tip.split('\u2063')[1])).toEqual(['4', '5', '6'])
+    expect(m.panels[0].rects.map((r) => parseTip(r.tip).rows?.[0]?.v)).toEqual(['4', '5', '6'])
   })
   it('draws boxes from precomputed statistics', () => {
     const cols: Col[] = [{ name: 'mode', type: 'category' }, { name: 'trips', type: 'integer' }]

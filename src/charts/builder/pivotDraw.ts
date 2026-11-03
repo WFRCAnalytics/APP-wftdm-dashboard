@@ -6,6 +6,7 @@
 // closed and sorted lives in `PivotState`, owned by the caller, so a redraw (hover, resize, new data) keeps it.
 import '@/charts/builder/pivotTable.css'
 import type { PivotTable, PNode } from '@/charts/builder/pivot'
+import { parseTip } from '@/charts/builder/tipTile'
 import { tooltip } from '@/services/tooltip'
 
 export interface PivotView {
@@ -37,8 +38,7 @@ export function renderPivots(tables: PivotTable[], state: PivotState, maxRows: n
   const show = (e: MouseEvent) => {
     const t = (e.target as Element).closest?.('[data-t]')?.getAttribute('data-t')
     if (!t) { tooltip.hide(); return }
-    const [title, ...rest] = t.split('~')
-    tooltip.show({ title, rows: rest.map((p) => { const i = p.indexOf('\u2063'); return { k: p.slice(0, i), v: p.slice(i + 1) } }) }, e)
+    tooltip.show(parseTip(t), e)
   }
   host.addEventListener('mouseover', show)
   host.addEventListener('mousemove', show)

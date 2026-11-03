@@ -5,6 +5,8 @@
 import { prettyOperators } from '@/services/typography'
 import type { ChartTheme } from '@/charts/types'
 import { buildPivot, type PivotTable } from '@/charts/builder/pivot'
+import { tileSegment } from '@/charts/builder/tipTile'
+import type { TipTile } from '@/services/tooltip'
 import { chartRole, type DataType, type Role } from '@/charts/builder/columnTypes'
 import { acceptsText, AXIS_MARKS, channelLabel, effectiveLabels, isHorizontalBar, RING_CHANNELS, SLOTS, TABLE_COLS, TABLE_ROWS, TABLE_VALUES, ROLE_WORD, type ChartSpec, type Channel, type Sort } from '@/charts/builder/spec'
 
@@ -170,7 +172,7 @@ export function sector(cx: number, cy: number, ri: number, ro: number, a0: numbe
   return `M${p(ro, a0)}A${r1(ro)} ${r1(ro)} 0 ${lg} 1 ${p(ro, e)}L${p(ri, e)}A${r1(ri)} ${r1(ri)} 0 ${lg} 0 ${p(ri, a0)}Z`
 }
 
-interface Series { key: string; label: string; color: string; fill: string; pat: boolean; di: number; si: number; has: Record<string, 1>; r: Row; heat?: { lo: number; hi: number; f: string } }
+interface Series { key: string; label: string; color: string; fill: string; pat: boolean; hatch?: { d: string; sw: number; fill: boolean }; di: number; si: number; has: Record<string, 1>; r: Row; heat?: { lo: number; hi: number; f: string } }
 
 const roleOf = (cols: Col[], f: string): Role => chartRole(cols.find((c) => c.name === f)?.type ?? 'text')
 
@@ -286,10 +288,19 @@ export function buildChart(input: BuildInput): ChartModel {
       const p = PATTERNS[q.pi % 5]
       defs.push({ id: `pt${i}`, color, d: p.d, sw: p.sw, fill: p.fill ? color : 'none' })
       s.fill = `url(#pt${i})`
+      s.hatch = { d: p.d, sw: p.sw, fill: p.fill }
     }
     return s
   })
   const op = (s: Series) => (input.hot && !s.has[input.hot] ? 0.2 : 1)
+  // how a series looks, for the tooltip: its fill or hatch, its dashed line, or its marker shape
+  const seriesTile = (s: Series, kind: TipTile['kind'] = 'sq'): TipTile => {
+    if (kind === 'line') return { kind, fill: s.color, stroke: s.color, dash: DASH[s.di % 5] }
+    if (kind === 'glyph') { const g = glyph(s.si % 5, 7, 7, 4.5); return { kind, d: g.d, fill: g.line ? 'none' : s.color, stroke: g.line ? s.color : '' } }
+    return s.hatch ? { kind, fill: s.color, hatch: s.hatch } : { kind, fill: s.fill }
+  }
+  const tileSeg = (s: Series, kind?: TipTile['kind']) => tileSegment(seriesTile(s, kind))
+  const colourSeg = (fill: string) => tileSegment({ kind: 'sq', fill })
 
   const panels: (Panel & { prows: Row[]; V?: Map<string, number>; B?: Record<string, number>[]; S?: Map<string, any>; G?: Map<string, number> })[] = []
   cells.forEach(({ rvv, cvv, ri, ci }) => {
@@ -315,7 +326,7 @@ export function buildChart(input: BuildInput): ChartModel {
   const ln = (o: P, x1: number, y1: number, x2: number, y2: number, stroke: string, sw: number, dash = '') => o.lines.push({ x1: r1(x1), y1: r1(y1), x2: r1(x2), y2: r1(y2), stroke, sw, dash })
   const pa = (o: P, d: string, fill: string, stroke: string, sw: number, dash: string, opac: number, tip: string) => o.paths.push({ d, fill, stroke, sw, dash, op: opac, tip })
   const rect = (o: P, x: number, y: number, w: number, h: number, s: Series, tip: string, rx = T.r) =>
-    o.rects.push({ x: r1(x), y: r1(y), w: r1(Math.max(0, w)), h: r1(Math.max(0, h)), rx: Math.min(rx, Math.max(0, w) / 2, Math.max(0, h) / 2), fill: s.fill, stroke: s.pat ? s.color : 'none', op: op(s), tip })
+    o.rects.push({ x: r1(x), y: r1(y), w: r1(Math.max(0, w)), h: r1(Math.max(0, h)), rx: Math.min(rx, Math.max(0, w) / 2, Math.max(0, h) / 2), fill: s.fill, stroke: s.pat ? s.color : 'none', op: op(s), tip: tip ? tip + tileSeg(s) : '' })
   // a tooltip is title~label\u2063value~...: the separator is a control character so a label like "Autos >= Workers" survives
   const tip = (title: string, pairs: [string, string][]) => [title, ...pairs.map((p) => `${p[0]}\u2063${p[1]}`)].join('~')
   // treemap and sunburst: the groups (colour field) and the pieces inside each (detail field), as a tree the drawing can zoom into
@@ -340,13 +351,13 @@ export function buildChart(input: BuildInput): ChartModel {
         const first = sub[0].x
         const color = depth === 0 ? first.color : T.mix(base, T.surface, 0.12 + (0.5 * vi) / Math.max(1, present.length - 1))
         const here = [...path, String(pv)]
-        const node: HNode = { name: String(pv), value, fill: depth === 0 ? first.fill : color, color, op: op(first), tip: tip(here.join(' · '), [[sz, fmtExact(value)], ['share', share(value)]]) }
+        const node: HNode = { name: String(pv), value, fill: depth === 0 ? first.fill : color, color, op: op(first), tip: tip(here.join(' · '), [[sz, fmtExact(value)], ['share', share(value)]]) + colourSeg(color) }
         if (depth + 1 < levels.length) node.children = build(sub, depth + 1, color, here)
         else if (sub.length > 1) {
           // several series share the last level (a hatch field): one piece each
           node.children = sub.map((it, ki) => {
             const c = T.mix(color, T.surface, 0.12 + (0.5 * ki) / Math.max(1, sub.length - 1))
-            return { name: it.x.label, value: vals[it.i], fill: c, color: c, op: op(it.x), tip: tip(`${here.join(' · ')} · ${it.x.label}`, [[sz, fmtExact(vals[it.i])], ['share', share(vals[it.i])]]) }
+            return { name: it.x.label, value: vals[it.i], fill: c, color: c, op: op(it.x), tip: tip(`${here.join(' · ')} · ${it.x.label}`, [[sz, fmtExact(vals[it.i])], ['share', share(vals[it.i])]]) + colourSeg(c) }
           })
         }
         out.push(node)
@@ -551,7 +562,7 @@ export function buildChart(input: BuildInput): ChartModel {
           for (const x of xs) {
             const v = pn.V!.get(`${x}\u0002${s.key}`)
             if (v === undefined) continue
-            const t = tip(String(x), [[s.label || yf, fmtExact(v)]])
+            const t = tip(String(x), [[s.label || yf, fmtExact(v)]]) + tileSeg(s, enc.shape ? 'glyph' : 'line')
             if (enc.shape) { const g = glyph(s.si % 5, sx(x), ax.sy(v), 4); pa(pn, g.d, g.line ? 'none' : s.color, g.line ? s.color : T.surface, g.line ? 2 : 1.5, '', op(s), t) }
             else pa(pn, glyph(0, sx(x), ax.sy(v), 6).d, 'transparent', 'none', 0, '', 1, t)
           }
@@ -572,7 +583,7 @@ export function buildChart(input: BuildInput): ChartModel {
           if (xs.length > 120) continue
           xs.forEach((x, xj) => {
             const v = pn.V!.get(`${x}\u0002${s.key}`)
-            if (v !== undefined) pa(pn, glyph(0, sx(x), up[xj][1], 6).d, 'transparent', 'none', 0, '', 1, tip(String(x), [[s.label || yf, fmtExact(v)]]))
+            if (v !== undefined) pa(pn, glyph(0, sx(x), up[xj][1], 6).d, 'transparent', 'none', 0, '', 1, tip(String(x), [[s.label || yf, fmtExact(v)]]) + tileSeg(s))
           })
         }
       }
@@ -601,7 +612,7 @@ export function buildChart(input: BuildInput): ChartModel {
         if (opf) pairs.push([opf, fmtExact(r[opf])])
         if (lbf) pairs.push([lbf, fmtExact(r[lbf])])
         const po = opf ? 0.15 + 0.85 * ((r[opf] - ol) / (oh - ol || 1)) : 1
-        pa(pn, g.d, g.line ? 'none' : s.color, g.line ? s.color : T.surface, g.line ? 2 : 1.4, '', op(s) * po, tip(s.label || 'Point', pairs))
+        pa(pn, g.d, g.line ? 'none' : s.color, g.line ? s.color : T.surface, g.line ? 2 : 1.4, '', op(s) * po, tip(s.label || 'Point', pairs) + tileSeg(s, 'glyph'))
         // labels stay readable only on a sparse chart: past 60 points the field shows in the tooltip alone
         if (lbf && pn.prows.length / stride <= 60) { const t = String(r[lbf]); tx(pn, nx.sx(r[xf]) + rr + 3, ax.sy(r[yf]) + 3.5, t.length > 18 ? `${t.slice(0, 17)}…` : t, 'start', T.fs, '', T.ink) }
       })
@@ -702,7 +713,7 @@ export function buildChart(input: BuildInput): ChartModel {
           if (!b) return
           const cx = left + j * sw + sw / 2, w = Math.max(6, sw * 0.7), o2 = op(s)
           ln(pn, cx, ax.sy(b.wl), cx, ax.sy(b.wh), s.color, 1.6)
-          pn.rects.push({ x: r1(cx - w / 2), y: r1(ax.sy(b.q3)), w: r1(w), h: r1(Math.max(1, ax.sy(b.q1) - ax.sy(b.q3))), rx: 3, fill: s.fill, stroke: s.color, op: o2, tip: tip(String(c) + (s.label ? ` · ${s.label}` : ''), [['median', fmtExact(b.md)], ['q1 to q3', `${fmtCompact(b.q1)} to ${fmtCompact(b.q3)}`], ['rows', String(b.n)]]) })
+          pn.rects.push({ x: r1(cx - w / 2), y: r1(ax.sy(b.q3)), w: r1(w), h: r1(Math.max(1, ax.sy(b.q1) - ax.sy(b.q3))), rx: 3, fill: s.fill, stroke: s.color, op: o2, tip: tip(String(c) + (s.label ? ` · ${s.label}` : ''), [['median', fmtExact(b.md)], ['q1 to q3', `${fmtCompact(b.q1)} to ${fmtCompact(b.q3)}`], ['rows', String(b.n)]]) + tileSeg(s) })
           ln(pn, cx - w / 2, ax.sy(b.md), cx + w / 2, ax.sy(b.md), T.ink, 2)
           for (const x of b.out as number[]) pa(pn, glyph(0, cx, ax.sy(x), 2.6).d, 'none', s.color, 1.4, '', o2, tip(String(c), [['outlier', fmtExact(x)]]))
         })
@@ -729,7 +740,7 @@ export function buildChart(input: BuildInput): ChartModel {
         const v = pn.G!.get(`${x}\u0002${y}`)
         if (v === undefined) return
         const t = (v - lo) / (hi - lo || 1), fill = ramp(t)
-        pn.rects.push({ x: r1(bx.x0 + sx * i + 1), y: r1(bx.y0 + sy2 * j + 1), w: r1(sx - 2), h: r1(sy2 - 2), rx: 4, fill, stroke: 'none', op: 1, tip: tip(`${x} · ${y}`, [[vf, fmtExact(v)]]) })
+        pn.rects.push({ x: r1(bx.x0 + sx * i + 1), y: r1(bx.y0 + sy2 * j + 1), w: r1(sx - 2), h: r1(sy2 - 2), rx: 4, fill, stroke: 'none', op: 1, tip: tip(`${x} · ${y}`, [[vf, fmtExact(v)]]) + colourSeg(fill) })
         if (sx > 40 && sy2 > 18) tx(pn, bx.x0 + sx * (i + 0.5), bx.y0 + sy2 * (j + 0.5) + 4, fmtCompact(v), 'middle', T.fs, '', T.onColor(fill))
       }))
     }
@@ -764,7 +775,7 @@ export function buildChart(input: BuildInput): ChartModel {
           if (r0 > 0) { const q0 = P0(r0, a), q1 = P0(r0, a1); d = `M${p0.join(' ')}A${r1(Rr)} ${r1(Rr)} 0 ${lg} 1 ${p1.join(' ')}L${q1.join(' ')}A${r1(r0)} ${r1(r0)} 0 ${lg} 0 ${q0.join(' ')}Z` }
           else d = `M${r1(cx)} ${r1(cy)}L${p0.join(' ')}A${r1(Rr)} ${r1(Rr)} 0 ${lg} 1 ${p1.join(' ')}Z`
         }
-        pa(pn, d, s.fill, s.pat ? s.color : T.surface, s.pat ? 1.2 : 2, '', op(s), tip(s.label || 'Slice', [[sz, fmtExact(v)], ['share', `${Math.round(f * 1000) / 10}%`]]))
+        pa(pn, d, s.fill, s.pat ? s.color : T.surface, s.pat ? 1.2 : 2, '', op(s), tip(s.label || 'Slice', [[sz, fmtExact(v)], ['share', `${Math.round(f * 1000) / 10}%`]]) + tileSeg(s))
         if (labelMode !== 'off' && f > 0.04) {
           const share = `${Math.round(f * 100)}%`, text = labelMode === 'value' ? fmtCompact(v) : labelMode === 'both' ? `${fmtCompact(v)} \u00b7 ${share}` : share
           const lp = P0(Rr + 14, am)
@@ -1015,9 +1026,9 @@ export function buildChart(input: BuildInput): ChartModel {
       const place = (names: string[], tots: Map<string, number>) => { const m = new Map<string, number>(); let y = y0; for (const n of names) { m.set(n, y); y += tots.get(n)! * scale + gap } return m }
       sankeys.push({
         tf: pn.tf, title: pn.title, w: pw, h: ph, small,
-        from: L.map((n, i) => ({ name: n, v: out.get(n)!, color: colorFor(ff, n, i), tip: tip(n, [[sz, fmtExact(out.get(n)!)]]) })),
-        to: Rt.map((n) => ({ name: n, v: inn.get(n)!, color: T.mix(T.surface, T.ink, 0.55), tip: tip(n, [[sz, fmtExact(inn.get(n)!)]]) })),
-        flows: Array.from(flow.entries()).map(([k, v]) => { const [f, t] = k.split(''); return { f, t, v, tip: tip(`${f} to ${t}`, [[sz, fmtExact(v)], ['share', `${Math.round((v / tot) * 1000) / 10}%`]]) } }),
+        from: L.map((n, i) => ({ name: n, v: out.get(n)!, color: colorFor(ff, n, i), tip: tip(n, [[sz, fmtExact(out.get(n)!)]]) + colourSeg(colorFor(ff, n, i)) })),
+        to: Rt.map((n) => ({ name: n, v: inn.get(n)!, color: T.mix(T.surface, T.ink, 0.55), tip: tip(n, [[sz, fmtExact(inn.get(n)!)]]) + colourSeg(T.mix(T.surface, T.ink, 0.55)) })),
+        flows: Array.from(flow.entries()).map(([k, v]) => { const [f, t] = k.split(''); return { f, t, v, tip: tip(`${f} to ${t}`, [[sz, fmtExact(v)], ['share', `${Math.round((v / tot) * 1000) / 10}%`]]) + colourSeg(colorFor(ff, f, L.indexOf(f))) } }),
       })
       const ly = place(L, out), ry = place(Rt, inn), lc = new Map<string, number>(), rc = new Map<string, number>()
       const label = (t: string) => (t.length > 20 ? `${t.slice(0, 19)}…` : t)
@@ -1025,14 +1036,14 @@ export function buildChart(input: BuildInput): ChartModel {
         const [f, t] = k.split('\u0002'), h = v * scale, a0 = ly.get(f)! + (lc.get(f) ?? 0), b0 = ry.get(t)! + (rc.get(t) ?? 0), sx = xL + 12, mid = (sx + xR) / 2
         lc.set(f, (lc.get(f) ?? 0) + h); rc.set(t, (rc.get(t) ?? 0) + h)
         const d = `M${r1(sx)} ${r1(a0)}C${r1(mid)} ${r1(a0)} ${r1(mid)} ${r1(b0)} ${r1(xR)} ${r1(b0)}L${r1(xR)} ${r1(b0 + h)}C${r1(mid)} ${r1(b0 + h)} ${r1(mid)} ${r1(a0 + h)} ${r1(sx)} ${r1(a0 + h)}Z`
-        pa(pn, d, colorFor(ff, f, L.indexOf(f)), 'none', 0, '', 0.42, tip(`${f} to ${t}`, [[sz, fmtExact(v)], ['share', `${Math.round((v / tot) * 1000) / 10}%`]]))
+        pa(pn, d, colorFor(ff, f, L.indexOf(f)), 'none', 0, '', 0.42, tip(`${f} to ${t}`, [[sz, fmtExact(v)], ['share', `${Math.round((v / tot) * 1000) / 10}%`]]) + colourSeg(colorFor(ff, f, L.indexOf(f))))
       })
       L.forEach((n, i) => {
-        pn.rects.push({ x: r1(xL), y: r1(ly.get(n)!), w: 12, h: r1(Math.max(1, out.get(n)! * scale)), rx: 2, fill: colorFor(ff, n, i), stroke: 'none', op: 1, tip: tip(n, [[sz, fmtExact(out.get(n)!)]]) })
+        pn.rects.push({ x: r1(xL), y: r1(ly.get(n)!), w: 12, h: r1(Math.max(1, out.get(n)! * scale)), rx: 2, fill: colorFor(ff, n, i), stroke: 'none', op: 1, tip: tip(n, [[sz, fmtExact(out.get(n)!)]]) + colourSeg(colorFor(ff, n, i)) })
         tx(pn, xL - 6, ly.get(n)! + (out.get(n)! * scale) / 2 + 4, label(n), 'end', T.fs, '', T.ink)
       })
       Rt.forEach((n) => {
-        pn.rects.push({ x: r1(xR), y: r1(ry.get(n)!), w: 12, h: r1(Math.max(1, inn.get(n)! * scale)), rx: 2, fill: T.mix(T.surface, T.ink, 0.55), stroke: 'none', op: 1, tip: tip(n, [[sz, fmtExact(inn.get(n)!)]]) })
+        pn.rects.push({ x: r1(xR), y: r1(ry.get(n)!), w: 12, h: r1(Math.max(1, inn.get(n)! * scale)), rx: 2, fill: T.mix(T.surface, T.ink, 0.55), stroke: 'none', op: 1, tip: tip(n, [[sz, fmtExact(inn.get(n)!)]]) + colourSeg(T.mix(T.surface, T.ink, 0.55)) })
         tx(pn, xR + 18, ry.get(n)! + (inn.get(n)! * scale) / 2 + 4, label(n), 'start', T.fs, '', T.ink)
       })
     }
@@ -1059,12 +1070,12 @@ export function buildChart(input: BuildInput): ChartModel {
         const w = fl.v * k, s0 = cur[fl.f], s1 = s0 + w; cur[fl.f] = s1
         const t0 = cur[fl.t], t1 = t0 + w; cur[fl.t] = t1
         const d = `M${pt(ri, s0)}A${r1(ri)} ${r1(ri)} 0 ${w > Math.PI ? 1 : 0} 1 ${pt(ri, s1)}Q${r1(cx)} ${r1(cy)} ${pt(ri, t0)}A${r1(ri)} ${r1(ri)} 0 ${w > Math.PI ? 1 : 0} 1 ${pt(ri, t1)}Q${r1(cx)} ${r1(cy)} ${pt(ri, s0)}Z`
-        pa(pn, d, colorFor(ff, names[fl.f], fl.f), T.surface, 0.8, '', 0.5, tip(`${names[fl.f]} to ${names[fl.t]}`, [[sz, fmtExact(fl.v)], ['share', `${Math.round((fl.v / (grand / 2)) * 1000) / 10}%`]]))
+        pa(pn, d, colorFor(ff, names[fl.f], fl.f), T.surface, 0.8, '', 0.5, tip(`${names[fl.f]} to ${names[fl.t]}`, [[sz, fmtExact(fl.v)], ['share', `${Math.round((fl.v / (grand / 2)) * 1000) / 10}%`]]) + colourSeg(colorFor(ff, names[fl.f], fl.f)))
       })
       names.forEach((nm, i) => {
         if (tot[i] <= 0) return
         const a0 = start[i], a1 = a0 + tot[i] * k, am = (a0 + a1) / 2, cs = Math.cos(am), lp = pt(R + 12, am).split(' ').map(Number)
-        pa(pn, sector(cx, cy, ri, R, a0, a1), colorFor(ff, nm, i), 'none', 0, '', 1, tip(nm, [[sz, fmtExact(tot[i])]]))
+        pa(pn, sector(cx, cy, ri, R, a0, a1), colorFor(ff, nm, i), 'none', 0, '', 1, tip(nm, [[sz, fmtExact(tot[i])]]) + colourSeg(colorFor(ff, nm, i)))
         tx(pn, lp[0], lp[1] + 4, nm.length > 16 ? `${nm.slice(0, 15)}…` : nm, cs > 0.25 ? 'start' : cs < -0.25 ? 'end' : 'middle', T.fs, '', T.ink)
       })
     }

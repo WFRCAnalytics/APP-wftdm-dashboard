@@ -47,6 +47,13 @@
   align-items: center;
   padding: 2px 0;
 }
+.tt-h svg.tt-tile {
+  flex: none;
+  display: block;
+}
+.tt-r.nc {
+  grid-template-columns: 1fr auto auto;
+}
 .tt-r i {
   width: 8px;
   height: 8px;

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { buildChart, fmtTick, shelfProblem, type ChartModel, type Col, type Row } from '../../src/charts/builder/compile.ts'
 import { defaultSpec } from '../../src/charts/builder/spec.ts'
+import { parseTip } from '../../src/charts/builder/tipTile.ts'
 import type { ChartTheme } from '../../src/charts/types.ts'
 
 const theme = {
@@ -61,7 +62,32 @@ describe('bar', () => {
   it('totals values per bar', () => {
     const m = ok(build({ enc: { x: { f: 'mode' }, y: { f: 'trips', agg: 'sum' } } }))
     const total = [0, 1, 2, 3].reduce((s, h) => s + 10 + h, 0) + [0, 1, 2, 3].reduce((s, h) => s + 15 + h, 0)
-    expect(m.panels[0].rects[0].tip).toBe(`Bus~trips\u2063${total}`)
+    const tip = parseTip(m.panels[0].rects[0].tip)
+    expect(tip.title).toBe('Bus')
+    expect(tip.rows).toEqual([{ k: 'trips', v: String(total) }])
+  })
+  describe('tooltip tile', () => {
+    const tile = (tip: string) => parseTip(tip).tile
+    it('shows the series colour on a bar', () => {
+      const m = ok(build({ enc: { x: { f: 'mode' }, y: { f: 'trips', agg: 'sum' }, color: { f: 'scenario' } } }))
+      expect(tile(m.panels[0].rects[0].tip)).toEqual({ kind: 'sq', fill: 'cat:0' })
+      expect(tile(m.panels[0].rects[1].tip)).toEqual({ kind: 'sq', fill: 'cat:1' })
+    })
+    it('shows the hatch of a pattern series', () => {
+      const m = ok(build({ enc: { x: { f: 'mode' }, y: { f: 'trips', agg: 'sum' }, pattern: { f: 'scenario' } } }))
+      const t = tile(m.panels[0].rects[1].tip)!
+      expect(t.kind).toBe('sq')
+      expect(t.hatch?.d).toBeTruthy()
+    })
+    it('shows the dash of a line and the marker of a shape', () => {
+      const dashed = ok(build({ mark: 'line', enc: { x: { f: 'hour' }, y: { f: 'trips', agg: 'sum' }, dash: { f: 'scenario' } } }))
+      const dashes = new Set(dashed.panels[0].paths.filter((p) => p.tip).map((p) => tile(p.tip)?.dash))
+      expect(dashes.has('7 4')).toBe(true)
+      const shaped = ok(build({ mark: 'scatter', enc: { x: { f: 'hour' }, y: { f: 'trips' }, shape: { f: 'scenario' } } }))
+      const glyphs = new Set(shaped.panels[0].paths.map((p) => tile(p.tip)?.d))
+      expect(glyphs.size).toBeGreaterThan(1)
+      expect(tile(shaped.panels[0].paths[0].tip)?.kind).toBe('glyph')
+    })
   })
   it('reaches 100 percent when normalised', () => {
     const m = ok(build({ enc, stack: 'normalize' }))

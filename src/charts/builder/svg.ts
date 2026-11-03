@@ -4,6 +4,7 @@ import type { DrawnChart } from '@/charts/builder/compile'
 import { drawHierarchy, type HierState } from '@/charts/builder/hierarchyDraw'
 import type { ChartTheme } from '@/charts/types'
 import { attachPanZoom } from '@/charts/lib/panZoom'
+import { parseTip } from '@/charts/builder/tipTile'
 import { tooltip } from '@/services/tooltip'
 
 const NS = 'http://www.w3.org/2000/svg'
@@ -41,8 +42,7 @@ export function renderChartSvg(model: DrawnChart, width: number, height: number,
   const show = (e: MouseEvent) => {
     const t = (e.target as Element).getAttribute?.('data-t')
     if (!t) { tooltip.hide(); return }
-    const [title, ...rest] = t.split('~')
-    tooltip.show({ title, rows: rest.map((p) => { const i = p.indexOf('\u2063'); return { k: p.slice(0, i), v: p.slice(i + 1) } }) }, e)
+    tooltip.show(parseTip(t), e)
   }
   svg.addEventListener('mouseover', show)
   svg.addEventListener('mousemove', show)
