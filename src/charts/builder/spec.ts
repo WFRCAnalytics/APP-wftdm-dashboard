@@ -195,14 +195,27 @@ export function defaultSpec(over: Partial<ChartSpec> = {}): ChartSpec {
   }
 }
 
+/**
+ * The roles a shelf takes right now. A bar chart needs one category (or date) axis and one number axis, so once one of X and Y holds a
+ * field the other takes only the opposite kind; with both empty either axis takes anything. Other shelves keep their fixed roles.
+ */
+export function slotAccepts(spec: Pick<ChartSpec, 'mark' | 'enc'>, ch: Channel, roleOf: (field: string) => Role): string {
+  const base = SLOTS[spec.mark].find((s) => s.ch === ch)?.accepts ?? ''
+  if (spec.mark !== 'bar' || (ch !== 'x' && ch !== 'y')) return base
+  const other = spec.enc[ch === 'x' ? 'y' : 'x']
+  const r = other ? roleOf(other.f) : ''
+  return r === '' ? base : r === 'q' ? 'not' : 'q'
+}
+
 export type Assign = { ok: true; spec: ChartSpec } | { ok: false; reason: string }
 
-/** Places a field on a channel, refusing with a reason when its role does not fit. */
-export function assignField(spec: ChartSpec, ch: Channel, field: string, _type: DataType, role: Role): Assign {
+/** Places a field on a channel, refusing with a reason when its role does not fit. `roleOf` lets a bar chart's other axis narrow the choice. */
+export function assignField(spec: ChartSpec, ch: Channel, field: string, _type: DataType, role: Role, roleOf?: (field: string) => Role): Assign {
   const slot = SLOTS[spec.mark].find((s) => s.ch === ch)
   if (!slot) return { ok: false, reason: `${channelLabel(spec.mark, ch)} is not used by this chart.` }
-  if (!roleAccepts(slot.accepts, role)) {
-    return { ok: false, reason: role ? `${field} is ${ROLE_WORD[role]}. ${channelLabel(spec.mark, ch)} takes ${acceptsText(slot.accepts)}.` : `This type of column can't go on a chart yet.` }
+  const accepts = roleOf ? slotAccepts(spec, ch, roleOf) : slot.accepts
+  if (!roleAccepts(accepts, role)) {
+    return { ok: false, reason: role ? `${field} is ${ROLE_WORD[role]}. ${channelLabel(spec.mark, ch)} takes ${acceptsText(accepts)}.` : `This type of column can't go on a chart yet.` }
   }
   return { ok: true, spec: { ...spec, enc: { ...spec.enc, [ch]: { f: field, agg: defaultAgg(spec.mark, ch, role) } } } }
 }
@@ -223,11 +236,13 @@ export function swapAxes(spec: ChartSpec, info: (field: string) => { type: DataT
   const enc = { ...spec.enc }
   delete enc.x
   delete enc.y
+  const roleOf = (f: string): Role => info(f)?.role ?? ''
   const move = (e: FieldDef | undefined, to: 'x' | 'y'): string | null => {
     if (!e) return null
     const i = info(e.f)
     if (!i) return `${e.f} is not in this table.`
-    const r = assignField(spec, to, e.f, i.type, i.role)
+    // checked against the shelves as they are being rebuilt, so a bar's other axis is the field just moved
+    const r = assignField({ ...spec, enc }, to, e.f, i.type, i.role, roleOf)
     if (!r.ok) return r.reason
     // a number keeps its aggregate where the new shelf can use one
     enc[to] = { ...r.spec.enc[to]!, ...(channelAggregates(spec.mark, to) && e.agg ? { agg: e.agg } : {}) }

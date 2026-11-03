@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { assignField, defaultSpec, fromConfig, swapAxes, switchMark, toConfig } from '../../src/charts/builder/spec.ts'
+import { assignField, defaultSpec, fromConfig, slotAccepts, swapAxes, switchMark, toConfig } from '../../src/charts/builder/spec.ts'
 import { suggest } from '../../src/charts/builder/rules.ts'
 import type { Role } from '../../src/charts/builder/columnTypes.ts'
+import type { ChartSpec } from '../../src/charts/builder/spec.ts'
 
 const ROLES: Record<string, Role> = { mode: 'n', trips: 'q', hour: 'q', scenario: 'n', notes: '', day: 't' }
 const roleOf = (f: string) => ROLES[f] ?? ''
@@ -166,5 +167,31 @@ describe('text, axis titles and pie options in the configuration', () => {
     spec.text.tag = { t: 'DRAFT', size: 'xs', b: true, i: false }
     const r = fromConfig(JSON.stringify(toConfig(spec, ctx)), { scenarios: ['a'], columnsOf: () => [{ name: 'mode' }, { name: 'trips' }] })
     expect(r.ok && [r.spec.pie, r.spec.alt, r.spec.axisTitles, r.spec.xTitle, r.spec.text.tag.t]).toEqual([{ other: 5, hole: 72 }, 'Shares', true, 'Mode', 'DRAFT'])
+  })
+})
+
+describe('a bar chart takes one category and one number', () => {
+  const roleOf = (f: string): Role => (f === 'trips' ? 'q' : f === 'date' ? 't' : 'n')
+  const bar = (enc: ChartSpec['enc']) => defaultSpec({ mark: 'bar', enc })
+  it('accepts anything on either axis while both are empty', () => {
+    expect(slotAccepts(bar({}), 'x', roleOf)).toBe('notq')
+    expect(slotAccepts(bar({}), 'y', roleOf)).toBe('notq')
+  })
+  it('narrows the other axis to the opposite kind', () => {
+    expect(slotAccepts(bar({ x: { f: 'mode' } }), 'y', roleOf)).toBe('q')
+    expect(slotAccepts(bar({ x: { f: 'date' } }), 'y', roleOf)).toBe('q')
+    expect(slotAccepts(bar({ y: { f: 'trips' } }), 'x', roleOf)).toBe('not')
+    expect(slotAccepts(bar({ x: { f: 'trips' } }), 'y', roleOf)).toBe('not')
+  })
+  it('does not narrow the axis that holds the field, or other marks', () => {
+    expect(slotAccepts(bar({ x: { f: 'mode' } }), 'x', roleOf)).toBe('notq')
+    expect(slotAccepts(defaultSpec({ mark: 'box', enc: { x: { f: 'mode' } } }), 'y', roleOf)).toBe('q')
+  })
+  it('refuses a second category or a second number', () => {
+    const cat = assignField(bar({ x: { f: 'mode' } }), 'y', 'scenario', 'category', 'n', roleOf)
+    expect(cat.ok).toBe(false)
+    const num = assignField(bar({ x: { f: 'trips' } }), 'y', 'hour', 'integer', 'q', roleOf)
+    expect(num.ok).toBe(false)
+    expect(assignField(bar({ x: { f: 'mode' } }), 'y', 'trips', 'integer', 'q', roleOf).ok).toBe(true)
   })
 })

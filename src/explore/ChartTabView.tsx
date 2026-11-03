@@ -12,7 +12,7 @@ import { CategoryOrder } from './CategoryOrder'
 import { Slider } from '@/components/ui/slider'
 import { prettyOperators } from '@/services/typography'
 import {
-  HIST_STATS, HIST_BINS_MIN, HIST_BINS_MAX, assignField, swapAxes, AXIS_MARKS, GRID_MARKS, REF_MARKS, ZERO_MARKS, acceptsShort, chainOf, CHAINS, effectiveLabels, LABEL_MARKS, labelModesFor, SHOW_AS, TABLE_VALUES, ZOOMABLE_MARKS, AGGS, channelAggregates, channelLabel, COMING_SOON, MARK_LABEL, MARKS, SLOTS, SORTS, switchMark, TEXT_SIZES,
+  HIST_STATS, HIST_BINS_MIN, HIST_BINS_MAX, assignField, swapAxes, AXIS_MARKS, GRID_MARKS, REF_MARKS, ZERO_MARKS, acceptsShort, slotAccepts, chainOf, CHAINS, effectiveLabels, LABEL_MARKS, labelModesFor, SHOW_AS, TABLE_VALUES, ZOOMABLE_MARKS, AGGS, channelAggregates, channelLabel, COMING_SOON, MARK_LABEL, MARKS, SLOTS, SORTS, switchMark, TEXT_SIZES,
   type Agg, type CellStyle, type LabelMode, type Channel, type ChartSpec, type Density, type MeasureFormat, type ShowAs, type TableOpts, type Mark, type Sort, type Stack, type TextKey,
 } from '@/charts/builder/spec'
 import { drawHierarchy, type HierState } from '@/charts/builder/hierarchyDraw'
@@ -269,6 +269,12 @@ function ChartCard({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: Cha
     for (const [name, note] of Object.entries(getExploreOptions().columns)) if (note.label) labels[name] = note.label
     return relabel(built, labels)
   }, [theme, data.spec, data.cols, data.rows, size, hot])
+  // what a shelf takes now: a bar's X and Y narrow each other. `strip` leaves shelves out of the reading (the one a field is being dragged from)
+  const accOf = (ch: Channel, strip: (Channel | null)[] = []) => {
+    const enc = { ...spec.enc }
+    for (const c of strip) if (c) delete enc[c]
+    return slotAccepts({ mark: spec.mark, enc }, ch, roleOf)
+  }
   const dragging = s.dragField ?? s.selectedField
   const dragRole = dragging ? roleOf(dragging) : ''
   // the click-to-place path (a field selected in the list) writes its name on the shelves; a drag only tints them, so nothing moves under the pointer
@@ -279,7 +285,7 @@ function ChartCard({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: Cha
     if (chainOrder(spec.mark, ch) && !spec.enc[ch]) { dropOnChain({ ch, side: 'on' }, null, field); return }
     const c = data.cols.find((x) => x.name === field)
     if (!c) return
-    const r = assignField(spec, ch, field, c.type, chartRole(c.type))
+    const r = assignField(spec, ch, field, c.type, chartRole(c.type), roleOf)
     if (r.ok) { setSpec(() => r.spec); setLanded(ch); setExplore({ selectedField: null, dragField: null, dragFrom: null, notice: `${field} placed on ${channelLabel(spec.mark, ch)}.`, noticeBad: false }) }
     else setExplore({ notice: r.reason, noticeBad: true })
   }
@@ -290,7 +296,7 @@ function ChartCard({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: Cha
     if (!src || from === to) return
     const srcCol = data.cols.find((c) => c.name === src.f)
     if (!srcCol) return
-    const fit = assignField(spec, to, src.f, srcCol.type, chartRole(srcCol.type))
+    const fit = assignField({ ...spec, enc: Object.fromEntries(Object.entries(spec.enc).filter(([k]) => k !== from && k !== to)) }, to, src.f, srcCol.type, chartRole(srcCol.type), roleOf)
     if (!fit.ok) { setExplore({ notice: fit.reason, noticeBad: true }); return }
     const values = (ch: Channel) => TABLE_VALUES.includes(ch)
     // a number keeps its aggregate (and a table value its format) where the new shelf can use them
@@ -305,7 +311,7 @@ function ChartCard({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: Cha
     let note = `${src.f} moved to ${channelLabel(spec.mark, to)}.`
     if (there) {
       const thereCol = data.cols.find((c) => c.name === there.f)
-      const back = thereCol ? assignField(spec, from, there.f, thereCol.type, chartRole(thereCol.type)) : null
+      const back = thereCol ? assignField({ ...spec, enc }, from, there.f, thereCol.type, chartRole(thereCol.type), roleOf) : null
       if (back?.ok) { enc[from] = carried(there, from, back.spec.enc[from]!); note = `${src.f} and ${there.f} swapped places.` }
       else note = `${src.f} moved to ${channelLabel(spec.mark, to)}. ${there.f} was taken off it.`
     }
@@ -325,7 +331,7 @@ function ChartCard({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: Cha
     const name = src?.f ?? field
     const col = name ? data.cols.find((c) => c.name === name) : undefined
     if (!name || !col) return
-    const fit = assignField(spec, order[0], name, col.type, chartRole(col.type))
+    const fit = assignField(spec, order[0], name, col.type, chartRole(col.type), roleOf)
     if (!fit.ok) { setExplore({ notice: fit.reason, noticeBad: true }); return }
     const entry = src ? { ...src } : fit.spec.enc[order[0]]!
     const k = chainIndex(spec, order, z.ch)
@@ -374,7 +380,7 @@ function ChartCard({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: Cha
     const order = chainOrder(spec.mark, z.ch)
     const slot = order && SLOTS[spec.mark].find((sl) => sl.ch === order[0])
     const role = dragRole
-    ev.dataTransfer.dropEffect = !s.dragField || (slot && role && slot.accepts.includes(role)) ? (s.dragFrom ? 'move' : 'copy') : 'none'
+    ev.dataTransfer.dropEffect = !s.dragField || (slot && role && accOf(slot.ch, [s.dragFrom as Channel | null]).includes(role)) ? (s.dragFrom ? 'move' : 'copy') : 'none'
     setZone((p) => (p && p.ch === z.ch && p.side === z.side ? p : z)) // same answer: no render
   }
   const onStripDrop = (ev: React.DragEvent) => {
@@ -439,7 +445,8 @@ function ChartCard({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: Cha
         {slotsShown(spec).map((slot) => {
           const e = spec.enc[slot.ch]
           const adding = !!chainOf(spec.mark, slot.ch) && !e
-          const ok = dragging ? !!dragRole && slot.accepts.includes(dragRole) : false
+          const accepts = accOf(slot.ch, [s.dragField ? (s.dragFrom as Channel | null) : null])
+          const ok = dragging ? !!dragRole && accepts.includes(dragRole) : false
           const col = e ? data.cols.find((c) => c.name === e.f) : undefined
           const label = adding ? chainOf(spec.mark, slot.ch)!.add : channelLabel(spec.mark, slot.ch)
           // while a field is dragged: the shelf it came from, and (for the one under the pointer) what dropping would do
@@ -453,11 +460,11 @@ function ChartCard({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: Cha
             const used = chainEntries(spec, order).length, k = chainIndex(spec, order, slot.ch), at = zs === 'after' ? k + 1 : k
             const mine = !!fromCh && order.includes(fromCh)
             const pushed = chainEntries(spec, order)[at]
-            hint = !ok ? `Takes ${takesWord(slot.accepts)} only` : !mine && used >= order.length ? `All ${order.length} levels are used` : mine ? `Move to ${channelLabel(spec.mark, order[Math.min(at > chainIndex(spec, order, fromCh!) ? at - 1 : at, used - 1)])}` : `Insert as ${channelLabel(spec.mark, order[at])}${pushed ? ` · ${pushed.f} moves to ${channelLabel(spec.mark, order[at + 1])}` : ''}`
+            hint = !ok ? `Takes ${takesWord(accepts)} only` : !mine && used >= order.length ? `All ${order.length} levels are used` : mine ? `Move to ${channelLabel(spec.mark, order[Math.min(at > chainIndex(spec, order, fromCh!) ? at - 1 : at, used - 1)])}` : `Insert as ${channelLabel(spec.mark, order[at])}${pushed ? ` · ${pushed.f} moves to ${channelLabel(spec.mark, order[at + 1])}` : ''}`
           } else if (hovered) {
             const fromSlot = fromCh ? SLOTS[spec.mark].find((sl) => sl.ch === fromCh) : undefined
-            const swaps = !!(e && fromSlot && roleOf(e.f) && fromSlot.accepts.includes(roleOf(e.f)))
-            hint = !ok ? `Takes ${takesWord(slot.accepts)} only` : e ? (e.f === s.dragField ? 'Already here' : swaps ? `Swap with ${e.f}` : `Replace ${e.f}`) : fromCh ? 'Move here' : `Place ${s.dragField}`
+            const swaps = !!(e && fromSlot && roleOf(e.f) && accOf(fromSlot.ch, [slot.ch]).includes(roleOf(e.f)))
+            hint = !ok ? `Takes ${takesWord(accepts)} only` : e ? (e.f === s.dragField ? 'Already here' : swaps ? `Swap with ${e.f}` : `Replace ${e.f}`) : fromCh ? 'Move here' : `Place ${s.dragField}`
           }
           return (
             <div key={slot.ch} data-chain={order ? '' : undefined} data-ch={slot.ch} data-ins={zs === 'before' || zs === 'after' ? zs : undefined} className={`sp ${e ? 'filled' : ''} ${adding ? 'add' : ''} ${dragging && !isSource ? (ok ? 'ok' : 'no') : ''} ${hovered ? 'over' : ''} ${isSource ? 'source' : ''} ${landed === slot.ch ? 'landed' : ''}`} draggable={!!e}
@@ -485,8 +492,8 @@ function ChartCard({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: Cha
                 </>
               )}
               {!e && (
-                <button type="button" className="place tp" data-tip={`Takes ${acceptsShort(slot.accepts)}`} disabled={!picked || !(pickedRole && slot.accepts.includes(pickedRole))} onClick={() => picked && assign(slot.ch, picked)}>
-                  {picked ? (pickedRole && slot.accepts.includes(pickedRole) ? `Place ${picked}` : `Takes ${acceptsShort(slot.accepts)}`) : 'Drop a field'}
+                <button type="button" className="place tp" data-tip={`Takes ${acceptsShort(accepts)}`} disabled={!picked || !(pickedRole && accepts.includes(pickedRole))} onClick={() => picked && assign(slot.ch, picked)}>
+                  {picked ? (pickedRole && accepts.includes(pickedRole) ? `Place ${picked}` : `Takes ${acceptsShort(accepts)}`) : 'Drop a field'}
                 </button>
               )}
             </div>
