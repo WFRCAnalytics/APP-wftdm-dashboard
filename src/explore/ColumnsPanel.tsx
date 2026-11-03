@@ -1,12 +1,11 @@
 // 065-chart-builder: the Data tab's Columns panel. Every column gets a small distribution and a one-line summary; the
 // selected column gets a larger distribution and summary statistics. Only the columns on screen are summarised.
 import { useEffect, useState } from 'react'
-import { ChevronDown } from 'lucide-react'
 import { DATA_TYPES, TYPE_LABEL, typesPresent, type DataType } from '@/charts/builder/columnTypes'
 import { columnLabel, getExploreOptions } from '@/explore/options'
 import { loadProfile } from '@/explore/profile/profileRun'
 import { typeColorKey, type ColumnProfile } from '@/explore/profile/profile'
-import { SearchPopover, Sparkline, TypeChip, TypeFilter, useInView, XSelect, type PopItem } from '@/explore/parts'
+import { Sparkline, TablePicker as PickTable, TypeChip, TypeFilter, useInView, XSelect, type PopItem } from '@/explore/parts'
 import type { DataTabModel } from '@/explore/useDataTab'
 import type { ColumnInfo } from '@/explore/sql/queryModel'
 import { resetQuery, setExplore } from '@/state/exploreState'
@@ -90,22 +89,14 @@ function Detail({ sql, col }: { sql: string; col: ColumnInfo }) {
 // columns it describes, the same place the chart tab keeps its data source.
 function TablePicker({ m }: { m: DataTabModel }) {
   const s = m.state
-  const [rect, setRect] = useState<DOMRect | null>(null)
   const mine = s.mine.find((x) => `m:${x.id}` === s.table)
   const label = mine ? `My table · ${mine.name}` : s.table.replace(/^t:/, '') || 'Pick a table'
-  const pick = (table: string) => { setExplore(resetQuery({ table })); setRect(null) }
+  const pick = (table: string) => setExplore(resetQuery({ table }))
   const items: PopItem[] = [
     ...m.tableOptions.filter((t) => t.missingIn.length === 0).map((t) => ({ key: `t:${t.name}`, label: t.name, on: s.table === `t:${t.name}`, onPick: () => pick(`t:${t.name}`) })),
     ...s.mine.map((t) => ({ key: `m:${t.id}`, label: `My table · ${t.name}`, on: s.table === `m:${t.id}`, onPick: () => pick(`m:${t.id}`) })),
   ]
-  return (
-    <>
-      <button type="button" className="sel tpick" aria-label="Table" aria-haspopup="dialog" aria-expanded={!!rect} onClick={(e) => setRect(e.currentTarget.getBoundingClientRect())}>
-        <span className="mono">{label}</span><ChevronDown size={14} aria-hidden="true" />
-      </button>
-      {rect && <SearchPopover anchor={rect} title="Choose a table" placeholder={`Search ${items.length} tables`} single items={items} onClose={() => setRect(null)} />}
-    </>
-  )
+  return <PickTable label={label} ariaLabel="Table" items={items} />
 }
 
 export function ColumnsPanel({ m }: { m: DataTabModel }) {

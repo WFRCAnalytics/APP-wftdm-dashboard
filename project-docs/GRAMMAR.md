@@ -951,7 +951,7 @@ multi-panel dashboard page.
 ```yaml
 header:
   tab:       Explore
-  title:     Explore the Demo Data
+  title:     Explore the Data
   icon:      compass
   full_page: true
 

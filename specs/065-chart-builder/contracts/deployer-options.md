@@ -10,7 +10,7 @@ Code: `src/explore/options.ts` (`resolveExploreOptions`, defaults, table globs, 
 
 ```yaml
 - type: explore-builder
-  title: Explore the Demo Data
+  title: Explore the Data
   limits:
     csv_rows: 100000      # rows in a CSV download (1 to 5,000,000)
     page_size: 12         # fixed rows per page (5 to 200). Unset: as many as fit the tile

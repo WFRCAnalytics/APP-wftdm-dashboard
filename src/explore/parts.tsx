@@ -1,7 +1,7 @@
 // 065-chart-builder: small shared pieces of the Explore builder UI: the type chip, a searchable popover and a sparkline.
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { Check } from 'lucide-react'
+import { Check, ChevronDown } from 'lucide-react'
 import { TYPE_ICON, TYPE_LABEL, type DataType } from '@/charts/builder/columnTypes'
 
 export function TypeChip({ type }: { type: DataType }) {
@@ -86,6 +86,22 @@ export function SearchPopover(props: {
     </div>
   )
   return createPortal(node, document.body)
+}
+
+/** The one table / data-source picker: a button showing the current table that opens a searchable list. The Columns panel, the
+ * query builder's Table step and the chart tab's Data source all use it so the three look and behave alike. */
+export function TablePicker(props: { label: string; ariaLabel: string; title?: string; items: PopItem[] }) {
+  const [rect, setRect] = useState<DOMRect | null>(null)
+  // Picking closes the list; the caller's own onPick runs first.
+  const items = props.items.map((i) => ({ ...i, onPick: () => { i.onPick(); setRect(null) } }))
+  return (
+    <>
+      <button type="button" className="sel tpick" aria-label={props.ariaLabel} aria-haspopup="dialog" aria-expanded={!!rect} onClick={(e) => setRect(e.currentTarget.getBoundingClientRect())}>
+        <span className="mono">{props.label}</span><ChevronDown size={14} aria-hidden="true" />
+      </button>
+      {rect && <SearchPopover anchor={rect} title={props.title ?? 'Choose a table'} placeholder={`Search ${items.length} tables`} single items={items} onClose={() => setRect(null)} />}
+    </>
+  )
 }
 
 /** True once the element has scrolled into view; lets a long list summarise only the columns that are visible. */

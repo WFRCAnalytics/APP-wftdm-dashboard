@@ -5,7 +5,7 @@ import { useRef, useState } from 'react'
 import { ArrowUpDown, ChevronRight, Filter, Link2, Play, Plus, Sigma, Sparkles, Table2, X } from 'lucide-react'
 import { Segmented } from '@/components/ui/segmented'
 import { chartRole, TYPE_LABEL } from '@/charts/builder/columnTypes'
-import { Btn, SearchPopover, XSelect, type PopAction, type PopItem } from '@/explore/parts'
+import { Btn, SearchPopover, TablePicker, XSelect, type PopAction, type PopItem } from '@/explore/parts'
 import { highlightSql } from '@/explore/sql/highlight'
 import { checkName, saveMyTable } from '@/explore/sql/myTables'
 import {
@@ -175,10 +175,11 @@ function Builder({ m, openPicker }: { m: DataTabModel; openPicker(kind: 'cols' |
       )}
       <div className={`pipe ${s.detached ? 'dis' : ''}`} style={{ padding: '14px 18px 4px' }}>
         <Step tone="s-src" icon={<Table2 size={16} aria-hidden="true" />} title="Table" count={rows(m.counts.source)} summary={s.table.replace(/^[tm]:/, '')} open={openStep === 'table'} onToggle={toggle('table')}>
-          <XSelect className="sel" style={{ width: '100%' }} aria-label="Source table" value={s.table} onChange={(e) => setExplore(resetQuery({ table: e.target.value }))}>
-            {tableOpts.map((t) => <option key={t.name} value={`t:${t.name}`}>{t.name}</option>)}
-            {s.mine.map((t) => <option key={t.id} value={`m:${t.id}`}>My table · {t.name}</option>)}
-          </XSelect>
+          <TablePicker ariaLabel="Source table" label={s.table.startsWith('m:') ? `My table · ${s.mine.find((t) => `m:${t.id}` === s.table)?.name ?? ''}` : s.table.replace(/^t:/, '') || 'Pick a table'}
+            items={[
+              ...tableOpts.map((t) => ({ key: `t:${t.name}`, label: t.name, on: s.table === `t:${t.name}`, onPick: () => setExplore(resetQuery({ table: `t:${t.name}` })) })),
+              ...s.mine.map((t) => ({ key: `m:${t.id}`, label: `My table · ${t.name}`, on: s.table === `m:${t.id}`, onPick: () => setExplore(resetQuery({ table: `m:${t.id}` })) })),
+            ]} />
         </Step>
 
         {model.joins.map((j, i) => {

@@ -187,7 +187,7 @@ test.describe('DuckDB computes the chart data for every mark', () => {
   const textTable = async (page: Page, errors: string[]) => {
     await openExplore(page, errors)
     await expect(page.locator('.xb .tbl tbody tr').first()).toBeVisible({ timeout: 60_000 })
-    await page.locator('.xb .tpick').click()
+    await page.locator('.xb .tpick[aria-label="Table"]').click()
     await page.getByRole('dialog', { name: 'Choose a table' }).getByLabel('Search').fill('purpose_mode_flow')
     await page.getByRole('option', { name: 'purpose_mode_flow', exact: true }).click()
     await expect(page.locator('.xb .prow2', { hasText: 'major_trip_mode' })).toBeVisible({ timeout: 30_000 })
@@ -502,7 +502,7 @@ test.describe('DuckDB computes the chart data for every mark', () => {
     const errors: string[] = []
     await openExplore(page, errors)
     await expect(page.locator('.xb .tbl tbody tr').first()).toBeVisible({ timeout: 60_000 })
-    await page.locator('.xb .tpick').click()
+    await page.locator('.xb .tpick[aria-label="Table"]').click()
     await page.getByRole('dialog', { name: 'Choose a table' }).getByLabel('Search').fill('purpose_mode_flow')
     await page.getByRole('option', { name: 'purpose_mode_flow', exact: true }).click()
     await expect(page.locator('.xb .prow2', { hasText: 'major_trip_mode' })).toBeVisible({ timeout: 30_000 })
@@ -560,7 +560,7 @@ test.describe('DuckDB computes the chart data for every mark', () => {
     const errors: string[] = []
     await openExplore(page, errors)
     await expect(page.locator('.xb .tbl tbody tr').first()).toBeVisible({ timeout: 60_000 })
-    await page.locator('.xb .tpick').click()
+    await page.locator('.xb .tpick[aria-label="Table"]').click()
     await page.getByRole('dialog', { name: 'Choose a table' }).getByLabel('Search').fill('purpose_mode_flow')
     await page.getByRole('option', { name: 'purpose_mode_flow', exact: true }).click()
     await expect(page.locator('.xb .prow2', { hasText: 'major_trip_mode' })).toBeVisible({ timeout: 30_000 })
@@ -630,7 +630,7 @@ test.describe('DuckDB computes the chart data for every mark', () => {
     const errors: string[] = []
     await openExplore(page, errors)
     await expect(page.locator('.xb .tbl tbody tr').first()).toBeVisible({ timeout: 60_000 })
-    await page.locator('.xb .tpick').click()
+    await page.locator('.xb .tpick[aria-label="Table"]').click()
     await page.getByRole('dialog', { name: 'Choose a table' }).getByLabel('Search').fill('purpose_mode_flow')
     await page.getByRole('option', { name: 'purpose_mode_flow', exact: true }).click()
     await expect(page.locator('.xb .prow2', { hasText: 'major_trip_mode' })).toBeVisible({ timeout: 30_000 })
