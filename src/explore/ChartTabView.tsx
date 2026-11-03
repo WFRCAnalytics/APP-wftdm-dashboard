@@ -2,7 +2,7 @@
 // the chart card in the middle (a single row of encoding shelves over a chart that fills the remaining height), and the settings
 // rail on the right (Chart, Style, Axes, Filter). Drag a field onto a shelf, or select it and press the shelf (keyboard path).
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowLeftRight, ChevronRight, Download, GripVertical, Maximize2, Minimize2, Plus, X } from 'lucide-react'
+import { ArrowLeftRight, ChevronDown, ChevronRight, Download, GripVertical, Maximize2, Minimize2, Plus, X } from 'lucide-react'
 import { chainEntries, chainIndex, chainOrder, closeGap, dropZone, insertIntoChain, removeFromChain, reorderInChain, type Box, type Side } from '@/charts/builder/chainOps'
 import { buildChart, relabel, type ChartModel, type Col, type DrawnChart } from '@/charts/builder/compile'
 import { chartRole, DATA_TYPES, TYPE_LABEL, typesPresent, type DataType } from '@/charts/builder/columnTypes'
@@ -22,7 +22,7 @@ import type { ChartTheme } from '@/charts/types'
 import { Button } from '@/components/ui/button'
 import { Segmented } from '@/components/ui/segmented'
 import { MARK_ICONS, SOON_ICONS } from '@/explore/markIcons'
-import { Btn, Sparkline, TypeChip, TypeFilter, XSelect } from '@/explore/parts'
+import { Btn, SearchPopover, Sparkline, TypeChip, TypeFilter, XSelect, type PopItem } from '@/explore/parts'
 import { loadProfile } from '@/explore/profile/profileRun'
 import { tablesFor } from '@/explore/relations'
 import { typeColorKey, type ColumnProfile } from '@/explore/profile/profile'
@@ -83,6 +83,13 @@ function FieldsPanel({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: C
     for (const own of [tab.source, s.table]) if (own.startsWith('t:') && !names.includes(own.slice(2))) names.push(own.slice(2))
     return names
   }, [s.scenarios, s.table, tab.source])
+  const [srcRect, setSrcRect] = useState<DOMRect | null>(null)
+  const pickSource = (source: string) => { updateChart(tab.id, (t) => ({ ...t, source, spec: { ...t.spec, enc: {}, filter: { f: '', v: '' } } })); setSrcRect(null) }
+  const sourceItems: PopItem[] = [
+    ...sourceTables.map((n) => ({ key: `t:${n}`, label: n, on: tab.source === `t:${n}`, onPick: () => pickSource(`t:${n}`) })),
+    ...s.mine.map((m) => ({ key: `m:${m.id}`, label: `My table · ${m.name}`, on: tab.source === `m:${m.id}`, onPick: () => pickSource(`m:${m.id}`) })),
+  ]
+  const sourceLabel = sourceItems.find((i) => i.on)?.label ?? (tab.source.replace(/^t:/, '') || 'Pick a table')
   const present = typesPresent(cols)
   const active = s.fieldType !== 'all' && present.some((p) => p.type === s.fieldType) ? s.fieldType : 'all'
   const q = s.fieldQuery.toLowerCase()
@@ -141,10 +148,10 @@ function FieldsPanel({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: C
       onDragOver={(ev) => { if (ev.dataTransfer.types.includes(FROM_SHELF)) { ev.preventDefault(); ev.dataTransfer.dropEffect = 'move' } }} onDrop={takeOff}>
       <div className="th"><div><h2 className="tt">Fields</h2><p className="ts">{cols.length} columns in {data.relationName || 'this table'}.</p></div></div>
       <div className="psearch">
-        <XSelect className="sel" style={{ width: '100%' }} aria-label="Data source" value={tab.source} onChange={(e) => updateChart(tab.id, (t) => ({ ...t, source: e.target.value, spec: { ...t.spec, enc: {}, filter: { f: '', v: '' } } }))}>
-          {s.mine.length > 0 && <optgroup label="My tables">{s.mine.map((m) => <option key={m.id} value={`m:${m.id}`}>{m.name}</option>)}</optgroup>}
-          <optgroup label="Tables">{sourceTables.map((n) => <option key={n} value={`t:${n}`}>{n}</option>)}</optgroup>
-        </XSelect>
+        <button type="button" className="sel tpick" style={{ width: '100%' }} aria-label="Data source" aria-haspopup="dialog" aria-expanded={!!srcRect} onClick={(e) => setSrcRect(e.currentTarget.getBoundingClientRect())}>
+          <span className="mono">{sourceLabel}</span><ChevronDown size={14} aria-hidden="true" />
+        </button>
+        {srcRect && <SearchPopover anchor={srcRect} title="Choose a data source" placeholder={`Search ${sourceItems.length} tables`} single items={sourceItems} onClose={() => setSrcRect(null)} />}
         <input className="inp" type="search" aria-label="Search fields" placeholder="Search fields" value={s.fieldQuery} onChange={(e) => setExplore({ fieldQuery: e.target.value, fieldShow: 60 })} />
         <TypeFilter label="Field type" value={active} total={cols.length} present={present} onChange={(id) => setExplore({ fieldType: id as typeof active })} />
       </div>
