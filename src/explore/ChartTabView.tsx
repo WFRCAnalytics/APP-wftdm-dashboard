@@ -24,6 +24,7 @@ import { Segmented } from '@/components/ui/segmented'
 import { MARK_ICONS, SOON_ICONS } from '@/explore/markIcons'
 import { Btn, Sparkline, TypeChip, TypeFilter, XSelect } from '@/explore/parts'
 import { loadProfile } from '@/explore/profile/profileRun'
+import { tablesFor } from '@/explore/relations'
 import { typeColorKey, type ColumnProfile } from '@/explore/profile/profile'
 import { useDistinct } from '@/explore/useDistinct'
 import { ExportDialog, Modal } from '@/explore/ExportDialog'
@@ -76,6 +77,12 @@ function useProfileOf(sql: string, col: Col | undefined): ColumnProfile | undefi
 
 function FieldsPanel({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: ChartData }) {
   const { cols } = data
+  // Every table the deployer allows and every selected scenario has; the current source stays listed so the select never shows a blank.
+  const sourceTables = useMemo(() => {
+    const names = tablesFor(s.scenarios).filter((t) => t.missingIn.length === 0).map((t) => t.name)
+    for (const own of [tab.source, s.table]) if (own.startsWith('t:') && !names.includes(own.slice(2))) names.push(own.slice(2))
+    return names
+  }, [s.scenarios, s.table, tab.source])
   const present = typesPresent(cols)
   const active = s.fieldType !== 'all' && present.some((p) => p.type === s.fieldType) ? s.fieldType : 'all'
   const q = s.fieldQuery.toLowerCase()
@@ -135,9 +142,8 @@ function FieldsPanel({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: C
       <div className="th"><div><h2 className="tt">Fields</h2><p className="ts">{cols.length} columns in {data.relationName || 'this table'}.</p></div></div>
       <div className="psearch">
         <XSelect className="sel" style={{ width: '100%' }} aria-label="Data source" value={tab.source} onChange={(e) => updateChart(tab.id, (t) => ({ ...t, source: e.target.value, spec: { ...t.spec, enc: {}, filter: { f: '', v: '' } } }))}>
-          {s.mine.map((m) => <option key={m.id} value={`m:${m.id}`}>{m.name}</option>)}
-          {tab.source.startsWith('t:') && <option value={tab.source}>{tab.source.slice(2)}</option>}
-          {s.table.startsWith('t:') && s.table !== tab.source && <option value={s.table}>{s.table.slice(2)}</option>}
+          {s.mine.length > 0 && <optgroup label="My tables">{s.mine.map((m) => <option key={m.id} value={`m:${m.id}`}>{m.name}</option>)}</optgroup>}
+          <optgroup label="Tables">{sourceTables.map((n) => <option key={n} value={`t:${n}`}>{n}</option>)}</optgroup>
         </XSelect>
         <input className="inp" type="search" aria-label="Search fields" placeholder="Search fields" value={s.fieldQuery} onChange={(e) => setExplore({ fieldQuery: e.target.value, fieldShow: 60 })} />
         <TypeFilter label="Field type" value={active} total={cols.length} present={present} onChange={(id) => setExplore({ fieldType: id as typeof active })} />
