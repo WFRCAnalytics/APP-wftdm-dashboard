@@ -168,7 +168,7 @@ export function channelLabel(mark: Mark, ch: Channel): string {
   if (mark === 'text' && ch === 'label') return 'Cell text'
   if (mark === 'heatmap' && ch === 'color') return 'Cell value'
   if (mark === 'histogram' && ch === 'x') return 'Values to bin'
-  return { x: 'X axis', y: 'Y axis', color: 'Colour', pattern: 'Hatch', dash: 'Dash', shape: 'Shape', size: 'Size', opacity: 'Opacity', detail: 'Detail', rg2: 'Row group 2', rg3: 'Row group 3', rg4: 'Row group 4', cg2: 'Column group 2', cg3: 'Column group 3', cg4: 'Column group 4', val2: 'Value 2', val3: 'Value 3', val4: 'Value 4', ring3: 'Level 3', ring4: 'Level 4', ring5: 'Level 5', label: 'Label', order: 'Order', column: 'Columns', row: 'Rows' }[ch]
+  return { x: 'X axis', y: 'Y axis', color: 'Color', pattern: 'Hatch', dash: 'Dash', shape: 'Shape', size: 'Size', opacity: 'Opacity', detail: 'Detail', rg2: 'Row group 2', rg3: 'Row group 3', rg4: 'Row group 4', cg2: 'Column group 2', cg3: 'Column group 3', cg4: 'Column group 4', val2: 'Value 2', val3: 'Value 3', val4: 'Value 4', ring3: 'Level 3', ring4: 'Level 4', ring5: 'Level 5', label: 'Label', order: 'Order', column: 'Columns', row: 'Rows' }[ch]
 }
 
 /** The aggregate a number gets by default on a channel that totals (bar, line and area y; heatmap cell; pie slice). */

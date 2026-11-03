@@ -98,6 +98,21 @@ describe('bar', () => {
     expect(m.defs.length).toBeGreaterThanOrEqual(2)
     expect(m.panels[0].rects[0].fill).toMatch(/^url\(#pt/)
   })
+  it('combines the legends of Color and Hatch on the same field, tinted by the color', () => {
+    const m = ok(build({ enc: { ...enc, color: { f: 'scenario' }, pattern: { f: 'scenario' } } }))
+    expect(m.legend.map((g) => g.title)).toEqual(['scenario'])
+    expect(m.legend[0].items[0].fill).toMatch(/^url\(#lp/)
+    expect(m.defs.find((d) => d.id === 'lp0')!.color).toBe('cat:0')
+    const apart = ok(build({ enc: { ...enc, color: { f: 'scenario' }, pattern: { f: 'mode' } } }))
+    expect(apart.legend.map((g) => g.title)).toEqual(['scenario', 'mode'])
+  })
+  it('combines a shared field legend on every mark that has the channels', () => {
+    const titles = (o: Parameters<typeof defaultSpec>[0]) => ok(build(o)).legend.map((g) => g.title)
+    expect(titles({ mark: 'line', enc: { x: { f: 'hour' }, y: { f: 'trips', agg: 'sum' }, color: { f: 'scenario' }, dash: { f: 'scenario' } } })).toEqual(['scenario'])
+    expect(titles({ mark: 'scatter', enc: { x: { f: 'hour' }, y: { f: 'trips' }, color: { f: 'scenario' }, shape: { f: 'scenario' } } })).toEqual(['scenario'])
+    expect(titles({ mark: 'area', enc: { x: { f: 'hour' }, y: { f: 'trips', agg: 'sum' }, color: { f: 'scenario' }, pattern: { f: 'scenario' } } })).toEqual(['scenario'])
+    expect(titles({ mark: 'pie', enc: { color: { f: 'mode' }, size: { f: 'trips', agg: 'sum' }, pattern: { f: 'mode' } } })).toEqual(['mode'])
+  })
   it('dims everything except a hovered legend value', () => {
     const m = ok(build({ enc }, rows, 'scenario=a'))
     expect(new Set(m.panels[0].rects.map((r) => r.op))).toEqual(new Set([1, 0.2]))

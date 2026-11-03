@@ -97,7 +97,7 @@ test('a chart tab builds a bar chart from the shelves and exports its configurat
   await expect(page.locator('.xb svg.plot rect[data-t]').first()).toBeVisible({ timeout: 30_000 })
   // with a category selected, the Colour shelf accepts it
   await page.locator('.xb .fchip', { hasText: 'scenario' }).first().click()
-  await expect(page.locator('.xb .sp', { hasText: 'Colour' }).getByRole('button', { name: /Place scenario/ })).toBeEnabled()
+  await expect(page.locator('.xb .sp', { hasText: 'Color' }).getByRole('button', { name: /Place scenario/ })).toBeEnabled()
   await page.screenshot({ path: 'test-results/explore-chart-tab.png' })
   // switch to a line and open the export dialog
   await page.getByRole('button', { name: 'Export' }).click()
@@ -170,7 +170,7 @@ test.describe('DuckDB computes the chart data for every mark', () => {
   test('waffle fills 100 squares', async ({ page }) => {
     const errors: string[] = []
     await setup(page, errors, 'Waffle')
-    await place(page, 'scenario', 'Colour')
+    await place(page, 'scenario', 'Color')
     await place(page, 'auPkTotal', 'Share of squares')
     await drawn(page)
     await expect(page.locator('.xb svg.plot rect[data-t]')).toHaveCount(100)
@@ -294,7 +294,7 @@ test.describe('DuckDB computes the chart data for every mark', () => {
     await page.locator('.xseg').getByText('Chart', { exact: true }).click()
     await page.getByRole('button', { name: 'Clear' }).click()
     await page.locator('.xb .mk', { hasText: 'Pie' }).click()
-    await place(page, 'major_trip_mode', 'Colour')
+    await place(page, 'major_trip_mode', 'Color')
     await place(page, 'trips', 'Slice size')
     await page.locator('.xseg').getByText('Style', { exact: true }).click()
     await expect(page.locator('.xb svg.plot text', { hasText: /^\d+(\.\d)?k$/ }).first()).toBeVisible()
@@ -312,7 +312,7 @@ test.describe('DuckDB computes the chart data for every mark', () => {
     await page.locator('.xb .mk', { hasText: 'Bar' }).click()
     await place(page, 'primary_purpose', 'X axis')
     await place(page, 'trips', 'Y axis')
-    await place(page, 'major_trip_mode', 'Colour')
+    await place(page, 'major_trip_mode', 'Color')
     await drawn(page)
     const shelf = (name: string) => page.locator('.xb .strip .sp', { hasText: name })
     const tag = (field: string) => page.locator('.xb .fchip', { hasText: field }).first().locator('.fused')
@@ -327,7 +327,7 @@ test.describe('DuckDB computes the chart data for every mark', () => {
     await page.waitForTimeout(200)
     expect(await boxes()).toEqual(still)
     // the shelf under the pointer says what a drop would do; shelves elsewhere stay quiet
-    const x = page.locator('.xb .strip .sp', { hasText: 'Colour' }) // takes categories only, so a number is refused there
+    const x = page.locator('.xb .strip .sp', { hasText: 'Color' }) // takes categories only, so a number is refused there
     const y = page.locator('.xb .strip .sp', { hasText: 'Y axis' })
     await x.dispatchEvent('dragenter', { dataTransfer: dt })
     await expect(x).toHaveAttribute('data-hint', /^Takes .* only$/)
@@ -344,13 +344,13 @@ test.describe('DuckDB computes the chart data for every mark', () => {
     await expect(shelf('X axis')).not.toContainText('primary_purpose')
     await expect(tag('primary_purpose')).toHaveText('Hatch')
     // a number cannot go on a category shelf, and stays where it was
-    await drag(shelf('Y axis'), shelf('Colour'))
+    await drag(shelf('Y axis'), shelf('Color'))
     await expect(shelf('Y axis')).toContainText('trips')
-    await expect(shelf('Colour')).toContainText('major_trip_mode')
+    await expect(shelf('Color')).toContainText('major_trip_mode')
     // swap: two categories trade places
-    await drag(shelf('Colour'), shelf('Hatch'))
+    await drag(shelf('Color'), shelf('Hatch'))
     await expect(shelf('Hatch')).toContainText('major_trip_mode')
-    await expect(shelf('Colour')).toContainText('primary_purpose')
+    await expect(shelf('Color')).toContainText('primary_purpose')
     // take off: drag a placed field back onto the field list
     await drag(shelf('Hatch'), page.locator('.xb .flist'))
     await expect(shelf('Hatch')).not.toContainText('major_trip_mode')
@@ -477,7 +477,7 @@ test.describe('DuckDB computes the chart data for every mark', () => {
     const errors: string[] = []
     await setup(page, errors, 'Density')
     await place(page, 'auPkTotal', 'Values')
-    await place(page, 'scenario', 'Colour')
+    await place(page, 'scenario', 'Color')
     await drawn(page)
     expect(errors).toEqual([])
   })
@@ -660,7 +660,7 @@ test.describe('DuckDB computes the chart data for every mark', () => {
   test('pie groups in DuckDB', async ({ page }) => {
     const errors: string[] = []
     await setup(page, errors, 'Pie')
-    await place(page, 'scenario', 'Colour')
+    await place(page, 'scenario', 'Color')
     await place(page, 'auPkTotal', 'Slice size')
     await drawn(page)
     expect(errors).toEqual([])

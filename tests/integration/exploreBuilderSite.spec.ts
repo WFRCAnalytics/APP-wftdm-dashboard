@@ -39,7 +39,7 @@ async function drawColoured(page: Page) {
   }
   await place('scenario', 'X axis')
   await place('auPkTotal', 'Y axis')
-  await place('scenario', 'Colour')
+  await place('scenario', 'Color')
   await expect(page.locator('.xb svg.plot rect[data-t]').first()).toBeVisible({ timeout: 30_000 })
 }
 

@@ -1112,13 +1112,16 @@ export function buildChart(input: BuildInput): ChartModel {
     const h = series[0].heat!, ramp = (series[0] as any).ramp as (t: number) => string
     legend.push({ title: enc.color!.f, items: [0, 0.25, 0.5, 0.75, 1].map((t, i) => ({ label: i === 0 ? fmtCompact(h.lo) : i === 4 ? fmtCompact(h.hi) : '', key: '', d: SW, fill: ramp(t), stroke: 'none', sw: 1, dash: '' })) })
   } else {
-    if (colorField) legend.push({ title: colorField, items: dom[colorField].map((v, i) => item(colorField, v, { fill: colorFor(colorField, v, i) })) })
+    // a field on Colour and also on Hatch, Dash or Shape is one legend group whose swatches show both looks; otherwise one group per channel
+    const other = (['pattern', 'dash', 'shape'] as const).find((ch) => enc[ch] && enc[ch]!.f === colorField)
+    const ink = (f: string, i: number) => (f === colorField ? colorFor(f, dom[f][i], i) : T.mute)
+    if (colorField && !other) legend.push({ title: colorField, items: dom[colorField].map((v, i) => item(colorField, v, { fill: colorFor(colorField, v, i) })) })
     if (enc.pattern) {
       const pf = enc.pattern.f
-      legend.push({ title: pf, items: dom[pf].map((v, i) => { const p = PATTERNS[i % 5]; defs.push({ id: `lp${i}`, color: T.mute, d: p.d, sw: p.sw, fill: p.fill ? T.mute : 'none' }); return item(pf, v, { fill: `url(#lp${i})`, stroke: T.mute, sw: 1 }) }) })
+      legend.push({ title: pf, items: dom[pf].map((v, i) => { const p = PATTERNS[i % 5], c = ink(pf, i); defs.push({ id: `lp${i}`, color: c, d: p.d, sw: p.sw, fill: p.fill ? c : 'none' }); return item(pf, v, { fill: `url(#lp${i})`, stroke: c, sw: 1 }) }) })
     }
-    if (enc.dash) { const df = enc.dash.f; legend.push({ title: df, items: dom[df].map((v, i) => item(df, v, { d: 'M1 7h16', stroke: T.mute, sw: 2.2, dash: DASH[i % 5] })) }) }
-    if (enc.shape) { const sf = enc.shape.f; legend.push({ title: sf, items: dom[sf].map((v, i) => { const g = glyph(i % 5, 9, 7, 4.2); return item(sf, v, { d: g.d, fill: g.line ? 'none' : T.mute, stroke: g.line ? T.mute : 'none', sw: 2 }) }) }) }
+    if (enc.dash) { const df = enc.dash.f; legend.push({ title: df, items: dom[df].map((v, i) => item(df, v, { d: 'M1 7h16', stroke: ink(df, i), sw: 2.2, dash: DASH[i % 5] })) }) }
+    if (enc.shape) { const sf = enc.shape.f; legend.push({ title: sf, items: dom[sf].map((v, i) => { const g = glyph(i % 5, 9, 7, 4.2), c = ink(sf, i); return item(sf, v, { d: g.d, fill: g.line ? 'none' : c, stroke: g.line ? c : 'none', sw: 2 }) }) }) }
   }
   // axis titles: the chosen text, else the field on that axis (a histogram counts rows, a density estimates density)
   if (titled && frames.length === panels.length) {
