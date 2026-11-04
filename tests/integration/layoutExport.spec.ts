@@ -49,7 +49,8 @@ test.describe('tile export', () => {
     await expect(page.getByRole('menuitemradio', { name: 'Transparent' })).toHaveAttribute('aria-checked', 'true')
     const [dl] = await Promise.all([page.waitForEvent('download'), page.getByRole('menuitem', { name: /image \(SVG\)/ }).click()])
     const svg = readFileSync((await dl.path())!, 'utf8')
-    expect(/^<svg[^>]*><g /.test(svg)).toBe(true)
+    // (an exported image starts with its title and description, then the content group: no background rect before it)
+    expect(/^<svg[^>]*>(?:<title[^>]*>[^<]*<\/title>)?(?:<desc[^>]*>[^<]*<\/desc>)?<g /.test(svg)).toBe(true)
     // the same choice is offered, already set, on the page-level Export all
     await page.getByTestId('page-export').getByRole('button').click()
     await expect(page.getByRole('menuitemradio', { name: 'Transparent' })).toHaveAttribute('aria-checked', 'true')
