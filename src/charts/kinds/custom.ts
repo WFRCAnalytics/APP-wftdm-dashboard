@@ -5,7 +5,7 @@ import { buildChart, shelfProblem, type Col, type Row } from '@/charts/builder/c
 import { normalizeCustomSpec } from '@/charts/builder/customSpec'
 import { chartRole } from '@/charts/builder/columnTypes'
 import { chartQuery } from '@/charts/builder/specToSql'
-import { fromConfig, ZOOMABLE_MARKS, type ChartSpec } from '@/charts/builder/spec'
+import { fromConfig, type ChartSpec } from '@/charts/builder/spec'
 import type { HierState } from '@/charts/builder/hierarchyDraw'
 import { renderPivots, type PivotState } from '@/charts/builder/pivotDraw'
 import { renderChartSvg } from '@/charts/builder/svg'
@@ -55,7 +55,7 @@ const kind: ChartKind = {
       el.replaceChildren(renderPivots(model.tables, (st.pivot ??= {})))
       return { label: x.spec.text.title.t || 'Custom table' }
     }
-    el.replaceChildren(renderChartSvg(model, env.width, env.height, env.theme.ink, ZOOMABLE_MARKS.includes(x.spec.mark), { theme: env.theme, state: env.state as HierState }))
+    el.replaceChildren(renderChartSvg(model, env.width, env.height, env.theme.ink, { theme: env.theme, state: env.state as HierState }))
     const items = model.legend.flatMap((g) =>
       g.items.filter((i) => i.label).map((i) => ({ label: i.label, color: /^(#|rgb|var)/.test(i.fill) ? i.fill : i.stroke !== 'none' ? i.stroke : undefined, dash: i.dash ? true : undefined })),
     )

@@ -12,12 +12,11 @@ import { CategoryOrder } from './CategoryOrder'
 import { Slider } from '@/components/ui/slider'
 import { prettyOperators } from '@/services/typography'
 import {
-  HIST_STATS, HIST_BINS_MIN, HIST_BINS_MAX, assignField, swapAxes, AXIS_MARKS, GRID_MARKS, REF_MARKS, ZERO_MARKS, acceptsShort, slotAccepts, chainOf, CHAINS, effectiveLabels, LABEL_MARKS, labelModesFor, SHOW_AS, TABLE_VALUES, ZOOMABLE_MARKS, AGGS, channelAggregates, channelLabel, COMING_SOON, MARK_LABEL, MARKS, SLOTS, SORTS, switchMark, TEXT_SIZES,
+  HIST_STATS, HIST_BINS_MIN, HIST_BINS_MAX, assignField, swapAxes, AXIS_MARKS, GRID_MARKS, REF_MARKS, ZERO_MARKS, acceptsShort, slotAccepts, chainOf, CHAINS, effectiveLabels, LABEL_MARKS, labelModesFor, SHOW_AS, TABLE_VALUES, AGGS, channelAggregates, channelLabel, COMING_SOON, MARK_LABEL, MARKS, SLOTS, SORTS, switchMark, TEXT_SIZES,
   type Agg, type CellStyle, type LabelMode, type Channel, type ChartSpec, type Density, type MeasureFormat, type ShowAs, type TableOpts, type Mark, type Sort, type Stack, type TextKey,
 } from '@/charts/builder/spec'
 import { drawHierarchy, type HierState } from '@/charts/builder/hierarchyDraw'
 import { renderPivots, type PivotState } from '@/charts/builder/pivotDraw'
-import { attachPanZoom } from '@/charts/lib/panZoom'
 import { readChartTheme } from '@/charts/theme'
 import type { ChartTheme } from '@/charts/types'
 import { Button } from '@/components/ui/button'
@@ -170,7 +169,7 @@ function FieldsPanel({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: C
 
 // ---------------------------------------------------------------------------------------------------------------- the chart
 
-function Plot({ model, spec, hot, size, theme }: { model: DrawnChart; spec: ChartSpec; hot: string | null; size: { w: number; h: number }; theme: ChartTheme }) {
+function Plot({ model, hot, size, theme }: { model: DrawnChart; hot: string | null; size: { w: number; h: number }; theme: ChartTheme }) {
   void hot
   // Treemap and sunburst are drawn as zoomable hierarchies (click a group to open it). Which group is open outlives a redraw.
   const host = useRef<HTMLDivElement>(null)
@@ -183,16 +182,6 @@ function Plot({ model, spec, hot, size, theme }: { model: DrawnChart; spec: Char
     host.current.replaceChildren(model.tables ? renderPivots(model.tables, pivot.current, getExploreOptions().limits.pivotRows) : drawHierarchy(model, theme, open.current))
     return () => tooltip.hide()
   }, [model, theme, hierarchical, pivoted])
-  const ref = useRef<SVGSVGElement>(null)
-  const layer = useRef<SVGGElement>(null)
-  const zoomable = ZOOMABLE_MARKS.includes(spec.mark)
-  // Axis-free marks pan and zoom. The drawing is React's, so the wrapper group is made once per new model and the old one dropped.
-  useEffect(() => {
-    const svg = ref.current
-    if (!svg || !zoomable) return
-    const detach = attachPanZoom(svg, size.w, size.h, {}, layer.current)
-    return () => { detach.dispose() }
-  }, [model, zoomable, size.w, size.h])
   const onOver = (e: React.MouseEvent) => {
     const t = (e.target as SVGElement).getAttribute?.('data-t')
     if (!t) { tooltip.hide(); return }
@@ -201,11 +190,10 @@ function Plot({ model, spec, hot, size, theme }: { model: DrawnChart; spec: Char
   if (pivoted) return <div ref={host} className="plot pivot" />
   if (hierarchical) return <div ref={host} className="plot hier" role="img" aria-label="Chart" />
   return (
-    <svg ref={ref} className="plot" viewBox={`0 0 ${size.w} ${size.h}`} role="img" aria-label="Chart" onMouseOver={onOver} onMouseMove={onOver} onMouseLeave={() => tooltip.hide()}>
+    <svg className="plot" viewBox={`0 0 ${size.w} ${size.h}`} role="img" aria-label="Chart" onMouseOver={onOver} onMouseMove={onOver} onMouseLeave={() => tooltip.hide()}>
       <defs>
         {model.defs.map((d) => <pattern key={d.id} id={d.id} patternUnits="userSpaceOnUse" width="8" height="8"><rect width="8" height="8" fill={d.color} fillOpacity=".16" /><path d={d.d} stroke={d.color} strokeWidth={d.sw} fill={d.fill} /></pattern>)}
       </defs>
-      <g ref={layer}>
       {model.panels.map((p, i) => (
         <g key={i} transform={p.tf}>
           {p.title && <text x="0" y="11" fontSize="12.5" fontWeight="600" fill="currentColor">{p.title}</text>}
@@ -215,7 +203,6 @@ function Plot({ model, spec, hot, size, theme }: { model: DrawnChart; spec: Char
           {p.texts.map((t, k) => <text key={k} x={t.x} y={t.y} textAnchor={t.anchor} fill={t.fill} fontSize={t.size} transform={t.tf || undefined} pointerEvents="none" stroke={t.halo} strokeWidth={t.halo ? 3 : undefined} paintOrder={t.halo ? 'stroke' : undefined} strokeLinejoin={t.halo ? 'round' : undefined}>{t.t}</text>)}
         </g>
       ))}
-      </g>
     </svg>
   )
 }
@@ -423,7 +410,7 @@ function ChartCard({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: Cha
           {data.loading && !drawn && !model?.problem && <div className="skel" role="status" aria-label="Loading the chart" />}
           {model?.problem && <div className="empty"><b>This chart needs a little more</b><span>{model.problem}</span></div>}
           {!model?.problem && data.error && <div className="empty"><b>The data could not be read</b><span>{data.error}</span></div>}
-          {drawn && !data.error && <Plot model={drawn} spec={spec} hot={hot} size={{ w: drawn.W, h: drawn.H }} theme={theme!} />}
+          {drawn && !data.error && <Plot model={drawn} hot={hot} size={{ w: drawn.W, h: drawn.H }} theme={theme!} />}
         </div>
         {txt('foot').t && <p className={`tb tfoot ${spec.footAlign === 'right' ? 'tright' : 'tleft'} ${cls('foot')}`}>{txt('foot').t}</p>}
         {(data.truncated || drawn?.limitedSeries || drawn?.labelsHidden) && <p className="hint" style={{ marginTop: 4 }}>{data.truncated ? (data.mode === 'raw' ? 'Showing a sample of the points. ' : `Showing the first ${getExploreOptions().limits.chartRows.toLocaleString('en-US')} groups. `) : ''}{drawn?.limitedSeries ? `Showing the first ${drawn.seriesLimit} values of a legend field.` : ''}{drawn?.labelsHidden ? ' Data labels are hidden: the bars are too thin to carry them. Use fewer groups, or expand the chart.' : ''}</p>}

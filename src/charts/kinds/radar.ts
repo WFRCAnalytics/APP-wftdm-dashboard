@@ -2,7 +2,6 @@
 // selections: one axis per submodel, rings at thirds of the max, a dashed tolerance polygon at 3%, up to six series, a
 // 26px hit line per axis for the tooltip.
 import { select } from 'd3-selection'
-import { attachPanZoom } from '@/charts/lib/panZoom'
 
 import {
   axisAngle,
@@ -155,7 +154,6 @@ const kind: ChartKind = {
     })
 
     el.replaceChildren(svg.node() as SVGSVGElement)
-    attachPanZoom(svg.node() as SVGSVGElement, w, h, { wheel: 'modifier' })
 
     const legend: LegendSpec = {
       items: [

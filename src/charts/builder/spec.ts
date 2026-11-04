@@ -3,8 +3,6 @@
 import { roleAccepts, type DataType, type Role } from '@/charts/builder/columnTypes'
 
 export const MARKS = ['bar', 'line', 'area', 'scatter', 'heatmap', 'histogram', 'box', 'pie', 'tick', 'text', 'waffle', 'density', 'rule', 'treemap', 'radar', 'sunburst', 'sankey', 'chord', 'trail'] as const
-/** Marks with no axes, so panning and zooming the drawing cannot distort a scale: they get drag to pan, wheel to zoom, double click to reset. */
-export const ZOOMABLE_MARKS: readonly string[] = ['pie', 'waffle', 'radar', 'sankey', 'chord']
 export type Mark = (typeof MARKS)[number]
 export type Channel = 'x' | 'y' | 'color' | 'pattern' | 'dash' | 'shape' | 'size' | 'opacity' | 'detail' | 'ring3' | 'ring4' | 'ring5' | 'rg2' | 'rg3' | 'rg4' | 'cg2' | 'cg3' | 'cg4' | 'val2' | 'val3' | 'val4' | 'label' | 'order' | 'column' | 'row'
 /** The extra levels of a treemap or sunburst, after colour (level 1) and detail (level 2): each is one more nesting level. */

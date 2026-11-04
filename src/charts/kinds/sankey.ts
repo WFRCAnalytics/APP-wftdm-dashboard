@@ -4,7 +4,6 @@
 // over the full height, tweened); click it again, or the line above, to show all. The last column's labels sit on its inner
 // side, so they never run past the chart's edge.
 import { select } from 'd3-selection'
-import { attachPanZoom } from '@/charts/lib/panZoom'
 import { sankey as d3sankey, type SankeyLink as DLink, type SankeyNode as DNode } from 'd3-sankey'
 import 'd3-transition'
 
@@ -243,7 +242,6 @@ const kind: ChartKind = {
       wireModeHover(body.node() as Element)
     }
     render(false)
-    attachPanZoom(svg.node() as SVGSVGElement, w, h, { wheel: 'modifier' }, body.node() as SVGGElement)
     return {
       legend: { items: MODES.map((m) => ({ label: m, color: t.mode(m), mode: m })) },
       label: `Daily trips from purpose to mode to distance, ${env.focus?.label ?? env.scenarios[0]?.label ?? ''}, ${env.year}`,

@@ -3,7 +3,6 @@
 import type { DrawnChart } from '@/charts/builder/compile'
 import { drawHierarchy, type HierState } from '@/charts/builder/hierarchyDraw'
 import type { ChartTheme } from '@/charts/types'
-import { attachPanZoom } from '@/charts/lib/panZoom'
 import { parseTip } from '@/charts/builder/tipTile'
 import { tooltip } from '@/services/tooltip'
 
@@ -15,7 +14,7 @@ function el(name: string, attrs: Record<string, string | number | undefined>, pa
   return e
 }
 
-export function renderChartSvg(model: DrawnChart, width: number, height: number, ink: string, zoomable = false, hier?: { theme: ChartTheme; state: HierState }): SVGSVGElement {
+export function renderChartSvg(model: DrawnChart, width: number, height: number, ink: string, hier?: { theme: ChartTheme; state: HierState }): SVGSVGElement {
   // a treemap or sunburst is drawn as a zoomable hierarchy, a Sankey with a node to focus on: click to open or filter
   if ((model.trees || model.sankeys) && hier) {
     const h = drawHierarchy(model, hier.theme, hier.state)
@@ -47,7 +46,5 @@ export function renderChartSvg(model: DrawnChart, width: number, height: number,
   svg.addEventListener('mouseover', show)
   svg.addEventListener('mousemove', show)
   svg.addEventListener('mouseleave', () => tooltip.hide())
-  // a dashboard page scrolls, so the wheel only zooms with Ctrl or Cmd held
-  if (zoomable) attachPanZoom(svg, model.W, model.H, { wheel: 'modifier' })
   return svg
 }
