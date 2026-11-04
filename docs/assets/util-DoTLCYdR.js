@@ -1,0 +1,1 @@
+const s=(t,e)=>Number(t[e]),o=(t,e)=>String(t[e]??"");function a(t,e){const n=document.createElement("p");n.textContent=e,n.className="p-5 font-body text-sm text-[var(--mute)]",t.replaceChildren(n)}export{a as e,s as n,o as s};
