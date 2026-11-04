@@ -101,6 +101,8 @@ export interface ChartSpec {
   alignSeries: boolean
   /** The small values of the colour field folded into one grey "Other" (bar, line, area; sums and counts). */
   other: OtherOpts
+  /** A colour chosen for one value of the colour field (a #rrggbb), in place of the palette's. */
+  seriesColors: Record<string, string>
   /** Chosen category order per field (field name to values); a field without an entry stays alphabetical. */
   order: Record<string, string[]>
   /** Wrap a single facet field into this many columns; 0 keeps one row or column. */
@@ -210,7 +212,7 @@ export const channelAggregates = (mark: Mark, ch: Channel): boolean => defaultAg
 
 export function defaultSpec(over: Partial<ChartSpec> = {}): ChartSpec {
   return {
-    mark: 'bar', donut: false, stack: 'group', sort: 'natural', enc: {}, filter: { f: '', v: '' }, zero: false, grid: true, table: { ...TABLE_DEFAULTS }, ref: '', band: { lo: '', hi: '' }, highlight: '', alignSeries: false, other: { ...OTHER_DEFAULTS }, bins: 0, stats: [], order: {}, wrap: 0, axisTitles: false, xTitle: '', yTitle: '', pie: { ...PIE_DEFAULTS }, alt: '', footAlign: 'left',
+    mark: 'bar', donut: false, stack: 'group', sort: 'natural', enc: {}, filter: { f: '', v: '' }, zero: false, grid: true, table: { ...TABLE_DEFAULTS }, ref: '', band: { lo: '', hi: '' }, highlight: '', alignSeries: false, other: { ...OTHER_DEFAULTS }, seriesColors: {}, bins: 0, stats: [], order: {}, wrap: 0, axisTitles: false, xTitle: '', yTitle: '', pie: { ...PIE_DEFAULTS }, alt: '', footAlign: 'left',
     text: {
       tag: { t: '', size: 'xs', b: true, i: false }, title: { t: '', size: 'lg', b: true, i: false }, sub: { t: '', size: 'md', b: false, i: false },
       foot: { t: '', size: 'xs', b: false, i: true },
@@ -308,6 +310,7 @@ export interface ChartConfig {
   /** Only when grouped bars keep their places. */
   alignSeries?: true
   other?: { mode: Exclude<OtherMode, 'off'>; top?: number; percent?: number }
+  seriesColors?: Record<string, string>
   /** Only when the footer sits bottom right. */
   footerAlign?: 'right'
   /** Only the options that differ from the defaults. */
@@ -347,6 +350,7 @@ export function toConfig(spec: ChartSpec, ctx: { relation: string; scenarios: st
     ...(spec.highlight ? { highlight: spec.highlight } : {}),
     ...(spec.alignSeries ? { alignSeries: true as const } : {}),
     ...(spec.other.mode !== 'off' ? { other: { mode: spec.other.mode, ...(spec.other.mode === 'top' ? { top: spec.other.n } : {}), ...(spec.other.mode === 'percent' ? { percent: spec.other.pct } : {}) } } : {}),
+    ...(Object.keys(spec.seriesColors).length ? { seriesColors: spec.seriesColors } : {}),
     ...(spec.footAlign === 'right' ? { footerAlign: 'right' as const } : {}),
     ...(Object.keys(tableDiff(spec.table)).length ? { table: tableDiff(spec.table) } : {}),
     ...(spec.labels ? { labels: spec.labels } : {}),
@@ -370,6 +374,8 @@ const parseOther = (o: ChartConfig['other']): OtherOpts => {
     pct: typeof o.percent === 'number' ? Math.min(40, Math.max(0.5, o.percent)) : OTHER_DEFAULTS.pct,
   }
 }
+const parseColors = (c: unknown): Record<string, string> =>
+  c && typeof c === 'object' ? Object.fromEntries(Object.entries(c as Record<string, unknown>).filter(([, v]) => typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v)).map(([k, v]) => [k, (v as string).toLowerCase()])) : {}
 
 /** Validates a configuration file and turns it into a spec. Every problem is listed with its path. */
 export function fromConfig(text: string, ctx: ImportContext): ImportResult {
@@ -426,6 +432,7 @@ export function fromConfig(text: string, ctx: ImportContext): ImportResult {
     highlight: typeof c.highlight === 'string' ? c.highlight : '',
     alignSeries: c.alignSeries === true,
     other: parseOther(c.other),
+    seriesColors: parseColors(c.seriesColors),
   })
   for (const [k, name] of TEXT_KEYS) {
     const t = c.text?.[name]

@@ -34,7 +34,7 @@ export interface SNode { name: string; v: number; color: string; tip: string }
 export interface HSankey { tf: string; title: string; w: number; h: number; small: boolean; from: SNode[]; to: SNode[]; flows: { f: string; t: string; v: number; tip: string }[] }
 export type ChartModel =
   | { problem: string }
-  | { problem?: undefined; /** How many small values were folded into Other. */ othered?: number; panels: Panel[]; legend: LegendGroup[]; defs: PatternDef[]; W: number; H: number; rows: number; limitedSeries: boolean; /** The legend limit in force, for the note. */ seriesLimit: number; /** Data labels were asked for but the bars are too narrow to carry them. */ labelsHidden?: boolean; trees?: HTree[]; sankeys?: HSankey[]; tables?: PivotTable[] }
+  | { problem?: undefined; /** The colour field's values with the colour each has, even when a legend is not drawn. */ colorSeries?: { value: string; color: string }[]; /** How many small values were folded into Other. */ othered?: number; panels: Panel[]; legend: LegendGroup[]; defs: PatternDef[]; W: number; H: number; rows: number; limitedSeries: boolean; /** The legend limit in force, for the note. */ seriesLimit: number; /** Data labels were asked for but the bars are too narrow to carry them. */ labelsHidden?: boolean; trees?: HTree[]; sankeys?: HSankey[]; tables?: PivotTable[] }
 
 export type DrawnChart = Exclude<ChartModel, { problem: string }>
 
@@ -279,8 +279,8 @@ export function buildChart(input: BuildInput): ChartModel {
   for (const r of rows) { const k = skey(r); if (!seen.has(k)) { seen.add(k); combos.push(r) } }
   const ix = (ch: Channel, r: Row) => (enc[ch] && !(mark === 'heatmap' && ch === 'color') ? dom[enc[ch]!.f].indexOf(r[enc[ch]!.f]) : -1)
   const colorField = enc.color && mark !== 'heatmap' ? enc.color.f : null
-  // a folded "Other" is grey; else the palette's
-  const colorFor = (f: string, v: any, i: number) => (f === otherField && v === OTHER ? T.mix(T.surface, T.ink, 0.55) : f === 'mode' ? T.mode(String(v)) : T.cat(i))
+  // a colour the author chose wins; a folded "Other" is grey; else the palette's
+  const colorFor = (f: string, v: any, i: number) => (f === colorField && spec.seriesColors[String(v)]) || (f === otherField && v === OTHER ? T.mix(T.surface, T.ink, 0.55) : f === 'mode' ? T.mode(String(v)) : T.cat(i))
   const defs: PatternDef[] = []
   const raw: { r: Row; ci: number; pi: number; di: number; si: number }[] = []
   for (const r of combos) {
@@ -1257,5 +1257,5 @@ export function buildChart(input: BuildInput): ChartModel {
       if (yn) tx(pn, 12, my, yn, 'middle', T.fs, `rotate(-90 12 ${r1(my)})`, T.ink)
     })
   }
-  return { panels: panels.map(({ tf, title, rects, paths, lines, texts }) => ({ tf, title, rects, paths, lines, texts })), legend, defs, W, H, rows: rows.length, limitedSeries, seriesLimit, ...(othered ? { othered } : {}), ...(labelsHidden ? { labelsHidden } : {}), ...(trees.length ? { trees } : {}), ...(sankeys.length ? { sankeys } : {}), ...(tables.length ? { tables } : {}) }
+  return { panels: panels.map(({ tf, title, rects, paths, lines, texts }) => ({ tf, title, rects, paths, lines, texts })), legend, defs, W, H, rows: rows.length, limitedSeries, seriesLimit, ...(colorField ? { colorSeries: dom[colorField].map((v, i) => ({ value: String(v), color: colorFor(colorField, v, i) })) } : {}), ...(othered ? { othered } : {}), ...(labelsHidden ? { labelsHidden } : {}), ...(trees.length ? { trees } : {}), ...(sankeys.length ? { sankeys } : {}), ...(tables.length ? { tables } : {}) }
 }

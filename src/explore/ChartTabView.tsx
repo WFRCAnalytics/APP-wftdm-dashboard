@@ -31,6 +31,8 @@ import { useDistinct } from '@/explore/useDistinct'
 import { ExportDialog, Modal } from '@/explore/ExportDialog'
 import { columnLabel, getExploreOptions } from '@/explore/options'
 import { describeChart } from '@/charts/builder/describe'
+import { ColorSwatchPicker } from '@/components/ui/color-swatch-picker'
+import { cssToHex } from '@/explore/cssColor'
 import { useChartData, type ChartData } from '@/explore/useChartData'
 import { useColorScheme } from '@/hooks/useColorScheme'
 import { tooltip } from '@/services/tooltip'
@@ -215,7 +217,7 @@ function slotsShown(spec: ChartSpec) {
   return SLOTS[spec.mark].filter((slot) => !chainOf(spec.mark, slot.ch) || !!spec.enc[slot.ch] || next.has(slot.ch))
 }
 
-function ChartCard({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: ChartData }) {
+function ChartCard({ tab, s, data, onColors }: { tab: ChartTab; s: ExploreState; data: ChartData; onColors: (f: (prev: ColorSeries) => ColorSeries) => void }) {
   const spec = tab.spec
   const scheme = useColorScheme()
   const plotRef = useRef<HTMLDivElement>(null)
@@ -387,6 +389,9 @@ function ChartCard({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: Cha
   const txt = (k: TextKey) => spec.text[k]
   const cls = (k: TextKey) => `sz-${txt(k).size} ${txt(k).b ? 'b' : txt(k).i ? 'i' : 'n'}${txt(k).b && txt(k).i ? ' i' : ''}`
   const drawn = model && model.problem === undefined ? (model as DrawnChart) : null
+  // the rail lists the colour of each series, so the card tells its parent which colours it drew (only when they change)
+  const colorSeries = drawn?.colorSeries
+  useEffect(() => { const next = colorSeries ?? []; onColors((prev) => (JSON.stringify(prev) === JSON.stringify(next) ? prev : next)) }, [colorSeries, onColors])
   const aria = Object.values(spec.enc).map((e) => e!.f).join(', ')
 
   const body = (
@@ -511,7 +516,9 @@ function ChartCard({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: Cha
 
 // ---------------------------------------------------------------------------------------------------------------- the rail
 
-function Rail({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: ChartData }) {
+type ColorSeries = { value: string; color: string }[]
+
+function Rail({ tab, s, data, colors }: { tab: ChartTab; s: ExploreState; data: ChartData; colors: ColorSeries }) {
   const spec = tab.spec
   const setSpec = (fn: (x: ChartSpec) => ChartSpec) => updateChart(tab.id, (t) => ({ ...t, spec: fn(t.spec) }))
   const roleOf = (f: string) => chartRole(data.cols.find((c) => c.name === f)?.type ?? 'text')
@@ -581,7 +588,30 @@ function Rail({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: ChartDat
               </XSelect>
             </div>
           )}
-          <p className="hint">Size, weight and italic only. Typeface and colours follow the app theme.</p>
+          {colors.length > 0 && spec.enc.color && (
+            <div className="tgrp">
+              <div className="rghrow"><p className="rgh">Series colours</p>{Object.keys(spec.seriesColors).length > 0 && <button type="button" className="linkbtn" onClick={() => setSpec((x) => ({ ...x, seriesColors: {} }))}>Reset all</button>}</div>
+              <div className="scgrid">
+                {colors.slice(0, 12).map((c) => {
+                  const own = spec.seriesColors[c.value]
+                  return (
+                    <div className="scrow" key={c.value}>
+                      <ColorSwatchPicker
+                        value={cssToHex(c.color)}
+                        onChange={(hex) => setSpec((x) => ({ ...x, seriesColors: { ...x.seriesColors, [c.value]: hex.toLowerCase() } }))}
+                        onReset={own ? () => setSpec((x) => { const { [c.value]: _drop, ...rest } = x.seriesColors; return { ...x, seriesColors: rest } }) : undefined}
+                        label={`Colour of ${c.value}`}
+                        swatchClassName="h-[26px] w-[26px] shrink-0 rounded-[8px] border border-[var(--line)]"
+                      />
+                      <span className="scname" title={c.value}>{c.value}</span>
+                    </div>
+                  )
+                })}
+              </div>
+              {colors.length > 12 && <p className="hint">The first 12 of {colors.length} values. Group the rest as Other on the Options tab.</p>}
+            </div>
+          )}
+          <p className="hint">Size, weight and italic only. The typeface follows the app theme.</p>
           {([['Headline', [['tag', 'Tag', 'A short label above the title'], ['title', 'Title', 'Add a title'], ['sub', 'Subtitle', 'Add a subtitle']]], ['Footer', [['foot', 'Footer', 'A source, a caveat or a credit']]]] as [string, [TextKey, string, string][]][]).map(([group, keys]) => (
             <div className="tgrp" key={group}>
               <div className="rghrow"><p className="rgh">{group}</p>{group === 'Footer' && pills<'left' | 'right'>([['left', 'Left'], ['right', 'Right']], spec.footAlign, (v) => setSpec((x) => ({ ...x, footAlign: v })), 'Footer position')}</div>
@@ -759,12 +789,13 @@ function Rail({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: ChartDat
 
 export function ChartTabView({ tab, s }: { tab: ChartTab; s: ExploreState }) {
   const data = useChartData(tab, s)
+  const [colors, setColors] = useState<ColorSeries>([])
   void DATA_TYPES
   return (
     <div className="vgrid">
       <FieldsPanel tab={tab} s={s} data={data} />
-      <ChartCard tab={tab} s={s} data={data} />
-      <Rail tab={tab} s={s} data={data} />
+      <ChartCard tab={tab} s={s} data={data} onColors={setColors} />
+      <Rail tab={tab} s={s} data={data} colors={colors} />
     </div>
   )
 }
