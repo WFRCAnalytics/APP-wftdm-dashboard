@@ -31,6 +31,7 @@ export function normalizeCustomSpec(raw: unknown, runs: readonly string[]): Cust
     ...(raw.alignSeries === true ? { alignSeries: true as const } : {}),
     ...(isObj(raw.other) ? { other: raw.other as ChartConfig['other'] } : {}),
     ...(isObj(raw.seriesColors) ? { seriesColors: raw.seriesColors } : {}),
+    ...(isObj(raw.aliases) ? { aliases: raw.aliases } : {}),
     text: isObj(raw.text) ? raw.text : {},
   }
   return { ok: true, config, table }

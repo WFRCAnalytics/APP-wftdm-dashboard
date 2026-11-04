@@ -103,6 +103,8 @@ export interface ChartSpec {
   other: OtherOpts
   /** A colour chosen for one value of the colour field (a #rrggbb), in place of the palette's. */
   seriesColors: Record<string, string>
+  /** A name shown for a field on this chart's axes, legend, tooltips and table; the data keeps its own. */
+  aliases: Record<string, string>
   /** Chosen category order per field (field name to values); a field without an entry stays alphabetical. */
   order: Record<string, string[]>
   /** Wrap a single facet field into this many columns; 0 keeps one row or column. */
@@ -212,7 +214,7 @@ export const channelAggregates = (mark: Mark, ch: Channel): boolean => defaultAg
 
 export function defaultSpec(over: Partial<ChartSpec> = {}): ChartSpec {
   return {
-    mark: 'bar', donut: false, stack: 'group', sort: 'natural', enc: {}, filter: { f: '', v: '' }, zero: false, grid: true, table: { ...TABLE_DEFAULTS }, ref: '', band: { lo: '', hi: '' }, highlight: '', alignSeries: false, other: { ...OTHER_DEFAULTS }, seriesColors: {}, bins: 0, stats: [], order: {}, wrap: 0, axisTitles: false, xTitle: '', yTitle: '', pie: { ...PIE_DEFAULTS }, alt: '', footAlign: 'left',
+    mark: 'bar', donut: false, stack: 'group', sort: 'natural', enc: {}, filter: { f: '', v: '' }, zero: false, grid: true, table: { ...TABLE_DEFAULTS }, ref: '', band: { lo: '', hi: '' }, highlight: '', alignSeries: false, other: { ...OTHER_DEFAULTS }, seriesColors: {}, aliases: {}, bins: 0, stats: [], order: {}, wrap: 0, axisTitles: false, xTitle: '', yTitle: '', pie: { ...PIE_DEFAULTS }, alt: '', footAlign: 'left',
     text: {
       tag: { t: '', size: 'xs', b: true, i: false }, title: { t: '', size: 'lg', b: true, i: false }, sub: { t: '', size: 'md', b: false, i: false },
       foot: { t: '', size: 'xs', b: false, i: true },
@@ -311,6 +313,7 @@ export interface ChartConfig {
   alignSeries?: true
   other?: { mode: Exclude<OtherMode, 'off'>; top?: number; percent?: number }
   seriesColors?: Record<string, string>
+  aliases?: Record<string, string>
   /** Only when the footer sits bottom right. */
   footerAlign?: 'right'
   /** Only the options that differ from the defaults. */
@@ -351,6 +354,7 @@ export function toConfig(spec: ChartSpec, ctx: { relation: string; scenarios: st
     ...(spec.alignSeries ? { alignSeries: true as const } : {}),
     ...(spec.other.mode !== 'off' ? { other: { mode: spec.other.mode, ...(spec.other.mode === 'top' ? { top: spec.other.n } : {}), ...(spec.other.mode === 'percent' ? { percent: spec.other.pct } : {}) } } : {}),
     ...(Object.keys(spec.seriesColors).length ? { seriesColors: spec.seriesColors } : {}),
+    ...(Object.keys(spec.aliases).length ? { aliases: spec.aliases } : {}),
     ...(spec.footAlign === 'right' ? { footerAlign: 'right' as const } : {}),
     ...(Object.keys(tableDiff(spec.table)).length ? { table: tableDiff(spec.table) } : {}),
     ...(spec.labels ? { labels: spec.labels } : {}),
@@ -376,6 +380,8 @@ const parseOther = (o: ChartConfig['other']): OtherOpts => {
 }
 const parseColors = (c: unknown): Record<string, string> =>
   c && typeof c === 'object' ? Object.fromEntries(Object.entries(c as Record<string, unknown>).filter(([, v]) => typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v)).map(([k, v]) => [k, (v as string).toLowerCase()])) : {}
+const parseAliases = (a: unknown): Record<string, string> =>
+  a && typeof a === 'object' ? Object.fromEntries(Object.entries(a as Record<string, unknown>).filter(([, v]) => typeof v === 'string' && v.trim()).map(([k, v]) => [k, (v as string).trim().slice(0, 60)])) : {}
 
 /** Validates a configuration file and turns it into a spec. Every problem is listed with its path. */
 export function fromConfig(text: string, ctx: ImportContext): ImportResult {
@@ -433,6 +439,7 @@ export function fromConfig(text: string, ctx: ImportContext): ImportResult {
     alignSeries: c.alignSeries === true,
     other: parseOther(c.other),
     seriesColors: parseColors(c.seriesColors),
+    aliases: parseAliases(c.aliases),
   })
   for (const [k, name] of TEXT_KEYS) {
     const t = c.text?.[name]

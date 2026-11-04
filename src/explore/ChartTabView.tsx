@@ -258,6 +258,7 @@ function ChartCard({ tab, s, data, onColors }: { tab: ChartTab; s: ExploreState;
     const built = buildChart({ spec: data.spec, cols: data.cols, rows: data.rows, theme, width: size.w, height: size.h, hot, legendSeries: getExploreOptions().limits.legendSeries })
     const labels: Record<string, string> = {}
     for (const [name, note] of Object.entries(getExploreOptions().columns)) if (note.label) labels[name] = note.label
+    for (const [name, alias] of Object.entries(data.spec.aliases)) if (alias.trim()) labels[name] = alias.trim()
     return relabel(built, labels)
   }, [theme, data.spec, data.cols, data.rows, size, hot])
   // what a shelf takes now: a bar's X and Y narrow each other. `strip` leaves shelves out of the reading (the one a field is being dragged from)
@@ -480,7 +481,7 @@ function ChartCard({ tab, s, data, onColors }: { tab: ChartTab; s: ExploreState;
               <span className="spl">{adding && <Plus size={12} aria-hidden="true" />}{label}{slot.req && <><i className="rq" aria-hidden="true" /><span className="sr">required</span></>}</span>
               {e && col && (
                 <>
-                  <TypeChip type={col.type} /><span className="fname">{columnLabel(getExploreOptions(), e.f)}</span>
+                  <TypeChip type={col.type} /><span className="fname" title={spec.aliases[e.f]?.trim() ? e.f : undefined}>{spec.aliases[e.f]?.trim() || columnLabel(getExploreOptions(), e.f)}</span>
                   {channelAggregates(spec.mark, slot.ch) && chartRole(col.type) === 'q' && (
                     <XSelect className="agg" aria-label={`Aggregate for ${label}`} value={e.agg ?? 'sum'} onChange={(ev) => setSpec((x) => ({ ...x, enc: { ...x.enc, [slot.ch]: { ...e, agg: ev.target.value as Agg } } }))}>{AGGS.map((a) => <option key={a} value={a}>{a}</option>)}</XSelect>
                   )}
@@ -632,6 +633,18 @@ function Rail({ tab, s, data, colors }: { tab: ChartTab; s: ExploreState; data: 
           })}
             </div>
           ))}
+          {Object.keys(spec.enc).length > 0 && (
+            <div className="tgrp">
+              <p className="rgh">Field names</p>
+              {[...new Set(Object.values(spec.enc).map((e) => e!.f))].map((f) => (
+                <div className="trow" key={f}>
+                  <label className="lab" htmlFor={`al-${f}`}>{f}</label>
+                  <input id={`al-${f}`} className="inp" value={spec.aliases[f] ?? ''} placeholder={columnLabel(getExploreOptions(), f)} onChange={(e) => setSpec((x) => { const next = { ...x.aliases }; if (e.target.value) next[f] = e.target.value; else delete next[f]; return { ...x, aliases: next } })} />
+                </div>
+              ))}
+              <p className="hint">A name for this chart only, on its axes, legend, tooltips and table. The data keeps its own.</p>
+            </div>
+          )}
           <div className="tgrp">
             <p className="rgh">Accessibility</p>
             <div className="altrow">

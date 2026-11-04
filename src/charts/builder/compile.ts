@@ -1250,7 +1250,8 @@ export function buildChart(input: BuildInput): ChartModel {
   }
   // axis titles: the chosen text, else the field on that axis (a histogram counts rows, a density estimates density)
   if (titled && frames.length === panels.length) {
-    const xn = spec.xTitle.trim() || enc.x?.f || '', yn = spec.yTitle.trim() || enc.y?.f || (mark === 'histogram' ? 'Count' : mark === 'density' ? 'Density' : '')
+    const alias = (f?: string) => (f ? spec.aliases[f]?.trim() || f : '')
+    const xn = spec.xTitle.trim() || alias(enc.x?.f), yn = spec.yTitle.trim() || alias(enc.y?.f) || (mark === 'histogram' ? 'Count' : mark === 'density' ? 'Density' : '')
     panels.forEach((pn, i) => {
       const f = frames[i], my = (f.y0 + f.y1) / 2
       if (xn) tx(pn, (f.x0 + f.x1) / 2, ph - 6, xn, 'middle', T.fs, '', T.ink)
