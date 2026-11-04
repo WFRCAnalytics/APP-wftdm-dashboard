@@ -24,16 +24,8 @@ type Row = Record<string, unknown>
 const num = (v: unknown): number => (typeof v === 'bigint' ? Number(v) : typeof v === 'number' ? v : Number(v ?? 0))
 const q = (name: string) => `"${name.replace(/"/g, '""')}"`
 
-export function exact(v: number): string {
-  return Number.isInteger(v) ? v.toLocaleString('en-US') : (Math.round(v * 100) / 100).toLocaleString('en-US')
-}
-export function compact(v: number): string {
-  const a = Math.abs(v)
-  if (a >= 1e6) return `${(v / 1e6).toFixed(a >= 1e7 ? 0 : 1).replace(/\.0$/, '')}M`
-  if (a >= 1e4) return `${Math.round(v / 1e3)}k`
-  if (a >= 1e3) return `${(v / 1e3).toFixed(1).replace(/\.0$/, '')}k`
-  return Number.isInteger(v) ? String(v) : String(Math.round(v * 10) / 10)
-}
+import { compact, exact } from '@/charts/lib/format'
+export { compact, exact }
 const day = (epochSeconds: number) => new Date(epochSeconds * 1000).toISOString().slice(0, 10)
 
 export const HIST_BINS = 12
