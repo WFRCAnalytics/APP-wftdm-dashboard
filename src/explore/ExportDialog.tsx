@@ -12,6 +12,7 @@ import { relationColumns } from '@/explore/sql/queryModel'
 import type { ChartData } from '@/explore/useChartData'
 import { EXPORT_BACKGROUNDS, useExportBackground, withExportBackground } from '@/services/exportBackground'
 import { cardToSvg, downloadBlob, downloadCsv, fileName, svgToPng } from '@/services/exportTile'
+import { exportFooter } from '@/state/exportState'
 import { getExplore, setExplore, type ChartTab } from '@/state/exploreState'
 
 export function Modal({ title, onClose, children, wide, bare }: { title: string; onClose(): void; children: React.ReactNode; wide?: boolean; bare?: boolean }) {
@@ -63,7 +64,7 @@ export function ExportDialog({ tab, data, cardEl, onClose }: { tab: ChartTab; da
       const themeFill = getComputedStyle(el).getPropertyValue('--tile').trim() || '#ffffff'
       const { svg, width, height } = await withExportBackground(background, themeFill, async (fill) => {
         const target = exportTarget(el)
-        try { return await cardToSvg(target.el, { background: fill }) } finally { target.done() }
+        try { return await cardToSvg(target.el, { background: fill, footer: exportFooter({ scenarios: s.scenarios.join(', ') }) }) } finally { target.done() }
       })
       if (kind === 'svg') downloadBlob(new Blob([svg], { type: 'image/svg+xml' }), fileName(base, 'svg'))
       else downloadBlob(await svgToPng(svg, width, height), fileName(base, 'png'))
