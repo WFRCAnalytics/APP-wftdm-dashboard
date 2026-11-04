@@ -62,7 +62,9 @@ export function useChartData(tab: ChartTab, s: ExploreState): ChartData {
   const dataKey = JSON.stringify([tab.spec.mark, tab.spec.enc, tab.spec.filter])
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const query = useMemo(() => (relSql && cols.length && !shelfProblem(tab.spec, cols) ? chartQuery(tab.spec, relSql, (f) => chartRole(cols.find((c) => c.name === f)?.type ?? 'text'), { rowCap: chartRows, scatterSample, histogramBins }) : null), [relSql, cols, dataKey, chartRows, scatterSample, histogramBins])
-  const [state, setState] = useState<{ rows: Row[]; loading: boolean; truncated: boolean; error: string }>({ rows: [], loading: false, truncated: false, error: '' })
+  // `shape` is the mark and shelves the rows were fetched for: the chart keeps drawing with it until the next rows arrive, so adding a field never
+  // draws the new shelves over the old rows for a moment
+  const [state, setState] = useState<{ rows: Row[]; loading: boolean; truncated: boolean; error: string; shape?: { mark: ChartSpec['mark']; enc: ChartSpec['enc'] } }>({ rows: [], loading: false, truncated: false, error: '' })
   useEffect(() => {
     if (!query) { setState({ rows: [], loading: false, truncated: false, error: '' }); return }
     let dead = false
@@ -72,7 +74,7 @@ export function useChartData(tab: ChartTab, s: ExploreState): ChartData {
         if (dead) return
         if (r.outcome !== 'ok') { setState({ rows: [], loading: false, truncated: false, error: 'reason' in r ? r.reason : 'The data could not be read.' }); return }
         const names = r.columns.map((c) => c.name)
-        setState({ rows: r.rows.map((row) => Object.fromEntries(names.map((n, i) => [n, row[i]]))), loading: false, truncated: r.hasMore || (query.mode === 'raw' && r.rows.length >= scatterSample), error: '' })
+        setState({ rows: r.rows.map((row) => Object.fromEntries(names.map((n, i) => [n, row[i]]))), loading: false, truncated: r.hasMore || (query.mode === 'raw' && r.rows.length >= scatterSample), error: '', shape: { mark: query.spec.mark, enc: query.spec.enc } })
       })
     }, 150)
     return () => { dead = true; clearTimeout(h) }
@@ -89,5 +91,5 @@ ${relSql.replace(/[;\s]+$/, '')}
     return () => { dead = true }
   }, [relSql])
 
-  return { cols, rows: state.rows, relSql, spec: query ? { ...tab.spec, enc: query.spec.enc } : tab.spec, mode: query ? query.mode : null, total, loading: state.loading, truncated: state.truncated, error: state.error, relationName: isMine ? mine?.name ?? '' : table }
+  return { cols, rows: state.rows, relSql, spec: query ? { ...tab.spec, mark: state.shape?.mark ?? query.spec.mark, enc: state.shape?.enc ?? query.spec.enc } : tab.spec, mode: query ? query.mode : null, total, loading: state.loading, truncated: state.truncated, error: state.error, relationName: isMine ? mine?.name ?? '' : table }
 }

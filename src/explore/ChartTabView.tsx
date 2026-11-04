@@ -394,6 +394,8 @@ function ChartCard({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: Cha
         {txt('title').t && <h3 className={`tb ${cls('title')}`}>{prettyOperators(txt('title').t)}</h3>}
         {txt('sub').t && <p className={`tb tsub ${cls('sub')}`}>{prettyOperators(txt('sub').t)}</p>}
         {drawn && drawn.legend.length > 0 && (
+        {/* a field that will have a legend keeps its place from the moment it is placed, so the plot is resized once, not again when the data arrives */}
+        {!(drawn && drawn.legend.length > 0) && spec.mark !== 'line' && !model?.problem && ['color', 'pattern', 'dash', 'shape'].some((ch) => spec.enc[ch as Channel]) && <div className="legend legend-hold" aria-hidden="true" />}
           <div className="legend">
             {drawn.legend.map((g) => (
               <div className="lgg" key={g.title}>
