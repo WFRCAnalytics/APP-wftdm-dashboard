@@ -2,6 +2,7 @@
 // not itself a plotted scenario) is a dashed ink outline. Same numbers as the purpose to mode flow.
 import { select } from 'd3-selection'
 
+import { exact } from '@/charts/lib/format'
 import { axisAngle, labelAnchor, MAX_SERIES, polar } from '@/charts/lib/fingerprint'
 import type { ChartKind, LegendSpec } from '@/charts/types'
 import { emptyNote, num, str } from '@/charts/util'
@@ -9,7 +10,7 @@ import { PURPOSES } from '@/charts/vocab'
 import { tooltip } from '@/services/tooltip'
 import { prettyText } from '@/services/typography'
 
-const fmtTrips = (v: number): string => Math.round(v).toLocaleString('en-US')
+const fmtTrips = (v: number): string => exact(Math.round(v))
 const NS = 'http://www.w3.org/2000/svg'
 
 /** Daily trips by purpose of a run, in PURPOSES order. */

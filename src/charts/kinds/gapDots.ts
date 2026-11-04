@@ -4,7 +4,7 @@ import * as Plot from '@observablehq/plot'
 
 import { signed } from '@/charts/lib/format'
 import { MODES } from '@/charts/vocab'
-import { emptyNote, f1, sgn } from '@/charts/util'
+import { emptyNote, f1 } from '@/charts/util'
 import {
   buildSeries,
   gapAxisLabel,
@@ -56,7 +56,7 @@ const kind: ChartKind = {
         label: gapAxisLabel(m, s.refName),
         labelAnchor: 'center',
         labelArrow: 'none',
-        tickFormat: (d: number) => `${sgn(d)}${Math.abs(d)}${m === 'pct' ? '%' : ''}`,
+        tickFormat: (d: number) => signed(d, 2, m === 'pct' ? '%' : '', { trim: true }),
         ticks: 8,
       },
       y: { label: null, domain: [...MODES], padding: 0.5 },

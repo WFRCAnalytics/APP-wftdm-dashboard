@@ -5,6 +5,7 @@ import { scaleLinear } from 'd3-scale'
 import { area, curveBasis, line } from 'd3-shape'
 
 import { PURPOSES } from '@/charts/vocab'
+import { signed } from '@/charts/lib/format'
 import { emptyNote, f1, num, str } from '@/charts/util'
 import { RIDGE_HEIGHT_ROWS, RIDGE_MARGIN, RIDGE_MAX_MILES, ridgePoints, ridgeRows, ridgeSeries, showMeanMarkers, type RidgeSeries } from '@/charts/lib/ridge'
 import type { ChartKind } from '@/charts/types'
@@ -93,7 +94,7 @@ const kind: ChartKind = {
         path
           .style('cursor', 'default')
           .on('mousemove', (e: MouseEvent) => {
-            const rows = [{ k: env.focus?.label ?? 'Modeled', v: `${f1(s.mean)} mi`, b: true, c: fill, d: hasObs && o.total > 0 ? `${s.mean - o.mean >= 0 ? '+' : '−'}${Math.abs(s.mean - o.mean).toFixed(1)} mi` : '' }]
+            const rows = [{ k: env.focus?.label ?? 'Modeled', v: `${f1(s.mean)} mi`, b: true, c: fill, d: hasObs && o.total > 0 ? signed(s.mean - o.mean, 1, ' mi', { always: true }) : '' }]
             if (hasObs && o.total > 0) rows.push({ k: 'Observed', v: `${f1(o.mean)} mi`, b: false, c: undefined as unknown as string, d: '' })
             tooltip.show(
               {

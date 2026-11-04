@@ -2,6 +2,7 @@
 // pinned while the rest scrolls sideways (tables can have hundreds of columns); cells render by data type.
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ArrowDown, ArrowUp, Check, ChevronDown, ChevronLeft, ChevronRight, Columns2, Copy, Download, Filter, Maximize2, Minimize2, X } from 'lucide-react'
+import { exact } from '@/charts/lib/format'
 import { runUserSql } from '@/explore/sql/runUserSql'
 import { downloadCsv, fileName } from '@/services/exportTile'
 import { Button } from '@/components/ui/button'
@@ -161,9 +162,9 @@ function ExportButtons({ m, name }: { m: DataTabModel; name: string }) {
         </Btn>
       )}
       <span className="sr-only" role="status">
-        {note === 'cut' ? `Downloaded the first ${CSV_CAP.toLocaleString('en-US')} rows.` : note === 'failed' ? 'That did not work.' : ''}
+        {note === 'cut' ? `Downloaded the first ${exact(CSV_CAP)} rows.` : note === 'failed' ? 'That did not work.' : ''}
       </span>
-      {(note === 'cut' || note === 'failed') && <span className="fnote">{note === 'cut' ? `First ${CSV_CAP.toLocaleString('en-US')} rows only.` : 'That did not work.'}</span>}
+      {(note === 'cut' || note === 'failed') && <span className="fnote">{note === 'cut' ? `First ${exact(CSV_CAP)} rows only.` : 'That did not work.'}</span>}
     </>
   )
 }
@@ -174,7 +175,7 @@ function Head({ m, name, big, onToggle }: { m: DataTabModel; name: string; big: 
   const from = rows.length ? s.page * s.pageSize + 1 : 0
   const to = s.page * s.pageSize + rows.length
   const sub = [
-    m.total !== null ? `${m.total.toLocaleString('en-US')} rows, ${columns.length} columns.` : `${columns.length} columns.`,
+    m.total !== null ? `${exact(m.total)} rows, ${columns.length} columns.` : `${columns.length} columns.`,
     s.scenarios.length > 1 ? `${s.scenarios.length} scenarios combined.` : '',
     m.plan?.joins.some((j) => j.ok) ? 'Joined tables.' : '',
   ].filter(Boolean).join(' ')
@@ -196,7 +197,7 @@ function Head({ m, name, big, onToggle }: { m: DataTabModel; name: string; big: 
         <ExportButtons m={m} name={name} />
         <span className="psep" aria-hidden="true" />
         <span className="pgrp">
-          <span className="mono">{from}–{to}{m.total !== null ? ` of ${m.total.toLocaleString('en-US')}` : ''}</span>
+          <span className="mono">{from}–{to}{m.total !== null ? ` of ${exact(m.total)}` : ''}</span>
           <Btn icon aria-label="Previous page" disabled={s.page <= 0} onClick={() => setExplore({ page: s.page - 1 })}><ChevronLeft size={14} /></Btn>
           <Btn icon aria-label="Next page" disabled={!m.hasMore} onClick={() => setExplore({ page: s.page + 1 })}><ChevronRight size={14} /></Btn>
         </span>

@@ -1,5 +1,4 @@
 // Small helpers shared by the chart kinds.
-import { compactThousands } from '@/charts/lib/format'
 import type { Row } from '@/charts/types'
 
 export const num = (r: Row, column: string): number => Number(r[column])
@@ -11,15 +10,10 @@ export const sum = (values: Iterable<number>): number => {
   return s
 }
 
-export const sgn = (v: number): string => (v > 0.0049 ? '+' : v < -0.0049 ? '−' : '')
-
 /** 12-hour axis label: 0 -> 12a, 15 -> 3p. */
 export const hourLabel = (h: number): string => `${h % 12 || 12}${h < 12 ? 'a' : 'p'}`
 
-/** 1,234 -> 1.23M for values in thousands. */
-export const fmtK = compactThousands
-
-export const f1 = (v: number): string => v.toFixed(1)
+export { f1 } from '@/charts/lib/format'
 
 /** Replaces the chart region's content with a one-line note (no data, nothing to compare). */
 export function emptyNote(el: HTMLElement, text: string): void {

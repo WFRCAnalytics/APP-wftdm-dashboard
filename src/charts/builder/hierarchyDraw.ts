@@ -13,7 +13,7 @@ import type { ChartTheme } from '@/charts/types'
 import { zoomableSankey } from '@/charts/builder/sankeyDraw'
 import { parseTip } from '@/charts/builder/tipTile'
 import { compact } from '@/charts/lib/format'
-import { arcLabelTransform, placeArcLabel, textWidth } from '@/charts/lib/arcLabel'
+import { arcLabelTransform, fitWidth, placeArcLabel, textWidth } from '@/charts/lib/arcLabel'
 import { tooltip } from '@/services/tooltip'
 import { prettyText } from '@/services/typography'
 
@@ -32,7 +32,6 @@ interface Arc { a0: number; a1: number; ir: number; or: number }
 type Cut = HNode & { deep?: boolean }
 
 const fmt = compact
-const clip = (t: string, px: number) => (t.length * 6.4 > px ? `${t.slice(0, Math.max(1, Math.floor(px / 6.4) - 1))}…` : t)
 const solid = (n: HNode) => !n.fill.startsWith('url')
 
 export function drawHierarchy(model: DrawnChart, theme: ChartTheme, state: HierState): SVGSVGElement {
@@ -129,7 +128,7 @@ function zoomableTreemap(body: G, tree: HTree, T: ChartTheme, state: HierState, 
     head.selectAll('text.grp').data((root.children ?? []).filter((d) => d.children) as HierarchyRectangularNode<Cut>[]).join('text').attr('class', 'grp')
       .attr('x', (d) => d.x0 + 1).attr('y', (d) => d.y0 + 14).attr('font-weight', 600).attr('fill', T.ink).style('cursor', 'zoom-in')
       .on('click', (_e, d) => go([...at, d.data.name]))
-      .text(prettyText((d) => (d.x1 - d.x0 > 60 ? clip(d.data.name, d.x1 - d.x0 - 8) : '')))
+      .text(prettyText((d) => (d.x1 - d.x0 > 60 ? fitWidth(d.data.name, d.x1 - d.x0 - 8, T.fs, 400, T.font) : '')))
       .append('tspan').attr('font-weight', 400).attr('fill', T.mute).text(prettyText((d) => (d.x1 - d.x0 > 130 ? `  ${fmt(d.value ?? 0)}` : '')))
 
     // a tile opens the group it sits in, one level down from the view: never further, so each click is one step
@@ -147,7 +146,7 @@ function zoomableTreemap(body: G, tree: HTree, T: ChartTheme, state: HierState, 
     const total = root.value || 1
     const labels = leaf.filter((d) => d.x1 - d.x0 > 54 && d.y1 - d.y0 > 30).append('text').attr('font-size', T.fs).style('pointer-events', 'none')
       .attr('fill', (d) => (solid(d.data) ? T.onColor(d.data.color) : T.ink))
-    labels.append('tspan').attr('x', 8).attr('y', 18).text(prettyText((d) => clip(d.data.name, d.x1 - d.x0 - 12)))
+    labels.append('tspan').attr('x', 8).attr('y', 18).text(prettyText((d) => fitWidth(d.data.name, d.x1 - d.x0 - 12, T.fs, 400, T.font)))
     labels.append('tspan').attr('x', 8).attr('y', 33).text(prettyText((d) => `${Math.round(((d.value ?? 0) / total) * 100)}%`))
 
     if (animate && before) {
@@ -228,7 +227,7 @@ function zoomableSunburst(body: G, tree: HTree, T: ChartTheme, state: HierState,
     const centre = holder.append('g').style('cursor', open ? 'zoom-out' : 'default').on('click', () => { if (open) go(at.slice(0, -1)) })
     centre.append('circle').attr('r', r0 - 4).attr('fill', open ? here.node.fill : 'transparent').attr('opacity', open ? here.node.op : 1).attr('data-t', open ? here.node.tip : null)
     centre.append('text').attr('text-anchor', 'middle').attr('y', 0).attr('font-size', 16).attr('font-weight', 600).attr('fill', onFill ?? T.ink).style('pointer-events', 'none').text(prettyText(fmt(here.node.value)))
-    centre.append('text').attr('text-anchor', 'middle').attr('y', 16).attr('font-size', T.fs).attr('fill', onFill ?? T.mute).style('pointer-events', 'none').text(prettyText(clip(open ? at[at.length - 1] : tree.unit, r0 * 1.6)))
+    centre.append('text').attr('text-anchor', 'middle').attr('y', 16).attr('font-size', T.fs).attr('fill', onFill ?? T.mute).style('pointer-events', 'none').text(prettyText(fitWidth(open ? at[at.length - 1] : tree.unit, r0 * 1.6, T.fs, 400, T.font)))
     if (open) centre.append('text').attr('text-anchor', 'middle').attr('y', 30).attr('font-size', T.fs - 1).attr('fill', onFill ?? T.mute).style('pointer-events', 'none').text(prettyText('click to go up'))
   }
   render(false)

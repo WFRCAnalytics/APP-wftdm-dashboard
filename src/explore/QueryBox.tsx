@@ -3,6 +3,7 @@
 // All scrolling happens inside the box. Contract: specs/065-chart-builder/contracts/builder-ui.md.
 import { useRef, useState } from 'react'
 import { ArrowUpDown, ChevronRight, Filter, Link2, Play, Plus, Sigma, Sparkles, Table2, X } from 'lucide-react'
+import { exact } from '@/charts/lib/format'
 import { Segmented } from '@/components/ui/segmented'
 import { chartRole, TYPE_LABEL } from '@/charts/builder/columnTypes'
 import { Btn, SearchPopover, TablePicker, XSelect, type PopAction, type PopItem } from '@/explore/parts'
@@ -32,7 +33,7 @@ const JOIN_EXPLAIN: Record<JoinType, string> = {
   right: 'Keeps every row from the joined table. Rows with no match get blanks for the left columns.',
   full: 'Keeps every row from both tables, matched where possible.',
 }
-const rows = (n?: number) => (n === undefined ? '' : `${n.toLocaleString('en-US')} rows`)
+const rows = (n?: number) => (n === undefined ? '' : `${exact(n)} rows`)
 
 export const update = (patch: Partial<QueryModel>) =>
   setExplore((s) => ({ model: { ...s.model, ...patch }, detached: false, sql: '', page: 0 }))
@@ -364,7 +365,7 @@ function Footer({ m }: { m: DataTabModel }) {
     } catch (e) { setNote((e as Error).message) }
   }
   const status =
-    m.status === 'ok' ? `${m.rows.length.toLocaleString('en-US')} rows on this page, ${m.columns.length} columns${m.ms !== null ? ` in ${m.ms} ms` : ''}`
+    m.status === 'ok' ? `${exact(m.rows.length)} rows on this page, ${m.columns.length} columns${m.ms !== null ? ` in ${m.ms} ms` : ''}`
       : running ? 'Running…' : m.status === 'idle' ? '' : m.message || 'Cancelled.'
   return (
     <div className="qfoot">

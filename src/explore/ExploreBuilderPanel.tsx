@@ -1,6 +1,7 @@
 // 065-chart-builder: the Explore builder (full-page panel). Top bar (scenarios, tabs) over the Data tab: Columns
 // (summaries), the paged preview, and the Query box with the pinned My tables list. Chart tabs arrive in the next step.
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { exact } from '@/charts/lib/format'
 import { AssistantButton } from '@/layout/chat/chatLauncher'
 import { ChevronDown, Plus, Redo2, Sparkles, Table2, Trash2, Undo2, Upload, X } from 'lucide-react'
 import { defaultSpec } from '@/charts/builder/spec'
@@ -126,7 +127,7 @@ function MyTables({ m }: { m: DataTabModel }) {
         {s.mine.length === 0 && <p className="hint" style={{ padding: '6px 6px 0' }}>Nothing saved yet. Run a query, name the result, and it appears here.</p>}
         {s.mine.map((t) => (
           <div className="mrow" key={t.id}>
-            <div className="grow2"><div className="mn">{t.name}</div><div className="mi">{t.rowCount.toLocaleString('en-US')} rows, {t.columns.length} columns</div></div>
+            <div className="grow2"><div className="mn">{t.name}</div><div className="mi">{exact(t.rowCount)} rows, {t.columns.length} columns</div></div>
             <Btn small onClick={() => setExplore(resetQuery({ table: `m:${t.id}` }))}>Preview</Btn>
             <button type="button" className="x2" aria-label={`Delete ${t.name}`} onClick={() => {
               void dropMyTable(t.name).then(() => setExplore((st) => ({ mine: st.mine.filter((x) => x.id !== t.id), ...(st.table === `m:${t.id}` ? resetQuery({ table: '' }) : {}) })))

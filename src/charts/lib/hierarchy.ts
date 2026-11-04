@@ -141,8 +141,6 @@ export const showGroupName = (width: number): boolean => width >= 46
 export const showGroupTotal = (width: number): boolean => width >= 110
 /** Treemap leaf label (name and value): only in a leaf larger than 66 x 40 px. */
 export const showLeafLabel = (width: number, height: number): boolean => width > 66 && height > 40
-/** Sunburst group label along the arc: only when the arc spans more than .32 rad. */
-export const showArcLabel = (span: number): boolean => span > 0.32
 
 /** Share of a leaf in its group as a percentage; 0 for an empty group. */
 export const shareOfGroup = (v: number, total: number): number => (total ? (v / total) * 100 : 0)

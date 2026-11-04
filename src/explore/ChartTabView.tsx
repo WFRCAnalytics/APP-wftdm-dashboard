@@ -3,6 +3,7 @@
 // rail on the right (Chart, Style, Axes, Filter). Drag a field onto a shelf, or select it and press the shelf (keyboard path).
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowLeftRight, ChevronRight, Download, GripVertical, Maximize2, Minimize2, Plus, X } from 'lucide-react'
+import { exact } from '@/charts/lib/format'
 import { chainEntries, chainIndex, chainOrder, closeGap, dropZone, insertIntoChain, removeFromChain, reorderInChain, type Box, type Side } from '@/charts/builder/chainOps'
 import { buildChart, relabel, type ChartModel, type Col, type DrawnChart } from '@/charts/builder/compile'
 import { chartRole, DATA_TYPES, TYPE_LABEL, typesPresent, type DataType } from '@/charts/builder/columnTypes'
@@ -413,14 +414,14 @@ function ChartCard({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: Cha
           {drawn && !data.error && <Plot model={drawn} hot={hot} size={{ w: drawn.W, h: drawn.H }} theme={theme!} />}
         </div>
         {txt('foot').t && <p className={`tb tfoot ${spec.footAlign === 'right' ? 'tright' : 'tleft'} ${cls('foot')}`}>{txt('foot').t}</p>}
-        {(data.truncated || drawn?.limitedSeries || drawn?.labelsHidden) && <p className="hint" style={{ marginTop: 4 }}>{data.truncated ? (data.mode === 'raw' ? 'Showing a sample of the points. ' : `Showing the first ${getExploreOptions().limits.chartRows.toLocaleString('en-US')} groups. `) : ''}{drawn?.limitedSeries ? `Showing the first ${drawn.seriesLimit} values of a legend field.` : ''}{drawn?.labelsHidden ? ' Data labels are hidden: the bars are too thin to carry them. Use fewer groups, or expand the chart.' : ''}</p>}
+        {(data.truncated || drawn?.limitedSeries || drawn?.labelsHidden) && <p className="hint" style={{ marginTop: 4 }}>{data.truncated ? (data.mode === 'raw' ? 'Showing a sample of the points. ' : `Showing the first ${exact(getExploreOptions().limits.chartRows)} groups. `) : ''}{drawn?.limitedSeries ? `Showing the first ${drawn.seriesLimit} values of a legend field.` : ''}{drawn?.labelsHidden ? ' Data labels are hidden: the bars are too thin to carry them. Use fewer groups, or expand the chart.' : ''}</p>}
       </div>
   )
 
   return (
     <section className="tile col card" ref={cardRef}>
       <div className="cardhead">
-        <span className="ci">{tab.name} · {data.relationName} · {(data.total ?? data.rows.length).toLocaleString('en-US')} rows</span>
+        <span className="ci">{tab.name} · {data.relationName} · {exact(data.total ?? data.rows.length)} rows</span>
         <span className={`cn ${s.noticeBad ? 'bad' : ''}`} role="status">{s.notice}</span>
         <span className="tp swapw" data-tip={swapped.ok ? undefined : swapped.reason}><Btn small disabled={!swapped.ok} onClick={swap}><ArrowLeftRight size={14} aria-hidden="true" />Swap x and y</Btn></span>
         <Btn small onClick={() => { setSpec((x) => ({ ...x, enc: {} })); setExplore({ notice: 'Shelves cleared.', noticeBad: false }) }}>Clear</Btn>
@@ -491,7 +492,7 @@ function ChartCard({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: Cha
       {big && (
         <Modal wide bare title={tab.name} onClose={() => setBig(false)}>
           <div className="th">
-            <div><h2 className="tt">{tab.name}</h2><p className="ts">{data.relationName} · {(data.total ?? data.rows.length).toLocaleString('en-US')} rows</p></div>
+            <div><h2 className="tt">{tab.name}</h2><p className="ts">{data.relationName} · {exact(data.total ?? data.rows.length)} rows</p></div>
             <div className="pager">
               {getExploreOptions().features.importExport && <Btn small onClick={() => setExportOpen(true)}><Download size={14} aria-hidden="true" />Export</Btn>}
               <Button variant="ghost" size="icon" aria-label={`Contract ${tab.name}`} onClick={() => setBig(false)}><Minimize2 className="h-4 w-4" /></Button>

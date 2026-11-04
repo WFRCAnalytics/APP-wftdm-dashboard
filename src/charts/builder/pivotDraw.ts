@@ -5,6 +5,7 @@
 // Used by the Explore builder and by custom dashboard tiles. Styling is pivotTable.css on theme tokens only. What the viewer opened,
 // closed and sorted lives in `PivotState`, owned by the caller, so a redraw (hover, resize, new data) keeps it.
 import '@/charts/builder/pivotTable.css'
+import { exact } from '@/charts/lib/format'
 import type { PivotTable, PNode } from '@/charts/builder/pivot'
 import { parseTip } from '@/charts/builder/tipTile'
 import { tooltip } from '@/services/tooltip'
@@ -222,7 +223,7 @@ function renderPivot(t: PivotTable, state: PivotState, idx: number, maxRows: num
     }
     walk(t.rowTree, 0)
     const shownRows = visible.slice(0, maxRows)
-    note.textContent = visible.length > maxRows ? `Showing the first ${maxRows.toLocaleString('en-US')} of ${visible.length.toLocaleString('en-US')} rows. Collapse a group or filter the data to see the rest.` : ''
+    note.textContent = visible.length > maxRows ? `Showing the first ${exact(maxRows)} of ${exact(visible.length)} rows. Collapse a group or filter the data to see the rest.` : ''
     note.hidden = !note.textContent
 
     const pathText = (p: string[]) => (p.length ? p.join(' › ') : 'All')

@@ -39,8 +39,7 @@ export function sequentialT(v: number, domain: readonly [number, number] = SHARE
   return Math.max(0, Math.min(1, (v - domain[0]) / span))
 }
 
-/** Rounds `v` to one decimal for legends and tooltips ("4.1"). */
-export const f1 = (v: number): string => v.toFixed(1)
+export { f1 } from '@/charts/lib/format'
 
 // ---- swipe divider ----
 

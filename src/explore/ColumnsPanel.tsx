@@ -1,6 +1,7 @@
 // 065-chart-builder: the Data tab's Columns panel. Every column gets a small distribution and a one-line summary; the
 // selected column gets a larger distribution and summary statistics. Only the columns on screen are summarised.
 import { useEffect, useState } from 'react'
+import { exact } from '@/charts/lib/format'
 import { DATA_TYPES, TYPE_LABEL, typesPresent, type DataType } from '@/charts/builder/columnTypes'
 import { columnLabel, getExploreOptions } from '@/explore/options'
 import { loadProfile } from '@/explore/profile/profileRun'
@@ -73,7 +74,7 @@ function Detail({ sql, col }: { sql: string; col: ColumnInfo }) {
             {p.list.items.map((t) => (
               <div className="t5" key={t.label}>
                 <span>{t.label}</span>
-                <span className="mono">{t.n.toLocaleString('en-US')} · {t.pct}%</span>
+                <span className="mono">{exact(t.n)} · {t.pct}%</span>
                 <div className="bar"><i style={{ width: `${t.w}%` }} /></div>
               </div>
             ))}

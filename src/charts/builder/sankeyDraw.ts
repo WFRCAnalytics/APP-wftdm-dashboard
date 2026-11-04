@@ -7,6 +7,7 @@ import 'd3-transition'
 
 import type { HSankey } from '@/charts/builder/compile'
 import type { HierState } from '@/charts/builder/hierarchyDraw'
+import { ellipsize } from '@/charts/lib/format'
 import type { ChartTheme } from '@/charts/types'
 import { tooltip } from '@/services/tooltip'
 import { prettyText } from '@/services/typography'
@@ -19,7 +20,6 @@ const TWEEN_MS = 380
 const GAP = 6
 const NODE_W = 12
 const mix = (a: number, b: number, u: number) => a + (b - a) * u
-const clip = (t: string, n = 20) => (t.length > n ? `${t.slice(0, n - 1)}…` : t)
 const r1 = (v: number) => Math.round(v * 10) / 10
 
 export function zoomableSankey(body: G, sk: HSankey, T: ChartTheme, state: HierState, idx: number): void {
@@ -92,7 +92,7 @@ export function zoomableSankey(body: G, sk: HSankey, T: ChartTheme, state: HierS
     const hy = sk.small ? 24 : 12 // below a small-multiples panel title
     if (focus) {
       body.append('text').attr('x', 0).attr('y', hy).attr('fill', T.ink).attr('font-weight', 600).style('cursor', 'zoom-out').on('click', () => go(null))
-        .text(prettyText(`‹ Only flows ${focus.side === 'from' ? 'from' : 'to'} ${clip(focus.name, 28)}`))
+        .text(prettyText(`‹ Only flows ${focus.side === 'from' ? 'from' : 'to'} ${ellipsize(focus.name, 28)}`))
         .append('tspan').attr('font-weight', 400).attr('fill', T.mute).text(prettyText('  · click to show all'))
     } else {
       body.append('text').attr('x', 0).attr('y', hy).attr('fill', T.mute).style('pointer-events', 'none').text(prettyText('Click a node to show only its flows'))
@@ -107,7 +107,7 @@ export function zoomableSankey(body: G, sk: HSankey, T: ChartTheme, state: HierS
       .attr('y', (q) => q.y).attr('height', (q) => q.th)
       .attr('stroke', (q) => (focus && focus.side === q.side && focus.name === q.n.name ? T.ink : 'none')).attr('stroke-width', 1.5)
     const texts = nodeG.append('text').attr('fill', T.ink).attr('font-size', T.fs).attr('text-anchor', (q) => (q.side === 'from' ? 'end' : 'start'))
-      .attr('x', (q) => (q.side === 'from' ? xL - 6 : xR + NODE_W + 6)).attr('y', (q) => q.y + q.th / 2 + 4).text(prettyText((q) => clip(q.n.name)))
+      .attr('x', (q) => (q.side === 'from' ? xL - 6 : xR + NODE_W + 6)).attr('y', (q) => q.y + q.th / 2 + 4).text(prettyText((q) => ellipsize(q.n.name, 20)))
 
     if (animate) {
       linkSel.attr('opacity', (l) => (beforeL?.has(l.k) ? 0.42 : 0)).transition().duration(TWEEN_MS).attr('opacity', 0.42)

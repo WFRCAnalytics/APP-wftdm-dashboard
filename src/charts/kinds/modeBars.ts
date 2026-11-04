@@ -3,7 +3,8 @@
 import * as Plot from '@observablehq/plot'
 
 import { MODES } from '@/charts/vocab'
-import { emptyNote, f1, sgn } from '@/charts/util'
+import { signed } from '@/charts/lib/format'
+import { emptyNote, f1 } from '@/charts/util'
 import { buildSeries, groupOf, moeByMode, refRowLabel, seriesTables, visibleNames } from '@/charts/lib/modeShare'
 import { sharedExtent } from '@/charts/lib/facetSync'
 import { observedFooter } from '@/charts/lib/observedSource'
@@ -33,7 +34,7 @@ export function drawModeBars(el: HTMLElement, env: ChartEnv) {
   const refLine = MODES.map((mode, j) => ({ mode, v: s.ref(names[0], j) }))
   const observedRef = env.reference.isObserved && s.self
   const moe = observedRef ? moeByMode(env, refRun) : null
-  const yFormat = (d: number) => (m === 'val' ? `${d}%` : `${sgn(d)}${Math.abs(d)}${m === 'pct' ? '%' : ''}`)
+  const yFormat = (d: number) => (m === 'val' ? `${d}%` : signed(d, 2, m === 'pct' ? '%' : '', { trim: true }))
   const foot = observedRef ? observedFooter(env, 'trip_mode_share') : ''
 
   // facets of a per-scenario difference share one axis so the bars can be compared across them

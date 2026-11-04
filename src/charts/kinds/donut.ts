@@ -5,7 +5,8 @@ import { select } from 'd3-selection'
 import { arc as d3arc, pie as d3pie } from 'd3-shape'
 
 import { MODES } from '@/charts/vocab'
-import { emptyNote, f1, sgn } from '@/charts/util'
+import { signed } from '@/charts/lib/format'
+import { emptyNote, f1 } from '@/charts/util'
 import { fmtMillions, gapStatus, modeShare, rankModes, statusColors, totalTrips } from '@/charts/lib/modeShare'
 import { drawModeBars } from '@/charts/kinds/modeBars'
 import type { ChartKind } from '@/charts/types'
@@ -93,7 +94,7 @@ const kind: ChartKind = {
             .attr('dy', '.35em')
             .attr('text-anchor', 'end')
             .attr('fill', status[gapStatus(gap)])
-            .text(prettyText(`${sgn(gap) || (gap < 0 ? '−' : '+')}${Math.abs(gap).toFixed(1)}`))
+            .text(prettyText(signed(gap, 1, '', { always: true })))
         }
       })
       if (cmp) {

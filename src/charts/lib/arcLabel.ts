@@ -25,6 +25,14 @@ export function textWidth(text: string, size: number, weight: number | string = 
   return w
 }
 
+/** `text` cut to fit `maxPx` with an ellipsis, measured; whole when it already fits. */
+export function fitWidth(text: string, maxPx: number, size: number, weight: number | string = 400, family = 'sans-serif'): string {
+  if (textWidth(text, size, weight, family) <= maxPx) return text
+  let n = text.length
+  while (n > 1 && textWidth(`${text.slice(0, n)}…`, size, weight, family) > maxPx) n--
+  return `${text.slice(0, n)}…`
+}
+
 export interface ArcGeom { a0: number; a1: number; ir: number; or: number }
 export interface ArcPlacement {
   mode: 'horizontal' | 'along' | 'radial'

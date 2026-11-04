@@ -16,7 +16,6 @@ import {
   hierTable,
   leafValues,
   shareOfGroup,
-  showArcLabel,
   showGroupName,
   showGroupTotal,
   showLeafLabel,
@@ -137,8 +136,6 @@ describe('hierarchy formats and label rules', () => {
     expect(showLeafLabel(66, 50)).toBe(false)
     expect(showLeafLabel(67, 41)).toBe(true)
     expect(showLeafLabel(100, 40)).toBe(false)
-    expect(showArcLabel(0.32)).toBe(false)
-    expect(showArcLabel(0.33)).toBe(true)
   })
   it('share of group', () => {
     expect(shareOfGroup(25, 100)).toBe(25)

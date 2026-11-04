@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 
+import { exact } from '@/charts/lib/format'
 import { loadRows } from '@/charts/dataCache'
 import { loadFamilyRollup, meanErrorByRound, roundStatus, worstErrorByRound, type RollupRow } from '@/services/familyRollup'
 import { createPortal } from 'react-dom'
@@ -44,7 +45,7 @@ function MiniPill({ pressed, label, onClick, children }: { pressed: boolean; lab
 const ROUND_TAG = 'Calibration round'
 
 /** 58.9M at regional scale, 15,212 for a small run. */
-const vmtText = (v: number) => (v >= 1e6 ? `${(v / 1e6).toFixed(1)}M` : Math.round(v).toLocaleString('en-US'))
+const vmtText = (v: number) => (v >= 1e6 ? `${(v / 1e6).toFixed(1)}M` : exact(Math.round(v)))
 
 export function ScenarioPicker() {
   const view = useResolvedView()

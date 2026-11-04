@@ -2,6 +2,7 @@
 // A MapLibre choropleth of transit share by traffic analysis zone, on the viewer's basemap at 80% zone opacity (fully
 // opaque on "Zones only"), with the rail line and stations. In a side-by-side grid each cell is one of these maps; the
 // cells share a camera and hover (lib/zoneMapGrid.ts).
+import { exact } from '@/charts/lib/format'
 import { chip, controlGroup, legend } from '@/charts/lib/mapChrome'
 import { SHARE_DOMAIN, f1, sequentialT } from '@/charts/lib/mapMath'
 import {
@@ -54,7 +55,7 @@ function build(el: HTMLElement, env: ChartEnv, host: ZoneHost): ZoneMap {
             title: `TAZ ${id}`,
             rows: [
               { k: 'Transit share', v: row ? `${f1(row.share * 100)}%` : 'No data', c: v.fill(id), b: true },
-              { k: 'Residents', v: row ? Math.round(row.residents).toLocaleString('en-US') : 'No data' },
+              { k: 'Residents', v: row ? exact(Math.round(row.residents)) : 'No data' },
             ],
           },
           ev,

@@ -5,7 +5,7 @@
 import { prettyOperators } from '@/services/typography'
 import type { ChartTheme } from '@/charts/types'
 import { compact, exact } from '@/charts/lib/format'
-import { boxInSector, spreadLabels, textWidth } from '@/charts/lib/arcLabel'
+import { boxInSector, fitWidth, spreadLabels, textWidth } from '@/charts/lib/arcLabel'
 import { buildPivot, type PivotTable } from '@/charts/builder/pivot'
 import { tileSegment } from '@/charts/builder/tipTile'
 import type { TipTile } from '@/services/tooltip'
@@ -317,7 +317,7 @@ export function buildChart(input: BuildInput): ChartModel {
   // lines named at their ends: when the colour field alone makes the series, a name beside each line's last point replaces the legend
   const directLabels = mark === 'line' && serF.length === 1 && serF[0] === colorField && series.length >= 2 && series.length <= 8 && pw >= 340
   const dlWidth = directLabels ? Math.min(pw * 0.26, Math.max(...series.map((s) => textWidth(s.label, T.fs, 400, T.font)))) : 0
-  const fitLabel = (t: string) => { let n = t.length; if (textWidth(t, T.fs, 400, T.font) <= dlWidth) return t; while (n > 1 && textWidth(`${t.slice(0, n)}…`, T.fs, 400, T.font) > dlWidth) n--; return `${t.slice(0, n)}…` }
+  const fitLabel = (t: string) => fitWidth(t, dlWidth, T.fs, 400, T.font)
   const frame = (lm?: number) => {
     const f = { x0: (lm ?? 46) + (titled ? 16 : 0), x1: pw - 10 - (directLabels ? dlWidth + 14 : 0), y0: top, y1: ph - 42 - (titled ? 16 : 0) }
     frames.push(f)
@@ -820,7 +820,7 @@ export function buildChart(input: BuildInput): ChartModel {
       // Where each label goes (see charts/lib/arcLabel.ts): inside the slice when its name and figure fit whole, else outside on a leader line.
       // Outside labels need room beside the pie, so the radius is settled with the widest of them and the choice made again.
       const maxW = pw * 0.34
-      const fitText = (t: string) => { let n = t.length; if (textWidth(t, T.fs, 400, T.font) <= maxW) return t; while (n > 1 && textWidth(`${t.slice(0, n)}…`, T.fs, 400, T.font) > maxW) n--; return `${t.slice(0, n)}…` }
+  const fitText = (t: string) => fitWidth(t, maxW, T.fs, 400, T.font)
       type Put = { k: 'none' } | { k: 'in'; x: number; y: number } | { k: 'out'; right: boolean; w: number }
       const decide = (R: number): Put[] => drawn.map((d): Put => {
         if (!labelOn || d.f <= 0.03) return { k: 'none' }

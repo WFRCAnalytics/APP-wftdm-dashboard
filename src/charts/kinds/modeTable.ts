@@ -1,7 +1,8 @@
 // Mode share, Table (catalogue section 1 non-visual path; prototype modeTbl/htmlTable): the same numbers as the bars and
 // their tooltip. Reference column first, then each compared scenario as "61.2% +1.2" (Values) or "+1.2 pts" (Change).
 import { MODES } from '@/charts/vocab'
-import { emptyNote, f1, sgn } from '@/charts/util'
+import { signed } from '@/charts/lib/format'
+import { emptyNote, f1 } from '@/charts/util'
 import { gapStatus, modeShare, statusColors, tableCell, type TableCell } from '@/charts/lib/modeShare'
 import type { ChartKind } from '@/charts/types'
 import { formatDelta } from '@/panels/compareMath'
@@ -38,7 +39,7 @@ const kind: ChartKind = {
         if (c.gap !== null) {
           // the gap is a pill like the calibration table's: a status colour and dot against observed data, neutral against a scenario
           const st = observed ? gapStatus(c.gap) : null
-          side.textContent = `${sgn(c.gap) || (c.gap < 0 ? '−' : '+')}${Math.abs(c.gap).toFixed(1)}`
+          side.textContent = signed(c.gap, 1, '', { always: true })
           side.style.cssText = `margin-left:8px;display:inline-flex;align-items:center;gap:6px;font-size:12.5px;padding:2px 9px 2px 7px;border-radius:999px;${
             st ? `color:${status[st]};background:color-mix(in srgb, ${status[st]} 14%, transparent)` : 'color:var(--tag-neutral-fg);background:var(--tag-neutral-bg)'
           }`
