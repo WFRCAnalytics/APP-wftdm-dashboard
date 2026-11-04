@@ -312,6 +312,9 @@
 .xb.xb-portal{display:contents}
 .xb .xb-fill{flex:1;min-height:0}
 .xb .tabs .pill[disabled]{opacity:.5;cursor:not-allowed}
+/* the rail is as tall as the chart row and scrolls inside itself, so a long tab (Style) never makes the page scroll */
+.xb .rail2{min-height:0;overflow:hidden;display:flex;flex-direction:column}
+.xb .rail2 .railscroll{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding-bottom:14px;margin:8px 0 10px}
 .xb .rail2 .rsec{padding-top:20px}
 
 /* accordion steps, full-height SQL editor, app Segmented in the builder */

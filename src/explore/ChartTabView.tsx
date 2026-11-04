@@ -526,6 +526,7 @@ function Rail({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: ChartDat
   return (
     <aside className="tile rail2">
       <div className="rtabs"><div className="xseg"><Segmented label="Chart settings" value={s.railTab} onChange={(id) => setExplore({ railTab: id as typeof s.railTab })} options={tabs.map(([k, l]) => ({ id: k, label: l }))} /></div></div>
+      <div className="railscroll">
       {s.railTab === 'chart' && (
         <div className="rsec">
           <div className="mkgrid">
@@ -712,6 +713,7 @@ function Rail({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: ChartDat
           </XSelect>
         </div>
       )}
+      </div>
     </aside>
   )
 }
