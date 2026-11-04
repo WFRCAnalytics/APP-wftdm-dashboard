@@ -53,6 +53,8 @@ export const AXIS_MARKS: readonly Mark[] = ['bar', 'line', 'area', 'scatter', 'h
 export const ZERO_MARKS: readonly Mark[] = ['line', 'scatter', 'box', 'trail']
 export const GRID_MARKS: readonly Mark[] = AXIS_MARKS.filter((m) => m !== 'heatmap')
 export const REF_MARKS: readonly Mark[] = ['bar', 'line', 'area', 'scatter', 'histogram', 'box', 'density']
+/** Marks whose colour field can have one value emphasised while the others fade. */
+export const HIGHLIGHT_MARKS: readonly Mark[] = ['bar', 'line', 'area', 'scatter', 'histogram', 'density']
 
 /** The histogram bin slider's range. */
 export const HIST_BINS_MIN = 2
@@ -75,6 +77,10 @@ export interface ChartSpec {
   table: TableOpts
   labels?: LabelMode
   ref: string
+  /** A shaded band on the value axis, from `lo` to `hi` (blank: none), drawn behind the data. */
+  band: { lo: string; hi: string }
+  /** The value of the colour field to emphasise; the other series fade. Blank: none. */
+  highlight: string
   /** Chosen category order per field (field name to values); a field without an entry stays alphabetical. */
   order: Record<string, string[]>
   /** Wrap a single facet field into this many columns; 0 keeps one row or column. */
@@ -184,7 +190,7 @@ export const channelAggregates = (mark: Mark, ch: Channel): boolean => defaultAg
 
 export function defaultSpec(over: Partial<ChartSpec> = {}): ChartSpec {
   return {
-    mark: 'bar', donut: false, stack: 'group', sort: 'natural', enc: {}, filter: { f: '', v: '' }, zero: false, grid: true, table: { ...TABLE_DEFAULTS }, ref: '', bins: 0, stats: [], order: {}, wrap: 0, axisTitles: false, xTitle: '', yTitle: '', pie: { ...PIE_DEFAULTS }, alt: '', footAlign: 'left',
+    mark: 'bar', donut: false, stack: 'group', sort: 'natural', enc: {}, filter: { f: '', v: '' }, zero: false, grid: true, table: { ...TABLE_DEFAULTS }, ref: '', band: { lo: '', hi: '' }, highlight: '', bins: 0, stats: [], order: {}, wrap: 0, axisTitles: false, xTitle: '', yTitle: '', pie: { ...PIE_DEFAULTS }, alt: '', footAlign: 'left',
     text: {
       tag: { t: '', size: 'xs', b: true, i: false }, title: { t: '', size: 'lg', b: true, i: false }, sub: { t: '', size: 'md', b: false, i: false },
       foot: { t: '', size: 'xs', b: false, i: true },
@@ -273,10 +279,12 @@ export interface ChartConfig {
   filter: { field: string; op: '='; value: string }[]
   order?: Record<string, string[]>
   wrap?: number
-  axes: { zeroBaseline: boolean; gridlines: boolean; referenceLine: number | null; bins?: number; stats?: HistStat[]; sort?: Sort; titles?: { x: string; y: string } }
+  axes: { zeroBaseline: boolean; gridlines: boolean; referenceLine: number | null; referenceBand?: { from: number; to: number }; bins?: number; stats?: HistStat[]; sort?: Sort; titles?: { x: string; y: string } }
   /** Only the options that differ from the defaults. */
   pie?: Partial<PieOpts>
   alt?: string
+  /** The colour value to emphasise. */
+  highlight?: string
   /** Only when the footer sits bottom right. */
   footerAlign?: 'right'
   /** Only the options that differ from the defaults. */
@@ -308,11 +316,12 @@ export function toConfig(spec: ChartSpec, ctx: { relation: string; scenarios: st
     mark: spec.mark + (spec.mark === 'pie' && spec.donut ? ':donut' : ''),
     encoding, stack: spec.stack,
     filter: spec.filter.f ? [{ field: spec.filter.f, op: '=', value: spec.filter.v }] : [],
-    axes: { zeroBaseline: spec.zero, gridlines: spec.grid, referenceLine: spec.ref === '' ? null : Number(spec.ref), ...(spec.bins > 0 ? { bins: spec.bins } : {}), ...(spec.stats.length ? { stats: spec.stats } : {}), ...(spec.sort !== 'natural' ? { sort: spec.sort } : {}), ...(spec.axisTitles ? { titles: { x: spec.xTitle, y: spec.yTitle } } : {}) },
+    axes: { zeroBaseline: spec.zero, gridlines: spec.grid, referenceLine: spec.ref === '' ? null : Number(spec.ref), ...(spec.band.lo !== '' && spec.band.hi !== '' ? { referenceBand: { from: Number(spec.band.lo), to: Number(spec.band.hi) } } : {}), ...(spec.bins > 0 ? { bins: spec.bins } : {}), ...(spec.stats.length ? { stats: spec.stats } : {}), ...(spec.sort !== 'natural' ? { sort: spec.sort } : {}), ...(spec.axisTitles ? { titles: { x: spec.xTitle, y: spec.yTitle } } : {}) },
     ...(Object.keys(spec.order).length ? { order: spec.order } : {}),
     ...(spec.wrap >= 2 ? { wrap: spec.wrap } : {}),
     ...(Object.keys(pieDiff(spec.pie)).length ? { pie: pieDiff(spec.pie) } : {}),
     ...(spec.alt ? { alt: spec.alt } : {}),
+    ...(spec.highlight ? { highlight: spec.highlight } : {}),
     ...(spec.footAlign === 'right' ? { footerAlign: 'right' as const } : {}),
     ...(Object.keys(tableDiff(spec.table)).length ? { table: tableDiff(spec.table) } : {}),
     ...(spec.labels ? { labels: spec.labels } : {}),
@@ -377,6 +386,8 @@ export function fromConfig(text: string, ctx: ImportContext): ImportResult {
     pie: { ...PIE_DEFAULTS, ...(typeof c.pie?.other === 'number' ? { other: c.pie.other } : {}), ...(typeof c.pie?.hole === 'number' ? { hole: c.pie.hole } : {}) },
     alt: typeof c.alt === 'string' ? c.alt : '', footAlign: c.footerAlign === 'right' ? 'right' : 'left',
     ref: c.axes?.referenceLine === null || c.axes?.referenceLine === undefined ? '' : String(c.axes.referenceLine),
+    band: typeof c.axes?.referenceBand?.from === 'number' && typeof c.axes.referenceBand.to === 'number' ? { lo: String(c.axes.referenceBand.from), hi: String(c.axes.referenceBand.to) } : { lo: '', hi: '' },
+    highlight: typeof c.highlight === 'string' ? c.highlight : '',
   })
   for (const [k, name] of TEXT_KEYS) {
     const t = c.text?.[name]

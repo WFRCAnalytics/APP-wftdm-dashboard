@@ -4,13 +4,13 @@
 // no fill patterns and no pie. Colours come from the app's ChartTheme (tokens), never hard-coded. tests/unit/chartBuilderCompile.test.ts.
 import { prettyOperators } from '@/services/typography'
 import type { ChartTheme } from '@/charts/types'
-import { compact } from '@/charts/lib/format'
+import { compact, exact } from '@/charts/lib/format'
 import { boxInSector, spreadLabels, textWidth } from '@/charts/lib/arcLabel'
 import { buildPivot, type PivotTable } from '@/charts/builder/pivot'
 import { tileSegment } from '@/charts/builder/tipTile'
 import type { TipTile } from '@/services/tooltip'
 import { chartRole, type DataType, type Role } from '@/charts/builder/columnTypes'
-import { acceptsText, AXIS_MARKS, channelLabel, effectiveLabels, isHorizontalBar, RING_CHANNELS, SLOTS, TABLE_COLS, TABLE_ROWS, TABLE_VALUES, ROLE_WORD, type ChartSpec, type Channel, type Sort } from '@/charts/builder/spec'
+import { acceptsText, AXIS_MARKS, channelLabel, effectiveLabels, HIGHLIGHT_MARKS, isHorizontalBar, RING_CHANNELS, SLOTS, TABLE_COLS, TABLE_ROWS, TABLE_VALUES, ROLE_WORD, type ChartSpec, type Channel, type Sort } from '@/charts/builder/spec'
 
 export type Row = Record<string, any>
 export interface Col { name: string; type: DataType }
@@ -113,8 +113,7 @@ export function fmtTick(v: number, step: number): string {
   const d = Math.min(6, Math.ceil(-Math.log10(Math.abs(step)) - 1e-9))
   return v.toFixed(d)
 }
-export const fmtExact = (v: unknown): string =>
-  typeof v === 'number' ? (Number.isInteger(v) ? v.toLocaleString('en-US') : (Math.round(v * 100) / 100).toLocaleString('en-US')) : String(v)
+export const fmtExact = (v: unknown): string => (typeof v === 'number' ? exact(v) : String(v))
 
 export function uniqSorted(rows: Row[], f: string): any[] {
   const s = new Set<any>()
@@ -288,7 +287,10 @@ export function buildChart(input: BuildInput): ChartModel {
     }
     return s
   })
-  const op = (s: Series) => (input.hot && !s.has[input.hot] ? 0.2 : 1)
+  // one value of the colour field can be emphasised: the other series fade (and a line is drawn last and thicker)
+  const hlWant = spec.highlight && colorField && HIGHLIGHT_MARKS.includes(mark) ? `${colorField}=${spec.highlight}` : ''
+  const hlKey = hlWant && series.some((s) => s.has[hlWant]) ? hlWant : ''
+  const op = (s: Series) => (input.hot && !s.has[input.hot] ? 0.2 : hlKey && !s.has[hlKey] ? 0.3 : 1)
   // how a series looks, for the tooltip: its fill or hatch, its dashed line, or its marker shape
   const seriesTile = (s: Series, kind: TipTile['kind'] = 'sq'): TipTile => {
     if (kind === 'line') return { kind, fill: s.color, stroke: s.color, dash: DASH[s.di % 5] }
@@ -312,8 +314,12 @@ export function buildChart(input: BuildInput): ChartModel {
   // axis titles need a strip along the bottom and the left edge, which every cartesian mark takes from the same frame
   const titled = spec.axisTitles && AXIS_MARKS.includes(mark)
   const frames: { x0: number; x1: number; y0: number; y1: number }[] = []
+  // lines named at their ends: when the colour field alone makes the series, a name beside each line's last point replaces the legend
+  const directLabels = mark === 'line' && serF.length === 1 && serF[0] === colorField && series.length >= 2 && series.length <= 8 && pw >= 340
+  const dlWidth = directLabels ? Math.min(pw * 0.26, Math.max(...series.map((s) => textWidth(s.label, T.fs, 400, T.font)))) : 0
+  const fitLabel = (t: string) => { let n = t.length; if (textWidth(t, T.fs, 400, T.font) <= dlWidth) return t; while (n > 1 && textWidth(`${t.slice(0, n)}…`, T.fs, 400, T.font) > dlWidth) n--; return `${t.slice(0, n)}…` }
   const frame = (lm?: number) => {
-    const f = { x0: (lm ?? 46) + (titled ? 16 : 0), x1: pw - 10, y0: top, y1: ph - 42 - (titled ? 16 : 0) }
+    const f = { x0: (lm ?? 46) + (titled ? 16 : 0), x1: pw - 10 - (directLabels ? dlWidth + 14 : 0), y0: top, y1: ph - 42 - (titled ? 16 : 0) }
     frames.push(f)
     return f
   }
@@ -391,7 +397,32 @@ export function buildChart(input: BuildInput): ChartModel {
     ln(o, bx.x0, bx.y1, bx.x1, bx.y1, T.line, 1)
     return { sx }
   }
+  // a band on the value axis: a soft tint behind the data with a hairline at each edge and its range named; no band when either end is blank
+  const bandR = (() => {
+    const lo = Number(spec.band.lo), hi = Number(spec.band.hi)
+    return spec.band.lo === '' || spec.band.hi === '' || Number.isNaN(lo) || Number.isNaN(hi) || lo === hi ? null : { lo: Math.min(lo, hi), hi: Math.max(lo, hi) }
+  })()
+  const bandName = bandR ? `${fmtCompact(bandR.lo)} to ${fmtCompact(bandR.hi)}` : ''
+  const bandY = (o: P, bx: ReturnType<typeof frame>, sy: (v: number) => number) => {
+    if (!bandR) return
+    const ya = sy(bandR.hi), yb = sy(bandR.lo), y0 = Math.max(bx.y0, Math.min(bx.y1, ya)), y1 = Math.max(bx.y0, Math.min(bx.y1, yb))
+    if (y1 - y0 < 0.5) return
+    o.rects.unshift({ x: r1(bx.x0), y: r1(y0), w: r1(bx.x1 - bx.x0), h: r1(y1 - y0), rx: 0, fill: T.ink, stroke: 'none', op: 0.07, tip: '' })
+    if (ya >= bx.y0 && ya <= bx.y1) ln(o, bx.x0, ya, bx.x1, ya, T.line, 1)
+    if (yb >= bx.y0 && yb <= bx.y1) ln(o, bx.x0, yb, bx.x1, yb, T.line, 1)
+    tx(o, bx.x1 - 4, y1 - y0 >= 18 ? y0 + 12 : y0 - 3, bandName, 'end', T.fs - 1, '', T.mute)
+  }
+  const bandX = (o: P, bx: ReturnType<typeof frame>, sx: (v: number) => number) => {
+    if (!bandR) return
+    const xa = sx(bandR.lo), xb = sx(bandR.hi), x0 = Math.max(bx.x0, Math.min(bx.x1, xa)), x1 = Math.max(bx.x0, Math.min(bx.x1, xb))
+    if (x1 - x0 < 0.5) return
+    o.rects.unshift({ x: r1(x0), y: r1(bx.y0), w: r1(x1 - x0), h: r1(bx.y1 - bx.y0), rx: 0, fill: T.ink, stroke: 'none', op: 0.07, tip: '' })
+    if (xa >= bx.x0 && xa <= bx.x1) ln(o, xa, bx.y0, xa, bx.y1, T.line, 1)
+    if (xb >= bx.x0 && xb <= bx.x1) ln(o, xb, bx.y0, xb, bx.y1, T.line, 1)
+    tx(o, (x0 + x1) / 2, bx.y0 - 3, bandName, 'middle', T.fs - 1, '', T.mute)
+  }
   const refLine = (o: P, bx: ReturnType<typeof frame>, sy: (v: number) => number) => {
+    bandY(o, bx, sy)
     const v = Number(spec.ref)
     if (spec.ref === '' || Number.isNaN(v)) return
     const y = sy(v)
@@ -399,7 +430,8 @@ export function buildChart(input: BuildInput): ChartModel {
     ln(o, bx.x0, y, bx.x1, y, T.ink, 1.5, '5 4')
     tx(o, bx.x1 - 2, y - 5, `Reference ${fmtCompact(v)}`, 'end', T.fs, '', T.ink)
   }
-  const refMax = (hi: number) => (spec.ref !== '' && !Number.isNaN(Number(spec.ref)) ? Math.max(hi, Number(spec.ref)) : hi)
+  const refMax = (hi: number) => Math.max(hi, ...(spec.ref !== '' && !Number.isNaN(Number(spec.ref)) ? [Number(spec.ref)] : []), ...(bandR ? [bandR.hi] : []))
+  const refMin = (lo: number) => (bandR ? Math.min(lo, bandR.lo) : lo)
   const gm = (prows: Row[], xf: string, yf: string | null, agg: string) => {
     const G = new Map<string, any[]>()
     for (const r of prows) { const k = `${r[xf]}\u0002${skey(r)}`; let a = G.get(k); if (!a) { a = []; G.set(k, a) } a.push(yf ? r[yf] : 1) }
@@ -515,6 +547,7 @@ export function buildChart(input: BuildInput): ChartModel {
           }
         }
       })
+      bandX(pn, bx, sx)
       const rv = Number(spec.ref)
       if (spec.ref !== '' && !Number.isNaN(rv) && rv >= nt.min && rv <= nt.max) {
         ln(pn, sx(rv), bx.y0, sx(rv), bx.y1, T.ink, 1.5, '5 4')
@@ -534,6 +567,7 @@ export function buildChart(input: BuildInput): ChartModel {
     if (mark === 'area' && stackMode === 'normalize') hi = 1
     if (mark === 'area' || spec.zero) lo = Math.min(0, lo === Infinity ? 0 : lo)
     hi = refMax(hi)
+    if (lo !== Infinity) lo = refMin(lo)
     for (const pn of panels) {
       const bx = frame(), ax = yAx(pn, bx, lo === Infinity ? 0 : lo, hi || 1, mark === 'area' && stackMode === 'normalize' ? pct : undefined)
       const xi = new Map<any, number>()
@@ -541,16 +575,16 @@ export function buildChart(input: BuildInput): ChartModel {
       let sx: (v: any) => number
       if (xc) { const nx = xNum(pn, bx, xs[0], xs[xs.length - 1]); sx = (v) => nx.sx(v) } else { const step = xBand(pn, bx, xs); sx = (v) => bx.x0 + step * (xi.get(v)! + 0.5) }
       if (mark === 'line') {
-        for (const s of series) {
+        for (const s of hlKey ? [...series.filter((m) => !m.has[hlKey]), ...series.filter((m) => m.has[hlKey])] : series) {
           let d = '', pen = false
           for (const x of xs) {
             const v = pn.V!.get(`${x}\u0002${s.key}`)
             if (v === undefined) { pen = false; continue }
             d += `${pen ? 'L' : 'M'}${r1(sx(x))} ${r1(ax.sy(v))}`; pen = true
           }
-          pa(pn, d, 'none', s.color, 2.4, DASH[s.di % 5], op(s), '')
+          pa(pn, d, 'none', s.color, hlKey && s.has[hlKey] ? 3.4 : 2.4, DASH[s.di % 5], op(s), '')
           // data labels above the points, thinned out when there are many
-          if (labelMode !== 'off') {
+          if (labelMode !== 'off' && !(hlKey && !s.has[hlKey])) {
             const every = Math.max(1, Math.ceil(xs.length / 20))
             xs.forEach((x, k) => { const v = pn.V!.get(`${x}\u0002${s.key}`); if (v !== undefined && k % every === 0) tx(pn, sx(x), ax.sy(v) - 9, fmtCompact(v), 'middle', T.fs - 0.5, '', T.ink, T.surface) })
           }
@@ -562,6 +596,17 @@ export function buildChart(input: BuildInput): ChartModel {
             if (enc.shape) { const g = glyph(s.si % 5, sx(x), ax.sy(v), 4); pa(pn, g.d, g.line ? 'none' : s.color, g.line ? s.color : T.surface, g.line ? 2 : 1.5, '', op(s), t) }
             else pa(pn, glyph(0, sx(x), ax.sy(v), 6).d, 'transparent', 'none', 0, '', 1, t)
           }
+        }
+        if (directLabels) {
+          // each line's name beside its last point, spread so none touch, with a short leader when a name had to move
+          const ends = series.flatMap((s) => {
+            for (let k = xs.length - 1; k >= 0; k--) { const v = pn.V!.get(`${xs[k]}\u0002${s.key}`); if (v !== undefined) return [{ s, x: sx(xs[k]), y: ax.sy(v) }] }
+            return []
+          })
+          spreadLabels(ends.map((e) => ({ item: e, y: e.y })), T.fs * 1.3, bx.y0 + 4, bx.y1).forEach(({ item: e, y }) => {
+            if (Math.abs(y - e.y) > 2) ln(pn, e.x + 3, e.y, bx.x1 + 5, y, T.line, 1)
+            tx(pn, bx.x1 + 8, y + 3.5, fitLabel(e.s.label), 'start', T.fs, '', hlKey && !e.s.has[hlKey] ? T.mute : T.mix(e.s.color, T.ink, 0.35))
+          })
         }
       } else {
         const acc = new Map<any, number>(), tot = new Map<any, number>()
@@ -595,6 +640,7 @@ export function buildChart(input: BuildInput): ChartModel {
     }
     if (spec.zero) { xl = Math.min(0, xl); yl = Math.min(0, yl) }
     yh = refMax(yh)
+    yl = refMin(yl)
     for (const pn of panels) {
       const bx = frame(), ax = yAx(pn, bx, yl, yh), nx = xNum(pn, bx, xl, xh)
       const stride = Math.max(1, Math.ceil(pn.prows.length / 500))
@@ -646,6 +692,7 @@ export function buildChart(input: BuildInput): ChartModel {
           acc += v
         }
       })
+      bandX(pn, bx, nx.sx)
       const rv = Number(spec.ref)
       if (spec.ref !== '' && !Number.isNaN(rv) && rv >= lo && rv <= hi) {
         ln(pn, nx.sx(rv), bx.y0, nx.sx(rv), bx.y1, T.ink, 1.5, '5 4')
@@ -1133,6 +1180,7 @@ export function buildChart(input: BuildInput): ChartModel {
     for (const r of rows) { xl = Math.min(xl, r[xf]); xh = Math.max(xh, r[xf]); yl = Math.min(yl, r[yf]); yh = Math.max(yh, r[yf]) }
     if (spec.zero) { xl = Math.min(0, xl); yl = Math.min(0, yl) }
     yh = refMax(yh)
+    yl = refMin(yl)
     const num = (v: any) => (typeof v === 'number' ? v : v instanceof Date ? v.getTime() : Number(v))
     for (const pn of panels) {
       const bx = frame(), ax = yAx(pn, bx, yl, yh), nx = xNum(pn, bx, xl, xh)
@@ -1162,7 +1210,7 @@ export function buildChart(input: BuildInput): ChartModel {
     // a field on Colour and also on Hatch, Dash or Shape is one legend group whose swatches show both looks; otherwise one group per channel
     const other = (['pattern', 'dash', 'shape'] as const).find((ch) => enc[ch] && enc[ch]!.f === colorField)
     const ink = (f: string, i: number) => (f === colorField ? colorFor(f, dom[f][i], i) : T.mute)
-    if (colorField && !other) legend.push({ title: colorField, items: dom[colorField].map((v, i) => item(colorField, v, { fill: colorFor(colorField, v, i) })) })
+    if (colorField && !other && !directLabels) legend.push({ title: colorField, items: dom[colorField].map((v, i) => item(colorField, v, { fill: colorFor(colorField, v, i) })) })
     if (enc.pattern) {
       const pf = enc.pattern.f
       legend.push({ title: pf, items: dom[pf].map((v, i) => { const p = PATTERNS[i % 5], c = ink(pf, i); defs.push({ id: `lp${i}`, color: c, d: p.d, sw: p.sw, fill: p.fill ? c : 'none' }); return item(pf, v, { fill: `url(#lp${i})`, stroke: c, sw: 1 }) }) })

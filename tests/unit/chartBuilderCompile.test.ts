@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { buildChart, fmtTick, shelfProblem, type ChartModel, type Col, type Row } from '../../src/charts/builder/compile.ts'
-import { defaultSpec } from '../../src/charts/builder/spec.ts'
+import { defaultSpec, fromConfig, toConfig } from '../../src/charts/builder/spec.ts'
 import { parseTip } from '../../src/charts/builder/tipTile.ts'
 import type { ChartTheme } from '../../src/charts/types.ts'
 
@@ -395,5 +395,60 @@ describe('axis titles and pie options', () => {
     expect(first(ok(build({ ...pie, sort: 'high' }, uneven)))).toBe('A')
     const area = (hole: number) => ok(build({ ...pie, donut: true, pie: { other: 0, hole } }, uneven)).panels[0].paths[0].d
     expect(area(72)).not.toBe(area(42))
+  })
+})
+
+describe('bands, highlight and direct labels', () => {
+  const bar = { x: { f: 'mode' }, y: { f: 'trips', agg: 'sum' as const }, color: { f: 'scenario' } }
+  const line = { x: { f: 'hour' }, y: { f: 'trips', agg: 'sum' as const }, color: { f: 'scenario' } }
+
+  it('draws a band behind the bars, named by its range', () => {
+    const plain = ok(build({ enc: bar }))
+    const m = ok(build({ enc: bar, band: { lo: '10', hi: '20' } }))
+    expect(m.panels[0].rects).toHaveLength(plain.panels[0].rects.length + 1)
+    expect(m.panels[0].rects[0].op).toBe(0.07)
+    expect(m.panels[0].texts.some((t) => t.t === '10 to 20')).toBe(true)
+  })
+
+  it('leaves a half-filled band off and widens the axis to a band above the data', () => {
+    expect(ok(build({ enc: bar, band: { lo: '10', hi: '' } })).panels[0].rects).toHaveLength(6)
+    const tall = ok(build({ enc: bar, band: { lo: '10', hi: '90' } }))
+    expect(tall.panels[0].texts.some((t) => t.t === '90' || t.t === '100')).toBe(true)
+  })
+
+  it('draws a band on a lying bar and a histogram', () => {
+    const lying = ok(build({ enc: { x: { f: 'trips', agg: 'sum' as const }, y: { f: 'mode' } }, band: { lo: '20', hi: '40' } }))
+    expect(lying.panels[0].rects[0].op).toBe(0.07)
+  })
+
+  it('fades the other series when one value is highlighted, and draws a highlighted line last and thicker', () => {
+    const m = ok(build({ enc: bar, highlight: 'a' }))
+    expect(m.panels[0].rects.filter((r) => r.op === 1)).toHaveLength(3)
+    expect(m.panels[0].rects.filter((r) => r.op === 0.3)).toHaveLength(3)
+    const l = ok(build({ mark: 'line', enc: line, highlight: 'b' }))
+    const drawn = l.panels[0].paths.filter((p) => p.fill === 'none')
+    expect(drawn[drawn.length - 1].sw).toBe(3.4)
+    expect(drawn[0].op).toBe(0.3)
+    // a value that is not there changes nothing
+    expect(ok(build({ enc: bar, highlight: 'zzz' })).panels[0].rects.every((r) => r.op === 1)).toBe(true)
+  })
+
+  it('names each line at its end instead of drawing a legend', () => {
+    const m = ok(build({ mark: 'line', enc: line }))
+    expect(m.legend).toHaveLength(0)
+    const names = m.panels[0].texts.filter((t) => t.anchor === 'start' && (t.t === 'a' || t.t === 'b'))
+    expect(names).toHaveLength(2)
+    expect(Math.abs(names[0].y - names[1].y)).toBeGreaterThanOrEqual(12)
+    // a second field on the lines keeps the legend
+    expect(ok(build({ mark: 'line', enc: { ...line, dash: { f: 'mode' } } })).legend.length).toBeGreaterThan(0)
+  })
+
+  it('keeps a band and a highlight through export and import', () => {
+    const spec = defaultSpec({ enc: bar, band: { lo: '10', hi: '20' }, highlight: 'a' })
+    const cfg = toConfig(spec, { relation: 't:x', scenarios: ['a'], sql: '', typeOf: () => 'category' })
+    expect(cfg.axes.referenceBand).toEqual({ from: 10, to: 20 })
+    const back = fromConfig(JSON.stringify(cfg), { scenarios: ['a'], columnsOf: () => cols.map(({ name }) => ({ name })) })
+    expect(back.ok && back.spec.band).toEqual({ lo: '10', hi: '20' })
+    expect(back.ok && back.spec.highlight).toBe('a')
   })
 })

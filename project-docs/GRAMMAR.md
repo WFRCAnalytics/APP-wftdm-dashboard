@@ -1858,8 +1858,11 @@ reaches the browser. The scenarios are the tile's compared runs.
       y:     { field: trips, aggregate: sum }   # sum mean median min max count
       color: { field: scenario }            # `scenario` exists when several runs are compared
     filter: [{ field: purpose, op: "=", value: Work }]
-    axes: { zeroBaseline: true, gridlines: true, referenceLine: null }
+    axes: { zeroBaseline: true, gridlines: true, referenceLine: null }   # referenceLine: 50, or referenceBand: { from: 40, to: 60 } for a shaded range
+    highlight: Walk                         # one value of the colour field; the other series fade
     text: { title: { text: Trips by mode, size: lg, weight: bold, italic: false } }
 ```
 
 A field must exist in the table and suit its channel (a category on x, a number on y); a mistake is explained inside the tile.
+
+A reference line and a band sit on the value axis of bar, line, area, scatter, histogram, box and density charts; the band is drawn behind the data and named by its range. A line chart whose series differ only by colour names each line at its right end instead of drawing a legend.

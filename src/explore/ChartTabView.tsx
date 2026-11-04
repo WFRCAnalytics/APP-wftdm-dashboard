@@ -12,7 +12,7 @@ import { CategoryOrder } from './CategoryOrder'
 import { Slider } from '@/components/ui/slider'
 import { prettyOperators } from '@/services/typography'
 import {
-  HIST_STATS, HIST_BINS_MIN, HIST_BINS_MAX, assignField, swapAxes, AXIS_MARKS, GRID_MARKS, REF_MARKS, ZERO_MARKS, acceptsShort, slotAccepts, chainOf, CHAINS, effectiveLabels, LABEL_MARKS, labelModesFor, SHOW_AS, TABLE_VALUES, AGGS, channelAggregates, channelLabel, COMING_SOON, MARK_LABEL, MARKS, SLOTS, SORTS, switchMark, TEXT_SIZES,
+  HIST_STATS, HIST_BINS_MIN, HIST_BINS_MAX, assignField, swapAxes, AXIS_MARKS, GRID_MARKS, HIGHLIGHT_MARKS, REF_MARKS, ZERO_MARKS, acceptsShort, slotAccepts, chainOf, CHAINS, effectiveLabels, LABEL_MARKS, labelModesFor, SHOW_AS, TABLE_VALUES, AGGS, channelAggregates, channelLabel, COMING_SOON, MARK_LABEL, MARKS, SLOTS, SORTS, switchMark, TEXT_SIZES,
   type Agg, type CellStyle, type LabelMode, type Channel, type ChartSpec, type Density, type MeasureFormat, type ShowAs, type TableOpts, type Mark, type Sort, type Stack, type TextKey,
 } from '@/charts/builder/spec'
 import { drawHierarchy, type HierState } from '@/charts/builder/hierarchyDraw'
@@ -515,6 +515,7 @@ function Rail({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: ChartDat
   // the chart types a deployer allows (`charts.allow`); the open chart's own type always stays so it never disappears
   const offered = getExploreOptions().charts.allow
   const values = useDistinct(data.relSql, spec.filter.f)
+  const colorValues = useDistinct(data.relSql, HIGHLIGHT_MARKS.includes(spec.mark) ? spec.enc.color?.f ?? '' : '')
   // the text fields on a shelf whose values can be put in a chosen order
   const orderFields = [...new Set((['x', 'y', 'color', 'row', 'column', 'pattern'] as const).map((ch) => spec.enc[ch]?.f).filter((f): f is string => !!f && data.rows.some((r) => r[f] !== undefined && r[f] !== null) && data.rows.every((r) => typeof r[f] !== 'number')))]
   const tabs: [typeof s.railTab, string][] = [['chart', 'Chart'], ['style', 'Style'], ['axes', spec.mark === 'text' ? 'Table' : spec.mark === 'pie' ? 'Pie' : AXIS_MARKS.includes(spec.mark) ? 'Axes' : 'Options'], ['filter', 'Filter']]
@@ -560,6 +561,14 @@ function Rail({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: ChartDat
         <div className="rsec">
           {LABEL_MARKS.includes(spec.mark) && (
             <div className="rrow"><span className="lab" style={{ minWidth: 96 }}>Data labels</span>{pills<LabelMode>(labelModesFor(spec.mark).map((o) => [o.v, o.label] as [LabelMode, string]), effectiveLabels(spec), (v) => setSpec((x) => ({ ...x, labels: v })), 'Data labels')}</div>
+          )}
+          {HIGHLIGHT_MARKS.includes(spec.mark) && spec.enc.color && (
+            <div className="rrow"><span className="lab" style={{ minWidth: 96 }}>Highlight</span>
+              <XSelect className="sel" aria-label="Highlight one value" value={spec.highlight} onChange={(e) => setSpec((x) => ({ ...x, highlight: e.target.value }))}>
+                <option value="">None</option>
+                {colorValues.map((v) => <option key={v} value={v}>{v}</option>)}
+              </XSelect>
+            </div>
           )}
           <p className="hint">Size, weight and italic only. Typeface and colours follow the app theme.</p>
           {([['Headline', [['tag', 'Tag', 'A short label above the title'], ['title', 'Title', 'Add a title'], ['sub', 'Subtitle', 'Add a subtitle']]], ['Footer', [['foot', 'Footer', 'A source, a caveat or a credit']]]] as [string, [TextKey, string, string][]][]).map(([group, keys]) => (
@@ -628,6 +637,12 @@ function Rail({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: ChartDat
                 </div>
               )}
               {REF_MARKS.includes(spec.mark) && <div className="rrow"><label className="lab" htmlFor="refin" style={{ minWidth: 96 }}>Reference line</label><input id="refin" className="inp" value={spec.ref} placeholder={spec.mark === 'histogram' || (spec.mark === 'bar' && spec.enc.x && roleOf(spec.enc.x.f) === 'q') ? 'x value' : 'y value'} onChange={(e) => setSpec((x) => ({ ...x, ref: e.target.value.replace(/[^0-9.-]/g, '') }))} /></div>}
+              {REF_MARKS.includes(spec.mark) && (
+                <div className="rrow"><span className="lab" style={{ minWidth: 96 }}>Band</span>
+                  <input className="inp" aria-label="Band from" value={spec.band.lo} placeholder="from" onChange={(e) => setSpec((x) => ({ ...x, band: { ...x.band, lo: e.target.value.replace(/[^0-9.-]/g, '') } }))} />
+                  <input className="inp" aria-label="Band to" value={spec.band.hi} placeholder="to" onChange={(e) => setSpec((x) => ({ ...x, band: { ...x.band, hi: e.target.value.replace(/[^0-9.-]/g, '') } }))} />
+                </div>
+              )}
             </>
           )}
           {spec.mark === 'pie' && (

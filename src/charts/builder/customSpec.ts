@@ -25,7 +25,9 @@ export function normalizeCustomSpec(raw: unknown, runs: readonly string[]): Cust
       zeroBaseline: raw.axes?.zeroBaseline === true,
       gridlines: raw.axes?.gridlines !== false,
       referenceLine: typeof raw.axes?.referenceLine === 'number' ? raw.axes.referenceLine : null,
+      ...(typeof raw.axes?.referenceBand?.from === 'number' && typeof raw.axes.referenceBand.to === 'number' ? { referenceBand: { from: raw.axes.referenceBand.from, to: raw.axes.referenceBand.to } } : {}),
     },
+    ...(typeof raw.highlight === 'string' && raw.highlight ? { highlight: raw.highlight } : {}),
     text: isObj(raw.text) ? raw.text : {},
   }
   return { ok: true, config, table }
