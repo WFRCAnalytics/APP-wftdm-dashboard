@@ -30,6 +30,7 @@ import { typeColorKey, type ColumnProfile } from '@/explore/profile/profile'
 import { useDistinct } from '@/explore/useDistinct'
 import { ExportDialog, Modal } from '@/explore/ExportDialog'
 import { columnLabel, getExploreOptions } from '@/explore/options'
+import { describeChart } from '@/charts/builder/describe'
 import { useChartData, type ChartData } from '@/explore/useChartData'
 import { useColorScheme } from '@/hooks/useColorScheme'
 import { tooltip } from '@/services/tooltip'
@@ -393,9 +394,9 @@ function ChartCard({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: Cha
         {txt('tag').t && <p className={`tb ttag ${cls('tag')}`}>{prettyOperators(txt('tag').t)}</p>}
         {txt('title').t && <h3 className={`tb ${cls('title')}`}>{prettyOperators(txt('title').t)}</h3>}
         {txt('sub').t && <p className={`tb tsub ${cls('sub')}`}>{prettyOperators(txt('sub').t)}</p>}
-        {drawn && drawn.legend.length > 0 && (
         {/* a field that will have a legend keeps its place from the moment it is placed, so the plot is resized once, not again when the data arrives */}
         {!(drawn && drawn.legend.length > 0) && spec.mark !== 'line' && !model?.problem && ['color', 'pattern', 'dash', 'shape'].some((ch) => spec.enc[ch as Channel]) && <div className="legend legend-hold" aria-hidden="true" />}
+        {drawn && drawn.legend.length > 0 && (
           <div className="legend">
             {drawn.legend.map((g) => (
               <div className="lgg" key={g.title}>
@@ -518,6 +519,7 @@ function Rail({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: ChartDat
   // the chart types a deployer allows (`charts.allow`); the open chart's own type always stays so it never disappears
   const offered = getExploreOptions().charts.allow
   const values = useDistinct(data.relSql, spec.filter.f)
+  const suggestion = describeChart(spec, data.rows)
   const colorValues = useDistinct(data.relSql, HIGHLIGHT_MARKS.includes(spec.mark) ? spec.enc.color?.f ?? '' : '')
   // the text fields on a shelf whose values can be put in a chosen order
   const orderFields = [...new Set((['x', 'y', 'color', 'row', 'column', 'pattern'] as const).map((ch) => spec.enc[ch]?.f).filter((f): f is string => !!f && data.rows.some((r) => r[f] !== undefined && r[f] !== null) && data.rows.every((r) => typeof r[f] !== 'number')))]
@@ -558,16 +560,16 @@ function Rail({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: ChartDat
           <p className="hint">{sug.total === 0 ? 'Pick a chart, or place columns on the shelves to get suggestions.' : sug.best ? `${MARK_LABEL[sug.best]} fits these ${sug.total} column${sug.total > 1 ? 's' : ''} best. Dimmed charts need other columns.` : 'No chart fits these columns yet. Add a number or a category.'}</p>
           {(spec.mark === 'bar' || spec.mark === 'area') && pills<Stack>([['group', spec.mark === 'area' ? 'Overlap' : 'Grouped'], ['stack', 'Stacked'], ['normalize', '100%']], spec.stack, (v) => setSpec((x) => ({ ...x, stack: v })), 'Stacking')}
           {spec.mark === 'pie' && pills<boolean>([[false, 'Pie'], [true, 'Donut']], spec.donut, (v) => setSpec((x) => ({ ...x, donut: v })), 'Pie style')}
-        </div>
-      )}
-      {s.railTab === 'style' && (
-        <div className="rsec">
           {spec.mark === 'bar' && spec.stack === 'group' && spec.enc.color && (
             <>
               {pills<boolean>([[false, 'Centred'], [true, 'Aligned']], spec.alignSeries, (v) => setSpec((x) => ({ ...x, alignSeries: v })), 'Bars in a group')}
               <p className="hint">{spec.alignSeries ? 'Each series keeps its place in every group, with a gap where one is missing.' : 'A group with fewer bars is centred.'}</p>
             </>
           )}
+        </div>
+      )}
+      {s.railTab === 'style' && (
+        <div className="rsec">
           {LABEL_MARKS.includes(spec.mark) && (
             <div className="rrow"><span className="lab" style={{ minWidth: 96 }}>Data labels</span>{pills<LabelMode>(labelModesFor(spec.mark).map((o) => [o.v, o.label] as [LabelMode, string]), effectiveLabels(spec), (v) => setSpec((x) => ({ ...x, labels: v })), 'Data labels')}</div>
           )}
@@ -602,9 +604,12 @@ function Rail({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: ChartDat
           ))}
           <div className="tgrp">
             <p className="rgh">Accessibility</p>
-            <label className="lab" htmlFor="tx-alt">Alt text</label>
-            <textarea id="tx-alt" className="inp alt" rows={3} value={spec.alt} placeholder="Describe the chart for someone who cannot see it" onChange={(e) => setSpec((x) => ({ ...x, alt: e.target.value }))} />
-            <p className="hint">Read out by screen readers in place of the automatic description.</p>
+            <div className="altrow">
+              <label className="lab" htmlFor="tx-alt">Alt text</label>
+              {suggestion && suggestion !== spec.alt.trim() && <button type="button" className="linkbtn" onClick={() => setSpec((x) => ({ ...x, alt: suggestion }))}>{spec.alt.trim() ? 'Replace with suggestion' : 'Use suggestion'}</button>}
+            </div>
+            <textarea id="tx-alt" className="inp alt" rows={3} value={spec.alt} placeholder={suggestion || 'Describe the chart for someone who cannot see it'} onChange={(e) => setSpec((x) => ({ ...x, alt: e.target.value }))} />
+            <p className="hint">Read out by screen readers. The grey text is a suggestion you can use or rewrite.</p>
           </div>
         </div>
       )}

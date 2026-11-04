@@ -245,6 +245,9 @@
 .xb .legend-hold{min-height:28px;animation:xblg .16s ease-out}
 @keyframes xblg{from{min-height:0}to{min-height:28px}}
 @media (prefers-reduced-motion:reduce){.xb .legend-hold{animation:none}}
+.xb .altrow{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+.xb .linkbtn{border:0;background:none;padding:0;font-size:12.5px;font-weight:500;color:var(--brand);cursor:pointer}
+.xb .linkbtn:hover{text-decoration:underline}
 .xb .skel{height:100%;min-height:260px;border-radius:8px;background:linear-gradient(90deg,var(--line) 25%,transparent 50%,var(--line) 75%);background-size:200% 100%;opacity:.5;animation:xbskel 1.4s linear infinite}
 @keyframes xbskel{from{background-position:200% 0}to{background-position:-200% 0}}
 @media (prefers-reduced-motion:reduce){.xb .skel{animation:none}}
