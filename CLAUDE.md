@@ -75,6 +75,10 @@ story are in `project-docs/IMPLEMENTATION-HISTORY.md` (items 16, 21, 28–31).
 
 ## Non-negotiables
 
+- **Reuse what already exists.** Before building a control, component, hook or helper in a new place, search for the one the app
+  already has (`components/ui/`, `components/`, `lib/`, `charts/lib/`; grep the feature's name) and use or extend it; never write a
+  second copy. One colour picker (`components/ui/color-swatch-picker.tsx`, over `color-picker.tsx`), one set of number formats
+  (`charts/lib/format.ts`), one `Segmented`/`Slider`/`Select`. If two places already hold the same markup, fold them into one.
 - DuckDB-WASM runs in a **Web Worker** — never the main thread
 - One DuckDB instance shared across all panels via `services/duckdb.ts`
   (the old multi-instance loader pool, `duckdbLoaderPool.ts`, was removed
