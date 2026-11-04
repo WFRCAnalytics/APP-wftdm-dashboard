@@ -39,9 +39,11 @@ export const effectiveLabels = (spec: { mark: string; labels?: LabelMode }): Lab
 
 export type CellStyle = 'plain' | 'shade' | 'bars'
 export type Density = 'comfortable' | 'compact'
+/** What a shaded or barred cell is measured against: the whole table, its own column, or its own row. */
+export type CellScale = 'table' | 'column' | 'row'
 /** Options of the table (text table) mark. */
-export interface TableOpts { cells: CellStyle; density: Density; subtotals: boolean; transpose: boolean }
-export const TABLE_DEFAULTS: TableOpts = { cells: 'plain', density: 'comfortable', subtotals: true, transpose: false }
+export interface TableOpts { cells: CellStyle; density: Density; subtotals: boolean; transpose: boolean; scale: CellScale; /** A small line across each row's columns. */ spark: boolean }
+export const TABLE_DEFAULTS: TableOpts = { cells: 'plain', density: 'comfortable', subtotals: true, transpose: false, scale: 'table', spark: false }
 export interface TextBlock { t: string; size: TextSize; b: boolean; i: boolean }
 export type TextKey = 'tag' | 'title' | 'sub' | 'foot'
 /** Options of the pie and donut: `other` folds slices below that share (percent) into one "Other" slice, `hole` is the donut hole as a percent of the radius. */
@@ -376,10 +378,11 @@ export function fromConfig(text: string, ctx: ImportContext): ImportResult {
   const tb = c.table ?? {}
   if (tb.cells !== undefined && !['plain', 'shade', 'bars'].includes(tb.cells)) errors.push(`table.cells: "${String(tb.cells)}" is not one of plain, shade, bars.`)
   if (tb.density !== undefined && !['comfortable', 'compact'].includes(tb.density)) errors.push(`table.density: "${String(tb.density)}" is not one of comfortable, compact.`)
+  if (tb.scale !== undefined && !['table', 'column', 'row'].includes(tb.scale)) errors.push(`table.scale: "${String(tb.scale)}" is not one of table, column, row.`)
   if (errors.length) return { ok: false, errors }
   const spec = defaultSpec({
     ...(c.labels ? { labels: c.labels } : {}),
-    table: { ...TABLE_DEFAULTS, ...(tb.cells ? { cells: tb.cells } : {}), ...(tb.density ? { density: tb.density } : {}), ...(tb.subtotals === false ? { subtotals: false } : {}), ...(tb.transpose === true ? { transpose: true } : {}) },
+    table: { ...TABLE_DEFAULTS, ...(tb.cells ? { cells: tb.cells } : {}), ...(tb.density ? { density: tb.density } : {}), ...(tb.subtotals === false ? { subtotals: false } : {}), ...(tb.transpose === true ? { transpose: true } : {}), ...(tb.scale ? { scale: tb.scale } : {}), ...(tb.spark === true ? { spark: true } : {}) },
     mark, donut, enc, stack: c.stack ?? 'group', sort: sort ?? 'natural',
     filter: c.filter?.[0] ? { f: c.filter[0].field, v: String(c.filter[0].value) } : { f: '', v: '' },
     zero: c.axes?.zeroBaseline === true, grid: c.axes?.gridlines !== false,

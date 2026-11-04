@@ -23,6 +23,8 @@
 .pvt .pvt-measure{font-weight:500;color:var(--mute);font-size:11px}
 .pvt .pvt-collabel,.pvt .pvt-rowlabel{display:inline-block;max-width:100%;overflow:hidden;text-overflow:ellipsis;vertical-align:bottom}
 .pvt .pvt-totalhead{border-left:1px solid var(--line);color:var(--ink)}
+.pvt .pvt-trendhead{border-left:1px solid var(--line)}
+.pvt td.pvt-spark{padding:2px 10px;text-align:center;border-left:1px solid var(--line);line-height:0}
 .pvt .pvt-totalhead.pvt-stick{right:0;z-index:4}
 .pvt th.sortable{cursor:pointer;user-select:none}
 .pvt th.sortable:hover{color:var(--ink);background:color-mix(in srgb,var(--ink) 5%,var(--tile-hi))}

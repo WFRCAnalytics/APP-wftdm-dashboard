@@ -14,7 +14,7 @@ import { Slider } from '@/components/ui/slider'
 import { prettyOperators } from '@/services/typography'
 import {
   HIST_STATS, HIST_BINS_MIN, HIST_BINS_MAX, assignField, swapAxes, AXIS_MARKS, GRID_MARKS, HIGHLIGHT_MARKS, REF_MARKS, ZERO_MARKS, acceptsShort, slotAccepts, chainOf, CHAINS, effectiveLabels, LABEL_MARKS, labelModesFor, SHOW_AS, TABLE_VALUES, AGGS, channelAggregates, channelLabel, COMING_SOON, MARK_LABEL, MARKS, SLOTS, SORTS, switchMark, TEXT_SIZES,
-  type Agg, type CellStyle, type LabelMode, type Channel, type ChartSpec, type Density, type MeasureFormat, type ShowAs, type TableOpts, type Mark, type Sort, type Stack, type TextKey,
+  type Agg, type CellScale, type CellStyle, type LabelMode, type Channel, type ChartSpec, type Density, type MeasureFormat, type ShowAs, type TableOpts, type Mark, type Sort, type Stack, type TextKey,
 } from '@/charts/builder/spec'
 import { drawHierarchy, type HierState } from '@/charts/builder/hierarchyDraw'
 import { renderPivots, type PivotState } from '@/charts/builder/pivotDraw'
@@ -676,6 +676,8 @@ function Rail({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: ChartDat
           {spec.mark === 'text' && (
             <>
               <div className="rrow"><span className="lab" style={{ minWidth: 96 }}>Cells</span>{pills<CellStyle>([['plain', 'Plain'], ['shade', 'Shade'], ['bars', 'Bars']], spec.table.cells, (v) => setTable({ cells: v }), 'Cell style')}</div>
+              {spec.table.cells !== 'plain' && <div className="rrow"><span className="lab" style={{ minWidth: 96 }}>Measured against</span>{pills<CellScale>([['table', 'Table'], ['column', 'Column'], ['row', 'Row']], spec.table.scale, (v) => setTable({ scale: v }), 'What cells are measured against')}</div>}
+              <div className="rrow"><span className="lab" style={{ minWidth: 96 }}>Trend line</span>{pills<boolean>([[false, 'Off'], [true, 'On']], spec.table.spark, (v) => setTable({ spark: v }), 'Trend line per row')}</div>
               <div className="rrow"><span className="lab" style={{ minWidth: 96 }}>Density</span>{pills<Density>([['comfortable', 'Roomy'], ['compact', 'Compact']], spec.table.density, (v) => setTable({ density: v }), 'Row density')}</div>
               <div className="rrow"><span className="lab" style={{ minWidth: 96 }}>Subtotals</span>{pills<boolean>([[true, 'Show'], [false, 'Hide']], spec.table.subtotals, (v) => setTable({ subtotals: v }), 'Subtotals')}</div>
               <div className="rrow"><span className="lab" style={{ minWidth: 96 }}>Swap rows and columns</span>{pills<boolean>([[false, 'Off'], [true, 'On']], spec.table.transpose, (v) => setTable({ transpose: v }), 'Transpose')}</div>

@@ -149,6 +149,10 @@ function renderPivot(t: PivotTable, state: PivotState, idx: number, maxRows: num
       return n
     }
     emit(t.colTree, 0)
+    // a trend column needs at least three columns to draw a line through; it sits just before the totals
+    const leaves = units.filter((q) => q.kind === 'leaf')
+    const sparkOn = t.opts.spark && leaves.length >= 3
+    if (sparkOn) head[0].push({ text: 'Trend', colSpan: 1, rowSpan: C, cls: 'pvt-col pvt-trendhead' })
     head[0].push({ text: 'Total', colSpan: M, rowSpan: C, cls: 'pvt-col pvt-totalhead', sort: M === 1 ? { m: 0, cp: [] } : undefined })
     units.push({ cp: [], kind: 'total' })
     const stick = M === 1
@@ -227,6 +231,28 @@ function renderPivot(t: PivotTable, state: PivotState, idx: number, maxRows: num
     note.hidden = !note.textContent
 
     const pathText = (p: string[]) => (p.length ? p.join(' › ') : 'All')
+    // a shaded cell is tinted by where it falls in its range; a bar grows from zero, to the right of it for a positive value and to the left for a negative one
+    const paint = (x: number, lo: number, hi: number): string => {
+      if (t.opts.cells === 'shade') {
+        const u01 = hi === lo ? 0.5 : (x - lo) / (hi - lo)
+        return `color-mix(in srgb, var(--brand) ${Math.round(7 + 33 * u01)}%, transparent)`
+      }
+      const a = Math.min(0, lo), span = Math.max(0, hi) - a || 1, zero = (-a / span) * 100, len = (Math.abs(x) / span) * 100
+      const [from, to] = x >= 0 ? [zero, Math.min(100, zero + len)] : [Math.max(0, zero - len), zero]
+      const bar = 'color-mix(in srgb, var(--brand) 26%, transparent)'
+      return `linear-gradient(90deg, transparent ${from}%, ${bar} ${from}%, ${bar} ${to}%, transparent ${to}%)`
+    }
+    const isNum = (v: number | null): v is number => v !== null
+    const rangeOf = (xs: (number | null)[], fallback: [number, number]): [number, number] => { const ys = xs.filter(isNum); return ys.length ? [Math.min(...ys), Math.max(...ys)] : fallback }
+    const bodyRows = shownRows.filter((r) => r.node.children.length === 0)
+    const colRange = new Map<string, [number, number]>()
+    if (t.opts.scale === 'column') for (const u of leaves) for (let m = 0; m < M; m++) colRange.set(`${m}\u0001${k(u.cp)}`, rangeOf(bodyRows.map((r) => t.shown(m, r.node.path, u.cp)), [t.measures[m].lo, t.measures[m].hi]))
+    const rangeFor = (m: number, rp: string[], cp: string[]): [number, number] => {
+      const me = t.measures[m]
+      if (t.opts.scale === 'column') return colRange.get(`${m}\u0001${k(cp)}`) ?? [me.lo, me.hi]
+      if (t.opts.scale === 'row') return rangeOf(leaves.map((u) => t.shown(m, rp, u.cp)), [me.lo, me.hi])
+      return [me.lo, me.hi]
+    }
     const valueCell = (m: number, rp: string[], cp: string[], u: Unit, body: boolean, blank: boolean): HTMLTableCellElement => {
       const me = t.measures[m]
       const td = el('td', `pvt-cell${u.kind !== 'leaf' ? ' pvt-subcol' : ''}${u.kind === 'total' && stick ? ' pvt-stick' : ''}`)
@@ -238,13 +264,33 @@ function renderPivot(t: PivotTable, state: PivotState, idx: number, maxRows: num
       const pairs = me.pct && raw !== null ? [`${me.label}\u2063${me.exact(raw)}`, `${SHARE[me.show]}\u2063${text}`] : [`${me.label}\u2063${me.exact(x)}`]
       td.setAttribute('data-t', `${pathText(rp)} · ${pathText(cp)}~${pairs.join('~')}`)
       if (body && t.opts.cells !== 'plain') {
-        const u01 = me.hi === me.lo ? 0.5 : (x - me.lo) / (me.hi - me.lo)
-        if (t.opts.cells === 'shade') td.style.background = `color-mix(in srgb, var(--brand) ${Math.round(7 + 33 * u01)}%, transparent)`
-        else {
-          const w = Math.max(0, Math.min(100, (me.hi > 0 ? Math.max(0, x) / me.hi : 0) * 100))
-          td.style.background = `linear-gradient(90deg, color-mix(in srgb, var(--brand) 26%, transparent) ${w}%, transparent ${w}%)`
-        }
+        const [lo, hi] = rangeFor(m, rp, cp)
+        td.style.background = paint(x, lo, hi)
       }
+      return td
+    }
+
+    // a small line through a row's values across the columns, with a dot on the last one
+    const sparkCell = (rp: string[], blank: boolean): HTMLTableCellElement => {
+      const td = el('td', 'pvt-spark')
+      const vals = leaves.map((u) => (blank ? null : t.shown(0, rp, u.cp)))
+      const have = vals.filter(isNum)
+      if (have.length < 3) return td
+      const lo = Math.min(...have), hi = Math.max(...have), W = 84, H = 22, pad = 3
+      const px = (i: number) => pad + (i / (vals.length - 1)) * (W - 2 * pad)
+      const py = (x: number) => (hi === lo ? H / 2 : H - pad - ((x - lo) / (hi - lo)) * (H - 2 * pad))
+      let d = '', pen = false, last = -1
+      vals.forEach((x, i) => { if (x === null) { pen = false; return } d += `${pen ? 'L' : 'M'}${px(i).toFixed(1)} ${py(x).toFixed(1)}`; pen = true; last = i })
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+      svg.setAttribute('width', String(W)); svg.setAttribute('height', String(H)); svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.setAttribute('aria-hidden', 'true')
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path')
+      path.setAttribute('d', d); path.setAttribute('fill', 'none'); path.setAttribute('stroke', 'var(--brand)'); path.setAttribute('stroke-width', '1.6'); path.setAttribute('stroke-linejoin', 'round'); path.setAttribute('stroke-linecap', 'round')
+      const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle')
+      dot.setAttribute('cx', px(last).toFixed(1)); dot.setAttribute('cy', py(vals[last]!).toFixed(1)); dot.setAttribute('r', '2.2'); dot.setAttribute('fill', 'var(--brand)')
+      svg.append(path, dot)
+      td.appendChild(svg)
+      const me = t.measures[0]
+      td.setAttribute('data-t', `${pathText(rp)} · ${me.label}~first\u2063${me.fmt(have[0])}~last\u2063${me.fmt(vals[last]!)}~lowest\u2063${me.fmt(lo)}~highest\u2063${me.fmt(hi)}`)
       return td
     }
 
@@ -270,7 +316,10 @@ function renderPivot(t: PivotTable, state: PivotState, idx: number, maxRows: num
       tr.appendChild(rh)
       // a group shows its subtotal on its own row, unless subtotals are off and it is open (its parts are right below)
       const blank = group && !closed && !subtotals
-      for (const u of units) for (let m = 0; m < M; m++) tr.appendChild(valueCell(m, node.path, u.cp, u, !group && u.kind === 'leaf', blank))
+      for (const u of units) {
+        if (u.kind === 'total' && sparkOn) tr.appendChild(sparkCell(node.path, blank))
+        for (let m = 0; m < M; m++) tr.appendChild(valueCell(m, node.path, u.cp, u, !group && u.kind === 'leaf', blank))
+      }
       tbody.appendChild(tr)
     }
     table.appendChild(tbody)
@@ -280,7 +329,10 @@ function renderPivot(t: PivotTable, state: PivotState, idx: number, maxRows: num
     const label = el('th', 'pvt-row pvt-footlabel', 'Total')
     label.scope = 'row'
     ft.appendChild(label)
-    for (const u of units) for (let m = 0; m < M; m++) { const td = valueCell(m, [], u.cp, u, false, false); td.classList.add('pvt-footcell'); ft.appendChild(td) }
+    for (const u of units) {
+      if (u.kind === 'total' && sparkOn) ft.appendChild(el('td', 'pvt-spark pvt-footcell'))
+      for (let m = 0; m < M; m++) { const td = valueCell(m, [], u.cp, u, false, false); td.classList.add('pvt-footcell'); ft.appendChild(td) }
+    }
     tfoot.appendChild(ft)
     table.appendChild(tfoot)
     scroll.scrollTop = keepTop
