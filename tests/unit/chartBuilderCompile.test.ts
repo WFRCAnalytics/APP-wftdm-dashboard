@@ -452,3 +452,48 @@ describe('bands, highlight and direct labels', () => {
     expect(back.ok && back.spec.highlight).toBe('a')
   })
 })
+
+describe('grouped bar width', () => {
+  const y = { f: 'trips', agg: 'sum' as const }
+
+  it('gives a category full width when its colour is the category itself', () => {
+    const same = ok(build({ enc: { x: { f: 'mode' }, y, color: { f: 'mode' } } })).panels[0].rects
+    const split = ok(build({ enc: { x: { f: 'mode' }, y, color: { f: 'scenario' } } })).panels[0].rects
+    expect(same).toHaveLength(3)
+    expect(same[0].w).toBeGreaterThan(split[0].w * 1.8)
+    expect(new Set(same.map((r) => r.w)).size).toBe(1)
+  })
+
+  it('keeps every bar one width and centres a category that has fewer series', () => {
+    const sparse: Row[] = [
+      { mode: 'A', scenario: 's1', trips: 5 }, { mode: 'A', scenario: 's2', trips: 7 }, { mode: 'B', scenario: 's1', trips: 3 },
+    ]
+    const r = ok(build({ enc: { x: { f: 'mode' }, y, color: { f: 'scenario' } } }, sparse)).panels[0].rects
+    expect(r).toHaveLength(3)
+    expect(new Set(r.map((q) => q.w)).size).toBe(1)
+    const centre = (q: (typeof r)[number]) => q.x + q.w / 2
+    // category B's only bar sits in the middle of its category, where A's two bars have their middle
+    const aMid = (centre(r[0]) + centre(r[1])) / 2
+    // two slots share 72% of a category's width, less a 1.5px gap each, so the category step is (width + 1.5) / .36
+    const step = (r[0].w + 1.5) / 0.36
+    expect(centre(r[2]) - aMid).toBeCloseTo(step, 0)
+  })
+
+  it('can keep each series in its own place, with a gap where one is missing', () => {
+    const sparse: Row[] = [
+      { mode: 'A', scenario: 's1', trips: 5 }, { mode: 'A', scenario: 's2', trips: 7 }, { mode: 'B', scenario: 's2', trips: 3 },
+    ]
+    const enc = { x: { f: 'mode' }, y, color: { f: 'scenario' } }
+    const centred = ok(build({ enc }, sparse)).panels[0].rects
+    const aligned = ok(build({ enc, alignSeries: true }, sparse)).panels[0].rects
+    // category B has only s2: aligned, that bar stays in the second slot, exactly under where s2 sits in A
+    const stepOf = aligned[2].x - aligned[1].x
+    expect(aligned[2].x - aligned[1].x).toBeCloseTo(stepOf, 5)
+    expect(aligned[2].x).toBeGreaterThan(centred[2].x)
+    expect(aligned[2].w).toBe(aligned[0].w)
+    // one bar per category: nothing to align, so the bars stay full width
+    const sameEnc = { x: { f: 'mode' }, y, color: { f: 'mode' } }
+    const same = ok(build({ enc: sameEnc, alignSeries: true })).panels[0].rects
+    expect(same.map((r) => [r.x, r.w])).toEqual(ok(build({ enc: sameEnc })).panels[0].rects.map((r) => [r.x, r.w]))
+  })
+})

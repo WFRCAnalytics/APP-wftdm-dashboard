@@ -28,6 +28,7 @@ export function normalizeCustomSpec(raw: unknown, runs: readonly string[]): Cust
       ...(typeof raw.axes?.referenceBand?.from === 'number' && typeof raw.axes.referenceBand.to === 'number' ? { referenceBand: { from: raw.axes.referenceBand.from, to: raw.axes.referenceBand.to } } : {}),
     },
     ...(typeof raw.highlight === 'string' && raw.highlight ? { highlight: raw.highlight } : {}),
+    ...(raw.alignSeries === true ? { alignSeries: true as const } : {}),
     text: isObj(raw.text) ? raw.text : {},
   }
   return { ok: true, config, table }

@@ -81,6 +81,8 @@ export interface ChartSpec {
   band: { lo: string; hi: string }
   /** The value of the colour field to emphasise; the other series fade. Blank: none. */
   highlight: string
+  /** Grouped bars: every series keeps its own place in every group (gaps where one is missing) instead of the bars being centred. */
+  alignSeries: boolean
   /** Chosen category order per field (field name to values); a field without an entry stays alphabetical. */
   order: Record<string, string[]>
   /** Wrap a single facet field into this many columns; 0 keeps one row or column. */
@@ -190,7 +192,7 @@ export const channelAggregates = (mark: Mark, ch: Channel): boolean => defaultAg
 
 export function defaultSpec(over: Partial<ChartSpec> = {}): ChartSpec {
   return {
-    mark: 'bar', donut: false, stack: 'group', sort: 'natural', enc: {}, filter: { f: '', v: '' }, zero: false, grid: true, table: { ...TABLE_DEFAULTS }, ref: '', band: { lo: '', hi: '' }, highlight: '', bins: 0, stats: [], order: {}, wrap: 0, axisTitles: false, xTitle: '', yTitle: '', pie: { ...PIE_DEFAULTS }, alt: '', footAlign: 'left',
+    mark: 'bar', donut: false, stack: 'group', sort: 'natural', enc: {}, filter: { f: '', v: '' }, zero: false, grid: true, table: { ...TABLE_DEFAULTS }, ref: '', band: { lo: '', hi: '' }, highlight: '', alignSeries: false, bins: 0, stats: [], order: {}, wrap: 0, axisTitles: false, xTitle: '', yTitle: '', pie: { ...PIE_DEFAULTS }, alt: '', footAlign: 'left',
     text: {
       tag: { t: '', size: 'xs', b: true, i: false }, title: { t: '', size: 'lg', b: true, i: false }, sub: { t: '', size: 'md', b: false, i: false },
       foot: { t: '', size: 'xs', b: false, i: true },
@@ -285,6 +287,8 @@ export interface ChartConfig {
   alt?: string
   /** The colour value to emphasise. */
   highlight?: string
+  /** Only when grouped bars keep their places. */
+  alignSeries?: true
   /** Only when the footer sits bottom right. */
   footerAlign?: 'right'
   /** Only the options that differ from the defaults. */
@@ -322,6 +326,7 @@ export function toConfig(spec: ChartSpec, ctx: { relation: string; scenarios: st
     ...(Object.keys(pieDiff(spec.pie)).length ? { pie: pieDiff(spec.pie) } : {}),
     ...(spec.alt ? { alt: spec.alt } : {}),
     ...(spec.highlight ? { highlight: spec.highlight } : {}),
+    ...(spec.alignSeries ? { alignSeries: true as const } : {}),
     ...(spec.footAlign === 'right' ? { footerAlign: 'right' as const } : {}),
     ...(Object.keys(tableDiff(spec.table)).length ? { table: tableDiff(spec.table) } : {}),
     ...(spec.labels ? { labels: spec.labels } : {}),
@@ -388,6 +393,7 @@ export function fromConfig(text: string, ctx: ImportContext): ImportResult {
     ref: c.axes?.referenceLine === null || c.axes?.referenceLine === undefined ? '' : String(c.axes.referenceLine),
     band: typeof c.axes?.referenceBand?.from === 'number' && typeof c.axes.referenceBand.to === 'number' ? { lo: String(c.axes.referenceBand.from), hi: String(c.axes.referenceBand.to) } : { lo: '', hi: '' },
     highlight: typeof c.highlight === 'string' ? c.highlight : '',
+    alignSeries: c.alignSeries === true,
   })
   for (const [k, name] of TEXT_KEYS) {
     const t = c.text?.[name]

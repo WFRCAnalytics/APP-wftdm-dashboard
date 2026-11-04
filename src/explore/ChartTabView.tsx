@@ -560,6 +560,12 @@ function Rail({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: ChartDat
       )}
       {s.railTab === 'style' && (
         <div className="rsec">
+          {spec.mark === 'bar' && spec.stack === 'group' && spec.enc.color && (
+            <>
+              {pills<boolean>([[false, 'Centred'], [true, 'Aligned']], spec.alignSeries, (v) => setSpec((x) => ({ ...x, alignSeries: v })), 'Bars in a group')}
+              <p className="hint">{spec.alignSeries ? 'Each series keeps its place in every group, with a gap where one is missing.' : 'A group with fewer bars is centred.'}</p>
+            </>
+          )}
           {LABEL_MARKS.includes(spec.mark) && (
             <div className="rrow"><span className="lab" style={{ minWidth: 96 }}>Data labels</span>{pills<LabelMode>(labelModesFor(spec.mark).map((o) => [o.v, o.label] as [LabelMode, string]), effectiveLabels(spec), (v) => setSpec((x) => ({ ...x, labels: v })), 'Data labels')}</div>
           )}

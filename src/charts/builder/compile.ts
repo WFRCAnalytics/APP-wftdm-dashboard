@@ -440,12 +440,23 @@ export function buildChart(input: BuildInput): ChartModel {
     return V
   }
   const stackMode = spec.stack
+  // Grouped bars share a category's width among the series it actually has. The busiest category sets the bar width, so every bar is
+  // the same width and a category with fewer is centred; a field on both the axis and the colour leaves one bar per category, full width.
+  const dodgeSlots = (cats: any[]) => {
+    let n = 1
+    for (const pn of panels) for (const c of cats) n = Math.max(n, series.filter((s) => pn.V!.get(`${c}\u0002${s.key}`) !== undefined).length)
+    return n
+  }
   const pct = (v: number) => `${Math.round(v * 100)}%`
 
   if (mark === 'bar' && !horizontal) {
     const xf = enc.x!.f, yf = enc.y!.f, agg = enc.y!.agg ?? 'sum'
     const cats = sortCategories(us(rows, xf), spec.sort, gm(rows, xf, yf, agg), series.map((s) => s.key), stackMode === 'group')
     for (const pn of panels) pn.V = gm(pn.prows, xf, yf, agg)
+    const busiest = stackMode === 'group' ? dodgeSlots(cats) : 1
+    // aligned bars give each series its own place in every group; with one bar per group there is nothing to align
+    const align = spec.alignSeries && busiest > 1
+    const slots = align ? series.length : busiest
     let ymax = 0
     for (const pn of panels) for (const c of cats) {
       let sum = 0, mx = 0
@@ -459,7 +470,7 @@ export function buildChart(input: BuildInput): ChartModel {
       // grouped bars: labels sit flat above the bars when they all fit their width, turn vertical when the bars are narrow, and are left off when even that does not fit
       let orient: 'flat' | 'upright' | 'none' = 'none'
       if (labelMode !== 'off' && stackMode === 'group') {
-        const own = bw / series.length - (series.length > 1 ? 1.5 : 0)
+        const own = bw / slots - (slots > 1 ? 1.5 : 0)
         const widest = Math.max(0, ...cats.flatMap((c) => series.map((s) => { const v = pn.V!.get(`${c}${s.key}`); return v === undefined ? 0 : fmtCompact(v).length * 6.1 + 2 })))
         orient = widest <= own ? 'flat' : own >= 9 ? 'upright' : 'none'
         if (orient === 'none') labelsHidden = true
@@ -469,14 +480,14 @@ export function buildChart(input: BuildInput): ChartModel {
         let tot = 0
         for (const s of series) tot += pn.V!.get(`${c}\u0002${s.key}`) ?? 0
         if (stackMode === 'group') {
-          const sw = bw / series.length
-          series.forEach((s, j) => {
-            const v = pn.V!.get(`${c}\u0002${s.key}`)
-            if (v === undefined) return
-            rect(pn, left + j * sw + (series.length > 1 ? 0.75 : 0), ax.sy(v), sw - (series.length > 1 ? 1.5 : 0), bx.y1 - ax.sy(v), s, tip(String(c), [[s.label || yf, fmtExact(v)]]))
+          const sw = bw / slots, here = series.filter((q) => pn.V!.get(`${c}\u0002${q.key}`) !== undefined), off = align ? 0 : ((slots - here.length) * sw) / 2
+          here.forEach((s, hj) => {
+            const j = align ? series.indexOf(s) : hj
+            const v = pn.V!.get(`${c}\u0002${s.key}`)!
+            rect(pn, left + off + j * sw + (slots > 1 ? 0.75 : 0), ax.sy(v), sw - (slots > 1 ? 1.5 : 0), bx.y1 - ax.sy(v), s, tip(String(c), [[s.label || yf, fmtExact(v)]]))
             // a data label above the bar
             if (orient !== 'none') {
-              const cx = left + j * sw + sw / 2, cy = ax.sy(v) - 5, t = fmtCompact(v)
+              const cx = left + off + j * sw + sw / 2, cy = ax.sy(v) - 5, t = fmtCompact(v)
               if (orient === 'flat') tx(pn, cx, cy, t, 'middle', T.fs - 0.5, '', T.ink, T.surface)
               else tx(pn, cx + 3.5, cy, t, 'start', T.fs - 1.5, `rotate(-90 ${r1(cx + 3.5)} ${r1(cy)})`, T.ink, T.surface)
             }
@@ -500,6 +511,9 @@ export function buildChart(input: BuildInput): ChartModel {
     const vf = enc.x!.f, cf = enc.y!.f, agg = enc.x!.agg ?? 'sum'
     const cats = sortCategories(us(rows, cf), spec.sort, gm(rows, cf, vf, agg), series.map((s) => s.key), stackMode === 'group')
     for (const pn of panels) pn.V = gm(pn.prows, cf, vf, agg)
+    const busiest = stackMode === 'group' ? dodgeSlots(cats) : 1
+    const align = spec.alignSeries && busiest > 1
+    const slots = align ? series.length : busiest
     let vmax = 0
     for (const pn of panels) for (const c of cats) {
       let sum = 0, mx = 0
@@ -526,12 +540,12 @@ export function buildChart(input: BuildInput): ChartModel {
         let tot = 0
         for (const s of series) tot += pn.V!.get(`${c}\u0002${s.key}`) ?? 0
         if (stackMode === 'group') {
-          const sh = bh / series.length
-          if (labelMode !== 'off' && sh - (series.length > 1 ? 1.5 : 0) < 11) labelsHidden = true
-          series.forEach((s, j) => {
-            const v = pn.V!.get(`${c}\u0002${s.key}`)
-            if (v === undefined) return
-            const y0 = top0 + j * sh + (series.length > 1 ? 0.75 : 0), h = sh - (series.length > 1 ? 1.5 : 0)
+          const sh = bh / slots, here = series.filter((q) => pn.V!.get(`${c}\u0002${q.key}`) !== undefined), off = align ? 0 : ((slots - here.length) * sh) / 2
+          if (labelMode !== 'off' && sh - (slots > 1 ? 1.5 : 0) < 11) labelsHidden = true
+          here.forEach((s, hj) => {
+            const j = align ? series.indexOf(s) : hj
+            const v = pn.V!.get(`${c}\u0002${s.key}`)!
+            const y0 = top0 + off + j * sh + (slots > 1 ? 0.75 : 0), h = sh - (slots > 1 ? 1.5 : 0)
             rect(pn, bx.x0, y0, sx(v) - bx.x0, h, s, tip(String(c), [[s.label || vf, fmtExact(v)]]))
             if (labelMode !== 'off' && h >= 11) tx(pn, sx(v) + 5, y0 + h / 2 + 4, fmtCompact(v), 'start', T.fs - 0.5, '', T.ink, T.surface)
           })
