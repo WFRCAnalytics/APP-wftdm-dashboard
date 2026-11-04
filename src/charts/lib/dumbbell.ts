@@ -1,4 +1,5 @@
 // Pure row building for the dumbbell (project-docs/redesign/04-chart-catalogue.md section 18).
+import { signed } from '@/charts/lib/format'
 import { INCOMES } from '@/charts/vocab'
 
 export interface DumbbellRow {
@@ -79,6 +80,5 @@ export const fmtValue = (v: number, spec: DumbbellSpec): string => v.toFixed(spe
 
 /** "+1.2 pts" (share) or "+3k" (boardings), with U+2212 for negatives and no sign for a rounded zero. */
 export function fmtDiff(diff: number, spec: DumbbellSpec): string {
-  const r = Number(Math.abs(diff).toFixed(spec.decimals))
-  return `${r === 0 ? '' : diff >= 0 ? '+' : '−'}${r.toFixed(spec.decimals)}${spec.unit === '%' ? ' pts' : 'k'}`
+  return signed(diff, spec.decimals, spec.unit === '%' ? ' pts' : 'k')
 }

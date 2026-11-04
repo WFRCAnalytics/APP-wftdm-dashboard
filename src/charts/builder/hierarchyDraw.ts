@@ -12,6 +12,7 @@ import type { DrawnChart, HNode, HTree } from '@/charts/builder/compile'
 import type { ChartTheme } from '@/charts/types'
 import { zoomableSankey } from '@/charts/builder/sankeyDraw'
 import { parseTip } from '@/charts/builder/tipTile'
+import { compact } from '@/charts/lib/format'
 import { arcLabelTransform, placeArcLabel, textWidth } from '@/charts/lib/arcLabel'
 import { tooltip } from '@/services/tooltip'
 import { prettyText } from '@/services/typography'
@@ -30,13 +31,7 @@ interface Box { x0: number; y0: number; x1: number; y1: number }
 interface Arc { a0: number; a1: number; ir: number; or: number }
 type Cut = HNode & { deep?: boolean }
 
-const fmt = (v: number): string => {
-  const a = Math.abs(v)
-  if (a >= 1e9) return `${+(v / 1e9).toFixed(2)}B`
-  if (a >= 1e6) return `${+(v / 1e6).toFixed(2)}M`
-  if (a >= 1e4) return `${+(v / 1e3).toFixed(1)}k`
-  return String(Math.round(v * 100) / 100)
-}
+const fmt = compact
 const clip = (t: string, px: number) => (t.length * 6.4 > px ? `${t.slice(0, Math.max(1, Math.floor(px / 6.4) - 1))}…` : t)
 const solid = (n: HNode) => !n.fill.startsWith('url')
 

@@ -2,6 +2,7 @@
 // reference. Always a difference chart: Values mode is drawn as Change.
 import * as Plot from '@observablehq/plot'
 
+import { signed } from '@/charts/lib/format'
 import { MODES } from '@/charts/vocab'
 import { emptyNote, f1, sgn } from '@/charts/util'
 import {
@@ -21,7 +22,7 @@ import { observedFooter } from '@/charts/lib/observedSource'
 import type { ChartKind, LegendSpec } from '@/charts/types'
 import { armPlot } from '@/panels/plotInteraction'
 
-const fmt = (v: number | null, m: 'abs' | 'pct'): string => (v === null ? 'n/a' : `${sgn(v)}${Math.abs(v).toFixed(1)}${m === 'pct' ? '%' : ''}`)
+const fmt = (v: number | null, m: 'abs' | 'pct'): string => (v === null ? 'n/a' : signed(v, 1, m === 'pct' ? '%' : ''))
 
 const kind: ChartKind = {
   tables: (plan) => seriesTables(plan),

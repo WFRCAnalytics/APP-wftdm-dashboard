@@ -1,5 +1,6 @@
 // Shared data and interaction helpers for the "trips through the day" kinds (time-lines, time-stream, time-heat) and the
 // speed heatmap. The builders are pure (no DOM, no stores) so their numbers are unit-tested.
+import { signed } from '@/charts/lib/format'
 import { TRIPS_UNIT } from '@/charts/units'
 import { select } from 'd3-selection'
 
@@ -141,8 +142,7 @@ export const hourTickEvery3 = (h: number): string => (h % 3 ? '' : hourTick(h))
 export function lineTickFormat(display: 'val' | 'abs' | 'pct'): (d: number) => string {
   return (d) => {
     if (display === 'val') return `${Math.round(d)}${TRIPS_UNIT.suffix}`
-    const sign = d > 0.0049 ? '+' : d < -0.0049 ? '−' : ''
-    return `${sign}${Math.abs(+d.toFixed(1))}${display === 'pct' ? '%' : TRIPS_UNIT.suffix}`
+    return signed(d, 1, display === 'pct' ? '%' : TRIPS_UNIT.suffix, { trim: true })
   }
 }
 

@@ -1,5 +1,6 @@
 // Calibration progress data (project-docs/redesign/04-chart-catalogue.md section 26, 03 section 7.3): the roll-up rows of
 // the rounds family turned into per-series rows with the gap to observed, plus the formatting rules of each metric group.
+import { signed } from '@/charts/lib/format'
 import type { ChartTheme } from '@/charts/types'
 import { MODES } from '@/charts/vocab'
 import type { RollupRow } from '@/services/familyRollup'
@@ -101,8 +102,7 @@ export function traceRows(rows: readonly RollupRow[], meta: TraceMeta): TraceRow
 /** Signed gap text: `+1.2 pts`, `−3.4%`, or a plain `4.1%` for submodel error. */
 export function dfmt(d: number, meta: Pick<TraceMeta, 'err' | 'pct'>): string {
   if (meta.err) return `${d.toFixed(1)}%`
-  const sign = d > 0.005 ? '+' : d < -0.005 ? '−' : ''
-  return `${sign}${Math.abs(d).toFixed(1)}${meta.pct ? '%' : ' pts'}`
+  return signed(d, 1, meta.pct ? '%' : ' pts')
 }
 
 /** How many series of one round are within the tolerance. */

@@ -4,6 +4,7 @@
 // no fill patterns and no pie. Colours come from the app's ChartTheme (tokens), never hard-coded. tests/unit/chartBuilderCompile.test.ts.
 import { prettyOperators } from '@/services/typography'
 import type { ChartTheme } from '@/charts/types'
+import { compact } from '@/charts/lib/format'
 import { boxInSector, spreadLabels, textWidth } from '@/charts/lib/arcLabel'
 import { buildPivot, type PivotTable } from '@/charts/builder/pivot'
 import { tileSegment } from '@/charts/builder/tipTile'
@@ -105,13 +106,7 @@ export function niceScale(lo: number, hi: number, n: number): { min: number; max
   return { min, max, ticks }
 }
 
-export function fmtCompact(v: number): string {
-  const a = Math.abs(v)
-  if (a >= 1e6) return `${(v / 1e6).toFixed(a >= 1e7 ? 0 : 1).replace(/\.0$/, '')}M`
-  if (a >= 1e4) return `${Math.round(v / 1e3)}k`
-  if (a >= 1e3) return `${(v / 1e3).toFixed(1).replace(/\.0$/, '')}k`
-  return Number.isInteger(v) ? String(v) : String(Math.round(v * 10) / 10)
-}
+export const fmtCompact = compact
 /** An axis label with just the decimals the tick step needs, so close ticks on a narrow range never repeat (12.4, 12.45, 12.5). */
 export function fmtTick(v: number, step: number): string {
   if (!step || Math.abs(step) >= 1) return fmtCompact(v)

@@ -1,5 +1,6 @@
 // Data rules of the Across model years chart (04 section 25): which scenario groups get a line, the per-year values in
 // Values / Change / % change, and the crosshair snap. Pure.
+import { signed } from '@/charts/lib/format'
 import { deltaValue } from '@/panels/compareMath'
 import type { DisplayMode } from '@/state/compareState'
 
@@ -57,6 +58,5 @@ export function buildTrendRows(i: TrendInput): TrendRow[] {
 /** Y tick label: plain number in Values, signed (U+2212) in Change, with % in % change. */
 export function trendTick(d: number, display: DisplayMode): string {
   if (display === 'val') return String(d)
-  const s = d > 0.0049 ? '+' : d < -0.0049 ? '−' : ''
-  return `${s}${Math.abs(+d.toFixed(1))}${display === 'pct' ? '%' : ''}`
+  return signed(d, 1, display === 'pct' ? '%' : '', { trim: true })
 }

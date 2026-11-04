@@ -1,6 +1,7 @@
 // Shared logic of the hierarchical charts (Treemap, Sunburst; project-docs/redesign/04-chart-catalogue.md sections 6-7):
 // nesting rows into group > leaf, leaf colours (mode / purpose / ramp / diverging change), number formats and the label
 // visibility thresholds. Pure functions over rows and a theme, so the numbers are unit-tested without a DOM.
+import { compactThousands, signed } from '@/charts/lib/format'
 import { AUTOS, COUNTIES, FACILITIES, INCOMES, MODES, PURPOSES } from '@/charts/vocab'
 import { num, str } from '@/charts/util'
 import type { ChartEnv, ChartTheme, LegendSpec, Row } from '@/charts/types'
@@ -45,15 +46,12 @@ export function hierTable(variant: HierVariant, group: string): string {
 // ---- formats (values in thousands for trips and households, millions for VMT) ----
 
 /** 9810 -> "9.81M", 812.4 -> "812k". */
-export const fmtTrips = (thousands: number): string => (thousands >= 1000 ? `${(thousands / 1000).toFixed(2)}M` : `${Math.round(thousands)}k`)
+export const fmtTrips = compactThousands
 export const fmtHouseholds = (thousands: number): string => `${Math.round(thousands)}k`
 export const fmtVmt = (millions: number): string => `${millions.toFixed(1)}M`
 
 /** Signed percent change with U+2212 minus: 0.032 -> "+3.2%", -0.1 -> "−10.0%". */
-export function fmtPctChange(fraction: number): string {
-  const x = fraction * 100
-  return `${x > 0.0499 ? '+' : x < -0.0499 ? '−' : ''}${Math.abs(x).toFixed(1)}%`
-}
+export const fmtPctChange = (fraction: number): string => signed(fraction * 100, 1, '%')
 
 // ---- nesting ----
 
