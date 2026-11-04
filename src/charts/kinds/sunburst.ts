@@ -6,7 +6,8 @@ import { select } from 'd3-selection'
 import { arc as d3arc } from 'd3-shape'
 import 'd3-transition'
 
-import { buildHierModel, hierTable, showArcLabel, shareOfGroup, variantOf } from '@/charts/lib/hierarchy'
+import { arcLabelTransform, placeArcLabel, textWidth } from '@/charts/lib/arcLabel'
+import { buildHierModel, hierTable, shareOfGroup, variantOf } from '@/charts/lib/hierarchy'
 import type { ChartKind } from '@/charts/types'
 import { emptyNote, f1 } from '@/charts/util'
 import { wireModeHover } from '@/panels/crossHighlight'
@@ -158,22 +159,24 @@ const kind: ChartKind = {
         })
         .on('mouseleave', () => tooltip.hide())
 
+      // a group's name is measured and laid out where it fits whole (flat, along the arc or along the radius); where it fits no way it is left off
+      const placed = data.flatMap((d) => {
+        if (!d.node.children) return []
+        const p = placeArcLabel(d, textWidth(d.node.data.name, 12, 600, t.font), 12 * 1.15)
+        return p ? [{ d, p }] : []
+      })
       const labels = gg
         .append('g')
         .selectAll('text')
-        .data(data.filter((d) => d.node.children && showArcLabel(d.a1 - d.a0)))
+        .data(placed)
         .join('text')
         .style('pointer-events', 'none')
         .attr('text-anchor', 'middle')
         .attr('dy', '.35em')
         .attr('fill', t.ink)
         .attr('font-weight', 600)
-        .attr('transform', (d) => {
-          const a = (((d.a0 + d.a1) / 2) * 180) / Math.PI - 90
-          const r = r0 + ring * 0.5
-          return `rotate(${a}) translate(${r},0) rotate(${a > 90 ? 180 : 0})`
-        })
-        .text(prettyText((d) => d.node.data.name))
+        .attr('transform', ({ p }) => arcLabelTransform(p))
+        .text(prettyText(({ d }: (typeof placed)[number]) => d.node.data.name))
       if (animate) labels.attr('opacity', 0).transition().delay(TWEEN_MS * 0.6).duration(160).attr('opacity', 1)
 
       const centre = gg.append('g').style('cursor', scope ? 'pointer' : 'default')

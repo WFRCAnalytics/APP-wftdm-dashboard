@@ -212,7 +212,7 @@ function Plot({ model, spec, hot, size, theme }: { model: DrawnChart; spec: Char
           {p.lines.map((l, k) => <line key={k} x1={l.x1} y1={l.y1} x2={l.x2} y2={l.y2} stroke={l.stroke} strokeWidth={l.sw} strokeDasharray={l.dash || undefined} />)}
           {p.rects.map((r, k) => <rect key={k} x={r.x} y={r.y} width={r.w} height={r.h} rx={r.rx} fill={r.fill} stroke={r.stroke} strokeWidth="1" opacity={r.op} data-t={r.tip || undefined} />)}
           {p.paths.map((r, k) => <path key={k} d={r.d} fill={r.fill} stroke={r.stroke} strokeWidth={r.sw} strokeDasharray={r.dash || undefined} strokeLinejoin="round" strokeLinecap="round" opacity={r.op} data-t={r.tip || undefined} />)}
-          {p.texts.map((t, k) => <text key={k} x={t.x} y={t.y} textAnchor={t.anchor} fill={t.fill} fontSize={t.size} transform={t.tf || undefined} stroke={t.halo} strokeWidth={t.halo ? 3 : undefined} paintOrder={t.halo ? 'stroke' : undefined} strokeLinejoin={t.halo ? 'round' : undefined}>{t.t}</text>)}
+          {p.texts.map((t, k) => <text key={k} x={t.x} y={t.y} textAnchor={t.anchor} fill={t.fill} fontSize={t.size} transform={t.tf || undefined} pointerEvents="none" stroke={t.halo} strokeWidth={t.halo ? 3 : undefined} paintOrder={t.halo ? 'stroke' : undefined} strokeLinejoin={t.halo ? 'round' : undefined}>{t.t}</text>)}
         </g>
       ))}
       </g>

@@ -12,6 +12,7 @@ import type { DrawnChart, HNode, HTree } from '@/charts/builder/compile'
 import type { ChartTheme } from '@/charts/types'
 import { zoomableSankey } from '@/charts/builder/sankeyDraw'
 import { parseTip } from '@/charts/builder/tipTile'
+import { arcLabelTransform, placeArcLabel, textWidth } from '@/charts/lib/arcLabel'
 import { tooltip } from '@/services/tooltip'
 import { prettyText } from '@/services/typography'
 
@@ -215,14 +216,15 @@ function zoomableSunburst(body: G, tree: HTree, T: ChartTheme, state: HierState,
       })
     }
 
-    const labelled = data.filter((q) => (q.a1 - q.a0) * ((q.ir + q.or) / 2) > 46 && q.or - q.ir > 24)
-    const labels = holder.append('g').selectAll('text').data(labelled).join('text').style('pointer-events', 'none').attr('text-anchor', 'middle').attr('dy', '.35em').attr('font-size', T.fs)
-      .attr('fill', (q) => (solid(q.d.data) ? T.onColor(q.d.data.color) : T.ink))
-      .attr('transform', (q) => {
-        const a = (((q.a0 + q.a1) / 2) * 180) / Math.PI - 90
-        return `rotate(${a}) translate(${(q.ir + q.or) / 2},0) rotate(${a > 90 ? 180 : 0})`
-      })
-      .text(prettyText((q) => clip(q.d.data.name, Math.min(q.or - q.ir, (q.a1 - q.a0) * ((q.ir + q.or) / 2)) * 1.5)))
+    // a name is measured and laid out where it fits whole (flat, along the arc or along the radius); where it fits no way it is left off
+    const placed = data.flatMap((q) => {
+      const p = placeArcLabel(q, textWidth(q.d.data.name, T.fs, 400, T.font), T.fs * 1.15)
+      return p ? [{ q, p }] : []
+    })
+    const labels = holder.append('g').selectAll('text').data(placed).join('text').style('pointer-events', 'none').attr('text-anchor', 'middle').attr('dy', '.35em').attr('font-size', T.fs)
+      .attr('fill', ({ q }) => (solid(q.d.data) ? T.onColor(q.d.data.color) : T.ink))
+      .attr('transform', ({ p }) => arcLabelTransform(p))
+      .text(prettyText(({ q }: (typeof placed)[number]) => q.d.data.name))
     if (animate) labels.attr('opacity', 0).transition().delay(TWEEN_MS * 0.6).duration(160).attr('opacity', 1)
 
     // the centre is the open group; click it to go up a level

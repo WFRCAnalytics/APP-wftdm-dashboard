@@ -4,6 +4,7 @@
 // no fill patterns and no pie. Colours come from the app's ChartTheme (tokens), never hard-coded. tests/unit/chartBuilderCompile.test.ts.
 import { prettyOperators } from '@/services/typography'
 import type { ChartTheme } from '@/charts/types'
+import { boxInSector, spreadLabels, textWidth } from '@/charts/lib/arcLabel'
 import { buildPivot, type PivotTable } from '@/charts/builder/pivot'
 import { tileSegment } from '@/charts/builder/tipTile'
 import type { TipTile } from '@/services/tooltip'
@@ -762,12 +763,49 @@ export function buildChart(input: BuildInput): ChartModel {
         const grey = T.mix(T.surface, T.ink, 0.55)
         items = [...items.filter((it) => !tiny.includes(it)), { s: { ...tiny[0].s, key: '\u0000other', label: 'Other', color: grey, fill: grey, pat: false, has: {} }, v: tiny.reduce((a, b) => a + b.v, 0) }]
       }
-      const cx = pw / 2, cy = (small ? 20 : 0) + (ph - (small ? 20 : 0)) / 2, Rr = Math.max(30, Math.min(pw, ph - (small ? 20 : 0)) / 2 - 30), r0 = spec.donut ? Rr * (spec.pie.hole / 100) : 0
-      let a = -Math.PI / 2
-      items.forEach(({ s, v }) => {
-        if (v <= 0) return
-        const f = v / tot, a1 = a + f * 2 * Math.PI, am = (a + a1) / 2
-        const P0 = (rad: number, ang: number): [number, number] => [r1(cx + rad * Math.cos(ang)), r1(cy + rad * Math.sin(ang))]
+      const head = small ? 20 : 0
+      const cx = pw / 2, cy = head + (ph - head) / 2
+      const base = Math.max(30, Math.min(pw, ph - head) / 2 - 14)
+      const lh = T.fs * 1.2, labelOn = labelMode !== 'off'
+      const drawn: { s: Series; v: number; f: number; a0: number; a1: number; name: string; text: string }[] = []
+      for (let a = -Math.PI / 2, i = 0; i < items.length; i++) {
+        const { s, v } = items[i]
+        if (v <= 0) continue
+        const f = v / tot, share = `${Math.round(f * 100)}%`
+        drawn.push({ s, v, f, a0: a, a1: a + f * 2 * Math.PI, name: s.label || 'Slice', text: labelMode === 'value' ? fmtCompact(v) : labelMode === 'both' ? `${fmtCompact(v)} · ${share}` : share })
+        a += f * 2 * Math.PI
+      }
+      // Where each label goes (see charts/lib/arcLabel.ts): inside the slice when its name and figure fit whole, else outside on a leader line.
+      // Outside labels need room beside the pie, so the radius is settled with the widest of them and the choice made again.
+      const maxW = pw * 0.34
+      const fitText = (t: string) => { let n = t.length; if (textWidth(t, T.fs, 400, T.font) <= maxW) return t; while (n > 1 && textWidth(`${t.slice(0, n)}…`, T.fs, 400, T.font) > maxW) n--; return `${t.slice(0, n)}…` }
+      type Put = { k: 'none' } | { k: 'in'; x: number; y: number } | { k: 'out'; right: boolean; w: number }
+      const decide = (R: number): Put[] => drawn.map((d): Put => {
+        if (!labelOn || d.f <= 0.03) return { k: 'none' }
+        const rin = spec.donut ? R * (spec.pie.hole / 100) : 0
+        if (!d.s.pat) {
+          const w = Math.max(textWidth(d.name, T.fs, 400, T.font), textWidth(d.text, T.fs, 400, T.font))
+          const g = { a0: d.a0 + Math.PI / 2, a1: d.a1 + Math.PI / 2, ir: rin, or: R }, am = (g.a0 + g.a1) / 2
+          for (const k of [0.5, 0.68, 0.82, 0.34]) {
+            const rc = rin + (R - rin) * k, x = rc * Math.sin(am), y = -rc * Math.cos(am)
+            if (boxInSector(g, x, y, w, lh * 2, 0, 4)) return { k: 'in', x, y }
+          }
+        }
+        return { k: 'out', right: Math.sin((d.a0 + d.a1) / 2 + Math.PI / 2) >= 0, w: Math.max(textWidth(fitText(d.name), T.fs, 400, T.font), textWidth(d.text, T.fs, 400, T.font)) }
+      })
+      let Rr = base, put = decide(Rr)
+      for (let pass = 0; pass < 3; pass++) {
+        const wide = Math.max(0, ...put.map((p) => (p.k === 'out' ? p.w : 0)))
+        const next = wide > 0 ? Math.max(30, Math.min(base, pw / 2 - 34 - wide)) : base
+        if (Math.abs(next - Rr) < 0.5) break
+        Rr = next
+        put = decide(Rr)
+      }
+      const r0 = spec.donut ? Rr * (spec.pie.hole / 100) : 0
+      const outs: { right: boolean; am: number; f: number; d: (typeof drawn)[number] }[] = []
+      const P0 = (rad: number, ang: number): [number, number] => [r1(cx + rad * Math.cos(ang)), r1(cy + rad * Math.sin(ang))]
+      drawn.forEach((dr, di) => {
+        const { s, v, f, a0: a, a1, name, text } = dr, am = (a + a1) / 2
         let d: string
         if (f > 0.9999) d = `M${r1(cx - Rr)} ${r1(cy)}a${r1(Rr)} ${r1(Rr)} 0 1 0 ${r1(2 * Rr)} 0a${r1(Rr)} ${r1(Rr)} 0 1 0 ${r1(-2 * Rr)} 0`
         else {
@@ -776,13 +814,27 @@ export function buildChart(input: BuildInput): ChartModel {
           else d = `M${r1(cx)} ${r1(cy)}L${p0.join(' ')}A${r1(Rr)} ${r1(Rr)} 0 ${lg} 1 ${p1.join(' ')}Z`
         }
         pa(pn, d, s.fill, s.pat ? s.color : T.surface, s.pat ? 1.2 : 2, '', op(s), tip(s.label || 'Slice', [[sz, fmtExact(v)], ['share', `${Math.round(f * 1000) / 10}%`]]) + tileSeg(s))
-        if (labelMode !== 'off' && f > 0.04) {
-          const share = `${Math.round(f * 100)}%`, text = labelMode === 'value' ? fmtCompact(v) : labelMode === 'both' ? `${fmtCompact(v)} \u00b7 ${share}` : share
-          const lp = P0(Rr + 14, am)
-          tx(pn, lp[0], lp[1] + 4, text, Math.cos(am) > 0.2 ? 'start' : Math.cos(am) < -0.2 ? 'end' : 'middle', T.fs, '', T.ink)
-        }
-        a = a1
+        const p = put[di]
+        if (p.k === 'in') {
+          const ink = T.onColor(s.color), y0 = cy + p.y
+          tx(pn, cx + p.x, y0 - lh / 2 + T.fs * 0.35, name, 'middle', T.fs, '', ink)
+          tx(pn, cx + p.x, y0 + lh / 2 + T.fs * 0.35, text, 'middle', T.fs, '', ink)
+        } else if (p.k === 'out') outs.push({ right: p.right, am, f, d: dr })
       })
+      // outside labels: one column down each side, spread so none touch, each tied to its slice by a short elbow line
+      for (const right of [true, false]) {
+        const gap = lh * 2 + 3, lo = head + lh, hi = ph - lh, dir = right ? 1 : -1
+        let side = outs.filter((o) => o.right === right)
+        while (side.length > 1 && (side.length - 1) * gap > hi - lo) side = side.filter((o) => o !== side.reduce((m, q) => (q.f < m.f ? q : m)))
+        spreadLabels(side.map((o) => ({ item: o, y: cy + (Rr + 12) * Math.sin(o.am) })), gap, lo, hi).forEach(({ item: o, y }) => {
+          const e = P0(Rr + 12, o.am), lx = cx + dir * (Rr + 28), anchor = right ? 'start' : 'end'
+          const s0 = P0(Rr, o.am)
+          ln(pn, s0[0], s0[1], e[0], e[1], T.mute, 1)
+          ln(pn, e[0], e[1], lx - dir * 4, y, T.mute, 1)
+          tx(pn, lx, y - lh / 2 + T.fs * 0.35, fitText(o.d.name), anchor, T.fs, '', T.ink)
+          tx(pn, lx, y + lh / 2 + T.fs * 0.35, o.d.text, anchor, T.fs, '', T.mute)
+        })
+      }
       if (spec.donut) { tx(pn, cx, cy + 2, fmtCompact(tot), 'middle', 20, '', T.ink); tx(pn, cx, cy + 20, sz, 'middle') }
     }
   } else if (mark === 'waffle') {
