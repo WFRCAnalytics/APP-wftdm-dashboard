@@ -91,6 +91,7 @@ blob-report/
 /public/observed/
 /public/scenarios/
 /public/dashboard-config/
+/public/all-placeholders-config.yaml
 
 # ── Vite build output ─────────────────────────────────────────────────────────
 # dist/ is the Vite JS build — NOT committed to main branch
