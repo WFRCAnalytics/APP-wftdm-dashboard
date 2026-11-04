@@ -29,6 +29,7 @@ export function normalizeCustomSpec(raw: unknown, runs: readonly string[]): Cust
     },
     ...(typeof raw.highlight === 'string' && raw.highlight ? { highlight: raw.highlight } : {}),
     ...(raw.alignSeries === true ? { alignSeries: true as const } : {}),
+    ...(isObj(raw.other) ? { other: raw.other as ChartConfig['other'] } : {}),
     text: isObj(raw.text) ? raw.text : {},
   }
   return { ok: true, config, table }

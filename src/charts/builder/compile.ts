@@ -5,6 +5,7 @@
 import { prettyOperators } from '@/services/typography'
 import type { ChartTheme } from '@/charts/types'
 import { compact, exact } from '@/charts/lib/format'
+import { foldOther, OTHER } from '@/charts/builder/other'
 import { boxInSector, fitWidth, spreadLabels, textWidth } from '@/charts/lib/arcLabel'
 import { buildPivot, type PivotTable } from '@/charts/builder/pivot'
 import { tileSegment } from '@/charts/builder/tipTile'
@@ -33,7 +34,7 @@ export interface SNode { name: string; v: number; color: string; tip: string }
 export interface HSankey { tf: string; title: string; w: number; h: number; small: boolean; from: SNode[]; to: SNode[]; flows: { f: string; t: string; v: number; tip: string }[] }
 export type ChartModel =
   | { problem: string }
-  | { problem?: undefined; panels: Panel[]; legend: LegendGroup[]; defs: PatternDef[]; W: number; H: number; rows: number; limitedSeries: boolean; /** The legend limit in force, for the note. */ seriesLimit: number; /** Data labels were asked for but the bars are too narrow to carry them. */ labelsHidden?: boolean; trees?: HTree[]; sankeys?: HSankey[]; tables?: PivotTable[] }
+  | { problem?: undefined; /** How many small values were folded into Other. */ othered?: number; panels: Panel[]; legend: LegendGroup[]; defs: PatternDef[]; W: number; H: number; rows: number; limitedSeries: boolean; /** The legend limit in force, for the note. */ seriesLimit: number; /** Data labels were asked for but the bars are too narrow to carry them. */ labelsHidden?: boolean; trees?: HTree[]; sankeys?: HSankey[]; tables?: PivotTable[] }
 
 export type DrawnChart = Exclude<ChartModel, { problem: string }>
 
@@ -194,7 +195,12 @@ export function buildChart(input: BuildInput): ChartModel {
   const { spec, cols, theme: T } = input
   const enc = spec.enc, mark = spec.mark
   // a chosen category order wins over the alphabetical one; values the order does not name follow, alphabetically
-  const us = (rs: Row[], f: string): any[] => applyOrder(uniqSorted(rs, f), spec.order?.[f])
+  // a folded "Other" always comes last, whatever the order
+  let otherField = ''
+  const us = (rs: Row[], f: string): any[] => {
+    const v = applyOrder(uniqSorted(rs, f), spec.order?.[f])
+    return otherField === f && v.includes(OTHER) ? [...v.filter((x) => x !== OTHER), OTHER] : v
+  }
   const problem = shelfProblem(spec, cols)
   if (problem) return { problem }
   let rows = input.rows
@@ -206,6 +212,15 @@ export function buildChart(input: BuildInput): ChartModel {
   const prePivot = mark === 'text' && rows[0]?.__m0 !== undefined
   if (!prePivot) rows = rows.filter((r) => used.every((f) => r[f] !== null && r[f] !== undefined))
   if (!rows.length) return { problem: 'No rows match this data and filter.' }
+  // the small values of the colour field fold into one grey "Other": sums and counts only, since those add up
+  let othered = 0
+  if (spec.other.mode !== 'off' && enc.color && (mark === 'bar' || mark === 'line' || mark === 'area')) {
+    const valE = mark === 'bar' && isHorizontalBar(spec, (f) => roleOf(cols, f)) ? enc.x : enc.y
+    if (valE && ['sum', 'count'].includes(valE.agg ?? 'sum')) {
+      const f = foldOther(rows, enc.color.f, valE.f, spec.other)
+      if (f.folded > 0) { rows = f.rows; othered = f.folded; otherField = enc.color.f }
+    }
+  }
   if (mark === 'pie' && us(rows, enc.color!.f).length > 12) return { problem: `Pie and donut charts need 12 slices or fewer. ${enc.color!.f} has ${us(rows, enc.color!.f).length}.` }
   if (mark === 'waffle' && us(rows, enc.color!.f).length > 12) return { problem: `Waffle charts need 12 groups or fewer. ${enc.color!.f} has ${us(rows, enc.color!.f).length}.` }
 
@@ -264,7 +279,8 @@ export function buildChart(input: BuildInput): ChartModel {
   for (const r of rows) { const k = skey(r); if (!seen.has(k)) { seen.add(k); combos.push(r) } }
   const ix = (ch: Channel, r: Row) => (enc[ch] && !(mark === 'heatmap' && ch === 'color') ? dom[enc[ch]!.f].indexOf(r[enc[ch]!.f]) : -1)
   const colorField = enc.color && mark !== 'heatmap' ? enc.color.f : null
-  const colorFor = (f: string, v: any, i: number) => (f === 'mode' ? T.mode(String(v)) : T.cat(i))
+  // a folded "Other" is grey; else the palette's
+  const colorFor = (f: string, v: any, i: number) => (f === otherField && v === OTHER ? T.mix(T.surface, T.ink, 0.55) : f === 'mode' ? T.mode(String(v)) : T.cat(i))
   const defs: PatternDef[] = []
   const raw: { r: Row; ci: number; pi: number; di: number; si: number }[] = []
   for (const r of combos) {
@@ -1241,5 +1257,5 @@ export function buildChart(input: BuildInput): ChartModel {
       if (yn) tx(pn, 12, my, yn, 'middle', T.fs, `rotate(-90 12 ${r1(my)})`, T.ink)
     })
   }
-  return { panels: panels.map(({ tf, title, rects, paths, lines, texts }) => ({ tf, title, rects, paths, lines, texts })), legend, defs, W, H, rows: rows.length, limitedSeries, seriesLimit, ...(labelsHidden ? { labelsHidden } : {}), ...(trees.length ? { trees } : {}), ...(sankeys.length ? { sankeys } : {}), ...(tables.length ? { tables } : {}) }
+  return { panels: panels.map(({ tf, title, rects, paths, lines, texts }) => ({ tf, title, rects, paths, lines, texts })), legend, defs, W, H, rows: rows.length, limitedSeries, seriesLimit, ...(othered ? { othered } : {}), ...(labelsHidden ? { labelsHidden } : {}), ...(trees.length ? { trees } : {}), ...(sankeys.length ? { sankeys } : {}), ...(tables.length ? { tables } : {}) }
 }

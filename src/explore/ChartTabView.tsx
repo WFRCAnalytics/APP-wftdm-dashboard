@@ -13,7 +13,7 @@ import { CategoryOrder } from './CategoryOrder'
 import { Slider } from '@/components/ui/slider'
 import { prettyOperators } from '@/services/typography'
 import {
-  HIST_STATS, HIST_BINS_MIN, HIST_BINS_MAX, assignField, swapAxes, AXIS_MARKS, GRID_MARKS, HIGHLIGHT_MARKS, REF_MARKS, ZERO_MARKS, acceptsShort, slotAccepts, chainOf, CHAINS, effectiveLabels, LABEL_MARKS, labelModesFor, SHOW_AS, TABLE_VALUES, AGGS, channelAggregates, channelLabel, COMING_SOON, MARK_LABEL, MARKS, SLOTS, SORTS, switchMark, TEXT_SIZES,
+  HIST_STATS, HIST_BINS_MIN, HIST_BINS_MAX, assignField, swapAxes, AXIS_MARKS, GRID_MARKS, HIGHLIGHT_MARKS, OTHER_MARKS, type OtherMode, REF_MARKS, ZERO_MARKS, acceptsShort, slotAccepts, chainOf, CHAINS, effectiveLabels, LABEL_MARKS, labelModesFor, SHOW_AS, TABLE_VALUES, AGGS, channelAggregates, channelLabel, COMING_SOON, MARK_LABEL, MARKS, SLOTS, SORTS, switchMark, TEXT_SIZES,
   type Agg, type CellScale, type CellStyle, type LabelMode, type Channel, type ChartSpec, type Density, type MeasureFormat, type ShowAs, type TableOpts, type Mark, type Sort, type Stack, type TextKey,
 } from '@/charts/builder/spec'
 import { drawHierarchy, type HierState } from '@/charts/builder/hierarchyDraw'
@@ -417,7 +417,7 @@ function ChartCard({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: Cha
           {drawn && !data.error && <Plot model={drawn} hot={hot} size={{ w: drawn.W, h: drawn.H }} theme={theme!} />}
         </div>
         {txt('foot').t && <p className={`tb tfoot ${spec.footAlign === 'right' ? 'tright' : 'tleft'} ${cls('foot')}`}>{txt('foot').t}</p>}
-        {(data.truncated || drawn?.limitedSeries || drawn?.labelsHidden) && <p className="hint" style={{ marginTop: 4 }}>{data.truncated ? (data.mode === 'raw' ? 'Showing a sample of the points. ' : `Showing the first ${exact(getExploreOptions().limits.chartRows)} groups. `) : ''}{drawn?.limitedSeries ? `Showing the first ${drawn.seriesLimit} values of a legend field.` : ''}{drawn?.labelsHidden ? ' Data labels are hidden: the bars are too thin to carry them. Use fewer groups, or expand the chart.' : ''}</p>}
+        {(data.truncated || drawn?.limitedSeries || drawn?.labelsHidden || drawn?.othered) && <p className="hint" style={{ marginTop: 4 }}>{data.truncated ? (data.mode === 'raw' ? 'Showing a sample of the points. ' : `Showing the first ${exact(getExploreOptions().limits.chartRows)} groups. `) : ''}{drawn?.limitedSeries ? `Showing the first ${drawn.seriesLimit} values of a legend field.` : ''}{drawn?.labelsHidden ? ' Data labels are hidden: the bars are too thin to carry them. Use fewer groups, or expand the chart.' : ''}{drawn?.othered ? ` ${drawn.othered} small values are grouped as Other.` : ''}</p>}
       </div>
   )
 
@@ -656,6 +656,14 @@ function Rail({ tab, s, data }: { tab: ChartTab; s: ExploreState; data: ChartDat
                   <input className="inp" aria-label="Band from" value={spec.band.lo} placeholder="from" onChange={(e) => setSpec((x) => ({ ...x, band: { ...x.band, lo: e.target.value.replace(/[^0-9.-]/g, '') } }))} />
                   <input className="inp" aria-label="Band to" value={spec.band.hi} placeholder="to" onChange={(e) => setSpec((x) => ({ ...x, band: { ...x.band, hi: e.target.value.replace(/[^0-9.-]/g, '') } }))} />
                 </div>
+              )}
+              {OTHER_MARKS.includes(spec.mark) && spec.enc.color && (
+                <>
+                  <div className="rrow"><span className="lab" style={{ minWidth: 96 }}>Small values</span>{pills<OtherMode>([['off', 'Off'], ['auto', 'Auto'], ['top', 'Top'], ['percent', 'Percent']], spec.other.mode, (v) => setSpec((x) => ({ ...x, other: { ...x.other, mode: v } })), 'Group small values into Other')}</div>
+                  {spec.other.mode === 'top' && <div className="rrow"><label className="lab" htmlFor="othern" style={{ minWidth: 96 }}>Keep largest</label><input id="othern" className="inp" type="number" min={1} max={20} step={1} value={spec.other.n} onChange={(e) => setSpec((x) => ({ ...x, other: { ...x.other, n: Math.min(20, Math.max(1, Math.round(Number(e.target.value) || 1))) } }))} /></div>}
+                  {spec.other.mode === 'percent' && <div className="rrow"><label className="lab" htmlFor="otherp" style={{ minWidth: 96 }}>Under (%)</label><input id="otherp" className="inp" type="number" min={0.5} max={40} step={0.5} value={spec.other.pct} onChange={(e) => setSpec((x) => ({ ...x, other: { ...x.other, pct: Math.min(40, Math.max(0.5, Number(e.target.value) || 0.5)) } }))} /></div>}
+                  <p className="hint">{spec.other.mode === 'off' ? 'Every value of the colour field is drawn.' : spec.other.mode === 'auto' ? 'Keeps the 7 largest and groups the rest as Other.' : spec.other.mode === 'top' ? `Keeps the ${spec.other.n} largest and groups the rest as Other.` : `Groups values under ${spec.other.pct}% of the total as Other.`} Works with sum and count.</p>
+                </>
               )}
             </>
           )}

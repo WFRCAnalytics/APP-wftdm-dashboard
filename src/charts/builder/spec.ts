@@ -67,6 +67,20 @@ export const HIST_STATS: { v: HistStat; label: string; short: string }[] = [
   { v: 'mean', label: 'Mean', short: 'Mean' }, { v: 'median', label: 'Median', short: 'Median' }, { v: 'q1', label: 'First quartile', short: 'Q1' }, { v: 'q3', label: 'Third quartile', short: 'Q3' }, { v: 'sd', label: 'One standard deviation around the mean', short: '± 1 SD' },
 ]
 
+export type OtherMode = 'off' | 'auto' | 'top' | 'percent'
+export interface OtherOpts {
+  mode: OtherMode
+  /** Top: how many values stay. */
+  n: number
+  /** Percent: values under this share of the total fold. */
+  pct: number
+}
+export const OTHER_DEFAULTS: OtherOpts = { mode: 'off', n: 6, pct: 3 }
+/** Auto keeps this many of the largest values. */
+export const OTHER_AUTO_KEEP = 7
+/** Marks whose colour field can fold its small values into one "Other". */
+export const OTHER_MARKS: readonly Mark[] = ['bar', 'line', 'area']
+
 export interface ChartSpec {
   mark: Mark
   donut: boolean
@@ -85,6 +99,8 @@ export interface ChartSpec {
   highlight: string
   /** Grouped bars: every series keeps its own place in every group (gaps where one is missing) instead of the bars being centred. */
   alignSeries: boolean
+  /** The small values of the colour field folded into one grey "Other" (bar, line, area; sums and counts). */
+  other: OtherOpts
   /** Chosen category order per field (field name to values); a field without an entry stays alphabetical. */
   order: Record<string, string[]>
   /** Wrap a single facet field into this many columns; 0 keeps one row or column. */
@@ -194,7 +210,7 @@ export const channelAggregates = (mark: Mark, ch: Channel): boolean => defaultAg
 
 export function defaultSpec(over: Partial<ChartSpec> = {}): ChartSpec {
   return {
-    mark: 'bar', donut: false, stack: 'group', sort: 'natural', enc: {}, filter: { f: '', v: '' }, zero: false, grid: true, table: { ...TABLE_DEFAULTS }, ref: '', band: { lo: '', hi: '' }, highlight: '', alignSeries: false, bins: 0, stats: [], order: {}, wrap: 0, axisTitles: false, xTitle: '', yTitle: '', pie: { ...PIE_DEFAULTS }, alt: '', footAlign: 'left',
+    mark: 'bar', donut: false, stack: 'group', sort: 'natural', enc: {}, filter: { f: '', v: '' }, zero: false, grid: true, table: { ...TABLE_DEFAULTS }, ref: '', band: { lo: '', hi: '' }, highlight: '', alignSeries: false, other: { ...OTHER_DEFAULTS }, bins: 0, stats: [], order: {}, wrap: 0, axisTitles: false, xTitle: '', yTitle: '', pie: { ...PIE_DEFAULTS }, alt: '', footAlign: 'left',
     text: {
       tag: { t: '', size: 'xs', b: true, i: false }, title: { t: '', size: 'lg', b: true, i: false }, sub: { t: '', size: 'md', b: false, i: false },
       foot: { t: '', size: 'xs', b: false, i: true },
@@ -291,6 +307,7 @@ export interface ChartConfig {
   highlight?: string
   /** Only when grouped bars keep their places. */
   alignSeries?: true
+  other?: { mode: Exclude<OtherMode, 'off'>; top?: number; percent?: number }
   /** Only when the footer sits bottom right. */
   footerAlign?: 'right'
   /** Only the options that differ from the defaults. */
@@ -329,6 +346,7 @@ export function toConfig(spec: ChartSpec, ctx: { relation: string; scenarios: st
     ...(spec.alt ? { alt: spec.alt } : {}),
     ...(spec.highlight ? { highlight: spec.highlight } : {}),
     ...(spec.alignSeries ? { alignSeries: true as const } : {}),
+    ...(spec.other.mode !== 'off' ? { other: { mode: spec.other.mode, ...(spec.other.mode === 'top' ? { top: spec.other.n } : {}), ...(spec.other.mode === 'percent' ? { percent: spec.other.pct } : {}) } } : {}),
     ...(spec.footAlign === 'right' ? { footerAlign: 'right' as const } : {}),
     ...(Object.keys(tableDiff(spec.table)).length ? { table: tableDiff(spec.table) } : {}),
     ...(spec.labels ? { labels: spec.labels } : {}),
@@ -342,6 +360,16 @@ export interface ImportContext {
   columnsOf(relation: string, scenarios: readonly string[]): { name: string }[] | undefined
 }
 export type ImportResult = { ok: true; spec: ChartSpec; relation: string; scenarios: string[] } | { ok: false; errors: string[] }
+
+const OTHER_MODES: OtherMode[] = ['auto', 'top', 'percent']
+const parseOther = (o: ChartConfig['other']): OtherOpts => {
+  if (!o || !OTHER_MODES.includes(o.mode)) return { ...OTHER_DEFAULTS }
+  return {
+    mode: o.mode,
+    n: typeof o.top === 'number' ? Math.min(20, Math.max(1, Math.round(o.top))) : OTHER_DEFAULTS.n,
+    pct: typeof o.percent === 'number' ? Math.min(40, Math.max(0.5, o.percent)) : OTHER_DEFAULTS.pct,
+  }
+}
 
 /** Validates a configuration file and turns it into a spec. Every problem is listed with its path. */
 export function fromConfig(text: string, ctx: ImportContext): ImportResult {
@@ -397,6 +425,7 @@ export function fromConfig(text: string, ctx: ImportContext): ImportResult {
     band: typeof c.axes?.referenceBand?.from === 'number' && typeof c.axes.referenceBand.to === 'number' ? { lo: String(c.axes.referenceBand.from), hi: String(c.axes.referenceBand.to) } : { lo: '', hi: '' },
     highlight: typeof c.highlight === 'string' ? c.highlight : '',
     alignSeries: c.alignSeries === true,
+    other: parseOther(c.other),
   })
   for (const [k, name] of TEXT_KEYS) {
     const t = c.text?.[name]
