@@ -1,6 +1,7 @@
 // Export of a tile: its data as CSV and its picture as SVG or PNG
 // (project-docs/redesign/10-toolbar-layout-export-proposal.md section D). Everything here reads what is already on
 // screen or in memory; nothing queries DuckDB or parses a file.
+import { addPngText } from '@/services/pngText'
 
 export type ExportRow = Record<string, unknown>
 
@@ -328,12 +329,36 @@ function wrapText(text: string, max: number): string[] {
 }
 
 export interface ImageOptions {
+  /** The image's title; else the tile's own (`data-export-title`). */
+  title?: string
+  /** What the image shows, in words; else the labels of the charts in the tile and the tile's own description (`data-export-about`). */
+  description?: string
   /** Drawn under the card when set. */
   footer?: string
   /** Page background behind the card; null for none (a transparent image). */
   background: string | null
   /** Resolves a MapLibre container to a PNG data URL (see services/mapCapture.ts). */
   captureMap?: (container: HTMLElement) => Promise<string | null>
+}
+
+/** The title and the description an exported image carries: what the caller gave, else what the tile says about itself. */
+export function imageText(card: HTMLElement, o: Pick<ImageOptions, 'title' | 'description'>): { title: string; description: string } {
+  const title = (o.title ?? card.getAttribute('data-export-title') ?? '').trim()
+  const labels = o.description !== undefined ? [o.description] : [...card.querySelectorAll('[role="img"][aria-label]')].map((e) => e.getAttribute('aria-label') ?? '')
+  const about = o.description !== undefined ? '' : card.getAttribute('data-export-about') ?? ''
+  const description = [...new Set([...labels, about].map((t) => t.trim()).filter((t) => t && t !== title))].join(' ')
+  return { title, description }
+}
+
+const unesc = (t: string) => t.replace(/&quot;/g, '"').replace(/&gt;/g, '>').replace(/&lt;/g, '<').replace(/&amp;/g, '&')
+
+/** The title and description written into an exported SVG by cardToSvg. */
+export function readSvgText(svg: string): { title: string; description: string } {
+  const pick = (id: string) => {
+    const m = new RegExp(`<${id === 'export-title' ? 'title' : 'desc'} id="${id}">([\\s\\S]*?)</`).exec(svg)
+    return m ? unesc(m[1]) : ''
+  }
+  return { title: pick('export-title'), description: pick('export-desc') }
 }
 
 /** The tile card as it looks on screen, as one standalone SVG document (controls and buttons left out). */
@@ -354,8 +379,12 @@ export async function cardToSvg(card: HTMLElement, options: ImageOptions): Promi
         `<text x="${pad + 6}" y="${Math.ceil(origin.height) + pad + 20 + i * 16}" font-family="system-ui, sans-serif" font-size="11.5" fill="${esc(getComputedStyle(card).color)}" fill-opacity="0.65">${esc(line)}</text>`,
     )
     .join('')
+  const { title, description } = imageText(card, options)
+  const ids = [title && 'export-title', description && 'export-desc'].filter(Boolean).join(' ')
   const svg =
-    `<svg xmlns="${XMLNS}" xmlns:xlink="http://www.w3.org/1999/xlink" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">` +
+    `<svg xmlns="${XMLNS}" xmlns:xlink="http://www.w3.org/1999/xlink" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"${ids ? ` role="img" aria-labelledby="${ids}"` : ''}>` +
+    (title ? `<title id="export-title">${esc(title)}</title>` : '') +
+    (description ? `<desc id="export-desc">${esc(description)}</desc>` : '') +
     (options.background === null ? '' : `<rect width="${width}" height="${height}" fill="${esc(options.background)}"/>`) +
     `<g transform="translate(${pad} ${pad})">${w.out.join('')}</g>${footer}</svg>`
   return { svg, width, height }
@@ -378,7 +407,11 @@ export async function svgToPng(svg: string, width: number, height: number, scale
     const ctx = canvas.getContext('2d')
     if (!ctx) throw new Error('No canvas available')
     ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
-    return await new Promise<Blob>((resolve, reject) => canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('The PNG could not be created'))), 'image/png'))
+    const png = await new Promise<Blob>((resolve, reject) => canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('The PNG could not be created'))), 'image/png'))
+    // the title and description the SVG carries go into the PNG as text chunks, so they travel with the picture
+    const { title, description } = readSvgText(svg)
+    if (!title && !description) return png
+    return new Blob([addPngText(new Uint8Array(await png.arrayBuffer()), { Title: title, Description: description }) as BlobPart], { type: 'image/png' })
   } finally {
     URL.revokeObjectURL(url)
   }

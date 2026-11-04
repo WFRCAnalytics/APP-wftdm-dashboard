@@ -106,7 +106,7 @@ export function Tile({ title, subtitle, badges, controls, actions, height, expan
 
   return (
     <TileExportContext.Provider value={exports.registry}>
-    <Card ref={cardRef} className="flex h-full flex-col">
+    <Card ref={cardRef} data-export-title={title} data-export-about={subtitle} className="flex h-full flex-col">
       <CardHeader className="flex-row items-center gap-2 space-y-0 px-[18px] pb-0 pt-4">
         <CardTitle className="text-[15.5px]">{prettyOperators(title)}</CardTitle>
         {subtitle && <InfoButton title={title} text={subtitle} />}

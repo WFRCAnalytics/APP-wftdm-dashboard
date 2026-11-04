@@ -12,6 +12,7 @@ import { relationColumns } from '@/explore/sql/queryModel'
 import type { ChartData } from '@/explore/useChartData'
 import { EXPORT_BACKGROUNDS, useExportBackground, withExportBackground } from '@/services/exportBackground'
 import { cardToSvg, downloadBlob, downloadCsv, fileName, svgToPng } from '@/services/exportTile'
+import { describeChart } from '@/charts/builder/describe'
 import { exportFooter } from '@/state/exportState'
 import { getExplore, setExplore, type ChartTab } from '@/state/exploreState'
 
@@ -64,7 +65,7 @@ export function ExportDialog({ tab, data, cardEl, onClose }: { tab: ChartTab; da
       const themeFill = getComputedStyle(el).getPropertyValue('--tile').trim() || '#ffffff'
       const { svg, width, height } = await withExportBackground(background, themeFill, async (fill) => {
         const target = exportTarget(el)
-        try { return await cardToSvg(target.el, { background: fill, footer: exportFooter({ scenarios: s.scenarios.join(', ') }) }) } finally { target.done() }
+        try { return await cardToSvg(target.el, { background: fill, footer: exportFooter({ scenarios: s.scenarios.join(', ') }), title: tab.spec.text.title.t.trim() || tab.name, description: tab.spec.alt.trim() || describeChart(tab.spec, data.rows) }) } finally { target.done() }
       })
       if (kind === 'svg') downloadBlob(new Blob([svg], { type: 'image/svg+xml' }), fileName(base, 'svg'))
       else downloadBlob(await svgToPng(svg, width, height), fileName(base, 'png'))
