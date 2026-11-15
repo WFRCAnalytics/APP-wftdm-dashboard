@@ -84,9 +84,14 @@ function AboutPanel() {
   return (
     <section aria-label="About" className="mb-6" data-testid="docs-about">
       <div className="mb-3 flex flex-wrap items-center gap-x-6 gap-y-3 rounded-[18px] border border-[var(--line)] bg-[var(--tile-hi)] p-4">
-        <a href="https://wfrc.utah.gov" target="_blank" rel="noopener noreferrer" aria-label="Wasatch Front Regional Council">
-          <img src={logo} alt="Wasatch Front Regional Council" className="h-10 w-auto" />
-        </a>
+        <div className="flex flex-col items-center gap-2.5">
+          <a href="https://wfrc.utah.gov" target="_blank" rel="noopener noreferrer" aria-label="Wasatch Front Regional Council">
+            <img src={logo} alt="Wasatch Front Regional Council" className="h-9 w-auto" />
+          </a>
+          <a href="https://github.com/WFRCAnalytics/APP-wftdm-dashboard" target="_blank" rel="noopener noreferrer" className="inline-flex h-8 items-center gap-2 rounded-full border border-[var(--line)] px-3.5 text-[13px] font-medium text-[var(--ink)] hover:border-[var(--brand-text)]">
+            <GitHub /> Source on GitHub
+          </a>
+        </div>
         <p className="min-w-[220px] flex-1 text-[13.5px] text-[var(--mute)]">
           Developed and owned by{' '}
           <ProfileChip handle="wfrcanalytics" label="WFRC" />
@@ -94,9 +99,6 @@ function AboutPanel() {
           <ProfileChip handle="ar-puuk" label="ar-puuk" />
           {' '}as part of their work at WFRC, using WFRC-provided resources, including AI tools, with further contributions made on personal time.
         </p>
-        <a href="https://github.com/WFRCAnalytics/APP-wftdm-dashboard" target="_blank" rel="noopener noreferrer" className="inline-flex h-9 items-center gap-2 rounded-full border border-[var(--line)] px-4 text-sm font-medium text-[var(--ink)] hover:border-[var(--brand-text)]">
-          <GitHub /> Source on GitHub
-        </a>
       </div>
       <h3 className="mb-2 text-[12.5px] font-medium text-[var(--mute)]">Inspiration and credits</h3>
       <ul className="m-0 grid list-none grid-cols-[repeat(auto-fill,minmax(210px,1fr))] gap-2.5 p-0">

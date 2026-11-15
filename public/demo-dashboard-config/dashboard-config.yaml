@@ -9,15 +9,11 @@ pages:
   - dashboard-7-explore.yaml
 title: WFRC TDM Calibration Dashboard
 logo:
-  light: >-
-    https://raw.githubusercontent.com/WFRCAnalytics/wfrc-brand/main/_extensions/wfrc-brand/assets/logo/horizontal/WFRC_logo_horizontal_color_transparent.png
-  dark: >-
-    https://raw.githubusercontent.com/WFRCAnalytics/wfrc-brand/main/_extensions/wfrc-brand/assets/logo/horizontal/WFRC_logo_horizontal_white_transparent.png
+  light: https://raw.githubusercontent.com/WFRCAnalytics/wfrc-brand/main/_extensions/WFRCAnalytics/wfrc-brand/assets/logo/horizontal/WFRC_logo_horizontal_color_transparent.png
+  dark: https://raw.githubusercontent.com/WFRCAnalytics/wfrc-brand/main/_extensions/WFRCAnalytics/wfrc-brand/assets/logo/horizontal/WFRC_logo_horizontal_white_transparent.png
 mark:
-  light: >-
-    https://raw.githubusercontent.com/WFRCAnalytics/wfrc-brand/main/_extensions/wfrc-brand/assets/logo/abbreviated/WFRC_logo_abbreviated_color_transparent.png
-  dark: >-
-    https://raw.githubusercontent.com/WFRCAnalytics/wfrc-brand/main/_extensions/wfrc-brand/assets/logo/abbreviated/WFRC_logo_abbreviated_white_transparent.png
+  light: https://raw.githubusercontent.com/WFRCAnalytics/wfrc-brand/main/_extensions/WFRCAnalytics/wfrc-brand/assets/logo/abbreviated/WFRC_logo_abbreviated_color_transparent.png
+  dark: https://raw.githubusercontent.com/WFRCAnalytics/wfrc-brand/main/_extensions/WFRCAnalytics/wfrc-brand/assets/logo/abbreviated/WFRC_logo_abbreviated_white_transparent.png
 vocab:
   modes:
     - {label: Drive alone, ids: [SOV], color: car-1}
