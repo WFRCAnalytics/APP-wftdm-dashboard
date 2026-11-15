@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 
 import wfrcColor from '@/assets/logo/horizontal/WFRC_logo_horizontal_color_transparent.png'
 import wfrcWhite from '@/assets/logo/horizontal/WFRC_logo_horizontal_white_transparent.png'
@@ -25,6 +25,38 @@ const COMPARE_ROWS: [string, string][] = [
   ['Maps', 'Values side by side (up to four), Difference fill, or Swipe between the reference and the focus.'],
   ['Radar and population', 'Do not vary by scenario, so they stay the same.'],
 ]
+
+// A small GitHub profile card: the account's avatar and name, linked to its profile. The avatar is fetched from GitHub; if it
+// cannot load (blocked network, GitHub down) the chip falls back to the GitHub mark, so the link always works.
+function ProfileChip({ handle, label }: { handle: string; label: string }) {
+  const [failed, setFailed] = useState(false)
+  return (
+    <a
+      href={`https://github.com/${handle}`}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="inline-flex items-center gap-1.5 rounded-full border border-[var(--line)] bg-[var(--tile-hi)] py-0.5 pl-0.5 pr-2.5 align-middle text-[12.5px] font-medium text-[var(--ink)] no-underline hover:border-[var(--brand-text)]"
+    >
+      {failed ? (
+        <span className="grid size-5 place-items-center" aria-hidden="true">
+          <GitHub />
+        </span>
+      ) : (
+        <img
+          src={`https://github.com/${handle}.png?size=40`}
+          alt=""
+          width={20}
+          height={20}
+          loading="lazy"
+          referrerPolicy="no-referrer"
+          onError={() => setFailed(true)}
+          className="size-5 rounded-full"
+        />
+      )}
+      {label}
+    </a>
+  )
+}
 
 function Kbd({ children }: { children: ReactNode }) {
   return (
@@ -56,7 +88,11 @@ function AboutPanel() {
           <img src={logo} alt="Wasatch Front Regional Council" className="h-10 w-auto" />
         </a>
         <p className="min-w-[220px] flex-1 text-[13.5px] text-[var(--mute)]">
-          Open source, and owned by WFRC. It was built by a salaried WFRC employee as part of their paid work, and also in their own time. WFRC supplied the tools used, including AI assistance.
+          Developed and owned by{' '}
+          <ProfileChip handle="wfrcanalytics" label="WFRC" />
+          , and released as open source. Authored by{' '}
+          <ProfileChip handle="ar-puuk" label="ar-puuk" />
+          {' '}as part of their work at WFRC, using WFRC-provided resources, including AI tools, with further contributions made on personal time.
         </p>
         <a href="https://github.com/WFRCAnalytics/APP-wftdm-dashboard" target="_blank" rel="noopener noreferrer" className="inline-flex h-9 items-center gap-2 rounded-full border border-[var(--line)] px-4 text-sm font-medium text-[var(--ink)] hover:border-[var(--brand-text)]">
           <GitHub /> Source on GitHub
