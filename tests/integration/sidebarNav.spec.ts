@@ -188,12 +188,12 @@ test.describe('deployer-configured navigation branding', () => {
     await expect(page.locator('.dashboard-brand-logo')).toHaveAttribute('src', PIXEL)
   })
 
-  test('with no mark configured the generic mark is used, and with a title only the title replaces it when expanded', async ({ page }) => {
+  test('with no mark configured a hamburger tile is used, and a short "Menu" label replaces it when expanded, whatever the title', async ({ page }) => {
     await bootWithBranding(page, { title: 'Test Org' })
     await expect(page.locator('.dashboard-brand-mark')).toHaveCount(0)
     await expect(page.locator('.dashboard-brand-logo')).toHaveCount(0)
     const nav = page.locator('[data-sidebar="sidebar"]')
-    await expect(nav.locator('.dashboard-brand-title')).toHaveText('Test Org')
+    await expect(nav.locator('.dashboard-brand-title')).toHaveText('Menu')
     expect(await hiddenWrapper(page, '.dashboard-brand-title')).toBe('true')
 
     await page.getByRole('button', { name: 'Show menu labels' }).click()
@@ -202,8 +202,8 @@ test.describe('deployer-configured navigation branding', () => {
 
   test('with nothing configured the header still shows a mark and no stray empty gap', async ({ page }) => {
     await bootWithBranding(page, {})
-    await expect(page.locator('.dashboard-brand-mark, .dashboard-brand-logo, .dashboard-brand-title')).toHaveCount(0)
-    const header = page.locator('[data-sidebar="sidebar"] svg path[d="M4 18 9 9l4 6 3-5 4 8"]')
-    await expect(header).toHaveCount(1)
+    await expect(page.locator('.dashboard-brand-mark, .dashboard-brand-logo')).toHaveCount(0)
+    // the hamburger tile (collapsed) and the "Menu" label (expanded) stand in; nothing else, no empty gap
+    await expect(page.locator('[data-sidebar="sidebar"] .dashboard-brand-title')).toHaveText('Menu')
   })
 })

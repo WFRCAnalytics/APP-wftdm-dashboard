@@ -1,15 +1,14 @@
 import { useState, type ReactNode } from 'react'
-import { BookOpen, Monitor, Moon, PanelLeftClose, PanelLeftOpen, Sun } from 'lucide-react'
+import { BookOpen, Menu, Monitor, Moon, PanelLeftClose, PanelLeftOpen, Sun } from 'lucide-react'
 
 import { docsHref, docsLabel, listedPages } from '@/config'
 
-import { DashboardBrand, DashboardMark, hasConfiguredLogo } from '@/layout/dashboardBrand'
+import { DashboardBrand, DashboardMark } from '@/layout/dashboardBrand'
 import { NavButton, NavLink } from '@/layout/navButton'
 import { SettingsModal } from '@/layout/settingsModal'
 import { resolveSections } from '@/layout/dashboardLayout'
 import { iconComponentFor } from '@/lib/iconComponentFor'
 import { useThemeMode } from '@/hooks/useThemeMode'
-import { useColorScheme } from '@/hooks/useColorScheme'
 import { useTabsPlan } from '@/hooks/useTabsPlan'
 import { getActiveSection, setActiveSection, useLayoutVersion } from '@/state/layoutState'
 import { setMode, type ThemeMode } from '@/state/themeState'
@@ -51,15 +50,20 @@ const THEME_ICON: Record<ThemeMode, ReactNode> = {
   dark: <Moon className="h-5 w-5" aria-hidden="true" />,
 }
 
-// The app's own mark, used wherever the deployer has not configured a `markUrl`.
-const GENERIC_MARK = (
+// What stands in for the logo when none is configured or it fails to load: a hamburger tile on the collapsed rail and a
+// short "Menu" label (with the same icon) when it is expanded, never the organisation's long title or an unrelated glyph.
+const MENU_MARK = (
   <span
     aria-hidden="true"
     className="grid h-[38px] w-[38px] shrink-0 place-items-center rounded-[13px] bg-[var(--brand)] shadow-[0_1px_0_rgba(255,255,255,0.35)_inset,0_6px_14px_-6px_var(--brand)]"
   >
-    <svg viewBox="0 0 24 24" className="h-[19px] w-[19px]" fill="none" stroke="var(--primary-foreground)" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M4 18 9 9l4 6 3-5 4 8" />
-    </svg>
+    <Menu className="h-[19px] w-[19px] text-[var(--primary-foreground)]" strokeWidth={2.4} />
+  </span>
+)
+const MENU_LABEL = (
+  <span className="dashboard-brand-title inline-flex items-center gap-2 whitespace-nowrap font-heading text-xl font-semibold tracking-tight text-foreground">
+    <Menu className="h-5 w-5" aria-hidden="true" />
+    Menu
   </span>
 )
 
@@ -68,7 +72,6 @@ export function FloatingNav({ tabs, activeIndex, onTabChange, branding, mobile =
   // shell, which docks the page beside a pinned nav).
   const [engaged, setEngaged] = useState(false)
   const themeMode = useThemeMode()
-  const colorScheme = useColorScheme()
   useLayoutVersion()
   const activePlan = useTabsPlan(tabs[activeIndex])
   const expanded = mobile ? open : pinned || engaged
@@ -99,31 +102,24 @@ export function FloatingNav({ tabs, activeIndex, onTabChange, branding, mobile =
           if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setEngaged(false)
         }}
       >
-        {/* Branding, all deployer-configured (dashboard-config.yaml: `logo`, `mark`). Collapsed shows the abbreviated mark (markUrl, or
-            the generic mark when none is set); expanded replaces it with the full logo (logoUrl) or, with no logo, the title
-            text. The mark never sits beside either. With neither a logo nor a title there is nothing to swap in, so the mark
-            stays. */}
+        {/* Branding, all deployer-configured (dashboard-config.yaml: `logo`, `mark`). Collapsed shows the abbreviated mark (markUrl);
+            expanded replaces it with the full logo (logoUrl). The mark never sits beside the logo. Where either is unset or fails to
+            load, a hamburger tile (collapsed) or a short "Menu" label (expanded) stands in. */}
         <div className="mb-[14px] min-h-[46px] overflow-hidden px-[3px]">
-          {hasConfiguredLogo(branding, colorScheme) || branding.title ? (
-            <div className="grid min-h-[46px] items-center">
-              <div
-                aria-hidden={expanded}
-                className={cn('col-start-1 row-start-1 flex items-center transition-opacity duration-150', expanded ? 'pointer-events-none opacity-0' : 'opacity-100')}
-              >
-                <DashboardMark branding={branding} fallback={GENERIC_MARK} />
-              </div>
-              <div
-                aria-hidden={!expanded}
-                className={cn('col-start-1 row-start-1 flex min-w-0 justify-center transition-opacity duration-150', expanded ? 'opacity-100' : 'pointer-events-none opacity-0')}
-              >
-                <DashboardBrand branding={branding} />
-              </div>
+          <div className="grid min-h-[46px] items-center">
+            <div
+              aria-hidden={expanded}
+              className={cn('col-start-1 row-start-1 flex items-center transition-opacity duration-150', expanded ? 'pointer-events-none opacity-0' : 'opacity-100')}
+            >
+              <DashboardMark branding={branding} fallback={MENU_MARK} />
             </div>
-          ) : (
-            <div className="flex min-h-[46px] items-center">
-              <DashboardMark branding={branding} fallback={GENERIC_MARK} />
+            <div
+              aria-hidden={!expanded}
+              className={cn('col-start-1 row-start-1 flex min-w-0 justify-center transition-opacity duration-150', expanded ? 'opacity-100' : 'pointer-events-none opacity-0')}
+            >
+              <DashboardBrand branding={branding} fallback={MENU_LABEL} />
             </div>
-          )}
+          </div>
         </div>
 
         <div role="tablist" aria-orientation="vertical" className="scrollbar-thin flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overflow-x-hidden">

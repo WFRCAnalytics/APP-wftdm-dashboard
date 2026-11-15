@@ -19,7 +19,7 @@ import type { DashboardBranding } from '@/services/yamlLoader'
 // there's no logo to show — a logo that already has its own name baked
 // into the image, as WFRC's real one does, would otherwise show the same
 // name twice), OR nothing at all.
-export function DashboardBrand({ branding }: { branding: DashboardBranding }) {
+export function DashboardBrand({ branding, fallback }: { branding: DashboardBranding; fallback?: ReactNode }) {
   const colorScheme = useColorScheme()
   // Tracks the single most recently FAILED url, not a plain boolean — a
   // theme flip that resolves to a DIFFERENT url (light logoUrl -> dark
@@ -48,6 +48,10 @@ export function DashboardBrand({ branding }: { branding: DashboardBranding }) {
     )
   }
 
+  // A deployer-independent fallback (the nav's own "Menu" label) wins over the title: a long organisation name is not a
+  // fitting stand-in for a logo that is missing or failed to load.
+  if (fallback) return <>{fallback}</>
+
   if (branding.title) {
     // wftdm-design-system's own Page Title role (20px/600/tracking-tight) —
     // this text IS a page-level heading (the app's own name, shown when no
@@ -62,11 +66,6 @@ export function DashboardBrand({ branding }: { branding: DashboardBranding }) {
   }
 
   return null
-}
-
-/** Whether a full logo is configured for the current theme (the same light/dark choice DashboardBrand makes). */
-export function hasConfiguredLogo(branding: DashboardBranding, scheme: 'light' | 'dark'): boolean {
-  return Boolean(scheme === 'dark' ? (branding.logoUrlDark ?? branding.logoUrl) : branding.logoUrl)
 }
 
 /**
