@@ -60,7 +60,7 @@ test.describe('with no provider list', () => {
   test('the assistant tab is as it always was: the built-in providers and an editable address', async ({ page }) => {
     await boot(page)
     await openAiSettings(page)
-    await expect(providerButtons(page)).toHaveText(['OpenAI', 'Anthropic', 'Deepseek', 'Demo (offline)', 'Ollama'])
+    await expect(providerButtons(page)).toHaveText(['OpenAI', 'Anthropic', 'Deepseek', 'Ollama'])
     const address = page.locator('#ai-base-url')
     await expect(address).toHaveValue('https://api.openai.com/v1')
     await expect(address).toBeEditable()
@@ -308,7 +308,7 @@ test.describe('mistakes in the assistant block', () => {
     await boot(page)
     await expect(page.getByTestId('config-notice')).toContainText('built-in providers are used')
     await openAiSettings(page)
-    await expect(providerButtons(page)).toHaveText(['OpenAI', 'Anthropic', 'Deepseek', 'Demo (offline)', 'Ollama'])
+    await expect(providerButtons(page)).toHaveText(['OpenAI', 'Anthropic', 'Deepseek', 'Ollama'])
     await expect(page.locator('#ai-base-url')).toBeEditable()
   })
 

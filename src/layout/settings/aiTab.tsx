@@ -51,8 +51,11 @@ function Field({ label, htmlFor, children }: { label: string; htmlFor: string; c
 export function AiTab() {
   const s = useAiSettings()
   const { draft } = s
-  // the providers on offer (the deployer's list, or the built-ins) and the one chosen
-  const providers = getProviderPresets().map((p) => ({ id: p.id, label: p.label }))
+  // the providers on offer (the deployer's list, or the built-ins) and the one chosen. The scripted Demo is not a provider to pick
+  // here (the chat panel's "Try the demo" starts it); it is listed only while it is the active one, so the select is never blank.
+  const providers = getProviderPresets()
+    .filter((p) => p.id !== 'demo' || draft.provider === 'demo')
+    .map((p) => ({ id: p.id, label: p.label }))
   const preset = getPreset(draft.provider)
   // a deployer's provider has a fixed address; its token field is shown only when it needs a key
   const showToken = preset.needsKey || !preset.locked
