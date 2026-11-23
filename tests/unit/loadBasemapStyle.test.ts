@@ -647,12 +647,17 @@ describe('loadBasemapStyle', () => {
   // registry in the future could never break an author's own manually-
   // written equivalent (research.md §1).
   it("resolves the built-in 'ugrc-vector-lite' preset via composeStyles() identically to the equivalent ad hoc composition object", async () => {
+    const HILLSHADE_URL =
+      'https://tiles.arcgis.com/tiles/99lidPhWCzftIe9K/arcgis/rest/services/VectorHillshade/VectorTileServer/resources/styles/root.json'
     const LITE_BASE_URL =
       'https://tiles.arcgis.com/tiles/99lidPhWCzftIe9K/arcgis/rest/services/LiteBase/VectorTileServer/resources/styles/root.json'
     const LITE_LABELS_URL =
       'https://tiles.arcgis.com/tiles/99lidPhWCzftIe9K/arcgis/rest/services/LiteLabels/VectorTileServer/resources/styles/root.json'
     vi.mocked(fetch).mockImplementation(async (input) => {
       const url = String(input)
+      if (url === HILLSHADE_URL) {
+        return { ok: true, json: async () => ({ version: 8, sources: {}, layers: [{ id: 'hillshade-layer', type: 'fill' }] }) } as Response
+      }
       if (url === LITE_BASE_URL) {
         return { ok: true, json: async () => ({ version: 8, sources: {}, layers: [{ id: 'base-layer', type: 'fill' }] }) } as Response
       }
@@ -666,9 +671,15 @@ describe('loadBasemapStyle', () => {
     })
 
     const viaPreset = await loadBasemapStyle('ugrc-vector-lite')
-    const viaAdHocComposition = await loadBasemapStyle({ layers: [LITE_BASE_URL, LITE_LABELS_URL] })
+    const viaAdHocComposition = await loadBasemapStyle({ layers: [HILLSHADE_URL, LITE_BASE_URL, LITE_LABELS_URL] })
 
     expect(viaPreset.kind).toBe('style')
-    expect(viaPreset).toEqual(viaAdHocComposition)
+    // The preset also names the font service (an ad hoc composition cannot); everything else is the same.
+    const { glyphs, ...presetRest } = (viaPreset as { kind: 'style'; style: { glyphs?: string } }).style
+    expect(glyphs).toBe('https://tiles.arcgis.com/tiles/99lidPhWCzftIe9K/arcgis/rest/services/LiteBase/VectorTileServer/resources/fonts/{fontstack}/{range}.pbf')
+    expect({ ...viaPreset, style: presetRest }).toEqual(viaAdHocComposition)
+    expect((viaPreset as { kind: 'style'; style: { layers: { id: string }[] } }).style.layers.map((l) => l.id)).toEqual([
+      'background', 'layer0__hillshade-layer', 'layer1__base-layer', 'layer2__labels-layer',
+    ])
   })
 })

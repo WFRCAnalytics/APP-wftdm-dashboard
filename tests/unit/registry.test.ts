@@ -35,13 +35,15 @@ describe('resolveBuiltInPreset', () => {
     expect(resolveBuiltInPreset('totally-made-up-preset-name')).toBeUndefined()
   })
 
-  it('resolves "ugrc-vector-lite" to the real LiteBase + LiteLabels composition (spec.md Finding 1)', () => {
+  it('resolves "ugrc-vector-lite" to the real VectorHillshade + LiteBase + LiteLabels composition, fonts from LiteBase', () => {
     expect(resolveBuiltInPreset('ugrc-vector-lite')).toEqual({
       kind: 'composition',
       layers: [
+        'https://tiles.arcgis.com/tiles/99lidPhWCzftIe9K/arcgis/rest/services/VectorHillshade/VectorTileServer/resources/styles/root.json',
         'https://tiles.arcgis.com/tiles/99lidPhWCzftIe9K/arcgis/rest/services/LiteBase/VectorTileServer/resources/styles/root.json',
         'https://tiles.arcgis.com/tiles/99lidPhWCzftIe9K/arcgis/rest/services/LiteLabels/VectorTileServer/resources/styles/root.json',
       ],
+      glyphs: 'https://tiles.arcgis.com/tiles/99lidPhWCzftIe9K/arcgis/rest/services/LiteBase/VectorTileServer/resources/fonts/{fontstack}/{range}.pbf',
     })
   })
 

@@ -44,12 +44,16 @@ const BUILT_IN_PRESETS: Record<BasemapPresetName, BuiltInPreset> = {
   // presets. Removing any of these three in the future does not remove an
   // author's ability to write the identical composition by hand (FR-009)
   // — these are aliases, not a special case.
+  // UGRC's web map 98104c602b7c44419c0a952f28c65815 ("Utah Vector Lite Basemap"): hillshade (bottom), base, labels (top).
   'ugrc-vector-lite': {
     kind: 'composition',
     layers: [
+      'https://tiles.arcgis.com/tiles/99lidPhWCzftIe9K/arcgis/rest/services/VectorHillshade/VectorTileServer/resources/styles/root.json',
       'https://tiles.arcgis.com/tiles/99lidPhWCzftIe9K/arcgis/rest/services/LiteBase/VectorTileServer/resources/styles/root.json',
       'https://tiles.arcgis.com/tiles/99lidPhWCzftIe9K/arcgis/rest/services/LiteLabels/VectorTileServer/resources/styles/root.json',
     ],
+    // The hillshade layer is first but its service has no fonts (see ugrc-vector-dark below): take the base service's.
+    glyphs: 'https://tiles.arcgis.com/tiles/99lidPhWCzftIe9K/arcgis/rest/services/LiteBase/VectorTileServer/resources/fonts/{fontstack}/{range}.pbf',
   },
   // UGRC's dark counterpart to Vector Lite (web map 00be227f54bf4795953af5d7e9a26cf9, "Utah Vector Dark Basemap"):
   // hillshade (bottom), base, labels (top). Item-based style URLs, as the web map itself references them.
