@@ -33,11 +33,15 @@ import { getPath, validate } from '../src/config'
 interface SkeletonTab {
   label: string
   hasIcon: boolean
+  /** `header.hidden`: not listed in the rail (config/pages.ts), unless every page is hidden. */
+  hidden: boolean
 }
 
 interface SkeletonBranding {
   title?: string
   hasLogo: boolean
+  /** `docs.url` is set: the rail shows the model documentation link. */
+  hasDocs?: boolean
   /** `assistant: { enabled: false }` in dashboard-config.yaml (the deployment turned the AI assistant off). */
   assistantEnabled?: boolean
 }
@@ -71,6 +75,7 @@ function readDashboardRoot(rootDir: string): SkeletonRoot {
     title: typeof getPath(settings, 'title') === 'string' ? (getPath(settings, 'title') as string) : undefined,
     hasLogo: Boolean(getPath(settings, 'logo.light') || getPath(settings, 'logo.dark')),
     assistantEnabled: getPath(settings, 'assistant.enabled') as boolean | undefined,
+    hasDocs: typeof getPath(settings, 'docs.url') === 'string' ? true : undefined,
   }
 
   const tabs: SkeletonTab[] = []
@@ -80,7 +85,7 @@ function readDashboardRoot(rootDir: string): SkeletonRoot {
     if (!existsSync(filePath)) continue
     try {
       const parsed = yaml.load(readFileSync(filePath, 'utf-8')) as
-        | { header?: { tab?: unknown; icon?: unknown } }
+        | { header?: { tab?: unknown; icon?: unknown; hidden?: unknown } }
         | undefined
       const label = parsed?.header?.tab
       // A single space is a REAL, valid header.tab (dashboard-8-test.yaml's
@@ -88,7 +93,7 @@ function readDashboardRoot(rootDir: string): SkeletonRoot {
       // documented convention) — length > 0, never .trim().length > 0,
       // which would wrongly drop it.
       if (typeof label === 'string' && label.length > 0) {
-        tabs.push({ label, hasIcon: typeof parsed?.header?.icon === 'string' })
+        tabs.push({ label, hasIcon: typeof parsed?.header?.icon === 'string', hidden: parsed?.header?.hidden === true })
       }
     } catch {
       // A malformed dashboard-*.yaml is a real, pre-existing authoring
@@ -109,22 +114,34 @@ function escapeHtml(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 }
 
-/** One rail row of the collapsed floating nav (layout/navButton.tsx: 46px tall, 14px side padding, 20px icon). */
-function tabRowHtml(tab: SkeletonTab): string {
-  return `<div role="tab" aria-label="${escapeHtml(tab.label)}" class="flex h-[46px] w-full items-center rounded-[15px] px-[14px]"><div class="h-5 w-5 shrink-0 rounded-md ${BAR}"></div></div>`
+/**
+ * One rail row of the collapsed floating nav (layout/navButton.tsx: 46px tall, 14px side padding, 20px icon). The landing
+ * page is the selected tab, which the app fills edge to edge (.pill-on), so its row is one solid 46px block.
+ */
+function tabRowHtml(tab: SkeletonTab, selected: boolean): string {
+  const label = `role="tab" aria-label="${escapeHtml(tab.label)}"`
+  if (selected) return `<div ${label} class="h-[46px] w-full shrink-0 rounded-[15px] ${BAR}"></div>`
+  return `<div ${label} class="flex h-[46px] w-full items-center rounded-[15px] px-[14px]"><div class="h-5 w-5 shrink-0 rounded-md ${BAR}"></div></div>`
 }
+
+/** A plain 20px-icon row of the rail's footer. */
+const FOOTER_ICON_ROW = `<div class="flex h-[46px] items-center px-[14px]"><div class="h-5 w-5 rounded-md ${BAR}"></div></div>`
 
 /**
  * The boot skeleton: the real app shell in its resting state, taken from layout/shell.tsx, floatingNav.tsx, pageHeader.tsx
  * and dashboardRenderer.tsx rather than approximated: the collapsed floating glass nav (68px rail, 14px inset, 24px radius,
- * brand mark on top, one row per configured tab, the Show menu labels toggle, Settings and Theme at the bottom), then, at 96px in from the left, the page
+ * brand mark on top, one row per listed tab with the landing one filled, then at the bottom the theme control (a 36px
+ * circle, the collapsed pill), the model documentation link when `docs.url` is set, Settings and the Show menu labels toggle), then, at 96px in from the left, the page
  * header (title and subtitle at the left, the glass control bar at the right, with the 38px Assistant circle beside it unless the deployment turns the assistant off) and the page body (the hero KPI band, the dial row, the page-tabs strip, then a
  * row of two tiles). The nav is hidden and the content starts at the edge below 760px, where the real nav is a sheet.
  * Only the number of tab rows comes from the build's dashboard config, as before; the branding title/logo cannot show in a
  * collapsed rail so it no longer affects the markup.
  */
-function buildSkeletonHtml(tabs: SkeletonTab[], assistant: boolean): string {
-  const tabRows = tabs.map(tabRowHtml).join('')
+function buildSkeletonHtml(tabs: SkeletonTab[], assistant: boolean, docs: boolean): string {
+  // listed as config/pages.ts lists them: hidden pages left out, unless that leaves none
+  const shown = tabs.filter((t) => !t.hidden)
+  const listed = shown.length > 0 ? shown : tabs
+  const tabRows = listed.map((t, i) => tabRowHtml(t, i === 0)).join('')
   const kpiCell = (last: boolean) =>
     `<div class="flex h-[137px] flex-col gap-3 px-[22px] py-5 ${last ? 'max-[1100px]:col-span-2' : 'min-[1101px]:border-r min-[1101px]:border-[var(--glass-line)]'}"><div class="h-3 w-24 rounded-full ${BAR}"></div><div class="h-9 w-28 rounded-lg ${BAR}"></div><div class="h-4 w-36 rounded-full ${BAR}"></div></div>`
   // The dial row (valuebox with a ring): label, value and delta pill at the left, a half-circle dial at the right.
@@ -141,9 +158,10 @@ function buildSkeletonHtml(tabs: SkeletonTab[], assistant: boolean): string {
         <div class="mb-[14px] flex min-h-[46px] items-center px-[3px]"><div class="h-[38px] w-[38px] shrink-0 rounded-[13px] ${BAR}"></div></div>
         <div class="flex min-h-0 flex-1 flex-col gap-1 overflow-hidden">${tabRows}</div>
         <div class="mt-2 flex flex-col gap-1 border-t border-[var(--line)] pt-2">
-          <div class="flex h-[46px] items-center px-[14px] max-[759px]:hidden"><div class="h-5 w-5 rounded-md ${BAR}"></div></div>
-          <div class="flex h-[46px] items-center px-[14px]"><div class="h-5 w-5 rounded-md ${BAR}"></div></div>
-          <div class="flex h-[46px] items-center px-[14px]"><div class="h-5 w-5 rounded-md ${BAR}"></div></div>
+          <div class="flex h-[46px] items-center px-[6px]"><div class="h-9 w-9 shrink-0 rounded-full ${BAR}"></div></div>
+          ${docs ? FOOTER_ICON_ROW : ''}
+          ${FOOTER_ICON_ROW}
+          ${FOOTER_ICON_ROW}
         </div>
       </nav>
       <main class="flex min-h-screen flex-col pl-[96px] max-[759px]:pl-0">
@@ -208,7 +226,10 @@ export function bootSkeletonPlugin({ demo = true }: { demo?: boolean } = {}): Pl
       // The assistant's header button is on unless the deployment turns it off (the deployer's own config wins).
       const assistant = (primary.branding.assistantEnabled ?? demoRoot.branding.assistantEnabled) !== false
 
-      const generated = `${MARKER_START}\n${buildSkeletonHtml(tabs, assistant)}\n${MARKER_END}`
+      // The documentation link shows when docs.url is set (the deployer's value wins per setting, the demo is the fallback).
+      const docs = Boolean(primary.branding.hasDocs ?? demoRoot.branding.hasDocs)
+
+      const generated = `${MARKER_START}\n${buildSkeletonHtml(tabs, assistant, docs)}\n${MARKER_END}`
       return html.slice(0, startIdx) + generated + html.slice(endIdx + MARKER_END.length)
     },
   }
