@@ -54,8 +54,8 @@ const REAL_DEMO_DASHBOARD_INDEX = {
   ],
   title: 'WFRC TDM Calibration Dashboard',
   logo: {
-    light: 'https://raw.githubusercontent.com/WFRCAnalytics/wfrc-brand/main/_extensions/wfrc-brand/assets/logo/horizontal/WFRC_logo_horizontal_color_transparent.png',
-    dark: 'https://raw.githubusercontent.com/WFRCAnalytics/wfrc-brand/main/_extensions/wfrc-brand/assets/logo/horizontal/WFRC_logo_horizontal_white_transparent.png',
+    light: 'https://raw.githubusercontent.com/WFRCAnalytics/wfrc-brand/main/_extensions/WFRCAnalytics/wfrc-brand/assets/logo/horizontal/WFRC_logo_horizontal_color_transparent.png',
+    dark: 'https://raw.githubusercontent.com/WFRCAnalytics/wfrc-brand/main/_extensions/WFRCAnalytics/wfrc-brand/assets/logo/horizontal/WFRC_logo_horizontal_white_transparent.png',
   },
 }
 const REAL_DEMO_SCENARIOS_INDEX = [
