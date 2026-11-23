@@ -90,6 +90,9 @@ export function FloatingNav({ tabs, activeIndex, onTabChange, branding, mobile =
   useLayoutVersion()
   const activePlan = useTabsPlan(tabs[activeIndex])
   const expanded = mobile ? open : pinned || engaged
+  // The theme pill only when the labels are pinned open (or the mobile sheet is open), never for the keyboard-focus overlay:
+  // moving focus off the theme button there would collapse the rail.
+  const showThemePill = mobile ? open : pinned
   const documentation = docsHref(branding.docsUrl, docsPath)
   // hidden pages are not listed; the indices stay those of the full list (see the shell)
   const listed = new Set(listedPages(tabs.map((t) => t.header)))
@@ -192,10 +195,18 @@ export function FloatingNav({ tabs, activeIndex, onTabChange, branding, mobile =
         </div>
 
         <div className="mt-2 flex flex-col gap-1 border-t border-[var(--line)] pt-2">
-          {/* The pill only when the labels are pinned open (or the mobile sheet is open), never for the keyboard-focus
-              overlay: swapping the focused theme button for the pill there would drop focus and collapse the rail. */}
-          {(mobile ? open : pinned) ? (
-            <div className="flex h-[46px] items-center px-1">
+          {/* Both are always rendered in the same 46px slot and cross-fade, in step with the rail's 220ms width transition.
+              The pill has a fixed width, so the widening rail reveals it (overflow is clipped) instead of squeezing three
+              parts into 48px. The hidden one is `inert`: out of the tab order and the accessibility tree. */}
+          <div className="relative h-[46px]">
+            <div
+              ref={(el) => { if (el) el.inert = !showThemePill }}
+              className={cn(
+                'absolute inset-y-0 left-1 flex items-center transition-opacity',
+                mobile ? 'right-1' : 'w-[220px]',
+                showThemePill ? 'opacity-100 delay-75 duration-200' : 'pointer-events-none opacity-0 duration-100',
+              )}
+            >
               <Segmented
                 label="Theme"
                 fill
@@ -206,16 +217,23 @@ export function FloatingNav({ tabs, activeIndex, onTabChange, branding, mobile =
                 onChange={(id) => setMode(id as ThemeMode)}
               />
             </div>
-          ) : (
-            <NavButton
-              aria-label={`Theme: ${THEME_LABEL[themeMode]}. Switch to ${THEME_LABEL[NEXT_THEME[themeMode]]}`}
-              title={`Theme: ${THEME_LABEL[themeMode]}`}
-              icon={THEME_ICON[themeMode]}
-              onClick={() => setMode(NEXT_THEME[themeMode])}
+            <div
+              ref={(el) => { if (el) el.inert = showThemePill }}
+              className={cn(
+                'absolute inset-0 transition-opacity',
+                showThemePill ? 'pointer-events-none opacity-0 duration-100' : 'opacity-100 delay-75 duration-200',
+              )}
             >
-              Theme: {THEME_LABEL[themeMode]}
-            </NavButton>
-          )}
+              <NavButton
+                aria-label={`Theme: ${THEME_LABEL[themeMode]}. Switch to ${THEME_LABEL[NEXT_THEME[themeMode]]}`}
+                title={`Theme: ${THEME_LABEL[themeMode]}`}
+                icon={THEME_ICON[themeMode]}
+                onClick={() => setMode(NEXT_THEME[themeMode])}
+              >
+                Theme: {THEME_LABEL[themeMode]}
+              </NavButton>
+            </div>
+          </div>
           {documentation && (
             <NavLink href={documentation} icon={<BookOpen className="h-5 w-5" aria-hidden="true" />}>
               {docsLabel(branding.docsLabel)}

@@ -16,7 +16,9 @@ export const NAV_ITEM_CLASS = cn(
   'hover:bg-[color-mix(in_srgb,var(--ink)_7%,transparent)] hover:text-[var(--ink)]',
   'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-text)]',
 )
-const NAV_SELECTED_CLASS = 'bg-[color-mix(in_srgb,var(--brand)_26%,var(--tile))] text-[var(--ink)] [&_svg]:text-[var(--brand-text)]'
+// TRIAL: the selected tab drawn as a selected pill part (.pill-on), like the theme control. The previous tint was:
+// 'bg-[color-mix(in_srgb,var(--brand)_26%,var(--tile))] text-[var(--ink)] [&_svg]:text-[var(--brand-text)]'
+const NAV_SELECTED_CLASS = 'pill-on hover:text-[var(--pill-on-fg)]'
 const NAV_LABEL_CLASS = 'truncate opacity-0 transition-opacity duration-150 group-data-[state=expanded]/nav:opacity-100'
 
 /** A nav item that opens an address in a new tab (the documentation link): an anchor, never a script address. */
