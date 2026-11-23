@@ -5,6 +5,7 @@ import { docsHref, docsLabel, listedPages } from '@/config'
 
 import { DashboardBrand, DashboardMark } from '@/layout/dashboardBrand'
 import { NavButton, NavLink } from '@/layout/navButton'
+import { Segmented, type SegmentedOption } from '@/components/ui/segmented'
 import { SettingsModal } from '@/layout/settingsModal'
 import { resolveSections } from '@/layout/dashboardLayout'
 import { iconComponentFor } from '@/lib/iconComponentFor'
@@ -40,15 +41,29 @@ export interface FloatingNavProps {
   docsPath?: string
 }
 
-// The theme button cycles System -> Light -> Dark and always shows the mode that is set (the Settings modal offers the
-// same three). A System pick follows the OS live, so the icon is the mode, not the scheme currently in effect.
+// The theme control. Expanded, it is a three-part pill (System / Light / Dark icons, the set one filled); collapsed, the
+// rail has no room for that, so it is one button that cycles System -> Light -> Dark and shows the mode that is set (the
+// Settings modal offers the same three). A System pick follows the OS live, so the icon is the mode, not the scheme in effect.
 const THEME_LABEL: Record<ThemeMode, string> = { system: 'System', light: 'Light', dark: 'Dark' }
 const NEXT_THEME: Record<ThemeMode, ThemeMode> = { system: 'light', light: 'dark', dark: 'system' }
-const THEME_ICON: Record<ThemeMode, ReactNode> = {
-  system: <Monitor className="h-5 w-5" aria-hidden="true" />,
-  light: <Sun className="h-5 w-5" aria-hidden="true" />,
-  dark: <Moon className="h-5 w-5" aria-hidden="true" />,
+const THEME_GLYPH: Record<ThemeMode, ReactNode> = {
+  system: <Monitor className="h-4 w-4" aria-hidden="true" />,
+  light: <Sun className="h-4 w-4" aria-hidden="true" />,
+  dark: <Moon className="h-4 w-4" aria-hidden="true" />,
 }
+// Collapsed, the set mode is drawn exactly as the pill draws its selected part (.pill-on: brand fill, icon knocked out),
+// so the two states read as one control. The 30px bubble overflows the 20px icon slot evenly to stay centred on the rail.
+const THEME_ICON: Record<ThemeMode, ReactNode> = Object.fromEntries(
+  (Object.keys(THEME_GLYPH) as ThemeMode[]).map((m) => [
+    m,
+    <span key={m} className="pill-on -m-[5px] grid h-[30px] w-[30px] shrink-0 place-items-center rounded-full">{THEME_GLYPH[m]}</span>,
+  ]),
+) as Record<ThemeMode, ReactNode>
+const THEME_PILL_OPTIONS: SegmentedOption[] = (['system', 'light', 'dark'] as ThemeMode[]).map((m) => ({
+  id: m,
+  label: THEME_LABEL[m],
+  icon: THEME_GLYPH[m],
+}))
 
 // What stands in for the logo when none is configured or it fails to load: a hamburger tile on the collapsed rail and a
 // short "Menu" label (with the same icon) when it is expanded, never the organisation's long title or an unrelated glyph.
@@ -177,6 +192,36 @@ export function FloatingNav({ tabs, activeIndex, onTabChange, branding, mobile =
         </div>
 
         <div className="mt-2 flex flex-col gap-1 border-t border-[var(--line)] pt-2">
+          {/* The pill only when the labels are pinned open (or the mobile sheet is open), never for the keyboard-focus
+              overlay: swapping the focused theme button for the pill there would drop focus and collapse the rail. */}
+          {(mobile ? open : pinned) ? (
+            <div className="flex h-[46px] items-center px-1">
+              <Segmented
+                label="Theme"
+                fill
+                // each part 30px tall, the same as the collapsed rail's filled bubble, so the selected mode is one size in both states
+                className="[&>button]:h-[30px] [&>button]:py-0"
+                options={THEME_PILL_OPTIONS}
+                value={themeMode}
+                onChange={(id) => setMode(id as ThemeMode)}
+              />
+            </div>
+          ) : (
+            <NavButton
+              aria-label={`Theme: ${THEME_LABEL[themeMode]}. Switch to ${THEME_LABEL[NEXT_THEME[themeMode]]}`}
+              title={`Theme: ${THEME_LABEL[themeMode]}`}
+              icon={THEME_ICON[themeMode]}
+              onClick={() => setMode(NEXT_THEME[themeMode])}
+            >
+              Theme: {THEME_LABEL[themeMode]}
+            </NavButton>
+          )}
+          {documentation && (
+            <NavLink href={documentation} icon={<BookOpen className="h-5 w-5" aria-hidden="true" />}>
+              {docsLabel(branding.docsLabel)}
+            </NavLink>
+          )}
+          <SettingsModal />
           {!mobile && (
             <NavButton
               aria-label={pinned ? 'Hide menu labels' : 'Show menu labels'}
@@ -188,19 +233,6 @@ export function FloatingNav({ tabs, activeIndex, onTabChange, branding, mobile =
               {pinned ? 'Hide labels' : 'Show labels'}
             </NavButton>
           )}
-          {documentation && (
-            <NavLink href={documentation} icon={<BookOpen className="h-5 w-5" aria-hidden="true" />}>
-              {docsLabel(branding.docsLabel)}
-            </NavLink>
-          )}
-          <SettingsModal />
-          <NavButton
-            aria-label={`Theme: ${THEME_LABEL[themeMode]}. Switch to ${THEME_LABEL[NEXT_THEME[themeMode]]}`}
-            icon={THEME_ICON[themeMode]}
-            onClick={() => setMode(NEXT_THEME[themeMode])}
-          >
-            Theme: {THEME_LABEL[themeMode]}
-          </NavButton>
         </div>
       </nav>
     </>
