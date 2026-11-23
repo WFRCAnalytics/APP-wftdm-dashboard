@@ -108,9 +108,9 @@ test.describe('030-sidebar-navigation — User Story 1 (sidebar shell)', () => {
       .poll(() => page.locator('main').evaluate((el) => getComputedStyle(el).paddingLeft))
       .toBe('96px')
 
-    // Keyboard focus expands it too, as a transient overlay: Tab from the toggle (just clicked) into the next control in
-    // the rail. That never moves the page.
-    await page.keyboard.press('Tab')
+    // Keyboard focus expands it too, as a transient overlay: Shift+Tab from the toggle (just clicked, the rail's last
+    // control) back into the one before it. That never moves the page.
+    await page.keyboard.press('Shift+Tab')
     await expect(sidebar).toHaveAttribute('data-state', 'expanded')
     expect(await page.locator('main').evaluate((el) => getComputedStyle(el).paddingLeft)).toBe('96px')
   })

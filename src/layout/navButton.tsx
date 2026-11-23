@@ -1,4 +1,5 @@
 import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from 'react'
+import { ArrowUpRight } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 
@@ -21,12 +22,18 @@ export const NAV_ITEM_CLASS = cn(
 const NAV_SELECTED_CLASS = 'pill-on hover:text-[var(--pill-on-fg)]'
 const NAV_LABEL_CLASS = 'truncate opacity-0 transition-opacity duration-150 group-data-[state=expanded]/nav:opacity-100'
 
-/** A nav item that opens an address in a new tab (the documentation link): an anchor, never a script address. */
+/**
+ * A nav item that opens an address in a new tab (the model documentation link): an anchor, never a script address. A small,
+ * muted arrow after the label says it leaves the app; it lives in the label, so like the label it shows only when expanded.
+ */
 export function NavLink({ href, icon, children }: { href: string; icon?: ReactNode; children: ReactNode }) {
   return (
     <a href={href} target="_blank" rel="noopener noreferrer" className={NAV_ITEM_CLASS}>
       {icon && <span className="flex h-5 w-5 shrink-0 items-center justify-center">{icon}</span>}
-      <span className={NAV_LABEL_CLASS}>{children}</span>
+      <span className={cn(NAV_LABEL_CLASS, 'flex min-w-0 items-center gap-1')}>
+        <span className="truncate">{children}</span>
+        <ArrowUpRight className="h-3.5 w-3.5 shrink-0 opacity-50" aria-hidden="true" />
+      </span>
     </a>
   )
 }

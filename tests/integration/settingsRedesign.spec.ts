@@ -40,7 +40,7 @@ test.describe('Settings modal shell', () => {
     await expect(dialog).toHaveCSS('border-top-left-radius', '26px')
 
     const tablist = dialog.getByRole('tablist', { name: 'Settings sections' })
-    for (const name of ['Appearance', 'Scenarios', 'Basemap', 'Assistant', 'Documentation']) {
+    for (const name of ['Appearance', 'Scenarios', 'Basemap', 'Assistant', 'About']) {
       const tab = tablist.getByRole('tab', { name })
       await expect(tab).toBeVisible()
       expect(Math.round((await tab.boundingBox())!.height)).toBe(40)
@@ -65,7 +65,7 @@ test.describe('Settings modal shell', () => {
     await page.keyboard.press('ArrowDown')
     await expect(page.getByRole('tab', { name: 'Scenarios' })).toHaveAttribute('aria-selected', 'true')
     await page.keyboard.press('End')
-    await expect(page.getByRole('tab', { name: 'Documentation' })).toHaveAttribute('aria-selected', 'true')
+    await expect(page.getByRole('tab', { name: 'About' })).toHaveAttribute('aria-selected', 'true')
 
     await page.keyboard.press('Escape')
     await expect(dialog).toHaveCount(0)
@@ -295,12 +295,12 @@ test.describe('Basemap tab', () => {
   })
 })
 
-test.describe('Documentation tab', () => {
+test.describe('About tab', () => {
   test.use({ viewport: { width: 1500, height: 900 } })
 
   test('explains focus and compare, the compare table, years, rounds, observed data and shortcuts', async ({ page }) => {
     await boot(page)
-    await openSettings(page, 'Documentation')
+    await openSettings(page, 'About')
     const dialog = page.getByRole('dialog', { name: 'Settings' })
     await expect(dialog.getByRole('heading', { name: 'How each chart compares' })).toBeVisible()
     await expect(dialog.getByRole('table')).toBeVisible()

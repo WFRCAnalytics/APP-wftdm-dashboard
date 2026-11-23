@@ -12,6 +12,10 @@ const docsLink = (page: Page, name = 'Documentation') => page.getByRole('link', 
 
 test.describe('documentation link', () => {
   test('there is no link without a documentation address', async ({ page }) => {
+    // the demo sets one (the WF TDM model docs): take it out
+    await patchDemoConfig(page, (c) => {
+      delete c.docs
+    })
     await open(page)
     await expect(page.locator('nav[data-sidebar=sidebar] a[target=_blank]')).toHaveCount(0)
   })
@@ -57,6 +61,9 @@ test.describe('documentation link', () => {
   })
 
   test('a page path without a site address is reported and ignored', async ({ page }) => {
+    await patchDemoConfig(page, (c) => {
+      delete c.docs
+    })
     await page.route('**/dashboard-1-*.yaml', async (route) => {
       const res = await route.fetch()
       await route.fulfill({ response: res, body: (await res.text()).replace(/^header:/m, `header:\n  docs: modes/`) })
@@ -77,7 +84,7 @@ test.describe('Settings tabs', () => {
   test('with no list the five tabs of today show, in order', async ({ page }) => {
     await open(page)
     await openSettings(page)
-    await expect(settingsTabs(page)).toHaveText(['Appearance', 'Scenarios', 'Basemap', 'Assistant', 'Documentation'])
+    await expect(settingsTabs(page)).toHaveText(['Appearance', 'Scenarios', 'Basemap', 'Assistant', 'About'])
   })
 
   test('a list shows exactly those tabs in that order and opens the first', async ({ page }) => {

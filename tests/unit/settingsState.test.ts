@@ -2,11 +2,11 @@ import { afterEach, describe, expect, it } from 'vitest'
 
 import { configureSettingsTabs, getSettingsUi, getShownSettingsTabs, openSettings, setSettingsTab } from '../../src/state/settingsState'
 
-afterEach(() => configureSettingsTabs(['appearance', 'scenarios', 'basemap', 'ai', 'documentation']))
+afterEach(() => configureSettingsTabs(['appearance', 'scenarios', 'basemap', 'ai', 'about']))
 
 describe('settings tab list', () => {
   it('starts with today\'s five tabs, in order', () => {
-    expect(getShownSettingsTabs()).toEqual(['appearance', 'scenarios', 'basemap', 'ai', 'documentation'])
+    expect(getShownSettingsTabs()).toEqual(['appearance', 'scenarios', 'basemap', 'ai', 'about'])
   })
 
   it('opens on the first listed tab when the open one is not listed', () => {
@@ -18,7 +18,7 @@ describe('settings tab list', () => {
     configureSettingsTabs(['scenarios', 'appearance'])
     openSettings('ai')
     expect(getSettingsUi().tab).toBe('scenarios')
-    setSettingsTab('documentation')
+    setSettingsTab('about')
     expect(getSettingsUi().tab).toBe('scenarios')
     setSettingsTab('appearance')
     expect(getSettingsUi().tab).toBe('appearance')

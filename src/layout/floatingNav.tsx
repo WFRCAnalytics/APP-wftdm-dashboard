@@ -51,12 +51,15 @@ const THEME_GLYPH: Record<ThemeMode, ReactNode> = {
   light: <Sun className="h-4 w-4" aria-hidden="true" />,
   dark: <Moon className="h-4 w-4" aria-hidden="true" />,
 }
-// Collapsed, the set mode is drawn exactly as the pill draws its selected part (.pill-on: brand fill, icon knocked out),
-// so the two states read as one control. The 30px bubble overflows the 20px icon slot evenly to stay centred on the rail.
+// Collapsed, the set mode is drawn exactly as the expanded pill draws its selected part: a 30px .pill-on fill (brand,
+// icon knocked out) inside a 36px .pill-track, i.e. one slice of the pill, so the two states read as one control. The
+// circle overflows the 20px icon slot evenly (-8px) to stay centred on the rail.
 const THEME_ICON: Record<ThemeMode, ReactNode> = Object.fromEntries(
   (Object.keys(THEME_GLYPH) as ThemeMode[]).map((m) => [
     m,
-    <span key={m} className="pill-on -m-[5px] grid h-[30px] w-[30px] shrink-0 place-items-center rounded-full">{THEME_GLYPH[m]}</span>,
+    <span key={m} className="pill-track -m-[8px] grid h-[36px] w-[36px] shrink-0 place-items-center rounded-full">
+      <span className="pill-on grid h-[30px] w-[30px] place-items-center rounded-full">{THEME_GLYPH[m]}</span>
+    </span>,
   ]),
 ) as Record<ThemeMode, ReactNode>
 const THEME_PILL_OPTIONS: SegmentedOption[] = (['system', 'light', 'dark'] as ThemeMode[]).map((m) => ({

@@ -57,6 +57,9 @@ describe('cleanSettingsTabs', () => {
   it('keeps the known names in the order written', () => {
     expect(cleanSettingsTabs(['scenarios', 'appearance'])).toEqual({ value: ['scenarios', 'appearance'], messages: [] })
   })
+  it('reads the old name "documentation" as "about", with a note', () => {
+    expect(cleanSettingsTabs(['documentation', 'appearance'])).toEqual({ value: ['about', 'appearance'], messages: ['tab "documentation" is now called "about"'] })
+  })
   it('reports each unknown or repeated name and keeps the rest', () => {
     const r = cleanSettingsTabs(['basemap', 'bogus', 'basemap', 'appearance'])
     expect(r.value).toEqual(['basemap', 'appearance'])
@@ -82,11 +85,11 @@ describe('resolveSettingsTabs', () => {
     expect(resolveSettingsTabs(['scenarios', 'appearance'], on)).toEqual(['scenarios', 'appearance'])
   })
   it('lets the assistant switch win', () => {
-    expect(resolveSettingsTabs(undefined, off)).toEqual(['appearance', 'scenarios', 'basemap', 'documentation'])
+    expect(resolveSettingsTabs(undefined, off)).toEqual(['appearance', 'scenarios', 'basemap', 'about'])
     expect(resolveSettingsTabs(['assistant', 'basemap'], off)).toEqual(['basemap'])
   })
   it('never returns an empty list', () => {
-    expect(resolveSettingsTabs(['assistant'], off)).toEqual(['appearance', 'scenarios', 'basemap', 'documentation'])
+    expect(resolveSettingsTabs(['assistant'], off)).toEqual(['appearance', 'scenarios', 'basemap', 'about'])
     expect(resolveSettingsTabs(['bogus'], on)).toEqual([...SETTINGS_TAB_NAMES])
   })
 })

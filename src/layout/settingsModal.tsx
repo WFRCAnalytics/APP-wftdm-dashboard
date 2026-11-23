@@ -1,6 +1,6 @@
 import { useRef, useSyncExternalStore, type KeyboardEvent, type ReactNode } from 'react'
 import * as DialogPrimitive from '@radix-ui/react-dialog'
-import { BookOpen, Layers, Map as MapIcon, Palette, Settings, Sparkles, X } from 'lucide-react'
+import { Info, Layers, Map as MapIcon, Palette, Settings, Sparkles, X } from 'lucide-react'
 
 import { DialogDescription, DialogOverlay, DialogPortal, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
@@ -11,7 +11,7 @@ import { AppearanceTab } from '@/layout/settings/appearanceTab'
 import { ScenariosTab } from '@/layout/settings/scenariosTab'
 import { BasemapTab } from '@/layout/settings/basemapTab'
 import { AiTab } from '@/layout/settings/aiTab'
-import { DocumentationTab } from '@/layout/settings/documentationTab'
+import { AboutTab } from '@/layout/settings/aboutTab'
 import {
   getSettingsOpener,
   getSettingsUi,
@@ -33,7 +33,7 @@ const ALL_TABS: { id: SettingsTab; label: string; icon: typeof Palette }[] = [
   { id: 'scenarios', label: 'Scenarios', icon: Layers },
   { id: 'basemap', label: 'Basemap', icon: MapIcon },
   { id: 'ai', label: 'Assistant', icon: Sparkles },
-  { id: 'documentation', label: 'Documentation', icon: BookOpen },
+  { id: 'about', label: 'About', icon: Info },
 ]
 
 const PANEL: Record<SettingsTab, () => ReactNode> = {
@@ -41,7 +41,7 @@ const PANEL: Record<SettingsTab, () => ReactNode> = {
   scenarios: () => <ScenariosTab />,
   basemap: () => <BasemapTab />,
   ai: () => <AiTab />,
-  documentation: () => <DocumentationTab />,
+  about: () => <AboutTab />,
 }
 
 export function SettingsModal() {

@@ -14,6 +14,9 @@ logo:
 mark:
   light: https://raw.githubusercontent.com/WFRCAnalytics/wfrc-brand/main/_extensions/WFRCAnalytics/wfrc-brand/assets/logo/abbreviated/WFRC_logo_abbreviated_color_transparent.png
   dark: https://raw.githubusercontent.com/WFRCAnalytics/wfrc-brand/main/_extensions/WFRCAnalytics/wfrc-brand/assets/logo/abbreviated/WFRC_logo_abbreviated_white_transparent.png
+docs:
+  url: https://wfrc.utah.gov/wftdm-docs/
+  label: Model documentation
 vocab:
   modes:
     - {label: Drive alone, ids: [SOV], color: car-1}

@@ -1,13 +1,13 @@
 // Whether the Settings modal is open, and on which tab, so something other than its nav button (the scenario picker's
 // "Edit colours, names and order" link) can open it. Session-only module state, like every other store here.
-export type SettingsTab = 'appearance' | 'scenarios' | 'basemap' | 'ai' | 'documentation'
+export type SettingsTab = 'appearance' | 'scenarios' | 'basemap' | 'ai' | 'about'
 
 interface SettingsUi {
   open: boolean
   tab: SettingsTab
 }
 
-const DEFAULT_TABS: readonly SettingsTab[] = ['appearance', 'scenarios', 'basemap', 'ai', 'documentation']
+const DEFAULT_TABS: readonly SettingsTab[] = ['appearance', 'scenarios', 'basemap', 'ai', 'about']
 // The tabs the deployment shows, in order (`settings.tabs`), set once at boot. Until then, today's five.
 let shown: readonly SettingsTab[] = DEFAULT_TABS
 

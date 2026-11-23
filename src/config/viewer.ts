@@ -38,7 +38,7 @@ export function docsHref(url: string | undefined, path?: string): string | undef
 }
 
 /** The Settings window's tabs, by the names a deployer writes, in today's order. (`assistant` is the tab the app calls `ai` inside.) */
-export const SETTINGS_TAB_NAMES = ['appearance', 'scenarios', 'basemap', 'assistant', 'documentation'] as const
+export const SETTINGS_TAB_NAMES = ['appearance', 'scenarios', 'basemap', 'assistant', 'about'] as const
 export type SettingsTabName = (typeof SETTINGS_TAB_NAMES)[number]
 
 const isTabName = (v: unknown): v is SettingsTabName => (SETTINGS_TAB_NAMES as readonly unknown[]).includes(v)
@@ -51,7 +51,10 @@ export function cleanSettingsTabs(value: unknown): { value: unknown; messages: s
   const list = Array.isArray(value) ? value : []
   const messages: string[] = []
   const kept: SettingsTabName[] = []
-  for (const entry of list) {
+  for (const raw of list) {
+    // The About tab was called Documentation until 2026-11-23; the old name still works, with a note.
+    const entry = raw === 'documentation' ? 'about' : raw
+    if (raw === 'documentation') messages.push('tab "documentation" is now called "about"')
     if (!isTabName(entry)) messages.push(`unknown tab "${String(entry)}" (known: ${SETTINGS_TAB_NAMES.join(', ')})`)
     else if (kept.includes(entry)) messages.push(`tab "${entry}" is listed twice`)
     else kept.push(entry)

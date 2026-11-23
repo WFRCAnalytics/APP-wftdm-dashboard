@@ -47,11 +47,11 @@ A wrong value is reported (in a note on the page and in the browser console) and
 | `assistant.limits.round_trips` | integer | — | site only | Steps the assistant may take to answer one question: 1 to 12 (default 6). |
 | `assistant.limits.preview_rows` | integer | — | site only | Rows of a query result shown to the viewer: 100 to 5000 (default 1000). |
 | `assistant.limits.model_rows` | integer | — | site only | Rows of a result shared with the model when the viewer shares results: 1 to 200 (default 50). |
-| `docs.url` | url | — | site only | Address of the documentation site; sets a link at the foot of the left sidebar (none when unset). |
+| `docs.url` | url | — | site only | Address of the model documentation site (for the people reading the results); sets a link at the foot of the left sidebar (none when unset). Docs for the dashboard package itself are linked from Settings > About. |
 | `docs.label` | string | — | site only | Text of the documentation link (default: Documentation). |
 | `header.docs` | string | — | page `header:` only | A page header key: a path appended to docs.url, so the sidebar link opens the section for that page. |
 | `header.hidden` | boolean | — | page `header:` only | A page header key: true keeps the page out of the sidebar; it still opens at its address. The first page that is not hidden is the landing page. |
-| `settings.tabs` | list of string | — | site only | Settings window tabs, in order: appearance, scenarios, basemap, assistant, documentation (default: all five). |
+| `settings.tabs` | list of string | — | site only | Settings window tabs, in order: appearance, scenarios, basemap, assistant, about (default: all five). |
 | `network.fonts` | `bundled` | `any` | — | site only | bundled: the Appearance tab offers only the fonts that ship with the app (the default and System UI) and no font is loaded from an outside host. any: today’s behaviour (default). |
 | `network.basemaps.allow` | list of string | — | site only | Patterns (* is the only wildcard, letter case ignored) on basemap ids such as carto-positron, openfreemap-*, ugrc-vector-lite, protomaps-light or OpenStreetMap.Mapnik. The Basemap tab offers only matching entries and a default that does not match is replaced by the first allowed one. Empty or absent: every basemap is allowed. |
 | `network.duckdb_extensions` | url | — | site only | One http or https address the database downloads its extensions (spatial, parquet) from, instead of DuckDB’s own host. The deployer hosts the files. |

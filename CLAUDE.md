@@ -248,7 +248,7 @@ APP-wftdm-dashboard/
     │   ├── panelExpandHost.tsx    # generic expand-to-dialog mechanism
     │   ├── types.ts               # DashboardTabConfig/PanelConfig types
     │   └── settings/              # settingsModal.tsx tabs: appearanceTab, scenariosTab,
-    │                              # basemapTab, documentationTab
+    │                              # basemapTab, aboutTab (was Documentation)
     ├── panels/
     │   ├── registry.tsx           # type → lazy-loaded component map (14 registry keys, see below)
     │   ├── expandablePanelTypes.ts # EXPANDABLE_PANEL_TYPES — default expand-scope per panel type

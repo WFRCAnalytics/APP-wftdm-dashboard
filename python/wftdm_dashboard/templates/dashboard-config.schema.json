@@ -286,7 +286,7 @@
         "url": {
           "type": "string",
           "pattern": "^\\S*$",
-          "description": "Address of the documentation site; sets a link at the foot of the left sidebar (none when unset)."
+          "description": "Address of the model documentation site (for the people reading the results); sets a link at the foot of the left sidebar (none when unset). Docs for the dashboard package itself are linked from Settings > About."
         },
         "label": {
           "type": "string",
@@ -303,7 +303,7 @@
           "items": {
             "type": "string"
           },
-          "description": "Settings window tabs, in order: appearance, scenarios, basemap, assistant, documentation (default: all five)."
+          "description": "Settings window tabs, in order: appearance, scenarios, basemap, assistant, about (default: all five)."
         }
       }
     },

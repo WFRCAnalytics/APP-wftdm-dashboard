@@ -80,7 +80,7 @@ test.describe('User Story 1 - One place to manage dashboard-wide settings', () =
     await expect(page.getByRole('dialog')).toBeVisible()
     // 063 redesign (P10): Documentation is the fourth tab of this modal again, and the nav no longer has a separate
     // Documentation button.
-    for (const name of ['Appearance', 'Scenarios', 'Basemap', 'Documentation']) {
+    for (const name of ['Appearance', 'Scenarios', 'Basemap', 'About']) {
       await expect(page.getByRole('tab', { name })).toBeVisible()
     }
   })
@@ -167,7 +167,7 @@ test.describe('User Story 1 - One place to manage dashboard-wide settings', () =
 
     // The outer tablist's own tabs are still reachable by name with no
     // collision against the inner "System"/"Light"/"Dark" names.
-    for (const name of ['Appearance', 'Scenarios', 'Basemap', 'Documentation']) {
+    for (const name of ['Appearance', 'Scenarios', 'Basemap', 'About']) {
       await expect(dialog.getByRole('tablist', { name: 'Settings sections' }).getByRole('tab', { name })).toHaveCount(
         1,
       )
@@ -288,7 +288,7 @@ test.describe('User Story 3 - A settings modal that does not resize or rearrange
     const dialog = page.getByRole('dialog')
 
     const sizes: string[] = []
-    for (const name of ['Appearance', 'Scenarios', 'Basemap', 'Documentation']) {
+    for (const name of ['Appearance', 'Scenarios', 'Basemap', 'About']) {
       await page.getByRole('tab', { name }).click()
       const box = await dialog.boundingBox()
       sizes.push(`${box!.width}x${box!.height}`)
@@ -323,7 +323,7 @@ test.describe('User Story 3 - A settings modal that does not resize or rearrange
     const dialog = page.getByRole('dialog')
 
     const widths: number[] = []
-    for (const name of ['Appearance', 'Scenarios', 'Basemap', 'Documentation']) {
+    for (const name of ['Appearance', 'Scenarios', 'Basemap', 'About']) {
       await page.getByRole('tab', { name }).click()
       const panel = dialog.locator('[role="tabpanel"]:not([hidden])')
       const box = await panel.boundingBox()
@@ -1624,8 +1624,8 @@ test.describe('User Story (037-scenarios-tab-redesign)', () => {
 // Settings, opening its own small Dialog. FR-014's own "clearly labeled
 // placeholder, no broken link" requirement is unchanged; only its
 // container/entry-point moved.
-test.describe('User Story 5 - Documentation tab', () => {
-  test('Documentation is the fourth Settings tab (no separate nav button) and shows the written guide with the compare table', async ({
+test.describe('User Story 5 - About tab', () => {
+  test('About (was Documentation) is the fifth Settings tab (no separate nav button) and shows the written guide with the compare table', async ({
     page,
   }) => {
     await boot(page, THREE_WORLD)
@@ -1634,9 +1634,9 @@ test.describe('User Story 5 - Documentation tab', () => {
     await expect(page.getByRole('button', { name: 'Documentation' })).toHaveCount(0)
 
     await page.getByRole('button', { name: 'Settings' }).click()
-    await page.getByRole('tab', { name: 'Documentation' }).click()
+    await page.getByRole('tab', { name: 'About' }).click()
     const dialog = page.getByRole('dialog')
-    await expect(dialog.getByRole('heading', { name: 'Documentation', level: 3 })).toBeVisible()
+    await expect(dialog.getByRole('heading', { name: 'About', level: 3 })).toBeVisible()
     await expect(dialog.getByRole('heading', { name: 'How each chart compares' })).toBeVisible()
     await expect(dialog.getByRole('table')).toBeVisible()
     await expect(dialog.getByRole('columnheader', { name: 'In compare mode' })).toBeVisible()

@@ -5,8 +5,10 @@ import wfrcWhite from '@/assets/logo/horizontal/WFRC_logo_horizontal_white_trans
 import { useColorScheme } from '@/hooks/useColorScheme'
 import { GroupHeading, TabHeader } from '@/layout/settings/settingsParts'
 
-// The Documentation content (project-docs/redesign/02-layout-and-components.md section 4.4). Documentation is the fourth tab
-// of the Settings modal (layout/settingsModal.tsx), not a modal of its own; this file is the content source it renders.
+// The Settings modal's About tab (project-docs/redesign/02-layout-and-components.md section 4.4, where it was called
+// Documentation). It is about this dashboard, the package: who made it, how to read it, and, last, where deployers and
+// developers find the package's own docs. The model's documentation is a different thing, deployer-owned (`docs.url`), and
+// is the link at the foot of the left rail; "documentation" names only that one, so the two are never confused.
 // Static text: how Focus / Compare / Reference work, how each chart compares (the strategy matrix of
 // project-docs/redesign/03-state-and-compare.md section 4), model years, calibration rounds, observed data, reading many
 // scenarios, shortcuts and the data itself.
@@ -76,11 +78,36 @@ const CREDITS: { name: string; href: string; role: string }[] = [
   { name: 'DuckDB', href: 'https://duckdb.org', role: 'Every query, running in your browser through WebAssembly' },
 ]
 
+const REPO = 'https://github.com/WFRCAnalytics/APP-wftdm-dashboard'
+
+// The package's own docs, for whoever deploys or develops the dashboard (no docs site yet: the repository's pages).
+const PACKAGE_DOCS: { name: string; href: string; role: string }[] = [
+  { name: 'Getting started', href: `${REPO}#readme`, role: 'Install the package, summarize model output and serve a dashboard' },
+  { name: 'Configuration reference', href: `${REPO}/blob/main/project-docs/CONFIG-REFERENCE.md`, role: 'Every dashboard-config.yaml setting' },
+]
+
+/** A card that links out: a name with an arrow and one line under it (credits, package docs). */
+const LINK_CARD = 'flex h-full w-full flex-col gap-1 rounded-[14px] border border-[var(--line)] bg-[var(--tile-hi)] p-3.5 no-underline transition-colors hover:border-[var(--brand-text)] focus-visible:outline-2 focus-visible:outline-[var(--brand-text)]'
+
+function LinkCards({ items }: { items: { name: string; href: string; role: string }[] }) {
+  return (
+    <ul className="m-0 grid list-none grid-cols-[repeat(auto-fill,minmax(210px,1fr))] gap-2.5 p-0">
+      {items.map((c) => (
+        <li key={c.name} className="flex">
+          <a href={c.href} target="_blank" rel="noopener noreferrer" className={LINK_CARD}>
+            <span className="text-[15px] font-semibold text-[var(--ink)]">{c.name} <span aria-hidden="true">↗</span></span>
+            <span className="text-[12.5px] text-[var(--mute)]">{c.role}</span>
+          </a>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
 // Credits sit first on the page. Outside logos are not loaded (no outside requests, works offline, no trademark use):
 // each credit is a wordmark card that links out. WFRC's own logo ships with the app.
 function AboutPanel() {
   const logo = useColorScheme() === 'dark' ? wfrcWhite : wfrcColor
-  const card = 'flex h-full w-full flex-col gap-1 rounded-[14px] border border-[var(--line)] bg-[var(--tile-hi)] p-3.5 no-underline transition-colors hover:border-[var(--brand-text)] focus-visible:outline-2 focus-visible:outline-[var(--brand-text)]'
   return (
     <section aria-label="About" className="mb-6" data-testid="docs-about">
       <div className="mb-3 flex flex-wrap items-center gap-x-6 gap-y-3 rounded-[18px] border border-[var(--line)] bg-[var(--tile-hi)] p-4">
@@ -88,7 +115,7 @@ function AboutPanel() {
           <a href="https://wfrc.utah.gov" target="_blank" rel="noopener noreferrer" aria-label="Wasatch Front Regional Council">
             <img src={logo} alt="Wasatch Front Regional Council" className="h-9 w-auto" />
           </a>
-          <a href="https://github.com/WFRCAnalytics/APP-wftdm-dashboard" target="_blank" rel="noopener noreferrer" className="inline-flex h-8 items-center gap-2 rounded-full border border-[var(--line)] px-3.5 text-[13px] font-medium text-[var(--ink)] hover:border-[var(--brand-text)]">
+          <a href={REPO} target="_blank" rel="noopener noreferrer" className="inline-flex h-8 items-center gap-2 rounded-full border border-[var(--line)] px-3.5 text-[13px] font-medium text-[var(--ink)] hover:border-[var(--brand-text)]">
             <GitHub /> Source on GitHub
           </a>
         </div>
@@ -101,16 +128,7 @@ function AboutPanel() {
         </p>
       </div>
       <h3 className="mb-2 text-[12.5px] font-medium text-[var(--mute)]">Inspiration and credits</h3>
-      <ul className="m-0 grid list-none grid-cols-[repeat(auto-fill,minmax(210px,1fr))] gap-2.5 p-0">
-        {CREDITS.map((c) => (
-          <li key={c.name} className="flex">
-            <a href={c.href} target="_blank" rel="noopener noreferrer" className={card}>
-              <span className="text-[15px] font-semibold text-[var(--ink)]">{c.name} <span aria-hidden="true">↗</span></span>
-              <span className="text-[12.5px] text-[var(--mute)]">{c.role}</span>
-            </a>
-          </li>
-        ))}
-      </ul>
+      <LinkCards items={CREDITS} />
     </section>
   )
 }
@@ -123,10 +141,10 @@ function GitHub() {
   )
 }
 
-export function DocumentationContent() {
+export function AboutTab() {
   return (
     <div>
-      <TabHeader title="Documentation">About this dashboard, and how to read it.</TabHeader>
+      <TabHeader title="About">Who made this dashboard, and how to read it.</TabHeader>
 
       <AboutPanel />
 
@@ -195,6 +213,15 @@ export function DocumentationContent() {
         The charts read post-processed Parquet summaries published with each scenario. Observed values come from the survey
         data the deployment publishes alongside them.
       </P>
+
+      <section aria-label="For deployers and developers" data-testid="about-package-docs">
+        <GroupHeading>For deployers and developers</GroupHeading>
+        <P>
+          How to set up, configure and extend the dashboard software. Documentation of the travel model itself, where the
+          deployment provides it, is linked at the foot of the menu.
+        </P>
+        <LinkCards items={PACKAGE_DOCS} />
+      </section>
     </div>
   )
 }
