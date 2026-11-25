@@ -1,8 +1,8 @@
 import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
+import { TILE_ICON_BUTTON } from '@/components/ui/tile-icon-button'
 import { createPortal } from 'react-dom'
 import { Minimize2, Maximize2 } from 'lucide-react'
 
-import { Button } from '@/components/ui/button'
 import { Dialog, DialogClose, DialogContent, DialogTitle } from '@/components/ui/dialog'
 
 // The generic expand-to-dialog mechanism (004-panel-expand-dialog),
@@ -108,16 +108,11 @@ export function usePanelExpandHost(
     }
   }, [expanded, inlineAnchor, dialogAnchor])
 
+  // the same round 30px button as Export beside it (TILE_ICON_BUTTON), so the header's tools match
   const trigger = (
-    <Button
-      ref={triggerRef}
-      variant="ghost"
-      size="icon"
-      aria-label={`Expand ${title}`}
-      onClick={() => setExpanded(true)}
-    >
-      <Maximize2 className="h-4 w-4" />
-    </Button>
+    <button ref={triggerRef} type="button" className={TILE_ICON_BUTTON} aria-label={`Expand ${title}`} onClick={() => setExpanded(true)}>
+      <Maximize2 className="size-4" aria-hidden="true" />
+    </button>
   )
 
   const body = (
@@ -184,7 +179,7 @@ export function usePanelExpandHost(
             <DialogClose
               aria-label="Close"
               data-export-skip=""
-              className="grid size-[30px] place-items-center rounded-full text-[var(--mute)] hover:bg-[color-mix(in_srgb,var(--ink)_8%,transparent)] hover:text-[var(--ink)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-text)]"
+              className={TILE_ICON_BUTTON}
             >
               <Minimize2 className="size-4" aria-hidden="true" />
             </DialogClose>
