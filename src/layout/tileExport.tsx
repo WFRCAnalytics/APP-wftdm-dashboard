@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useRef, useState, type RefObject } from 'react'
+import { TILE_ICON_BUTTON } from '@/components/ui/tile-icon-button'
 import { Download } from 'lucide-react'
 
 import { useScenarioDisplay } from '@/hooks/useScenarioDisplay'
@@ -177,7 +178,7 @@ export function ExportMenu({ title, cardRef, tables }: ExportMenuProps) {
         aria-expanded={open}
         disabled={busy}
         onClick={() => setOpen((o) => !o)}
-        className="grid size-[30px] place-items-center rounded-full text-[var(--mute)] hover:bg-[color-mix(in_srgb,var(--ink)_8%,transparent)] hover:text-[var(--ink)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-text)] disabled:opacity-50"
+        className={TILE_ICON_BUTTON}
       >
         <Download className={cn('size-4', busy && 'animate-pulse')} aria-hidden="true" />
       </button>
