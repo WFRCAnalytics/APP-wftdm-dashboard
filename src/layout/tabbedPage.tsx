@@ -2,7 +2,7 @@ import { useEffect, useMemo, type KeyboardEvent } from 'react'
 
 import { PillSelect } from '@/components/ui/pill-select'
 import { FillProvider } from '@/layout/fill'
-import { HeroBand } from '@/layout/heroBand'
+import { HeroBand, heroHasDeltas } from '@/layout/heroBand'
 import { IdenticalNote } from '@/layout/identicalNote'
 import { PanelCard } from '@/layout/panelCard'
 import { PageExportButton } from '@/layout/pageExport'
@@ -49,7 +49,7 @@ export function TabbedPage({ page, plan, rows }: { page: string; plan: TabsPlan;
     <div className="flex min-h-0 flex-1 flex-col gap-[14px] overflow-y-auto pb-[14px] pl-[14px] pr-7 pt-1" data-testid="tabbed-page" data-section={section.id}>
       {plan.pinned.length > 0 && <IdenticalNote />}
       {plan.pinned.map((name) => (
-        <HeroBand key={name} rowName={name} panels={rows.get(name) ?? []} />
+        <HeroBand key={name} rowName={name} panels={rows.get(name) ?? []} nameReference={name === plan.pinned.find((n) => heroHasDeltas(rows.get(n) ?? []))} />
       ))}
       <TabStrip page={page} plan={plan} section={section} rows={rows} kinds={kinds} />
       <SharedKindsContext.Provider value={kinds}>

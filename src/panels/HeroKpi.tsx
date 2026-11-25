@@ -12,6 +12,7 @@ import { getDeployment } from '@/state/compareState'
 import { cn } from '@/lib/utils'
 import { tagTintStyle } from '@/lib/tagTint'
 import { niceRingMax } from '@/panels/ringMax'
+import { useHeroReferenceNamed } from '@/panels/heroReference'
 
 // One KPI of the hero band (project-docs/redesign/02-layout-and-components.md section 1.4): the focus scenario's value in
 // the selected year, a delta pill against the active reference with its caption, and a sparkline of the metric at each
@@ -76,6 +77,8 @@ function Ring({ value, reference, max, unit }: { value: number; reference: numbe
 export function HeroKpi({ config }: { config: ValueBoxPanelConfig }) {
   const view = useResolvedView()
   const { referenceLabel, referenceColor } = useCompareInputs()
+  // the band above names the reference once (hero.reference: band), so the caption under the delta is left out
+  const referenceNamed = useHeroReferenceNamed()
   const [state, setState] = useState<{
     value: number | null
     reference: number | null
@@ -158,7 +161,7 @@ export function HeroKpi({ config }: { config: ValueBoxPanelConfig }) {
             >
               {formatDelta(delta, 'pct')}
             </span>
-            <span
+            {!referenceNamed && <span
               className="min-w-0 truncate rounded-full bg-[var(--tag-neutral-bg)] px-2 py-[2px] text-[var(--tag-neutral-fg)]"
               style={referenceColor ? tagTintStyle(referenceColor, 18) : undefined}
               title={`vs ${referenceLabel}`}
@@ -166,7 +169,7 @@ export function HeroKpi({ config }: { config: ValueBoxPanelConfig }) {
               {/* a narrow cell says "vs reference" instead of cutting the scenario's name short */}
               <span className="@max-[212px]:hidden">vs {referenceLabel}</span>
               <span className="hidden @max-[212px]:inline">vs reference</span>
-            </span>
+            </span>}
           </>
         )}
         {state.status === 'ready' && <Sparkline points={state.series} current={year} />}
