@@ -3,7 +3,7 @@
 // camera. Each map is clipped with `clip-path`; the divider is a 3px ink line with a 30px round grip, a
 // `role="slider"`, arrow keys moving it 24px (clamped 24px from each edge). Wheel zooms both; dragging the divider does
 // not pan the map. Compare-only. Observed has no zone table: the baseline stands in and the chip says so.
-import { chip, controlGroup, legend, swipeHandle } from '@/charts/lib/mapChrome'
+import { chip, controlGroup, gradient, legend, swipeHandle } from '@/charts/lib/mapChrome'
 import { CameraGroup, SHARE_DOMAIN, clampSwipe, sequentialT, swipeKey } from '@/charts/lib/mapMath'
 import {
   ZONE_TABLE,
@@ -11,7 +11,6 @@ import {
   attach,
   destroyHost,
   focusRunOf,
-  gradient,
   hostOf,
   needGeometry,
   showNote,

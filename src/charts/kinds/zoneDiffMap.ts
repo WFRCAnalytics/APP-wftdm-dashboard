@@ -3,7 +3,7 @@
 // percentile of the absolute differences. Compare-only. Observed has no zone table, so with Observed as the reference
 // the baseline stands in and the caption chip says so.
 import { sharedExtent } from '@/charts/lib/facetSync'
-import { chip, controlGroup, legend } from '@/charts/lib/mapChrome'
+import { chip, controlGroup, gradient, legend } from '@/charts/lib/mapChrome'
 import { diffDomain, divergeT, f1 } from '@/charts/lib/mapMath'
 import {
   ZONE_TABLE,
@@ -11,7 +11,6 @@ import {
   attach,
   destroyHost,
   focusRunOf,
-  gradient,
   hostOf,
   needGeometry,
   showNote,
