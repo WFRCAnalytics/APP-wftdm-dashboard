@@ -11,6 +11,8 @@ export interface TileState {
   strategy?: CompareStrategy
   /** The local scenario for the `switch` strategy. */
   scenario?: string
+  /** Faceted charts: each panel on its own axis or all on one (default: the `charts.scale` setting). */
+  scale?: 'own' | 'shared'
   /** Side-by-side arrangement: `auto` (default) picks columns from the width, `row` puts every cell in one row, `grid` uses two columns. */
   layout?: 'auto' | 'row' | 'grid'
   /** Pager index for `multi` / `grid`. */

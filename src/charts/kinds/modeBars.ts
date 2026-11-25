@@ -1,5 +1,7 @@
 // Mode share, Bars (project-docs/redesign/04-chart-catalogue.md section 1). Observable Plot, one facet per mode and one
 // bar per series; the dashed line is the reference, with a margin-of-error band when the reference is Observed.
+// `facet_scale: own` (the `charts.scale` setting and the tile's switch) draws each mode as its own plot with its own axis, so a
+// 1% mode reads as well as a 70% one; `shared` keeps one axis for all, so heights compare across modes.
 import * as Plot from '@observablehq/plot'
 
 import { MODES } from '@/charts/vocab'
@@ -40,33 +42,7 @@ export function drawModeBars(el: HTMLElement, env: ChartEnv) {
   // facets of a per-scenario difference share one axis so the bars can be compared across them
   const shared = m !== 'val' && env.facetDiff ? sharedExtent(env, Math.max(1, ...rows.map((d) => Math.abs(d.v)))) : null
 
-  const plot = Plot.plot({
-    width: env.width,
-    height: env.height,
-    style: { background: 'transparent', color: t.mute, fontFamily: t.font, fontSize: `${t.fs}px`, overflow: 'visible' },
-    marginLeft: 40,
-    marginBottom: 30,
-    marginTop: 14,
-    marginRight: 4,
-    fx: { label: null, padding: 0.14, domain: [...MODES] },
-    x: { axis: null, domain: names, paddingInner: 0.1, paddingOuter: 0.08 },
-    y: { label: null, grid: true, tickFormat: yFormat, ticks: 5, ...(shared ? { domain: [-shared.extent, shared.extent] } : {}) },
-    color: { domain: names, range: names.map(s.color) },
-    marks: [
-      Plot.gridY({ stroke: t.grid, strokeOpacity: 1 }),
-      Plot.barY(rows, { fx: 'mode', x: 's', y: 'v', fill: 's', rx: t.r, title: (_d: unknown, i: number) => `wfa:${i}` }),
-      m === 'val' && moe
-        ? Plot.rect(
-            MODES.map((mode, j) => ({ mode, lo: s.ref(names[0], j) - (moe.get(mode) ?? 0), hi: s.ref(names[0], j) + (moe.get(mode) ?? 0) })),
-            { fx: 'mode', y1: 'lo', y2: 'hi', fill: t.ink, fillOpacity: 0.12 },
-          )
-        : null,
-      m === 'val' ? Plot.ruleY(refLine, { fx: 'mode', y: 'v', stroke: t.ink, strokeWidth: 1.6, strokeDasharray: '4 3' }) : null,
-      Plot.ruleY([0], { stroke: m === 'val' ? t.line : t.mute }),
-    ].filter(Boolean) as Plot.Markish[],
-  }) as unknown as SVGSVGElement
-
-  armPlot(plot, { a: rows }, (d: { mode: string; s: string }) => {
+  const tip = (d: { mode: string; s: string }) => {
     const j = MODES.indexOf(d.mode as (typeof MODES)[number])
     const rv = s.ref(names[0], j)
     const list = names
@@ -90,9 +66,8 @@ export function drawModeBars(el: HTMLElement, env: ChartEnv) {
       ],
       foot: [observedRef ? foot : '', more ? `${more} more not shown` : ''].filter(Boolean).join('. ') || undefined,
     }
-  })
-  el.replaceChildren(plot)
-
+  }
+  const style = { background: 'transparent', color: t.mute, fontFamily: t.font, fontSize: `${t.fs}px`, overflow: 'visible' }
   const g = groupOf(env)
   const legend: LegendSpec = {
     items: [
@@ -100,7 +75,78 @@ export function drawModeBars(el: HTMLElement, env: ChartEnv) {
       ...(m === 'val' ? [{ label: env.reference.isObserved ? 'Observed' : `Reference: ${env.reference.label}`, dash: true }] : []),
     ],
   }
-  return { legend, dispose: shared?.dispose, label: `Mode share by ${g === 'scn' ? 'scenario' : g}, ${env.year}` }
+  const label = `Mode share by ${g === 'scn' ? 'scenario' : g}, ${env.year}`
+
+  // Own scale: one plot per mode, each with its own y axis (a per-scenario difference keeps its shared extent instead)
+  if (env.config.facet_scale === 'own' && !shared) {
+    const gap = 14
+    const w = Math.max(80, Math.floor((env.width - gap * (MODES.length - 1)) / MODES.length))
+    const row = document.createElement('div')
+    row.style.cssText = `display:flex;gap:${gap}px;align-items:flex-start`
+    MODES.forEach((mode, j) => {
+      const own = rows.filter((d) => d.mode === mode)
+      const ref = s.ref(names[0], j)
+      const err = moe?.get(mode) ?? 0
+      const hi = Math.max(0, ...own.map((d) => d.v), m === 'val' ? ref + err : 0)
+      const lo = Math.min(0, ...own.map((d) => d.v))
+      const span = m === 'val' ? [0, hi * 1.12 || 1] : (() => { const e = Math.max(Math.abs(lo), Math.abs(hi)) * 1.15 || 1; return [-e, e] })()
+      const plot = Plot.plot({
+        width: w,
+        height: env.height,
+        style,
+        marginLeft: 40,
+        marginBottom: 30,
+        marginTop: 14,
+        marginRight: 4,
+        x: { axis: null, domain: names, paddingInner: 0.1, paddingOuter: 0.08 },
+        y: { label: null, grid: true, nice: true, ticks: 4, tickFormat: yFormat, domain: span },
+        color: { domain: names, range: names.map(s.color) },
+        marks: [
+          Plot.gridY({ stroke: t.grid, strokeOpacity: 1, ticks: 4 }),
+          Plot.barY(own, { x: 's', y: 'v', fill: 's', rx: t.r, title: (_d: unknown, i: number) => `wfa:${i}` }),
+          m === 'val' && moe ? Plot.rect([{ lo: ref - err, hi: ref + err }], { y1: 'lo', y2: 'hi', fill: t.ink, fillOpacity: 0.12 }) : null,
+          m === 'val' ? Plot.ruleY([ref], { stroke: t.ink, strokeWidth: 1.6, strokeDasharray: '4 3' }) : null,
+          Plot.ruleY([0], { stroke: m === 'val' ? t.line : t.mute }),
+          Plot.text([mode], { frameAnchor: 'bottom', dy: 20, text: (d: string) => d, fill: t.mute }),
+        ].filter(Boolean) as Plot.Markish[],
+      }) as unknown as SVGSVGElement
+      armPlot(plot, { a: own }, tip)
+      row.append(plot)
+    })
+    el.replaceChildren(row)
+    return { legend, label }
+  }
+
+  const plot = Plot.plot({
+    width: env.width,
+    height: env.height,
+    style,
+    marginLeft: 40,
+    marginBottom: 30,
+    marginTop: 14,
+    marginRight: 4,
+    fx: { label: null, padding: 0.14, domain: [...MODES] },
+    x: { axis: null, domain: names, paddingInner: 0.1, paddingOuter: 0.08 },
+    y: { label: null, grid: true, tickFormat: yFormat, ticks: 5, ...(shared ? { domain: [-shared.extent, shared.extent] } : {}) },
+    color: { domain: names, range: names.map(s.color) },
+    marks: [
+      Plot.gridY({ stroke: t.grid, strokeOpacity: 1 }),
+      Plot.barY(rows, { fx: 'mode', x: 's', y: 'v', fill: 's', rx: t.r, title: (_d: unknown, i: number) => `wfa:${i}` }),
+      m === 'val' && moe
+        ? Plot.rect(
+            MODES.map((mode, j) => ({ mode, lo: s.ref(names[0], j) - (moe.get(mode) ?? 0), hi: s.ref(names[0], j) + (moe.get(mode) ?? 0) })),
+            { fx: 'mode', y1: 'lo', y2: 'hi', fill: t.ink, fillOpacity: 0.12 },
+          )
+        : null,
+      m === 'val' ? Plot.ruleY(refLine, { fx: 'mode', y: 'v', stroke: t.ink, strokeWidth: 1.6, strokeDasharray: '4 3' }) : null,
+      Plot.ruleY([0], { stroke: m === 'val' ? t.line : t.mute }),
+    ].filter(Boolean) as Plot.Markish[],
+  }) as unknown as SVGSVGElement
+
+  armPlot(plot, { a: rows }, tip)
+  el.replaceChildren(plot)
+
+  return { legend, dispose: shared?.dispose, label }
 }
 
 export default kind

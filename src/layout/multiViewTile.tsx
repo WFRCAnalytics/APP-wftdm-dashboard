@@ -19,7 +19,7 @@ import { viewIcon } from '@/panels/viewIcon'
 import type { SwitchMode } from '@/lib/switchForm'
 import { registry } from '@/panels/registry'
 import { diffFacets, drawsAllScenarios, effectiveStrategy, offersScenarioPick } from '@/panels/compareStrategy'
-import { STRATEGY_LABEL, isBaseYearOnly, isCalibrationFamily, resolveMultiView, validateMultiView, withRowHeight } from '@/panels/multiView'
+import { STRATEGY_LABEL, isBaseYearOnly, isCalibrationFamily, offersScaleChoice, resolveMultiView, validateMultiView, withRowHeight } from '@/panels/multiView'
 
 // The tile for `type: multi-view`: the chrome (badges, group-by, compare-as, view switcher) around MultiViewPanel,
 // which draws the active view. Hidden entirely when the tile only makes sense in another mode.
@@ -36,6 +36,7 @@ export function MultiViewTile({ config: rawConfig, tileKey }: { config: MultiVie
   const lifted = useSharedKinds()
   // the view control's form: site -> page -> this tile (`controls: { views: ... }`)
   const viewMode = useSetting<SwitchMode>('controls.views', rawConfig)
+  const scaleSetting = useSetting<'own' | 'shared'>('charts.scale', rawConfig)
   const error = useMemo(() => validateMultiView(config), [config])
   const resolved = useMemo(() => (error ? null : resolveMultiView(config, tile, { compare: ctx.compare })), [config, error, tile, ctx.compare])
 
@@ -138,6 +139,21 @@ export function MultiViewTile({ config: rawConfig, tileKey }: { config: MultiVie
         disabled={all}
         options={all ? [{ value: ALL_SCENARIOS, label: 'All scenarios' }] : runs.map((r) => ({ value: r, label: inputs.label(r) }))}
         onChange={(scenario) => setTile({ scenario })}
+      />,
+    )
+  }
+  // a faceted view (one panel per mode): each panel on its own axis, or all on one
+  if (offersScaleChoice(resolved.view as { type?: string; kind?: unknown })) {
+    controls.push(
+      <Segmented
+        key="scale"
+        label="Scale"
+        value={tile.scale ?? scaleSetting}
+        options={[
+          { id: 'own', label: 'Own scale' },
+          { id: 'shared', label: 'Shared scale' },
+        ]}
+        onChange={(scale) => setTile({ scale: scale as 'own' | 'shared' })}
       />,
     )
   }

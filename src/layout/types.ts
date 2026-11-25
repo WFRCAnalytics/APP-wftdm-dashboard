@@ -581,6 +581,8 @@ export interface ChartPanelConfig extends PanelConfigBase {
   metric_id?: string
   /** Set by the compare host on each facet of a per-scenario difference (see `planCompare`). */
   diff_facet?: boolean
+  /** A faceted kind's axes: each panel its own (`own`) or one for all (`shared`); from `charts.scale` and the tile's switch. */
+  facet_scale?: 'own' | 'shared'
   /** Kind-specific options. */
   options?: Record<string, unknown>
   [key: string]: unknown

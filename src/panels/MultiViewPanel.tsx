@@ -10,12 +10,16 @@ import { effectiveStrategy } from '@/panels/compareStrategy'
 import { PanelErrorState } from '@/panels/PanelErrorState'
 import type { PanelProps } from '@/panels/registry'
 import { resolveMultiView, validateMultiView, withRowHeight } from '@/panels/multiView'
+import { useSetting } from '@/hooks/useSetting'
 
 // The body of a `multi-view` tile: the active view rendered as an ordinary panel. The view, group and strategy
 // controls live in the tile chrome (layout/multiViewTile.tsx) and share this component's state through the tile store.
 export function MultiViewPanel({ config: rawConfig }: PanelProps<MultiViewPanelConfig>) {
   const key = useTileKey() || `multi-view:${rawConfig.title}`
   const [tile] = useTileState(key)
+  // a faceted view's scale: the tile's Own / Shared switch, else the setting (site -> page -> this tile's `charts: { scale }`)
+  const scaleSetting = useSetting<'own' | 'shared'>('charts.scale', rawConfig)
+  const facetScale = tile.scale ?? scaleSetting
   const ctx = useResolvedView()
   // expanded: the view fills the dialog instead of keeping the card's height
   const expandedHeight = useExpandedHeight()
@@ -32,8 +36,9 @@ export function MultiViewPanel({ config: rawConfig }: PanelProps<MultiViewPanelC
   const panelConfig = useMemo(() => {
     if (!resolved) return null
     const inherited = (config as { _tabDefaultBasemap?: unknown })._tabDefaultBasemap
-    return inherited === undefined ? resolved.panel : ({ ...resolved.panel, _tabDefaultBasemap: inherited } as typeof resolved.panel)
-  }, [resolved, config])
+    const panel = { ...resolved.panel, facet_scale: facetScale } as typeof resolved.panel
+    return inherited === undefined ? panel : ({ ...panel, _tabDefaultBasemap: inherited } as typeof resolved.panel)
+  }, [resolved, config, facetScale])
 
   if (error || !resolved || !panelConfig) return <PanelErrorState message={error ?? 'Invalid multi-view'} />
   const strategy = effectiveStrategy({

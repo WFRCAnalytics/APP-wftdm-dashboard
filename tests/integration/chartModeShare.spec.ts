@@ -31,7 +31,8 @@ test.describe('mode share charts', () => {
     const chart = t.locator('[data-chart-kind="mode-bars"] svg').first()
     await expect(chart).toBeVisible({ timeout: 60_000 })
 
-    await hover(page, chart, 0.07, 0.85)
+    // the first bar (each mode is its own plot with its own axis by default, so a fixed point may fall in an axis margin)
+    await hover(page, t.locator('[data-chart-kind="mode-bars"] [data-wf]').first(), 0.5, 0.5)
     await expect(page.locator('.wf-tip')).toHaveCSS('opacity', '1')
     await expect(page.locator('.wf-tip')).toContainText('share of trips')
 
