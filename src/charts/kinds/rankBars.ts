@@ -54,27 +54,32 @@ const kind: ChartKind = {
             tickFormat: (d: number) => formatDelta(d, m, { decimals: m === 'pct' ? 0 : metric.decimals }),
           }
 
-    // a name above each bar: the band leaves room for it (padding) and the label sits half a bar plus a gap above the centre
-    const marginTop = 22
+    // a name above each bar: the band leaves room for it (padding) and the label sits half a bar plus a gap above the centre.
+    // With many scenarios in a short tile a row cannot hold a name and a bar, so the names go back to a left axis (cut to fit).
     const marginBottom = 38
     const padding = 0.45
-    const step = (env.height - marginTop - marginBottom) / (ranked.length + padding)
-    const nameDy = -(step * (1 - padding)) / 2 - 7
+    const stepAbove = (env.height - 22 - marginBottom) / (ranked.length + padding)
+    const above = stepAbove >= 30
+    const marginTop = above ? 22 : 6
+    const nameDy = -(stepAbove * (1 - padding)) / 2 - 7
+    const axisWidth = Math.min(210, Math.max(124, Math.min(30, Math.max(...ranked.map((r) => (info.get(r.key)?.label ?? r.key).length))) * 6.2 + 16))
     const plot = Plot.plot({
       width: env.width,
       height: env.height,
       style: { background: 'transparent', color: t.mute, fontFamily: t.font, fontSize: `${t.fs}px`, overflow: 'visible' },
-      marginLeft: 8,
+      marginLeft: above ? 8 : axisWidth,
       marginRight: 48,
       marginBottom,
       marginTop,
       // room for a value label beside a bar: on the right always, on the left only when Change modes draw bars below zero
       x: { grid: false, nice: true, insetRight: 40, insetLeft: m === 'val' ? 0 : 40, ...x },
-      y: { axis: null, label: null, domain: ranked.map((r) => r.key), padding },
+      y: above
+        ? { axis: null, label: null, domain: ranked.map((r) => r.key), padding }
+        : { label: null, domain: ranked.map((r) => r.key), padding: 0.32, tickFormat: (d: string) => { const n = info.get(d)?.label ?? d; return prettyOperators(n.length > 30 ? `${n.slice(0, 29)}…` : n) } },
       color: { domain: ranked.map((r) => r.key), range: ranked.map((r) => info.get(r.key)?.color ?? t.mute) },
       marks: [
         Plot.barX(barRows, { x: 'v', y: 'key', fill: 'key', rx: 4, title: (_d: unknown, i: number) => `wfa:${i}` }),
-        Plot.text(ranked, {
+        above && Plot.text(ranked, {
           y: 'key',
           frameAnchor: 'left',
           textAnchor: 'start',
