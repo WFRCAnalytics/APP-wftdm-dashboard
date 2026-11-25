@@ -28,6 +28,7 @@ import { scenarioGroupOf, runKindOf, runNameFor, viewManifest } from '@/services
 import { getDeployment } from '@/state/compareState'
 import { get as getScenario, list as listScenarios } from '@/state/appState'
 import { tooltip } from '@/services/tooltip'
+import { useSetting } from '@/hooks/useSetting'
 
 // One component for every chart of the catalogue (project-docs/redesign/04-chart-catalogue.md): resolves which runs to
 // show from the view context, loads their tables, then hands a ChartEnv to the kind's `draw` and redraws on resize,
@@ -40,7 +41,10 @@ type Status = 'loading' | 'ready' | 'empty' | 'error'
 // Side-by-side cells all return the same legend; only the first cell to render claims the tile's legend row.
 const legendOwners = new WeakMap<HTMLElement, symbol>()
 
-export function ChartPanel({ config }: PanelProps<ChartPanelConfig>) {
+export function ChartPanel({ config: ownConfig }: PanelProps<ChartPanelConfig>) {
+  // a faceted kind's scale (`charts.scale`): a multi-view tile hands it down as facet_scale; a plain chart panel resolves it here
+  const scaleSetting = useSetting<'own' | 'shared'>('charts.scale', ownConfig)
+  const config = useMemo(() => (ownConfig.facet_scale ? ownConfig : { ...ownConfig, facet_scale: scaleSetting }), [ownConfig, scaleSetting])
   const view = useViewContext()
   const { referenceLabel } = useCompareInputs()
   const display = useScenarioDisplay()

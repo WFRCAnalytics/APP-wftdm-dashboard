@@ -215,6 +215,19 @@
         }
       }
     },
+    "charts": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "scale": {
+          "enum": [
+            "own",
+            "shared"
+          ],
+          "description": "Charts drawn as one panel per category (mode share bars): own gives each panel its own axis, so a 1% mode is as readable as a 70% one; shared puts every panel on one axis, so their heights compare. The tile has an Own / Shared switch; this sets where it starts. A page or a tile (`charts: { scale: shared }`) may set its own."
+        }
+      }
+    },
     "controls": {
       "type": "object",
       "additionalProperties": false,

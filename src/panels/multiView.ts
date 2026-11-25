@@ -150,6 +150,14 @@ export interface ResolvedMultiView {
 }
 
 /** Chooses the active view and group from the tile selection, falling back to the first view and the default group. */
+/** Chart kinds drawn as one panel per category, which can give each panel its own axis (`charts.scale`). */
+const OWN_SCALE_KINDS = new Set(['mode-bars', 'modeBars'])
+
+/** True when a view can draw its panels on their own axes or on one (the tile offers the Own / Shared switch). */
+export function offersScaleChoice(view: { type?: string; kind?: unknown }): boolean {
+  return view.type === 'chart' && typeof view.kind === 'string' && OWN_SCALE_KINDS.has(view.kind)
+}
+
 export function resolveMultiView(
   config: MultiViewPanelConfig,
   selection: TileSelection = {},

@@ -130,7 +130,7 @@ manifest.yaml         per-scenario metadata
   Page-scoped schema rows (`scope: 'page'`) are set in a page's `header:`, never in the site file, and never cascade; a row's `clean` hook keeps the usable part of a list. All optional; an unconfigured deployment renders exactly as it
   always did. A mistake (unknown key, wrong type, bad colour, a site-only key on a page, invalid YAML, a missing page file) is listed in one dismissible
   note (`layout/configNotice.tsx`, store `state/configProblems.ts`) and in the console; the key keeps its default and the app loads.
-- **The cascade** (`config/resolve.ts`, site → page → panel): only `layout.mode`, `basemap.default`, `export.footer`, `controls.views`, `hero.reference` and the `explore.*` keys cascade;
+- **The cascade** (`config/resolve.ts`, site → page → panel): only `layout.mode`, `basemap.default`, `export.footer`, `controls.views`, `hero.reference`, `charts.scale` and the `explore.*` keys cascade;
   scalars replace, maps merge per key, `explore.charts.allow` and `explore.tables.include` replace, `explore.tables.exclude` and `explore.presets` concatenate,
   `false`/`[]` switch off, there is no `null` reset. `config/levels.ts` maps the spellings pages and panels already use (`header.layout_mode`,
   `default_basemap`, a panel's Explore keys) onto the schema paths. The site tree is `state/siteSettings.ts`.
@@ -648,6 +648,9 @@ before touching charts).
 - **Hero band** (`layout/heroBand.tsx`, the one band for scroll and tabbed pages): with `hero.reference: band` (default) the first
   band with deltas says once "Changes are against <reference>" (`data-testid="hero-reference"`) and the cells show only their
   change (`panels/heroReference.ts` context); `cell` puts the caption back under every delta.
+- **Own scale** (`charts.scale: own|shared`, default own; tile switch Own / Shared in `state/tileState.ts#scale`): `mode-bars` draws each
+  mode as its own Plot with its own y axis (`panels/multiView.ts#offersScaleChoice` lists the kinds). `MultiViewPanel` hands the choice
+  to the view as `facet_scale`; a plain chart panel resolves it in `ChartPanel`. A per-scenario difference keeps its shared extent.
 - Dial KPIs: a hero `valuebox` with `ring: {}` draws its value (a `max` is picked automatically unless given) on a half-circle dial with a tick at the reference. Mode share has a `mode-radar` view, trips by purpose a `purpose-radar` view and purpose to mode a `purpose-chord` view; all three read tables the real demo publishes.
 - New D3 submodules (no new chart library): d3-selection/scale/array/chord/zoom/format/interpolate/transition.
 
