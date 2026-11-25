@@ -261,12 +261,14 @@ test.describe('DuckDB computes the chart data for every mark', () => {
     await expect.poll(async () => { const b = await first(); return b.width > b.height }).toBe(true)
     await page.getByRole('button', { name: 'Swap x and y' }).click()
     await expect.poll(async () => { const b = await first(); return b.height > b.width }).toBe(true)
-    // two numbers (or two categories) are not a bar chart, and the chart says so
+    // two numbers are not a bar chart: with trips on Y the X axis does not take a second number, and its button says why
     await page.getByRole('button', { name: /Remove primary_purpose from X axis/ }).click()
-    await place(page, 'trips', 'X axis')
-    await expect(page.getByText(/both numbers/)).toBeVisible()
+    await page.locator('.xb .fchip', { hasText: 'trips' }).first().click()
+    const xPlace = page.locator('.xb .sp', { hasText: 'X axis' }).locator('button.place')
+    await expect(xPlace).toBeDisabled()
+    await expect(xPlace).toContainText('Takes category')
+    await page.locator('.xb .fchip', { hasText: 'trips' }).first().click()
     // a chart type with a category-only axis refuses the swap and says why
-    await page.getByRole('button', { name: /Remove trips from X axis/ }).click()
     await place(page, 'primary_purpose', 'X axis')
     await page.locator('.xb .mk', { hasText: 'Box' }).click()
     await expect(page.getByRole('button', { name: 'Swap x and y' })).toBeDisabled()
