@@ -657,6 +657,9 @@ before touching charts).
   `legend.scenarios: tile` keeps them, `data-tile-legend="keep"`); the expanded dialog has its own key row (`data-tile-legend="dialog"`), and
   `exportTile.ts#cardToSvg` marks the card `data-exporting` so exports carry the full key. Hovering a listed scenario isolates it in every
   chart (`state/scenarioHover.ts`, subscribed in `ChartPanel`). Specs about the chip set `scenarios: { placement: 'picker' }`.
+- **Model year** (`layout/yearControl.tsx`, in the control bar, always shown): several years are a strip (the tile views' `AdaptiveSwitch`) or,
+  when it does not fit, the selected year as a pill opening a menu; one year is that year in a plain filled pill.
+  `controls.years: auto|strip|menu` (site). A year's `years.list` label is the strip's tooltip and is written in the menu.
 - **Own scale** (`charts.scale: own|shared`, default own; tile switch Own / Shared in `state/tileState.ts#scale`): `mode-bars` draws each
   mode as its own Plot with its own y axis (`panels/multiView.ts#offersScaleChoice` lists the kinds). `MultiViewPanel` hands the choice
   to the view as `facet_scale`; a plain chart panel resolves it in `ChartPanel`. A per-scenario difference keeps its shared extent.

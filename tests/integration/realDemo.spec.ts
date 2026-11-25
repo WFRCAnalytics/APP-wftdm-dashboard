@@ -24,8 +24,9 @@ test.describe('real demo data on the redesigned pages', () => {
     await boot(page, errors)
     await expect(page.getByText('23,583', { exact: true })).toBeVisible({ timeout: 30_000 })
     await expect(page.getByText('5,000', { exact: true })).toBeVisible()
-    // one year, no observed data: no Year control
-    await expect(page.getByTestId('control-year')).toHaveCount(0)
+    // one model year: it is shown in a pill, with nothing to choose
+    await expect(page.getByTestId('control-year')).toHaveText('2023')
+    await expect(page.getByTestId('control-year').getByRole('button')).toHaveCount(0)
 
     // the scorecard (Compare is on with three runs) lists the three scenarios
     await expect(page.locator('[data-chart-kind="scorecard"]').getByText('ActivitySim: TAZ 1 Density +40%')).toBeVisible({ timeout: 30_000 })

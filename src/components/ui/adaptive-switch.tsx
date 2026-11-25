@@ -15,6 +15,8 @@ export interface AdaptiveOption {
   label: string
   /** Needed for the icons-only form; without an icon on every option that form is skipped. */
   icon?: ReactNode
+  /** A longer description (a year's milestone): muted beside the label in the menu, and the switch's tooltip. */
+  detail?: string
 }
 
 export interface AdaptiveSwitchProps {
@@ -30,7 +32,7 @@ export interface AdaptiveSwitchProps {
 }
 
 const fullOptions = (options: AdaptiveOption[]): SegmentedOption[] =>
-  options.map((o) => ({ id: o.id, label: o.label, icon: o.icon ? <span className="inline-flex items-center gap-1.5">{o.icon}{o.label}</span> : undefined }))
+  options.map((o) => ({ id: o.id, label: o.label, title: o.detail ? `${o.label}, ${o.detail}` : undefined, icon: o.icon ? <span className="inline-flex items-center gap-1.5">{o.icon}{o.label}</span> : undefined }))
 
 export function AdaptiveSwitch({ label, options, value, onChange, mode = 'auto', size = 'md', className, 'data-testid': testId }: AdaptiveSwitchProps) {
   const boxRef = useRef<HTMLDivElement>(null)
@@ -78,6 +80,7 @@ export function AdaptiveSwitch({ label, options, value, onChange, mode = 'auto',
                   <span className="flex items-center gap-2">
                     {o.icon}
                     {o.label}
+                    {o.detail && <span className="text-[var(--mute)]">{o.detail}</span>}
                   </span>
                 </SelectItem>
               ))}
