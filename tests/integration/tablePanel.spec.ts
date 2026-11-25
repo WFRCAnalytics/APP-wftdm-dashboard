@@ -504,8 +504,8 @@ test.describe('019-baseline-diff-consumption', () => {
 
     // TAZ 8: real, hand-verified diff (a.total_vmt - b.total_vmt) via the
     // duckdb CLI — -19.763957990319568, rounds to -19.8 at this column's
-    // own ",.1f" format.
-    await expect.poll(async () => rowFor(card, '8').locator('td').nth(1).innerText()).toBe('-19.8')
+    // own ",.1f" format, written with the real minus sign (U+2212) like every number the app shows.
+    await expect.poll(async () => rowFor(card, '8').locator('td').nth(1).innerText()).toBe('\u221219.8')
   })
 
   test('User Story 2: a real, non-null percent diff renders correctly; the zero-baseline N/A path is unit-tested (no real trigger exists in current demo VMT data)', async ({

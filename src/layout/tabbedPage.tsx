@@ -136,24 +136,29 @@ function pickedFor(page: string, section: TabSection, tiles: { id: string }[]): 
   return tiles.find((t) => t.id === stored)?.id ?? tiles[0]?.id ?? ''
 }
 
+// A tile's header and controls take about 120px; its chart needs room under them to draw at all. On a short window the
+// pinned hero rows can leave the tab only a sliver, so rows keep these heights and the tabbed page scrolls instead.
+const TAB_BODY_MIN = 'min-h-[380px]'
+const TAB_ROW_MIN = 'min-h-[360px]'
+
 function SectionBody({ page, section, rows }: { page: string; section: TabSection; rows: Rows }) {
   const tiles = useMemo(() => (section.mode === 'pick' ? pickables(section, rows) : []), [section, rows])
   if (section.mode === 'pick') {
     const chosen = tiles.find((t) => t.id === pickedFor(page, section, tiles))
     if (!chosen) return null
     return (
-      <div className="flex min-h-[240px] flex-1 flex-col" data-testid="tab-body">
+      <div className={`flex ${TAB_BODY_MIN} flex-1 flex-col`} data-testid="tab-body">
         <Cell key={chosen.id} page={page} panel={chosen.panel} id={chosen.id} />
       </div>
     )
   }
   return (
-    <div className="flex min-h-[240px] flex-1 flex-col gap-[14px]" data-testid="tab-body">
+    <div className={`flex ${TAB_BODY_MIN} flex-1 flex-col gap-[14px]`} data-testid="tab-body">
       {section.rows.map((name) => (
         <div
           key={name}
           data-testid={name}
-          className="grid min-h-[200px] flex-1 gap-[14px]"
+          className={`grid ${TAB_ROW_MIN} flex-1 gap-[14px]`}
           style={{ gridTemplateColumns: (rows.get(name) ?? []).map((p) => `${(p.width ?? 1) * 100}fr`).join(' ') }}
         >
           {(rows.get(name) ?? []).map((panel, index) => (

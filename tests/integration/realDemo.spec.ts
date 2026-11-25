@@ -16,6 +16,9 @@ async function boot(page: Page, errors: string[]) {
 const pageTab = (page: Page, name: string) => page.getByRole('tablist', { name: 'Page sections' }).getByRole('tab', { name, exact: true })
 
 test.describe('real demo data on the redesigned pages', () => {
+  // booting DuckDB and the real runs takes much of the default 30s on its own; the steps below wait up to 30s each
+  test.setTimeout(90_000)
+
   test('the Summary hero shows the real totals and the charts draw from the real tables', async ({ page }) => {
     const errors: string[] = []
     await boot(page, errors)
@@ -42,6 +45,9 @@ test.describe('real demo data on the redesigned pages', () => {
     await pageTab(page, 'Mode choice').click()
     const bars = page.locator('[data-chart-kind="mode-bars"] [data-wf]')
     await expect(bars.first()).toBeVisible({ timeout: 30_000 })
+    // the boot toasts (Scenarios loaded, DuckDB connected) sit bottom right for a few seconds, over the right-hand bars;
+    // wait them out before picking a bar (the chart has settled by then, so the bar found below is the one drawn)
+    await expect(page.locator('section[aria-label^="Notifications"] li')).toHaveCount(0, { timeout: 15_000 })
     // the tallest bar (the small ones are a few pixels high)
     const heights = await bars.evaluateAll((els) => els.map((e) => e.getBoundingClientRect().height))
     const bar = bars.nth(heights.indexOf(Math.max(...heights)))

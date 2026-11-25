@@ -56,4 +56,11 @@ describe('pickColumns', () => {
       expect(pickColumns({ ...a, total: 3, width: 520, layout: 'grid' })).toBe(2)
     })
   })
+
+  it('does not stack maps into thin strips: a cell counts only the area a map can use', () => {
+    // three maps in a 704 x 320 body: one column would give 704 x 100 strips; 2 + 1 gives usable cells
+    expect(pickColumns({ total: 3, width: 704, height: 320, minCell: 280, tabbed: false })).toBe(2)
+    // with height to spare, one column of well-proportioned maps is still fine
+    expect(pickColumns({ total: 3, width: 704, height: 1100, minCell: 280, tabbed: false })).toBe(1)
+  })
 })

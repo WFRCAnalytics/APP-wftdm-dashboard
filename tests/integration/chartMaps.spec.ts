@@ -110,7 +110,17 @@ test.describe('zone maps', () => {
     await expect(page.locator('.wf-multi .wfz-linked')).toHaveCount(1)
     await expect(page.locator('.wf-multi .wfz-chip')).toHaveCount(0)
 
-    // the camera of every cell is the same, and a wheel on one moves all
+    // the camera of every cell is the same, and a wheel on one moves all. The grid picks its columns once it has measured
+    // the tile, so the maps may still be resizing and refitting their bounds: wait until the cameras hold still first.
+    let last = ''
+    await expect
+      .poll(async () => {
+        const now = JSON.stringify(await cameras(page))
+        const still = now === last
+        last = now
+        return still
+      }, { timeout: 15_000, intervals: [500] })
+      .toBe(true)
     let cams = await cameras(page)
     expect(new Set(cams.map((c) => JSON.stringify(c))).size).toBe(1)
     const zoom0 = cams[0].zoom
