@@ -38,6 +38,7 @@ A wrong value is reported (in a note on the page and in the browser console) and
 | `scenarios.warn_at` | integer | — | site only | Scenarios on at once above which the viewer sees a warning (default 8). |
 | `scenarios.max_active` | integer | — | site only | The most scenarios that can be on at once, at startup and when a viewer turns one on (default 16). Browsers allow about 16 WebGL views, one per side-by-side map, so a larger value is accepted but reported with a warning. |
 | `layout.mode` | `scroll` | `tabs` | — | page, panel (scalars replace, maps merge per key) | How pages are shown unless a page or the viewer says otherwise. |
+| `controls.views` | `auto` | `switch` | `menu` | — | page, panel (scalars replace, maps merge per key) | A tile’s view control, in its header: auto shows every view as a switch when it fits, icons only when that fits, otherwise the selected view as a pill that opens a menu; switch and menu force one form. A page or a tile (`controls: { views: menu }`) may set its own. |
 | `export.footer` | boolean|string | — | page, panel (scalars replace, maps merge per key) | Line under exported images: true (source, scenarios, year, date), false (none) or your own text. |
 | `assistant.enabled` | boolean | — | site only | Turns the AI assistant (button, panel and Settings tab) on or off. |
 | `assistant.providers` | list of values | — | site only | The AI providers the assistant tab offers, replacing the built-in ones: id, label, base_url, models, needs_key, protocol (openai or anthropic). The address of a listed provider is fixed. |

@@ -31,7 +31,8 @@ async function tipOpacity(page: Page): Promise<number> {
 }
 
 const viewButton = (page: Page, containing: string, name: string) =>
-  page.getByRole('group', { name: 'View' }).filter({ hasText: containing }).first().getByRole('button', { name, exact: true })
+  // by accessible name: a narrow tile shows its views as icons only
+  page.getByRole('group', { name: 'View' }).filter({ has: page.getByRole('button', { name: containing, exact: true }) }).first().getByRole('button', { name, exact: true })
 
 test.describe('hierarchy and flow chart kinds', () => {
   test.setTimeout(180_000)

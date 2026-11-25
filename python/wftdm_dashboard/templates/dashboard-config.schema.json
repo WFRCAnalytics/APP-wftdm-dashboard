@@ -215,6 +215,20 @@
         }
       }
     },
+    "controls": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "views": {
+          "enum": [
+            "auto",
+            "switch",
+            "menu"
+          ],
+          "description": "A tile’s view control, in its header: auto shows every view as a switch when it fits, icons only when that fits, otherwise the selected view as a pill that opens a menu; switch and menu force one form. A page or a tile (`controls: { views: menu }`) may set its own."
+        }
+      }
+    },
     "export": {
       "type": "object",
       "additionalProperties": false,

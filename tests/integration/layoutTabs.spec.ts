@@ -28,19 +28,24 @@ test.describe('tabbed pages', () => {
     expect(page.url()).toContain('#/summary/mode')
   })
 
-  test('the tile fills the tab and a wide tile keeps its controls in a rail beside the chart', async ({ page }) => {
+  test('the tile fills the tab; its views sit in the header and one or two controls in a row above the chart', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 })
     await boot(page)
     await page.hover('[data-sidebar=sidebar]')
     await page.getByRole('tab', { name: 'Network' }).click()
     await expect(page.locator('.maplibregl-map').first()).toBeVisible({ timeout: 30_000 })
-    const map = await page.locator('.maplibregl-map').first().boundingBox()
-    const rail = page.getByRole('complementary', { name: /controls$/ })
-    await expect(rail).toBeVisible()
-    await expect(rail).toContainText('Compare as')
-    const box = await rail.boundingBox()
-    expect(box!.height).toBeGreaterThan(380)
-    expect(box!.x).toBeGreaterThan(map!.x + map!.width * 0.6)
+    const map = (await page.locator('.maplibregl-map').first().boundingBox())!
+    const body = page.getByTestId('tab-body')
+    // no side rail for a single control: the chart keeps the tile's width
+    await expect(page.getByRole('complementary', { name: /controls$/ })).toHaveCount(0)
+    const compareAs = (await body.getByRole('group', { name: 'Compare as' }).boundingBox())!
+    const views = (await body.getByRole('group', { name: 'View' }).boundingBox())!
+    expect(compareAs.y + compareAs.height).toBeLessThanOrEqual(map.y)
+    expect(views.y).toBeLessThan(compareAs.y)
+    // the side-by-side maps run to the tile's right edge, where a rail used to be
+    const last = (await page.locator('.maplibregl-map').last().boundingBox())!
+    const tileBox = (await body.boundingBox())!
+    expect(tileBox.x + tileBox.width - (last.x + last.width)).toBeLessThan(80)
   })
 
   test('a "pick" tab shows one tile at a time, chosen from a list', async ({ page }) => {

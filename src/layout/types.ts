@@ -3,6 +3,7 @@
 // needed to know dashboard-content shape). This feature is the first
 // consumer that does, so the typed seam lives here, at the point of use,
 // not in yamlLoader.ts itself. See contracts/dashboard-config-types.md.
+import { pageSettings, type Tree } from '@/config'
 import { isBasemapComposition, type BasemapSelection } from '@/panels/basemap/types'
 
 export interface FilterDefinition {
@@ -535,6 +536,9 @@ export interface MultiViewViewConfig {
   scenario_independent?: boolean
   base_year_only?: boolean
   family?: string
+  /** The icon in the tile's view control: a skeleton shape name (panels/skeleton.ts, e.g. `bars`, `table`, `map`).
+   * Default: the shape the view's loading skeleton draws. */
+  icon?: string
   [key: string]: unknown
 }
 
@@ -682,6 +686,8 @@ export interface DashboardTabConfig {
    * resolveSections()), not at parse time, matching `layout`'s own
    * existing "parse permissively, validate contextually" split. */
   sections?: SectionConfig[]
+  /** The cascading settings this page sets (src/config/levels.ts#pageSettings): the page level of site -> page -> panel. */
+  settings?: Tree
 }
 
 /** A bare string or a { layers: string[] } object — the only two shapes
@@ -730,6 +736,7 @@ export function parseDashboardConfig(raw: unknown, sourcePath = '(unknown source
           ? header.aria_label
           : undefined,
     },
+    settings: pageSettings(raw),
     filters: Array.isArray(obj.filters) ? (obj.filters as FilterDefinition[]) : [],
     default_basemap: parseBasemapSelection(obj.default_basemap),
     layout:

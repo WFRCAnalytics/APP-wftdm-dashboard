@@ -130,10 +130,14 @@ manifest.yaml         per-scenario metadata
   Page-scoped schema rows (`scope: 'page'`) are set in a page's `header:`, never in the site file, and never cascade; a row's `clean` hook keeps the usable part of a list. All optional; an unconfigured deployment renders exactly as it
   always did. A mistake (unknown key, wrong type, bad colour, a site-only key on a page, invalid YAML, a missing page file) is listed in one dismissible
   note (`layout/configNotice.tsx`, store `state/configProblems.ts`) and in the console; the key keeps its default and the app loads.
-- **The cascade** (`config/resolve.ts`, site → page → panel): only `layout.mode`, `basemap.default`, `export.footer` and the `explore.*` keys cascade;
+- **The cascade** (`config/resolve.ts`, site → page → panel): only `layout.mode`, `basemap.default`, `export.footer`, `controls.views` and the `explore.*` keys cascade;
   scalars replace, maps merge per key, `explore.charts.allow` and `explore.tables.include` replace, `explore.tables.exclude` and `explore.presets` concatenate,
   `false`/`[]` switch off, there is no `null` reset. `config/levels.ts` maps the spellings pages and panels already use (`header.layout_mode`,
   `default_basemap`, a panel's Explore keys) onto the schema paths. The site tree is `state/siteSettings.ts`.
+  Tile-level settings (`controls.views`, ...): a page file sets them at the top level, a panel under the same group key
+  (`controls: { views: menu }`; `config/levels.ts#panelSettings` reads `controls`, `charts`, `legend`). A tile reads one with
+  `hooks/useSetting.ts#useSetting(path, panelConfig)` (page level from `PageSettingsContext`, provided by `dashboardRenderer.tsx`);
+  `config/setting.ts#settingValue` checks it against the row (an invalid value falls back; an enum's default is its first value).
 - Parquet outputs live in `{scenario-dir}/summary/` — written by the post-processor.
 - `public/scenarios/`, `public/dashboard-config/`, `public/observed/` are
   ALL gitignored (`npm run dev:fixtures` copies `tests/fixtures/{...}`
@@ -610,6 +614,10 @@ before touching charts).
   `layout/multiViewTile.tsx`, `panels/CompareHost.tsx` + `compareStrategy.ts` for overlay/diff/multi/grid/switch/swipe).
   Tile keys: panel `id` (else `row-index`), session state in `state/tileState.ts`. `show_when: compare|single`,
   `needs_compare`, `family: calibration`, `height_rows` and `default_view` shape what is rendered.
+  The view control sits in the tile header (`components/ui/adaptive-switch.tsx`, form chosen by `lib/switchForm.ts`): every view
+  with icon and label when it fits, icons only, else the selected view as a pill opening a menu; `controls.views: auto|switch|menu`.
+  A view's icon follows its skeleton shape (`panels/viewIcon.ts`; a view may set `icon: <shape>`). The tabbed-page control rail
+  is used only for three or more controls; one or two sit in a row above the chart.
 - **Charts**: `type: chart, kind: <name>` is drawn by `panels/ChartPanel.tsx`; each kind is one module in
   `src/charts/kinds/` (named from its file name, auto-registered via `import.meta.glob`), shared logic in `src/charts/lib/`.
   Kinds receive a `ChartEnv` and never read stores or DuckDB. One tooltip (`services/tooltip.ts`), crosshair/armPlot

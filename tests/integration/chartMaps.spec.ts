@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import type { WftdmDebugHook } from '../../src/main.tsx'
+import { chooseView } from './_views'
 
 declare global {
   interface Window {
@@ -49,6 +50,7 @@ async function boot(page: Page) {
 
 const tileBody = (page: Page) => page.getByTestId('row_zones_flows_compare')
 const tileTitle = (page: Page) => page.getByText(TILE, { exact: true }).first()
+const tileCard = (page: Page) => page.locator(`[data-export-title="${TILE}"]`).first()
 
 async function liveMaps(page: Page): Promise<number> {
   return page.evaluate(() => [...((window as unknown as { __wfzMaps?: Set<TestMap> }).__wfzMaps ?? [])].length)
@@ -262,7 +264,7 @@ test.describe('zone maps', () => {
   test('difference map: diverging legend and a caption naming the reference', async ({ page }) => {
     await boot(page)
     await tileTitle(page).scrollIntoViewIfNeeded()
-    await tileTitle(page).locator('xpath=following::*[text()="Difference"][1]').click()
+    await chooseView(page, tileCard(page), 'Difference')
     const el = page.locator('[data-chart-kind="zone-diff-map"]')
     await expect(el.locator('canvas').first()).toBeVisible({ timeout: 60_000 })
     // one map per compared scenario besides the reference, each captioned against it
@@ -281,7 +283,7 @@ test.describe('zone maps', () => {
   test('swipe map: slider role, arrow keys move it 24px, clamped 24px from the edges', async ({ page }) => {
     await boot(page)
     await tileTitle(page).scrollIntoViewIfNeeded()
-    await tileTitle(page).locator('xpath=following::*[text()="Swipe"][1]').click()
+    await chooseView(page, tileCard(page), 'Swipe')
     const el = page.locator('[data-chart-kind="zone-swipe-map"]')
     const handle = el.getByRole('slider', { name: 'Swipe between scenarios' })
     await expect(handle).toBeVisible({ timeout: 60_000 })
@@ -352,9 +354,9 @@ test.describe('zone maps', () => {
     test.info().annotations.push({ type: 'basemap-online', description: String(back) })
 
     // switching the view tears the map down (no leaked WebGL contexts)
-    await tileTitle(page).locator('xpath=following::*[text()="Swipe"][1]').click()
+    await chooseView(page, tileCard(page), 'Swipe')
     await expect.poll(() => liveMaps(page), { timeout: 30_000 }).toBe(2)
-    await tileTitle(page).locator('xpath=following::*[text()="Values"][1]').click()
+    await chooseView(page, tileCard(page), 'Values')
     await expect.poll(() => liveMaps(page), { timeout: 30_000 }).toBeLessThanOrEqual(1)
   })
 })

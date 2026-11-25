@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import type { WftdmDebugHook } from '../../src/main.tsx'
+import { chooseView } from './_views'
 
 declare global {
   interface Window {
@@ -62,7 +63,7 @@ test.describe('distribution chart kinds', () => {
     await page.mouse.move(900, 10)
 
     // Dumbbell view: tooltip lists scenarios and the observed row
-    await page.getByText('Dumbbell', { exact: true }).first().click()
+    await chooseView(page, page, 'Dumbbell')
     const dot = page.locator('svg circle[data-wf]').first()
     await expect(dot).toBeVisible({ timeout: 30_000 })
     await dot.hover()

@@ -18,6 +18,7 @@ describe('config schema table', () => {
     expect(cascading).toEqual(
       [
         'basemap.default',
+        'controls.views',
         'explore.charts.allow',
         'explore.charts.default',
         'explore.columns',

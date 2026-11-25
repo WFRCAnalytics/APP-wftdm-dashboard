@@ -36,25 +36,25 @@ test.describe('mode share charts', () => {
     await expect(page.locator('.wf-tip')).toContainText('share of trips')
 
     const view = t.getByRole('group', { name: 'View' })
-    await view.getByText('Gap', { exact: true }).click()
+    await view.getByRole('button', { name: 'Gap', exact: true }).click()
     const gap = t.locator('[data-chart-kind="gap-dots"] svg').first()
     await expect(gap).toBeVisible()
     await expect(t.locator('[data-chart-kind="gap-dots"] svg circle').first()).toBeVisible()
 
-    await view.getByText('100% bars', { exact: true }).click()
+    await view.getByRole('button', { name: '100% bars', exact: true }).click()
     const stack = t.locator('[data-chart-kind="stacked-bars"] svg').first()
     await expect(stack).toBeVisible()
     await stack.locator('g[data-key] rect').first().hover()
     await expect(page.locator('.wf-tip')).toHaveCSS('opacity', '1')
     await expect(page.locator('.wf-tip')).toContainText('Share')
 
-    await view.getByText('Slope', { exact: true }).click()
+    await view.getByRole('button', { name: 'Slope', exact: true }).click()
     await expect(t.locator('[data-chart-kind="slope"] svg').first()).toBeVisible()
 
-    await view.getByText('Donut', { exact: true }).click()
+    await view.getByRole('button', { name: 'Donut', exact: true }).click()
     await expect(t.locator('[data-chart-kind="donut"] svg path').first()).toBeVisible()
 
-    await view.getByText('Table', { exact: true }).click()
+    await view.getByRole('button', { name: 'Table', exact: true }).click()
     await expect(t.locator('[data-chart-kind="mode-table"] table')).toBeVisible()
     await expect(t.locator('[data-chart-kind="mode-table"] tbody tr')).toHaveCount(6)
 
@@ -66,7 +66,7 @@ test.describe('mode share charts', () => {
     await page.goto('/')
     const t = tile(page, 'Trips by purpose and mode')
     await t.scrollIntoViewIfNeeded()
-    await t.getByRole('group', { name: 'View' }).getByText('100% bars', { exact: true }).click()
+    await t.getByRole('group', { name: 'View' }).getByRole('button', { name: '100% bars', exact: true }).click()
     const svg = t.locator('[data-chart-kind="stacked-bars"] svg').first()
     await expect(svg).toBeVisible({ timeout: 60_000 })
     await expect(svg.locator('text', { hasText: 'Non-home' })).toBeVisible()

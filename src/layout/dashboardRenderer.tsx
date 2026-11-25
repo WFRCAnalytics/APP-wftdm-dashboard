@@ -14,6 +14,7 @@ import { isMapRenderingPanel, type DashboardTabConfig, type PanelConfig } from '
 import { computeTabDataRequirement, ensureRegistered } from '@/services/tabDataLoader'
 import { useActiveScenarios } from '@/hooks/useActiveScenarios'
 import { tileKey } from '@/state/tileState'
+import { PageSettingsContext } from '@/hooks/useSetting'
 
 // Renders one active tab's layout (project-docs/GRAMMAR.md: named rows, each a
 // flat list of panels) as ordered rows of PanelCards, each sized by its
@@ -58,6 +59,8 @@ import { tileKey } from '@/state/tileState'
 // layout for all-valuebox rows (US4) — all three additive to the
 // pre-existing ordinary multi-row path below, per FR-020's own explicit
 // "an existing, unmodified dashboard-*.yaml renders unchanged" guarantee.
+const NO_SETTINGS = {}
+
 export function DashboardRenderer({ tab }: { tab: DashboardTabConfig }) {
   // 056-lazy-tab-scoped-loading: proactively kick off THIS tab's whole
   // real data requirement (data-model.md entity 1) as soon as it becomes
@@ -97,11 +100,11 @@ export function DashboardRenderer({ tab }: { tab: DashboardTabConfig }) {
     )
   }
 
-  if (fullPagePanel) {
-    return <FullPagePanel config={fullPagePanel} />
-  }
-
-  return <OrdinaryDashboardRenderer tab={tab} />
+  return (
+    <PageSettingsContext.Provider value={tab.settings ?? NO_SETTINGS}>
+      {fullPagePanel ? <FullPagePanel config={fullPagePanel} /> : <OrdinaryDashboardRenderer tab={tab} />}
+    </PageSettingsContext.Provider>
+  )
 }
 
 // Chromeless full-page render path (contracts/sidebar-shell.md's own

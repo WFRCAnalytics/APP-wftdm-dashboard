@@ -1,5 +1,6 @@
 import { Suspense, useMemo, type ReactNode } from 'react'
 
+import { AdaptiveSwitch } from '@/components/ui/adaptive-switch'
 import { Badge } from '@/components/ui/badge'
 import { LayoutMenu } from '@/components/ui/layout-menu'
 import { PillSelect } from '@/components/ui/pill-select'
@@ -7,12 +8,15 @@ import { Segmented } from '@/components/ui/segmented'
 import { useCompareInputs } from '@/hooks/useCompareInputs'
 import { useResolvedView } from '@/hooks/useViewContext'
 import { TileKeyContext, useTileState } from '@/hooks/useTileState'
+import { useSetting } from '@/hooks/useSetting'
 import { useSharedKinds } from '@/layout/sharedControlsBar'
 import { PanelErrorBoundary } from '@/layout/panelCard'
 import { Tile } from '@/layout/tile'
 import { useFill, withFillHeight } from '@/layout/fill'
 import type { CompareStrategy, MultiViewPanelConfig } from '@/layout/types'
 import { PanelLoadingState } from '@/panels/PanelLoadingState'
+import { viewIcon } from '@/panels/viewIcon'
+import type { SwitchMode } from '@/lib/switchForm'
 import { registry } from '@/panels/registry'
 import { diffFacets, drawsAllScenarios, effectiveStrategy, offersScenarioPick } from '@/panels/compareStrategy'
 import { STRATEGY_LABEL, isBaseYearOnly, isCalibrationFamily, resolveMultiView, validateMultiView, withRowHeight } from '@/panels/multiView'
@@ -30,6 +34,8 @@ export function MultiViewTile({ config: rawConfig, tileKey }: { config: MultiVie
   const { inputs, referenceLabel, referenceColor } = useCompareInputs()
   const [tile, setTile] = useTileState(tileKey)
   const lifted = useSharedKinds()
+  // the view control's form: site -> page -> this tile (`controls: { views: ... }`)
+  const viewMode = useSetting<SwitchMode>('controls.views', rawConfig)
   const error = useMemo(() => validateMultiView(config), [config])
   const resolved = useMemo(() => (error ? null : resolveMultiView(config, tile, { compare: ctx.compare })), [config, error, tile, ctx.compare])
 
@@ -135,18 +141,20 @@ export function MultiViewTile({ config: rawConfig, tileKey }: { config: MultiVie
       />,
     )
   }
-  if (resolved.visibleViews.length > 1 && !lifted.has('view')) {
-    controls.push(
-      <Segmented
-        key="view"
+  // The views are the tile's main choice, so they sit in its header: a switch when it fits, otherwise a menu.
+  const viewControl =
+    resolved.visibleViews.length > 1 && !lifted.has('view') ? (
+      <AdaptiveSwitch
         label="View"
-        className="ml-auto"
+        mode={viewMode}
         value={resolved.view.id}
-        options={resolved.visibleViews.map((v) => ({ id: v.id, label: v.label ?? v.id }))}
+        options={resolved.visibleViews.map((v) => {
+          const Icon = viewIcon(v)
+          return { id: v.id, label: v.label ?? v.id, icon: <Icon className="size-[15px]" aria-hidden="true" /> }
+        })}
         onChange={(view) => setTile({ view })}
-      />,
-    )
-  }
+      />
+    ) : undefined
 
   return (
     <TileKeyContext.Provider value={tileKey}>
@@ -156,6 +164,7 @@ export function MultiViewTile({ config: rawConfig, tileKey }: { config: MultiVie
         badges={badges.length > 0 ? badges : undefined}
         controls={controls.length > 0 ? controls : undefined}
         actions={actions.length > 0 ? actions : undefined}
+        headerControls={viewControl}
         height={config.height}
         expandable={config.expandable ?? true}
         panel={panel}
