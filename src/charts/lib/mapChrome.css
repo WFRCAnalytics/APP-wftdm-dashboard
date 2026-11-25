@@ -4,6 +4,8 @@
   position: absolute;
   inset: 0;
   overflow: hidden;
+  /* a size container, so a short map can move its chain button (below) */
+  container-type: size;
   font-family: var(--font-body, inherit);
 }
 .wfz-root .maplibregl-map,
@@ -73,10 +75,23 @@
 .wfz-chip.right {
   right: 52px;
 }
+/* the reference map's chain button (side-by-side grid): its own group under the zoom group (three 30px buttons, two
+   dividers and the border: 94px from 10px) with a 6px gap, coloured while the maps are linked */
+.wfz-ctl.wfz-link {
+  top: 110px;
+}
+/* a short map (a side-by-side cell) has no room under the zoom group above the attribution: beside it, 6px to its left */
+@container (max-height: 220px) {
+  .wfz-ctl.wfz-link {
+    top: 10px;
+    right: 48px;
+  }
+}
+/* the colour key: bottom-left inside the map, above the attribution line, balancing the controls top-right */
 .wfz-legend {
   position: absolute;
   left: 10px;
-  bottom: 36px;
+  bottom: 40px;
   z-index: 6;
   background: var(--surface);
   border: 1px solid var(--line);
@@ -97,31 +112,8 @@
   justify-content: space-between;
   gap: 12px;
 }
-.wfz-linked {
-  position: absolute;
-  right: 14px;
-  top: 12px;
-  z-index: 9;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.wfz-linked .note {
-  font-size: 12px;
-  color: var(--mute);
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  padding: 3px 10px;
-  white-space: nowrap;
-}
-.wfz-linked .wfz-ctl {
-  position: static;
-  flex-direction: row;
-}
-.wfz-linked .wfz-ctl button + button {
-  border-top: 0;
-  border-left: 1px solid var(--line);
+.wfz-ctl .link[aria-pressed='true'] {
+  color: var(--brand-text);
 }
 .wfz-note {
   position: absolute;
@@ -171,7 +163,6 @@
 .wfz-swipe:focus-visible .grip {
   box-shadow: 0 0 0 3px var(--surface), 0 0 0 5px var(--ink);
 }
-.wfz-chrome .wfz-ctl,
-.wfz-chrome .wfz-linked {
+.wfz-chrome .wfz-ctl {
   pointer-events: auto;
 }

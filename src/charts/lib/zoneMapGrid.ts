@@ -1,9 +1,10 @@
 // Side-by-side zone maps (project-docs/redesign/04-chart-catalogue.md section 22): the cells of a CompareHost grid are
 // separate chart panels, so the maps find each other through the grid element (`.wf-multi`). One group per grid links
-// the cameras (CameraGroup with a re-entrancy guard), owns the shared control group top-right and syncs the hover
+// the cameras (CameraGroup with a re-entrancy guard; the chain button in the reference map's controls can unlink them) and
+// syncs the hover
 // outline plus ONE tooltip listing every scenario. The camera is remembered on the group, which lives as long as the
 // grid element, so it survives redraws and paging.
-import { linkedControls } from '@/charts/lib/mapChrome'
+import { linkButton } from '@/charts/lib/mapChrome'
 import { CameraGroup, type Camera } from '@/charts/lib/mapMath'
 import type { ZoneMap } from '@/charts/lib/zoneMapView'
 import { syncRows, type SyncCell } from '@/panels/gridSync'
@@ -27,7 +28,7 @@ export class GridGroup {
   readonly members = new Set<GridMember>()
   home: Pick<Camera, 'center' | 'zoom'> | undefined
   selected: number | null = null
-  private bar: HTMLElement | null = null
+  private link: HTMLDivElement | null = null
 
   constructor(readonly grid: HTMLElement) {}
 
@@ -37,29 +38,33 @@ export class GridGroup {
     this.cameras.last ??= member.map.getCamera()
     this.home ??= member.map.home
     member.map.home = this.home
-    this.ensureBar()
   }
 
   leave(member: GridMember): void {
     this.members.delete(member)
     this.cameras.remove(member.map)
-    if (this.members.size === 0 && this.bar) {
-      this.bar.remove()
-      this.bar = null
+    if (this.members.size === 0) {
+      this.link?.remove()
+      this.link = null
+      this.cameras.linked = true
     }
     this.hover(null, null)
   }
 
-  /** The shared control group, appended once to the grid (positioned top-right over its cells). */
-  private ensureBar(): void {
-    if (this.bar?.isConnected) return
-    this.grid.style.position = 'relative'
-    this.bar = linkedControls({
-      zoomIn: () => this.first()?.map.zoomBy(1.6),
-      zoomOut: () => this.first()?.map.zoomBy(1 / 1.6),
-      reset: () => this.first()?.map.resetView(),
+  /** The chain button, for the first cell (the reference) only, under its zoom group: every cell has its own + / - / reset, which move them all
+   * while linked (the cameras follow each other) and only their own map once unlinked. Linking again puts every map on the
+   * reference map's camera. */
+  linkButtonFor(member: GridMember): HTMLDivElement | null {
+    if (this.ordered()[0] !== member) return null
+    this.link ??= linkButton({
+      isLinked: () => this.cameras.linked,
+      toggleLink: () => {
+        this.cameras.linked = !this.cameras.linked
+        const first = this.ordered()[0]
+        if (this.cameras.linked && first) this.cameras.moved(first.map)
+      },
     })
-    this.grid.appendChild(this.bar)
+    return this.link
   }
 
   private ordered(): GridMember[] {
@@ -67,9 +72,6 @@ export class GridGroup {
     return [...this.members].sort((a, b) => cells.indexOf(a.cell) - cells.indexOf(b.cell))
   }
 
-  private first(): GridMember | undefined {
-    return this.ordered()[0]
-  }
 
   /** Outlines `id` (ink, 2.4px) in every cell and shows one tooltip; null clears both. */
   hover(id: number | null, event: MouseEvent | null): void {

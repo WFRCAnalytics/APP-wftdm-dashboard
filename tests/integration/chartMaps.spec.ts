@@ -105,10 +105,29 @@ test.describe('zone maps', () => {
     const n = await liveMaps(page)
     expect(n).toBeGreaterThanOrEqual(2)
     expect(n).toBeLessThanOrEqual(4)
-    await expect(page.getByText('Zoom and pan are linked')).toBeVisible()
-    // one shared control group in the grid, none inside the cells
-    await expect(page.locator('.wf-multi .wfz-linked')).toHaveCount(1)
+    // every map has its own controls, inside the map; the chain button (linked) is in the reference cell's only
+    await expect(page.locator('.wf-multi .wfz-ctl:not(.wfz-link)')).toHaveCount(n)
     await expect(page.locator('.wf-multi .wfz-chip')).toHaveCount(0)
+    const link = page.locator('.wf-multi .wfz-link .link')
+    await expect(link).toHaveCount(1)
+    await expect(link).toHaveAttribute('aria-label', 'Zoom and pan are linked')
+    await expect(link).toHaveAttribute('aria-pressed', 'true')
+    const refCtl = (await page.locator('.wf-multi .wfz-link').boundingBox())!
+    const mapBox = (await page.locator('.wf-multi .wfz-map').first().boundingBox())!
+    expect(refCtl.y).toBeGreaterThanOrEqual(mapBox.y)
+    expect(refCtl.x + refCtl.width).toBeLessThanOrEqual(mapBox.x + mapBox.width + 1)
+    // the chain button is its own group (under the zoom group, or beside it on a short map), never overlapping it, so
+    // + / - / reset are in the same place in every map
+    const refZoom = (await page.locator('.wf-multi .wfz-ctl:not(.wfz-link)').first().boundingBox())!
+    expect(refCtl.y >= refZoom.y + refZoom.height || refCtl.x + refCtl.width <= refZoom.x).toBe(true)
+    // one colour key for the grid, bottom-left in the reference map, above the attribution
+    const key = page.locator('.wf-multi .wfz-legend')
+    await expect(key).toHaveCount(1)
+    await expect(key).toContainText('transit share')
+    const keyBox = (await key.boundingBox())!
+    expect(keyBox.x).toBeGreaterThanOrEqual(mapBox.x)
+    expect(keyBox.x + keyBox.width).toBeLessThan(refZoom.x)
+    expect(keyBox.y + keyBox.height).toBeLessThanOrEqual(mapBox.y + mapBox.height)
 
     // the camera of every cell is the same, and a wheel on one moves all. The grid picks its columns once it has measured
     // the tile, so the maps may still be resizing and refitting their bounds: wait until the cameras hold still first.
@@ -132,12 +151,32 @@ test.describe('zone maps', () => {
     cams = await cameras(page)
     expect(new Set(cams.map((m) => JSON.stringify(m))).size).toBe(1)
 
-    // the shared + button zooms them all too
+    // while linked, any map's + zooms them all
     const z1 = cams[0].zoom
-    await page.locator('.wf-multi .wfz-linked').getByRole('button', { name: 'Zoom in' }).click()
+    await page.locator('.wf-multi .wfz-ctl:not(.wfz-link)').nth(1).getByRole('button', { name: 'Zoom in' }).click()
     await expect.poll(async () => (await cameras(page)).every((m) => m.zoom > z1), { timeout: 8000 }).toBe(true)
     await page.waitForTimeout(500)
     expect(new Set((await cameras(page)).map((m) => JSON.stringify(m))).size).toBe(1)
+
+    // unlinked (a broken chain), a wheel on one map moves that map only; linking again puts them back together
+    await link.click()
+    await expect(link).toHaveAttribute('aria-label', 'Zoom and pan are separate')
+    await expect(link).toHaveAttribute('aria-pressed', 'false')
+    const z2 = (await cameras(page))[1].zoom
+    const c0 = await mapCentre(page, 0)
+    await page.mouse.move(c0.x, c0.y)
+    await page.mouse.wheel(0, -400)
+    await expect.poll(async () => (await cameras(page))[0].zoom, { timeout: 8000 }).toBeGreaterThan(z2)
+    await page.waitForTimeout(500)
+    expect((await cameras(page))[1].zoom).toBe(z2)
+    // and a map's own + moves that map only
+    const z0 = (await cameras(page))[0].zoom
+    await page.locator('.wf-multi .wfz-ctl:not(.wfz-link)').nth(1).getByRole('button', { name: 'Zoom in' }).click()
+    await expect.poll(async () => (await cameras(page))[1].zoom, { timeout: 8000 }).toBeGreaterThan(z2)
+    await page.waitForTimeout(500)
+    expect((await cameras(page))[0].zoom).toBe(z0)
+    await link.click()
+    await expect.poll(async () => new Set((await cameras(page)).map((m) => JSON.stringify(m))).size, { timeout: 8000 }).toBe(1)
 
     // hover a zone: ONE tooltip with every scenario, and the same zone outlined in every cell
     await hoverZone(page)

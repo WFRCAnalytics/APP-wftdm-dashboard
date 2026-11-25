@@ -3,7 +3,7 @@
 // opaque on "Zones only"), with the rail line and stations. In a side-by-side grid each cell is one of these maps; the
 // cells share a camera and hover (lib/zoneMapGrid.ts).
 import { exact } from '@/charts/lib/format'
-import { chip, controlGroup, legend } from '@/charts/lib/mapChrome'
+import { chip, controlGroup, gradient, legend } from '@/charts/lib/mapChrome'
 import { SHARE_DOMAIN, f1, sequentialT } from '@/charts/lib/mapMath'
 import {
   ZONE_TABLE,
@@ -11,7 +11,6 @@ import {
   attach,
   destroyHost,
   focusRunOf,
-  gradient,
   hostOf,
   needGeometry,
   showNote,
@@ -144,13 +143,13 @@ const kind: ChartKind = {
       map.resize()
     }
 
-    // chrome: single maps carry their own control group and caption; grid cells show the legend in the first cell only
-    const parts: HTMLElement[] = []
-    if (!grid) {
-      parts.push(chip(label, 'left'), controlGroup({ zoomIn: () => map.zoomBy(1.6), zoomOut: () => map.zoomBy(1 / 1.6), reset: () => map.resetView() }))
-    }
-    const firstCell = grid ? [...grid.group.grid.children].find((c) => (c as HTMLElement).dataset.s !== undefined) === grid.cell : true
-    if (firstCell) parts.push(legend(gradient([lo, t.tokens.c1]), [`${SHARE_DOMAIN[0]}%`, `${SHARE_DOMAIN[1]}%+ transit share`], 150))
+    // chrome: every map has its own control group, in the same place (in a grid the cell above it carries the caption). The
+    // reference cell (first) also has the chain button under it and the colour key, bottom-right; the other cells share both.
+    const controls = controlGroup({ zoomIn: () => map.zoomBy(1.6), zoomOut: () => map.zoomBy(1 / 1.6), reset: () => map.resetView() })
+    const link = grid && member ? grid.group.linkButtonFor(member) : null
+    const parts: HTMLElement[] = grid ? [controls] : [chip(label, 'left'), controls]
+    if (link) parts.push(link)
+    if (!grid || link) parts.push(legend(gradient([lo, t.tokens.c1]), [`${SHARE_DOMAIN[0]}%`, `${SHARE_DOMAIN[1]}%+ transit share`], 150))
     host.chrome.replaceChildren(...parts)
     if (host.chrome.parentElement !== host.wrap) host.wrap.appendChild(host.chrome)
     return out

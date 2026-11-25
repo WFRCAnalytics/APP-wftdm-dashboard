@@ -33,14 +33,58 @@ export function controlGroup(h: ControlHandlers): HTMLDivElement {
   return bar
 }
 
-/** The shared group of a side-by-side grid: the "Zoom and pan are linked" caption beside a horizontal control group. */
-export function linkedControls(h: ControlHandlers): HTMLDivElement {
+const LINK_ICON =
+  '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 17H7A5 5 0 0 1 7 7h2"/><path d="M15 7h2a5 5 0 1 1 0 10h-2"/><line x1="8" x2="16" y1="12" y2="12"/></svg>'
+const UNLINK_ICON =
+  '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 17H7A5 5 0 0 1 7 7"/><path d="M15 7h2a5 5 0 0 1 4 8"/><line x1="8" x2="12" y1="12" y2="12"/><line x1="2" x2="22" y1="2" y2="22"/></svg>'
+
+/** A colour key, bottom-right inside the map just above the attribution (where MapLibre puts its own controls): a gradient
+ * bar of `width` px and end labels (two or three). */
+export function legend(gradient: string, labels: string[], width: number): HTMLDivElement {
+  const el = document.createElement('div')
+  el.className = 'wfz-legend'
+  const bar = document.createElement('div')
+  bar.className = 'bar'
+  bar.style.cssText = `width:${width}px;background:${gradient}`
+  const ends = document.createElement('div')
+  ends.className = 'ends'
+  for (const l of labels) {
+    const s = document.createElement('span')
+    s.textContent = l
+    ends.appendChild(s)
+  }
+  el.append(bar, ends)
+  return el
+}
+
+/** CSS for a legend gradient from a list of colours. */
+export const gradient = (colors: string[]): string => `linear-gradient(90deg,${colors.join(',')})`
+
+/**
+ * The chain button of a side-by-side grid, a one-button group under the reference map's zoom group (so + / - / reset stay
+ * in the same place in every map): linked (every map's zoom, pan and buttons move them all) or a broken chain
+ * (each map moves on its own). `isLinked` reads the state; `toggleLink` flips it.
+ */
+export function linkButton(h: { isLinked(): boolean; toggleLink(): void }): HTMLDivElement {
   const wrap = document.createElement('div')
-  wrap.className = 'wfz-linked'
-  const note = document.createElement('span')
-  note.className = 'note'
-  note.textContent = 'Zoom and pan are linked'
-  wrap.append(note, controlGroup(h))
+  wrap.className = 'wfz-ctl wfz-link'
+  const link = document.createElement('button')
+  link.type = 'button'
+  link.className = 'link'
+  const paint = () => {
+    const on = h.isLinked()
+    link.innerHTML = on ? LINK_ICON : UNLINK_ICON
+    link.setAttribute('aria-pressed', String(on))
+    link.setAttribute('aria-label', on ? 'Zoom and pan are linked' : 'Zoom and pan are separate')
+    link.title = on ? 'Zoom and pan are linked across the maps. Click to move each map on its own.' : 'Each map zooms and pans on its own. Click to link them.'
+  }
+  link.addEventListener('click', (e) => {
+    e.stopPropagation()
+    h.toggleLink()
+    paint()
+  })
+  paint()
+  wrap.appendChild(link)
   return wrap
 }
 
@@ -57,24 +101,6 @@ export function chip(text: string, side: 'left' | 'right', swatch?: string): HTM
   span.textContent = text
   span.style.cssText = 'overflow:hidden;text-overflow:ellipsis'
   el.appendChild(span)
-  return el
-}
-
-/** A legend: a gradient bar of `width` px and end labels (two or three). */
-export function legend(gradient: string, labels: string[], width: number): HTMLDivElement {
-  const el = document.createElement('div')
-  el.className = 'wfz-legend'
-  const bar = document.createElement('div')
-  bar.className = 'bar'
-  bar.style.cssText = `width:${width}px;background:${gradient}`
-  const ends = document.createElement('div')
-  ends.className = 'ends'
-  for (const l of labels) {
-    const s = document.createElement('span')
-    s.textContent = l
-    ends.appendChild(s)
-  }
-  el.append(bar, ends)
   return el
 }
 

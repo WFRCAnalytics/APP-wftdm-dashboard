@@ -186,6 +186,3 @@ export function applyBasemaps(host: ZoneHost, env: ChartEnv): void {
   const key = JSON.stringify(getEffectiveProtomapsSource() ?? null)
   for (const m of host.maps) m.setBasemap(env.config, getGlobalBasemap(), key)
 }
-
-/** CSS for the map's legend gradient from a list of colours. */
-export const gradient = (colors: string[]): string => `linear-gradient(90deg,${colors.join(',')})`

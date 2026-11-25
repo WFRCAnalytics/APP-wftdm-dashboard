@@ -85,6 +85,8 @@ export class CameraGroup<M extends CameraMap = CameraMap> {
   private readonly maps = new Set<M>()
   private syncing = false
   last: Camera | undefined
+  /** False: each map moves on its own (the grid's chain button). */
+  linked = true
 
   add(map: M): void {
     this.maps.add(map)
@@ -105,6 +107,7 @@ export class CameraGroup<M extends CameraMap = CameraMap> {
   /** Call from each map's `move` handler. Returns false when the call was an echo of our own sync (ignored). */
   moved(from: M): boolean {
     if (this.syncing) return false
+    if (!this.linked) return true
     this.syncing = true
     try {
       const camera = from.getCamera()
