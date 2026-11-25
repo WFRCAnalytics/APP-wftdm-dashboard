@@ -277,6 +277,8 @@ test.describe('AI assistant', () => {
   })
 
   test('the Assistant button is a brand-filled circle beside the control bar, the size of the Compare button', async ({ page }) => {
+    // these tests are about the control bar's Scenarios chip: keep it (the page's scenario list is scenarioList.spec.ts)
+    await patchDemoConfig(page, (c) => ({ ...c, scenarios: { placement: 'picker' } }))
     await boot(page)
     const bar = page.getByTestId('control-bar')
     const button = page.getByTestId('assistant-button')

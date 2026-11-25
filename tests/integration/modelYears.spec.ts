@@ -17,6 +17,8 @@ const BASES = ['activitysim-baseline', 'activitysim-density-variant', 'activitys
 const ALL_RUNS = [...BASES, ...BASES.map((n) => `${n}-2036`)]
 const DASHBOARD_INDEX = {
   pages: ['dashboard-6-network.yaml'],
+  // the control bar's Scenarios chip (the page's scenario list is scenarioList.spec.ts)
+  scenarios: { placement: 'picker' },
   years: {
     list: [
       { year: 2023, label: 'Base year' },
@@ -112,7 +114,7 @@ test.describe('063 P3 — model years', () => {
   })
 
   test('a single-year deployment has no Year control', async ({ page }) => {
-    await boot(page, BASES, { pages: ['dashboard-6-network.yaml'] })
+    await boot(page, BASES, { pages: ['dashboard-6-network.yaml'], scenarios: { placement: 'picker' } })
     await expect(page.getByTestId('control-year')).toHaveCount(0)
     await expect(page.getByTestId('scenario-picker-button')).toBeVisible()
   })

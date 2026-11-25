@@ -4,7 +4,7 @@ import { exact } from '@/charts/lib/format'
 import { loadRows } from '@/charts/dataCache'
 import { loadFamilyRollup, meanErrorByRound, roundStatus, worstErrorByRound, type RollupRow } from '@/services/familyRollup'
 import { createPortal } from 'react-dom'
-import { ChevronUp, X } from 'lucide-react'
+import { ChevronUp, SlidersHorizontal, X } from 'lucide-react'
 
 import { useCompareInputs } from '@/hooks/useCompareInputs'
 import { useScenarioDisplay } from '@/hooks/useScenarioDisplay'
@@ -47,7 +47,8 @@ const ROUND_TAG = 'Calibration round'
 /** 58.9M at regional scale, 15,212 for a small run. */
 const vmtText = (v: number) => (v >= 1e6 ? `${(v / 1e6).toFixed(1)}M` : exact(Math.round(v)))
 
-export function ScenarioPicker() {
+/** `chip` (default): the control bar's Scenarios chip. `add`: a small "Add or remove" button, for the page's scenario list. */
+export function ScenarioPicker({ variant = 'chip', addLabel }: { variant?: 'chip' | 'add'; addLabel?: string } = {}) {
   const view = useResolvedView()
   const runs = useScenarioList()
   const display = useScenarioDisplay()
@@ -194,6 +195,20 @@ export function ScenarioPicker() {
 
   return (
     <>
+      {variant === 'add' ? (
+        <button
+          ref={triggerRef}
+          type="button"
+          aria-haspopup="dialog"
+          aria-expanded={open}
+          data-testid="scenario-picker-add"
+          onClick={() => setOpen((o) => !o)}
+          className="inline-flex h-8 shrink-0 items-center gap-2 rounded-full border border-dashed border-[var(--glass-line)] px-3 font-body text-[13px] text-[var(--mute)] hover:text-[var(--ink)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-text)]"
+        >
+          <SlidersHorizontal className="size-[14px]" aria-hidden="true" />
+          {addLabel ?? (compareOn ? 'Add or remove' : 'Change')}
+        </button>
+      ) : (
       <button
         ref={triggerRef}
         type="button"
@@ -232,6 +247,7 @@ export function ScenarioPicker() {
           <ChevronUp className={cn('size-[14px] transition-transform', !open && 'rotate-180')} />
         </span>
       </button>
+      )}
 
       {open &&
         // portalled out of the control bar: its backdrop-filter would otherwise become the containing block of this fixed panel

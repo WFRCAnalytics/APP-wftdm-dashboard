@@ -29,6 +29,8 @@ import { getDeployment } from '@/state/compareState'
 import { get as getScenario, list as listScenarios } from '@/state/appState'
 import { tooltip } from '@/services/tooltip'
 import { useSetting } from '@/hooks/useSetting'
+import { getHoveredRun, subscribeHoveredRun } from '@/state/scenarioHover'
+import { isolateScenario } from '@/panels/crossHighlight'
 
 // One component for every chart of the catalogue (project-docs/redesign/04-chart-catalogue.md): resolves which runs to
 // show from the view context, loads their tables, then hands a ChartEnv to the kind's `draw` and redraws on resize,
@@ -213,6 +215,16 @@ export function ChartPanel({ config: ownConfig }: PanelProps<ChartPanelConfig>) 
     for (const s of plan.scenarios) m.set(s.color.toLowerCase(), s.run)
     return m
   }, [plan])
+
+  // hovering a scenario in the page's scenario list isolates it here too, as this tile's own key chip would
+  useEffect(() => {
+    const apply = () => {
+      const el = containerRef.current
+      const run = getHoveredRun()
+      if (el && (run === null || [...runColors.values()].includes(run))) isolateScenario(el, runColors, run)
+    }
+    return subscribeHoveredRun(apply)
+  }, [runColors])
 
   // Claimed in an effect, never in render: a render React throws away (Suspense, a remount) would leave a stale owner
   // behind and the real chart would never get the legend row.

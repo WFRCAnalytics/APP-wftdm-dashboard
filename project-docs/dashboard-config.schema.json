@@ -199,6 +199,41 @@
         "max_active": {
           "type": "integer",
           "description": "The most scenarios that can be on at once, at startup and when a viewer turns one on (default 16). Browsers allow about 16 WebGL views, one per side-by-side map, so a larger value is accepted but reported with a warning."
+        },
+        "placement": {
+          "enum": [
+            "auto",
+            "rail",
+            "header",
+            "picker"
+          ],
+          "description": "Where the page lists the scenarios being compared (names, colours, focus, reference, Compare), which is also every chart’s scenario key: auto puts the list in the left rail while it is open and in the header while it is collapsed; rail only in the open rail (collapsed: the Scenarios chip); header always in the header; picker keeps only the Scenarios chip and leaves each tile its own key."
+        }
+      }
+    },
+    "nav": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "start": {
+          "enum": [
+            "collapsed",
+            "open"
+          ],
+          "description": "How the left rail starts: collapsed to icons, or open with its labels (and, with scenarios.placement auto or rail, the scenario list). The viewer can still toggle it."
+        }
+      }
+    },
+    "legend": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "scenarios": {
+          "enum": [
+            "auto",
+            "tile"
+          ],
+          "description": "Scenario names in a tile’s key: auto leaves them out while the page lists the scenarios (scenarios.placement), and shows them in the expanded tile and in exports; tile always shows them. A page or a tile (`legend: { scenarios: tile }`) may set its own."
         }
       }
     },

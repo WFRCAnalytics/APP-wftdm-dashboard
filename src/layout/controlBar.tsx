@@ -22,7 +22,8 @@ import { cn } from '@/lib/utils'
 // The pinned control bar (project-docs/redesign/02-layout-and-components.md §1.2): Year, Focus, the Compare toggle, the
 // scenario picker, Reference and Show. Each hides itself when it does not apply (one year, one scenario, Compare off).
 
-function CompareToggle({ on, onChange }: { on: boolean; onChange: (on: boolean) => void }) {
+/** The Compare switch: in the control bar, or in the page's scenario list (`compact`). */
+export function CompareToggle({ on, onChange, compact = false }: { on: boolean; onChange: (on: boolean) => void; compact?: boolean }) {
   return (
     <button
       type="button"
@@ -32,7 +33,9 @@ function CompareToggle({ on, onChange }: { on: boolean; onChange: (on: boolean) 
       data-testid="control-compare"
       onClick={() => onChange(!on)}
       className={cn(
-        'inline-flex h-[38px] items-center gap-[10px] rounded-full border pl-2 pr-[14px] font-body text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-text)]',
+        'inline-flex shrink-0 items-center gap-[10px] rounded-full border pl-2 pr-[14px] font-body text-sm font-medium',
+        compact ? 'h-8 text-[13px]' : 'h-[38px]',
+        'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-text)]',
         on
           ? 'border-[var(--brand)] bg-[color-mix(in_srgb,var(--brand)_24%,transparent)] text-[var(--ink)]'
           : 'border-[var(--glass-line)] bg-transparent text-[var(--mute)] hover:text-[var(--ink)]',
@@ -57,7 +60,8 @@ function CompareToggle({ on, onChange }: { on: boolean; onChange: (on: boolean) 
   )
 }
 
-export function ControlBar() {
+/** `scenariosElsewhere`: the page lists the scenarios (layout/scenarioList.tsx), so the bar leaves out the Scenarios chip and Compare. */
+export function ControlBar({ scenariosElsewhere = false }: { scenariosElsewhere?: boolean } = {}) {
   const view = useResolvedView()
   const runs = useScenarioList()
   const deployment = useSyncExternalStore(subscribe, getDeployment)
@@ -105,7 +109,7 @@ export function ControlBar() {
       {showYear && (
         <PillSelect label="Year" value={String(view.year)} options={yearOptions} onChange={(v) => setYear(Number(v))} data-testid="control-year" wide />
       )}
-      {showFocus && <ScenarioPicker />}
+      {showFocus && !scenariosElsewhere && <ScenarioPicker />}
       {showCompare && (
         <Segmented
           size="lg"
@@ -121,7 +125,7 @@ export function ControlBar() {
         />
       )}
       {/* Right-most and always rendered, so the toggle never moves when Compare is switched. */}
-      {showCompare && <CompareToggle on={compareState.compare} onChange={setCompare} />}
+      {showCompare && !scenariosElsewhere && <CompareToggle on={compareState.compare} onChange={setCompare} />}
     </div>
   )
 }

@@ -35,6 +35,8 @@ export interface TileProps {
   actions?: ReactNode
   /** Controls in the header row, right-aligned in the space the title leaves (the view switch); also in the expanded dialog. */
   headerControls?: ReactNode
+  /** `legend.scenarios: tile`: keep scenario names in this tile's key even while the page lists the scenarios. */
+  keepScenarioLegend?: boolean
   /** Configured body height; the inline anchor keeps it exactly as before. */
   height?: number
   expandable: boolean
@@ -63,8 +65,10 @@ function InfoButton({ title, text }: { title: string; text: string }) {
   )
 }
 
-export function Tile({ title, subtitle, badges, controls, actions, headerControls, height, expandable, panel, errorMessage }: TileProps) {
+export function Tile({ title, subtitle, badges, controls, actions, headerControls, keepScenarioLegend = false, height, expandable, panel, errorMessage }: TileProps) {
   const [legendEl, setLegendEl] = useState<HTMLDivElement | null>(null)
+  // expanded, the chart's key moves into the dialog (the page's scenario list is behind it, so the key keeps scenario names)
+  const [dialogLegendEl, setDialogLegendEl] = useState<HTMLDivElement | null>(null)
   const cardRef = useRef<HTMLDivElement>(null)
   const exports = useMemo(() => createExportRegistry(), [])
   // Tabbed pages: the tile fills the space it is given, its controls move to a rail beside the chart (wide screens).
@@ -104,7 +108,7 @@ export function Tile({ title, subtitle, badges, controls, actions, headerControl
 
   // Called unconditionally (rules of hooks); see panelExpandHost.tsx for why `body` is simply never placed when the
   // tile is not expandable.
-  const { trigger, body } = usePanelExpandHost(title, panel, { height: fill.active ? '100%' : height, chrome: <>{subtitle && <p className="text-[12.5px] text-[var(--mute)]">{prettyOperators(subtitle)}</p>}{chrome}</>, exportMenu: (ref) => <>{actions}<ExportMenu title={title} cardRef={ref} tables={exports.all} /></>, headerControls: headerControls && <div data-export-skip="" className="flex min-w-0 flex-1 justify-end">{headerControls}</div> })
+  const { trigger, body, expanded } = usePanelExpandHost(title, panel, { height: fill.active ? '100%' : height, chrome: <>{subtitle && <p className="text-[12.5px] text-[var(--mute)]">{prettyOperators(subtitle)}</p>}{chrome}<div ref={setDialogLegendEl} data-tile-legend="dialog" className="font-body text-[12.5px] text-[var(--mute)] empty:hidden" /></>, exportMenu: (ref) => <>{actions}<ExportMenu title={title} cardRef={ref} tables={exports.all} /></>, headerControls: headerControls && <div data-export-skip="" className="flex min-w-0 flex-1 justify-end">{headerControls}</div> })
   const hasPanel = panel !== null && !errorMessage
   useEffect(() => (hasPanel ? registerPageTile({ title, cardRef, tables: exports.all }) : undefined), [hasPanel, title, exports])
 
@@ -130,12 +134,13 @@ export function Tile({ title, subtitle, badges, controls, actions, headerControl
       <div
         ref={setLegendEl}
         data-testid="tile-legend"
+        data-tile-legend={keepScenarioLegend ? 'keep' : 'auto'}
         className="max-h-[70px] min-h-0 overflow-y-auto px-[18px] pt-2 font-body text-[12.5px] text-[var(--mute)] empty:hidden"
       />
       <div className={cn(fill.active && 'flex min-h-0 flex-1 gap-1')}>
       <CardContent className={cn(fill.active ? 'relative min-h-0 min-w-0 flex-1 p-0' : 'px-[14px] pb-[14px] pt-2')}>
         <div ref={bodyRef} className={cn(fill.active && 'absolute bottom-[14px] left-[14px] right-[14px] top-2 overflow-hidden')}>
-        <TileLegendContext.Provider value={legendEl}>
+        <TileLegendContext.Provider value={expanded && dialogLegendEl ? dialogLegendEl : legendEl}>
           {fill.active && fill.height === undefined ? null : errorMessage ? (
             <PanelErrorState message={errorMessage} />
           ) : hasPanel ? (

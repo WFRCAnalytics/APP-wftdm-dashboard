@@ -15,7 +15,12 @@ export interface ChartLegendProps {
 
 export function ChartLegend({ spec, chartEl, runColors }: ChartLegendProps) {
   return (
-    <div className="flex flex-wrap items-center gap-x-[14px] gap-y-1" data-testid="chart-legend">
+    <div
+      className="flex flex-wrap items-center gap-x-[14px] gap-y-1"
+      data-testid="chart-legend"
+      // a key of scenario names only: hidden as a whole while the page lists the scenarios (charts CSS)
+      data-only-sc={spec.items.length > 0 && spec.items.every((i) => i.run) && !spec.diverge ? '' : undefined}
+    >
       {spec.items.map((item) => (
         <span
           key={`${item.label}:${item.run ?? item.mode ?? ''}`}

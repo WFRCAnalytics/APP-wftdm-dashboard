@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
+import { patchDemoConfig } from './_siteConfig'
 
 // Layout rules of project-docs/redesign/10-toolbar-layout-export-proposal.md, on the real demo content.
 
@@ -64,6 +65,8 @@ test.describe('the control bar is one row', () => {
   }
 
   test('focus, compared scenarios and reference are chosen in one popover', async ({ page }) => {
+    // these tests are about the control bar's Scenarios chip: keep it (the page's scenario list is scenarioList.spec.ts)
+    await patchDemoConfig(page, (c) => ({ ...c, scenarios: { placement: 'picker' } }))
     await boot(page)
     const chip = page.getByTestId('scenario-picker-button')
     await expect(chip).toContainText('+2')
@@ -92,6 +95,8 @@ test('the Compare toggle does not move when Compare is switched, and Show greys 
 
 test('the scenarios popover hangs under its chip, scrolled or not', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 800 })
+  // these tests are about the control bar's Scenarios chip: keep it (the page's scenario list is scenarioList.spec.ts)
+  await patchDemoConfig(page, (c) => ({ ...c, scenarios: { placement: 'picker' } }))
   await boot(page)
   await page.waitForTimeout(800)
   for (const y of [0, 500]) {

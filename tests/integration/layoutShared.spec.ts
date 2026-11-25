@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { readFileSync } from 'node:fs'
+import { patchDemoConfig } from './_siteConfig'
 
 // Shared Compare as, Export from the expanded dialog, and Export all
 // (project-docs/redesign/10-toolbar-layout-export-proposal.md, questions 6 and 7) on the real demo content.
@@ -110,6 +111,8 @@ test.describe('Export all', () => {
 
 test.describe('scenario picker', () => {
   test('clicking a scenario name does what its radio or checkbox does', async ({ page }) => {
+    // these tests are about the control bar's Scenarios chip: keep it (the page's scenario list is scenarioList.spec.ts)
+    await patchDemoConfig(page, (c) => ({ ...c, scenarios: { placement: 'picker' } }))
     await boot(page)
     await setCompare(page, false)
     await page.getByTestId('scenario-picker-button').click()

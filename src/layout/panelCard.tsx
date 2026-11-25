@@ -6,6 +6,7 @@ import { registry } from '@/panels/registry'
 import { EXPANDABLE_PANEL_TYPES } from '@/panels/expandablePanelTypes'
 import { MultiViewTile } from '@/layout/multiViewTile'
 import { Tile } from '@/layout/tile'
+import { useSetting } from '@/hooks/useSetting'
 import { useFill, withFillHeight } from '@/layout/fill'
 import type { MultiViewPanelConfig, PanelConfig } from '@/layout/types'
 
@@ -66,6 +67,7 @@ function PlainTile({ config: authored }: { config: PanelConfig }) {
   // always wins over EXPANDABLE_PANEL_TYPES' per-TYPE default (`??`, not
   // `||`: an explicit `false` must not fall through to the default).
   const isExpandable = config.expandable ?? EXPANDABLE_PANEL_TYPES.has(config.type)
+  const keepScenarioLegend = useSetting('legend.scenarios', config) === 'tile'
 
   // 042-boot-performance-fix: registry[config.type] is a React.lazy()
   // component, so <Suspense> is required; it sits INSIDE the error
@@ -85,6 +87,7 @@ function PlainTile({ config: authored }: { config: PanelConfig }) {
       subtitle={config.description}
       height={config.height}
       expandable={isExpandable}
+      keepScenarioLegend={keepScenarioLegend}
       panel={panelElement}
       errorMessage={PanelComponent ? undefined : `Unknown panel type: "${config.type}"`}
     />

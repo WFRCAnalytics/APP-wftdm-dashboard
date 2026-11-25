@@ -39,6 +39,8 @@ export interface FloatingNavProps {
   onPinnedChange?: (pinned: boolean) => void
   /** The open page's `header.docs`, appended to `branding.docsUrl` for the documentation link (none on a chromeless page). */
   docsPath?: string
+  /** The page's scenario list, shown under the pages while the labels are pinned open (scenarios.placement). */
+  scenarioList?: ReactNode
 }
 
 // The theme control. Expanded, it is a three-part pill (System / Light / Dark icons, the set one filled); collapsed, the
@@ -85,7 +87,7 @@ const MENU_LABEL = (
   </span>
 )
 
-export function FloatingNav({ tabs, activeIndex, onTabChange, branding, mobile = false, open = false, onClose, pinned = false, onPinnedChange, docsPath }: FloatingNavProps) {
+export function FloatingNav({ tabs, activeIndex, onTabChange, branding, mobile = false, open = false, onClose, pinned = false, onPinnedChange, docsPath, scenarioList }: FloatingNavProps) {
   // Keyboard focus inside the rail shows the labels as a transient overlay; the toggle pins them open (state lives in the
   // shell, which docks the page beside a pinned nav).
   const [engaged, setEngaged] = useState(false)
@@ -196,6 +198,10 @@ export function FloatingNav({ tabs, activeIndex, onTabChange, branding, mobile =
             )
           })}
         </div>
+
+        {scenarioList && pinned && !mobile && (
+          <div className="mt-2 flex max-h-[45%] min-h-0 shrink-0 flex-col border-t border-[var(--line)] pt-3">{scenarioList}</div>
+        )}
 
         <div className="mt-2 flex flex-col gap-1 border-t border-[var(--line)] pt-2">
           {/* Both are always rendered in the same 46px slot and cross-fade, in step with the rail's 220ms width transition.

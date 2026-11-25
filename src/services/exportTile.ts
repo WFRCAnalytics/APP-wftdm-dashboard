@@ -363,6 +363,18 @@ export function readSvgText(svg: string): { title: string; description: string }
 
 /** The tile card as it looks on screen, as one standalone SVG document (controls and buttons left out). */
 export async function cardToSvg(card: HTMLElement, options: ImageOptions): Promise<{ svg: string; width: number; height: number }> {
+  // A picture leaves the page, so it carries the tile's full key: scenario names a tile leaves out of its key while the page
+  // lists the scenarios come back for the export (charts CSS, [data-exporting]). Layout is read synchronously below.
+  const marked = !card.hasAttribute('data-exporting')
+  if (marked) card.setAttribute('data-exporting', '')
+  try {
+    return await drawCard(card, options)
+  } finally {
+    if (marked) card.removeAttribute('data-exporting')
+  }
+}
+
+async function drawCard(card: HTMLElement, options: ImageOptions): Promise<{ svg: string; width: number; height: number }> {
   const origin = card.getBoundingClientRect()
   const pad = 12
   const maxChars = Math.max(30, Math.floor((origin.width - 12) / 6.4))

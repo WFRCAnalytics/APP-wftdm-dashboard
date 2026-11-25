@@ -74,7 +74,7 @@ export function usePanelExpandHost(
     /** Controls that sit in the title row, between the title and the Export menu (the view switch). They take the free space. */
     headerControls?: ReactNode
   },
-): { trigger: ReactNode; body: ReactNode } {
+): { trigger: ReactNode; body: ReactNode; expanded: boolean } {
   const [expanded, setExpanded] = useState(false)
   const [inlineAnchor, setInlineAnchor] = useState<HTMLDivElement | null>(null)
   const [dialogAnchor, setDialogAnchor] = useState<HTMLDivElement | null>(null)
@@ -200,5 +200,5 @@ export function usePanelExpandHost(
     </>
   )
 
-  return { trigger, body }
+  return { trigger, body, expanded }
 }

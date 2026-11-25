@@ -95,3 +95,20 @@
 .wf-hl.syncing [data-key]:not(.sync) {
   opacity: 0.28;
 }
+
+/* While the page lists the scenarios (layout/scenarioList.tsx, html[data-scenario-list="on"]), a tile's key leaves out
+   scenario names (legend.scenarios: auto): the list is the key. A key of scenario names only is hidden as a whole. The
+   expanded dialog's key (data-tile-legend="dialog") and a tile set to keep its key are untouched, and an export marks the
+   card [data-exporting] so the picture carries the full key. */
+html[data-scenario-list='on'] [data-tile-legend='auto'] [data-sc] {
+  display: none;
+}
+html[data-scenario-list='on'] [data-tile-legend='auto']:has(> [data-only-sc]) {
+  display: none;
+}
+html[data-scenario-list='on'] [data-exporting] [data-tile-legend='auto'] [data-sc] {
+  display: inline-flex;
+}
+html[data-scenario-list='on'] [data-exporting] [data-tile-legend='auto']:has(> [data-only-sc]) {
+  display: block;
+}

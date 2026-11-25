@@ -37,6 +37,7 @@ export function MultiViewTile({ config: rawConfig, tileKey }: { config: MultiVie
   // the view control's form: site -> page -> this tile (`controls: { views: ... }`)
   const viewMode = useSetting<SwitchMode>('controls.views', rawConfig)
   const scaleSetting = useSetting<'own' | 'shared'>('charts.scale', rawConfig)
+  const keepScenarioLegend = useSetting('legend.scenarios', rawConfig) === 'tile'
   const error = useMemo(() => validateMultiView(config), [config])
   const resolved = useMemo(() => (error ? null : resolveMultiView(config, tile, { compare: ctx.compare })), [config, error, tile, ctx.compare])
 
@@ -181,6 +182,7 @@ export function MultiViewTile({ config: rawConfig, tileKey }: { config: MultiVie
         controls={controls.length > 0 ? controls : undefined}
         actions={actions.length > 0 ? actions : undefined}
         headerControls={viewControl}
+        keepScenarioLegend={keepScenarioLegend}
         height={config.height}
         expandable={config.expandable ?? true}
         panel={panel}

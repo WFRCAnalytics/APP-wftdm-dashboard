@@ -48,8 +48,10 @@ test('by default the first scenario is the reference and the second the focus', 
   await expect(page.getByTestId('hero-reference')).toHaveCount(1)
   await expect(page.getByTestId('hero-reference')).toContainText('ActivitySim Baseline')
   await expect(page.getByTestId('hero-kpi').first()).not.toContainText('vs ActivitySim Baseline')
-  await expect(page.getByTestId('scenario-chip-reference')).toHaveCount(1)
-  await expect(page.getByTestId('scenario-chip-focus')).not.toHaveText('ActivitySim Baseline')
+  // the page's scenario list marks them: the first scenario is the reference, the second the focus
+  const list = page.getByTestId('scenario-list')
+  await expect(list.locator('li', { hasText: 'Reference' })).toContainText('ActivitySim Baseline')
+  await expect(list.locator('li', { hasText: 'Focus' })).toContainText('ActivitySim: TAZ 1 Density +40%')
 })
 
 test('an expanded tile fills the dialog, side by side included', async ({ page }) => {

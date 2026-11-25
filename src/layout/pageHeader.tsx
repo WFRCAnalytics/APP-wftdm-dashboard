@@ -16,12 +16,14 @@ export interface PageHeaderProps {
   children?: ReactNode
   /** Present only below 760px, where the nav is a sheet opened from here. */
   onMenu?: () => void
+  /** A full-width row under the title and the control bar (the page's scenario list); it stays when the header is compact. */
+  below?: ReactNode
 }
 
 const COMPACT_ENTER = 8
 const COMPACT_EXIT = 2
 
-export function PageHeader({ title, subtitle, children, onMenu }: PageHeaderProps) {
+export function PageHeader({ title, subtitle, children, onMenu, below }: PageHeaderProps) {
   const [scrolledCompact, setCompact] = useState(false)
   const compact = scrolledCompact
   const headerRef = useRef<HTMLElement>(null)
@@ -74,7 +76,9 @@ export function PageHeader({ title, subtitle, children, onMenu }: PageHeaderProp
       style={{ marginBottom: -shrink }}
       data-compact={compact ? 'true' : 'false'}
       className={cn(
-        'group/header sticky top-0 z-30 flex items-center justify-between max-[899px]:flex-wrap gap-x-5 gap-y-[14px] pl-[14px] pr-7 transition-[padding,background-color,backdrop-filter] duration-[260ms] ease-out',
+        'group/header sticky top-0 z-30 flex items-center justify-between max-[899px]:flex-wrap gap-x-5',
+        below && 'flex-wrap',
+        ' gap-y-[14px] pl-[14px] pr-7 transition-[padding,background-color,backdrop-filter] duration-[260ms] ease-out',
         compact
           ? 'bg-[color-mix(in_srgb,var(--bg)_84%,transparent)] py-[10px] backdrop-blur-[14px]'
           : 'pb-3 pt-[26px]',
@@ -116,6 +120,7 @@ export function PageHeader({ title, subtitle, children, onMenu }: PageHeaderProp
       {children && (
         <div className="flex min-w-0 flex-none justify-end max-[899px]:basis-full max-[899px]:justify-start min-[900px]:max-w-[78%]">{children}</div>
       )}
+      {below && <div className="min-w-0 basis-full">{below}</div>}
     </header>
   )
 }

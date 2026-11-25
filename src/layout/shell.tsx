@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { LayoutDashboard } from 'lucide-react'
 
-import { landingIndex } from '@/config'
+import { landingIndex, settingValue } from '@/config'
+import { getSiteSettings } from '@/state/siteSettings'
 import { getActiveSection } from '@/state/layoutState'
 import { addProblems } from '@/state/configProblems'
 import { assignSlugs, slugCollisions, buildHash, parseHash, replaceAddress, setCurrentSlug } from '@/state/routeState'
@@ -15,6 +16,7 @@ import { DashboardRenderer } from '@/layout/dashboardRenderer'
 import { findFullPagePanel } from '@/layout/dashboardLayout'
 import { FloatingNav } from '@/layout/floatingNav'
 import { PageHeader } from '@/layout/pageHeader'
+import { ScenarioList } from '@/layout/scenarioList'
 import { PanelEmptyState } from '@/panels/PanelEmptyState'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { useTabsPlan } from '@/hooks/useTabsPlan'
@@ -28,6 +30,28 @@ import type { DashboardBranding } from '@/services/yamlLoader'
 // The active tab is tracked by ARRAY INDEX, not by `header.tab` name. main.tsx concatenates two dashboard-config roots
 // (a deployer's own and this repo's demo content); if both name their landing tab "Summary", a name lookup would resolve
 // to the first match and highlight both. The array never changes after boot, so the index is stable and unique.
+/**
+ * Where the page lists the compared scenarios (`scenarios.placement`): `rail` in the open left rail, `header` under the page
+ * title, `none` for the control bar's Scenarios chip alone (the picker setting, mobile, or rail-only with the rail collapsed).
+ */
+export function scenarioListPlace(setting: string, s: { pinned: boolean; mobile: boolean; chromeless: boolean }): 'rail' | 'header' | 'none' {
+  if (s.mobile || setting === 'picker') return 'none'
+  if (s.pinned && (setting === 'auto' || setting === 'rail')) return 'rail'
+  if (s.chromeless) return 'none'
+  return setting === 'auto' || setting === 'header' ? 'header' : 'none'
+}
+
+/** Marks the page while a scenario list is on screen, so tiles leave scenario names out of their keys (charts CSS). */
+function ScenarioListFlag({ on }: { on: boolean }) {
+  useEffect(() => {
+    document.documentElement.dataset.scenarioList = on ? 'on' : 'off'
+    return () => {
+      delete document.documentElement.dataset.scenarioList
+    }
+  }, [on])
+  return null
+}
+
 export function Shell({
   dashboards,
   branding = {},
@@ -67,7 +91,8 @@ export function Shell({
   // The nav's labels are pinned open with its toggle. Pinned, the nav is DOCKED: the page's left padding grows by the same
   // amount, so the canvas shrinks to the space that is left instead of sitting under the menu. (A transient keyboard-focus
   // expansion stays an overlay; it never moves the page.) In-memory only, per the no-localStorage rule.
-  const [navPinned, setNavPinned] = useState(false)
+  // nav.start: the rail may start open; the viewer toggles it either way
+  const [navPinned, setNavPinned] = useState(() => settingValue('nav.start', { site: getSiteSettings() }) === 'open')
   const tabbed = useTabsPlan(dashboards[activeIndex] ?? dashboards[0]) !== null
   // Below 760px the nav is a sheet opened from the header instead of a fixed rail.
   const mobile = useMediaQuery('(max-width: 759px)')
@@ -89,6 +114,7 @@ export function Shell({
   // `header.full_page` tabs (Explore) are chromeless: no page header, no control bar, no tile chrome.
   // A misconfigured full_page tab (not exactly one panel) falls back to ordinary rendering, header included.
   const chromeless = Boolean(active.header.full_page && findFullPagePanel(active))
+  const listAt = scenarioListPlace(String(settingValue('scenarios.placement', { site: getSiteSettings() })), { pinned: navPinned, mobile, chromeless })
 
   return (
     <div className="relative z-[1] min-h-screen">
@@ -103,13 +129,20 @@ export function Shell({
         onClose={() => setMenuOpen(false)}
         pinned={navPinned}
         onPinnedChange={setNavPinned}
+        scenarioList={listAt === 'rail' ? <ScenarioList orientation="vertical" /> : undefined}
       />
+      <ScenarioListFlag on={listAt !== 'none'} />
       {/* A chromeless full-page panel needs a DEFINITE height for its `height: 100%` chain (min-height does not give one). */}
       <main className={cn('flex flex-col', chromeless || tabbed ? 'h-dvh' : 'min-h-screen', tabbed && 'overflow-hidden', !mobile && 'transition-[padding-left] duration-[220ms] ease-out', !mobile && (navPinned ? 'pl-[276px]' : 'pl-[96px]'))}>
         {!chromeless && (
-          <PageHeader title={active.header.title} subtitle={active.header.description} onMenu={mobile ? () => setMenuOpen(true) : undefined}>
+          <PageHeader
+            title={active.header.title}
+            subtitle={active.header.description}
+            onMenu={mobile ? () => setMenuOpen(true) : undefined}
+            below={listAt === 'header' ? <ScenarioList orientation="horizontal" /> : undefined}
+          >
             <div className="flex min-w-0 max-w-full items-center gap-2.5">
-              <ControlBar />
+              <ControlBar scenariosElsewhere={listAt !== 'none'} />
               <AssistantButton />
             </div>
           </PageHeader>

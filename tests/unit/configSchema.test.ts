@@ -40,6 +40,7 @@ describe('config schema table', () => {
         'export.footer',
         'hero.reference',
         'layout.mode',
+        'legend.scenarios',
       ].sort(),
     )
     for (const r of SETTINGS.filter((s) => s.cascade && s.type === 'list')) {
