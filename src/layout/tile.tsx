@@ -33,6 +33,8 @@ export interface TileProps {
   controls?: ReactNode
   /** Small icon buttons in the header, left of Export (also shown in the expanded dialog). */
   actions?: ReactNode
+  /** Controls in the header row, right-aligned in the space the title leaves (the view switch); also in the expanded dialog. */
+  headerControls?: ReactNode
   /** Configured body height; the inline anchor keeps it exactly as before. */
   height?: number
   expandable: boolean
@@ -61,7 +63,7 @@ function InfoButton({ title, text }: { title: string; text: string }) {
   )
 }
 
-export function Tile({ title, subtitle, badges, controls, actions, height, expandable, panel, errorMessage }: TileProps) {
+export function Tile({ title, subtitle, badges, controls, actions, headerControls, height, expandable, panel, errorMessage }: TileProps) {
   const [legendEl, setLegendEl] = useState<HTMLDivElement | null>(null)
   const cardRef = useRef<HTMLDivElement>(null)
   const exports = useMemo(() => createExportRegistry(), [])
@@ -77,7 +79,9 @@ export function Tile({ title, subtitle, badges, controls, actions, height, expan
     ro.observe(el)
     return () => ro.disconnect()
   }, [fill.active])
-  const rail = fill.active && wide && cardWidth >= 760 && Boolean(controls)
+  // ... and enough controls to fill it: one or two (the view switch now lives in the header) sit in a row above the chart, which keeps its width
+  const controlCount = Array.isArray(controls) ? controls.filter(Boolean).length : controls ? 1 : 0
+  const rail = fill.active && wide && cardWidth >= 760 && controlCount >= 3
   const bodyRef = useRef<HTMLDivElement>(null)
   const { report } = fill
   useEffect(() => {
@@ -100,7 +104,7 @@ export function Tile({ title, subtitle, badges, controls, actions, height, expan
 
   // Called unconditionally (rules of hooks); see panelExpandHost.tsx for why `body` is simply never placed when the
   // tile is not expandable.
-  const { trigger, body } = usePanelExpandHost(title, panel, { height: fill.active ? '100%' : height, chrome: <>{subtitle && <p className="text-[12.5px] text-[var(--mute)]">{prettyOperators(subtitle)}</p>}{chrome}</>, exportMenu: (ref) => <>{actions}<ExportMenu title={title} cardRef={ref} tables={exports.all} /></> })
+  const { trigger, body } = usePanelExpandHost(title, panel, { height: fill.active ? '100%' : height, chrome: <>{subtitle && <p className="text-[12.5px] text-[var(--mute)]">{prettyOperators(subtitle)}</p>}{chrome}</>, exportMenu: (ref) => <>{actions}<ExportMenu title={title} cardRef={ref} tables={exports.all} /></>, headerControls: headerControls && <div data-export-skip="" className="flex min-w-0 flex-1 justify-end">{headerControls}</div> })
   const hasPanel = panel !== null && !errorMessage
   useEffect(() => (hasPanel ? registerPageTile({ title, cardRef, tables: exports.all }) : undefined), [hasPanel, title, exports])
 
@@ -108,15 +112,21 @@ export function Tile({ title, subtitle, badges, controls, actions, height, expan
     <TileExportContext.Provider value={exports.registry}>
     <Card ref={cardRef} data-export-title={title} data-export-about={subtitle} className="flex h-full flex-col">
       <CardHeader className="flex-row items-center gap-2 space-y-0 px-[18px] pb-0 pt-4">
-        <CardTitle className="text-[15.5px]">{prettyOperators(title)}</CardTitle>
+        <CardTitle className={cn('text-[15.5px]', headerControls && 'shrink-0')}>{prettyOperators(title)}</CardTitle>
         {subtitle && <InfoButton title={title} text={subtitle} />}
-        {badges}
-        <span className="flex-1" />
+        {/* with a header control the badges move to the row below, so the title, the views and the tools share the header */}
+        {!headerControls && badges}
+        {headerControls && hasPanel ? <div data-export-skip="" className="flex min-w-0 flex-1 justify-end">{headerControls}</div> : <span className="flex-1" />}
         {hasPanel && actions}
         {hasPanel && <ExportMenu title={title} cardRef={cardRef} tables={exports.all} />}
         {hasPanel && expandable && <span data-export-skip="">{trigger}</span>}
       </CardHeader>
-      {controls && !rail && <div data-export-skip="" className="flex flex-wrap items-center gap-[10px] px-[18px] pt-[10px]">{controls}</div>}
+      {((controls && !rail) || (headerControls && badges)) && (
+        <div className="flex flex-wrap items-center gap-[10px] px-[18px] pt-[10px]">
+          {headerControls && badges}
+          {controls && !rail && <div data-export-skip="" className="contents">{controls}</div>}
+        </div>
+      )}
       <div
         ref={setLegendEl}
         data-testid="tile-legend"

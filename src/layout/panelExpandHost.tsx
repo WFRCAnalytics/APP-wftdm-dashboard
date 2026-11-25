@@ -71,6 +71,8 @@ export function usePanelExpandHost(
     chrome?: ReactNode
     /** The Export menu shown beside the title while expanded; it exports the dialog as it looks (its element is the ref). */
     exportMenu?: (dialogRef: RefObject<HTMLElement | null>) => ReactNode
+    /** Controls that sit in the title row, between the title and the Export menu (the view switch). They take the free space. */
+    headerControls?: ReactNode
   },
 ): { trigger: ReactNode; body: ReactNode } {
   const [expanded, setExpanded] = useState(false)
@@ -176,8 +178,8 @@ export function usePanelExpandHost(
           }}
         >
           <div className="flex items-center gap-2">
-            <DialogTitle>{title}</DialogTitle>
-            <span className="flex-1" />
+            <DialogTitle className="shrink-0">{title}</DialogTitle>
+            {options?.headerControls ?? <span className="flex-1" />}
             {options?.exportMenu?.(dialogRef)}
             {/* The same round 30px button as Export beside it, and the mirror of the card's Expand icon: it puts the tile back.
                 Named "Close" for assistive tech (Escape does the same). */}

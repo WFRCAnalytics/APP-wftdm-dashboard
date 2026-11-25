@@ -1,6 +1,7 @@
 // Adapts the spellings pages and panels already use into schema paths, in one place, so the cascade reads one shape.
 //   page:  header.layout_mode -> layout.mode   · default_basemap -> basemap.default
 //   panel: its Explore option keys (limits, features, charts, tables, columns, presets) -> explore.*
+//   panel: `controls`, `charts` and `legend` maps -> the same paths (a tile's own value for a cascading setting)
 // A page file's stray top-level key that is a site setting (title, colors, ...) is passed through unchanged so that
 // `validate(.., { level: 'page' })` can report it. Pure.
 import { isTree, type Tree } from './paths'
@@ -33,4 +34,16 @@ export function exploreSettings(panel: unknown): Tree {
   const explore: Tree = {}
   for (const k of EXPLORE_KEYS) if (panel[k] !== undefined) explore[k] = panel[k]
   return Object.keys(explore).length ? { explore } : {}
+}
+
+/** Top-level panel keys that are groups of cascading settings, read at the same path: `controls: { views: menu }`,
+ * `charts: { scale: shared }`, `legend: { scenarios: tile }`. A key that is not a schema row is ignored by the cascade. */
+const PANEL_ROOTS = ['controls', 'charts', 'legend'] as const
+
+/** The cascading settings a panel sets for itself, as a schema tree. */
+export function panelSettings(panel: unknown): Tree {
+  const out: Tree = {}
+  if (!isTree(panel)) return out
+  for (const k of PANEL_ROOTS) if (isTree(panel[k])) out[k] = panel[k]
+  return out
 }

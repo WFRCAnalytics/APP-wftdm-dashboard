@@ -82,7 +82,7 @@ test.describe('063 P4 — multi-view tile', () => {
     await expect(card.locator('g[data-node-name]')).toHaveCount(0)
 
     await views.getByRole('button', { name: 'Heatmap' }).click()
-    await expect(card.locator('svg rect').first()).toBeVisible({ timeout: 20_000 })
+    await expect(card.locator('svg:not(.lucide) rect').first()).toBeVisible({ timeout: 20_000 })
 
     await views.getByRole('button', { name: 'Treemap' }).click()
     await expect(card.locator('g[data-node-name]').first()).toBeVisible({ timeout: 20_000 })
