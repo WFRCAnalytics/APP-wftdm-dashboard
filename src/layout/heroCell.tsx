@@ -1,4 +1,4 @@
-import { Suspense } from 'react'
+import { Suspense, useMemo } from 'react'
 
 import { PanelErrorBoundary } from '@/layout/panelCard'
 import type { PanelConfig, ValueBoxPanelConfig } from '@/layout/types'
@@ -11,12 +11,14 @@ import { registry } from '@/panels/registry'
 // One cell of the hero KPI band (project-docs/redesign/02-layout-and-components.md section 1.4): a muted label over the
 // value panel, cells divided by a hairline. The value panel draws itself in its `_hero` presentation.
 /** A value with no gauge, sparkline or baseline trend of its own: the hero draws it from the view context instead. */
-function isPlainKpi(c: ValueBoxPanelConfig): boolean {
+export function isPlainKpi(c: ValueBoxPanelConfig): boolean {
   return !c.gauge && !c.sparkline && !c.baseline_trend
 }
 
 export function HeroCell({ config }: { config: PanelConfig }) {
   const PanelComponent = registry[config.type]
+  // one object per config: a fresh spread on every render would make the value panel fetch again whenever the band re-renders
+  const heroConfig = useMemo(() => ({ ...(config as object), _hero: true }) as unknown as PanelConfig, [config])
   return (
     <div className="@container min-w-0 border-l border-[var(--line)] px-5 pb-[14px] pt-4 first:border-l-0 max-[1100px]:[&:nth-child(n+3)]:border-t max-[1100px]:[&:nth-child(3)]:border-l-0 max-[1100px]:[&:last-child:nth-child(odd)]:col-span-2">
       <div>
@@ -33,7 +35,7 @@ export function HeroCell({ config }: { config: PanelConfig }) {
         ) : PanelComponent ? (
           <PanelErrorBoundary panelTitle={config.title}>
             <Suspense fallback={<PanelLoadingState height={config.height} config={config} />}>
-              <PanelComponent config={{ ...(config as object), _hero: true } as unknown as PanelConfig} />
+              <PanelComponent config={heroConfig} />
             </Suspense>
           </PanelErrorBoundary>
         ) : (

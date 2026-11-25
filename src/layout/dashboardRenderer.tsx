@@ -1,6 +1,6 @@
 import { Suspense, useEffect, useMemo } from 'react'
 import { PanelCard, PanelErrorBoundary } from '@/layout/panelCard'
-import { HeroCell } from '@/layout/heroCell'
+import { HeroBand, heroHasDeltas } from '@/layout/heroBand'
 import { TabbedPage } from '@/layout/tabbedPage'
 import { useTabsPlan } from '@/hooks/useTabsPlan'
 import { PageExportButton } from '@/layout/pageExport'
@@ -195,6 +195,8 @@ function OrdinaryDashboardRenderer({ tab }: { tab: DashboardTabConfig }) {
   }, [tab])
 
   const plan = useTabsPlan(tab)
+  // the page names the reference once: in the first hero band that shows deltas
+  const firstDeltaBand = rows.find(([, panels]) => isHeroRow(panels) && heroHasDeltas(panels))?.[0]
   const rowMap = useMemo(() => new Map(rows), [rows])
   if (plan) return <TabbedPage page={tab.header.tab} plan={plan} rows={rowMap} />
 
@@ -216,32 +218,16 @@ function OrdinaryDashboardRenderer({ tab }: { tab: DashboardTabConfig }) {
         // layout to stay completely unchanged.
         const metricStrip = isMetricStripRow(panels)
         const hero = isHeroRow(panels)
+        if (hero) return <HeroBand key={rowName} rowName={rowName} panels={panels} sectionId={sectionId} nameReference={rowName === firstDeltaBand} />
         return (
           <div
             key={rowName}
             id={sectionId ? `section-${sectionId}` : undefined}
             data-testid={rowName}
-            className={
-              hero
-                ? // the hero KPI band (project-docs/redesign/02-layout-and-components.md section 1.4): one raised container,
-                  // equal columns split by hairlines, two columns below 1100px with the last cell spanning both
-                  'grid scroll-mt-24 grid-cols-[repeat(var(--n),minmax(0,1fr))] rounded-[26px] border border-[var(--glass-line)] bg-[var(--tile-hi)] p-[6px] shadow-[var(--sh1)] max-[1100px]:grid-cols-2'
-                : metricStrip
-                  ? 'grid scroll-mt-24 grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-[14px]'
-                  : 'grid scroll-mt-24 gap-[14px]'
-            }
-            style={
-              hero
-                ? ({ '--n': panels.length } as React.CSSProperties)
-                : metricStrip
-                  ? undefined
-                  : { gridTemplateColumns: panels.map((p) => `${(p.width ?? 1) * 100}fr`).join(' ') }
-            }
+            className={metricStrip ? 'grid scroll-mt-24 grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-[14px]' : 'grid scroll-mt-24 gap-[14px]'}
+            style={metricStrip ? undefined : { gridTemplateColumns: panels.map((p) => `${(p.width ?? 1) * 100}fr`).join(' ') }}
           >
-            {panels.map((panel, index) =>
-              hero ? (
-                <HeroCell key={`${rowName}-${index}`} config={panel} />
-              ) : (
+            {panels.map((panel, index) => (
                 <div
                   key={`${rowName}-${index}`}
                   id={tileAnchors.has((panel as { id?: string }).id ?? '') ? `section-${tileAnchors.get((panel as { id?: string }).id ?? '')}` : undefined}
@@ -249,8 +235,7 @@ function OrdinaryDashboardRenderer({ tab }: { tab: DashboardTabConfig }) {
                 >
                   <PanelCard config={panel} tileKey={tileKey(tab.header.tab, (panel as { id?: string }).id ?? `${rowName}-${index}`)} />
                 </div>
-              ),
-            )}
+            ))}
           </div>
         )
       })}

@@ -37,6 +37,7 @@ describe('config schema table', () => {
         'explore.tables.exclude',
         'explore.tables.include',
         'export.footer',
+        'hero.reference',
         'layout.mode',
       ].sort(),
     )

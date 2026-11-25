@@ -44,7 +44,10 @@ test('by default the first scenario is the reference and the second the focus', 
   await page.setViewportSize({ width: 1440, height: 900 })
   await boot(page)
   await expect(page.getByTestId('hero-delta').first()).toBeVisible({ timeout: 60_000 })
-  await expect(page.getByTestId('hero-kpi').first()).toContainText('vs ActivitySim Baseline')
+  // the band names the reference once (hero.reference: band); the cells show only their change
+  await expect(page.getByTestId('hero-reference')).toHaveCount(1)
+  await expect(page.getByTestId('hero-reference')).toContainText('ActivitySim Baseline')
+  await expect(page.getByTestId('hero-kpi').first()).not.toContainText('vs ActivitySim Baseline')
   await expect(page.getByTestId('scenario-chip-reference')).toHaveCount(1)
   await expect(page.getByTestId('scenario-chip-focus')).not.toHaveText('ActivitySim Baseline')
 })
