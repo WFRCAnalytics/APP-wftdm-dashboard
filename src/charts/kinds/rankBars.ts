@@ -1,6 +1,7 @@
 // Ranked by metric (project-docs/redesign/04-chart-catalogue.md section 24). Observable Plot barX sorted descending in the
 // scenario colours, value labels at the bar end, a dashed rule at the reference value in Values mode and bars that diverge
-// from zero in Change modes. The metric comes from the tile's group-by.
+// from zero in Change modes. The metric comes from the tile's group-by. Each scenario's full name sits above its bar, across the
+// chart's width, instead of in a left axis where long names were cut to 30 characters.
 import * as Plot from '@observablehq/plot'
 
 import { deltaDecimals, kpiValue, metricOf, rankRows, withUnit, type RankRow } from '@/charts/lib/metrics'
@@ -53,19 +54,37 @@ const kind: ChartKind = {
             tickFormat: (d: number) => formatDelta(d, m, { decimals: m === 'pct' ? 0 : metric.decimals }),
           }
 
+    // a name above each bar: the band leaves room for it (padding) and the label sits half a bar plus a gap above the centre
+    const marginTop = 22
+    const marginBottom = 38
+    const padding = 0.45
+    const step = (env.height - marginTop - marginBottom) / (ranked.length + padding)
+    const nameDy = -(step * (1 - padding)) / 2 - 7
     const plot = Plot.plot({
       width: env.width,
       height: env.height,
       style: { background: 'transparent', color: t.mute, fontFamily: t.font, fontSize: `${t.fs}px`, overflow: 'visible' },
-      marginLeft: Math.min(210, Math.max(124, Math.min(30, Math.max(...ranked.map((r) => (info.get(r.key)?.label ?? r.key).length))) * 6.2 + 16)),
+      marginLeft: 8,
       marginRight: 48,
-      marginBottom: 38,
-      marginTop: 6,
-      x: { grid: false, nice: true, inset: 40, ...x },
-      y: { label: null, domain: ranked.map((r) => r.key), padding: 0.32, tickFormat: (d: string) => { const t = info.get(d)?.label ?? d; return prettyOperators(t.length > 30 ? `${t.slice(0, 29)}…` : t) } },
+      marginBottom,
+      marginTop,
+      // room for a value label beside a bar: on the right always, on the left only when Change modes draw bars below zero
+      x: { grid: false, nice: true, insetRight: 40, insetLeft: m === 'val' ? 0 : 40, ...x },
+      y: { axis: null, label: null, domain: ranked.map((r) => r.key), padding },
       color: { domain: ranked.map((r) => r.key), range: ranked.map((r) => info.get(r.key)?.color ?? t.mute) },
       marks: [
         Plot.barX(barRows, { x: 'v', y: 'key', fill: 'key', rx: 4, title: (_d: unknown, i: number) => `wfa:${i}` }),
+        Plot.text(ranked, {
+          y: 'key',
+          frameAnchor: 'left',
+          textAnchor: 'start',
+          dy: nameDy,
+          text: (r: RankRow) => prettyOperators(info.get(r.key)?.label ?? r.key),
+          fill: t.ink,
+          // the whole width is the line; only a name longer than the chart is cut, with an ellipsis
+          lineWidth: Math.max(10, (env.width - 60) / (t.fs * 0.6)),
+          textOverflow: 'ellipsis-end',
+        }),
         Plot.text(
           barRows.filter((d) => (d.v as number) >= 0),
           { x: 'v', y: 'key', text: (d: RankRow) => lab(d.v), dx: 6, textAnchor: 'start', fill: t.ink },
