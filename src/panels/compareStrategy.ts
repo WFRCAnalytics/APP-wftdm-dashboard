@@ -43,6 +43,8 @@ export const CELLS_PER_PAGE = 4
 export const GRID_GAP = 10
 const MIN_FORCED_ROW_CELL = 160
 const MIN_AUTO_CELL = 160
+/** The most elongated cell a side-by-side grid counts in full (see pickColumns). */
+const MAX_ASPECT = 2.5
 
 /** Narrowest a cell may get before it wraps to the next row: maps need more room than small charts. */
 export function minCellWidth(panel: PanelConfig): number {
@@ -64,6 +66,8 @@ export function pickColumns({ total, width, minCell, tabbed, layout = 'auto', he
   // With the body's height known, take the column count that gives the largest cells by area (a treemap or sunburst uses all of
   // it), so three charts in a short tile sit in a row, not in a 2 + 1 grid. The scenario caption above each cell is the same
   // in every layout, so it is left out. Within 2% the one with more columns wins: side by side reads best for comparing.
+  // A cell counts only the area a chart or map can use: neither side longer than MAX_ASPECT times the other, so three maps in
+  // a wide, short tile are not stacked into thin strips (704 x 100 each) just because the strips add up to more area.
   if (width > 0 && height && height > 0 && layout === 'auto') {
     const floor = minCell >= 280 ? minCell : Math.min(minCell, MIN_AUTO_CELL)
     let best = 1
@@ -72,7 +76,9 @@ export function pickColumns({ total, width, minCell, tabbed, layout = 'auto', he
       if (c > 1 && (width - (c - 1) * GRID_GAP) / c < floor) break
       if (c === 3 && total === 4) continue
       const rows = Math.ceil(total / c)
-      const area = ((width - (c - 1) * GRID_GAP) / c) * ((height - (rows - 1) * GRID_GAP) / rows)
+      const w = (width - (c - 1) * GRID_GAP) / c
+      const h = (height - (rows - 1) * GRID_GAP) / rows
+      const area = Math.min(w, h * MAX_ASPECT) * Math.min(h, w * MAX_ASPECT)
       if (area >= bestArea * 0.98) {
         best = c
         bestArea = Math.max(area, bestArea)
