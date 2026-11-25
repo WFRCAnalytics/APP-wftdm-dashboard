@@ -32,8 +32,9 @@ test.describe('real demo data on the redesigned pages', () => {
 
     // mode share bars use the deployment's own vocabulary (SOV -> Drive alone, Non-Motorized -> Walk and bike)
     await pageTab(page, 'Mode choice').click()
-    const chart = page.locator('[data-chart-kind="mode-bars"] svg').first()
-    await expect(chart).toBeVisible({ timeout: 30_000 })
+    await expect(page.locator('[data-chart-kind="mode-bars"] svg').first()).toBeVisible({ timeout: 30_000 })
+    // each mode is its own plot (charts.scale: own), so the names are read across the whole chart
+    const chart = page.locator('[data-chart-kind="mode-bars"]').first()
     await expect(chart).toContainText('Walk and bike')
     await expect(chart).toContainText('Ride hail')
     expect(errors).toEqual([])
