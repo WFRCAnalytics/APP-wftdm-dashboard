@@ -31,6 +31,20 @@ async function tipOpacity(page: Page): Promise<number> {
   })
 }
 
+/** Hovers `target` until the shared tooltip shows: the sticky header turns compact as the page scrolls, which can move the
+ * chart under the pointer between the hover and the check. */
+async function hoverUntilTip(page: Page, target: ReturnType<Page['locator']>) {
+  await expect
+    .poll(async () => {
+      await page.mouse.move(5, 300)
+      await target.hover()
+      // the tooltip fades in over 80ms
+      await page.waitForTimeout(150)
+      return tipOpacity(page)
+    }, { timeout: 15_000, intervals: [300, 500, 800] })
+    .toBe(1)
+}
+
 test.describe('distribution chart kinds', () => {
   test.setTimeout(180_000)
   test.beforeEach(async ({ page }) => {
@@ -49,16 +63,14 @@ test.describe('distribution chart kinds', () => {
     const rect = page.locator('svg rect[data-key]').first()
     await expect(rect).toBeVisible({ timeout: 60_000 })
     // Side-by-side cells: ONE synced tooltip listing the scenarios.
-    await rect.hover()
-    await expect.poll(() => tipOpacity(page)).toBe(1)
+    await hoverUntilTip(page, rect)
     expect(await page.locator('.wf-tip .tt-r').count()).toBeGreaterThan(1)
     await page.mouse.move(900, 10)
 
     // Pyramid
     const bar = page.locator('svg rect[data-wf]').first()
     await expect(bar).toBeVisible({ timeout: 30_000 })
-    await bar.hover()
-    await expect.poll(() => tipOpacity(page)).toBe(1)
+    await hoverUntilTip(page, bar)
     await expect(page.locator('.wf-tip')).toContainText('Census estimate')
     await page.mouse.move(900, 10)
 
@@ -66,8 +78,7 @@ test.describe('distribution chart kinds', () => {
     await chooseView(page, page, 'Dumbbell')
     const dot = page.locator('svg circle[data-wf]').first()
     await expect(dot).toBeVisible({ timeout: 30_000 })
-    await dot.hover()
-    await expect.poll(() => tipOpacity(page)).toBe(1)
+    await hoverUntilTip(page, dot)
     await expect(page.locator('.wf-tip')).toContainText('Observed')
     expect(errors).toEqual([])
   })
@@ -88,8 +99,7 @@ test.describe('distribution chart kinds', () => {
     await goTo(page, 'Network')
     const dot = page.locator('svg circle[data-wf]').first()
     await expect(dot).toBeVisible({ timeout: 60_000 })
-    await dot.hover()
-    await expect.poll(() => tipOpacity(page)).toBe(1)
+    await hoverUntilTip(page, dot)
     await expect(page.locator('.wf-tip')).toContainText('Observed')
     expect(errors).toEqual([])
   })
