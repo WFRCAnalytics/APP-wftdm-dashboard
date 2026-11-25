@@ -48,8 +48,11 @@ function panelCard(page: Page, title: string) {
   return page.getByText(title, { exact: true }).locator('..').locator('..')
 }
 
+/** Picks a year in the control bar: a button of the year strip, or the menu when the strip does not fit. */
 async function chooseYear(page: Page, label: RegExp) {
-  await page.getByTestId('control-year').click()
+  const year = page.getByRole('group', { name: 'Model year' }).getByRole('button', { name: label })
+  if (await year.count()) return year.first().click()
+  await page.getByTestId('control-year').getByRole('combobox').click()
   await page.getByRole('option', { name: label }).click()
 }
 
@@ -70,11 +73,18 @@ test.describe('063 P3 — model years', () => {
     expect(state).toMatchObject({ year: 2023, focus: 'activitysim-density-variant', compare: true })
   })
 
-  test('the Year select lists every configured year with its label', async ({ page }) => {
-    await boot(page, ALL_RUNS)
-    await page.getByTestId('control-year').click()
-    await expect(page.getByRole('option')).toHaveText(['2023 · Base year', '2036 · End of RTP Phase I'])
+  test('the Year menu lists every configured year with its milestone name', async ({ page }) => {
+    await boot(page, ALL_RUNS, { ...DASHBOARD_INDEX, controls: { years: 'menu' } })
+    await page.getByTestId('control-year').getByRole('combobox').click()
+    await expect(page.getByRole('option')).toHaveText([/^2023\s*Base year$/, /^2036\s*End of RTP Phase I$/])
     await page.keyboard.press('Escape')
+  })
+
+  test('the Year strip names each year and gives its milestone on hover', async ({ page }) => {
+    await boot(page, ALL_RUNS)
+    const strip = page.getByRole('group', { name: 'Model year' })
+    await expect(strip.getByRole('button')).toHaveText(['2023', '2036'])
+    await expect(strip.getByRole('button', { name: '2036' })).toHaveAttribute('title', '2036, End of RTP Phase I')
   })
 
   test('changing the year re-queries the tiles for that year', async ({ page }) => {
@@ -111,9 +121,10 @@ test.describe('063 P3 — model years', () => {
     expect(baseline).toBe('activitysim-baseline')
   })
 
-  test('a single-year deployment has no Year control', async ({ page }) => {
+  test('a single-year deployment shows its one year in a pill, with nothing to choose', async ({ page }) => {
     await boot(page, BASES, { pages: ['dashboard-6-network.yaml'] })
-    await expect(page.getByTestId('control-year')).toHaveCount(0)
+    await expect(page.getByTestId('control-year')).toHaveText(/^\d{4}$/)
+    await expect(page.getByTestId('control-year').getByRole('button')).toHaveCount(0)
     await expect(page.getByTestId('scenario-picker-button')).toBeVisible()
   })
 })

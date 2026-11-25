@@ -13,6 +13,8 @@ export interface SegmentedOption {
   disabled?: boolean
   /** Shown in place of the label; the label stays the option's accessible name and its tooltip. */
   icon?: ReactNode
+  /** A tooltip for the option (a year's milestone name); an icon option's tooltip is its label. */
+  title?: string
 }
 
 export interface SegmentedProps {
@@ -48,7 +50,7 @@ export function Segmented({ label, options, value, onChange, size = 'md', fill =
             type="button"
             aria-pressed={pressed}
             aria-label={o.icon ? o.label : undefined}
-            title={o.icon ? o.label : undefined}
+            title={o.title ?? (o.icon ? o.label : undefined)}
             disabled={o.disabled}
             onClick={() => onChange(o.id)}
             className={cn(

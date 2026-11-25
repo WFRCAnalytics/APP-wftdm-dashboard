@@ -648,6 +648,9 @@ before touching charts).
 - **Hero band** (`layout/heroBand.tsx`, the one band for scroll and tabbed pages): with `hero.reference: band` (default) the first
   band with deltas says once "Changes are against <reference>" (`data-testid="hero-reference"`) and the cells show only their
   change (`panels/heroReference.ts` context); `cell` puts the caption back under every delta.
+- **Model year** (`layout/yearControl.tsx`, in the control bar, always shown): several years are a strip (the tile views' `AdaptiveSwitch`) or,
+  when it does not fit, the selected year as a pill opening a menu; one year is that year in a plain filled pill.
+  `controls.years: auto|strip|menu` (site). A year's `years.list` label is the strip's tooltip and is written in the menu.
 - **Own scale** (`charts.scale: own|shared`, default own; tile switch Own / Shared in `state/tileState.ts#scale`): `mode-bars` draws each
   mode as its own Plot with its own y axis (`panels/multiView.ts#offersScaleChoice` lists the kinds). `MultiViewPanel` hands the choice
   to the view as `facet_scale`; a plain chart panel resolves it in `ChartPanel`. A per-scenario difference keeps its shared extent.

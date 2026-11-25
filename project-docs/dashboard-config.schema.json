@@ -232,6 +232,14 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
+        "years": {
+          "enum": [
+            "auto",
+            "strip",
+            "menu"
+          ],
+          "description": "The model year control in the control bar: auto shows every year as a strip when it fits, otherwise the selected year as a pill that opens a menu; strip and menu force one form. A deployment with one model year shows that year in a pill."
+        },
         "views": {
           "enum": [
             "auto",
