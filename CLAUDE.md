@@ -651,6 +651,8 @@ before touching charts).
 - **Own scale** (`charts.scale: own|shared`, default own; tile switch Own / Shared in `state/tileState.ts#scale`): `mode-bars` draws each
   mode as its own Plot with its own y axis (`panels/multiView.ts#offersScaleChoice` lists the kinds). `MultiViewPanel` hands the choice
   to the view as `facet_scale`; a plain chart panel resolves it in `ChartPanel`. A per-scenario difference keeps its shared extent.
+- **Ranked by metric** (`rank-bars`): each scenario's full name sits above its bar across the chart's width (cut with an ellipsis only
+  when longer than the chart), not in a left axis.
 - Dial KPIs: a hero `valuebox` with `ring: {}` draws its value (a `max` is picked automatically unless given) on a half-circle dial with a tick at the reference. Mode share has a `mode-radar` view, trips by purpose a `purpose-radar` view and purpose to mode a `purpose-chord` view; all three read tables the real demo publishes.
 - New D3 submodules (no new chart library): d3-selection/scale/array/chord/zoom/format/interpolate/transition.
 
