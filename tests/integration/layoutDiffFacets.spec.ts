@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
+import { chooseView } from './_views'
 import type { WftdmDebugHook } from '../../src/main.tsx'
 
 declare global {
@@ -19,7 +20,8 @@ async function boot(page: Page) {
 test('Change shows one facet per scenario besides the reference, on one shared axis', async ({ page }) => {
   await boot(page)
   const tile = page.getByTestId('tab-body')
-  await tile.getByRole('button', { name: 'Donut' }).first().click()
+  // the Mode share tile's Donut view (its view control may be a switch or a menu)
+  await chooseView(page, tile.locator('[data-export-title="Mode share"]').first(), 'Donut')
   await page.evaluate(() => window.__wftdm!.compareState.setDisplay('abs'))
   const facets = tile.getByTestId('compare-cells').first().locator('[data-testid^="compare-cell-"]')
   // three scenarios in the compare set: the reference is not drawn, the other two each get a facet

@@ -19,7 +19,7 @@ import { viewIcon } from '@/panels/viewIcon'
 import type { SwitchMode } from '@/lib/switchForm'
 import { registry } from '@/panels/registry'
 import { diffFacets, drawsAllScenarios, effectiveStrategy, offersScenarioPick } from '@/panels/compareStrategy'
-import { STRATEGY_LABEL, isBaseYearOnly, isCalibrationFamily, offersScaleChoice, resolveMultiView, validateMultiView, withRowHeight } from '@/panels/multiView'
+import { STRATEGY_LABEL, defaultStrategies, isBaseYearOnly, isCalibrationFamily, offersScaleChoice, resolveMultiView, validateMultiView, withRowHeight } from '@/panels/multiView'
 
 // The tile for `type: multi-view`: the chrome (badges, group-by, compare-as, view switcher) around MultiViewPanel,
 // which draws the active view. Hidden entirely when the tile only makes sense in another mode.
@@ -122,25 +122,56 @@ export function MultiViewTile({ config: rawConfig, tileKey }: { config: MultiVie
   }
   // a difference with two or more compared scenarios is drawn one facet each, so there is no single scenario to pick
   const facets = strategy === 'diff' ? diffFacets(resolved.panel, inputs) : null
-  if (ctx.compare && ((strategy === 'multi' || strategy === 'grid') ? inputs.active.length >= 3 : (facets?.length ?? 0) >= 3)) {
-    actions.push(<LayoutMenu key="layout" value={tile.layout ?? 'auto'} onChange={(layout) => setTile({ layout })} />)
+  // The Layout button is for side-by-side cells. A tile with any view that can lay its cells side by side keeps the button for
+  // every view, disabled when the current one has no cells to arrange, so switching views never moves the header controls.
+  const layoutApplies = ctx.compare && ((strategy === 'multi' || strategy === 'grid') ? inputs.active.length >= 3 : (facets?.length ?? 0) >= 3)
+  const tileHasSideBySide =
+    ctx.compare &&
+    inputs.active.length >= 3 &&
+    resolved.visibleViews.some((v) => (v.compare ?? defaultStrategies(v.type)).some((s) => s === 'multi' || s === 'grid' || s === 'diff'))
+  if (layoutApplies || tileHasSideBySide) {
+    actions.push(<LayoutMenu key="layout" value={tile.layout ?? 'auto'} disabled={!layoutApplies} onChange={(layout) => setTile({ layout })} />)
   }
-  if (ctx.compare && !facets && offersScenarioPick(resolved.panel, strategy, ctx.display)) {
+  // The scenario shown is chosen in the tile's header, left of the views and the tools, never on a row (or rail) of its own.
+  // A tile with any view that offers the choice keeps it on every view, showing "All scenarios" and off where it does not
+  // apply, so switching views never moves the header's controls (nor squeezes the view switch into a menu).
+  const viewOffers = (viewId: string) => {
+    const r = viewId === resolved.view.id ? resolved : resolveMultiView(config, { ...tile, view: viewId }, { compare: ctx.compare })
+    const s = effectiveStrategy({ strategies: r.strategies, chosen: tile.strategy, scenarioIndependent: r.scenarioIndependent, compare: ctx.compare, display: ctx.display })
+    return offersScenarioPick(r.panel, s, ctx.display)
+  }
+  const tileOffersScenario = ctx.compare && inputs.active.length > 1 && resolved.visibleViews.some((v) => viewOffers(v.id))
+  let scenarioControl: ReactNode
+  if (tileOffersScenario && (facets || !offersScenarioPick(resolved.panel, strategy, ctx.display))) {
+    scenarioControl = (
+      <PillSelect
+        key="scenario"
+        compact
+        className="min-w-0 shrink"
+        label="Scenario"
+        value={ALL_SCENARIOS}
+        disabled
+        options={[{ value: ALL_SCENARIOS, label: 'All scenarios' }]}
+        onChange={() => {}}
+      />
+    )
+  } else if (ctx.compare && !facets && offersScenarioPick(resolved.panel, strategy, ctx.display)) {
     // a difference is drawn against the reference, so the reference is not offered as the scenario shown
     const runs = strategy === 'diff' ? inputs.active.filter((r) => r !== inputs.referenceRun) : inputs.active
     const value = tile.scenario && runs.includes(tile.scenario) ? tile.scenario : runs.includes(inputs.focusRun ?? '') ? (inputs.focusRun ?? '') : (runs[0] ?? '')
     // grouped by Scenario the chart already draws every scenario, so the choice is shown but off
     const all = strategy === 'overlay' && drawsAllScenarios(resolved.panel)
-    if (runs.length > 1) controls.push(
+    if (runs.length > 1) scenarioControl = (
       <PillSelect
         key="scenario"
         compact
+        className="min-w-0 shrink"
         label="Scenario"
         value={all ? ALL_SCENARIOS : value}
         disabled={all}
         options={all ? [{ value: ALL_SCENARIOS, label: 'All scenarios' }] : runs.map((r) => ({ value: r, label: inputs.label(r) }))}
         onChange={(scenario) => setTile({ scenario })}
-      />,
+      />
     )
   }
   // a faceted view (one panel per mode): each panel on its own axis, or all on one
@@ -181,7 +212,7 @@ export function MultiViewTile({ config: rawConfig, tileKey }: { config: MultiVie
         badges={badges.length > 0 ? badges : undefined}
         controls={controls.length > 0 ? controls : undefined}
         actions={actions.length > 0 ? actions : undefined}
-        headerControls={viewControl}
+        headerControls={scenarioControl || viewControl ? <>{scenarioControl}{viewControl}</> : undefined}
         keepScenarioLegend={keepScenarioLegend}
         height={config.height}
         expandable={config.expandable ?? true}
