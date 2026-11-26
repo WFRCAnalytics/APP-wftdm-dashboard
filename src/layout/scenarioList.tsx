@@ -117,10 +117,23 @@ export function ScenarioList({ orientation }: { orientation: 'vertical' | 'horiz
         ) : (
           <i aria-hidden="true" className="inline-block size-[10px] shrink-0 rounded-full" style={{ background: e.color ?? 'var(--mute)' }} />
         )}
-        <span className="min-w-0 break-words">{e.label}</span>
+        {vertical ? (
+          // the rail is narrow: the name takes the whole text column (wrapping between words) and the tags go on a line under it
+          <span className="flex min-w-0 flex-col items-start gap-1">
+            <span className="min-w-0 break-words">{e.label}</span>
+            {(e.focus || e.reference) && (
+              <span className="flex flex-wrap gap-1">
+                {e.focus && <Tag kind="focus" />}
+                {e.reference && <Tag kind="reference" />}
+              </span>
+            )}
+          </span>
+        ) : (
+          <span className="min-w-0 break-words">{e.label}</span>
+        )}
       </button>
-      {e.focus && <Tag kind="focus" />}
-      {e.reference && <Tag kind="reference" />}
+      {!vertical && e.focus && <Tag kind="focus" />}
+      {!vertical && e.reference && <Tag kind="reference" />}
       {compare && !e.focus && !e.reference && (
         <button
           type="button"
