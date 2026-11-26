@@ -13,18 +13,29 @@ import { cn } from '@/lib/utils'
 // rather than color-picker.tsx's own hue-gradient-specific track styling,
 // since this is a generic, neutral-track slider for an ordinary numeric
 // preference, not a color channel.
+// One thumb per value: `value={[lo, hi]}` is a range slider (the flow map's volume filter). `thumbLabels` names each
+// thumb; without it every thumb takes `aria-label`. `parts` restyles the track, range and thumbs and `track` draws inside
+// the track, under the thumbs (the volume filter's colour ramp with its washed-out ends).
+export interface SliderParts {
+  track?: string
+  trackStyle?: React.CSSProperties
+  range?: string
+  thumb?: string
+}
+
 const Slider = React.forwardRef<
   React.ElementRef<typeof SliderPrimitive.Root>,
-  React.ComponentPropsWithoutRef<typeof SliderPrimitive.Root>
->(({ className, 'aria-label': ariaLabel, ...props }, ref) => (
+  React.ComponentPropsWithoutRef<typeof SliderPrimitive.Root> & { thumbLabels?: string[]; parts?: SliderParts; track?: React.ReactNode }
+>(({ className, 'aria-label': ariaLabel, thumbLabels, parts, track, ...props }, ref) => (
   <SliderPrimitive.Root
     ref={ref}
     data-slot="slider"
     className={cn('relative flex w-full touch-none select-none items-center', className)}
     {...props}
   >
-    <SliderPrimitive.Track className="relative h-1.5 w-full grow overflow-hidden rounded-full bg-secondary">
-      <SliderPrimitive.Range className="absolute h-full bg-primary" />
+    <SliderPrimitive.Track className={cn('relative h-1.5 w-full grow overflow-hidden rounded-full bg-secondary', parts?.track)} style={parts?.trackStyle}>
+      {track}
+      <SliderPrimitive.Range className={cn('absolute h-full bg-primary', parts?.range)} />
     </SliderPrimitive.Track>
     {/* Radix's own accessible-name resolution reads `aria-label` off the
         Thumb itself, not the Root (confirmed directly against the
@@ -32,10 +43,16 @@ const Slider = React.forwardRef<
         Root merely spreads unrecognized props onto its own wrapping
         <span>, which never reaches the nested Thumb. Pulled out of
         `...props` above and applied here explicitly instead. */}
-    <SliderPrimitive.Thumb
-      aria-label={ariaLabel}
-      className="block h-4 w-4 rounded-full border border-primary/50 bg-background shadow transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
-    />
+    {Array.from({ length: (props.value ?? props.defaultValue ?? [0]).length }, (_, i) => (
+      <SliderPrimitive.Thumb
+        key={i}
+        aria-label={thumbLabels?.[i] ?? ariaLabel}
+        className={cn(
+          'block h-4 w-4 rounded-full border border-primary/50 bg-background shadow transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50',
+          parts?.thumb,
+        )}
+      />
+    ))}
   </SliderPrimitive.Root>
 ))
 Slider.displayName = SliderPrimitive.Root.displayName

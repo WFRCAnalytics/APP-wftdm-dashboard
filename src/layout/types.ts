@@ -264,6 +264,9 @@ export interface FlowMapPanelConfig extends DataBoundPanelConfigBase {
   clustering_auto?: boolean
   animation?: boolean
   max_flows?: number
+  /** The volume filter, a histogram with a two-handle range slider bottom-left in the map (panels/FlowFilterLegend.tsx).
+   * On unless `false`. */
+  flow_filter?: boolean
   center?: [number, number]
   zoom?: number
   /** 011-basemap-style-system, FR-004: optional panel-level basemap
