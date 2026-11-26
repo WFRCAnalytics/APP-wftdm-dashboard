@@ -3,7 +3,7 @@ import { ArrowUpRight } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 
-// One 46px item of the floating navigation (project-docs/redesign/02-layout-and-components.md §1.1): a 20px icon plus a
+// One 48px item of the floating navigation (project-docs/redesign/02-layout-and-components.md §1.1): a 20px icon plus a
 // label that fades in while the nav is expanded. The label stays in the DOM so the button keeps its accessible name
 // when the nav is collapsed.
 export interface NavButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -11,9 +11,11 @@ export interface NavButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> 
   selected?: boolean
 }
 
-/** The look of one nav item, shared by the buttons and the documentation link so they cannot drift apart. */
+/** The look of one nav item, shared by the buttons and the documentation link so they cannot drift apart. 48px tall with
+ * 14px side padding: the 20px icon has 14px of air on every side, so the collapsed rail's selected pill is a 48 x 48 square
+ * and the icon sits at the same place collapsed and expanded. */
 export const NAV_ITEM_CLASS = cn(
-  'flex h-[46px] w-full items-center gap-3 overflow-hidden rounded-[15px] px-[14px] text-left font-body text-[14px] font-medium text-[var(--mute)] transition-colors',
+  'flex h-12 w-full items-center gap-3 overflow-hidden rounded-[15px] px-[14px] text-left font-body text-[14px] font-medium text-[var(--mute)] transition-colors',
   'hover:bg-[color-mix(in_srgb,var(--ink)_7%,transparent)] hover:text-[var(--ink)]',
   'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-text)]',
 )
@@ -21,16 +23,18 @@ export const NAV_ITEM_CLASS = cn(
 // 'bg-[color-mix(in_srgb,var(--brand)_26%,var(--tile))] text-[var(--ink)] [&_svg]:text-[var(--brand-text)]'
 const NAV_SELECTED_CLASS = 'pill-on hover:text-[var(--pill-on-fg)]'
 const NAV_LABEL_CLASS = 'truncate opacity-0 transition-opacity duration-150 group-data-[state=expanded]/nav:opacity-100'
+/** The rail's footer row (expanded): items are icon buttons; the label stays as the accessible name, visually hidden. */
+export const NAV_ICON_ROW_CLASS = 'flex-row justify-between [&>*]:w-12 [&>*]:shrink-0 [&_a]:justify-center [&_a]:px-0 [&_button]:justify-center [&_button]:px-0 [&_[data-nav-label]]:sr-only'
 
 /**
  * A nav item that opens an address in a new tab (the model documentation link): an anchor, never a script address. A small,
  * muted arrow after the label says it leaves the app; it lives in the label, so like the label it shows only when expanded.
  */
-export function NavLink({ href, icon, children }: { href: string; icon?: ReactNode; children: ReactNode }) {
+export function NavLink({ href, icon, children, title }: { href: string; icon?: ReactNode; children: ReactNode; title?: string }) {
   return (
-    <a href={href} target="_blank" rel="noopener noreferrer" className={NAV_ITEM_CLASS}>
+    <a href={href} target="_blank" rel="noopener noreferrer" className={NAV_ITEM_CLASS} title={title}>
       {icon && <span className="flex h-5 w-5 shrink-0 items-center justify-center">{icon}</span>}
-      <span className={cn(NAV_LABEL_CLASS, 'flex min-w-0 items-center gap-1')}>
+      <span data-nav-label="" className={cn(NAV_LABEL_CLASS, 'flex min-w-0 items-center gap-1')}>
         <span className="truncate">{children}</span>
         <ArrowUpRight className="h-3.5 w-3.5 shrink-0 opacity-50" aria-hidden="true" />
       </span>
@@ -50,7 +54,7 @@ export const NavButton = forwardRef<HTMLButtonElement, NavButtonProps>(function 
       {...props}
     >
       {icon && <span className="flex h-5 w-5 shrink-0 items-center justify-center">{icon}</span>}
-      <span className={NAV_LABEL_CLASS}>{children}</span>
+      <span data-nav-label="" className={NAV_LABEL_CLASS}>{children}</span>
     </button>
   )
 })

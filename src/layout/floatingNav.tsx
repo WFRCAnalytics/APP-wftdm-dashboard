@@ -4,14 +4,12 @@ import { BookOpen, Menu, Monitor, Moon, PanelLeftClose, PanelLeftOpen, Sun } fro
 import { docsHref, docsLabel, listedPages } from '@/config'
 
 import { DashboardBrand, DashboardMark } from '@/layout/dashboardBrand'
-import { NavButton, NavLink } from '@/layout/navButton'
+import { NAV_ICON_ROW_CLASS, NavButton, NavLink } from '@/layout/navButton'
 import { Segmented, type SegmentedOption } from '@/components/ui/segmented'
 import { SettingsModal } from '@/layout/settingsModal'
-import { resolveSections } from '@/layout/dashboardLayout'
 import { iconComponentFor } from '@/lib/iconComponentFor'
 import { useThemeMode } from '@/hooks/useThemeMode'
-import { useTabsPlan } from '@/hooks/useTabsPlan'
-import { getActiveSection, setActiveSection, useLayoutVersion } from '@/state/layoutState'
+import { useLayoutVersion } from '@/state/layoutState'
 import { setMode, type ThemeMode } from '@/state/themeState'
 import { cn } from '@/lib/utils'
 import type { DashboardTabConfig } from '@/layout/types'
@@ -22,8 +20,8 @@ import { prettyOperators } from '@/services/typography'
 // 68px wide, 248px once its labels are pinned open with the toggle. Pinned, the shell docks the page beside it (the canvas
 // shrinks to the space that is left); while keyboard focus is inside the rail it also shows labels, as a transient overlay
 // that never moves the page. It never expands on hover: the rail moving while the pointer aims at an item was the problem.
-// The tab list is still YAML-driven and keeps its role="tablist"/"tab" contract; the selected tab shows its `sections:` as
-// a sub-list.
+// The tab list is still YAML-driven and keeps its role="tablist"/"tab" contract. A page's `sections:` are not listed here:
+// the page shows them as its own tab strip. Pinned open, the footer controls sit in one row of icon buttons.
 export interface FloatingNavProps {
   tabs: DashboardTabConfig[]
   /** Identity by array index, not name: two roots can both name a tab "Summary" (see shell.tsx). */
@@ -93,11 +91,12 @@ export function FloatingNav({ tabs, activeIndex, onTabChange, branding, mobile =
   const [engaged, setEngaged] = useState(false)
   const themeMode = useThemeMode()
   useLayoutVersion()
-  const activePlan = useTabsPlan(tabs[activeIndex])
   const expanded = mobile ? open : pinned || engaged
   // The theme pill only when the labels are pinned open (or the mobile sheet is open), never for the keyboard-focus overlay:
   // moving focus off the theme button there would collapse the rail.
-  const showThemePill = mobile ? open : pinned
+  const showThemePill = mobile ? open : false
+  // pinned open on a desktop the footer is one row of icon buttons (theme, documentation, settings, labels)
+  const footerRow = !mobile && pinned
   const documentation = docsHref(branding.docsUrl, docsPath)
   // hidden pages are not listed; the indices stay those of the full list (see the shell)
   const listed = new Set(listedPages(tabs.map((t) => t.header)))
@@ -145,13 +144,13 @@ export function FloatingNav({ tabs, activeIndex, onTabChange, branding, mobile =
           </div>
         </div>
 
-        <div role="tablist" aria-orientation="vertical" className="scrollbar-thin flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overflow-x-hidden">
+        {/* Top-aligned: the pages, then the scenario list straight under them; the free space sits above the footer. A long
+            page list scrolls past about half the rail so the scenarios stay on screen. */}
+        <div role="tablist" aria-orientation="vertical" className={cn('scrollbar-thin flex min-h-0 flex-col gap-1.5 overflow-y-auto overflow-x-hidden', scenarioList && pinned && !mobile && 'max-h-[55%]')}>
           {tabs.map((tab, index) => {
             if (!listed.has(index)) return null
             const isActive = index === activeIndex
             const Icon = tab.header.icon ? iconComponentFor(tab.header.icon) : undefined
-            const tabsPlan = isActive ? activePlan : null
-            const sections = isActive ? (tabsPlan ? tabsPlan.sections : resolveSections(tab)) : []
             return (
               <div key={`${tab.header.tab}-${index}`}>
                 <NavButton
@@ -159,7 +158,6 @@ export function FloatingNav({ tabs, activeIndex, onTabChange, branding, mobile =
                   aria-selected={isActive}
                   // Only dashboard-8-test.yaml sets header.aria_label (its visible header.tab is a single space).
                   aria-label={tab.header.aria_label}
-                  aria-expanded={sections.length > 0 ? true : undefined}
                   selected={isActive}
                   icon={Icon && <Icon className="h-5 w-5" aria-hidden="true" />}
                   title={expanded ? undefined : tab.header.tab}
@@ -170,44 +168,21 @@ export function FloatingNav({ tabs, activeIndex, onTabChange, branding, mobile =
                 >
                   {prettyOperators(tab.header.tab)}
                 </NavButton>
-                {sections.length > 0 && expanded && (
-                  <ul
-                    role="group"
-                    aria-label={`${tab.header.tab} sections`}
-                    className="ml-[33px] mt-1 flex flex-col gap-0.5 border-l border-[var(--line)] pl-2"
-                  >
-                    {sections.map((section) => (
-                      <li key={section.id}>
-                        <button
-                          type="button"
-                          className="h-[30px] w-full truncate rounded-lg px-2 text-left font-body text-[13px] text-[var(--mute)] transition-colors hover:bg-[color-mix(in_srgb,var(--ink)_7%,transparent)] hover:text-[var(--ink)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-text)]"
-                          aria-current={tabsPlan && getActiveSection(tab.header.tab) === section.id ? 'true' : undefined}
-                          onClick={() => {
-                            if (tabsPlan) setActiveSection(tab.header.tab, section.id)
-                            else document.getElementById(`section-${section.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-                            onClose?.()
-                          }}
-                        >
-                          {prettyOperators(section.label)}
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
               </div>
             )
           })}
         </div>
 
         {scenarioList && pinned && !mobile && (
-          <div className="mt-2 flex max-h-[45%] min-h-0 shrink-0 flex-col border-t border-[var(--line)] pt-3">{scenarioList}</div>
+          <div className="mt-2 flex min-h-0 shrink flex-col border-t border-[var(--line)] pt-3">{scenarioList}</div>
         )}
+        <div aria-hidden="true" className="min-h-0 flex-1" />
 
-        <div className="mt-2 flex flex-col gap-1 border-t border-[var(--line)] pt-2">
-          {/* Both are always rendered in the same 46px slot and cross-fade, in step with the rail's 220ms width transition.
+        <div className={cn('mt-2 flex flex-col gap-1 border-t border-[var(--line)] pt-2', footerRow && NAV_ICON_ROW_CLASS)}>
+          {/* Both are always rendered in the same 48px slot and cross-fade, in step with the rail's 220ms width transition.
               The pill has a fixed width, so the widening rail reveals it (overflow is clipped) instead of squeezing three
               parts into 48px. The hidden one is `inert`: out of the tab order and the accessibility tree. */}
-          <div className="relative h-[46px]">
+          <div className="relative h-12">
             <div
               ref={(el) => { if (el) el.inert = !showThemePill }}
               className={cn(
@@ -235,8 +210,9 @@ export function FloatingNav({ tabs, activeIndex, onTabChange, branding, mobile =
             >
               <NavButton
                 aria-label={`Theme: ${THEME_LABEL[themeMode]}. Switch to ${THEME_LABEL[NEXT_THEME[themeMode]]}`}
-                title={`Theme: ${THEME_LABEL[themeMode]}`}
-                icon={THEME_ICON[themeMode]}
+                title={`Theme: ${THEME_LABEL[themeMode]}. Switch to ${THEME_LABEL[NEXT_THEME[themeMode]]}`}
+                // in the footer row it is a plain icon like its neighbours; in the collapsed column the filled bubble
+                icon={footerRow ? THEME_GLYPH[themeMode] : THEME_ICON[themeMode]}
                 onClick={() => setMode(NEXT_THEME[themeMode])}
               >
                 Theme: {THEME_LABEL[themeMode]}
@@ -244,7 +220,7 @@ export function FloatingNav({ tabs, activeIndex, onTabChange, branding, mobile =
             </div>
           </div>
           {documentation && (
-            <NavLink href={documentation} icon={<BookOpen className="h-5 w-5" aria-hidden="true" />}>
+            <NavLink href={documentation} title={docsLabel(branding.docsLabel)} icon={<BookOpen className="h-5 w-5" aria-hidden="true" />}>
               {docsLabel(branding.docsLabel)}
             </NavLink>
           )}
@@ -253,7 +229,7 @@ export function FloatingNav({ tabs, activeIndex, onTabChange, branding, mobile =
             <NavButton
               aria-label={pinned ? 'Hide menu labels' : 'Show menu labels'}
               aria-expanded={pinned}
-              title={expanded ? undefined : 'Show menu labels'}
+              title={pinned ? 'Hide labels' : 'Show menu labels'}
               icon={pinned ? <PanelLeftClose className="h-5 w-5" aria-hidden="true" /> : <PanelLeftOpen className="h-5 w-5" aria-hidden="true" />}
               onClick={() => onPinnedChange?.(!pinned)}
             >

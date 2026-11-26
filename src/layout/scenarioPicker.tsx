@@ -48,7 +48,8 @@ const ROUND_TAG = 'Calibration round'
 const vmtText = (v: number) => (v >= 1e6 ? `${(v / 1e6).toFixed(1)}M` : exact(Math.round(v)))
 
 /** `chip` (default): the control bar's Scenarios chip. `add`: a small "Add or remove" button, for the page's scenario list. */
-export function ScenarioPicker({ variant = 'chip', addLabel }: { variant?: 'chip' | 'add'; addLabel?: string } = {}) {
+/** `addRow` (with `add`): the rail's form, a row on the rail's icon and text columns instead of a small chip. */
+export function ScenarioPicker({ variant = 'chip', addLabel, addRow = false }: { variant?: 'chip' | 'add'; addLabel?: string; addRow?: boolean } = {}) {
   const view = useResolvedView()
   const runs = useScenarioList()
   const display = useScenarioDisplay()
@@ -57,27 +58,37 @@ export function ScenarioPicker({ variant = 'chip', addLabel }: { variant?: 'chip
   const compareState = useSyncExternalStore(subscribeCompare, getState)
   const manifest = useMemo(() => viewManifest(), [runs, view.year])
   const [open, setOpen] = useState(false)
-  // The popover hangs under the chip: left edges aligned, kept inside the viewport, following the header as it resizes.
-  const [pos, setPos] = useState<{ top: number; left: number } | null>(null)
+  // The popover hangs under the chip: left edges aligned, kept inside the viewport. It is placed when it opens and then holds
+  // still while it is open, so ticking scenarios (which moves the "Add or remove" button as rows and chips come and go, and
+  // can scroll the page as tiles re-flow) never moves the list under the pointer; only a window resize re-places it. Closing
+  // forgets the place, so it never shows where it was last time.
+  const [pos, setPos] = useState<{ top?: number; bottom?: number; left: number; maxHeight: number } | null>(null)
   useLayoutEffect(() => {
-    if (!open) return
+    if (!open) {
+      setPos(null)
+      return
+    }
     let frame = 0
     const place = () => {
       const r = triggerRef.current?.getBoundingClientRect()
       if (!r) return
       const width = Math.min(580, window.innerWidth - 24)
-      setPos({ top: Math.round(r.bottom + 8), left: Math.round(Math.max(12, Math.min(r.left, window.innerWidth - width - 12))) })
+      const left = Math.round(Math.max(12, Math.min(r.left, window.innerWidth - width - 12)))
+      // below the trigger (the control bar, the header list); above it when the room below is short and there is more above
+      // (the "Add or remove" button at the foot of the rail). Either way the panel is no taller than the room it has.
+      const below = window.innerHeight - r.bottom - 8 - 12
+      const above = r.top - 8 - 12
+      if (below >= 360 || below >= above) setPos({ top: Math.round(r.bottom + 8), left, maxHeight: Math.max(200, Math.min(560, below)) })
+      else setPos({ bottom: Math.round(window.innerHeight - r.top + 8), left, maxHeight: Math.min(560, above) })
     }
     const schedule = () => {
       cancelAnimationFrame(frame)
       frame = requestAnimationFrame(place)
     }
     place()
-    window.addEventListener('scroll', schedule, { passive: true })
     window.addEventListener('resize', schedule)
     return () => {
       cancelAnimationFrame(frame)
-      window.removeEventListener('scroll', schedule)
       window.removeEventListener('resize', schedule)
     }
   }, [open])
@@ -203,9 +214,20 @@ export function ScenarioPicker({ variant = 'chip', addLabel }: { variant?: 'chip
           aria-expanded={open}
           data-testid="scenario-picker-add"
           onClick={() => setOpen((o) => !o)}
-          className="inline-flex h-8 shrink-0 items-center gap-2 rounded-full border border-dashed border-[var(--glass-line)] px-3 font-body text-[13px] text-[var(--mute)] hover:text-[var(--ink)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-text)]"
+          className={cn(
+            'shrink-0 items-center font-body text-[13px] text-[var(--mute)] hover:text-[var(--ink)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-text)]',
+            addRow
+              ? 'flex h-10 w-full gap-3 rounded-[15px] px-[14px] text-left hover:bg-[color-mix(in_srgb,var(--ink)_7%,transparent)]'
+              : 'inline-flex h-8 gap-2 rounded-full border border-dashed border-[var(--glass-line)] px-3',
+          )}
         >
-          <SlidersHorizontal className="size-[14px]" aria-hidden="true" />
+          {addRow ? (
+            <span className="flex size-5 shrink-0 items-center justify-center" aria-hidden="true">
+              <SlidersHorizontal className="size-[15px]" />
+            </span>
+          ) : (
+            <SlidersHorizontal className="size-[14px]" aria-hidden="true" />
+          )}
           {addLabel ?? (compareOn ? 'Add or remove' : 'Change')}
         </button>
       ) : (
@@ -257,8 +279,8 @@ export function ScenarioPicker({ variant = 'chip', addLabel }: { variant?: 'chip
           role="dialog"
           aria-label="Scenarios"
           data-testid="scenario-picker"
-          style={pos ? { top: pos.top, left: pos.left } : { visibility: 'hidden' }}
-          className="glass fixed z-[45] flex max-h-[min(560px,calc(100vh-120px))] w-[min(580px,calc(100%-24px))] flex-col overflow-hidden rounded-[22px]"
+          style={pos ? { top: pos.top, bottom: pos.bottom, left: pos.left, maxHeight: pos.maxHeight } : { visibility: 'hidden' }}
+          className="glass fixed z-[45] flex w-[min(580px,calc(100%-24px))] flex-col overflow-hidden rounded-[22px]"
         >
           <div className="flex flex-wrap items-center gap-[10px] px-4 pb-[10px] pt-[14px]">
             <input

@@ -71,7 +71,7 @@ export function SettingsModal() {
   return (
     <DialogPrimitive.Root open={ui.open} onOpenChange={setSettingsOpen}>
       <DialogTrigger asChild>
-        <NavButton icon={<Settings className="h-5 w-5" aria-hidden="true" />}>Settings</NavButton>
+        <NavButton title="Settings" icon={<Settings className="h-5 w-5" aria-hidden="true" />}>Settings</NavButton>
       </DialogTrigger>
       <DialogPortal>
         <DialogOverlay className="z-[60] bg-[rgba(5,7,10,0.6)]" />

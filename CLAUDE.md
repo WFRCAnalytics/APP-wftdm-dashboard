@@ -168,9 +168,9 @@ time through a `page.route` (it stays unobtrusive via `header.tab: " "` + omitte
 `header.icon` + `header.aria_label: "Test"`). Never list it in `dashboard-config.yaml`.
 
 Sidebar navigation (`030-sidebar-navigation`) replaced the old top
-`navBar.tsx` tab strip — a persistent, collapsible left `Sidebar`
-(`components/ui/sidebar.tsx`) with accordion sub-navigation
-(`sections:` per tab) and chromeless full-page mode
+`navBar.tsx` tab strip — a persistent, collapsible left rail
+(`layout/floatingNav.tsx`; a page's `sections:` are its own tab strip, not listed in the rail; pinned open, the footer
+controls are one row of icon buttons, `navButton.tsx#NAV_ICON_ROW_CLASS`) and chromeless full-page mode
 (`header.full_page: true`, exactly one panel). See
 `project-docs/IMPLEMENTATION-HISTORY.md` item 18 for the full design.
 

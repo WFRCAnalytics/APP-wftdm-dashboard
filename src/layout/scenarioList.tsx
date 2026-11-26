@@ -88,7 +88,7 @@ export function ScenarioList({ orientation }: { orientation: 'vertical' | 'horiz
       onMouseEnter={() => setHoveredRun(e.run)}
       onMouseLeave={() => setHoveredRun(null)}
       className={cn(
-        'group/sc flex min-w-0 items-center gap-1 pr-1',
+        'group/sc relative flex min-w-0 items-center gap-1 pr-1',
         vertical
           ? cn('rounded-[12px] hover:bg-[color-mix(in_srgb,var(--ink)_6%,transparent)]', e.focus && 'bg-[color-mix(in_srgb,var(--ink)_6%,transparent)]')
           : cn('shrink-0 rounded-full border bg-[var(--tile)]', e.reference ? 'border-dashed border-[var(--mute)]' : 'border-[var(--glass-line)]'),
@@ -104,11 +104,19 @@ export function ScenarioList({ orientation }: { orientation: 'vertical' | 'horiz
         }}
         className={cn(
           'flex min-w-0 flex-1 items-center gap-2 rounded-[12px] text-left font-body text-[13.5px] text-[var(--ink)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-text)]',
-          vertical ? 'py-[7px] pl-[10px]' : 'h-8 whitespace-nowrap rounded-full pl-3',
+          // vertical: the rail's columns (icon column 14px in, 20px wide; text 12px after it), like the page items above
+        vertical ? 'gap-3 py-[7px] pl-[14px]' : 'h-8 whitespace-nowrap rounded-full pl-3',
           e.focus ? 'font-semibold' : 'font-medium',
         )}
       >
-        <i aria-hidden="true" className={cn('inline-block size-[10px] shrink-0 rounded-full', vertical && 'mt-[5px] self-start')} style={{ background: e.color ?? 'var(--mute)' }} />
+        {vertical ? (
+          // a 20px slot, as tall as the first line, so the dot is centred on the icon column and on the name's first line
+          <span aria-hidden="true" className="flex h-[19px] w-5 shrink-0 items-center justify-center self-start">
+            <i className="inline-block size-[10px] rounded-full" style={{ background: e.color ?? 'var(--mute)' }} />
+          </span>
+        ) : (
+          <i aria-hidden="true" className="inline-block size-[10px] shrink-0 rounded-full" style={{ background: e.color ?? 'var(--mute)' }} />
+        )}
         <span className="min-w-0 break-words">{e.label}</span>
       </button>
       {e.focus && <Tag kind="focus" />}
@@ -118,7 +126,11 @@ export function ScenarioList({ orientation }: { orientation: 'vertical' | 'horiz
           type="button"
           aria-label={`Remove ${e.label} from the comparison`}
           onClick={() => setScenarioGroupActive(e.alt, false)}
-          className="grid size-6 shrink-0 place-items-center rounded-full text-[var(--mute)] opacity-0 hover:text-[var(--ink)] focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-[var(--brand-text)] group-hover/sc:opacity-100"
+          className={cn(
+            'grid size-6 shrink-0 place-items-center rounded-full text-[var(--mute)] opacity-0 hover:text-[var(--ink)] focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-[var(--brand-text)] group-hover/sc:opacity-100',
+            // in the rail it floats over the end of the row on hover, so it takes no width from the name
+            vertical && 'absolute right-1 top-1/2 -translate-y-1/2 bg-[var(--glass)] shadow-[var(--sh1)]',
+          )}
         >
           <X className="size-[13px]" aria-hidden="true" />
         </button>
@@ -131,10 +143,12 @@ export function ScenarioList({ orientation }: { orientation: 'vertical' | 'horiz
       key="__reference"
       className={cn(
         'flex items-center gap-2 font-body text-[13px] text-[var(--ink)]',
-        vertical ? 'px-[10px] py-[6px]' : 'h-8 shrink-0 rounded-full border border-dashed border-[var(--mute)] pl-3 pr-1',
+        vertical ? 'gap-3 py-[6px] pl-[14px] pr-1' : 'h-8 shrink-0 rounded-full border border-dashed border-[var(--mute)] pl-3 pr-1',
       )}
     >
-      <i aria-hidden="true" className="inline-block h-0 w-[12px] shrink-0 border-t-2 border-dashed border-[var(--ink)]" />
+      <span aria-hidden="true" className={cn('flex shrink-0 items-center justify-center', vertical && 'w-5')}>
+        <i className="inline-block h-0 w-[12px] border-t-2 border-dashed border-[var(--ink)]" />
+      </span>
       <span className="min-w-0 truncate">{prettyOperators(extraReference)}</span>
       <Tag kind="reference" />
     </li>
@@ -143,7 +157,8 @@ export function ScenarioList({ orientation }: { orientation: 'vertical' | 'horiz
   if (vertical) {
     return (
       <section aria-label="Scenarios" data-testid="scenario-list" data-orientation="vertical" className="flex min-h-0 flex-col gap-1">
-        <div className="flex items-center justify-between gap-2 px-[6px] pb-1">
+        {/* the heading starts on the icon column; the Compare switch ends where the page items do */}
+        <div className="flex items-center justify-between gap-2 pb-1 pl-[14px]">
           <span className="font-body text-[12.5px] font-semibold text-[var(--mute)]">Scenarios</span>
           {showCompare && <CompareToggle compact on={compare} onChange={setCompare} />}
         </div>
@@ -151,8 +166,8 @@ export function ScenarioList({ orientation }: { orientation: 'vertical' | 'horiz
           {entries.map(item)}
           {reference}
         </ul>
-        <div className="px-[6px] pt-1">
-          <ScenarioPicker variant="add" />
+        <div className="pt-1">
+          <ScenarioPicker variant="add" addRow />
         </div>
       </section>
     )

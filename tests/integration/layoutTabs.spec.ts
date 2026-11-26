@@ -60,11 +60,13 @@ test.describe('tabbed pages', () => {
     await expect(page.getByRole('heading', { name: 'Where transit is used' })).toHaveCount(0)
   })
 
-  test('the sidebar sections select tabs, and Compare off removes the compare-only tab', async ({ page }) => {
+  test('the page tab strip selects a section, Compare off removes the compare-only tab, and the rail lists pages only', async ({ page }) => {
     await boot(page)
-    // The section list shows once the nav is expanded with its toggle (hovering no longer expands it).
+    // the rail, pinned open, lists the pages and no sections: a page's sections are its own tab strip
     await page.getByRole('button', { name: 'Show menu labels' }).click()
-    await page.getByRole('group', { name: 'Summary sections' }).getByRole('button', { name: 'Time of day' }).click()
+    await expect(page.getByRole('group', { name: 'Summary sections' })).toHaveCount(0)
+    await expect(page.locator('[data-sidebar=sidebar]').getByRole('button', { name: 'Time of day' })).toHaveCount(0)
+    await pageTab(page, 'Time of day').click()
     await expect(page.getByTestId('tabbed-page')).toHaveAttribute('data-section', 'time')
     await page.getByTestId('control-compare').click()
     await expect(pageTab(page, 'Scenarios')).toHaveCount(0)
