@@ -1,10 +1,10 @@
 import { PanelSkeleton } from '@/panels/PanelSkeleton'
-import { useEffect, useRef, useState } from 'react'
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import '@/panels/mapControls.css'
 import { MapboxOverlay } from '@deck.gl/mapbox'
-import { FlowmapLayer, PickingType } from '@flowmap.gl/layers'
+import { FlowmapLayer, PickingType, type FlowmapLayerProps } from '@flowmap.gl/layers'
 import { Map as MapIcon } from 'lucide-react'
 
 import { query } from '@/services/duckdb'
@@ -21,7 +21,11 @@ import {
   extractGlobalFilterIds,
   EMPTY_SUMMARIZE_CONFIG,
 } from '@/panels/panelQuery'
-import { buildFlowmapData } from '@/panels/flowmapData'
+import { buildFlowmapData, type Flow, type FlowLocation } from '@/panels/flowmapData'
+import { flowScale, inBounds, isOpen, type FlowBounds } from '@/panels/flowFilter'
+import { FilteredFlowProvider } from '@/panels/flowProvider'
+import { flowColorAt } from '@/panels/flowColors'
+import { FlowFilterLegend } from '@/panels/FlowFilterLegend'
 import { computeFlowBounds } from '@/panels/mapBounds'
 import { ResetViewControl, type EffectiveView } from '@/panels/resetViewControl'
 import { createMapTooltip, type MapTooltip } from '@/panels/mapTooltip'
@@ -35,6 +39,18 @@ import { settledResize } from '@/panels/settledResize'
 import { trackMap } from '@/services/mapCapture'
 
 const ALL_FILTERS: ['*'] = ['*']
+
+type ScaleState = Parameters<NonNullable<FlowmapLayerProps<Record<string, unknown>, Record<string, unknown>>['onScaleChange']>>[0]
+
+// The layer's accessors, shared with the data provider (panels/flowProvider.ts) so both read the flows the same way.
+const ACCESSORS = {
+  getLocationId: (l: FlowLocation) => l.id,
+  getLocationLat: (l: FlowLocation) => l.lat,
+  getLocationLon: (l: FlowLocation) => l.lon,
+  getFlowOriginId: (f: Flow) => f.origin,
+  getFlowDestId: (f: Flow) => f.dest,
+  getFlowMagnitude: (f: Flow) => f.value,
+}
 
 // Default view state when a panel's config omits center/zoom — roughly
 // the Wasatch Front, matching both real reference apps' own default
@@ -196,6 +212,31 @@ export function FlowMapPanel({ config }: { config: FlowMapPanelConfig }) {
   // its one remaining (basemap-switch) trigger are unaffected — they never
   // depended on the removed trigger for anything.
   const [layerRepopulateGeneration, setLayerRepopulateGeneration] = useState(0)
+
+  // The volume filter (FlowFilterLegend) works on the lines the map draws: flowmap.gl clusters the flows at each zoom, so
+  // a line is often a sum of zone pairs. Our provider (flowProvider.ts) reports those lines' sizes (the histogram) and
+  // hides the ones outside the bounds after flowmap.gl has made its scale, so clustering and colours never change. The
+  // bounds are in flow units (they hold across zooms) and go back to open when the flows themselves change (a new
+  // scenario or filter), not when the same flows are fetched again for a rebuilt config object. The layer follows a
+  // deferred copy, so dragging stays smooth.
+  const data = useMemo(() => buildFlowmapData(config, rows), [config, rows])
+  const [bounds, setBounds] = useState<FlowBounds>({})
+  const flowsKey = useMemo(() => data.flows.length + ':' + data.flows.reduce((a, f) => a + f.value, 0), [data])
+  useEffect(() => setBounds({}), [flowsKey])
+  const layerBounds = useDeferredValue(bounds)
+  const [drawn, setDrawn] = useState<number[]>([])
+  const provider = useMemo(() => {
+    const p = new FilteredFlowProvider<FlowLocation, Flow>(ACCESSORS, (f) => f.value, (magnitudes) =>
+      setDrawn((prev) => (prev.length === magnitudes.length && prev.every((m, i) => m === magnitudes[i]) ? prev : magnitudes)),
+    )
+    p.setFlowmapData({ locations: data.locations, flows: data.flows })
+    return p
+  }, [data])
+  // a new `data` object per bounds tells the layer to recompute its lines (flowmap.gl keeps its clusters cached)
+  const layerData = useMemo(() => ({ locations: data.locations, flows: data.flows, bounds: layerBounds }), [data, layerBounds])
+  const scale = useMemo(() => flowScale(drawn), [drawn])
+  // the top of the layer's magnitude domain (onScaleChange) sets the legend's colours (flowColors.ts)
+  const [colorMax, setColorMax] = useState<number | undefined>()
 
   // Data fetch — identical shape to every other data-bound panel type.
   useEffect(() => {
@@ -408,6 +449,8 @@ export function FlowMapPanel({ config }: { config: FlowMapPanelConfig }) {
   // SAME selection still doesn't redundantly re-run this effect.
   const effectiveBasemap = resolveEffectiveBasemap(config.basemap, config._tabDefaultBasemap, globalBasemap)
   const key = basemapKey(effectiveBasemap.selection)
+  // the lines keep flowmap.gl's own colours (its default scheme)
+  const colorAt = useMemo(() => flowColorAt(colorMax ?? scale?.max ?? 1), [colorMax, scale])
 
   useEffect(() => {
     if (!mapReady || !mapRef.current) return
@@ -657,7 +700,6 @@ export function FlowMapPanel({ config }: { config: FlowMapPanelConfig }) {
   useEffect(() => {
     if (status !== 'ready' || !mapReady || !overlayRef.current || !containerRef.current) return
 
-    const data = buildFlowmapData(config, rows)
     if (data.excludedCount > 0 && warnedForRowsRef.current !== rows) {
       warnedForRowsRef.current = rows
       console.warn(
@@ -708,17 +750,18 @@ export function FlowMapPanel({ config }: { config: FlowMapPanelConfig }) {
 
     const layer = new FlowmapLayer({
       id: 'flowmap',
-      data: { locations: data.locations, flows: data.flows },
-      getLocationId: (l: { id: string }) => l.id,
-      getLocationLat: (l: { lat: number }) => l.lat,
-      getLocationLon: (l: { lon: number }) => l.lon,
-      getFlowOriginId: (f: { origin: string }) => f.origin,
-      getFlowDestId: (f: { dest: string }) => f.dest,
-      getFlowMagnitude: (f: { value: number }) => f.value,
+      data: layerData,
+      dataProvider: provider,
+      ...ACCESSORS,
       clusteringEnabled: config.clustering ?? true,
       clusteringAuto: config.clustering_auto ?? true,
       animationEnabled: config.animation ?? false,
       maxTopFlowsDisplayNum: config.max_flows,
+      onScaleChange: (state: ScaleState) => {
+        const flow = state?.flowThickness
+        const max = flow ? Math.max(Math.abs(flow.domain[0]), Math.abs(flow.domain[1])) : undefined
+        setColorMax((prev) => (prev === max ? prev : max))
+      },
       pickable: true,
       // 015-map-controls-polish — deck.gl's OWN picking/hover mechanism
       // (FlowmapLayer's own onHover prop, backed by `pickable: true`
@@ -775,7 +818,11 @@ export function FlowMapPanel({ config }: { config: FlowMapPanelConfig }) {
     // WebGL context-loss recovery — used to bump this same counter;
     // removed along with the rest of that mechanism, see this file's
     // own layerRepopulateGeneration declaration comment above.)
-  }, [config, rows, status, mapReady, layerRepopulateGeneration])
+  }, [config, rows, data, provider, layerData, status, mapReady, layerRepopulateGeneration])
+
+  // the provider hides lines outside these bounds the next time the layer asks for them (layerData above)
+  provider.setBounds(layerBounds)
+  const linesShown = useMemo(() => drawn.filter((m) => inBounds(layerBounds, m)).length, [drawn, layerBounds])
 
   if (status === 'empty') {
     return <PanelEmptyState icon={MapIcon} message="No data for this selection" />
@@ -787,15 +834,19 @@ export function FlowMapPanel({ config }: { config: FlowMapPanelConfig }) {
   return (
     <>
       {status === 'loading' && <PanelSkeleton shape="map" height={config.height ?? 500} className="rounded-md" />}
-      <div
-        ref={containerRef}
-        className="flowmap-chart"
-        style={{
-          width: '100%',
-          height: '100%',
-          display: status === 'ready' ? undefined : 'none',
-        }}
-      />
+      {/* the map and the volume filter beside it (a sibling of the map container, so a drag on the slider never pans) */}
+      <div className="relative" style={{ width: '100%', height: '100%', display: status === 'ready' ? undefined : 'none' }}>
+        <div
+          ref={containerRef}
+          className="flowmap-chart"
+          style={{ width: '100%', height: '100%' }}
+          data-lines-drawn={drawn.length}
+          data-lines-shown={isOpen(layerBounds) ? drawn.length : linesShown}
+        />
+        {status === 'ready' && scale && config.flow_filter !== false && (
+          <FlowFilterLegend scale={scale} magnitudes={drawn} colorAt={colorAt} bounds={bounds} onChange={setBounds} />
+        )}
+      </div>
     </>
   )
 }

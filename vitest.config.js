@@ -14,5 +14,8 @@ export default defineConfig({
   test: {
     include: ['tests/unit/**/*.test.ts'],
     environment: 'node',
+    // @flowmap.gl/data's ESM imports have no file extensions (fine for Vite's bundler, not for Node's loader): let Vite
+    // transform it (panels/flowColors.ts uses its colour functions).
+    server: { deps: { inline: [/@flowmap\.gl\//] } },
   },
 })

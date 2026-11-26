@@ -1235,6 +1235,7 @@ uses (`TableColumnConfig.field`, `SankeyPanelConfig`'s
   clustering_auto: true
   animation:       false
   max_flows:       500
+  flow_filter:     true        # the volume filter (histogram + range slider, bottom-left); false hides it
   filter:  $filters.purpose
   center:  [-111.89, 40.76]
   zoom:    9
