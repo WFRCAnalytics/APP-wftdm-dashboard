@@ -23,6 +23,7 @@
   border: 1px solid var(--line);
   border-radius: 10px;
   background: var(--surface);
+  box-shadow: var(--shadow-sm);
   overflow: hidden;
 }
 .wfz-ctl button {
@@ -32,7 +33,8 @@
   background: transparent;
   color: var(--ink);
   cursor: pointer;
-  font-size: 15px;
+  font-size: 16px;
+  font-weight: 600;
   line-height: 1;
   display: grid;
   place-items: center;
@@ -75,16 +77,21 @@
 .wfz-chip.right {
   right: 52px;
 }
-/* the reference map's chain button (side-by-side grid): its own group under the zoom group (three 30px buttons, two
-   dividers and the border: 94px from 10px) with a 6px gap, coloured while the maps are linked */
+/* the reference map's chain button (side-by-side grid): its own group under the zoom group (four 30px buttons, three
+   dividers and the border: 125px from 10px) with a 6px gap, coloured while the maps are linked */
 .wfz-ctl.wfz-link {
-  top: 110px;
+  top: 141px;
 }
-/* a short map (a side-by-side cell) has no room under the zoom group above the attribution: beside it, 6px to its left */
-@container (max-height: 220px) {
+/* a short map (a side-by-side cell): 26px buttons, so the group stays clear of the attribution, and the chain button beside
+   the group, 6px to its left, where there is no room under it */
+@container (max-height: 260px) {
+  .wfz-ctl button {
+    width: 26px;
+    height: 26px;
+  }
   .wfz-ctl.wfz-link {
     top: 10px;
-    right: 48px;
+    right: 44px;
   }
 }
 /* the colour key: bottom-left inside the map, above the attribution line, balancing the controls top-right */

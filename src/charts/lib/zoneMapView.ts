@@ -91,7 +91,7 @@ export class ZoneMap implements CameraMap {
       container: this.root,
       style: freshBlankStyle(),
       attributionControl: { compact: true },
-      dragRotate: false,
+      // rotation on (right-drag, ctrl-drag, two-finger twist), so the compass in the control group has a job; tilt stays flat
       pitchWithRotate: false,
       maxPitch: 0,
       minZoom: 5,
@@ -100,10 +100,11 @@ export class ZoneMap implements CameraMap {
       ...view,
     })
     trackMap(this.map)
-    this.map.touchZoomRotate.disableRotation()
     this.home = { center: this.map.getCenter().toArray() as [number, number], zoom: this.map.getZoom() }
 
     this.map.on('move', () => this.hooks.moved())
+    // the compass needle in the control group turns with the map (mapChrome.ts COMPASS_ICON)
+    this.map.on('rotate', () => parent.style.setProperty('--wfz-bearing', `${-this.map.getBearing()}deg`))
     const zoneEvents = opts.zoneEvents !== false
     if (zoneEvents) this.map.on('mousemove', L_FILL, (e) => {
       const id = Number(e.features?.[0]?.properties?.id)
@@ -146,6 +147,10 @@ export class ZoneMap implements CameraMap {
 
   zoomBy(factor: number): void {
     this.map.easeTo({ zoom: this.map.getZoom() + Math.log2(factor), duration: 250 })
+  }
+
+  resetNorth(): void {
+    this.map.easeTo({ bearing: 0, pitch: 0, duration: 300 })
   }
 
   resetView(): void {

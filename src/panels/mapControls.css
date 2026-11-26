@@ -346,3 +346,26 @@
 .dark .maplibregl-ctrl-attrib.maplibregl-compact-show .maplibregl-ctrl-attrib-button {
   filter: invert(0.8);
 }
+
+/* One design language with the zone maps' controls (charts/lib/mapChrome.css .wfz-ctl): a rounded 10px group of 30px
+   buttons, and the fit-to-extents button joined under + / - / compass as one column, the same set in the same order.
+   Colours stay on the rules above (--card, --border: the same tones as the zone maps' --surface and --line). */
+.maplibregl-ctrl-group {
+  border-radius: 10px !important;
+  overflow: hidden;
+}
+.maplibregl-ctrl-group button,
+.maplibregl-ctrl-group .wftdm-reset-view-button,
+.maplibregl-ctrl-group .wftdm-3d-toggle-button {
+  width: 30px !important;
+  height: 30px !important;
+}
+.maplibregl-ctrl-top-right > .maplibregl-ctrl-group:has(+ .wftdm-reset-view-group) {
+  border-bottom-left-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
+}
+.maplibregl-ctrl-top-right > .maplibregl-ctrl-group + .wftdm-reset-view-group {
+  margin-top: -1px !important;
+  border-top-left-radius: 0 !important;
+  border-top-right-radius: 0 !important;
+}

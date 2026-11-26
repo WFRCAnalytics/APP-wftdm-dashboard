@@ -145,7 +145,7 @@ const kind: ChartKind = {
 
     // chrome: every map has its own control group, in the same place (in a grid the cell above it carries the caption). The
     // reference cell (first) also has the chain button under it and the colour key, bottom-right; the other cells share both.
-    const controls = controlGroup({ zoomIn: () => map.zoomBy(1.6), zoomOut: () => map.zoomBy(1 / 1.6), reset: () => map.resetView() })
+    const controls = controlGroup({ zoomIn: () => map.zoomBy(1.6), zoomOut: () => map.zoomBy(1 / 1.6), resetNorth: () => map.resetNorth(), reset: () => map.resetView() })
     const link = grid && member ? grid.group.linkButtonFor(member) : null
     const parts: HTMLElement[] = grid ? [controls] : [chip(label, 'left'), controls]
     if (link) parts.push(link)

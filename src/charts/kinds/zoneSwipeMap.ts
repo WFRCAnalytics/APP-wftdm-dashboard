@@ -154,7 +154,7 @@ const kind: ChartKind = {
     host.chrome.replaceChildren(
       left,
       right,
-      controlGroup({ zoomIn: () => mapFocus.zoomBy(1.6), zoomOut: () => mapFocus.zoomBy(1 / 1.6), reset: () => mapFocus.resetView() }),
+      controlGroup({ zoomIn: () => mapFocus.zoomBy(1.6), zoomOut: () => mapFocus.zoomBy(1 / 1.6), resetNorth: () => mapFocus.resetNorth(), reset: () => mapFocus.resetView() }),
       legend(gradient([t.mix(t.surface, t.tokens.c1, 0), t.tokens.c1]), [`${SHARE_DOMAIN[0]}%`, `${SHARE_DOMAIN[1]}%+ transit share`], 150),
     )
     if (host.chrome.parentElement !== host.wrap) host.wrap.appendChild(host.chrome)

@@ -4,13 +4,20 @@ import '@/charts/lib/mapChrome.css'
 const RESET_ICON =
   '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>'
 
+// A north needle (the north half solid, the south half faint), turned by --wfz-bearing, which each map sets on its wrapper
+// as it rotates (ZoneMap), so a group rebuilt on every draw never holds a listener.
+const COMPASS_ICON =
+  '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" style="transform:rotate(var(--wfz-bearing,0deg));transition:transform .1s"><path d="M12 2.5 16 12h-8z" fill="currentColor"/><path d="M12 21.5 8 12h8z" fill="currentColor" opacity=".35"/></svg>'
+
 export interface ControlHandlers {
   zoomIn(): void
   zoomOut(): void
+  /** Turns the map back to north (and flat). */
+  resetNorth(): void
   reset(): void
 }
 
-/** The 30px-wide bordered + / − / reset group. */
+/** The 30px-wide bordered + / − / north / reset group: the same set, in the same order, as the flow map's controls. */
 export function controlGroup(h: ControlHandlers): HTMLDivElement {
   const bar = document.createElement('div')
   bar.className = 'wfz-ctl'
@@ -29,6 +36,7 @@ export function controlGroup(h: ControlHandlers): HTMLDivElement {
   }
   mk('+', 'Zoom in', h.zoomIn)
   mk('−', 'Zoom out', h.zoomOut)
+  mk(COMPASS_ICON, 'Reset bearing to north', h.resetNorth)
   mk(RESET_ICON, 'Reset view', h.reset)
   return bar
 }
