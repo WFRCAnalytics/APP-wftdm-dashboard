@@ -125,7 +125,7 @@ const kind: ChartKind = {
     cap.style.maxWidth = 'calc(100% - 60px)'
     host.chrome.replaceChildren(
       cap,
-      controlGroup({ zoomIn: () => map.zoomBy(1.6), zoomOut: () => map.zoomBy(1 / 1.6), reset: () => map.resetView() }),
+      controlGroup({ zoomIn: () => map.zoomBy(1.6), zoomOut: () => map.zoomBy(1 / 1.6), resetNorth: () => map.resetNorth(), reset: () => map.resetView() }),
       legend(gradient([t.diverge(-1), t.diverge(0), t.diverge(1)]), [`−${f1(half)}${unit}`, '0', `+${f1(half)}${unit}`], 170),
     )
     if (host.chrome.parentElement !== host.wrap) host.wrap.appendChild(host.chrome)

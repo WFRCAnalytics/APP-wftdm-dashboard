@@ -176,6 +176,17 @@ test.describe('zone maps', () => {
     await link.click()
     await expect.poll(async () => new Set((await cameras(page)).map((m) => JSON.stringify(m))).size, { timeout: 8000 }).toBe(1)
 
+    // the maps rotate (linked, all together) and each control group's compass turns them back to north
+    const bearings = () =>
+      page.evaluate(() => [...((window as unknown as { __wfzMaps?: Set<TestMap> }).__wfzMaps ?? [])].map(({ map }) => Math.round((map as unknown as { getBearing(): number }).getBearing())))
+    await page.evaluate(() => {
+      const first = [...((window as unknown as { __wfzMaps?: Set<TestMap> }).__wfzMaps ?? [])][0]
+      ;(first.map as unknown as { setBearing(b: number): void }).setBearing(40)
+    })
+    await expect.poll(bearings).toEqual(new Array(n).fill(40))
+    await page.locator('.wf-multi .wfz-ctl:not(.wfz-link)').first().getByRole('button', { name: 'Reset bearing to north' }).click()
+    await expect.poll(bearings, { timeout: 8000 }).toEqual(new Array(n).fill(0))
+
     // hover a zone: ONE tooltip with every scenario, and the same zone outlined in every cell
     await hoverZone(page)
     const tip = page.locator('.wf-tip')
