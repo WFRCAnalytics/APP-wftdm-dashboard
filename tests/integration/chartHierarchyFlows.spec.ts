@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
+import { chooseView } from './_views'
 import type { WftdmDebugHook } from '../../src/main.tsx'
 
 declare global {
@@ -30,9 +31,6 @@ async function tipOpacity(page: Page): Promise<number> {
   })
 }
 
-const viewButton = (page: Page, containing: string, name: string) =>
-  // by accessible name: a narrow tile shows its views as icons only
-  page.getByRole('group', { name: 'View' }).filter({ has: page.getByRole('button', { name: containing, exact: true }) }).first().getByRole('button', { name, exact: true })
 
 test.describe('hierarchy and flow chart kinds', () => {
   test.setTimeout(180_000)
@@ -53,20 +51,29 @@ test.describe('hierarchy and flow chart kinds', () => {
     await leaf.hover()
     await expect.poll(() => tipOpacity(page)).toBe(1)
     await page.mouse.move(900, 10)
+    // the treemap's own tile (its views may be a switch or a menu)
+    const title = await page.locator('[data-export-title]').filter({ has: leaf }).first().getAttribute('data-export-title')
+    const tile = page.locator(`[data-export-title="${title}"]`).first()
 
-    await viewButton(page, 'Treemap', 'Sunburst').click()
+    await chooseView(page, tile, 'Sunburst')
     const arc = page.locator('[data-chart-kind="sunburst"] svg path[data-key]').first()
     await expect(arc).toBeVisible({ timeout: 30_000 })
     await arc.hover()
     await expect.poll(() => tipOpacity(page)).toBe(1)
     await page.mouse.move(900, 10)
 
-    await viewButton(page, 'Treemap', 'Flow').click()
-    const link = page.locator('[data-chart-kind="sankey"] svg path[data-m]').first()
+    await chooseView(page, tile, 'Flow')
+    const link = tile.locator('[data-chart-kind="sankey"] svg path[data-m]').first()
     // a straight link has a zero-height box, which Playwright does not call visible
     await expect(link).toBeAttached({ timeout: 30_000 })
-    await link.hover({ force: true })
-    await expect.poll(() => tipOpacity(page)).toBe(1)
+    // hover again until the tip answers: a menu that just closed holds the pointer for a moment
+    await expect
+      .poll(async () => {
+        await page.mouse.move(900, 10)
+        await link.hover({ force: true })
+        return tipOpacity(page)
+      }, { timeout: 15_000 })
+      .toBe(1)
     await expect(page.locator('.wf-tip')).toContainText('→')
     expect(errors).toEqual([])
   })
@@ -100,7 +107,7 @@ test.describe('hierarchy and flow chart kinds', () => {
     await expect(page.locator('.wf-tip')).toContainText('Daily trips')
     await page.mouse.move(900, 10)
 
-    await viewButton(page, 'Chord', 'Table').click()
+    await chooseView(page, page, 'Table')
     const cells = page.locator('[data-chart-kind="flow-table"] tbody td')
     await expect(cells.first()).toBeVisible({ timeout: 30_000 })
     expect(await cells.count()).toBe(30) // 5 districts x (name + 5 values)

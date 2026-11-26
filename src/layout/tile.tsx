@@ -104,7 +104,7 @@ export function Tile({ title, subtitle, badges, controls, actions, headerControl
 
   // Called unconditionally (rules of hooks); see panelExpandHost.tsx for why `body` is simply never placed when the
   // tile is not expandable.
-  const { trigger, body } = usePanelExpandHost(title, panel, { height: fill.active ? '100%' : height, chrome: <>{subtitle && <p className="text-[12.5px] text-[var(--mute)]">{prettyOperators(subtitle)}</p>}{chrome}</>, exportMenu: (ref) => <>{actions}<ExportMenu title={title} cardRef={ref} tables={exports.all} /></>, headerControls: headerControls && <div data-export-skip="" className="flex min-w-0 flex-1 justify-end">{headerControls}</div> })
+  const { trigger, body } = usePanelExpandHost(title, panel, { height: fill.active ? '100%' : height, chrome: <>{subtitle && <p className="text-[12.5px] text-[var(--mute)]">{prettyOperators(subtitle)}</p>}{chrome}</>, exportMenu: (ref) => <>{actions}<ExportMenu title={title} cardRef={ref} tables={exports.all} /></>, headerControls: headerControls && <div data-export-skip="" className="flex min-w-0 flex-1 items-center justify-end gap-2">{headerControls}</div> })
   const hasPanel = panel !== null && !errorMessage
   useEffect(() => (hasPanel ? registerPageTile({ title, cardRef, tables: exports.all }) : undefined), [hasPanel, title, exports])
 
@@ -116,7 +116,7 @@ export function Tile({ title, subtitle, badges, controls, actions, headerControl
         {subtitle && <InfoButton title={title} text={subtitle} />}
         {/* with a header control the badges move to the row below, so the title, the views and the tools share the header */}
         {!headerControls && badges}
-        {headerControls && hasPanel ? <div data-export-skip="" className="flex min-w-0 flex-1 justify-end">{headerControls}</div> : <span className="flex-1" />}
+        {headerControls && hasPanel ? <div data-export-skip="" className="flex min-w-0 flex-1 items-center justify-end gap-2">{headerControls}</div> : <span className="flex-1" />}
         {hasPanel && actions}
         {hasPanel && <ExportMenu title={title} cardRef={cardRef} tables={exports.all} />}
         {hasPanel && expandable && <span data-export-skip="">{trigger}</span>}

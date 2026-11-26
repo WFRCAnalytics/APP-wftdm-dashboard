@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
+import { chooseView } from './_views'
 
 // Compared scenarios in one tile: the radar lists every scenario, and a zoom made in one facet is made in all of them.
 
@@ -11,7 +12,7 @@ async function boot(page: Page) {
 test('the radar names every compared scenario in its legend, with one marker ring each', async ({ page }) => {
   await boot(page)
   const tile = page.getByTestId('tab-body')
-  await tile.getByRole('button', { name: 'Radar' }).first().click()
+  await chooseView(page, tile, 'Radar')
   const radar = page.locator('[data-chart-kind="purpose-radar"]')
   await expect(radar.locator('svg')).toBeVisible({ timeout: 30_000 })
   await expect(page.getByTestId('chart-legend').first().locator('[data-sc]')).toHaveCount(3)
@@ -23,7 +24,7 @@ test('the radar names every compared scenario in its legend, with one marker rin
 test('zooming one sunburst facet zooms them all, and going back resets them all', async ({ page }) => {
   await boot(page)
   const tile = page.getByTestId('tab-body')
-  await tile.getByRole('button', { name: 'Sunburst' }).first().click()
+  await chooseView(page, tile, 'Sunburst')
   const facets = page.locator('[data-chart-kind="sunburst"]')
   await expect(facets).toHaveCount(3, { timeout: 30_000 })
   await expect(facets.first().locator('path[data-key^="grp|"]').first()).toBeVisible({ timeout: 30_000 })
@@ -37,7 +38,7 @@ test('zooming one sunburst facet zooms them all, and going back resets them all'
 
 test('the sankey keeps its labels inside the chart, and a node click keeps only its flows', async ({ page }) => {
   await boot(page)
-  await page.getByTestId('tab-body').getByRole('button', { name: 'Flow' }).first().click()
+  await chooseView(page, page.getByTestId('tab-body'), 'Flow')
   const chart = page.locator('[data-chart-kind="sankey"]')
   await expect(chart.locator('svg rect').first()).toBeVisible({ timeout: 30_000 })
   const box = await chart.boundingBox()
@@ -58,7 +59,7 @@ test('a heatmap grouped by Scenario shows every scenario and its Scenario dropdo
   await page.goto('/#/summary/time')
   await page.waitForFunction(() => document.querySelector('h1') && !document.body.innerText.includes('Connecting to DuckDB'), null, { timeout: 60_000 })
   const tile = page.getByTestId('tab-body')
-  await tile.getByRole('button', { name: 'Heatmap' }).first().click()
+  await chooseView(page, tile, 'Heatmap')
   const heat = page.locator('[data-chart-kind="time-heat"]')
   await expect(heat.locator('svg')).toBeVisible({ timeout: 30_000 })
   // Group by Scenario: one row per compared scenario, the dropdown reads "All scenarios" and cannot be used
