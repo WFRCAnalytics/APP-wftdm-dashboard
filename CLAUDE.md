@@ -616,8 +616,11 @@ before touching charts).
   `needs_compare`, `family: calibration`, `height_rows` and `default_view` shape what is rendered.
   The view control sits in the tile header (`components/ui/adaptive-switch.tsx`, form chosen by `lib/switchForm.ts`): every view
   with icon and label when it fits, icons only, else the selected view as a pill opening a menu; `controls.views: auto|switch|menu`.
-  A view's icon follows its skeleton shape (`panels/viewIcon.ts`; a view may set `icon: <shape>`). The tabbed-page control rail
-  is used only for three or more controls; one or two sit in a row above the chart.
+  A view's icon follows its skeleton shape (`panels/viewIcon.ts`; a view may set `icon: <shape>`). A tile's controls are placed by measuring, never by hand
+  (`layout/tileHeader.tsx`, rule `lib/headerFit.ts`): Scenario, then Compare as / Group by / Scale, sit on the title row while they
+  fit; the last ones move to the row below before the view switch gives up its labels (it reports that width through
+  `components/ui/headerNeedContext.ts`). The expanded dialog uses the same header. The tabbed-page control rail is used only for
+  three or more controls.
 - **Charts**: `type: chart, kind: <name>` is drawn by `panels/ChartPanel.tsx`; each kind is one module in
   `src/charts/kinds/` (named from its file name, auto-registered via `import.meta.glob`), shared logic in `src/charts/lib/`.
   Kinds receive a `ChartEnv` and never read stores or DuckDB. One tooltip (`services/tooltip.ts`), crosshair/armPlot

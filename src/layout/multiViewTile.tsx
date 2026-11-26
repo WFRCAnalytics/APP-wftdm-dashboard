@@ -147,7 +147,6 @@ export function MultiViewTile({ config: rawConfig, tileKey }: { config: MultiVie
       <PillSelect
         key="scenario"
         compact
-        className="min-w-0 shrink"
         label="Scenario"
         value={ALL_SCENARIOS}
         disabled
@@ -165,7 +164,6 @@ export function MultiViewTile({ config: rawConfig, tileKey }: { config: MultiVie
       <PillSelect
         key="scenario"
         compact
-        className="min-w-0 shrink"
         label="Scenario"
         value={all ? ALL_SCENARIOS : value}
         disabled={all}
@@ -212,7 +210,8 @@ export function MultiViewTile({ config: rawConfig, tileKey }: { config: MultiVie
         badges={badges.length > 0 ? badges : undefined}
         controls={controls.length > 0 ? controls : undefined}
         actions={actions.length > 0 ? actions : undefined}
-        headerControls={scenarioControl || viewControl ? <>{scenarioControl}{viewControl}</> : undefined}
+        headerItems={scenarioControl ? [scenarioControl] : undefined}
+        view={viewControl}
         keepScenarioLegend={keepScenarioLegend}
         height={config.height}
         expandable={config.expandable ?? true}

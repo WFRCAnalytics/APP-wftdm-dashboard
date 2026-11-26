@@ -5,6 +5,7 @@ import { Segmented, type SegmentedOption } from '@/components/ui/segmented'
 import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select'
 import { switchForm, type SwitchForm, type SwitchMode } from '@/lib/switchForm'
 import { cn } from '@/lib/utils'
+import { useReportHeaderNeed } from '@/components/ui/headerNeedContext'
 
 // A Segmented that fits the room it is given (lib/switchForm.ts): every option with its label, then icons only, then the
 // selected option alone, drawn as the same filled pill on the same track, opening a menu of all the options. Both switch
@@ -40,17 +41,24 @@ export function AdaptiveSwitch({ label, options, value, onChange, mode = 'auto',
   const iconsRef = useRef<HTMLDivElement>(null)
   const [form, setForm] = useState<SwitchForm>(mode === 'menu' ? 'menu' : 'full')
   const allIcons = options.every((o) => o.icon)
+  // in a tile header, the width it needs with every label, so the header moves other controls down before this one shrinks
+  const reportNeed = useReportHeaderNeed()
 
   useLayoutEffect(() => {
     const box = boxRef.current
     if (!box) return
-    const measure = () => setForm(switchForm(mode, box.clientWidth, fullRef.current?.offsetWidth ?? 0, allIcons ? (iconsRef.current?.offsetWidth ?? 0) : null))
+    const measure = () => {
+      const full = fullRef.current?.offsetWidth ?? 0
+      setForm(switchForm(mode, box.clientWidth, full, allIcons ? (iconsRef.current?.offsetWidth ?? 0) : null))
+      // a forced menu needs its pill's width; otherwise the full switch's, so other controls move down before it shrinks
+      reportNeed?.(mode === 'menu' ? ((box.querySelector(':scope > .pill-track') as HTMLElement | null)?.offsetWidth ?? 0) : full)
+    }
     measure()
     const ro = new ResizeObserver(measure)
     ro.observe(box)
     if (fullRef.current) ro.observe(fullRef.current)
     return () => ro.disconnect()
-  }, [mode, allIcons, options])
+  }, [mode, allIcons, options, reportNeed])
 
   const current = options.find((o) => o.id === value) ?? options[0]
   const withLabels = fullOptions(options)

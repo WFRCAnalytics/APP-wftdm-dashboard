@@ -71,8 +71,9 @@ export function usePanelExpandHost(
     chrome?: ReactNode
     /** The Export menu shown beside the title while expanded; it exports the dialog as it looks (its element is the ref). */
     exportMenu?: (dialogRef: RefObject<HTMLElement | null>) => ReactNode
-    /** Controls that sit in the title row, between the title and the Export menu (the view switch). They take the free space. */
-    headerControls?: ReactNode
+    /** Lays out the dialog's title row from its title and tools (Export, Close), with the tile's controls (layout/tileHeader.tsx);
+     *  without it the title and the tools share one row. */
+    header?: (parts: { title: ReactNode; tools: ReactNode }) => ReactNode
   },
 ): { trigger: ReactNode; body: ReactNode; expanded: boolean } {
   const [expanded, setExpanded] = useState(false)
@@ -111,6 +112,18 @@ export function usePanelExpandHost(
   }, [expanded, inlineAnchor, dialogAnchor])
 
   // the same round 30px button as Export beside it (TILE_ICON_BUTTON), so the header's tools match
+  const dialogTitle = <DialogTitle className="shrink-0">{title}</DialogTitle>
+  const dialogTools = (
+    <>
+      {options?.exportMenu?.(dialogRef)}
+      {/* The same round 30px button as Export beside it, and the mirror of the card's Expand icon: it puts the tile back.
+          Named "Close" for assistive tech (Escape does the same). */}
+      <DialogClose aria-label="Close" data-export-skip="" className={TILE_ICON_BUTTON}>
+        <Minimize2 className="size-4" aria-hidden="true" />
+      </DialogClose>
+    </>
+  )
+
   const trigger = (
     <button ref={triggerRef} type="button" className={TILE_ICON_BUTTON} aria-label={`Expand ${title}`} onClick={() => setExpanded(true)}>
       <Maximize2 className="size-4" aria-hidden="true" />
@@ -172,20 +185,7 @@ export function usePanelExpandHost(
             triggerRef.current?.focus()
           }}
         >
-          <div className="flex items-center gap-2">
-            <DialogTitle className="shrink-0">{title}</DialogTitle>
-            {options?.headerControls ?? <span className="flex-1" />}
-            {options?.exportMenu?.(dialogRef)}
-            {/* The same round 30px button as Export beside it, and the mirror of the card's Expand icon: it puts the tile back.
-                Named "Close" for assistive tech (Escape does the same). */}
-            <DialogClose
-              aria-label="Close"
-              data-export-skip=""
-              className={TILE_ICON_BUTTON}
-            >
-              <Minimize2 className="size-4" aria-hidden="true" />
-            </DialogClose>
-          </div>
+          {(options?.header ?? defaultHeader)({ title: dialogTitle, tools: dialogTools })}
           {options?.chrome}
           <div ref={setDialogAnchor} className="min-h-0 flex-1" />
         </DialogContent>
@@ -197,3 +197,11 @@ export function usePanelExpandHost(
 
   return { trigger, body, expanded }
 }
+
+const defaultHeader = ({ title, tools }: { title: ReactNode; tools: ReactNode }) => (
+  <div className="flex items-center gap-2">
+    {title}
+    <span className="flex-1" />
+    {tools}
+  </div>
+)
