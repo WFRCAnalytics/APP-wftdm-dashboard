@@ -9,6 +9,7 @@ import {
   ChartPie,
   ChartScatter,
   ChartSpline,
+  Diff,
   Grid2x2,
   Grid3x3,
   Hash,
@@ -17,6 +18,7 @@ import {
   Network,
   Orbit,
   Radar,
+  SquareSplitHorizontal,
   Table2,
   Type,
   Waves,
@@ -54,9 +56,24 @@ export const SHAPE_ICON: Record<SkeletonShape, LucideIcon> = {
   generic: ChartNoAxesColumn,
 }
 
-/** A view's icon: its `icon` (a skeleton shape name) when set, else the icon of the silhouette it draws. */
+/**
+ * Kinds that share a silhouette with others they sit beside in one tile, each with an icon of what it shows: the zone maps'
+ * Values, Difference and Swipe views all draw a map, and the calibration tile's Values and Difference views both draw lines.
+ * A difference is always the Diff icon. tests/unit/viewIcon.test.ts fails when a demo tile shows two views with one icon.
+ */
+export const KIND_ICON: Record<string, LucideIcon> = {
+  'zone-map': Map,
+  'zone-diff-map': Diff,
+  'zone-swipe-map': SquareSplitHorizontal,
+  'trace-values': ChartLine,
+  'trace-lines': Diff,
+}
+
+/** A view's icon: its `icon` (a skeleton shape name) when set, else its kind's own icon, else the icon of the silhouette it draws. */
 export function viewIcon(view: object): LucideIcon {
   const own = (view as { icon?: unknown }).icon
   if (typeof own === 'string' && own in SHAPE_ICON) return SHAPE_ICON[own as SkeletonShape]
+  const kind = (view as { kind?: unknown }).kind
+  if (typeof kind === 'string' && kind in KIND_ICON) return KIND_ICON[kind]
   return SHAPE_ICON[skeletonShape(view)]
 }
