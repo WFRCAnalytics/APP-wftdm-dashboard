@@ -3,7 +3,7 @@ import { ArrowUpRight } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 
-// One 46px item of the floating navigation (project-docs/redesign/02-layout-and-components.md §1.1): a 20px icon plus a
+// One 48px item of the floating navigation (project-docs/redesign/02-layout-and-components.md §1.1): a 20px icon plus a
 // label that fades in while the nav is expanded. The label stays in the DOM so the button keeps its accessible name
 // when the nav is collapsed.
 export interface NavButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -11,9 +11,11 @@ export interface NavButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> 
   selected?: boolean
 }
 
-/** The look of one nav item, shared by the buttons and the documentation link so they cannot drift apart. */
+/** The look of one nav item, shared by the buttons and the documentation link so they cannot drift apart. 48px tall with
+ * 14px side padding: the 20px icon has 14px of air on every side, so the collapsed rail's selected pill is a 48 x 48 square
+ * and the icon sits at the same place collapsed and expanded. */
 export const NAV_ITEM_CLASS = cn(
-  'flex h-[46px] w-full items-center gap-3 overflow-hidden rounded-[15px] px-[14px] text-left font-body text-[14px] font-medium text-[var(--mute)] transition-colors',
+  'flex h-12 w-full items-center gap-3 overflow-hidden rounded-[15px] px-[14px] text-left font-body text-[14px] font-medium text-[var(--mute)] transition-colors',
   'hover:bg-[color-mix(in_srgb,var(--ink)_7%,transparent)] hover:text-[var(--ink)]',
   'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-text)]',
 )
