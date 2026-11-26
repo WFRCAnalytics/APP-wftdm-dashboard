@@ -55,6 +55,8 @@ export function Segmented({ label, options, value, onChange, size = 'md', fill =
             onClick={() => onChange(o.id)}
             className={cn(
               rail && (stacked ? 'w-full text-left' : 'flex-auto px-2 text-center'),
+              // an icon (alone, or with its label) is centred in the pill: on a text line it rides above the middle
+              o.icon && 'inline-flex items-center justify-center',
               fill && 'flex flex-1 items-center justify-center',
               size === 'lg' ? 'px-[13px] py-[5px] text-sm' : 'px-[11px] py-1 text-[12.5px]',
               'whitespace-nowrap rounded-full font-body leading-[1.45] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-text)] disabled:opacity-40',

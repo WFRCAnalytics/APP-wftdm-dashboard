@@ -70,8 +70,20 @@ export function AdaptiveSwitch({ label, options, value, onChange, mode = 'auto',
                 size === 'lg' ? 'px-[13px] py-[5px] text-sm' : 'px-[11px] py-1 text-[12.5px]',
               )}
             >
-              {current.icon}
-              <span>{current.label}</span>
+              {/* every option in one grid cell, only the selected one visible, so the pill is as wide as the longest option and
+                  does not change width with the choice */}
+              <span className="inline-grid">
+                {options.map((o) => (
+                  <span
+                    key={o.id}
+                    aria-hidden={o.id === current.id ? undefined : true}
+                    className={cn('col-start-1 row-start-1 inline-flex items-center gap-1.5', o.id !== current.id && 'invisible')}
+                  >
+                    {o.icon}
+                    <span>{o.label}</span>
+                  </span>
+                ))}
+              </span>
               <ChevronDown className="size-3.5 text-current" aria-hidden="true" />
             </SelectTrigger>
             <SelectContent position="popper" align="end" sideOffset={8} className="min-w-[11rem]">
