@@ -28,7 +28,7 @@ test.describe('tabbed pages', () => {
     expect(page.url()).toContain('#/summary/mode')
   })
 
-  test('the tile fills the tab; its views sit in the header and one or two controls in a row above the chart', async ({ page }) => {
+  test('the tile fills the tab; with room, its views and one or two controls share the title row', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 })
     await boot(page)
     await page.hover('[data-sidebar=sidebar]')
@@ -41,7 +41,9 @@ test.describe('tabbed pages', () => {
     const compareAs = (await body.getByRole('group', { name: 'Compare as' }).boundingBox())!
     const views = (await body.getByRole('group', { name: 'View' }).boundingBox())!
     expect(compareAs.y + compareAs.height).toBeLessThanOrEqual(map.y)
-    expect(views.y).toBeLessThan(compareAs.y)
+    // the header places controls by measuring (layout/tileHeader.tsx): with room, Compare as stays on the title row, left of the views
+    expect(Math.abs(views.y + views.height / 2 - (compareAs.y + compareAs.height / 2))).toBeLessThan(2)
+    expect(compareAs.x + compareAs.width).toBeLessThan(views.x)
     // the side-by-side maps run to the tile's right edge, where a rail used to be
     const last = (await page.locator('.maplibregl-map').last().boundingBox())!
     const tileBox = (await body.boundingBox())!
