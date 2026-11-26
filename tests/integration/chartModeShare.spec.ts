@@ -14,7 +14,8 @@ function watch(page: Page): string[] {
   return problems
 }
 
-const tile = (page: Page, title: string) => page.locator('div[class*="rounded-[24px]"]').filter({ hasText: title }).first()
+// the card by its exact title (a looser text match can land on another card that mentions it)
+const tile = (page: Page, title: string) => page.locator(`[data-export-title="${title}"]`).first()
 
 async function hover(page: Page, region: ReturnType<Page['locator']>, fx: number, fy: number) {
   await region.scrollIntoViewIfNeeded()
